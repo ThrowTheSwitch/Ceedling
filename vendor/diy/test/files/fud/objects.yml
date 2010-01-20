@@ -1,0 +1,13 @@
+widget:
+  lib: toy
+
+trinket:
+  lib: toy
+  compose: thing_ama_jack
+
+thing_ama_jack:
+  lib: toy
+
+toy:
+  lib: toy
+  compose: widget, trinket

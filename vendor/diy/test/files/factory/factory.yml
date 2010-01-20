@@ -1,0 +1,19 @@
+cat_factory:
+  builds: kitten
+  library: kitten
+
+dog_factory:
+  builds: dog
+
+using_namespace Farm:
+  llama_factory:
+    builds: llama
+
++inny:
+  bull_factory:
+    builds: beef
+
++congress:
+  using_namespace Farm:
+    politician:
+      builds: pork

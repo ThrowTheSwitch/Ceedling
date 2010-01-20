@@ -1,0 +1,5 @@
+the_cat_lineage:
+  
+cat:
+  heritage: the_cat_lineage
+  food: some_meat

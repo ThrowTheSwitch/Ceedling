@@ -1,0 +1,12 @@
+can:
+
+paper:
+
+shirt:
+
+goat:
+
++the_sub_context:
+  plane:
+    compose: wings
+  wings:

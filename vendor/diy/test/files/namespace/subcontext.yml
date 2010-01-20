@@ -1,0 +1,22 @@
+road:
+
+sky:
+
+using_namespace Animal:
+
+  cat:
+    compose: road
+
+
++aviary:
+  using_namespace Animal:
+    bird:
+      compose: sky    
+
+  using_namespace Animal Reptile:
+    lizard:
+      compose: bird
+
+using_namespace Animal::Reptile::Hardshell:
+  turtle:
+

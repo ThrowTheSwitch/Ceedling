@@ -1,0 +1,7 @@
+holder_thing:
+  thing_held: this_context
+
++repeater:
+  other_thing:
+    class: HolderThing
+    thing_held: this_context

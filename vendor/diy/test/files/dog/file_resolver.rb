@@ -1,0 +1,2 @@
+class FileResolver
+end

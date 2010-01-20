@@ -1,0 +1,8 @@
+
+sky:
+
+using_namespace:
+
+  bird:
+    compose: sky
+

@@ -1,0 +1,46 @@
+---
+
+:project:
+  :use_preprocessor: FALSE
+  :use_auxiliary_dependencies: FALSE
+  :build_root: test/system/a_project/build
+
+:paths:
+  :test:
+    - test/system/a_project/test
+  :source:
+    - test/system/a_project/source
+  :include:
+    - test/system/a_project/include
+
+:defines:
+  :test: []
+  :source: []
+
+#:extension:
+
+#:test_runner:
+
+#:unity:
+
+:cmock:
+  :mock_prefix: mock_
+
+:tools:
+  :test_compiler:
+    :executable: gcc
+    :arguments:
+      - -I"$": COLLECTION_PATHS_TEST_AND_SOURCE_INCLUDE
+      - -D$: COLLECTION_DEFINES_TEST
+      - -c ${1}
+      - -o ${2}
+  :test_linker:
+    :executable: gcc
+    :arguments:
+      - ${1}
+      - -o ${2}
+  # built under gcc, the test is the executable (no simulator)
+  :test_fixture:
+    :executable: ${1}
+ 
+...

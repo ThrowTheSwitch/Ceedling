@@ -1,0 +1,240 @@
+require File.dirname(__FILE__) + '/../unit_test_helper'
+require 'tool_executor'
+require 'yaml'
+
+
+NIL_GLOBAL_CONSTANT = nil
+
+class ToolExecutorTest < Test::Unit::TestCase
+
+  def setup
+    objects = create_mocks(:streaminator, :verbosinator, :stream_wrapper)
+    @tool_executor = ToolExecutor.new(objects)
+  end
+
+  def teardown
+  end
+  
+
+  should "build a command line that contains only an executable if no arguments or blank arguments provided" do
+    
+    yaml1 = %Q[
+    :tool1:
+      :name: test_compiler
+      :executable: tool.exe
+      :arguments:
+    ].left_margin(0)
+    config1 = YAML.load(yaml1)
+
+    yaml2 = %Q[
+    :tool2:
+      :name: test_compiler
+      :executable: tool.exe
+      :arguments:
+        -
+        - ' '
+    ].left_margin(0)
+    config2 = YAML.load(yaml2)
+    
+    assert_equal('tool.exe', @tool_executor.build_command_line(config1[:tool1]))
+    assert_equal('tool.exe', @tool_executor.build_command_line(config2[:tool2]))
+  end
+
+
+  should "build a command line where the executable is specified by argument parameter input replacement" do
+    
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: ${1}
+      :arguments:
+        - '> ${2}'
+    ].left_margin(0)
+    config = YAML.load(yaml)
+    
+    assert_equal(
+      'a_tool > files/build/tmp/file.out',
+      @tool_executor.build_command_line(config[:tool], 'a_tool', 'files/build/tmp/file.out'))
+      
+    assert_equal(
+      'test.exe > results.out',
+      @tool_executor.build_command_line(config[:tool], 'test.exe', 'results.out'))      
+  end
+
+
+  should "complain when building a command line if tool executable is specified with a replacement parameter but referenced input is nil" do
+    
+    yaml = %Q[
+    :tool:
+      :name: tool_sample
+      :executable: ${1}
+      :arguments: []
+    ].left_margin(0)
+    config = YAML.load(yaml)
+    
+    @streaminator.expects.stderr_puts("ERROR: Tool 'tool_sample' expected valid argument data to accompany replacement operator ${1}.", Verbosity::ERRORS)
+    
+    assert_raise(RuntimeError) { @tool_executor.build_command_line(config[:tool], nil) }
+  end
+
+
+  should "build a command line from simple arguments and global constants using generic '$' string replacement indicator" do
+    
+    redefine_global_constant('DEFINES_TEST', ['WALDORF', 'STATLER'])
+    redefine_global_constant('COLLECTION_ALL_INCLUDE_PATHS', ['files/include', 'lib/modules/include'])
+    redefine_global_constant('PROJECT_BUILD_ROOT', 'project/files/tests/build')
+    
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: hecklers.exe
+      :arguments:
+        - '--dlib_config config.h'
+        - -D$: DEFINES_TEST
+        - --no_cse
+        - -I"$": COLLECTION_ALL_INCLUDE_PATHS
+        - -I"$/mocks": PROJECT_BUILD_ROOT
+        - --no_unroll
+    ].left_margin(0)
+    config = YAML.load(yaml)
+    
+    command_line = 'hecklers.exe --dlib_config config.h -DWALDORF -DSTATLER --no_cse -I"files/include" -I"lib/modules/include" -I"project/files/tests/build/mocks" --no_unroll'
+    
+    assert_equal(command_line, @tool_executor.build_command_line(config[:tool]))
+  end
+
+
+  should "build a command line from simple arguments and inline yaml arrays using '$' string replacement indicator" do
+
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: compiler.exe
+      :arguments:
+        - --no_cse
+        - '--D $':
+          - DIFFERENT_DEFINE
+          - STILL_ANOTHER_DEFINE
+        - --a_setting
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    command_line = 'compiler.exe --no_cse --D DIFFERENT_DEFINE --D STILL_ANOTHER_DEFINE --a_setting'
+
+    assert_equal(command_line, @tool_executor.build_command_line(config[:tool]))
+  end
+
+
+  should "build a command line from simple arguments (including non-strings), inline yaml arrays, and input/output specifiers using string replacement indicators" do
+
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: compiler.exe
+      :arguments:
+        - --no_cse
+        - '-flag-${3}'
+        - ${1}
+        - '-D$':
+          - ELIGHT
+          - ELICIOUS
+        - '-verbose:${4}'
+        - '-o ${2}'
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    command_line = 'compiler.exe --no_cse -flag-1 -flag-2 process_me.c me_too.c and_me_also.c -DELIGHT -DELICIOUS -verbose:5 -o processed.o'
+
+    assert_equal(command_line, @tool_executor.build_command_line(config[:tool], ['process_me.c', 'me_too.c', 'and_me_also.c'], 'processed.o', [1, 2], 5))
+  end
+
+
+  should "build a command line without replacing an escaped string replacement indicator" do
+
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: program
+      :arguments:
+        - --cse=\\$abc
+        - '-\\$D$':
+          - ELIGHT
+          - ELICIOUS
+        - '-o ${2}.\\$'
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    command_line = 'program --cse=$abc -$DELIGHT -$DELICIOUS -o processed1.$ -o processed2.$'
+
+    assert_equal(command_line, @tool_executor.build_command_line(config[:tool], nil, ['processed1', 'processed2']))
+  end
+
+
+  should "complain when building a command line if a referenced constant is undefined" do
+    
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: tool.exe
+      :arguments:
+        - -x$: NON_EXISTENT_GLOBAL_CONSTANT
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    @streaminator.expects.stderr_puts("ERROR: Tool 'test_compiler' found constant 'NON_EXISTENT_GLOBAL_CONSTANT' undefined.", Verbosity::ERRORS)
+
+    assert_raise(RuntimeError) { @tool_executor.build_command_line(config[:tool]) }
+  end
+
+
+  should "complain when building a command line if a referenced constant is nil" do
+    
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: tool.exe
+      :arguments:
+        - -x$: NIL_GLOBAL_CONSTANT
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    @streaminator.expects.stderr_puts("ERROR: Tool 'test_compiler' could not expand nil elements for format string '-x$'.", Verbosity::ERRORS)
+
+    assert_raise(RuntimeError) { @tool_executor.build_command_line(config[:tool]) }  
+  end
+
+
+  should "complain when building a command line if argument replacement parameters are specified but referenced input is nil" do
+    
+    yaml = %Q[
+    :tool:
+      :name: classic_movie
+      :executable: harry
+      :arguments:
+        - ${1}
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    @streaminator.expects.stderr_puts("ERROR: Tool 'classic_movie' expected valid argument data to accompany replacement operator ${1}.", Verbosity::ERRORS)
+    
+    assert_raise(RuntimeError) { @tool_executor.build_command_line(config[:tool], nil, 'sally') }  
+  end
+
+  
+  should "complain when building a command line if argument replacement parameters are specified but no optional arguments are given" do
+    
+    yaml = %Q[
+    :tools_a_tool:
+      :name: take_a_dip_in_the_tool
+      :executable: harry
+      :arguments:
+        - ${2}
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    @streaminator.expects.stderr_puts("ERROR: Tool 'take_a_dip_in_the_tool' expected valid argument data to accompany replacement operator ${2}.", Verbosity::ERRORS)
+    
+    assert_raise(RuntimeError) { @tool_executor.build_command_line(config[:tools_a_tool]) }  
+  end
+
+end

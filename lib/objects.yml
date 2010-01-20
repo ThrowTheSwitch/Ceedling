@@ -1,0 +1,175 @@
+...
+
+file_wrapper:
+
+stream_wrapper:
+
+rake_wrapper:
+
+yaml_wrapper:
+
+system_wrapper:
+
+cmock_factory:
+
+file_path_utils:
+  compose:
+    - configurator
+    - file_wrapper
+
+file_system_utils:
+  compose: file_wrapper
+
+project_file_loader:
+  compose:
+    - yaml_wrapper
+    - stream_wrapper
+    - file_wrapper
+
+tool_executor:
+  compose:
+    - streaminator
+    - verbosinator
+    - stream_wrapper
+
+configurator:
+  compose:
+    - configurator_helper
+    - configurator_builder
+
+configurator_helper:
+  compose: configurator_validator
+
+configurator_validator:
+  compose:
+    - file_wrapper
+    - stream_wrapper
+    - system_wrapper
+      
+configurator_builder:
+  compose:
+    - project_file_loader
+    - file_system_utils
+    - file_wrapper
+
+streaminator:
+  compose:
+    - verbosinator
+    - stream_wrapper
+
+setupinator:
+  compose:
+    - configurator
+    - project_file_loader
+    - test_includes_extractor
+
+verbosinator:
+  compose: configurator
+
+file_finder:
+  compose:
+    - configurator
+    - file_finder_helper
+
+file_finder_helper:
+  compose:
+    - streaminator
+    - file_wrapper
+
+test_includes_extractor:
+  compose:
+    - configurator
+    - yaml_wrapper
+    - file_wrapper
+    
+task_invoker:
+  compose:
+    - configurator
+    - rake_wrapper
+
+generator:
+  compose:
+    - configurator
+    - preprocessinator
+    - cmock_factory
+    - generator_test_runner
+    - generator_test_results
+    - test_includes_extractor
+    - tool_executor
+    - file_finder
+    - file_path_utils
+    - streaminator
+    - file_wrapper
+
+generator_test_results:
+  compose:
+    - configurator  
+    - yaml_wrapper  
+    - streaminator
+
+generator_test_runner:
+  compose:
+    - configurator
+    - file_wrapper
+
+dependinator:
+  compose:
+    - configurator
+    - test_includes_extractor
+    - file_finder            
+    - file_path_utils        
+    - rake_wrapper           
+
+preprocessinator:
+  compose:
+    - configurator    
+    - preprocessinator_helper          
+    - preprocessinator_includes_handler
+    - task_invoker    
+    - file_path_utils 
+
+preprocessinator_helper:
+  compose:                    
+    - configurator            
+    - preprocessinator_includes_handler        
+    - preprocessinator_file_handler            
+    - test_includes_extractor 
+    - task_invoker            
+    - file_finder             
+    - file_path_utils
+    - yaml_wrapper            
+    - file_wrapper                     
+
+preprocessinator_includes_handler:
+  compose:
+    - configurator    
+    - tool_executor   
+    - task_invoker    
+    - file_path_utils 
+    - yaml_wrapper    
+    - file_wrapper    
+
+preprocessinator_file_handler:
+  compose:
+    - configurator   
+    - tool_executor  
+    - file_path_utils
+    - file_wrapper   
+
+test_invoker:
+  compose:
+    - test_invoker_helper
+    - configurator
+    - preprocessinator
+    - task_invoker
+    - dependinator
+    - file_wrapper    
+    
+test_invoker_helper:
+  compose:
+    - configurator
+    - task_invoker
+    - dependinator
+    - file_path_utils
+    - file_finder
+    - file_wrapper

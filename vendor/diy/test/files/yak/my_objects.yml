@@ -1,0 +1,21 @@
+
+core_model:
+  compose: data_source
+
+core_view:
+
+core_presenter:
+  model: core_model
+  view: core_view
+
+data_source:
+
++fringe_context:
+
+  fringe_model:
+    connected: core_model
+
+  fringe_view:
+
+  fringe_presenter:
+    compose: fringe_model, fringe_view

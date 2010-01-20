@@ -1,0 +1,14 @@
+
+injected:
+
+thinger:
+  compose: injected
+
++inny:
+  inner_injected:
+
+  inner_thinger:
+    injected: inner_injected
+    lib: thinger
+    class: Thinger
+

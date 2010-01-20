@@ -1,0 +1,2 @@
+class Yard
+end

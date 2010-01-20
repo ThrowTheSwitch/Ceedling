@@ -1,0 +1,19 @@
+air:
+
+thread_spinner:
+  compose: air
+  singleton: false
+
+yard:
+
+pig:
+  compose: thread_spinner, yard
+
++inner_sanctum:
+  tick:
+    compose: thread_spinner
+    singleton: false
+
+  fat_cat:
+    compose: thread_spinner, tick, yard
+

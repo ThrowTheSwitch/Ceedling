@@ -1,0 +1,10 @@
+---
+car:
+  compose:
+    - engine
+    - chassis
+
+engine:
+
+chassis:
+

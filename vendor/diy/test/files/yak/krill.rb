@@ -1,0 +1,2 @@
+class Krill
+end

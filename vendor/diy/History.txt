@@ -1,0 +1,28 @@
+== 1.1.2 / 2009-11-30
+  * Converted to Jeweler for gem packaging
+  * diy/factory.rb was somehow missing from the 1.1.1 gem on gemcutter. This has been fixed as part of the Jeweler changeover.
+  * Rebuilt homepage http://atomicobject.github.com/diy
+
+== 1.1.1 / 2008-05-21
+  * Fixed bug that did not allow a method to be properly injected into an object
+
+== 1.1 / 2008-05-20
+  * Added 'method' directive for building a bounded method from an object defined in diy
+
+== 1.0.3 / 2007-12-11
+
+* The 1.0.1 release had a load-path search in it that resulted in requiring files with full path names (rooted in loadpath entries).  This is unintuitive, and will almost always result in a double "require" if the application code ever requires a library.  The "require" for library loading now relies implicitly on the load path (just like normal human-coded requires.)
+
+== 1.0.1 / 2007-12-02
+
+* Added 'using_namespace' directive for assuming a module for a group of object defs
+* Added 'use_class_directly' option for configuring an ObjectDef.  Instead of instantiating an instance
+  of the specified class, the class itself is referenced.  (Good for injecting ActiveRecord classes into 
+  other components in the guise of factories.
+* Added DIY::Context.auto_require boolean setting. When false, the library of a
+  class is not autoloaded ahead of object construction. Is true by default.
+* 'auto_require' can, if neccessary, be set in the YAML config for an individual object. 
+
+== 1.0.0 / 2007-11-19
+
+* Released!

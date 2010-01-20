@@ -1,0 +1,7 @@
+
+dog_presenter:
+  model: dog_model
+  view: dog_view
+
+dog_model:
+# VIEW IS MISSING, PRESENTER SHOULD CRASH

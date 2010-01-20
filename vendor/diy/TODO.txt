@@ -1,0 +1,9 @@
+Sun Dec  2 19:59:16 EST 2007
+crosby
+
+Features from FRE's rogue diy.rb (inside Injection) that need to be
+incorporated into trunk:
+
+* auto_require
+* use_class_directly
+

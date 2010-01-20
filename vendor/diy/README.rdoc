@@ -1,0 +1,233 @@
+== DIY
+
+* http://atomicobject.github.com/diy
+
+== DESCRIPTION:
+
+DIY (Dependency Injection in YAML) is a simple dependency injection library
+which focuses on declarative composition of objects through constructor injection.
+
+== INSTALL:
+
+* gem install diy
+
+== SYNOPSIS:
+
+=== Common Usage
+
+Author a YAML file that describes your objects and how they fit together.
+This means you're building a Hash whose keys are the object names, and whose
+values are Hashes that define the object. 
+
+The following context defines an automobile engine:
+
+context.yml:
+  ---
+  engine:
+    compose: throttle, block
+  throttle:
+    compose: cable, pedal
+  block:
+  cable:
+  pedal:
+
+In your code, use DIY to load the YAML, then access its parts:
+
+  context = DIY::Context.from_file('context.yml')
+  context[:engine]  => <Engine:0x81eb0> 
+
+This approach assumes:
+
+* You've got classes for Engine, Throttle, Block, Cable and Pedal
+* They're defined in engine.rb, throttle.rb, etc
+* The library files are in your load-path
+* Engine and Throttle both have a constructor that accepts a Hash.  The Hash 
+  will contain keys 'throttle', 'block' (for Engine) and 'cable, 'pedal' (for Throttle)
+  and the values will be references to their respective objects.
+* Block, Cable and Pedal all have default constructors that accept no arguments
+
+Sample code for Engine's constructor:
+
+  class Engine
+    def initialize(components)
+      @throttle = components['throttle']
+      @block = components['block']
+    end
+  end
+
+Writing code like that is repetetive; that's why we created the Constructor gem, which lets you
+specify object components using the "constructor" class method:
+
+Using constructor, you can write Engine like this:
+
+  class Engine
+    constructor :throttle, :block
+  end
+
+=== Special Cases
+
+If your object has a lot of components (or they have big names) you can specify an array of component names
+as opposed to a comma-separated list:
+
+  engine:
+    compose:
+    - throttle
+    - block
+
+Sometimes you won't be able to rely on DIY's basic assumptions about class names and library files.
+
+* You can specify the 'class' option
+* You can specify the 'library' option.  If you do not, the library is inferred from the class name. 
+  (Eg, My::Train::Station will be sought in "my/train/station.rb"
+
+  engine:
+    class: FourHorse::Base
+    library: general_engines/base
+    compose: throttle, block
+
+If the Hash coming into your constructor needs to have some keys that do not exactly match the official
+object names, you can specify them one-by-one:
+
+  engine:
+    the_throttle: throttle
+    the_block: block
+
+=== Non-singleton objects
+ 
+Non-singletons are named objects that provide a new instance every time you ask for them.
+By default, DIY considers all objects to be singletons.  To override, use the "singleton" setting and
+set it to false:
+
+  foo:
+    singleton: false
+
+=== Sub-Contexts
+
+Sub-contexts are useful for creating isolated object networks that may need to be instantiated 
+zero or many times in your application.  Objects defined in subcontexts can reference "upward" to 
+their surroundings, as well as objects in the subcontext itself. 
+
+If you wanted to be able to make more than one Engine from the preceding examples, you might try:
+
+  ---
+  epa_regulations:
+
+  +automotive_plant:
+    engine:
+      compose: block, throttle, epa_regulations
+    block:
+    throttle:
+
+Each time you delve into the automotive_plant, you get a solar system of the defined objects.
+In this context, the objects are singleton-like.  The next time you invoke the subcontext, however,
+you'll be working with a fresh set of objects... another solar system with the same layout, so to speak.
+
+Subcontexts are not initialized until you call upon them, which you do using the "within" method:
+
+  context = DIY::Context.from_file('context.yml')
+  context.within('automotive_plant') do |plant|
+    puts plant[:engine]
+  end
+
+=== Direct Class References
+
+Occasionally you will have a class at your disposal that you'd like to provide directly as components
+to other objects (as opposed to getting _instances_ of that class, you want to reference the class itself, eg, 
+to use its factory methods).  Enter the "use_class_directly" flag:
+
+  ---
+  customer_order_finder:
+    class: CustomerOrder
+    use_class_directly: true
+
+This can be handy in Rails when you'd like to use some of class methods on an ActiveRecord subclass, but 
+you'd like to avoid direct ActiveRecord class usage in your code.  In this case, the customer_order_finder
+is actually the CustomerOrder class, and so, it has methods like "find" and "destroy_all".
+
+=== Namespace Convenience
+
+If you find yourself writing context entries like this:
+
+  ---
+  engine:
+    class: Car::Parts::Engine
+  throttle:
+    class: Car::Parts::Block
+  cable:
+    class: Car::Parts::Cable
+
+You can set the "assumed" module for a group of objects like this:
+
+  ---
+  using_namespace Car Parts:
+    engine:
+
+    throttle:
+
+    block:
+
+=== Preventing auto-requiring of library files
+
+Normally, DIY will "require" the library for an object just before it instantiates the object.
+If this is not desired (in Rails, auto-require can lead to library double-load issues), you
+can deactivate auto-require.  There is a global default setting (handled in code) and
+a per-object override (handled in the context YAML):
+
+  DIY::Context.auto_require = false 
+    
+  ---
+  engine:
+    auto_require: false
+
+=== Factories
+
+It is possible to create factories automatically with DIY:
+
+  ---
+  car_dealer:
+    compose: car_factory
+
+  car_factory:
+    builds: car
+
+Then you can use the factory to easily build objects:
+
+  context = DIY::Context.from_file('context.yml')
+  context[:car_factory].create  => <Car:0x81eb0> 
+
+=== Method Directive
+
+This introduces the concept of first class methods. An object can now be constructed with a method object 
+bound to a particular object in the diy context.
+  
+  ---
+  trinket_builder:
+
+  method build_trinket:
+      object: trinket_builder
+      method: build
+       
+== LICENSE:
+
+(The MIT License)
+
+Copyright (c) 2007 Atomic Object
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

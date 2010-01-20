@@ -1,0 +1,11 @@
+dog_presenter:
+  model: dog_model
+  view: dog_view
+
+file_resolver:
+other_thing:
+
+dog_model:
+  compose: file_resolver, other_thing
+
+dog_view:
