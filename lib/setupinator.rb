@@ -16,8 +16,8 @@ class Setupinator
     @configurator.insert_cmock_defaults(config_hash)
     @configurator.build(config_hash)
     
-    # a bit unorthodox to insert these values here, but it simplifies the code quite a bit
-    # (and we have to wait until the configurator is done with setup before we can get them)
+    # a bit unorthodox to insert these values here, but it simplifies the code quite a bit;
+    # and we have to wait until the configurator is done with setup before we can get at them
     @test_includes_extractor.cmock_mock_prefix = @configurator.cmock_mock_prefix
     @test_includes_extractor.extension_header  = @configurator.extension_header
   end
