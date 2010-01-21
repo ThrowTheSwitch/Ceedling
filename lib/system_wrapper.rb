@@ -5,4 +5,11 @@ class SystemWrapper
     return ENV['PATH'].split(File::PATH_SEPARATOR)
   end
 
+  def shell_execute(command)
+    return {
+      :output => `#{command}`,
+      :exit_code => $?.exitstatus
+    }
+  end
+
 end

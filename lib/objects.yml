@@ -28,7 +28,12 @@ project_file_loader:
 
 tool_executor:
   compose:
+    - tool_executor_helper
     - streaminator
+    - system_wrapper
+
+tool_executor_helper:
+  compose:
     - verbosinator
     - stream_wrapper
 

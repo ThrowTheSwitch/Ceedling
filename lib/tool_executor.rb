@@ -1,12 +1,11 @@
-require 'verbosinator' # for Verbosity constants class
+require 'verbosinator' # for Verbosity enumeration
 
 
 TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN = /(\$\{(\d+)\})/
 
-
 class ToolExecutor
 
-  constructor :streaminator, :verbosinator, :stream_wrapper
+  constructor :tool_executor_helper, :streaminator, :system_wrapper
 
   def setup
     @tool_name  = ''
@@ -26,35 +25,17 @@ class ToolExecutor
 
 
   # shell out, execute command, and return response
-  def exec(cmd, args=[])
-    cmd_str  = "#{cmd} #{args.join(' ')}".strip
-    response = `#{cmd_str}`
+  def exec(command, args=[])
+    command_str = "#{command} #{args.join(' ')}".strip
+    
+    shell_result = @system_wrapper.shell_execute(command_str)
 
-    # if command succeeded and we have verbosity cranked up, spill our guts
-    if (($?.exitstatus == 0) and @verbosinator.should_output?(Verbosity::OBNOXIOUS))
-      @stream_wrapper.stdout_puts("> Shell executed command:")
-      @stream_wrapper.stdout_puts(cmd_str)
-      @stream_wrapper.stdout_puts("> Produced response:") if (not response.empty?)
-      @stream_wrapper.stdout_puts(response)               if (not response.empty?)
-      @stream_wrapper.stdout_puts('')
-      @stream_wrapper.stdout_flush
-    end
+    @tool_executor_helper.print_happy_results(command_str, shell_result)
+    @tool_executor_helper.print_error_results(command_str, shell_result)
 
-    # if command failed and we have verbosity set to minimum error level, spill our guts
-    if (($?.exitstatus != 0) and @verbosinator.should_output?(Verbosity::ERRORS))
-      @stream_wrapper.stderr_puts("ERROR: Shell command failed.")
-      @stream_wrapper.stderr_puts("> Shell executed command:")
-      @stream_wrapper.stderr_puts(cmd_str)
-      @stream_wrapper.stderr_puts("> Produced response:") if (not response.empty?)
-      @stream_wrapper.stderr_puts(response)               if (not response.empty?)
-      @stream_wrapper.stderr_puts("> And exited with status: [#{$?.exitstatus}].")
-      @stream_wrapper.stderr_puts('')
-      @stream_wrapper.stderr_flush
-    end
+    raise if (shell_result[:exit_code] != 0)
 
-    raise if ($?.exitstatus != 0)
-
-    return response
+    return shell_result[:output]
   end
 
   

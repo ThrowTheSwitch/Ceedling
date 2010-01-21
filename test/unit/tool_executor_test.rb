@@ -8,13 +8,15 @@ NIL_GLOBAL_CONSTANT = nil
 class ToolExecutorTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:streaminator, :verbosinator, :stream_wrapper)
+    objects = create_mocks(:tool_executor_helper, :streaminator, :system_wrapper)
     @tool_executor = ToolExecutor.new(objects)
   end
 
   def teardown
   end
   
+
+  ######## Build Command Line #########
 
   should "build a command line that contains only an executable if no arguments or blank arguments provided" do
     
@@ -235,6 +237,30 @@ class ToolExecutorTest < Test::Unit::TestCase
     @streaminator.expects.stderr_puts("ERROR: Tool 'take_a_dip_in_the_tool' expected valid argument data to accompany replacement operator ${2}.", Verbosity::ERRORS)
     
     assert_raise(RuntimeError) { @tool_executor.build_command_line(config[:tools_a_tool]) }  
+  end
+
+  ######## Shell Out & Execute Command #########
+
+  should "shell out & execute command with additional arguments" do
+    shell_result = {:output => 'stdout string', :exit_code => 0}
+    
+    @system_wrapper.expects.shell_execute('shell_command arg1 arg2').returns(shell_result)
+  
+    @tool_executor_helper.expects.print_happy_results('shell_command arg1 arg2', shell_result)
+    @tool_executor_helper.expects.print_error_results('shell_command arg1 arg2', shell_result)
+  
+    assert_equal('stdout string', @tool_executor.exec(' shell_command', ['arg1', 'arg2']))
+  end
+
+  should "shell out & execute command but raise on non-zero exit code" do
+    shell_result = {:output => '', :exit_code => 1}
+    
+    @system_wrapper.expects.shell_execute('shell_fish').returns(shell_result)
+  
+    @tool_executor_helper.expects.print_happy_results('shell_fish', shell_result)
+    @tool_executor_helper.expects.print_error_results('shell_fish', shell_result)
+  
+    assert_raise(RuntimeError){ @tool_executor.exec('shell_fish') }
   end
 
 end
