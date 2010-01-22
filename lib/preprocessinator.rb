@@ -5,16 +5,16 @@ class Preprocessinator
 
 
   def preprocess_tests_and_invoke_mocks(tests)
-    test_list = @preprocessinator_helper.assemble_test_list(tests)
+    tests_list = @preprocessinator_helper.assemble_test_list(tests)
     
-    @preprocessinator_helper.preprocess_includes(test_list)
+    @preprocessinator_helper.preprocess_includes(tests_list)
     mocks_list = @preprocessinator_helper.assemble_mocks_list
 
     @preprocessinator_helper.preprocess_mockable_headers(mocks_list)
 
     @task_invoker.invoke_mocks(mocks_list)
 
-    @preprocessinator_helper.preprocess_test_files(test_list)
+    @preprocessinator_helper.preprocess_test_files(tests_list)
     
     return mocks_list
   end
@@ -24,8 +24,7 @@ class Preprocessinator
     includes          = @preprocessinator_includes_handler.extract_shallow_includes(dependencies_rule)
     
     @preprocessinator_includes_handler.write_shallow_includes_list(
-      @file_path_utils.form_preprocessed_includes_list_path(filepath),
-      includes)
+      @file_path_utils.form_preprocessed_includes_list_path(filepath), includes)
   end
 
   def preprocess_file(filepath)

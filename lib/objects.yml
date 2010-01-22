@@ -156,10 +156,15 @@ preprocessinator_includes_handler:
 
 preprocessinator_file_handler:
   compose:
+    - preprocessinator_file_handler_helper
     - configurator   
     - tool_executor  
     - file_path_utils
     - file_wrapper   
+
+preprocessinator_file_handler_helper:
+  compose:
+    - file_wrapper
 
 test_invoker:
   compose:
