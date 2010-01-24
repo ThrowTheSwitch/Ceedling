@@ -1,6 +1,6 @@
 
 
-class PreprocessinatorFileHandlerHelper
+class PreprocessinatorExtractor
   
   constructor :file_wrapper
 

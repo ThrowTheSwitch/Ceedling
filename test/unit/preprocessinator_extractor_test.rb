@@ -1,12 +1,12 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'preprocessinator_file_handler_helper'
+require 'preprocessinator_extractor'
 
 
-class PreprocessinatorFileHandlerHelperTest < Test::Unit::TestCase
+class PreprocessinatorExtractorTest < Test::Unit::TestCase
 
   def setup
     objects = create_mocks(:file_wrapper)
-    @preprocessinator_file_handler_helper = PreprocessinatorFileHandlerHelper.new(objects)
+    @preprocessinator_extractor = PreprocessinatorExtractor.new(objects)
   end
 
   def teardown
@@ -36,7 +36,7 @@ class PreprocessinatorFileHandlerHelperTest < Test::Unit::TestCase
       ].left_margin(0)
 
 
-      expected_extraction_contents = %Q[
+    expected_extraction_contents = %Q[
       Mary
       Mary
       Quite
@@ -49,11 +49,11 @@ class PreprocessinatorFileHandlerHelperTest < Test::Unit::TestCase
       ].left_margin(0)
 
 
-      @file_wrapper.expects.readlines('project/build/preprocess/TestIcle.c').returns(preprocessed_file_contents.split("\n"))
+    @file_wrapper.expects.readlines('project/build/preprocess/TestIcle.c').returns(preprocessed_file_contents.split("\n"))
 
-      assert_equal(
-        expected_extraction_contents.strip.split("\n"),
-        @preprocessinator_file_handler_helper.extract_base_file_from_preprocessed_expansion('project/build/preprocess/TestIcle.c'))
+    assert_equal(
+      expected_extraction_contents.strip.split("\n"),
+      @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion('project/build/preprocess/TestIcle.c'))
   end
   
   
@@ -684,7 +684,7 @@ class PreprocessinatorFileHandlerHelperTest < Test::Unit::TestCase
       ].left_margin(0)
 
 
-      expected_extraction_contents = %Q[
+    expected_extraction_contents = %Q[
       
       void setUp(void) {}
       void tearDown(void) {}
@@ -719,11 +719,11 @@ class PreprocessinatorFileHandlerHelperTest < Test::Unit::TestCase
       ].left_margin(0)
 
 
-      @file_wrapper.expects.readlines('project/build/preprocess/test_a_file.c').returns(preprocessed_file_contents.split("\n"))
+    @file_wrapper.expects.readlines('project/build/preprocess/test_a_file.c').returns(preprocessed_file_contents.split("\n"))
 
-      assert_equal(
-        expected_extraction_contents.split("\n"),
-        @preprocessinator_file_handler_helper.extract_base_file_from_preprocessed_expansion('project/build/preprocess/test_a_file.c'))
+    assert_equal(
+      expected_extraction_contents.split("\n"),
+      @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion('project/build/preprocess/test_a_file.c'))
   end
   
 end

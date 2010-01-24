@@ -2,7 +2,7 @@
 
 class PreprocessinatorHelper
   
-  constructor :configurator, :preprocessinator_includes_handler, :preprocessinator_file_handler, :test_includes_extractor, :task_invoker, :file_finder, :file_path_utils, :yaml_wrapper, :file_wrapper
+  constructor :configurator, :test_includes_extractor, :task_invoker, :file_finder, :file_path_utils
 
 
   def assemble_test_list(test_list)
@@ -24,32 +24,28 @@ class PreprocessinatorHelper
     return @file_path_utils.form_mocks_filelist(@test_includes_extractor.lookup_all_mocks)
   end
 
-  def preprocess_mockable_headers(mock_list)
-    preprocess_files_smartly { @file_path_utils.form_preprocessed_mockable_headers_filelist(mock_list) }
+  def preprocess_mockable_headers(mock_list, preprocess_file_proc)
+    if (@configurator.project_use_preprocessor)
+      preprocess_files_smartly(
+        @file_path_utils.form_preprocessed_mockable_headers_filelist(mock_list),
+        preprocess_file_proc) { |file| @file_finder.find_mockable_header(file) }
+    end
   end
 
-  def preprocess_test_files(test_list)
-    preprocess_files_smartly { test_list }
+  def preprocess_test_files(test_list, preprocess_file_proc)
+    if (@configurator.project_use_preprocessor)
+      preprocess_files_smartly(test_list, preprocess_file_proc) { |file| @file_finder.find_test_from_file_path(file) }
+    end
   end
   
-  def preprocess_file(filepath)
-    @preprocessinator_includes_handler.invoke_shallow_includes_list(filepath)
-    @preprocessinator_file_handler.preprocess_file(
-      filepath,
-      @yaml_wrapper.load(@file_path_utils.form_preprocessed_includes_list_path(filepath)))    
-  end
-
   private ############################
 
-  def preprocess_files_smartly
-    if (@configurator.project_use_preprocessor)
-      file_list = yield
-      if (@configurator.project_use_auxiliary_dependencies)
-        @task_invoker.invoke_preprocessed_files(file_list)
-      else
-        file_list.each { |file| preprocess_file( @file_finder.find_any_file(file) ) }
-      end
-    end        
+  def preprocess_files_smartly(file_list, preprocess_file_proc)
+    if (@configurator.project_use_auxiliary_dependencies)
+      @task_invoker.invoke_preprocessed_files(file_list)
+    else
+      file_list.each { |file| preprocess_file_proc.call( yield(file) ) }
+    end
   end
 
 end

@@ -130,20 +130,18 @@ preprocessinator:
     - configurator    
     - preprocessinator_helper          
     - preprocessinator_includes_handler
+    - preprocessinator_file_handler
     - task_invoker    
-    - file_path_utils 
+    - file_path_utils
+    - yaml_wrapper
 
 preprocessinator_helper:
   compose:                    
     - configurator            
-    - preprocessinator_includes_handler        
-    - preprocessinator_file_handler            
     - test_includes_extractor 
     - task_invoker            
     - file_finder             
-    - file_path_utils
-    - yaml_wrapper            
-    - file_wrapper                     
+    - file_path_utils         
 
 preprocessinator_includes_handler:
   compose:
@@ -156,13 +154,13 @@ preprocessinator_includes_handler:
 
 preprocessinator_file_handler:
   compose:
-    - preprocessinator_file_handler_helper
+    - preprocessinator_extractor
     - configurator   
     - tool_executor  
     - file_path_utils
     - file_wrapper   
 
-preprocessinator_file_handler_helper:
+preprocessinator_extractor:
   compose:
     - file_wrapper
 

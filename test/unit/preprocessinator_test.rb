@@ -5,7 +5,7 @@ require 'preprocessinator'
 class PreprocessinatorTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:configurator, :preprocessinator_helper, :preprocessinator_includes_handler, :task_invoker, :file_path_utils)
+    objects = create_mocks(:configurator, :preprocessinator_helper, :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_path_utils, :yaml_wrapper)
     @preprocessinator = Preprocessinator.new(objects)
   end
 
@@ -19,9 +19,9 @@ class PreprocessinatorTest < Test::Unit::TestCase
     @preprocessinator_helper.expects.assemble_test_list(['tests/tweedle_test.c', 'tests/dumb_test.c']).returns(@tests_list)
     @preprocessinator_helper.expects.preprocess_includes(@tests_list)
     @preprocessinator_helper.expects.assemble_mocks_list.returns(@mocks_list)
-    @preprocessinator_helper.expects.preprocess_mockable_headers(@mocks_list)
+    @preprocessinator_helper.expects.preprocess_mockable_headers(@mocks_list, @preprocessinator.preprocess_file_proc)
     @task_invoker.expects.invoke_mocks(@mocks_list)
-    @preprocessinator_helper.expects.preprocess_test_files(@tests_list)
+    @preprocessinator_helper.expects.preprocess_test_files(@tests_list, @preprocessinator.preprocess_file_proc)
 
     assert_equal(@mocks_list, @preprocessinator.preprocess_tests_and_invoke_mocks(['tests/tweedle_test.c', 'tests/dumb_test.c']))
   end
@@ -34,11 +34,17 @@ class PreprocessinatorTest < Test::Unit::TestCase
 
     @preprocessinator.preprocess_shallow_includes('project/source/software.c')
   end
+  
+  should "preprocess a file" do
+    includes = ['types.h', 'a_widdle_file.h']
+    mocks_filelist = ['project/build/mocks/mock_and_roll.c', 'project/build/mocks/mock_em_sock_em.c']
 
-  should "pass thru preprocess call to helper" do
-    @preprocessinator_helper.expects.preprocess_file('project/source/material.c')
+    @preprocessinator_includes_handler.expects.invoke_shallow_includes_list('source/a_widdle_file.c')
+    @file_path_utils.expects.form_preprocessed_includes_list_path('source/a_widdle_file.c').returns('project/build/preprocess/includes/a_widdle_file.c')
+    @yaml_wrapper.expects.load('project/build/preprocess/includes/a_widdle_file.c').returns(includes)
+    @preprocessinator_file_handler.expects.preprocess_file('source/a_widdle_file.c', includes)
 
-    @preprocessinator.preprocess_file('project/source/material.c')
+    @preprocessinator.preprocess_file('source/a_widdle_file.c')
   end
 
   should "form preprocessed file path if preprocessing is enabled" do
