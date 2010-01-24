@@ -2,7 +2,10 @@ require File.dirname(__FILE__) + '/../unit_test_helper'
 require 'generator_test_runner'
 
 
-# redefine split for file contents comparison convenience in tests
+# redefine split for convenience of file content comparison in tests.
+# this is needed because we're using the '<<' operator on real files in source but substituting
+#  an array for file writes in the tests; the '<<' operator tacks on new lines when used with a file,
+#  but, of course, does not do this when inserting into an array.
 class String
   def newline_split(pattern=/\n/, limit=nil)
     return (split(pattern, limit)).map{|elem| elem + "\n"} if !limit.nil?
@@ -283,7 +286,7 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
 
     @runner_utils.create_mock_management(file, ['mock_thinger.h', 'mock_stinger.h', 'mock_zinger.h'])
 
-    assert_equal(expected_output.newline_split + ["\n"], file)
+    assert_equal(expected_output.newline_split + ["\n"], file) # add newline array element that split won't do
   end
 
   should "create mock management block for given mock list without strict ordering" do
@@ -324,7 +327,7 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
 
     @runner_utils.create_mock_management(file, ['mock_thinger.h', 'mock_stinger.h', 'mock_zinger.h'])
 
-    assert_equal(expected_output.newline_split + ["\n"], file)
+    assert_equal(expected_output.newline_split + ["\n"], file) # add newline array element that split won't do
   end
 
   should "create empty mock management block for empty mock list" do
@@ -444,7 +447,7 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
       ].left_margin(0)
 
     @runner_utils.create_main(file, 'TestMe.c', ['test_a_little_test', 'test_a_wee_test', 'test_a_teeny_test'])
-    assert_equal(expected_output.newline_split + ["\n"], file) # add array element split won't do
+    assert_equal(expected_output.newline_split + ["\n"], file) # add newline array element that split won't do
   end
 
   should "create main function with no test cases" do
@@ -464,7 +467,7 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
       ].left_margin(0)
 
     @runner_utils.create_main(file, 'TestIfy.c', [])
-    assert_equal(expected_output.newline_split + ["\n"], file) # add array element split won't do
+    assert_equal(expected_output.newline_split + ["\n"], file) # add newline array element that split won't do
   end
 
 end
