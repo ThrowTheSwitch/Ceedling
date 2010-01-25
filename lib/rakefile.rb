@@ -26,14 +26,17 @@ require 'verbosinator'
 # (we don't use it but maybe custom extensions will need it somehow)
 CEEDLING_PROJECT_FILE = @objects[:project_file_loader].project_file
 
+# control Rake's verbosity
+if (not @objects[:verbosinator].should_output?(Verbosity::OBNOXIOUS))
+  verbose(false) # verbose defaults to true when rake loads
+end
 
 # load rakefile component files (*.rake)
 PROJECT_RAKEFILE_COMPONENT_FILES.each do |component|
   load(CEEDLING_LIB + component)
 end
 
-
-# control Rake's verbosity
-if (not @objects[:verbosinator].should_output?(Verbosity::OBNOXIOUS))
-  verbose(false) # defaults to true when rake loads
-end
+# end block executed following each rake run
+END {
+  # eventually insert code here to run ceedling extensions after running 
+}
