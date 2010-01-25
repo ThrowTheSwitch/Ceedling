@@ -132,30 +132,30 @@ class ConfiguratorHelperTest < Test::Unit::TestCase
   should "fail if any tools in the configuration fail validation" do
     @test_config[:tools] = {:circular_saw => {}, :compiler => {}, :report_generator => {}}
     
+    @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(true)
+    @configurator_validator.expects.validate_filepath(@test_config, :tools, :circular_saw, :executable).returns(true)
     @configurator_validator.expects.exists?(@test_config, :tools, :compiler, :executable).returns(true)
     @configurator_validator.expects.validate_filepath(@test_config, :tools, :compiler, :executable).returns(false)
     @configurator_validator.expects.exists?(@test_config, :tools, :report_generator, :executable).returns(true)
     @configurator_validator.expects.validate_filepath(@test_config, :tools, :report_generator, :executable).returns(true)
-    @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(true)
-    @configurator_validator.expects.validate_filepath(@test_config, :tools, :circular_saw, :executable).returns(true)
     
     assert_equal(false, @helper.validate_tools(@test_config))
 
+    @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(false)
+    @configurator_validator.expects.validate_filepath(@test_config, :tools, :circular_saw, :executable).returns(true)
     @configurator_validator.expects.exists?(@test_config, :tools, :compiler, :executable).returns(false)
     @configurator_validator.expects.validate_filepath(@test_config, :tools, :compiler, :executable).returns(true)
     @configurator_validator.expects.exists?(@test_config, :tools, :report_generator, :executable).returns(true)
     @configurator_validator.expects.validate_filepath(@test_config, :tools, :report_generator, :executable).returns(true)
-    @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(false)
-    @configurator_validator.expects.validate_filepath(@test_config, :tools, :circular_saw, :executable).returns(true)
     
     assert_equal(false, @helper.validate_tools(@test_config))
 
+    @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(false)
+    @configurator_validator.expects.validate_filepath(@test_config, :tools, :circular_saw, :executable).returns(false)
     @configurator_validator.expects.exists?(@test_config, :tools, :compiler, :executable).returns(true)
     @configurator_validator.expects.validate_filepath(@test_config, :tools, :compiler, :executable).returns(true)
     @configurator_validator.expects.exists?(@test_config, :tools, :report_generator, :executable).returns(false)
     @configurator_validator.expects.validate_filepath(@test_config, :tools, :report_generator, :executable).returns(false)
-    @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(false)
-    @configurator_validator.expects.validate_filepath(@test_config, :tools, :circular_saw, :executable).returns(false)
     
     assert_equal(false, @helper.validate_tools(@test_config))
   end
@@ -163,12 +163,12 @@ class ConfiguratorHelperTest < Test::Unit::TestCase
   should "successfully validate tools in the configuration=" do
     @test_config[:tools] = {:circular_saw => {}, :compiler => {}, :report_generator => {}}
     
+    @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(true)
+    @configurator_validator.expects.validate_filepath(@test_config, :tools, :circular_saw, :executable).returns(true)
     @configurator_validator.expects.exists?(@test_config, :tools, :compiler, :executable).returns(true)
     @configurator_validator.expects.validate_filepath(@test_config, :tools, :compiler, :executable).returns(true)
     @configurator_validator.expects.exists?(@test_config, :tools, :report_generator, :executable).returns(true)
     @configurator_validator.expects.validate_filepath(@test_config, :tools, :report_generator, :executable).returns(true)
-    @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(true)
-    @configurator_validator.expects.validate_filepath(@test_config, :tools, :circular_saw, :executable).returns(true)
     
     assert(@helper.validate_tools(@test_config))
   end

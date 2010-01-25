@@ -31,8 +31,8 @@ class ConfiguratorHelper
 
     validation << @configurator_validator.validate_paths(config, :project, :build_root) 
 
-    config[:paths].each_key do |key|
-      validation << @configurator_validator.validate_paths(config, :paths, key)    
+    config[:paths].keys.map{|k| k.to_s}.sort.each do |key|
+      validation << @configurator_validator.validate_paths(config, :paths, key.to_sym)
     end
 
     return false if (validation.include?(false))
@@ -42,9 +42,9 @@ class ConfiguratorHelper
   def validate_tools(config)
     validation = []
 
-    config[:tools].each_key do |key|
-      validation << @configurator_validator.exists?(config, :tools, key, :executable)
-      validation << @configurator_validator.validate_filepath(config, :tools, key, :executable)    
+    config[:tools].keys.map{|k| k.to_s}.sort.each do |key|
+      validation << @configurator_validator.exists?(config, :tools, key.to_sym, :executable)
+      validation << @configurator_validator.validate_filepath(config, :tools, key.to_sym, :executable)    
     end
 
     return false if (validation.include?(false))
