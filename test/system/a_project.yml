@@ -1,6 +1,8 @@
 ---
+# super simple test project
 
 :project:
+  :use_exceptions: FALSE
   :use_preprocessor: FALSE
   :use_auxiliary_dependencies: FALSE
   :build_root: test/system/a_project/build
