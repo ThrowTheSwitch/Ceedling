@@ -8,7 +8,9 @@ rule(/#{PROJECT_PREPROCESS_FILES_PATH}\/#{'.+'}$/ => [
       return @objects[:file_finder].find_any_file(task_name)
     end  
   ]) do |file|
-  raise 'SYSTEM ERROR: Preprocessing rule invoked though neccessary auxiliary dependency support not enabled.' if (PROJECT_USE_AUXILIARY_DEPENDENCIES == false)
+  if (not @objects[:configurator].project_use_auxiliary_dependencies)
+    raise 'SYSTEM ERROR: Preprocessing rule invoked though neccessary auxiliary dependency support not enabled.'
+  end
   @objects[:generator].generate_preprocessed_file(file.source)
 end
 

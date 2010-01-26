@@ -7,7 +7,7 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
 
   def setup    
     # create mocks rules will use
-    objects = create_mocks(:file_finder, :generator)
+    objects = create_mocks(:file_finder, :generator, :configurator)
     # create & assign instance of rake
     @rake = Rake::Application.new
     Rake.application = @rake
@@ -37,7 +37,6 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
     redefine_global_constant('PROJECT_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
     # because rule matches on any file, gotta set this path here to help rake distinguish rules when file is tested
     redefine_global_constant('PROJECT_PREPROCESS_INCLUDES_PATH', 'project/build/preprocess/includes')
-    redefine_global_constant('PROJECT_USE_AUXILIARY_DEPENDENCIES', true)
 
     # reload rakefile with new global constants
     setup()
@@ -58,10 +57,15 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
   
     # set up expectations
     @file_finder.expects.find_any_file(preprocess1).returns(preprocess_src1)
+    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src1)
+
     @file_finder.expects.find_any_file(preprocess2).returns(preprocess_src2)
+    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src2)
+
     @file_finder.expects.find_any_file(preprocess3).returns(preprocess_src3)
+    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src3)
     
     # invoke the test preprocess creation rule under test
@@ -75,7 +79,6 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
     redefine_global_constant('PROJECT_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
     # because rule matches on any file, gotta set this path here to help rake distinguish rules when file is tested
     redefine_global_constant('PROJECT_PREPROCESS_INCLUDES_PATH', 'project/build/preprocess/includes')
-    redefine_global_constant('PROJECT_USE_AUXILIARY_DEPENDENCIES', false)
 
     # reload rakefile with new global constants
     setup()
@@ -90,6 +93,7 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
   
     # set up expectations
     @file_finder.expects.find_any_file(preprocess1).returns(preprocess_src1)
+    @configurator.expects.project_use_auxiliary_dependencies.returns(false)
     
     # invoke the test preprocess creation rule under test
     assert_raise(RuntimeError){ @rake[preprocess1].invoke }
@@ -100,7 +104,6 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
     redefine_global_constant('PROJECT_PREPROCESS_FILES_PATH', 'demacroified/files')
     # because rule matches on any file, gotta set this path here to help rake distinguish rules when file is tested
     redefine_global_constant('PROJECT_PREPROCESS_INCLUDES_PATH', 'includes')
-    redefine_global_constant('PROJECT_USE_AUXILIARY_DEPENDENCIES', true)
 
     # reload rakefile with new global constants
     setup()
@@ -114,6 +117,7 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
   
     # set up expectations
     @file_finder.expects.find_any_file(preprocess1).returns(preprocess_src1)
+    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src1)
 
     # invoke the test preprocess creation rule under test

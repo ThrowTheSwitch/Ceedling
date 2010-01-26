@@ -93,6 +93,7 @@ class ConfiguratorHelperTest < Test::Unit::TestCase
 
 
   should "fail if any paths in the configuration fail validation" do
+    # note: source iterates through hash keys in string class's <=> order
     @test_config[:paths] = {:paths1 => [], :paths2 => [], :paths3 => []}
     
     @configurator_validator.expects.validate_paths(@test_config, :project, :build_root).returns(true)
@@ -118,6 +119,7 @@ class ConfiguratorHelperTest < Test::Unit::TestCase
   end
 
   should "successfully validate all paths in the configuration" do
+    # note: source iterates through hash keys in string class's <=> order
     @test_config[:paths] = {:paths1 => [], :paths2 => [], :paths3 => []}
     
     @configurator_validator.expects.validate_paths(@test_config, :project, :build_root).returns(true)
@@ -130,6 +132,7 @@ class ConfiguratorHelperTest < Test::Unit::TestCase
 
 
   should "fail if any tools in the configuration fail validation" do
+    # note: source iterates through hash keys in string class's <=> order
     @test_config[:tools] = {:circular_saw => {}, :compiler => {}, :report_generator => {}}
     
     @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(true)
@@ -161,6 +164,7 @@ class ConfiguratorHelperTest < Test::Unit::TestCase
   end
 
   should "successfully validate tools in the configuration=" do
+    # note: source iterates through hash keys in string class's <=> order
     @test_config[:tools] = {:circular_saw => {}, :compiler => {}, :report_generator => {}}
     
     @configurator_validator.expects.exists?(@test_config, :tools, :circular_saw, :executable).returns(true)

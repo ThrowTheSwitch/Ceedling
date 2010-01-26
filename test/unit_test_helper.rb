@@ -4,20 +4,6 @@ require 'constructor'
 require 'hardmock'
 
 
-class Boolean
-  def initialize
-    @value = false
-  end
-  
-  def replace(new_value)
-    @value = new_value
-  end
-  
-  def == (boolean)
-    return (@value == boolean)
-  end
-end
-
 $config_options = {
   :project_build_root => 'project/build',
   :project_build_output_path => 'project/build/output',
@@ -26,7 +12,6 @@ $config_options = {
   :project_test_file_prefix => 'test_',
   :project_preprocess_files_path => 'project/build/preprocess/files',
   :project_preprocess_includes_path => 'project/build/preprocess/includes',
-  :project_use_auxiliary_dependencies => Boolean.new,
   :test_runner_file_suffix => '_runner',
   :cmock_mock_prefix => 'mock_',
   :extension_source  => '.c',
@@ -44,7 +29,6 @@ PROJECT_BUILD_OUTPUT_PATH = $config_options[:project_build_output_path]
 PROJECT_TEST_RESULTS_PATH = $config_options[:project_test_results_path]
 PROJECT_SOURCE_INCLUDE_PATHS = $config_options[:project_source_include_dirs]
 PROJECT_TEST_FILE_PREFIX = $config_options[:project_test_file_prefix]
-PROJECT_USE_AUXILIARY_DEPENDENCIES = $config_options[:project_use_auxiliary_dependencies]
 PROJECT_PREPROCESS_FILES_PATH = $config_options[:project_preprocess_files_path]
 PROJECT_PREPROCESS_INCLUDES_PATH = $config_options[:project_preprocess_includes_path]
 TEST_RUNNER_FILE_SUFFIX = $config_options[:test_runner_file_suffix]

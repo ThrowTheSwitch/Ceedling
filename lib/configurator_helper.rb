@@ -1,4 +1,14 @@
 
+# add sort-ability to symbol so we can order keys array in hash for test-ability 
+class Symbol
+  include Comparable
+
+  def <=>(other)
+    self.to_s <=> other.to_s
+  end
+end
+
+
 class ConfiguratorHelper
   
   constructor :configurator_validator
@@ -31,8 +41,8 @@ class ConfiguratorHelper
 
     validation << @configurator_validator.validate_paths(config, :project, :build_root) 
 
-    config[:paths].keys.map{|k| k.to_s}.sort.each do |key|
-      validation << @configurator_validator.validate_paths(config, :paths, key.to_sym)
+    config[:paths].keys.sort.each do |key|
+      validation << @configurator_validator.validate_paths(config, :paths, key)
     end
 
     return false if (validation.include?(false))
@@ -42,9 +52,9 @@ class ConfiguratorHelper
   def validate_tools(config)
     validation = []
 
-    config[:tools].keys.map{|k| k.to_s}.sort.each do |key|
-      validation << @configurator_validator.exists?(config, :tools, key.to_sym, :executable)
-      validation << @configurator_validator.validate_filepath(config, :tools, key.to_sym, :executable)    
+    config[:tools].keys.sort.each do |key|
+      validation << @configurator_validator.exists?(config, :tools, key, :executable)
+      validation << @configurator_validator.validate_filepath(config, :tools, key, :executable)    
     end
 
     return false if (validation.include?(false))
