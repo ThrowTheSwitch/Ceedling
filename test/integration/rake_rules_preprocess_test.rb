@@ -6,21 +6,7 @@ require 'rake'
 class RakeRulesPreprocessTest < Test::Unit::TestCase
 
   def setup    
-    # create mocks rules will use
-    objects = create_mocks(:file_finder, :generator, :configurator)
-    # create & assign instance of rake
-    @rake = Rake::Application.new
-    Rake.application = @rake
-    
-    # tell rake to be verbose in its tracing output
-    # (hard to do otherwise since our tests are run from within a rake instance around this one)
-    Rake.application.options.trace_rules = true
-
-    # load rakefile wrapper that loads actual rules
-    load File.join(TESTS_ROOT, 'rakefile_rules_preprocess.rb')
-    
-    # provide the mock objects to the rakefile instance under test
-    @rake['inject'].invoke(objects)    
+    rake_setup('rakefile_rules_preprocess.rb', :file_finder, :generator, :configurator)
   end
 
   def teardown

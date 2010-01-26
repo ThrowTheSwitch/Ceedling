@@ -38,5 +38,5 @@ end
 
 # end block executed following each rake run
 END {
-  # eventually insert code here to run ceedling extensions after running 
+  # eventually insert code here to run ceedling extensions at conclusion of rake execution
 }

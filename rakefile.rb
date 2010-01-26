@@ -12,7 +12,7 @@ include RakefileHelpers
 
 
 task :default => ['test:all']
-task :cruise => [:default]
+task :cruise  => [:default]
 
 
 unit_test_pattern           = "test/unit/#{TEST_FILE_PATTERN}"
