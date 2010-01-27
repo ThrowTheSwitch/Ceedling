@@ -12,7 +12,7 @@ class TestTasksTest < Test::Unit::TestCase
       "#{SYSTEST_ROOT}/a_project/build/runners/test_a_file_runner.c",
       "#{SYSTEST_ROOT}/a_project/build/runners/test_another_file_runner.c"]
 
-    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEST_ROOT, 'a_project.yml')
+    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEST_ROOT, 'tasks.yml')
 
     rake_execute('directories', 'clobber')    
   end

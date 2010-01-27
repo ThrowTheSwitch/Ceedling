@@ -1,10 +1,8 @@
 ---
-# super simple test project
+# super simple test project for: mock support
 
 :project:
   :use_exceptions: FALSE
-  :use_preprocessor: FALSE
-  :use_auxiliary_dependencies: FALSE
   :build_root: test/system/a_project/build
 
 :paths:
@@ -14,16 +12,6 @@
     - test/system/a_project/source
   :include:
     - test/system/a_project/include
-
-:defines:
-  :test: []
-  :source: []
-
-#:extension:
-
-#:test_runner:
-
-#:unity:
 
 :cmock:
   :mock_prefix: mock_
