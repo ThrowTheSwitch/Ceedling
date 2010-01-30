@@ -5,14 +5,14 @@ class TestTasksTest < Test::Unit::TestCase
 
   def setup
     @mocks = [
-      "#{SYSTEST_ROOT}/a_project/build/mocks/mock_a_file.c",
-      "#{SYSTEST_ROOT}/a_project/build/mocks/mock_another_file.c"]
+      "#{SYSTEM_TEST_ROOT}/a_project/build/mocks/mock_a_file.c",
+      "#{SYSTEM_TEST_ROOT}/a_project/build/mocks/mock_another_file.c"]
 
     @runners = [
-      "#{SYSTEST_ROOT}/a_project/build/runners/test_a_file_runner.c",
-      "#{SYSTEST_ROOT}/a_project/build/runners/test_another_file_runner.c"]
+      "#{SYSTEM_TEST_ROOT}/a_project/build/runners/test_a_file_runner.c",
+      "#{SYSTEM_TEST_ROOT}/a_project/build/runners/test_another_file_runner.c"]
 
-    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEST_ROOT, 'tasks.yml')
+    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'tasks.yml')
 
     rake_execute('directories', 'clobber')    
   end

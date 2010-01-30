@@ -4,10 +4,10 @@ require File.dirname(__FILE__) + '/../system_test_helper'
 class MockRuleTest < Test::Unit::TestCase
 
   def setup
-    @header_file = "#{SYSTEST_ROOT}/a_project/include/a_file.h"
-    @mock_file   = "#{SYSTEST_ROOT}/a_project/build/mocks/mock_a_file.c"
+    @header_file = "#{SYSTEM_TEST_ROOT}/a_project/include/a_file.h"
+    @mock_file   = "#{SYSTEM_TEST_ROOT}/a_project/build/mocks/mock_a_file.c"
 
-    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEST_ROOT, 'a_project.yml')
+    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'a_project.yml')
 
     rake_execute('directories', 'clobber')    
   end
