@@ -4,10 +4,10 @@ require File.dirname(__FILE__) + '/../system_test_helper'
 class RunnerRuleTest < Test::Unit::TestCase
 
   def setup
-    @test_file   = "#{SYSTEM_TEST_ROOT}/a_project/test/test_a_file.c"
-    @runner_file = "#{SYSTEM_TEST_ROOT}/a_project/build/runners/test_a_file_runner.c"
+    @test_file   = "#{SYSTEM_TEST_ROOT}/mocks/test/test_a_file.c"
+    @runner_file = "#{SYSTEM_TEST_ROOT}/mocks/build/runners/test_a_file_runner.c"
 
-    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'a_project.yml')
+    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'mocks.yml')
 
     rake_execute('directories', 'clobber')    
   end

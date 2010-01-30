@@ -3,15 +3,15 @@
 
 :project:
   :use_exceptions: FALSE
-  :build_root: test/system/a_project/build
+  :build_root: test/system/mocks/build
 
 :paths:
   :test:
-    - test/system/a_project/test
+    - test/system/mocks/test
   :source:
-    - test/system/a_project/source
+    - test/system/mocks/source
   :include:
-    - test/system/a_project/include
+    - test/system/mocks/include
 
 :cmock:
   :mock_prefix: mock_

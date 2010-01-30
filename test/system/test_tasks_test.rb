@@ -5,12 +5,12 @@ class TestTasksTest < Test::Unit::TestCase
 
   def setup
     @mocks = [
-      "#{SYSTEM_TEST_ROOT}/a_project/build/mocks/mock_a_file.c",
-      "#{SYSTEM_TEST_ROOT}/a_project/build/mocks/mock_another_file.c"]
+      "#{SYSTEM_TEST_ROOT}/mocks/build/mocks/mock_a_file.c",
+      "#{SYSTEM_TEST_ROOT}/mocks/build/mocks/mock_another_file.c"]
 
     @runners = [
-      "#{SYSTEM_TEST_ROOT}/a_project/build/runners/test_a_file_runner.c",
-      "#{SYSTEM_TEST_ROOT}/a_project/build/runners/test_another_file_runner.c"]
+      "#{SYSTEM_TEST_ROOT}/mocks/build/runners/test_a_file_runner.c",
+      "#{SYSTEM_TEST_ROOT}/mocks/build/runners/test_another_file_runner.c"]
 
     ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'tasks.yml')
 
