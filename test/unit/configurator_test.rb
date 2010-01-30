@@ -114,7 +114,7 @@ class ConfiguratorTest < Test::Unit::TestCase
         },
       :cmock => {
         :mock_prefix => 'Mock',
-        :mock_path => 'project/build/mocks',
+        :mock_path => 'project/build/tests/mocks',
         :enforce_strict_ordering => true,
         :verbosity => 10,
         }

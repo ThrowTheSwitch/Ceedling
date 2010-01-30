@@ -30,7 +30,7 @@ class RakeRulesTest < Test::Unit::TestCase
     runner_src1 = 'tests/a/test_thing.c'
     runner_src2 = 'tests/b/test_another_thing.c'
     runner_src3 = 'tests/b/test_and_another_thing.c'
-    runner1     = 'build/runners/test_thing_runner.c'
+    runner1     = 'build/tests/runners/test_thing_runner.c'
     runner2     = 'test_another_thing_runner.c'
     runner3     = 'runners/test_another_thing_runner.c'
   
@@ -83,7 +83,7 @@ class RakeRulesTest < Test::Unit::TestCase
 
   should "recognize missing object files, find their source, and execute rake tasks from the rule for object file generation" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_BUILD_OUTPUT_PATH', 'project/build/output')
+    redefine_global_constant('PROJECT_TEST_BUILD_OUTPUT_PATH', 'project/build/tests/output')
     redefine_global_constant('EXTENSION_OBJECT', '.o')
 
     # reload rakefile with new global constants
@@ -92,9 +92,9 @@ class RakeRulesTest < Test::Unit::TestCase
     object_src1 = 'tests/a/test_thing.c'
     object_src2 = 'tests/b/test_another_thing.c'
     object_src3 = 'tests/b/test_and_another_thing.c'
-    object1     = 'project/build/output/test_thing.o'
-    object2     = 'project/build/output/test_another_thing_runner.o'
-    object3     = 'project/build/output/test_and_another_thing.o'
+    object1     = 'project/build/tests/output/test_thing.o'
+    object2     = 'project/build/tests/output/test_another_thing_runner.o'
+    object3     = 'project/build/tests/output/test_and_another_thing.o'
   
     # fake out rake so it won't look for the test files on disk and find they don't exist.
     # by creating file tasks we're telling rake there's a means to create these files that don't exist (but we never use the mechanism).
@@ -117,7 +117,7 @@ class RakeRulesTest < Test::Unit::TestCase
   end
   
   should "handle alternate build file paths and object file extensions for object generation rule" do
-    redefine_global_constant('PROJECT_BUILD_OUTPUT_PATH', 'build/stuff/out')
+    redefine_global_constant('PROJECT_TEST_BUILD_OUTPUT_PATH', 'build/stuff/out')
     redefine_global_constant('EXTENSION_OBJECT', '.obj')
   
     # reload rakefile with new global constants
@@ -144,16 +144,16 @@ class RakeRulesTest < Test::Unit::TestCase
 
   should "recognize missing executable files, find their object files, and execute rake tasks from the rule for executable generation" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_BUILD_OUTPUT_PATH', 'project/build/output')
+    redefine_global_constant('PROJECT_TEST_BUILD_OUTPUT_PATH', 'project/build/tests/output')
     redefine_global_constant('EXTENSION_EXECUTABLE', '.out')
 
     # reload rakefile with new global constants
     setup()
 
-    executable_prereqs1 = ['project/build/output/unity.o', 'project/build/output/mock_stuff.o', 'project/build/output/thing.o']
-    executable_prereqs2 = ['project/build/output/able.o', 'project/build/output/unity.o']
-    executable1         = 'project/build/output/test_thing.out'
-    executable2         = 'project/build/output/test_able.out'
+    executable_prereqs1 = ['project/build/tests/output/unity.o', 'project/build/tests/output/mock_stuff.o', 'project/build/tests/output/thing.o']
+    executable_prereqs2 = ['project/build/tests/output/able.o', 'project/build/tests/output/unity.o']
+    executable1         = 'project/build/tests/output/test_thing.out'
+    executable2         = 'project/build/tests/output/test_able.out'
   
     # fake out rake so it won't look for the test files on disk and find they don't exist.
     # by creating file tasks we're telling rake there's a means to create these files that don't exist (but we never use the mechanism).
@@ -179,13 +179,13 @@ class RakeRulesTest < Test::Unit::TestCase
   
   should "handle alternate build file paths and executable extensions for executable generation rule" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_BUILD_OUTPUT_PATH', 'build/dump')
+    redefine_global_constant('PROJECT_TEST_BUILD_OUTPUT_PATH', 'build/dump')
     redefine_global_constant('EXTENSION_EXECUTABLE', '.exe')
 
     # reload rakefile with new global constants
     setup()
 
-    executable_prereqs1 = ['project/build/output/able.o', 'project/build/output/unity.o']
+    executable_prereqs1 = ['project/build/tests/output/able.o', 'project/build/tests/output/unity.o']
     executable1         = 'build/dump/test_able.exe'
   
     # fake out rake so it won't look for the test files on disk and find they don't exist.
@@ -209,18 +209,18 @@ class RakeRulesTest < Test::Unit::TestCase
 
   should "recognize missing test pass files, find the test executable, and execute rake tasks from the rule for test result generation" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_TEST_RESULTS_PATH', 'project/build/results')
+    redefine_global_constant('PROJECT_TEST_RESULTS_PATH', 'project/build/tests/results')
     redefine_global_constant('EXTENSION_TESTPASS', '.pass')
 
     # reload rakefile with new global constants
     setup()
 
-    pass_results_src1 = 'project/build/output/test_thing.exe'
-    pass_results_src2 = 'project/build/output/test_another_thing.exe'
-    pass_results_src3 = 'project/build/output/test_and_another_thing.exe'
-    pass_results1     = 'project/build/results/test_thing.pass'
-    pass_results2     = 'project/build/results/test_another_thing_runner.pass'
-    pass_results3     = 'project/build/results/test_and_another_thing.pass'
+    pass_results_src1 = 'project/build/tests/output/test_thing.exe'
+    pass_results_src2 = 'project/build/tests/output/test_another_thing.exe'
+    pass_results_src3 = 'project/build/tests/output/test_and_another_thing.exe'
+    pass_results1     = 'project/build/tests/results/test_thing.pass'
+    pass_results2     = 'project/build/tests/results/test_another_thing_runner.pass'
+    pass_results3     = 'project/build/tests/results/test_and_another_thing.pass'
   
     # fake out rake so it won't look for the test files on disk and find they don't exist.
     # by creating file tasks we're telling rake there's a means to create these files that don't exist (but we never use the mechanism).
@@ -250,7 +250,7 @@ class RakeRulesTest < Test::Unit::TestCase
     # reload rakefile with new global constants
     setup()
 
-    pass_results_src1 = 'project/build/output/test_thing.exe'
+    pass_results_src1 = 'project/build/tests/output/test_thing.exe'
     pass_results1     = 'project/test_run/test_thing.testpass'
   
     # fake out rake so it won't look for the test files on disk and find they don't exist.

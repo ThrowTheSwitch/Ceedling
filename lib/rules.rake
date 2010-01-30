@@ -9,7 +9,7 @@ rule(/#{PROJECT_TEST_FILE_PREFIX}#{'.+'+TEST_RUNNER_FILE_SUFFIX}#{'\\'+EXTENSION
 end
 
 
-rule(/#{PROJECT_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
+rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       return @objects[:file_finder].find_test_or_source_file(task_name)
     end  
@@ -18,7 +18,7 @@ rule(/#{PROJECT_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
 end
 
 
-rule(/#{PROJECT_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
+rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
   @objects[:generator].generate_executable_file(bin_file.prerequisites, bin_file.name)
 end
 

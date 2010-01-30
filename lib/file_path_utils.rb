@@ -68,36 +68,36 @@ class FilePathUtils
   end
 
   def form_object_filepath(filepath)
-    return File.join( @configurator.project_build_output_path, File.basename(filepath).ext(@configurator.extension_object) )
+    return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
   def form_executable_filepath(filepath)
-    return File.join( @configurator.project_build_output_path, File.basename(filepath).ext(@configurator.extension_executable) )    
+    return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_executable) )    
   end
 
   def form_preprocessed_file_path(filepath)
-    return File.join( @configurator.project_preprocess_files_path, File.basename(filepath) )    
+    return File.join( @configurator.project_test_preprocess_files_path, File.basename(filepath) )    
   end
 
   def form_preprocessed_includes_list_path(filepath)
-    return File.join( @configurator.project_preprocess_includes_path, File.basename(filepath) )    
+    return File.join( @configurator.project_test_preprocess_includes_path, File.basename(filepath) )    
   end
 
   def form_source_objects_filelist(sources)
-    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{@configurator.project_build_output_path}/%n#{@configurator.extension_object}")
+    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{@configurator.project_test_build_output_path}/%n#{@configurator.extension_object}")
   end
 
   def form_preprocessed_includes_list_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_preprocess_includes_path}/%f")
+    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_test_preprocess_includes_path}/%f")
   end
   
   def form_preprocessed_files_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_preprocess_files_path}/%f")
+    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_test_preprocess_files_path}/%f")
   end
 
   def form_preprocessed_mockable_headers_filelist(mocks)
     # pathmapping note: "%{#{@configurator.cmock_mock_prefix},}n" replaces mock_prefix with nothing (signified by absence of anything after comma inside replacement brackets)
-    return (@file_wrapper.instantiate_file_list(mocks)).pathmap("#{@configurator.project_preprocess_files_path}/%{#{@configurator.cmock_mock_prefix},}n#{@configurator.extension_header}")
+    return (@file_wrapper.instantiate_file_list(mocks)).pathmap("#{@configurator.project_test_preprocess_files_path}/%{#{@configurator.cmock_mock_prefix},}n#{@configurator.extension_header}")
   end
 
   def form_mocks_filelist(mocks)
@@ -105,7 +105,7 @@ class FilePathUtils
   end
 
   def form_dependencies_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_dependencies_path}/%n#{@configurator.extension_dependencies}")    
+    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_test_dependencies_path}/%n#{@configurator.extension_dependencies}")    
   end
 
 end

@@ -165,33 +165,109 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
 
   ############# build paths #############
 
+  should "construct and collect simple build paths" do
+    in_hash = {
+      :project_build_root => 'files/build'}
+    expected_build_paths = [
+      'files/build/tests/runners',
+      'files/build/tests/results',
+      'files/build/tests/out',
+      'files/build/tests/artifacts',
+      'files/build/release/out',
+      'files/build/release/artifacts',]
+
+    out_hash = @builder.set_build_paths(in_hash)
+
+    assert_equal(expected_build_paths.sort, out_hash[:project_build_paths].sort)
+    
+    assert_equal(expected_build_paths[0], out_hash[:project_test_runners_path])
+    assert_equal(expected_build_paths[1], out_hash[:project_test_results_path])
+    assert_equal(expected_build_paths[2], out_hash[:project_test_build_output_path])
+    assert_equal(expected_build_paths[3], out_hash[:project_test_artifacts_path])
+    assert_equal(expected_build_paths[4], out_hash[:project_release_build_output_path])
+    assert_equal(expected_build_paths[5], out_hash[:project_release_artifacts_path])
+  end
+
   should "construct and collect build paths including mocks path" do
     in_hash = {
       :project_build_root => 'files/build',
       :project_use_mocks => true,
-      :cmock_mock_path => 'files/build/mocks'}
-    expected_build_paths = ['files/build/mocks', 'files/build/runners', 'files/build/results', 'files/build/out']
-
+      :cmock_mock_path => 'files/build/tests/mocks'}
+      expected_build_paths = [
+        'files/build/tests/runners',
+        'files/build/tests/results',
+        'files/build/tests/out',
+        'files/build/tests/mocks',
+        'files/build/tests/artifacts',
+        'files/build/release/out',
+        'files/build/release/artifacts',]
+  
     out_hash = @builder.set_build_paths(in_hash)
-
+  
     assert_equal(expected_build_paths.sort, out_hash[:project_build_paths].sort)
-    assert_equal(expected_build_paths[1], out_hash[:project_test_runners_path])
-    assert_equal(expected_build_paths[2], out_hash[:project_test_results_path])
-    assert_equal(expected_build_paths[3], out_hash[:project_build_output_path])
-  end
 
-  should "construct and collect build paths including no mocks path" do
-    in_hash = {
-      :project_build_root => 'files/build',
-      :project_use_mocks => false}
-    expected_build_paths = ['files/build/runners', 'files/build/results', 'files/build/out']
-
-    out_hash = @builder.set_build_paths(in_hash)
-
-    assert_equal(expected_build_paths.sort, out_hash[:project_build_paths].sort)
     assert_equal(expected_build_paths[0], out_hash[:project_test_runners_path])
     assert_equal(expected_build_paths[1], out_hash[:project_test_results_path])
-    assert_equal(expected_build_paths[2], out_hash[:project_build_output_path])
+    assert_equal(expected_build_paths[2], out_hash[:project_test_build_output_path])
+    assert_equal(expected_build_paths[4], out_hash[:project_test_artifacts_path])
+    assert_equal(expected_build_paths[5], out_hash[:project_release_build_output_path])
+    assert_equal(expected_build_paths[6], out_hash[:project_release_artifacts_path])
+  end
+
+  should "construct and collect build paths including preprocessing paths" do
+    in_hash = {
+      :project_build_root => 'files/build',
+      :project_use_preprocessor => true}
+      expected_build_paths = [
+        'files/build/tests/runners',
+        'files/build/tests/results',
+        'files/build/tests/out',
+        'files/build/tests/preprocess/includes',
+        'files/build/tests/preprocess/files',
+        'files/build/temp',
+        'files/build/tests/artifacts',
+        'files/build/release/out',
+        'files/build/release/artifacts',]
+  
+    out_hash = @builder.set_build_paths(in_hash)
+  
+    assert_equal(expected_build_paths.sort, out_hash[:project_build_paths].sort)
+
+    assert_equal(expected_build_paths[0], out_hash[:project_test_runners_path])
+    assert_equal(expected_build_paths[1], out_hash[:project_test_results_path])
+    assert_equal(expected_build_paths[2], out_hash[:project_test_build_output_path])
+    assert_equal(expected_build_paths[3], out_hash[:project_test_preprocess_includes_path])
+    assert_equal(expected_build_paths[4], out_hash[:project_test_preprocess_files_path])
+    assert_equal(expected_build_paths[5], out_hash[:project_temp_path])
+    assert_equal(expected_build_paths[6], out_hash[:project_test_artifacts_path])
+    assert_equal(expected_build_paths[7], out_hash[:project_release_build_output_path])
+    assert_equal(expected_build_paths[8], out_hash[:project_release_artifacts_path])
+  end
+
+  should "construct and collect build paths including dependencies paths" do
+    in_hash = {
+      :project_build_root => 'files/build',
+      :project_use_auxiliary_dependencies => true}
+      expected_build_paths = [
+        'files/build/tests/runners',
+        'files/build/tests/results',
+        'files/build/tests/out',
+        'files/build/tests/dependencies',
+        'files/build/tests/artifacts',
+        'files/build/release/out',
+        'files/build/release/artifacts',]
+  
+    out_hash = @builder.set_build_paths(in_hash)
+  
+    assert_equal(expected_build_paths.sort, out_hash[:project_build_paths].sort)
+
+    assert_equal(expected_build_paths[0], out_hash[:project_test_runners_path])
+    assert_equal(expected_build_paths[1], out_hash[:project_test_results_path])
+    assert_equal(expected_build_paths[2], out_hash[:project_test_build_output_path])
+    assert_equal(expected_build_paths[3], out_hash[:project_test_dependencies_path])
+    assert_equal(expected_build_paths[4], out_hash[:project_test_artifacts_path])
+    assert_equal(expected_build_paths[5], out_hash[:project_release_build_output_path])
+    assert_equal(expected_build_paths[6], out_hash[:project_release_artifacts_path])
   end
 
   ############# rakefile components #############

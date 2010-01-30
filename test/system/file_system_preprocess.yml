@@ -2,7 +2,7 @@
 :project:
   :use_mocks: FALSE
   :use_auxiliary_dependencies: FALSE
-  :use_preprocessor: FALSE
+  :use_preprocessor: TRUE
   :build_root: test/system/file_system/build
 
 :paths:

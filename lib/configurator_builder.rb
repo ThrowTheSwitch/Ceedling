@@ -139,19 +139,25 @@ class ConfiguratorBuilder
 
 
   def set_build_paths(in_hash)
+    test_path = 'tests'
+    release_path = 'release'
     build_paths = []
     out_hash = {}
+
+    out_hash[:project_release_artifacts_path] = File.join(in_hash[:project_build_root], release_path, 'artifacts')
+    out_hash[:project_release_build_output_path] = File.join(in_hash[:project_build_root], release_path, 'out')
     
-    out_hash[:project_test_runners_path] = File.join(in_hash[:project_build_root], 'runners')
-    out_hash[:project_test_results_path] = File.join(in_hash[:project_build_root], 'results')
-    out_hash[:project_build_output_path] = File.join(in_hash[:project_build_root], 'out')
+    out_hash[:project_test_artifacts_path] = File.join(in_hash[:project_build_root], test_path, 'artifacts')
+    out_hash[:project_test_runners_path] = File.join(in_hash[:project_build_root], test_path, 'runners')
+    out_hash[:project_test_results_path] = File.join(in_hash[:project_build_root], test_path, 'results')
+    out_hash[:project_test_build_output_path] = File.join(in_hash[:project_build_root], test_path, 'out')
     
     out_hash[:project_temp_path] = File.join(in_hash[:project_build_root], 'temp') if in_hash[:project_use_preprocessor]
 
-    out_hash[:project_preprocess_includes_path] = File.join(in_hash[:project_build_root], 'preprocess/includes') if in_hash[:project_use_preprocessor]
-    out_hash[:project_preprocess_files_path]    = File.join(in_hash[:project_build_root], 'preprocess/files')    if in_hash[:project_use_preprocessor]
+    out_hash[:project_test_preprocess_includes_path] = File.join(in_hash[:project_build_root], test_path, 'preprocess/includes') if in_hash[:project_use_preprocessor]
+    out_hash[:project_test_preprocess_files_path]    = File.join(in_hash[:project_build_root], test_path, 'preprocess/files')    if in_hash[:project_use_preprocessor]
 
-    out_hash[:project_dependencies_path] = File.join(in_hash[:project_build_root], 'dependencies') if in_hash[:project_use_auxiliary_dependencies]
+    out_hash[:project_test_dependencies_path] = File.join(in_hash[:project_build_root], test_path, 'dependencies') if in_hash[:project_use_auxiliary_dependencies]
 
     # fetch already set mock path
     build_paths << in_hash[:cmock_mock_path] if in_hash[:project_use_mocks]

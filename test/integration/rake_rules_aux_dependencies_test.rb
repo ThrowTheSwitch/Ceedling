@@ -16,7 +16,7 @@ class RakeRulesAuxDependenciesTest < Test::Unit::TestCase
   
   should "recognize missing dependencies files, find their source, and execute rake tasks from the rule for dependency file generation" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_DEPENDENCIES_PATH', 'project/build/dependencies')
+    redefine_global_constant('PROJECT_TEST_DEPENDENCIES_PATH', 'project/build/dependencies')
     redefine_global_constant('EXTENSION_DEPENDENCIES', '.d')
 
     # reload rakefile with new global constants
@@ -51,7 +51,7 @@ class RakeRulesAuxDependenciesTest < Test::Unit::TestCase
 
   should "handle alternate build file paths and file extensions for dependency file generation rule" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_DEPENDENCIES_PATH', 'dependencies/dump')
+    redefine_global_constant('PROJECT_TEST_DEPENDENCIES_PATH', 'dependencies/dump')
     redefine_global_constant('EXTENSION_DEPENDENCIES', '.i')
 
     # reload rakefile with new global constants

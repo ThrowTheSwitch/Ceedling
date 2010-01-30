@@ -67,7 +67,7 @@ class FilePathUtilsTest < Test::Unit::TestCase
 
 
   should "form runner object file path from configuration and file name" do
-    @configurator.expects.project_build_output_path.returns('project/build/output')
+    @configurator.expects.project_test_build_output_path.returns('project/build/output')
     @configurator.expects.extension_object.returns('.obj')
     @configurator.expects.extension_object.returns('.obj')
     @configurator.expects.test_runner_file_suffix.returns('_runner')
@@ -77,7 +77,7 @@ class FilePathUtilsTest < Test::Unit::TestCase
 
 
   should "form runner object file path from configuration and file name" do
-    @configurator.expects.project_build_output_path.returns('project/build/output')
+    @configurator.expects.project_test_build_output_path.returns('project/build/output')
     @configurator.expects.extension_object.returns('.o')
     
     assert_equal('project/build/output/stuff.o', @utils.form_object_filepath('files/junk/stuff.c'))
@@ -85,7 +85,7 @@ class FilePathUtilsTest < Test::Unit::TestCase
 
 
   should "form executable file path from configuration and file name" do
-    @configurator.expects.project_build_output_path.returns('project/build/output')
+    @configurator.expects.project_test_build_output_path.returns('project/build/output')
     @configurator.expects.extension_executable.returns('.out')
     
     assert_equal('project/build/output/test_stuff.out', @utils.form_executable_filepath('files/tests/test_stuff.c'))

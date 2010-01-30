@@ -5,7 +5,7 @@ class RunnersRuleTest < Test::Unit::TestCase
 
   def setup
     @test_file   = "#{SYSTEM_TEST_ROOT}/simple/test/test_a_file.c"
-    @runner_file = "#{SYSTEM_TEST_ROOT}/simple/build/runners/test_a_file_runner.c"
+    @runner_file = "#{SYSTEM_TEST_ROOT}/simple/build/tests/runners/test_a_file_runner.c"
 
     ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'simple.yml')
 

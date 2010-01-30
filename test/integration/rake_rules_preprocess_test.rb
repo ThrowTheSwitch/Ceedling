@@ -20,9 +20,9 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
 
   should "recognize missing preprocessed files, find their source, and execute rake tasks from the rule for generating preprocessed file output" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
     # because rule matches on any file, gotta set this path here to help rake distinguish rules when file is tested
-    redefine_global_constant('PROJECT_PREPROCESS_INCLUDES_PATH', 'project/build/preprocess/includes')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_INCLUDES_PATH', 'project/build/preprocess/includes')
 
     # reload rakefile with new global constants
     setup()
@@ -62,9 +62,9 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
 
   should "complain if file preprocessing rule is executed but auxiliary dependencies are not enabled" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
     # because rule matches on any file, gotta set this path here to help rake distinguish rules when file is tested
-    redefine_global_constant('PROJECT_PREPROCESS_INCLUDES_PATH', 'project/build/preprocess/includes')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_INCLUDES_PATH', 'project/build/preprocess/includes')
 
     # reload rakefile with new global constants
     setup()
@@ -87,9 +87,9 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
 
   should "handle alternate output file paths for preprocessed file output rule" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_PREPROCESS_FILES_PATH', 'demacroified/files')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_FILES_PATH', 'demacroified/files')
     # because rule matches on any file, gotta set this path here to help rake distinguish rules when file is tested
-    redefine_global_constant('PROJECT_PREPROCESS_INCLUDES_PATH', 'includes')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_INCLUDES_PATH', 'includes')
 
     # reload rakefile with new global constants
     setup()
@@ -116,9 +116,9 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
 
   should "recognize missing extracted includes files, find their source, and execute rake tasks from the rule for extracting file includes output" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_PREPROCESS_INCLUDES_PATH', 'project/build/preprocess/includes')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_INCLUDES_PATH', 'project/build/preprocess/includes')
     # because rule matches on any file, gotta set this path here to help rake distinguish rules when file is tested
-    redefine_global_constant('PROJECT_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
 
     # reload rakefile with new global constants
     setup()
@@ -153,9 +153,9 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
 
   should "handle alternate output file paths for preprocessor incluedes file output rule" do
     # default values as set in test_helper
-    redefine_global_constant('PROJECT_PREPROCESS_INCLUDES_PATH', 'include_stuff')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_INCLUDES_PATH', 'include_stuff')
     # because rule matches on any file, gotta set this path here to help rake distinguish rules when file is tested
-    redefine_global_constant('PROJECT_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
+    redefine_global_constant('PROJECT_TEST_PREPROCESS_FILES_PATH', 'project/build/preprocess/files')
 
     # reload rakefile with new global constants
     setup()

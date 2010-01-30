@@ -5,7 +5,7 @@ class MocksRuleTest < Test::Unit::TestCase
 
   def setup
     @header_file = "#{SYSTEM_TEST_ROOT}/mocks/include/a_file.h"
-    @mock_file   = "#{SYSTEM_TEST_ROOT}/mocks/build/mocks/mock_a_file.c"
+    @mock_file   = "#{SYSTEM_TEST_ROOT}/mocks/build/tests/mocks/mock_a_file.c"
 
     ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'mocks.yml')
 

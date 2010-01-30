@@ -56,10 +56,10 @@ class Configurator
     cmock = {}    
     cmock = config[:cmock] if not config[:cmock].nil?
     
-    cmock[:mock_prefix] = 'Mock'                                           if (cmock[:mock_prefix].nil?)
-    cmock[:enforce_strict_ordering] = true                                 if (cmock[:enforce_strict_ordering].nil?)
-    cmock[:mock_path] = File.join(config[:project][:build_root], 'mocks')  if (cmock[:mock_path].nil?)
-    cmock[:verbosity] = config[:project][:verbosity]                       if (not config[:project][:verbosity].nil? and cmock[:verbosity].nil?)
+    cmock[:mock_prefix] = 'Mock'                                                 if (cmock[:mock_prefix].nil?)
+    cmock[:enforce_strict_ordering] = true                                       if (cmock[:enforce_strict_ordering].nil?)
+    cmock[:mock_path] = File.join(config[:project][:build_root], 'tests/mocks')  if (cmock[:mock_path].nil?)
+    cmock[:verbosity] = config[:project][:verbosity]                             if (not config[:project][:verbosity].nil? and cmock[:verbosity].nil?)
     
     config[:cmock] = cmock if config[:cmock].nil?
     
