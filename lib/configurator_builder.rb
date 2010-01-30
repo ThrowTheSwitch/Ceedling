@@ -147,13 +147,15 @@ class ConfiguratorBuilder
     out_hash[:project_build_output_path] = File.join(in_hash[:project_build_root], 'out')
     
     out_hash[:project_temp_path] = File.join(in_hash[:project_build_root], 'temp') if in_hash[:project_use_preprocessor]
-    
+
     out_hash[:project_preprocess_includes_path] = File.join(in_hash[:project_build_root], 'preprocess/includes') if in_hash[:project_use_preprocessor]
     out_hash[:project_preprocess_files_path]    = File.join(in_hash[:project_build_root], 'preprocess/files')    if in_hash[:project_use_preprocessor]
 
     out_hash[:project_dependencies_path] = File.join(in_hash[:project_build_root], 'dependencies') if in_hash[:project_use_auxiliary_dependencies]
 
-    build_paths << in_hash[:cmock_mock_path] # fetch already set mock path
+    # fetch already set mock path
+    build_paths << in_hash[:cmock_mock_path] if in_hash[:project_use_mocks]
+    
     out_hash.each_pair do |key, value|
       build_paths << out_hash[key]
     end

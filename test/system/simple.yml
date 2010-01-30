@@ -1,20 +1,18 @@
 ---
-# super simple test project for: mock support
+# super simple test project for: basic unity test assert tests
 
 :project:
   :use_exceptions: FALSE
-  :build_root: test/system/mocks/build
+  :use_mocks: FALSE
+  :build_root: test/system/simple/build
 
 :paths:
   :test:
-    - test/system/mocks/test
+    - test/system/simple/test
   :source:
-    - test/system/mocks/source
+    - test/system/simple/source
   :include:
-    - test/system/mocks/include
-
-:cmock:
-  :mock_prefix: mock_
+    - test/system/simple/include
 
 :tools:
   :test_compiler:

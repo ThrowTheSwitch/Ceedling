@@ -4,7 +4,7 @@ require File.dirname(__FILE__) + '/../system_test_helper'
 class PathsTest < Test::Unit::TestCase
 
   def setup
-    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'file_system.yml')
+    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'file_system_simple.yml')
   end
 
   def teardown

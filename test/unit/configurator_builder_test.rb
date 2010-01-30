@@ -165,9 +165,10 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
 
   ############# build paths #############
 
-  should "construct and collect build paths" do
+  should "construct and collect build paths including mocks path" do
     in_hash = {
       :project_build_root => 'files/build',
+      :project_use_mocks => true,
       :cmock_mock_path => 'files/build/mocks'}
     expected_build_paths = ['files/build/mocks', 'files/build/runners', 'files/build/results', 'files/build/out']
 
@@ -177,6 +178,20 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
     assert_equal(expected_build_paths[1], out_hash[:project_test_runners_path])
     assert_equal(expected_build_paths[2], out_hash[:project_test_results_path])
     assert_equal(expected_build_paths[3], out_hash[:project_build_output_path])
+  end
+
+  should "construct and collect build paths including no mocks path" do
+    in_hash = {
+      :project_build_root => 'files/build',
+      :project_use_mocks => false}
+    expected_build_paths = ['files/build/runners', 'files/build/results', 'files/build/out']
+
+    out_hash = @builder.set_build_paths(in_hash)
+
+    assert_equal(expected_build_paths.sort, out_hash[:project_build_paths].sort)
+    assert_equal(expected_build_paths[0], out_hash[:project_test_runners_path])
+    assert_equal(expected_build_paths[1], out_hash[:project_test_results_path])
+    assert_equal(expected_build_paths[2], out_hash[:project_build_output_path])
   end
 
   ############# rakefile components #############

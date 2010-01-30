@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/../system_test_helper'
 
 
-class MockRuleTest < Test::Unit::TestCase
+class MocksRuleTest < Test::Unit::TestCase
 
   def setup
     @header_file = "#{SYSTEM_TEST_ROOT}/mocks/include/a_file.h"
