@@ -1,0 +1,17 @@
+---
+:project:
+  :build_root: test/integration/paths/build
+
+:paths:
+  :test: []
+  :source: []
+  :include: []
+    
+:tools:
+  :test_compiler:
+    :executable: ''
+  :test_linker:
+    :executable: ''
+  :test_fixture:
+    :executable: ''
+...

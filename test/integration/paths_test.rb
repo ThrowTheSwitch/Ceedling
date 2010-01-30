@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../system_test_helper'
+require File.dirname(__FILE__) + '/../integration_test_helper'
 require 'rubygems'
 require 'rake' # for FileList
 require 'constructor'
@@ -6,12 +6,12 @@ require 'file_system_utils'
 require 'file_wrapper'
 
 
-PATHS_ROOT = SYSTEST_ROOT + '/paths'
+PATHS_ROOT = INTEGRATION_TEST_ROOT + '/paths'
 
 class PathsTest < Test::Unit::TestCase
 
   def setup
-    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEST_ROOT, 'a_project.yml')
+    ENV['CEEDLING_PROJECT_FILE'] = File.join(INTEGRATION_TEST_ROOT, 'paths.yml')
     
     @file_system_utils = FileSystemUtils.new({:file_wrapper => FileWrapper.new})
   end
@@ -19,23 +19,6 @@ class PathsTest < Test::Unit::TestCase
   def teardown
   end
 
-  
-  should "blow away all build directories and demonstrate that we can create them via rake & config file" do
-    build_root  = "#{SYSTEST_ROOT}/a_project/build"
-    build_paths = ["#{build_root}/mocks", "#{build_root}/runners", "#{build_root}/results", "#{build_root}/out"]
-    
-    FileUtils.rm_rf(build_paths)
-  
-    # verify paths are gone
-    build_paths.each {|path| assert_equal(false, File.exists?(path))}
-    
-    # tell rake to create build paths
-    rake_execute('directories')
-  
-    # verify paths are created
-    build_paths.each {|path| assert(File.exists?(path))}
-  end
-  
 
   should "collect paths from file system and exercise globs and our special glob handling" do
     # pass in two strings to find all test(s) dirs in main/ and modules/

@@ -9,10 +9,11 @@ require 'test/unit'
 require 'behaviors'
 
 
-TESTS_ROOT    = File.expand_path(File.dirname(__FILE__))
-SYSTEST_ROOT  = TESTS_ROOT + '/system'
-LIB_ROOT      = File.expand_path(File.dirname(__FILE__) + '/../lib')
-CEEDLING_ROOT = 'test_ceedling_root'
+TESTS_ROOT            = File.expand_path(File.dirname(__FILE__))
+SYSTEM_TEST_ROOT      = TESTS_ROOT + '/system'
+INTEGRATION_TEST_ROOT = TESTS_ROOT + '/integration'
+LIB_ROOT              = File.expand_path(File.dirname(__FILE__) + '/../lib')
+CEEDLING_ROOT         = 'test_ceedling_root'
 
 
 $config_options = {

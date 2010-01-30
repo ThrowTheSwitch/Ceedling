@@ -1,6 +1,12 @@
 require 'verbosinator'
 
 
+desc "Display test build environment version info."
+task :version do
+# print ceedling, cmock, unity info
+end
+
+
 desc "Set verbose output [0-3]."
 task :verbosity, :level do |t, args|
   verbosity_level = args.level.to_i
