@@ -32,7 +32,7 @@ class FileFinderHelper
   private ###########################
   
   def blow_up(file_name)
-    @streaminator.puts_stderr("ERROR: Could not find '#{file_name}'.", Verbosity::ERRORS)
+    @streaminator.stderr_puts("ERROR: Could not find '#{file_name}'.", Verbosity::ERRORS)
     raise
   end
 

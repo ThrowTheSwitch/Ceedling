@@ -4,7 +4,7 @@ require 'yaml'
 class YamlWrapper
 
   def load(filepath)
-    return YAML.load(File.read(filepath))    
+    return YAML.load(File.read(filepath))
   end
 
   def dump(filepath, structure)

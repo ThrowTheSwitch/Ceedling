@@ -4,6 +4,8 @@
 :project:
   :use_exceptions: FALSE
   :use_mocks: FALSE
+  :use_preprocessor: FALSE
+  :use_auxiliary_dependencie: FALSE
   :build_root: test/system/simple/build
 
 :paths:

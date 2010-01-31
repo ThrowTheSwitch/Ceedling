@@ -30,7 +30,7 @@ class FileFinderHelperTest < Test::Unit::TestCase
     @file_wrapper.expects.exists?('tests/source/waldo.h').returns(false)
     @file_wrapper.expects.exists?('include/waldo.h').returns(false)
 
-    @streaminator.expects.puts_stderr("ERROR: Could not find 'waldo.h'.", Verbosity::ERRORS)
+    @streaminator.expects.stderr_puts("ERROR: Could not find 'waldo.h'.", Verbosity::ERRORS)
 
     assert_raise(RuntimeError){ @file_finder_helper.find_file_on_disk('waldo.h', search_paths) }
   end

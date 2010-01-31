@@ -3,7 +3,14 @@
 
 :project:
   :use_exceptions: FALSE
+  :use_mocks: TRUE
+  :use_preprocessor: FALSE
+  :use_auxiliary_dependencie: FALSE
   :build_root: test/system/mocks/build
+
+  # shut up ceedling because of intentional exceptions;
+  # error report is misleading in test output  
+  :verbosity: 0
 
 :paths:
   :test:
