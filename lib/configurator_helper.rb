@@ -45,6 +45,12 @@ class ConfiguratorHelper
       validation << @configurator_validator.validate_paths(config, :paths, key)
     end
 
+    extender_base_path = config[:extenders][:base_path]
+    validation << @configurator_validator.validate_path( extender_base_path, :extenders, :base_path )
+    config[:extenders][:enabled].sort.each do |extender|
+      validation << @configurator_validator.validate_path( File.join(extender_base_path, extender), :extenders, :enabled, extender.to_sym )
+    end
+
     return false if (validation.include?(false))
     return true
   end

@@ -3,7 +3,7 @@ require 'verbosinator' # for Verbosity constants class
 
 class Generator
 
-  constructor :configurator, :preprocessinator, :cmock_factory, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :file_wrapper
+  constructor :configurator, :preprocessinator, :cmock_factory, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :extendinator, :file_wrapper
 
 
   def setup
@@ -70,6 +70,9 @@ class Generator
   end
 
   def generate_test_results(executable, result)
+    arg_hash = {:executable => executable, :result => result}
+    @extendinator.pre_test_execute(arg_hash)
+    
     @streaminator.stdout_puts("Running #{File.basename(executable)}...", Verbosity::NORMAL)
     raw_output = @tool_executor.exec( @tool_executor.build_command_line(@configurator.tools_test_fixture, executable) )
     
@@ -79,6 +82,8 @@ class Generator
     end
     
     @generator_test_results.process_and_write_results(raw_output, result, @file_finder.find_test_from_file_path(executable))
+    
+    @extendinator.post_test_execute(arg_hash)
   end
   
 end

@@ -38,7 +38,7 @@ class TaskInvoker
   
   def invoke_with_enhancements(tasks)
     tasks.each do |task|
-      @rake_wrapper[task].enhance(@configurator.collection_all_environment_files)
+      @rake_wrapper[task].enhance(@configurator.collection_environment_dependencies)
       @rake_wrapper[task].invoke
     end
   end

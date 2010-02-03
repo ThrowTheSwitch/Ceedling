@@ -9,9 +9,9 @@ class RunnersRuleTest < Test::Unit::TestCase
     @test_filepath   = "#{SYSTEM_TEST_ROOT}/simple/test/#{@test_file}"
     @runner_filepath = "#{SYSTEM_TEST_ROOT}/simple/build/tests/runners/#{@runner_file}"
 
-    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'project_simple.yml')
+    ENV['CEEDLING_MAIN_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, 'project_simple.yml')
 
-    rake_execute('directories', 'clobber')    
+    ceedling_execute('directories', 'clobber')    
   end
 
   def teardown
@@ -25,11 +25,11 @@ class RunnersRuleTest < Test::Unit::TestCase
     assert_equal(false, File.exists?(@runner_filepath))
     
     # give rake a task to generate a test runner file & verify its presence
-    rake_execute(@runner_filepath)
+    ceedling_execute(@runner_filepath)
     assert_equal(true, File.exists?(@runner_filepath), 'test runner file not created')
     
     # verify executing rule again will not regenerate runner
-    output = rake_dry_run(@runner_filepath)
+    output = ceedling_execute_dry_run(@runner_filepath)
     assert_no_match(rake_exec_matcher, output, 'test runner file should not be slated for generation')
     
     # wait a spell to update file timestamp, ensuring time change is recognizable
@@ -37,7 +37,7 @@ class RunnersRuleTest < Test::Unit::TestCase
     FileUtils.touch(@test_filepath)
 
     # verify executing rule again will regenerate runner
-    output = rake_dry_run(@runner_filepath)
+    output = ceedling_execute_dry_run(@runner_filepath)
     assert_match(rake_exec_matcher, output, 'test runner file should be slated for generation')    
   end
 

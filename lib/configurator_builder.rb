@@ -79,7 +79,7 @@ DEFAULT_CEEDLING_CONFIG = {
 class ConfiguratorBuilder
   
   constructor :project_file_loader, :file_system_utils, :file_wrapper
-  
+    
   
   def insert_tool_names(config)
     config[:tools].each_key do |name|
@@ -173,12 +173,16 @@ class ConfiguratorBuilder
 
 
   def set_rakefile_components(in_hash)
-    out_hash = {:project_rakefile_component_files => ['tasks.rake', 'tasks_filesystem.rake', 'rules.rake']}
+    out_hash = {
+      :project_rakefile_component_files => 
+        [File.join(CEEDLING_LIB, 'tasks.rake'),
+         File.join(CEEDLING_LIB, 'tasks_filesystem.rake'),
+         File.join(CEEDLING_LIB, 'rules.rake')]}
     
-    out_hash[:project_rakefile_component_files] << 'rules_cmock.rake' if (in_hash[:project_use_mocks])
-    out_hash[:project_rakefile_component_files] << 'rules_preprocess.rake' if (in_hash[:project_use_preprocessor])
-    out_hash[:project_rakefile_component_files] << 'rules_aux_dependencies.rake' if (in_hash[:project_use_auxiliary_dependencies])
-    
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_cmock.rake') if (in_hash[:project_use_mocks])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_preprocess.rake') if (in_hash[:project_use_preprocessor])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_aux_dependencies.rake') if (in_hash[:project_use_auxiliary_dependencies])
+
     return out_hash
   end
   
@@ -268,13 +272,33 @@ class ConfiguratorBuilder
   end
 
 
-  def collect_environment_files
-    # gather up all .rb & .rake files in project and combine with yaml project file
+  # gather up all files that if changed should cause generated files on-disk to be regenerated
+  def collect_environment_dependencies
+    dependencies = []
     
-    here = @file_wrapper.get_expanded_dirname(__FILE__)
+    here = @file_wrapper.get_expanded_path(@file_wrapper.dirname(__FILE__))
+    
+    ceedling_release_path = @file_wrapper.get_expanded_path(here + '/../release')
+    cmock_release_path    = @file_wrapper.get_expanded_path(here + '/../vendor/cmock/release')
+    
+    ceedling_build_file = File.join(ceedling_release_path, 'build.info')
+    cmock_build_file    = File.join(cmock_release_path, 'build.info')
+
+    # project files: anything changes in them & everything should regenerate
+    dependencies << @project_file_loader.main_project_filepath
+    user_project_file = @project_file_loader.user_project_filepath
+    dependencies << user_project_file if (not user_project_file.empty?)
+    
+    # ceedling itself: if it changes we gotta regenerate files
+    dependencies << ceedling_build_file
+    
+    # cmock: same as ceedling
+    dependencies << cmock_build_file
+    
+    # Note: since Unity and CException are C files, changes to them are noticed elsewhere
 
     out_hash = {
-      :collection_all_environment_files => @file_wrapper.directory_listing( File.join(here, '*') ) + [@project_file_loader.project_file]
+      :collection_environment_dependencies => dependencies
     }
     
     return out_hash

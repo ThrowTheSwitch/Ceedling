@@ -12,6 +12,8 @@ system_wrapper:
 
 cmock_factory:
 
+reportinator:
+
 file_path_utils:
   compose:
     - configurator
@@ -40,10 +42,17 @@ tool_executor_helper:
 configurator:
   compose:
     - configurator_helper
+    - configurator_extender
     - configurator_builder
+    - yaml_wrapper
 
 configurator_helper:
   compose: configurator_validator
+
+configurator_extender:
+  compose:
+    - stream_wrapper
+    - file_wrapper
 
 configurator_validator:
   compose:
@@ -67,6 +76,18 @@ setupinator:
     - configurator
     - project_file_loader
     - test_includes_extractor
+    - extendinator
+
+extendinator:
+  compose:
+    - configurator
+    - extendinator_helper
+    - streaminator
+    - reportinator
+    - system_wrapper
+  
+extendinator_helper:
+  compose: rake_wrapper
 
 verbosinator:
   compose: configurator
@@ -104,6 +125,7 @@ generator:
     - file_finder
     - file_path_utils
     - streaminator
+    - extendinator
     - file_wrapper
 
 generator_test_results:
@@ -116,6 +138,20 @@ generator_test_runner:
   compose:
     - configurator
     - file_wrapper
+
+reporter_test_results:
+  compose:
+    - reporter_test_results_helper
+    - configurator
+    - extendinator
+    - streaminator
+    - yaml_wrapper
+    - file_wrapper
+
+reporter_test_results_helper:
+  compose:
+    - reportinator
+    - streaminator
 
 dependinator:
   compose:

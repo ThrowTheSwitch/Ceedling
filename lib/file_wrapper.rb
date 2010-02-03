@@ -5,8 +5,8 @@ require 'fileutils'
 
 class FileWrapper
 
-  def get_expanded_dirname(filename)
-    return File.expand_path(File.dirname(filename))
+  def get_expanded_path(path)
+    return File.expand_path(path)
   end
 
   def exists?(filepath)
@@ -18,7 +18,7 @@ class FileWrapper
   end
 
   def dirname(path)
-    reutrn File.dirname(path)
+    return File.dirname(path)
   end
 
   def directory_listing(path)

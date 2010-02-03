@@ -5,7 +5,7 @@ require 'configurator'
 class ConfiguratorTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:configurator_helper, :configurator_builder)
+    objects = create_mocks(:configurator_helper, :configurator_builder, :configurator_extender, :yaml_wrapper)
     create_mocks(:test_hash)
     @configurator = Configurator.new(objects)
     
@@ -120,7 +120,7 @@ class ConfiguratorTest < Test::Unit::TestCase
         }
       }
     
-    @configurator.insert_cmock_defaults(config)
+    @configurator.build_cmock_defaults(config)
     
     assert_equal(expected, config)
   end
@@ -140,7 +140,7 @@ class ConfiguratorTest < Test::Unit::TestCase
     
     expected = config.clone
     
-    @configurator.insert_cmock_defaults(config)
+    @configurator.build_cmock_defaults(config)
     
     assert_equal(expected, config)
   end
@@ -195,7 +195,7 @@ class ConfiguratorTest < Test::Unit::TestCase
     @test_hash.expects.merge!(@test_hash).returns(@test_hash)
     
     # build up configuration
-    @configurator_builder.expects.collect_environment_files.returns(@test_hash)
+    @configurator_builder.expects.collect_environment_dependencies.returns(@test_hash)
     @test_hash.expects.merge!(@test_hash).returns(@test_hash)
     
     # expand paths

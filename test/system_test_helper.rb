@@ -7,17 +7,18 @@ require 'yaml'
 class Test::Unit::TestCase
   extend Behaviors
   
-  def rake_execute(*args_and_tasks)
+  def ceedling_execute(*args_and_tasks)
     return execute('rake', ["-f #{File.join(LIB_ROOT, 'rakefile.rb')}"] + args_and_tasks)
   end
 
-  # do not raise if rake execution bombs & do not display any output
-  def rake_execute_no_boom(*args_and_tasks)
+  # do not raise if rake execution of ceedling bombs & do not display any output
+  def ceedling_execute_no_boom(*args_and_tasks)
     return execute('rake', ["-f #{File.join(LIB_ROOT, 'rakefile.rb')}"] + args_and_tasks, false, false, false)
   end
 
-  def rake_dry_run(*args_and_tasks)
-    return rake_execute(['-n'] + args_and_tasks)
+  # execute rake in dry run mode -- checking dependencies and invoke states but not actually taking action
+  def ceedling_execute_dry_run(*args_and_tasks)
+    return ceedling_execute(['-n'] + args_and_tasks)
   end
   
   def fetch_test_results(results_path, test_name)
@@ -53,7 +54,8 @@ class Test::Unit::TestCase
     cmd_str = "#{cmd} #{args.join(' ')}"
     
     # execute command and redirect stderr to stdout;
-    # the redirect grabs all response output centrally & lets us gobble up errors if we need to
+    # the redirect grabs all response output centrally & 
+    #  lets us gobble up errors if we need to parse them for test execution
     response = `#{cmd_str} 2>&1`
 
     report(cmd_str) if verbose_cmd

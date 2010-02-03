@@ -275,23 +275,49 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
   should "set rakefile components needed to load the project" do
     in_hash = {}
     out_hash = @builder.set_rakefile_components(in_hash)
-    assert_equal(['rules.rake', 'tasks.rake', 'tasks_filesystem.rake'].sort, out_hash[:project_rakefile_component_files].sort)
+    assert_equal(
+      ["#{CEEDLING_LIB}/rules.rake",
+       "#{CEEDLING_LIB}/tasks.rake",
+       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      out_hash[:project_rakefile_component_files].sort)
     
     in_hash = {:project_use_mocks => true}
     out_hash = @builder.set_rakefile_components(in_hash)
-    assert_equal(['rules.rake', 'rules_cmock.rake', 'tasks.rake', 'tasks_filesystem.rake'].sort, out_hash[:project_rakefile_component_files].sort)
+    assert_equal(
+      ["#{CEEDLING_LIB}/rules.rake",
+       "#{CEEDLING_LIB}/tasks.rake",
+       "#{CEEDLING_LIB}/rules_cmock.rake",
+       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      out_hash[:project_rakefile_component_files].sort)
 
     in_hash = {:project_use_preprocessor => true}
     out_hash = @builder.set_rakefile_components(in_hash)
-    assert_equal(['rules.rake', 'rules_preprocess.rake', 'tasks.rake', 'tasks_filesystem.rake'].sort, out_hash[:project_rakefile_component_files].sort)
+    assert_equal(
+      ["#{CEEDLING_LIB}/rules.rake",
+       "#{CEEDLING_LIB}/tasks.rake",
+       "#{CEEDLING_LIB}/rules_preprocess.rake",
+       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      out_hash[:project_rakefile_component_files].sort)
     
     in_hash = {:project_use_auxiliary_dependencies => true}
     out_hash = @builder.set_rakefile_components(in_hash)
-    assert_equal(['rules.rake', 'rules_aux_dependencies.rake', 'tasks.rake', 'tasks_filesystem.rake'].sort, out_hash[:project_rakefile_component_files].sort)
+    assert_equal(
+      ["#{CEEDLING_LIB}/rules.rake",
+       "#{CEEDLING_LIB}/tasks.rake",
+       "#{CEEDLING_LIB}/rules_aux_dependencies.rake",
+       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      out_hash[:project_rakefile_component_files].sort)
 
     in_hash = {:project_use_mocks => true, :project_use_preprocessor => true, :project_use_auxiliary_dependencies => true}
     out_hash = @builder.set_rakefile_components(in_hash)
-    assert_equal(['rules.rake', 'rules_cmock.rake', 'rules_preprocess.rake', 'rules_aux_dependencies.rake', 'tasks.rake', 'tasks_filesystem.rake'].sort, out_hash[:project_rakefile_component_files].sort)
+    assert_equal(
+      ["#{CEEDLING_LIB}/rules.rake",
+       "#{CEEDLING_LIB}/tasks.rake",
+       "#{CEEDLING_LIB}/rules_cmock.rake",
+       "#{CEEDLING_LIB}/rules_preprocess.rake",
+       "#{CEEDLING_LIB}/rules_aux_dependencies.rake",
+       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      out_hash[:project_rakefile_component_files].sort)
   end
 
   ############# source and test include paths #############
@@ -490,17 +516,49 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
 
   ############# collect environment files #############
 
-  should "collect environment source files and project file" do
+  should "collect environment source files plus project file but no user project file" do
     # find the source ruby file of this here actual test file
     source_file = File.join(LIB_ROOT, File.basename(__FILE__).gsub(/_test\./, '.'))
   
-    @file_wrapper.expects.get_expanded_dirname(source_file).returns('/home/tools/ceedling/lib')
-    @file_wrapper.expects.directory_listing('/home/tools/ceedling/lib/*').returns(['stuff.rake', 'foo.rb', 'bar.rb'])
-    @project_file_loader.expects.project_file.returns('project/config/project.yaml')
+    @file_wrapper.expects.dirname(source_file).returns('ceedling/lib')
     
-    out_hash = @builder.collect_environment_files
+    @file_wrapper.expects.get_expanded_path('ceedling/lib').returns('/home/tools/ceedling/lib')
+    @file_wrapper.expects.get_expanded_path('/home/tools/ceedling/lib/../release').returns('/home/tools/ceedling/release')
+    @file_wrapper.expects.get_expanded_path('/home/tools/ceedling/lib/../vendor/cmock/release').returns('/home/tools/ceedling/vendor/cmock/release')
     
-    assert_equal(['stuff.rake', 'foo.rb', 'bar.rb', 'project/config/project.yaml'].sort, out_hash[:collection_all_environment_files].sort)
+    @project_file_loader.expects.main_project_filepath.returns('/home/project/config/project.yaml')
+    @project_file_loader.expects.user_project_filepath.returns('')
+    
+    out_hash = @builder.collect_environment_dependencies
+    
+    assert_equal(
+      ['/home/tools/ceedling/release/build.info',
+       '/home/tools/ceedling/vendor/cmock/release/build.info',
+       '/home/project/config/project.yaml'].sort,
+      out_hash[:collection_environment_dependencies].sort)
+  end
+
+  should "collect environment source files plus project file and user project file" do
+    # find the source ruby file of this here actual test file
+    source_file = File.join(LIB_ROOT, File.basename(__FILE__).gsub(/_test\./, '.'))
+  
+    @file_wrapper.expects.dirname(source_file).returns('ceedling/lib')
+    
+    @file_wrapper.expects.get_expanded_path('ceedling/lib').returns('/home/tools/ceedling/lib')
+    @file_wrapper.expects.get_expanded_path('/home/tools/ceedling/lib/../release').returns('/home/tools/ceedling/release')
+    @file_wrapper.expects.get_expanded_path('/home/tools/ceedling/lib/../vendor/cmock/release').returns('/home/tools/ceedling/vendor/cmock/release')
+    
+    @project_file_loader.expects.main_project_filepath.returns('/home/project/config/project.yaml')
+    @project_file_loader.expects.user_project_filepath.returns('/home/project/config/user.yaml')
+    
+    out_hash = @builder.collect_environment_dependencies
+    
+    assert_equal(
+      ['/home/tools/ceedling/release/build.info',
+       '/home/tools/ceedling/vendor/cmock/release/build.info',
+       '/home/project/config/project.yaml',
+       '/home/project/config/user.yaml'].sort,
+      out_hash[:collection_environment_dependencies].sort)
   end
 
   ############# expand path globs #############

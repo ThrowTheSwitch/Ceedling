@@ -49,6 +49,16 @@ class ConfiguratorValidator
     return exist
   end
 
+  
+  # simple path verification
+  def validate_path(path, *keys)
+    if (not @file_wrapper.exists?(path))
+      # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
+      @stream_wrapper.stderr_puts("ERROR: Config path '#{path}' associated with #{format_key_sequence(keys, keys.size)} does not exist on disk.") 
+      exist = false
+    end 
+  end
+
  
   # walk into config hash. verify file path at given key depth.
   def validate_filepath(config, *keys)

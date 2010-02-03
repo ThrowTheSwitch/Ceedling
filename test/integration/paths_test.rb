@@ -11,7 +11,7 @@ PATHS_ROOT = INTEGRATION_TEST_ROOT + '/paths'
 class PathsTest < Test::Unit::TestCase
 
   def setup
-    ENV['CEEDLING_PROJECT_FILE'] = File.join(INTEGRATION_TEST_ROOT, 'paths.yml')
+    ENV['CEEDLING_MAIN_PROJECT_FILE'] = File.join(INTEGRATION_TEST_ROOT, 'paths.yml')
     
     @file_system_utils = FileSystemUtils.new({:file_wrapper => FileWrapper.new})
   end

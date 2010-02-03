@@ -2,6 +2,10 @@ require 'rubygems'
 require 'rake'
 require 'rake/loaders/makefile'
 
+class Rake::Task
+  attr_reader :already_invoked
+end
+
 class RakeWrapper
 
   def initialize
@@ -10,6 +14,10 @@ class RakeWrapper
 
   def [](task)
     return Rake::Task[task]
+  end
+
+  def task_list
+    return Rake::Task.tasks
   end
 
   def create_file_task(file_task, dependencies)

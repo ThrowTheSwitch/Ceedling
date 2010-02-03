@@ -29,7 +29,7 @@ class PathsTest < Test::Unit::TestCase
   end
 
   def run_helper(config_file, all_build_paths_indexes)
-    ENV['CEEDLING_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, config_file)
+    ENV['CEEDLING_MAIN_PROJECT_FILE'] = File.join(SYSTEM_TEST_ROOT, config_file)
 
     build_paths = []
     all_build_paths_indexes.each {|i| build_paths << @all_build_paths[i]}
@@ -38,7 +38,7 @@ class PathsTest < Test::Unit::TestCase
     build_paths.each {|path| assert_equal(false, File.exists?(path))}
     
     # tell rake to create build paths
-    rake_execute('directories')
+    ceedling_execute('directories')
   
     # verify paths are created
     build_paths.each {|path| assert(File.exists?(path), "'#{path}' not found.")}    

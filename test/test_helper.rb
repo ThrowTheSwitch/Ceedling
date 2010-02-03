@@ -14,6 +14,7 @@ SYSTEM_TEST_ROOT      = TESTS_ROOT + '/system'
 INTEGRATION_TEST_ROOT = TESTS_ROOT + '/integration'
 LIB_ROOT              = File.expand_path(File.dirname(__FILE__) + '/../lib')
 CEEDLING_ROOT         = 'test_ceedling_root'
+CEEDLING_LIB          = 'test_ceedling_lib'
 
 
 $config_options = {

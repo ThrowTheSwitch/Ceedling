@@ -1,6 +1,6 @@
 
 class Verbosity
-  SILENT      = 0
+  SILENT      = 0  # as silent as possible (though there are some messages that must be spit out)
   ERRORS      = 1  # only errors
   COMPLAIN    = 2  # spit out errors and warnings/notices
   NORMAL      = 3  # errors, warnings/notices, standard status messages

@@ -1,10 +1,11 @@
-require "file_path_utils"
+require 'file_path_utils'
+require 'deep_merge'
 
 class Configurator
   
-  attr_reader :project_config_hash, :cmock_config_hash
+  attr_reader :project_config_hash, :cmock_config_hash, :script_extenders, :rake_extenders
   
-  constructor :configurator_helper, :configurator_builder
+  constructor :configurator_helper, :configurator_builder, :configurator_extender, :yaml_wrapper
   
   def setup
     # special copy of cmock config to provide to cmock for construction
@@ -12,7 +13,9 @@ class Configurator
     
     # note: project_config_hash is an instance variable so constants and accessors created
     # in eval() statements in build() have something of proper scope and persistence to reference
-    @project_config_hash = {}    
+    @project_config_hash = {}
+    
+    @script_extenders = []
   end
   
   
@@ -35,6 +38,25 @@ class Configurator
   end
   
   
+  def populate_extenders_defaults(config)
+    if (config[:extenders].nil?)
+      config[:extenders] = {
+        :base_path => '.',
+        :enabled => []
+        }
+      return
+    end
+    
+    if (config[:extenders][:base_path].nil?)
+      config[:extenders][:base_path] = '.'
+    end
+
+    if (config[:extenders][:enabled].nil?)
+      config[:extenders][:enabled] = []
+    end
+  end
+
+
   def validate(config)
     # collect felonies and go straight to jail
     raise if (not @configurator_helper.validate_required_sections(config))
@@ -49,7 +71,7 @@ class Configurator
   end
   
   
-  def insert_cmock_defaults(config)
+  def build_cmock_defaults(config)
     # cmock has its own internal defaults handling, but we need to set these specific values
     # so they're present for the build environment to access;
     # note: these need to end up in the hash given to initialize cmock for this to be successful
@@ -64,6 +86,17 @@ class Configurator
     config[:cmock] = cmock if config[:cmock].nil?
     
     @cmock_config_hash = config[:cmock].clone
+  end
+  
+  
+  def find_and_merge_extenders(config)    
+    @rake_extenders   = @configurator_extender.find_rake_extenders(config)
+    @script_extenders = @configurator_extender.find_script_extenders(config)
+    config_extenders  = @configurator_extender.find_config_extenders(config)
+    
+    config_extenders.each do |extender|
+      config.deep_merge( @yaml_wrapper.load(extender) )
+    end
   end
   
   
@@ -87,7 +120,7 @@ class Configurator
     @project_config_hash.merge!(@configurator_builder.collect_source(@project_config_hash))
     @project_config_hash.merge!(@configurator_builder.collect_headers(@project_config_hash))
     @project_config_hash.merge!(@configurator_builder.collect_test_defines(@project_config_hash))    
-    @project_config_hash.merge!(@configurator_builder.collect_environment_files)
+    @project_config_hash.merge!(@configurator_builder.collect_environment_dependencies)
 
     # iterate through all entries in paths section and expand any & all globs to actual paths
     @project_config_hash.merge!(@configurator_builder.expand_all_path_globs(@project_config_hash))
@@ -98,6 +131,13 @@ class Configurator
       # fill configurator object with accessor methods
       eval("def #{key.to_s.downcase}() return @project_config_hash[:#{key.to_s}] end")
     end    
+  end
+  
+  
+  def insert_rake_extenders(extenders)
+    extenders.each do |extender|
+      @project_config_hash[:project_rakefile_component_files] << extender
+    end
   end
   
 end

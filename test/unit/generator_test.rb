@@ -5,7 +5,7 @@ require 'generator'
 class GeneratorTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:configurator, :preprocessinator, :cmock_factory, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :file_wrapper)
+    objects = create_mocks(:configurator, :preprocessinator, :cmock_factory, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :extendinator, :file_wrapper)
     create_mocks(:cmock, :file)
     @generator = Generator.new(objects)
   end
@@ -128,44 +128,55 @@ class GeneratorTest < Test::Unit::TestCase
 
   should "execute test and process results to file" do
     tool_config = {:tools_test_runner => {}}
+    arg_hash = {:executable => 'build/out/test.out', :result => 'build/results/test.pass'}
 
+    @extendinator.expects.pre_test_execute(arg_hash)
+    
     @streaminator.expects.stdout_puts("Running test.out...", Verbosity::NORMAL)
     
     @configurator.expects.tools_test_fixture.returns(tool_config)
     
-    @tool_executor.expects.build_command_line(tool_config, 'build/out/test.out').returns('simulator.exe test.out')
+    @tool_executor.expects.build_command_line(tool_config, arg_hash[:executable]).returns('simulator.exe test.out')
     @tool_executor.expects.exec('simulator.exe test.out').returns('test results')
 
-    @file_finder.expects.find_test_from_file_path('build/out/test.out').returns('tests/test.c')
+    @file_finder.expects.find_test_from_file_path(arg_hash[:executable]).returns('tests/test.c')
     
-    @generator_test_results.expects.process_and_write_results('test results', 'build/results/test.pass', 'tests/test.c')
+    @generator_test_results.expects.process_and_write_results('test results', arg_hash[:result], 'tests/test.c')
 
-    @generator.generate_test_results('build/out/test.out', 'build/results/test.pass')    
+    @extendinator.expects.post_test_execute(arg_hash)
+
+    @generator.generate_test_results(arg_hash[:executable], arg_hash[:result])    
   end
 
   should "raise if test execution yields nil results" do
     tool_config = {:tools_test_runner => {}}
+    arg_hash = {:executable => 'build/out/test.out', :result => 'build/results/test.pass'}
+
+    @extendinator.expects.pre_test_execute(arg_hash)
 
     @streaminator.expects.stdout_puts("Running test.out...", Verbosity::NORMAL)
     
     @configurator.expects.tools_test_fixture.returns(tool_config)
     
-    @tool_executor.expects.build_command_line(tool_config, 'build/out/test.out').returns('simulator.exe test.out')
+    @tool_executor.expects.build_command_line(tool_config, arg_hash[:executable]).returns('simulator.exe test.out')
     @tool_executor.expects.exec('simulator.exe test.out').returns(nil)
 
     @streaminator.expects.stderr_puts("ERROR: Test executable \"test.out\" did not produce any results.", Verbosity::ERRORS)
 
-    assert_raise(RuntimeError) { @generator.generate_test_results('build/out/test.out', 'build/results/test.pass') }
+    assert_raise(RuntimeError) { @generator.generate_test_results(arg_hash[:executable], arg_hash[:result]) }
   end
 
   should "raise if test execution yields a string with no parseable results" do
     tool_config = {:tools_test_runner => {}}
+    arg_hash = {:executable => 'build/out/test.out', :result => 'build/results/test.pass'}
+
+    @extendinator.expects.pre_test_execute(arg_hash)
 
     @streaminator.expects.stdout_puts("Running test.out...", Verbosity::NORMAL)
     
     @configurator.expects.tools_test_fixture.returns(tool_config)
     
-    @tool_executor.expects.build_command_line(tool_config, 'build/out/test.out').returns('simulator.exe test.out')
+    @tool_executor.expects.build_command_line(tool_config, arg_hash[:executable]).returns('simulator.exe test.out')
     @tool_executor.expects.exec('simulator.exe test.out').returns('')
 
     @streaminator.expects.stderr_puts("ERROR: Test executable \"test.out\" did not produce any results.", Verbosity::ERRORS)
