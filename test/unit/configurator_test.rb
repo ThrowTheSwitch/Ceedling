@@ -40,7 +40,8 @@ class ConfiguratorTest < Test::Unit::TestCase
       :tools => {
         :hammer => {:executable => "gcc"},
         :ratchet => {:executable => "\\bin\\cpp"}
-        }
+        },
+      :extenders => {:base_path => "project\\extenders"}
       }
   
     @configurator.standardize_paths(in_hash)
@@ -52,6 +53,8 @@ class ConfiguratorTest < Test::Unit::TestCase
     
     assert_equal('gcc', in_hash[:tools][:hammer][:executable])
     assert_equal('/bin/cpp', in_hash[:tools][:ratchet][:executable])
+    
+    assert_equal('project/extenders', in_hash[:extenders][:base_path])
   end
   
   ############# validate ##############

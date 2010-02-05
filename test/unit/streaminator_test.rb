@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
 require 'streaminator'
-require 'verbosinator'
+require 'constants'
 
 
 class StreaminatorTest < Test::Unit::TestCase

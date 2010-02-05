@@ -11,8 +11,8 @@ class Setupinator
     # load up all the constants and accessors our rake files, objects, & external scripts will need;
     # note: configurator modifies the cmock section of the hash with a couple defaults to tie 
     #       project together - the modified hash is used to build cmock object
-    @configurator.standardize_paths(config_hash)
     @configurator.populate_extenders_defaults(config_hash)
+    @configurator.standardize_paths(config_hash)
     @configurator.validate(config_hash)
     @configurator.build_cmock_defaults(config_hash)
     @configurator.find_and_merge_extenders(config_hash)

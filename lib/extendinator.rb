@@ -1,4 +1,4 @@
-require 'verbosinator'
+require 'constants'
 require 'set'
 
 class Extendinator
@@ -23,11 +23,11 @@ class Extendinator
   end
   
   def test_build?
-    return @extendinator_helper.rake_task_invoked?(/^tests:/)
+    return @extendinator_helper.rake_task_invoked?(/^#{TESTS_TASKS_ROOT_NAME}:/)
   end
   
   def release_build?
-    return @extendinator_helper.rake_task_invoked?(/^release:/)
+    return @extendinator_helper.rake_task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}:/)
   end
   
   def rake_task_invoked?(task_regex)

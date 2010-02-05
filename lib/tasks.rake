@@ -1,4 +1,4 @@
-require 'verbosinator'
+require 'constants'
 
 
 desc "Display test build environment version info."
@@ -7,7 +7,7 @@ task :version do
 end
 
 
-desc "Set verbose output [0-3]."
+desc "Set verbose output [#{Verbosity::SILENT}-#{Verbosity::OBNOXIOUS}]."
 task :verbosity, :level do |t, args|
   verbosity_level = args.level.to_i
   
@@ -23,10 +23,10 @@ task :verbosity, :level do |t, args|
 end
 
 
-task :default => [:directories, :clobber, 'tests:all']
+task :default => [:directories, :clobber, "#{TESTS_TASKS_ROOT_NAME}:all"]
 
 
-namespace :tests do
+namespace TESTS_TASKS_ROOT_NAME.to_sym do
   
   desc "Run all unit tests."
   task(:all) { @objects[:test_invoker].invoke_tests(COLLECTION_ALL_TESTS) }

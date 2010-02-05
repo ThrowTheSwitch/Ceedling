@@ -1,4 +1,4 @@
-require 'verbosinator' # for Verbosity enumeration
+require 'constants' # for Verbosity enumeration
 
 class ToolExecutorHelper
 

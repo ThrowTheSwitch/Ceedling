@@ -1,4 +1,4 @@
-require 'verbosinator'
+require 'constants'
 
 
 class ReporterTestResultsHelper
@@ -23,6 +23,7 @@ class ReporterTestResultsHelper
 
     report += @reportinator.generate_banner('OVERALL UNIT TEST SUMMARY')
     report += "TOTAL TESTED:  #{total_string}\n"
+    report += "TOTAL PASSED:  #{sprintf(format_string, report_data[:passed_count])}\n"
     report += "TOTAL FAILED:  #{sprintf(format_string, report_data[:failed_count])}\n"
     report += "TOTAL IGNORED: #{sprintf(format_string, report_data[:ignored_count])}\n"
     report += "\n"

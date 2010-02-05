@@ -1,12 +1,10 @@
-
-DEFAULT_CEEDLING_MAIN_PROJECT_FILE = 'project.yml' # main project file
-DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    # supplemental user config file
+require 'constants'
 
 class ProjectFileLoader
 
   attr_reader :main_project_filepath, :user_project_filepath
 
-  constructor :yaml_wrapper, :stream_wrapper, :file_wrapper
+  constructor :yaml_wrapper, :stream_wrapper, :system_wrapper, :file_wrapper
 
   def setup
     @main_project_filepath = ''
@@ -16,18 +14,22 @@ class ProjectFileLoader
 
   def find_project_files
 
-    # first go hunting for optional user project file by looking for environment variable or default location on disk
-    if ( not ENV['CEEDLING_USER_PROJECT_FILE'].nil? and @file_wrapper.exists?(ENV['CEEDLING_USER_PROJECT_FILE']) )
-      @user_project_filepath = ENV['CEEDLING_USER_PROJECT_FILE']
-    elsif(@file_wrapper.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE))
+    # first go hunting for optional user project file by looking for environment variable and then default location on disk
+    user_file = @system_wrapper.env_get('CEEDLING_USER_PROJECT_FILE')
+    
+    if ( not user_file.nil? and @file_wrapper.exists?(user_file) )
+      @user_project_filepath = user_file
+    elsif (@file_wrapper.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE))
       @user_project_filepath = DEFAULT_CEEDLING_USER_PROJECT_FILE
     end        
     
-    # next check for main project file by looking for environment variable or default location on disk;
+    # next check for main project file by looking for environment variable and then default location on disk;
     # blow up if we don't find this guy -- like, he's so totally important
-    if ( not ENV['CEEDLING_MAIN_PROJECT_FILE'].nil? and @file_wrapper.exists?(ENV['CEEDLING_MAIN_PROJECT_FILE']) )
-      @main_project_filepath = ENV['CEEDLING_MAIN_PROJECT_FILE']
-    elsif(@file_wrapper.exists?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE))
+    main_file = @system_wrapper.env_get('CEEDLING_MAIN_PROJECT_FILE')
+    
+    if ( not main_file.nil? and @file_wrapper.exists?(main_file) )
+      @main_project_filepath = main_file
+    elsif (@file_wrapper.exists?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE))
       @main_project_filepath = DEFAULT_CEEDLING_MAIN_PROJECT_FILE
     else
       # no verbosity checking since this is lowest level reporting anyhow &

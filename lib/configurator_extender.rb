@@ -1,4 +1,4 @@
-require 'verbosinator'
+require 'constants'
 
 class ConfiguratorExtender
 

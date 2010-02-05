@@ -1,4 +1,4 @@
-require 'verbosinator' # for Verbosity constants class
+require 'constants' # for Verbosity constants class
 
 
 class Generator

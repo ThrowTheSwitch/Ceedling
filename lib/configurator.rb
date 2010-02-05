@@ -25,19 +25,6 @@ class Configurator
   end
   
   
-  def standardize_paths(config)
-    FilePathUtils::standardize(config[:project][:build_root])
-    
-    config[:paths].each_pair do |key, list|
-      list.each{|path| FilePathUtils::standardize(path)}
-    end
-
-    config[:tools].each_pair do |key, tool_config|
-      FilePathUtils::standardize(tool_config[:executable])
-    end
-  end
-  
-  
   def populate_extenders_defaults(config)
     if (config[:extenders].nil?)
       config[:extenders] = {
@@ -57,6 +44,21 @@ class Configurator
   end
 
 
+  def standardize_paths(config)
+    FilePathUtils::standardize(config[:project][:build_root])
+    
+    config[:paths].each_pair do |key, list|
+      list.each{|path| FilePathUtils::standardize(path)}
+    end
+
+    config[:tools].each_pair do |key, tool_config|
+      FilePathUtils::standardize(tool_config[:executable])
+    end
+    
+    FilePathUtils::standardize(config[:extenders][:base_path])
+  end
+  
+  
   def validate(config)
     # collect felonies and go straight to jail
     raise if (not @configurator_helper.validate_required_sections(config))

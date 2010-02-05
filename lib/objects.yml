@@ -26,6 +26,7 @@ project_file_loader:
   compose:
     - yaml_wrapper
     - stream_wrapper
+    - system_wrapper
     - file_wrapper
 
 tool_executor:

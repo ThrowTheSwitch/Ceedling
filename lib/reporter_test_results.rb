@@ -1,4 +1,4 @@
-require 'verbosinator'
+require 'constants'
 
 
 class ReporterTestResults
@@ -10,6 +10,7 @@ class ReporterTestResults
       :ignores_list  => [],
       :failures_list => [],
       :tested_count  => 0,
+      :passed_count  => 0,
       :failed_count  => 0,
       :ignored_count => 0,
       }
@@ -19,6 +20,7 @@ class ReporterTestResults
     @report_data[:ignores_list]  = []
     @report_data[:failures_list] = []
     @report_data[:tested_count]  = 0
+    @report_data[:passed_count]  = 0
     @report_data[:failed_count]  = 0
     @report_data[:ignored_count] = 0    
   end
@@ -56,6 +58,7 @@ class ReporterTestResults
   
   def process_results(results)
     @report_data[:tested_count]  += results[:counts][:total]
+    @report_data[:passed_count]  += results[:counts][:passed]
     @report_data[:failed_count]  += results[:counts][:failed]
     @report_data[:ignored_count] += results[:counts][:ignored]
     

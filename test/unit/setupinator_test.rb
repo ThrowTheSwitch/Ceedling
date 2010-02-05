@@ -18,8 +18,8 @@ class SetupinatorTest < Test::Unit::TestCase
     @project_file_loader.expects.find_project_files
     @project_file_loader.expects.load_project_file.returns(@config_hash)
 
-    @configurator.expects.standardize_paths(@config_hash)
     @configurator.expects.populate_extenders_defaults(@config_hash)
+    @configurator.expects.standardize_paths(@config_hash)
     @configurator.expects.validate(@config_hash)
     @configurator.expects.build_cmock_defaults(@config_hash)
     @configurator.expects.find_and_merge_extenders(@config_hash)

@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'rake'            # for ext() method
 require 'file_path_utils' # for form_vendor_path() class method
-require 'verbosinator'    # for Verbosity constants class
+require 'constants'    # for Verbosity constants class
 
 
 DEFAULT_INCLUDES_PREPROCESSOR_TOOL = {

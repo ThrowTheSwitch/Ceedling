@@ -14,7 +14,7 @@ require 'rake/clean'
 require 'diy'
 require 'constructor'
 
-require 'verbosinator'
+require 'constants'
 
 
 # construct all our objects

@@ -1,5 +1,5 @@
 require 'fileutils'
-require 'verbosinator' # for Verbosity enumeration
+require 'constants' # for Verbosity enumeration
 
 class FileFinderHelper
 

@@ -1,4 +1,3 @@
-require 'verbosinator'
 require 'extender'
 require 'yaml'
 

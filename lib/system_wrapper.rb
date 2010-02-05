@@ -9,10 +9,18 @@ class SystemWrapper
     return ARGV
   end
 
+  def env_set(name, value)
+    ENV[name] = value
+  end
+  
+  def env_get(name)
+    return ENV[name]
+  end
+
   def shell_execute(command)
     return {
       :output => `#{command}`,
-      :exit_code => $?.exitstatus
+      :exit_code => ($?.exitstatus)
     }
   end
   

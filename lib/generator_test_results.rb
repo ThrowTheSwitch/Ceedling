@@ -1,6 +1,6 @@
 require 'rubygems'
 require 'rake' # for .ext()
-require 'verbosinator' # for Verbosity constants class
+require 'constants' # for Verbosity constants class
 
 
 class GeneratorTestResults
