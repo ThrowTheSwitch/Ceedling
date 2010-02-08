@@ -86,9 +86,11 @@ class FileFinderTest < Test::Unit::TestCase
   ############ find test or source from file path #############
 
   should "by convention find test or source file from file path" do
+    collection = ['files/tests/test_whatever.c', 'files/modules/flight.c']
+    
     @configurator.expects.extension_source.returns('.c')
-    @configurator.expects.collection_paths_test_and_source.returns(['files/tests', 'files/modules'])
-    @file_finder_helper.expects.find_file_on_disk('flight.c', ['files/tests', 'files/modules']).returns('files/modules/flight.c')
+    @configurator.expects.collection_all_compilation_input.returns(collection)
+    @file_finder_helper.expects.find_file_in_collection('flight.c', collection).returns('files/modules/flight.c')
     
     assert_equal('files/modules/flight.c', @file_finder.find_test_or_source_file('flight.out'))
   end
@@ -96,11 +98,13 @@ class FileFinderTest < Test::Unit::TestCase
   ############ find all source files that correspond to given header files #############
 
   should "by convention find all source files that correspond to the given header files" do
-    @configurator.expects.extension_source.returns('.c')
-    @configurator.expects.collection_paths_test_and_source.returns(['files/tests', 'files/modules'])
+    collection = ['files/tests/test_stuff.c', 'files/modules/flight.c']
     
-    @file_finder_helper.expects.find_file_on_disk('flight.c', ['files/tests', 'files/modules'], {:should_complain => false}).returns('files/modules/flight.c')
-    @file_finder_helper.expects.find_file_on_disk('types.c', ['files/tests', 'files/modules'], {:should_complain => false}).returns('')
+    @configurator.expects.extension_source.returns('.c')
+    @configurator.expects.collection_all_compilation_input.returns(collection)
+    
+    @file_finder_helper.expects.find_file_in_collection('flight.c', collection, {:should_complain => false}).returns('files/modules/flight.c')
+    @file_finder_helper.expects.find_file_in_collection('types.c', collection, {:should_complain => false}).returns('')
     
     assert_equal(['files/modules/flight.c'], @file_finder.find_source_files_from_headers(['flight.h', 'types.h']))
   end

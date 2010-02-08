@@ -189,9 +189,7 @@ class ConfiguratorBuilder
   
   def collect_test_and_source_include_paths(in_hash)
     extra_paths = []
-    extra_paths << FilePathUtils::form_ceedling_vendor_path('unity/src')
-    extra_paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (in_hash[:project_use_exceptions])
-    extra_paths << in_hash[:cmock_mock_path] if (in_hash[:project_use_mocks])
+    insert_vendor_paths(extra_paths, in_hash)
 
     return {
       :paths_test_and_source_include => 
@@ -206,10 +204,8 @@ class ConfiguratorBuilder
     
   def collect_test_and_source_paths(in_hash)
     extra_paths = []
-    extra_paths << FilePathUtils::form_ceedling_vendor_path('unity/src')
-    extra_paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (in_hash[:project_use_exceptions])
+    insert_vendor_paths(extra_paths, in_hash)
     extra_paths << in_hash[:project_test_runners_path]
-    extra_paths << in_hash[:cmock_mock_path] if (in_hash[:project_use_mocks])
 
     return {
       :paths_test_and_source => 
@@ -253,6 +249,27 @@ class ConfiguratorBuilder
     end
     
     return {:collection_all_headers => all_headers}
+  end
+
+
+  def collect_all_compilation_input(in_hash)
+    all_input = @file_wrapper.instantiate_file_list
+
+    paths = 
+      in_hash[:paths_test] + 
+      in_hash[:paths_support] + 
+      in_hash[:paths_source] + 
+      in_hash[:paths_include]
+    
+    paths << in_hash[:project_test_runners_path]
+    insert_vendor_paths(paths, in_hash)
+    
+    (paths).each do |path|
+      all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
+      all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
+    end
+    
+    return {:collection_all_compilation_input => all_input}    
   end
 
 
@@ -321,6 +338,14 @@ class ConfiguratorBuilder
     
     
     return out_hash
+  end
+  
+  private ##############################
+  
+  def insert_vendor_paths(paths, config)
+    paths << FilePathUtils::form_ceedling_vendor_path('unity/src')
+    paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (config[:project_use_exceptions])
+    paths << config[:cmock_mock_path] if (config[:project_use_mocks])
   end
   
 end

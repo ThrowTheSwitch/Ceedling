@@ -195,6 +195,10 @@ class ConfiguratorTest < Test::Unit::TestCase
     # build up configuration
     @configurator_builder.expects.collect_headers(@test_hash).returns(@test_hash)
     @test_hash.expects.merge!(@test_hash).returns(@test_hash)
+
+    # build up configuration
+    @configurator_builder.expects.collect_all_compilation_input(@test_hash).returns(@test_hash)
+    @test_hash.expects.merge!(@test_hash).returns(@test_hash)
     
     # build up configuration
     @configurator_builder.expects.collect_test_defines(@test_hash).returns(@test_hash)

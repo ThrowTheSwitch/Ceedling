@@ -5,7 +5,7 @@ require 'file_finder_helper'
 class FileFinderHelperTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:streaminator, :file_wrapper)
+    objects = create_mocks(:streaminator)
     @file_finder_helper = FileFinderHelper.new(objects)
   end
 
@@ -13,36 +13,32 @@ class FileFinderHelperTest < Test::Unit::TestCase
   end
   
   
-  should "return the file path when found in search paths" do
-    search_paths = ['.', 'files/source', 'files/tests', 'lib/headers']
+  should "return file path when sought file is found in search collection" do
+    search_collection = ['files/source/yadda.h', 'files/tests/test_thing.c', 'lib/headers/wheres_waldo.h']
 
-    @file_wrapper.expects.exist?('./waldo.h').returns(false)
-    @file_wrapper.expects.exist?('files/source/waldo.h').returns(false)
-    @file_wrapper.expects.exist?('files/tests/waldo.h').returns(true)
-
-    assert_equal('files/tests/waldo.h', @file_finder_helper.find_file_on_disk('waldo.h', search_paths))
+    assert_equal('lib/headers/wheres_waldo.h', @file_finder_helper.find_file_in_collection('wheres_waldo.h', search_collection))
   end
 
   should "raise if the file is not found" do
-    search_paths = ['source', 'tests/source', 'include']
-
-    @file_wrapper.expects.exist?('source/waldo.h').returns(false)
-    @file_wrapper.expects.exist?('tests/source/waldo.h').returns(false)
-    @file_wrapper.expects.exist?('include/waldo.h').returns(false)
-
+    search_collection = ['files/source/yadda.h', 'files/tests/test_thing.c', 'lib/headers/no_waldo.h']
+  
     @streaminator.expects.stderr_puts("ERROR: Could not find 'waldo.h'.", Verbosity::ERRORS)
-
-    assert_raise(RuntimeError){ @file_finder_helper.find_file_on_disk('waldo.h', search_paths) }
+  
+    assert_raise(RuntimeError){ @file_finder_helper.find_file_in_collection('waldo.h', search_collection) }
   end
 
+  should "raise if the file is found but with wrong capitalization" do
+    search_collection = ['files/source/yadda.h', 'files/tests/test_thing.c', 'lib/headers/no_waldo.h']
+  
+    @streaminator.expects.stderr_puts("ERROR: Could not find 'Yadda.h' but did find filename having different capitalization: 'files/source/yadda.h'.", Verbosity::ERRORS)
+  
+    assert_raise(RuntimeError){ @file_finder_helper.find_file_in_collection('Yadda.h', search_collection) }
+  end
+  
   should "not raise but just return empty string if the file is not found" do
-    search_paths = ['source', 'tests/source', 'include']
-
-    @file_wrapper.expects.exist?('source/waldo.h').returns(false)
-    @file_wrapper.expects.exist?('tests/source/waldo.h').returns(false)
-    @file_wrapper.expects.exist?('include/waldo.h').returns(false)
-
-    assert_equal('', @file_finder_helper.find_file_on_disk('waldo.h', search_paths, {:should_complain => false}))
+    search_collection = ['files/source/yadda.h', 'files/tests/test_thing.c', 'lib/headers/no_waldo.h']
+    
+    assert_equal('', @file_finder_helper.find_file_in_collection('waldo.h', search_collection, {:should_complain => false}))
   end
 
 end

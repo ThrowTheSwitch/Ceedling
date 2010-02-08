@@ -123,6 +123,7 @@ class Configurator
     @project_config_hash.merge!(@configurator_builder.collect_tests(@project_config_hash))
     @project_config_hash.merge!(@configurator_builder.collect_source(@project_config_hash))
     @project_config_hash.merge!(@configurator_builder.collect_headers(@project_config_hash))
+    @project_config_hash.merge!(@configurator_builder.collect_all_compilation_input(@project_config_hash))
     @project_config_hash.merge!(@configurator_builder.collect_test_defines(@project_config_hash))    
     @project_config_hash.merge!(@configurator_builder.collect_environment_dependencies)
 

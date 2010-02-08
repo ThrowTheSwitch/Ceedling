@@ -101,9 +101,7 @@ file_finder:
     - file_finder_helper
 
 file_finder_helper:
-  compose:
-    - streaminator
-    - file_wrapper
+  compose: streaminator
 
 test_includes_extractor:
   compose:
