@@ -1,12 +1,21 @@
-CEEDLING_LIB    = File.expand_path(File.dirname(__FILE__)) + '/'
-CEEDLING_ROOT   = File.expand_path( CEEDLING_LIB + '..' ) + '/'
-CEEDLING_VENDOR = File.expand_path( CEEDLING_ROOT + 'vendor' ) + '/'
+require 'fileutils'
+
+# 1. get directory containing this here file, back up one directory, and expand to full path
+# 2. lop off current working directory from the root of Ceedling
+# (the root of the file system, particularly in Windows, can show up in unexpected places and cause trouble)
+ceedling_root           = File.expand_path(File.dirname(__FILE__) + '/..')
+ceedling_root_truncated = ceedling_root.sub(Regexp.escape(FileUtils.getwd), '')
+ceedling_root_truncated = ceedling_root_truncated[1..-1] if (ceedling_root_truncated[0..0] == '/')
+
+CEEDLING_ROOT   = ceedling_root_truncated + '/'
+CEEDLING_LIB    = CEEDLING_ROOT + 'lib/'
+CEEDLING_VENDOR = CEEDLING_ROOT + 'vendor/'
 
 $LOAD_PATH.unshift( CEEDLING_LIB )
-$LOAD_PATH.unshift( CEEDLING_VENDOR + '../vendor/diy/lib' )
-$LOAD_PATH.unshift( CEEDLING_VENDOR + '../vendor/constructor/lib' )
-$LOAD_PATH.unshift( CEEDLING_VENDOR + '../vendor/cmock/lib' )
-$LOAD_PATH.unshift( CEEDLING_VENDOR + '../vendor/deep_merge/lib' )
+$LOAD_PATH.unshift( CEEDLING_VENDOR + 'diy/lib' )
+$LOAD_PATH.unshift( CEEDLING_VENDOR + 'constructor/lib' )
+$LOAD_PATH.unshift( CEEDLING_VENDOR + 'cmock/lib' )
+$LOAD_PATH.unshift( CEEDLING_VENDOR + 'deep_merge/lib' )
 
 require 'rake'
 require 'rake/clean'
@@ -15,7 +24,6 @@ require 'diy'
 require 'constructor'
 
 require 'constants'
-
 
 # construct all our objects
 @objects = DIY::Context.from_yaml( File.read(CEEDLING_LIB + 'objects.yml') )
