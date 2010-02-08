@@ -1,20 +1,20 @@
 require 'constants'
 require 'set'
 
-class Extendinator
+class PluginManager
 
-  constructor :configurator, :extendinator_helper, :streaminator, :reportinator, :system_wrapper
+  constructor :configurator, :plugin_manager_helper, :streaminator, :reportinator, :system_wrapper
 
   def setup
     @build_fail_registry = []
   end
   
-  def load_extender_scripts(script_extenders, system_objects)
-    @extender_objects = []
+  def load_plugin_scripts(script_plugins, system_objects)
+    @plugin_objects = []
     
-    script_extenders.each do |extender|
-      @system_wrapper.require_file( File.join(@configurator.extenders_base_path, extender, "#{extender}.rb") )
-      @extender_objects << @extendinator_helper.instantiate_extender_script( camelize(extender), system_objects )
+    script_plugins.each do |plugin|
+      @system_wrapper.require_file( File.join(@configurator.plugins_base_path, plugin, "#{plugin}.rb") )
+      @plugin_objects << @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects )
     end
   end
   
@@ -23,15 +23,15 @@ class Extendinator
   end
   
   def test_build?
-    return @extendinator_helper.rake_task_invoked?(/^#{TESTS_TASKS_ROOT_NAME}:/)
+    return @plugin_manager_helper.rake_task_invoked?(/^#{TESTS_TASKS_ROOT_NAME}:/)
   end
   
   def release_build?
-    return @extendinator_helper.rake_task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}:/)
+    return @plugin_manager_helper.rake_task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}:/)
   end
   
   def rake_task_invoked?(task_regex)
-    return @extendinator_helper.rake_task_invoked?(task_regex)
+    return @plugin_manager_helper.rake_task_invoked?(task_regex)
   end
   
   def print_build_failures
@@ -53,20 +53,20 @@ class Extendinator
   end
 
   def pre_test_execute(arg_hash)
-    @extender_objects.each do |extender|
-      extender.pre_test_execute(arg_hash)
+    @plugin_objects.each do |plugin|
+      plugin.pre_test_execute(arg_hash)
     end    
   end
   
   def post_test_execute(arg_hash)
-    @extender_objects.each do |extender|
-      extender.post_test_execute(arg_hash)
+    @plugin_objects.each do |plugin|
+      plugin.post_test_execute(arg_hash)
     end    
   end
   
   def post_build
-    @extender_objects.each do |extender|
-      extender.post_build
+    @plugin_objects.each do |plugin|
+      plugin.post_build
     end
   end
   

@@ -3,7 +3,7 @@ require 'constants'
 
 class ReporterTestResults
   
-  constructor :reporter_test_results_helper, :configurator, :extendinator, :streaminator, :yaml_wrapper, :file_wrapper
+  constructor :reporter_test_results_helper, :configurator, :plugin_manager, :streaminator, :yaml_wrapper, :file_wrapper
   
   def setup
     @report_data = {
@@ -35,9 +35,9 @@ class ReporterTestResults
       pass_path = File.join(test_results_path, "#{test}#{@configurator.extension_testpass}")
       fail_path = File.join(test_results_path, "#{test}#{@configurator.extension_testfail}")
 
-      if (@file_wrapper.exists?(pass_path))
+      if (@file_wrapper.exist?(pass_path))
         filepath = pass_path
-      elsif (@file_wrapper.exists?(fail_path))
+      elsif (@file_wrapper.exist?(fail_path))
         filepath = fail_path
       else
         @streaminator.stderr_puts("Could not find test results for '#{test}' in #{test_results_path}", Verbosity::ERRORS)
@@ -48,7 +48,7 @@ class ReporterTestResults
     end
     
     if ((@report_data[:failed_count] > 0) and (not failure_message.empty?))
-      @extendinator.register_build_failure(failure_message)
+      @plugin_manager.register_build_failure(failure_message)
     end
     
     @reporter_test_results_helper.print_results(@report_data)
@@ -62,12 +62,12 @@ class ReporterTestResults
     @report_data[:failed_count]  += results[:counts][:failed]
     @report_data[:ignored_count] += results[:counts][:ignored]
     
-    results[:messages][:ignores].each do |ignore_msg|
-      @report_data[:ignores_list] << "#{results[:source][:file]}:#{ignore_msg}"
+    results[:ignores].each do |ignore_hash|
+      @report_data[:ignores_list] << "#{results[:source][:file]}:#{ignore_hash[:line]}:#{ignore_hash[:test]}:#{ignore_hash[:message]}"
     end
 
-    results[:messages][:failures].each do |fail_msg|
-      @report_data[:failures_list] << "#{results[:source][:file]}:#{fail_msg}"
+    results[:failures].each do |fail_hash|
+      @report_data[:failures_list] << "#{results[:source][:file]}:#{fail_hash[:line]}:#{fail_hash[:test]}:#{fail_hash[:message]}"
     end
   end
   

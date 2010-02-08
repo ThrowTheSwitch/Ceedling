@@ -32,5 +32,5 @@
   # built under gcc, the test is the executable (no simulator)
   :test_fixture:
     :executable: ${1}
- 
+
 ...

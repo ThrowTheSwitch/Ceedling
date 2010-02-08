@@ -1,5 +1,5 @@
 
-class Extender
+class Plugin
 
   def initialize(system_objects)
     @system_objects = system_objects

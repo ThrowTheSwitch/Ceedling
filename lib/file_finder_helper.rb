@@ -1,5 +1,5 @@
 require 'fileutils'
-require 'constants' # for Verbosity enumeration
+require 'verbosinator' # for Verbosity enumeration
 
 class FileFinderHelper
 
@@ -10,7 +10,7 @@ class FileFinderHelper
     file_to_find = ''
     search_paths.each do |path|
       file_to_find = File.join(path, file_name)
-      break if @file_wrapper.exists?(file_to_find)
+      break if @file_wrapper.exist?(file_to_find)
       file_to_find = ''
     end
     blow_up(file_name) if (file_to_find.empty? and hash[:should_complain])
@@ -20,9 +20,17 @@ class FileFinderHelper
   def find_file_in_collection(file_name, file_list, hash = {:should_complain => true})
     file_to_find = ''
     file_list.each do |item|
-      if (File.basename(item) == file_name)
-        file_to_find = item
-        break
+      base_file = File.basename(item)
+      # casw insensitive comparison
+      if (base_file.casecmp(file_name) == 0)
+        # case sensitive check
+        if (base_file == file_name)
+          file_to_find = item
+          break
+        else
+          @streaminator.stderr_puts("ERROR: Could not find '#{file_name}' but did find file having different capitalization ('#{base_file}').", Verbosity::ERRORS)
+          raise
+        end
       end
     end
     blow_up(file_name) if (file_to_find.empty? and hash[:should_complain])
@@ -37,3 +45,5 @@ class FileFinderHelper
   end
 
 end
+
+

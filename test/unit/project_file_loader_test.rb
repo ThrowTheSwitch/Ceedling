@@ -17,10 +17,10 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
   
   should "find both default project files if no environment variables are set and both exist on-disk" do
     @system_wrapper.expects.env_get('CEEDLING_USER_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(true)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(true)
 
     @system_wrapper.expects.env_get('CEEDLING_MAIN_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(true)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(true)
     
     @loader.find_project_files
     
@@ -30,10 +30,10 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
 
   should "find only main default project files if no environment variables are set and it exist on-disk" do
     @system_wrapper.expects.env_get('CEEDLING_USER_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
 
     @system_wrapper.expects.env_get('CEEDLING_MAIN_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(true)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(true)
     
     @loader.find_project_files
     
@@ -46,10 +46,10 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
     test_config_file = 'tests/config.yml'
     
     @system_wrapper.expects.env_get('CEEDLING_USER_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
 
     @system_wrapper.expects.env_get('CEEDLING_MAIN_PROJECT_FILE').returns(test_config_file)
-    @file_wrapper.expects.exists?(test_config_file).returns(true)
+    @file_wrapper.expects.exist?(test_config_file).returns(true)
   
     @loader.find_project_files
     
@@ -62,10 +62,10 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
     test_user_config_file = 'tests/user.yml'
     
     @system_wrapper.expects.env_get('CEEDLING_USER_PROJECT_FILE').returns(test_user_config_file)
-    @file_wrapper.expects.exists?(test_user_config_file).returns(true)
+    @file_wrapper.expects.exist?(test_user_config_file).returns(true)
     
     @system_wrapper.expects.env_get('CEEDLING_MAIN_PROJECT_FILE').returns(test_main_config_file)
-    @file_wrapper.expects.exists?(test_main_config_file).returns(true)
+    @file_wrapper.expects.exist?(test_main_config_file).returns(true)
   
     @loader.find_project_files
     
@@ -78,11 +78,11 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
     test_config_file = 'files/config/tests.yml'
     
     @system_wrapper.expects.env_get('CEEDLING_USER_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
 
     @system_wrapper.expects.env_get('CEEDLING_MAIN_PROJECT_FILE').returns(test_config_file)
-    @file_wrapper.expects.exists?(test_config_file).returns(false)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(false)
+    @file_wrapper.expects.exist?(test_config_file).returns(false)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(false)
     
     @stream_wrapper.expects.stderr_puts('Found no Ceedling project file (*.yml)')
     
@@ -92,10 +92,10 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
   should "raise if main test project file cannot be found on disk and no environment variable is set" do  
 
     @system_wrapper.expects.env_get('CEEDLING_USER_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
 
     @system_wrapper.expects.env_get('CEEDLING_MAIN_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(false)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(false)
     
     @stream_wrapper.expects.stderr_puts('Found no Ceedling project file (*.yml)')
     
@@ -108,10 +108,10 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
     yaml = {:config => []}
   
     @system_wrapper.expects.env_get('CEEDLING_USER_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(false)
 
     @system_wrapper.expects.env_get('CEEDLING_MAIN_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(true)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(true)
     @yaml_wrapper.expects.load(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(yaml)
     
     @loader.find_project_files
@@ -125,10 +125,10 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
     merged_yaml = {:config => [], :more => 'less', :smore => 'yum'}
   
     @system_wrapper.expects.env_get('CEEDLING_USER_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(true)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(true)
 
     @system_wrapper.expects.env_get('CEEDLING_MAIN_PROJECT_FILE').returns(nil)
-    @file_wrapper.expects.exists?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(true)
+    @file_wrapper.expects.exist?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(true)
   
     @yaml_wrapper.expects.load(DEFAULT_CEEDLING_MAIN_PROJECT_FILE).returns(main_yaml)
     @yaml_wrapper.expects.load(DEFAULT_CEEDLING_USER_PROJECT_FILE).returns(user_yaml)

@@ -61,7 +61,7 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
   should "complain about non-existent paths for given path entries in config" do
     config = {:project => {:build_root => 'project/build'}}
     
-    @file_wrapper.expects.exists?('project/build').returns(false)
+    @file_wrapper.expects.exist?('project/build').returns(false)
     
     @stream_wrapper.expects.stderr_puts("ERROR: Config path [:project][:build_root]['project/build'] does not exist on disk.")
     
@@ -74,8 +74,8 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
         :test_paths => ['main/test', 'modules/*/test']
       }}
   
-    @file_wrapper.expects.exists?('main/test').returns(true)
-    @file_wrapper.expects.exists?('modules').returns(true)
+    @file_wrapper.expects.exist?('main/test').returns(true)
+    @file_wrapper.expects.exist?('modules').returns(true)
         
     assert(@validator.validate_paths(config, :project, :test_paths))
   end
@@ -99,7 +99,7 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
           :executable => 'bin/app.exe'
       }}}
     
-    @file_wrapper.expects.exists?('bin/app.exe').returns(false)
+    @file_wrapper.expects.exist?('bin/app.exe').returns(false)
     
     @stream_wrapper.expects.stderr_puts("ERROR: Config filepath [:tools][:thinger][:executable]['bin/app.exe'] does not exist on disk.") 
     
@@ -116,9 +116,9 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
     
       @system_wrapper.expects.search_paths.returns(['bin', 'c:/program files/app', 'tools/thingamabob'])
 
-      @file_wrapper.expects.exists?('bin/app').returns(false)
-      @file_wrapper.expects.exists?('c:/program files/app/app').returns(false)
-      @file_wrapper.expects.exists?('tools/thingamabob/app').returns(false)
+      @file_wrapper.expects.exist?('bin/app').returns(false)
+      @file_wrapper.expects.exist?('c:/program files/app/app').returns(false)
+      @file_wrapper.expects.exist?('tools/thingamabob/app').returns(false)
     
     @stream_wrapper.expects.stderr_puts("ERROR: Config filepath [:tools][:thinger][:executable]['app'] does not exist in system search paths.") 
     
@@ -144,7 +144,7 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
           :executable => 'bin/app.exe'
       }}}
     
-    @file_wrapper.expects.exists?('bin/app.exe').returns(true)
+    @file_wrapper.expects.exist?('bin/app.exe').returns(true)
     
     assert(@validator.validate_filepath(config, :tools, :thinger, :executable))
   end
@@ -159,9 +159,9 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
     
     @system_wrapper.expects.search_paths.returns(['/usr/bin', 'c:/program files/app', 'tools'])
     
-    @file_wrapper.expects.exists?('/usr/bin/gcc').returns(false)
-    @file_wrapper.expects.exists?('c:/program files/app/gcc').returns(false)
-    @file_wrapper.expects.exists?('tools/gcc').returns(true)
+    @file_wrapper.expects.exist?('/usr/bin/gcc').returns(false)
+    @file_wrapper.expects.exist?('c:/program files/app/gcc').returns(false)
+    @file_wrapper.expects.exist?('tools/gcc').returns(true)
     
     assert(@validator.validate_filepath(config, :tools, :thinger, :executable))
   end
@@ -173,8 +173,8 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
   #       :test_paths => ['main/test', 'modules/*/test']
   #     }}
   # 
-  #   @file_wrapper.expects.exists?('main/test').returns(true)
-  #   @file_wrapper.expects.exists?('modules').returns(true)
+  #   @file_wrapper.expects.exist?('main/test').returns(true)
+  #   @file_wrapper.expects.exist?('modules').returns(true)
   #       
   #   assert(@validator.validate_paths(config, :project, :test_paths))
   # end
@@ -182,7 +182,7 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
   # should "complain about non-existent paths for given path entries in config" do
   #   config = {:project => {:build_root => 'project/build'}}
   #   
-  #   @file_wrapper.expects.exists?('project/build').returns(false)
+  #   @file_wrapper.expects.exist?('project/build').returns(false)
   #   
   #   @stream_wrapper.expects.stderr_puts("ERROR: Config path [:project][:build_root]['project/build'] does not exist on disk.")
   #   

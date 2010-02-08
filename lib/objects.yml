@@ -43,14 +43,16 @@ tool_executor_helper:
 configurator:
   compose:
     - configurator_helper
-    - configurator_extender
+    - configurator_plugins
     - configurator_builder
     - yaml_wrapper
 
 configurator_helper:
-  compose: configurator_validator
+  compose:
+    - configurator_validator
+    - system_wrapper
 
-configurator_extender:
+configurator_plugins:
   compose:
     - stream_wrapper
     - file_wrapper
@@ -77,17 +79,17 @@ setupinator:
     - configurator
     - project_file_loader
     - test_includes_extractor
-    - extendinator
+    - plugin_manager
 
-extendinator:
+plugin_manager:
   compose:
     - configurator
-    - extendinator_helper
+    - plugin_manager_helper
     - streaminator
     - reportinator
     - system_wrapper
   
-extendinator_helper:
+plugin_manager_helper:
   compose: rake_wrapper
 
 verbosinator:
@@ -126,7 +128,7 @@ generator:
     - file_finder
     - file_path_utils
     - streaminator
-    - extendinator
+    - plugin_manager
     - file_wrapper
 
 generator_test_results:
@@ -144,7 +146,7 @@ reporter_test_results:
   compose:
     - reporter_test_results_helper
     - configurator
-    - extendinator
+    - plugin_manager
     - streaminator
     - yaml_wrapper
     - file_wrapper

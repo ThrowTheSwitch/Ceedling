@@ -43,7 +43,7 @@ class GeneratorTestResultsTest < Test::Unit::TestCase
     raw_unity_output = %Q[
            
       test_a_file.c:13:test_a_single_thing:pay no attention to the test behind the curtain IGNORED
-      test_a_file.c:18:test_another_thing:pay no attention to the test behind the curtain IGNORED
+      test_a_file.c:18:test_another_thing:pay no attention to the:stray colon IGNORED
       test_a_file.c:35:test_your_knowledge:Expected TRUE was FALSE
       test_a_success_case::: PASS
       
@@ -62,20 +62,22 @@ class GeneratorTestResultsTest < Test::Unit::TestCase
     expected_hash = {
       :counts => {:total => 10, :failed => 3, :ignored => 4, :passed => 3},
       :source => {:path => 'files/tests', :file => 'test_a_file.c'},
-      :messages => {
-        :failures => ['35:test_your_knowledge:Expected TRUE was FALSE', '47:test_another_thing:Expected FALSE was TRUE', '65:test_a_final_thing:BOOM!'],
-        :ignores => [
-          '13:test_a_single_thing:pay no attention to the test behind the curtain',
-          '18:test_another_thing:pay no attention to the test behind the curtain',
-          '53:test_some_non_void_param_stuff:pay no attention to the test behind the curtain',
-          '60:test_some_multiline_test_case_action:pay no attention to the test behind the curtain'
-          ],
-        :successes => [
-          'test_a_success_case',
-          'test_another_success_case',
-          'test_yet_another_success_case'
-          ]
-        }
+      :failures => [
+        {:test => 'test_your_knowledge', :line => 35, :message => 'Expected TRUE was FALSE'},
+        {:test => 'test_another_thing', :line => 47, :message => 'Expected FALSE was TRUE'},
+        {:test => 'test_a_final_thing', :line => 65, :message => 'BOOM!'},
+        ],
+      :ignores => [
+        {:test => 'test_a_single_thing', :line => 13, :message => 'pay no attention to the test behind the curtain'},
+        {:test => 'test_another_thing', :line => 18, :message => 'pay no attention to the:stray colon'},
+        {:test => 'test_some_non_void_param_stuff', :line => 53, :message => 'pay no attention to the test behind the curtain'},
+        {:test => 'test_some_multiline_test_case_action', :line => 60, :message => 'pay no attention to the test behind the curtain'},
+        ],
+      :successes => [
+        {:test => 'test_a_success_case'},
+        {:test => 'test_another_success_case'},
+        {:test => 'test_yet_another_success_case'},
+        ]
       }
     
     @configurator.expects.extension_testfail.returns('.fail')
@@ -91,10 +93,10 @@ class GeneratorTestResultsTest < Test::Unit::TestCase
     
     # clean test fixture output
     raw_unity_output = %Q[
-      test_a_file.c:13:test_a_single_thing:pay no attention to the test behind the curtain IGNORED
-      test_a_file.c:18:test_another_thing:pay no attention to the test behind the curtain IGNORED
+      test_eez.c:13:test_a_single_thing:pay no attention to the test behind the curtain IGNORED
+      test_eez.c:18:test_another_thing:pay no attention to the test behind the curtain IGNORED
       test_a_success_case::: PASS
-      test_a_file.c:60:test_some_multiline_test_case_action:pay no attention to the test behind the curtain IGNORED
+      test_eez.c:60:test_some_multiline_test_case_action:pay no attention to the stray:colon IGNORED
       test_another_success_case::: PASS
       test_yet_another_success_case::: PASS
       6 Tests 0 Failures 3 Ignored
@@ -104,19 +106,17 @@ class GeneratorTestResultsTest < Test::Unit::TestCase
     expected_hash = {
       :counts => {:total => 6, :failed => 0, :ignored => 3, :passed => 3},
       :source => {:path => 'files/tests', :file => 'test_eez.c'},
-      :messages => {
-        :failures => [],
-        :ignores => [
-          '13:test_a_single_thing:pay no attention to the test behind the curtain',
-          '18:test_another_thing:pay no attention to the test behind the curtain',
-          '60:test_some_multiline_test_case_action:pay no attention to the test behind the curtain'
-          ],
-        :successes => [
-          'test_a_success_case',
-          'test_another_success_case',
-          'test_yet_another_success_case'
-          ]
-        }
+      :failures => [],
+      :ignores => [
+        {:test => 'test_a_single_thing', :line => 13, :message => 'pay no attention to the test behind the curtain'},
+        {:test => 'test_another_thing', :line => 18, :message => 'pay no attention to the test behind the curtain'},
+        {:test => 'test_some_multiline_test_case_action', :line => 60, :message => 'pay no attention to the stray:colon'},
+        ],
+      :successes => [
+        {:test => 'test_a_success_case'},
+        {:test => 'test_another_success_case'},
+        {:test => 'test_yet_another_success_case'},
+        ]
       }
     
     @yaml_wrapper.expects.dump('project/build/results/test_eez.pass', expected_hash)

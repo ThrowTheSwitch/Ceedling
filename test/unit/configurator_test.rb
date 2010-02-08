@@ -5,7 +5,7 @@ require 'configurator'
 class ConfiguratorTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:configurator_helper, :configurator_builder, :configurator_extender, :yaml_wrapper)
+    objects = create_mocks(:configurator_helper, :configurator_builder, :configurator_plugins, :yaml_wrapper)
     create_mocks(:test_hash)
     @configurator = Configurator.new(objects)
     
@@ -41,7 +41,7 @@ class ConfiguratorTest < Test::Unit::TestCase
         :hammer => {:executable => "gcc"},
         :ratchet => {:executable => "\\bin\\cpp"}
         },
-      :extenders => {:base_path => "project\\extenders"}
+      :plugins => {:base_path => "project\\plugins"}
       }
   
     @configurator.standardize_paths(in_hash)
@@ -54,7 +54,7 @@ class ConfiguratorTest < Test::Unit::TestCase
     assert_equal('gcc', in_hash[:tools][:hammer][:executable])
     assert_equal('/bin/cpp', in_hash[:tools][:ratchet][:executable])
     
-    assert_equal('project/extenders', in_hash[:extenders][:base_path])
+    assert_equal('project/plugins', in_hash[:plugins][:base_path])
   end
   
   ############# validate ##############
@@ -154,6 +154,9 @@ class ConfiguratorTest < Test::Unit::TestCase
   should "build up configuration and constantize and create accessor methods from it" do
     # prep before hashification
     @configurator_builder.expects.insert_tool_names(@test_config)
+    
+    # set environment variables
+    @configurator_helper.expects.set_environment_variables(@test_config)
     
     # hashify the config object
     @configurator_builder.expects.hashify(@test_config).returns(@test_hash)

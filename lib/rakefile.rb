@@ -44,10 +44,10 @@ end
 
 # end block executed following each rake run
 END {
-  @objects[:extendinator].post_build
+  @objects[:plugin_manager].post_build
   
-  if (@objects[:extendinator].build_failed?)
-    @objects[:extendinator].print_build_failures
+  if (@objects[:plugin_manager].build_failed?)
+    @objects[:plugin_manager].print_build_failures
     exit(1)
   end
 }

@@ -39,7 +39,7 @@ class ConfiguratorValidator
     path_list.each do |path|
       base_path = FilePathUtils::dirname(path) # lop off glob specifiers
       
-      if (not @file_wrapper.exists?(base_path))
+      if (not @file_wrapper.exist?(base_path))
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
         @stream_wrapper.stderr_puts("ERROR: Config path #{format_key_sequence(keys, hash[:depth])}['#{base_path}'] does not exist on disk.") 
         exist = false
@@ -52,7 +52,7 @@ class ConfiguratorValidator
   
   # simple path verification
   def validate_path(path, *keys)
-    if (not @file_wrapper.exists?(path))
+    if (not @file_wrapper.exist?(path))
       # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
       @stream_wrapper.stderr_puts("ERROR: Config path '#{path}' associated with #{format_key_sequence(keys, keys.size)} does not exist on disk.") 
       exist = false
@@ -76,7 +76,7 @@ class ConfiguratorValidator
       exists = false
       
       @system_wrapper.search_paths.each do |path|
-        if (@file_wrapper.exists?(File.join(path, filepath)))
+        if (@file_wrapper.exist?(File.join(path, filepath)))
           exists = true
           break
         end
@@ -90,7 +90,7 @@ class ConfiguratorValidator
       
     # if there is a path included, check that explicit filepath exists
     else
-      if (not @file_wrapper.exists?(filepath))
+      if (not @file_wrapper.exist?(filepath))
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
         @stream_wrapper.stderr_puts("ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk.") 
         return false

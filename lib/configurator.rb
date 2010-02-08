@@ -3,9 +3,9 @@ require 'deep_merge'
 
 class Configurator
   
-  attr_reader :project_config_hash, :cmock_config_hash, :script_extenders, :rake_extenders
+  attr_reader :project_config_hash, :cmock_config_hash, :script_plugins, :rake_plugins
   
-  constructor :configurator_helper, :configurator_builder, :configurator_extender, :yaml_wrapper
+  constructor :configurator_helper, :configurator_builder, :configurator_plugins, :yaml_wrapper
   
   def setup
     # special copy of cmock config to provide to cmock for construction
@@ -15,7 +15,7 @@ class Configurator
     # in eval() statements in build() have something of proper scope and persistence to reference
     @project_config_hash = {}
     
-    @script_extenders = []
+    @script_plugins = []
   end
   
   
@@ -25,21 +25,21 @@ class Configurator
   end
   
   
-  def populate_extenders_defaults(config)
-    if (config[:extenders].nil?)
-      config[:extenders] = {
+  def populate_plugins_defaults(config)
+    if (config[:plugins].nil?)
+      config[:plugins] = {
         :base_path => '.',
         :enabled => []
         }
       return
     end
     
-    if (config[:extenders][:base_path].nil?)
-      config[:extenders][:base_path] = '.'
+    if (config[:plugins][:base_path].nil?)
+      config[:plugins][:base_path] = '.'
     end
 
-    if (config[:extenders][:enabled].nil?)
-      config[:extenders][:enabled] = []
+    if (config[:plugins][:enabled].nil?)
+      config[:plugins][:enabled] = []
     end
   end
 
@@ -55,7 +55,7 @@ class Configurator
       FilePathUtils::standardize(tool_config[:executable])
     end
     
-    FilePathUtils::standardize(config[:extenders][:base_path])
+    FilePathUtils::standardize(config[:plugins][:base_path])
   end
   
   
@@ -91,13 +91,13 @@ class Configurator
   end
   
   
-  def find_and_merge_extenders(config)    
-    @rake_extenders   = @configurator_extender.find_rake_extenders(config)
-    @script_extenders = @configurator_extender.find_script_extenders(config)
-    config_extenders  = @configurator_extender.find_config_extenders(config)
+  def find_and_merge_plugins(config)    
+    @rake_plugins   = @configurator_plugins.find_rake_plugins(config)
+    @script_plugins = @configurator_plugins.find_script_plugins(config)
+    config_plugins  = @configurator_plugins.find_config_plugins(config)
     
-    config_extenders.each do |extender|
-      config.deep_merge( @yaml_wrapper.load(extender) )
+    config_plugins.each do |plugin|
+      config.deep_merge( @yaml_wrapper.load(plugin) )
     end
   end
   
@@ -105,6 +105,8 @@ class Configurator
   def build(config)
     # grab tool names from yaml and insert into tool structures so available for error messages
     @configurator_builder.insert_tool_names(config)
+    
+    @configurator_helper.set_environment_variables(config)
     
     # convert config object to flattened hash
     @project_config_hash = @configurator_builder.hashify(config)
@@ -136,9 +138,9 @@ class Configurator
   end
   
   
-  def insert_rake_extenders(extenders)
-    extenders.each do |extender|
-      @project_config_hash[:project_rakefile_component_files] << extender
+  def insert_rake_plugins(plugins)
+    plugins.each do |plugin|
+      @project_config_hash[:project_rakefile_component_files] << plugin
     end
   end
   

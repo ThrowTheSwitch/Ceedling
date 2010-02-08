@@ -1,7 +1,7 @@
 
 class Setupinator
 
-  constructor :project_file_loader, :configurator, :test_includes_extractor, :extendinator
+  constructor :project_file_loader, :configurator, :test_includes_extractor, :plugin_manager
 
   def do_setup(system_objects)
     # load project yaml file
@@ -11,15 +11,15 @@ class Setupinator
     # load up all the constants and accessors our rake files, objects, & external scripts will need;
     # note: configurator modifies the cmock section of the hash with a couple defaults to tie 
     #       project together - the modified hash is used to build cmock object
-    @configurator.populate_extenders_defaults(config_hash)
+    @configurator.populate_plugins_defaults(config_hash)
     @configurator.standardize_paths(config_hash)
     @configurator.validate(config_hash)
     @configurator.build_cmock_defaults(config_hash)
-    @configurator.find_and_merge_extenders(config_hash)
+    @configurator.find_and_merge_plugins(config_hash)
     @configurator.build(config_hash)
-    @configurator.insert_rake_extenders(@configurator.rake_extenders)
+    @configurator.insert_rake_plugins(@configurator.rake_plugins)
 
-    @extendinator.load_extender_scripts(@configurator.script_extenders, system_objects)
+    @plugin_manager.load_plugin_scripts(@configurator.script_plugins, system_objects)
 
     # a bit unorthodox to insert these values here, but it simplifies the code quite a bit;
     # and we have to wait until the configurator is done with setup before we can get at them

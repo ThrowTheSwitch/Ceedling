@@ -5,7 +5,7 @@ require 'generator'
 class GeneratorTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:configurator, :preprocessinator, :cmock_factory, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :extendinator, :file_wrapper)
+    objects = create_mocks(:configurator, :preprocessinator, :cmock_factory, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :plugin_manager, :file_wrapper)
     create_mocks(:cmock, :file)
     @generator = Generator.new(objects)
   end
@@ -130,7 +130,7 @@ class GeneratorTest < Test::Unit::TestCase
     tool_config = {:tools_test_runner => {}}
     arg_hash = {:executable => 'build/out/test.out', :result => 'build/results/test.pass'}
 
-    @extendinator.expects.pre_test_execute(arg_hash)
+    @plugin_manager.expects.pre_test_execute(arg_hash)
     
     @streaminator.expects.stdout_puts("Running test.out...", Verbosity::NORMAL)
     
@@ -143,7 +143,7 @@ class GeneratorTest < Test::Unit::TestCase
     
     @generator_test_results.expects.process_and_write_results('test results', arg_hash[:result], 'tests/test.c')
 
-    @extendinator.expects.post_test_execute(arg_hash)
+    @plugin_manager.expects.post_test_execute(arg_hash)
 
     @generator.generate_test_results(arg_hash[:executable], arg_hash[:result])    
   end
@@ -152,7 +152,7 @@ class GeneratorTest < Test::Unit::TestCase
     tool_config = {:tools_test_runner => {}}
     arg_hash = {:executable => 'build/out/test.out', :result => 'build/results/test.pass'}
 
-    @extendinator.expects.pre_test_execute(arg_hash)
+    @plugin_manager.expects.pre_test_execute(arg_hash)
 
     @streaminator.expects.stdout_puts("Running test.out...", Verbosity::NORMAL)
     
@@ -170,7 +170,7 @@ class GeneratorTest < Test::Unit::TestCase
     tool_config = {:tools_test_runner => {}}
     arg_hash = {:executable => 'build/out/test.out', :result => 'build/results/test.pass'}
 
-    @extendinator.expects.pre_test_execute(arg_hash)
+    @plugin_manager.expects.pre_test_execute(arg_hash)
 
     @streaminator.expects.stdout_puts("Running test.out...", Verbosity::NORMAL)
     

@@ -12,9 +12,11 @@ class GeneratorTestResults
     output_file = results_file
     
     results = {
-      :source   => {:path => File.dirname(test_file), :file => File.basename(test_file)},
-      :messages => {:successes => [], :failures => [], :ignores => []},
-      :counts   => {:total => 0, :passed => 0, :failed => 0, :ignored  => 0}
+      :source    => {:path => File.dirname(test_file), :file => File.basename(test_file)},
+      :successes => [],
+      :failures  => [],
+      :ignores   => [],
+      :counts    => {:total => 0, :passed => 0, :failed => 0, :ignored  => 0}
       }
     
     raw_unity_output.each_line do |line|
@@ -24,24 +26,17 @@ class GeneratorTestResults
       # find any unity output messages 
       elsif (line.include?(':'))
         processed_line = line.strip
-        line_type = :failed
 
         if (processed_line =~ /( IGNORED$)/)
-          line_type = :ignored
           processed_line.sub!($1, '')
-          processed_line = ((processed_line.split(':'))[1..-1]).join(':')
+          results[:ignores] << extract_line_elements(processed_line)
         elsif (processed_line =~ /(::: PASS$)/)
-          line_type = :succeeded
           processed_line.sub!($1, '')
+          results[:successes] << {:test => processed_line}
         else # failures
-          processed_line = ((processed_line.split(':'))[1..-1]).join(':')
+          results[:failures] << extract_line_elements(processed_line)
         end
 
-        case (line_type)
-          when :failed    then results[:messages][:failures]  << processed_line
-          when :ignored   then results[:messages][:ignores]   << processed_line
-          when :succeeded then results[:messages][:successes] << processed_line
-        end
       # process test statistics
       elsif (line =~ /^(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored/i)
         results[:counts][:total]   = $1.to_i
@@ -59,6 +54,13 @@ class GeneratorTestResults
     output_file = results_file.ext(@configurator.extension_testfail) if (results[:counts][:failed] > 0)
     
     @yaml_wrapper.dump(output_file, results)
+  end
+
+  private
+  
+  def extract_line_elements(line)
+    elements = (line.split(':'))[1..-1]
+    return {:test => elements[1], :line => elements[0].to_i, :message => elements[2..-1].join(':')}
   end
 
 end

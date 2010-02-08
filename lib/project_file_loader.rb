@@ -17,9 +17,9 @@ class ProjectFileLoader
     # first go hunting for optional user project file by looking for environment variable and then default location on disk
     user_file = @system_wrapper.env_get('CEEDLING_USER_PROJECT_FILE')
     
-    if ( not user_file.nil? and @file_wrapper.exists?(user_file) )
+    if ( not user_file.nil? and @file_wrapper.exist?(user_file) )
       @user_project_filepath = user_file
-    elsif (@file_wrapper.exists?(DEFAULT_CEEDLING_USER_PROJECT_FILE))
+    elsif (@file_wrapper.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE))
       @user_project_filepath = DEFAULT_CEEDLING_USER_PROJECT_FILE
     end        
     
@@ -27,9 +27,9 @@ class ProjectFileLoader
     # blow up if we don't find this guy -- like, he's so totally important
     main_file = @system_wrapper.env_get('CEEDLING_MAIN_PROJECT_FILE')
     
-    if ( not main_file.nil? and @file_wrapper.exists?(main_file) )
+    if ( not main_file.nil? and @file_wrapper.exist?(main_file) )
       @main_project_filepath = main_file
-    elsif (@file_wrapper.exists?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE))
+    elsif (@file_wrapper.exist?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE))
       @main_project_filepath = DEFAULT_CEEDLING_MAIN_PROJECT_FILE
     else
       # no verbosity checking since this is lowest level reporting anyhow &

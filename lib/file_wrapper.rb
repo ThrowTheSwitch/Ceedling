@@ -9,8 +9,8 @@ class FileWrapper
     return File.expand_path(path)
   end
 
-  def exists?(filepath)
-    return File.exists?(filepath)
+  def exist?(filepath)
+    return File.exist?(filepath)
   end
 
   def directory?(path)
@@ -22,7 +22,7 @@ class FileWrapper
   end
 
   def directory_listing(path)
-    return Dir[path]
+    return Dir.entries(path)
   end
 
   def rm_f(filepath)

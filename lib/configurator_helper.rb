@@ -11,8 +11,18 @@ end
 
 class ConfiguratorHelper
   
-  constructor :configurator_validator
+  constructor :configurator_validator, :system_wrapper
+  
+  def set_environment_variables(config)
+    environment_hash = config[:environment]
     
+    return if (environment_hash.nil?)
+    
+    environment_hash.keys.sort.each do |key|
+      @system_wrapper.env_set(key.to_s.upcase, (environment_hash[key]).to_s)
+    end
+  end
+  
   def validate_required_sections(config)
     validation = []
     validation << @configurator_validator.exists?(config, :project)
@@ -45,10 +55,10 @@ class ConfiguratorHelper
       validation << @configurator_validator.validate_paths(config, :paths, key)
     end
 
-    extender_base_path = config[:extenders][:base_path]
-    validation << @configurator_validator.validate_path( extender_base_path, :extenders, :base_path )
-    config[:extenders][:enabled].sort.each do |extender|
-      validation << @configurator_validator.validate_path( File.join(extender_base_path, extender), :extenders, :enabled, extender.to_sym )
+    plugin_base_path = config[:plugins][:base_path]
+    validation << @configurator_validator.validate_path( plugin_base_path, :plugins, :base_path )
+    config[:plugins][:enabled].sort.each do |plugin|
+      validation << @configurator_validator.validate_path( File.join(plugin_base_path, plugin), :plugins, :enabled, plugin.to_sym )
     end
 
     return false if (validation.include?(false))

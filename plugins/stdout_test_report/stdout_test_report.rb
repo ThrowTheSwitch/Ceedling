@@ -1,8 +1,8 @@
-require 'extender'
+require 'plugin'
 require 'yaml'
 
 
-class StdoutTestReport < Extender
+class StdoutTestReport < Plugin
   
   def setup
     @test_list = []
@@ -14,7 +14,7 @@ class StdoutTestReport < Extender
   end
   
   def post_build
-    return if (not @system_objects[:extendinator].test_build?)
+    return if (not @system_objects[:plugin_manager].test_build?)
 
     @system_objects[:reporter_test_results].run_report(PROJECT_TEST_RESULTS_PATH, @test_list, 'Unit test failures.')
   end

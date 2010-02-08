@@ -1,12 +1,12 @@
 require 'constants'
 
-class ExtendinatorHelper
+class PluginManagerHelper
 
   constructor :rake_wrapper
 
 
-  def instantiate_extender_script(extender, system_objects)
-    return eval "#{extender}.new(system_objects)"
+  def instantiate_plugin_script(plugin, system_objects)
+    return eval "#{plugin}.new(system_objects)"
   end
 
 
