@@ -276,47 +276,47 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
     in_hash = {}
     out_hash = @builder.set_rakefile_components(in_hash)
     assert_equal(
-      ["#{CEEDLING_LIB}/rules.rake",
-       "#{CEEDLING_LIB}/tasks.rake",
-       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      ["#{CEEDLING_LIB}rules.rake",
+       "#{CEEDLING_LIB}tasks.rake",
+       "#{CEEDLING_LIB}tasks_filesystem.rake"].sort,
       out_hash[:project_rakefile_component_files].sort)
     
     in_hash = {:project_use_mocks => true}
     out_hash = @builder.set_rakefile_components(in_hash)
     assert_equal(
-      ["#{CEEDLING_LIB}/rules.rake",
-       "#{CEEDLING_LIB}/tasks.rake",
-       "#{CEEDLING_LIB}/rules_cmock.rake",
-       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      ["#{CEEDLING_LIB}rules.rake",
+       "#{CEEDLING_LIB}tasks.rake",
+       "#{CEEDLING_LIB}rules_cmock.rake",
+       "#{CEEDLING_LIB}tasks_filesystem.rake"].sort,
       out_hash[:project_rakefile_component_files].sort)
 
     in_hash = {:project_use_preprocessor => true}
     out_hash = @builder.set_rakefile_components(in_hash)
     assert_equal(
-      ["#{CEEDLING_LIB}/rules.rake",
-       "#{CEEDLING_LIB}/tasks.rake",
-       "#{CEEDLING_LIB}/rules_preprocess.rake",
-       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      ["#{CEEDLING_LIB}rules.rake",
+       "#{CEEDLING_LIB}tasks.rake",
+       "#{CEEDLING_LIB}rules_preprocess.rake",
+       "#{CEEDLING_LIB}tasks_filesystem.rake"].sort,
       out_hash[:project_rakefile_component_files].sort)
     
     in_hash = {:project_use_auxiliary_dependencies => true}
     out_hash = @builder.set_rakefile_components(in_hash)
     assert_equal(
-      ["#{CEEDLING_LIB}/rules.rake",
-       "#{CEEDLING_LIB}/tasks.rake",
-       "#{CEEDLING_LIB}/rules_aux_dependencies.rake",
-       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      ["#{CEEDLING_LIB}rules.rake",
+       "#{CEEDLING_LIB}tasks.rake",
+       "#{CEEDLING_LIB}rules_aux_dependencies.rake",
+       "#{CEEDLING_LIB}tasks_filesystem.rake"].sort,
       out_hash[:project_rakefile_component_files].sort)
 
     in_hash = {:project_use_mocks => true, :project_use_preprocessor => true, :project_use_auxiliary_dependencies => true}
     out_hash = @builder.set_rakefile_components(in_hash)
     assert_equal(
-      ["#{CEEDLING_LIB}/rules.rake",
-       "#{CEEDLING_LIB}/tasks.rake",
-       "#{CEEDLING_LIB}/rules_cmock.rake",
-       "#{CEEDLING_LIB}/rules_preprocess.rake",
-       "#{CEEDLING_LIB}/rules_aux_dependencies.rake",
-       "#{CEEDLING_LIB}/tasks_filesystem.rake"].sort,
+      ["#{CEEDLING_LIB}rules.rake",
+       "#{CEEDLING_LIB}tasks.rake",
+       "#{CEEDLING_LIB}rules_cmock.rake",
+       "#{CEEDLING_LIB}rules_preprocess.rake",
+       "#{CEEDLING_LIB}rules_aux_dependencies.rake",
+       "#{CEEDLING_LIB}tasks_filesystem.rake"].sort,
       out_hash[:project_rakefile_component_files].sort)
   end
 
@@ -332,7 +332,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
         :paths_include => ['files/source/include'],
         }
         
-    expected_include_paths = ['files/source', 'files/source/include', 'files/tests', 'files/tests/support', "#{CEEDLING_ROOT}/vendor/unity/src"]
+    expected_include_paths = ['files/source', 'files/source/include', 'files/tests', 'files/tests/support', "#{CEEDLING_VENDOR}unity/src"]
 
     out_hash = @builder.collect_test_and_source_include_paths(in_hash)
 
@@ -349,7 +349,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
         :paths_include => ['files/source/include'],
         }
         
-    expected_include_paths = ['files/source', 'files/source/include', 'files/tests', 'files/tests/support', "#{CEEDLING_ROOT}/vendor/unity/src", "#{CEEDLING_ROOT}/vendor/c_exception/lib"]
+    expected_include_paths = ['files/source', 'files/source/include', 'files/tests', 'files/tests/support', "#{CEEDLING_VENDOR}unity/src", "#{CEEDLING_VENDOR}c_exception/lib"]
 
     out_hash = @builder.collect_test_and_source_include_paths(in_hash)
 
@@ -367,7 +367,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
         :paths_include => ['files/source/include'],
         }
         
-    expected_include_paths = ['files/source', 'files/source/include', 'files/tests', 'files/tests/support', "#{CEEDLING_ROOT}/vendor/unity/src", 'files/build/mocks']
+    expected_include_paths = ['files/source', 'files/source/include', 'files/tests', 'files/tests/support', "#{CEEDLING_VENDOR}unity/src", 'files/build/mocks']
 
     out_hash = @builder.collect_test_and_source_include_paths(in_hash)
 
@@ -385,7 +385,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
         :paths_include => ['files/source/include'],
         }
         
-    expected_include_paths = ['files/source', 'files/source/include', 'files/tests', 'files/tests/support', "#{CEEDLING_ROOT}/vendor/unity/src", "#{CEEDLING_ROOT}/vendor/c_exception/lib", 'files/build/mocks']
+    expected_include_paths = ['files/source', 'files/source/include', 'files/tests', 'files/tests/support', "#{CEEDLING_VENDOR}unity/src", "#{CEEDLING_VENDOR}c_exception/lib", 'files/build/mocks']
 
     out_hash = @builder.collect_test_and_source_include_paths(in_hash)
 
@@ -404,7 +404,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
         :project_test_runners_path => 'files/build/runners',
         }
         
-    expected_paths = ['files/tests', 'files/tests/support', 'files/source', 'files/build/runners', "#{CEEDLING_ROOT}/vendor/unity/src"]
+    expected_paths = ['files/tests', 'files/tests/support', 'files/source', 'files/build/runners', "#{CEEDLING_VENDOR}unity/src"]
 
     out_hash = @builder.collect_test_and_source_paths(in_hash)
 
@@ -422,7 +422,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
         :cmock_mock_path => 'files/build/mocks',
         }
         
-    expected_paths = ['files/tests', 'files/tests/support', 'files/source', 'files/build/runners', 'files/build/mocks', "#{CEEDLING_ROOT}/vendor/unity/src"]
+    expected_paths = ['files/tests', 'files/tests/support', 'files/source', 'files/build/runners', 'files/build/mocks', "#{CEEDLING_VENDOR}unity/src"]
 
     out_hash = @builder.collect_test_and_source_paths(in_hash)
 
@@ -439,7 +439,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
         :project_test_runners_path => 'files/build/runners',
         }
         
-    expected_paths = ['files/tests', 'files/tests/support', 'files/source', 'files/build/runners', "#{CEEDLING_ROOT}/vendor/c_exception/lib", "#{CEEDLING_ROOT}/vendor/unity/src"]
+    expected_paths = ['files/tests', 'files/tests/support', 'files/source', 'files/build/runners', "#{CEEDLING_VENDOR}c_exception/lib", "#{CEEDLING_VENDOR}unity/src"]
 
     out_hash = @builder.collect_test_and_source_paths(in_hash)
 
@@ -457,7 +457,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
         :cmock_mock_path => 'files/build/mocks',
         }
         
-    expected_paths = ['files/tests', 'files/tests/support', 'files/source', 'files/build/runners', 'files/build/mocks', "#{CEEDLING_ROOT}/vendor/c_exception/lib", "#{CEEDLING_ROOT}/vendor/unity/src"]
+    expected_paths = ['files/tests', 'files/tests/support', 'files/source', 'files/build/runners', 'files/build/mocks', "#{CEEDLING_VENDOR}c_exception/lib", "#{CEEDLING_VENDOR}unity/src"]
 
     out_hash = @builder.collect_test_and_source_paths(in_hash)
 
@@ -517,45 +517,27 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
   ############# collect environment files #############
 
   should "collect environment source files plus project file but no user project file" do
-    # find the source ruby file of this here actual test file
-    source_file = File.join(LIB_ROOT, File.basename(__FILE__).gsub(/_test\./, '.'))
-  
-    @file_wrapper.expects.dirname(source_file).returns('ceedling/lib')
-    
-    @file_wrapper.expects.get_expanded_path('ceedling/lib').returns('/home/tools/ceedling/lib')
-    @file_wrapper.expects.get_expanded_path('/home/tools/ceedling/lib/../release').returns('/home/tools/ceedling/release')
-    @file_wrapper.expects.get_expanded_path('/home/tools/ceedling/lib/../vendor/cmock/release').returns('/home/tools/ceedling/vendor/cmock/release')
-    
     @project_file_loader.expects.main_project_filepath.returns('/home/project/config/project.yaml')
     @project_file_loader.expects.user_project_filepath.returns('')
     
     out_hash = @builder.collect_environment_dependencies
     
     assert_equal(
-      ['/home/tools/ceedling/release/build.info',
-       '/home/tools/ceedling/vendor/cmock/release/build.info',
+      ["#{CEEDLING_RELEASE}build.info",
+       "#{CEEDLING_VENDOR}cmock/release/build.info",
        '/home/project/config/project.yaml'].sort,
       out_hash[:collection_environment_dependencies].sort)
   end
 
-  should "collect environment source files plus project file and user project file" do
-    # find the source ruby file of this here actual test file
-    source_file = File.join(LIB_ROOT, File.basename(__FILE__).gsub(/_test\./, '.'))
-  
-    @file_wrapper.expects.dirname(source_file).returns('ceedling/lib')
-    
-    @file_wrapper.expects.get_expanded_path('ceedling/lib').returns('/home/tools/ceedling/lib')
-    @file_wrapper.expects.get_expanded_path('/home/tools/ceedling/lib/../release').returns('/home/tools/ceedling/release')
-    @file_wrapper.expects.get_expanded_path('/home/tools/ceedling/lib/../vendor/cmock/release').returns('/home/tools/ceedling/vendor/cmock/release')
-    
+  should "collect environment source files plus project file and user project file" do    
     @project_file_loader.expects.main_project_filepath.returns('/home/project/config/project.yaml')
     @project_file_loader.expects.user_project_filepath.returns('/home/project/config/user.yaml')
     
     out_hash = @builder.collect_environment_dependencies
     
     assert_equal(
-      ['/home/tools/ceedling/release/build.info',
-       '/home/tools/ceedling/vendor/cmock/release/build.info',
+      ["#{CEEDLING_RELEASE}build.info",
+       "#{CEEDLING_VENDOR}cmock/release/build.info",
        '/home/project/config/project.yaml',
        '/home/project/config/user.yaml'].sort,
       out_hash[:collection_environment_dependencies].sort)

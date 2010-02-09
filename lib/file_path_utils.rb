@@ -54,7 +54,7 @@ class FilePathUtils
   end
 
   def self.form_ceedling_vendor_path(filepath)
-    return File.join( CEEDLING_ROOT, 'vendor', filepath)
+    return File.join( CEEDLING_VENDOR, filepath)
   end
 
   ######### instance methods ##########

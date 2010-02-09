@@ -2,14 +2,16 @@ require 'fileutils'
 
 # 1. get directory containing this here file, back up one directory, and expand to full path
 # 2. lop off current working directory from the root of Ceedling
-# (the root of the file system, particularly in Windows, can show up in unexpected places and cause trouble)
+# (the root of the file system, particularly with Windows, can show up in unexpected places and cause trouble)
 ceedling_root           = File.expand_path(File.dirname(__FILE__) + '/..')
 ceedling_root_truncated = ceedling_root.sub(Regexp.escape(FileUtils.getwd), '')
 ceedling_root_truncated = ceedling_root_truncated[1..-1] if (ceedling_root_truncated[0..0] == '/')
 
-CEEDLING_ROOT   = ceedling_root_truncated + '/'
-CEEDLING_LIB    = CEEDLING_ROOT + 'lib/'
-CEEDLING_VENDOR = CEEDLING_ROOT + 'vendor/'
+# add trailing '/' as long as adding that '/' doesn't equal root of file system
+CEEDLING_ROOT    = ceedling_root_truncated + (ceedling_root_truncated.empty? ? '' : '/')
+CEEDLING_LIB     = CEEDLING_ROOT + 'lib/'
+CEEDLING_VENDOR  = CEEDLING_ROOT + 'vendor/'
+CEEDLING_RELEASE = CEEDLING_ROOT + 'release/'
 
 $LOAD_PATH.unshift( CEEDLING_LIB )
 $LOAD_PATH.unshift( CEEDLING_VENDOR + 'diy/lib' )

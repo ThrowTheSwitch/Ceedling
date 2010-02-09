@@ -53,7 +53,7 @@ class FileFinder
     return found_path
   end
   
-  
+
   def find_test_from_file_path(file_path)
     test_file = File.basename(file_path).ext(@configurator.extension_source)
     

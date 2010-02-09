@@ -263,7 +263,7 @@ class ConfiguratorBuilder
     
     paths << in_hash[:project_test_runners_path]
     insert_vendor_paths(paths, in_hash)
-    
+
     (paths).each do |path|
       all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
       all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
@@ -293,13 +293,8 @@ class ConfiguratorBuilder
   def collect_environment_dependencies
     dependencies = []
     
-    here = @file_wrapper.get_expanded_path(@file_wrapper.dirname(__FILE__))
-    
-    ceedling_release_path = @file_wrapper.get_expanded_path(here + '/../release')
-    cmock_release_path    = @file_wrapper.get_expanded_path(here + '/../vendor/cmock/release')
-    
-    ceedling_build_file = File.join(ceedling_release_path, 'build.info')
-    cmock_build_file    = File.join(cmock_release_path, 'build.info')
+    ceedling_build_file = File.join(CEEDLING_RELEASE, 'build.info')
+    cmock_build_file    = File.join(CEEDLING_VENDOR, 'cmock/release', 'build.info')
 
     # project files: anything changes in them & everything should regenerate
     dependencies << @project_file_loader.main_project_filepath

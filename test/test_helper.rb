@@ -13,9 +13,10 @@ TESTS_ROOT            = File.expand_path(File.dirname(__FILE__))
 SYSTEM_TEST_ROOT      = TESTS_ROOT + '/system'
 INTEGRATION_TEST_ROOT = TESTS_ROOT + '/integration'
 LIB_ROOT              = File.expand_path(File.dirname(__FILE__) + '/../lib')
-CEEDLING_ROOT         = 'test_ceedling_root'
-CEEDLING_LIB          = 'test_ceedling_lib'
-
+CEEDLING_ROOT         = 'test_ceedling_root/'
+CEEDLING_LIB          = 'test_ceedling_lib/'
+CEEDLING_VENDOR       = 'test_ceedling_vendor/'
+CEEDLING_RELEASE      = 'test_ceedling_release/'
 
 $config_options = {
   :project_build_root => 'project/build',
