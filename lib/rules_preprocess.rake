@@ -5,7 +5,7 @@
 #  fail to be updated when they actually need to be.
 rule(/#{PROJECT_TEST_PREPROCESS_FILES_PATH}\/#{'.+'}$/ => [
     proc do |task_name|
-      return @objects[:file_finder].find_any_file(task_name)
+      return @objects[:file_finder].find_test_or_source_file(task_name)
     end  
   ]) do |file|
   if (not @objects[:configurator].project_use_auxiliary_dependencies)
@@ -18,7 +18,7 @@ end
 # invocations against this rule can always happen as there are no deeper dependencies to consider
 rule(/#{PROJECT_TEST_PREPROCESS_INCLUDES_PATH}\/#{'.+'}$/ => [
     proc do |task_name|
-      return @objects[:file_finder].find_any_file(task_name)
+      return @objects[:file_finder].find_test_or_source_file(task_name)
     end  
   ]) do |file|
   @objects[:generator].generate_shallow_includes_list(file.source)

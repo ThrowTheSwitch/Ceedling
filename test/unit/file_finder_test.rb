@@ -92,7 +92,7 @@ class FileFinderTest < Test::Unit::TestCase
     @configurator.expects.collection_all_compilation_input.returns(collection)
     @file_finder_helper.expects.find_file_in_collection('flight.c', collection).returns('files/modules/flight.c')
     
-    assert_equal('files/modules/flight.c', @file_finder.find_test_or_source_file('flight.out'))
+    assert_equal('files/modules/flight.c', @file_finder.find_compilation_input_file('flight.out'))
   end
   
   ############ find all source files that correspond to given header files #############

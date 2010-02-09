@@ -63,13 +63,13 @@ class FileFinder
   end
 
 
-  def find_any_file(file_path)
+  def find_test_or_source_file(file_path)
     file = File.basename(file_path)
-    return @file_finder_helper.find_file_in_collection(file, @configurator.collection_all_compilation_input)
+    return @file_finder_helper.find_file_in_collection(file, @configurator.collection_all_tests + @configurator.collection_all_source)
   end
   
   
-  def find_test_or_source_file(file_path)
+  def find_compilation_input_file(file_path)
     source_file = File.basename(file_path).ext(@configurator.extension_source)
     return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_compilation_input)
   end

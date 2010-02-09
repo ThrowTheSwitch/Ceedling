@@ -42,15 +42,15 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
     @rake.define_task(Rake::FileTask, preprocess_src3)
   
     # set up expectations
-    @file_finder.expects.find_any_file(preprocess1).returns(preprocess_src1)
+    @file_finder.expects.find_test_or_source_file(preprocess1).returns(preprocess_src1)
     @configurator.expects.project_use_auxiliary_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src1)
 
-    @file_finder.expects.find_any_file(preprocess2).returns(preprocess_src2)
+    @file_finder.expects.find_test_or_source_file(preprocess2).returns(preprocess_src2)
     @configurator.expects.project_use_auxiliary_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src2)
 
-    @file_finder.expects.find_any_file(preprocess3).returns(preprocess_src3)
+    @file_finder.expects.find_test_or_source_file(preprocess3).returns(preprocess_src3)
     @configurator.expects.project_use_auxiliary_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src3)
     
@@ -78,7 +78,7 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
     @rake.define_task(Rake::FileTask, preprocess_src1)
   
     # set up expectations
-    @file_finder.expects.find_any_file(preprocess1).returns(preprocess_src1)
+    @file_finder.expects.find_test_or_source_file(preprocess1).returns(preprocess_src1)
     @configurator.expects.project_use_auxiliary_dependencies.returns(false)
     
     # invoke the test preprocess creation rule under test
@@ -102,7 +102,7 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
     @rake.define_task(Rake::FileTask, preprocess_src1)
   
     # set up expectations
-    @file_finder.expects.find_any_file(preprocess1).returns(preprocess_src1)
+    @file_finder.expects.find_test_or_source_file(preprocess1).returns(preprocess_src1)
     @configurator.expects.project_use_auxiliary_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src1)
 
@@ -138,11 +138,11 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
     @rake.define_task(Rake::FileTask, includes_src3)
   
     # set up expectations
-    @file_finder.expects.find_any_file(includes1).returns(includes_src1)
+    @file_finder.expects.find_test_or_source_file(includes1).returns(includes_src1)
     @generator.expects.generate_shallow_includes_list(includes_src1)
-    @file_finder.expects.find_any_file(includes2).returns(includes_src2)
+    @file_finder.expects.find_test_or_source_file(includes2).returns(includes_src2)
     @generator.expects.generate_shallow_includes_list(includes_src2)
-    @file_finder.expects.find_any_file(includes3).returns(includes_src3)
+    @file_finder.expects.find_test_or_source_file(includes3).returns(includes_src3)
     @generator.expects.generate_shallow_includes_list(includes_src3)
     
     # invoke the test includes creation rule under test
@@ -168,7 +168,7 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
     @rake.define_task(Rake::FileTask, includes_src1)
   
     # set up expectations
-    @file_finder.expects.find_any_file(includes1).returns(includes_src1)
+    @file_finder.expects.find_test_or_source_file(includes1).returns(includes_src1)
     @generator.expects.generate_shallow_includes_list(includes_src1)
     
     # invoke the test includes creation rule under test

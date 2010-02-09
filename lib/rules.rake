@@ -11,7 +11,7 @@ end
 
 rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
-      return @objects[:file_finder].find_test_or_source_file(task_name)
+      return @objects[:file_finder].find_compilation_input_file(task_name)
     end  
   ]) do |object|
   @objects[:generator].generate_object_file(object.source, object.name)

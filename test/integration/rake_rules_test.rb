@@ -103,11 +103,11 @@ class RakeRulesTest < Test::Unit::TestCase
     @rake.define_task(Rake::FileTask, object_src3)
   
     # set up expectations
-    @file_finder.expects.find_test_or_source_file(object1).returns(object_src1)
+    @file_finder.expects.find_compilation_input_file(object1).returns(object_src1)
     @generator.expects.generate_object_file(object_src1, object1)
-    @file_finder.expects.find_test_or_source_file(object2).returns(object_src2)
+    @file_finder.expects.find_compilation_input_file(object2).returns(object_src2)
     @generator.expects.generate_object_file(object_src2, object2)
-    @file_finder.expects.find_test_or_source_file(object3).returns(object_src3)
+    @file_finder.expects.find_compilation_input_file(object3).returns(object_src3)
     @generator.expects.generate_object_file(object_src3, object3)
     
     # invoke the test object creation rule under test
@@ -131,7 +131,7 @@ class RakeRulesTest < Test::Unit::TestCase
     @rake.define_task(Rake::FileTask, object_src1)
   
     # set up expectations
-    @file_finder.expects.find_test_or_source_file(object1).returns(object_src1)
+    @file_finder.expects.find_compilation_input_file(object1).returns(object_src1)
     @generator.expects.generate_object_file(object_src1, object1)
     
     # invoke the test runner creation rule under test

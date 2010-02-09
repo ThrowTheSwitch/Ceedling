@@ -36,11 +36,11 @@ class RakeRulesAuxDependenciesTest < Test::Unit::TestCase
     @rake.define_task(Rake::FileTask, dependencies_src3)
 
     # set up expectations
-    @file_finder.expects.find_test_or_source_file(dependencies1).returns(dependencies_src1)
+    @file_finder.expects.find_compilation_input_file(dependencies1).returns(dependencies_src1)
     @generator.expects.generate_dependencies_file(dependencies_src1, dependencies1)
-    @file_finder.expects.find_test_or_source_file(dependencies2).returns(dependencies_src2)
+    @file_finder.expects.find_compilation_input_file(dependencies2).returns(dependencies_src2)
     @generator.expects.generate_dependencies_file(dependencies_src2, dependencies2)
-    @file_finder.expects.find_test_or_source_file(dependencies3).returns(dependencies_src3)
+    @file_finder.expects.find_compilation_input_file(dependencies3).returns(dependencies_src3)
     @generator.expects.generate_dependencies_file(dependencies_src3, dependencies3)
 
     # invoke the dependencies creation rule under test
@@ -65,7 +65,7 @@ class RakeRulesAuxDependenciesTest < Test::Unit::TestCase
     @rake.define_task(Rake::FileTask, dependencies_src1)
 
     # set up expectations
-    @file_finder.expects.find_test_or_source_file(dependencies1).returns(dependencies_src1)
+    @file_finder.expects.find_compilation_input_file(dependencies1).returns(dependencies_src1)
     @generator.expects.generate_dependencies_file(dependencies_src1, dependencies1)
 
     # invoke the dependencies creation rule under test
