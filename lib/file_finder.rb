@@ -5,6 +5,11 @@ class FileFinder
 
   constructor :configurator, :file_finder_helper
 
+  def setup
+    @test_source_header_file_collection = @configurator.collection_all_tests + @configurator.collection_all_source + @configurator.collection_all_headers
+  end
+
+
   def find_mockable_header(mock_file)
     header = File.basename(mock_file).sub(/#{@configurator.cmock_mock_prefix}/, '').ext(@configurator.extension_header)
 
@@ -63,9 +68,9 @@ class FileFinder
   end
 
 
-  def find_test_or_source_file(file_path)
+  def find_test_or_source_or_header_file(file_path)
     file = File.basename(file_path)
-    return @file_finder_helper.find_file_in_collection(file, @configurator.collection_all_tests + @configurator.collection_all_source)
+    return @file_finder_helper.find_file_in_collection(file, @test_source_header_file_collection)
   end
   
   
