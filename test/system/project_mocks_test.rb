@@ -18,7 +18,7 @@ class TestTasksTest < Test::Unit::TestCase
   should "run a test and verify test results" do
 
     # tell rake to execute all tests; use '--trace' to see problem if rake run explodes
-    ceedling_execute('tests:test_a_file.c', '--trace')
+    ceedling_execute('test:test_a_file.c', '--trace')
     
     results = fetch_test_results(@results_path, 'test_a_file');
     
@@ -30,7 +30,7 @@ class TestTasksTest < Test::Unit::TestCase
   should "blow up if header to be mocked is not found" do
 
     # tell rake to execute all tests
-    results = ceedling_execute_no_boom('tests:test_no_file.c')
+    results = ceedling_execute_no_boom('test:test_no_file.c')
     assert_no_match(/ERROR: Could not find 'say_wha\.h'/i, results, 'execution should have failed because header file was not found')
   end
 

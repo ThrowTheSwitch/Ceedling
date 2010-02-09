@@ -18,7 +18,7 @@ class ProjectSimpleTest < Test::Unit::TestCase
   should "run all tests and verify test results" do
 
     # tell rake to execute all tests; use '--trace' to see problem if rake run explodes
-    ceedling_execute('tests:all', '--trace')
+    ceedling_execute('test:all', '--trace')
     
     results = fetch_test_results(@results_path, 'test_stuff');
     

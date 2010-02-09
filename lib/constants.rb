@@ -11,5 +11,5 @@ end
 DEFAULT_CEEDLING_MAIN_PROJECT_FILE = 'project.yml' # main project file
 DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    # supplemental user config file
 
-TESTS_TASKS_ROOT_NAME   = 'tests'
+TESTS_TASKS_ROOT_NAME   = 'test'
 RELEASE_TASKS_ROOT_NAME = 'release'

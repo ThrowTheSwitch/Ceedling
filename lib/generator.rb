@@ -54,7 +54,7 @@ class Generator
       @generator_test_runner.create_header(output, mock_list)
       @generator_test_runner.create_externs(output, test_cases)
       @generator_test_runner.create_mock_management(output, mock_list)
-      @generator_test_runner.create_runtest(output, mock_list)
+      @generator_test_runner.create_runtest(output, mock_list, test_cases)
       @generator_test_runner.create_main(output, module_name, test_cases)
     end
   end

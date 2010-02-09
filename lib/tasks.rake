@@ -29,23 +29,23 @@ task :default => [:directories, :clobber, "#{TESTS_TASKS_ROOT_NAME}:all"]
 namespace TESTS_TASKS_ROOT_NAME.to_sym do
   
   desc "Run all unit tests."
-  task(:all) { @objects[:test_invoker].invoke_tests(COLLECTION_ALL_TESTS) }
+  task(:all, :directories) { @objects[:test_invoker].invoke_tests(COLLECTION_ALL_TESTS) }
       
   COLLECTION_ALL_TESTS.each do |test|
     # by test file name
     name = File.basename(test)
-    task(name.to_sym) { @objects[:test_invoker].invoke_tests(test) }
+    task(name.to_sym, :directories) { @objects[:test_invoker].invoke_tests(test) }
 
     # by source file name
     name = File.basename(test).sub(/#{PROJECT_TEST_FILE_PREFIX}/, '')
-    task(name.to_sym) { @objects[:test_invoker].invoke_tests(test) }
-
+    task(name.to_sym, :directories) { @objects[:test_invoker].invoke_tests(test) }
+    
     # by header file name
     name = File.basename(test).ext(EXTENSION_HEADER).sub(/#{PROJECT_TEST_FILE_PREFIX}/, '')
-    task(name.to_sym) { @objects[:test_invoker].invoke_tests(test) }
+    task(name.to_sym, :directories) { @objects[:test_invoker].invoke_tests(test) }
   end
     
   desc "Run tests for changed files."
-  task(:delta) { @objects[:test_invoker].invoke_tests(COLLECTION_ALL_TESTS, {:force_run => false}) }
+  task(:delta, :directories) { @objects[:test_invoker].invoke_tests(COLLECTION_ALL_TESTS, {:force_run => false}) }
   
 end

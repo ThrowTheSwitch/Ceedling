@@ -1,5 +1,4 @@
 require 'plugin'
-require 'yaml'
 
 
 class StdoutTestReport < Plugin

@@ -88,7 +88,7 @@ class GeneratorTest < Test::Unit::TestCase
     @generator_test_runner.expects.create_header(@file, mock_list)
     @generator_test_runner.expects.create_externs(@file, test_cases)
     @generator_test_runner.expects.create_mock_management(@file, mock_list)
-    @generator_test_runner.expects.create_runtest(@file, mock_list)
+    @generator_test_runner.expects.create_runtest(@file, mock_list, test_cases)
     @generator_test_runner.expects.create_main(@file, 'test_count_chocula.c', test_cases)
         
     @generator.generate_test_runner(test_source, test_runner)

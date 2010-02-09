@@ -341,6 +341,12 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
 
   ######### runTest() #########
 
+  should "create no runTest function if there's no test cases (to prevent unused function compilation warnings)" do
+    file = []
+    @runner_utils.create_runtest(file, [], [])
+    assert_equal([], file)
+  end
+
   should "create runTest function including mock and exception handling" do
     file = []
     
@@ -367,7 +373,7 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
     
     @configurator.expects.project_use_exceptions.returns(true)
     
-    @runner_utils.create_runtest(file, ['mock_zinger.h'])
+    @runner_utils.create_runtest(file, ['mock_zinger.h'], ['test_icle.c', 'test_ing.c'])
     assert_equal(expected_output.newline_split, file)
   end
 
@@ -394,7 +400,7 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
 
     @configurator.expects.project_use_exceptions.returns(false)
 
-    @runner_utils.create_runtest(file, ['mock_zinger.h'])
+    @runner_utils.create_runtest(file, ['mock_zinger.h'], ['test_icle.c', 'test_ing.c'])
     assert_equal(expected_output.newline_split, file)
   end
 
@@ -421,7 +427,7 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
 
     @configurator.expects.project_use_exceptions.returns(true)
 
-    @runner_utils.create_runtest(file, [])
+    @runner_utils.create_runtest(file, [], ['test_icle.c', 'test_ing.c'])
     assert_equal(expected_output.newline_split, file)
   end
 
@@ -459,7 +465,6 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
         UnityBegin();
         Unity.TestFile = "TestIfy.c";
 
-        // RUN_TEST calls runTest
 
         UnityEnd();
         return 0;

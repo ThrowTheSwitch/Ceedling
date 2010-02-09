@@ -7,6 +7,8 @@ class RakeTasksTest < Test::Unit::TestCase
 
   def setup
     rake_setup('rakefile_tasks.rb', :configurator, :test_invoker)
+    
+    @rake.define_task(Rake::FileTask, :directories) # fake out dependency in test tasks
   end
 
   def teardown
@@ -41,7 +43,7 @@ class RakeTasksTest < Test::Unit::TestCase
     @test_invoker.expects.invoke_tests(all_tests)
     
     # invoke the task
-    @rake['tests:all'].invoke
+    @rake['test:all'].invoke
   end
 
   should "invoke a test by its test file name" do
@@ -55,7 +57,7 @@ class RakeTasksTest < Test::Unit::TestCase
     @test_invoker.expects.invoke_tests('tests/test_yo.c')
     
     # invoke the task
-    @rake['tests:test_yo.c'].invoke
+    @rake['test:test_yo.c'].invoke
   end
 
   should "invoke a test by its source file name" do
@@ -69,7 +71,7 @@ class RakeTasksTest < Test::Unit::TestCase
     @test_invoker.expects.invoke_tests('tests/TestIcle.c')
     
     # invoke the task
-    @rake['tests:Icle.c'].invoke
+    @rake['test:Icle.c'].invoke
   end
 
   should "invoke a test by its source header file name" do
@@ -83,7 +85,7 @@ class RakeTasksTest < Test::Unit::TestCase
     @test_invoker.expects.invoke_tests('tests/TestYoMama.c')
     
     # invoke the task
-    @rake['tests:YoMama.h'].invoke
+    @rake['test:YoMama.h'].invoke
   end  
 
   should "complain upon unknown test task" do
@@ -94,7 +96,7 @@ class RakeTasksTest < Test::Unit::TestCase
     setup()
 
     # invoke the task
-    assert_raise(RuntimeError){ @rake['tests:Broken.c'].invoke }
+    assert_raise(RuntimeError){ @rake['test:Broken.c'].invoke }
   end  
 
 
