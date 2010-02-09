@@ -19,7 +19,7 @@ class ConfiguratorPlugins
     plugins_with_path = []
     
     config[:plugins][:enabled].each do |plugin|
-      rake_plugin_path = File.join(CEEDLING_ROOT, base_path, plugin, "#{plugin}.rake")
+      rake_plugin_path = File.join(base_path, plugin, "#{plugin}.rake")
       if (@file_wrapper.exist?(rake_plugin_path))
         plugins_with_path << rake_plugin_path
         @rake_plugins << plugin
