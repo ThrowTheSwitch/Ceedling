@@ -5,7 +5,7 @@ require 'setupinator'
 class SetupinatorTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:project_file_loader, :configurator, :test_includes_extractor, :plugin_manager)
+    objects = create_mocks(:project_file_loader, :configurator, :test_includes_extractor, :plugin_manager, :file_finder)
     create_mocks(:config_hash, :system_objects)
     @setupinator = Setupinator.new(objects)
   end
@@ -36,6 +36,8 @@ class SetupinatorTest < Test::Unit::TestCase
     
     @configurator.expects.extension_header.returns('.h')
     @test_includes_extractor.expects.extension_header=('.h')
+
+    @file_finder.expects.prepare_search_sources
 
     @setupinator.do_setup(@system_objects)
   end

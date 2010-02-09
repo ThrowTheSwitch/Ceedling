@@ -1,7 +1,7 @@
 
 class Setupinator
 
-  constructor :project_file_loader, :configurator, :test_includes_extractor, :plugin_manager
+  constructor :project_file_loader, :configurator, :test_includes_extractor, :plugin_manager, :file_finder
 
   def do_setup(system_objects)
     # load project yaml file
@@ -25,6 +25,8 @@ class Setupinator
     # and we have to wait until the configurator is done with setup before we can get at them
     @test_includes_extractor.cmock_mock_prefix = @configurator.cmock_mock_prefix
     @test_includes_extractor.extension_header  = @configurator.extension_header
+    
+    @file_finder.prepare_search_sources
   end
 
 end

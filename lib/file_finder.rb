@@ -5,7 +5,7 @@ class FileFinder
 
   constructor :configurator, :file_finder_helper
 
-  def setup
+  def prepare_search_sources
     @test_source_header_file_collection = @configurator.collection_all_tests + @configurator.collection_all_source + @configurator.collection_all_headers
   end
 

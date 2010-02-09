@@ -80,6 +80,7 @@ setupinator:
     - project_file_loader
     - test_includes_extractor
     - plugin_manager
+    - file_finder
 
 plugin_manager:
   compose:
