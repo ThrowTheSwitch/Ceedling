@@ -21,7 +21,7 @@ class SetupinatorTest < Test::Unit::TestCase
     @configurator.expects.populate_plugins_defaults(@config_hash)
     @configurator.expects.standardize_paths(@config_hash)
     @configurator.expects.validate(@config_hash)
-    @configurator.expects.build_cmock_defaults(@config_hash)
+    @configurator.expects.populate_cmock_defaults(@config_hash)
     @configurator.expects.find_and_merge_plugins(@config_hash)
     @configurator.expects.build(@config_hash)
     

@@ -43,7 +43,7 @@ class TestIncludesExtractorTest < Test::Unit::TestCase
 
 
   def setup
-    objects = create_mocks(:configurator, :yaml_wrapper, :file_wrapper)
+    objects = create_mocks(:yaml_wrapper, :file_wrapper)
 
     @test_includes_extractor = TestIncludesExtractor.new(objects)
 

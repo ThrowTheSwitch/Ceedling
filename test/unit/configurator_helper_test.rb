@@ -116,55 +116,55 @@ class ConfiguratorHelperTest < Test::Unit::TestCase
     @test_config[:paths] = {:paths1 => [], :paths2 => [], :paths3 => []}
     @test_config[:plugins] = {:base_path => 'plugins', :enabled => ['boo', 'berry']}
     
-    @configurator_validator.expects.validate_paths(@test_config, :project, :build_root).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths1).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths2).returns(false)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths3).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :project, :build_root).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths1).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths2).returns(false)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths3).returns(true)
     @configurator_validator.expects.validate_path('plugins', :plugins, :base_path).returns(true)
     @configurator_validator.expects.validate_path('plugins/berry', :plugins, :enabled, :berry).returns(true)
     @configurator_validator.expects.validate_path('plugins/boo', :plugins, :enabled, :boo).returns(true)
     
-    assert_equal(false, @helper.validate_paths(@test_config))
+    assert_equal(false, @helper.validate_path_list(@test_config))
 
-    @configurator_validator.expects.validate_paths(@test_config, :project, :build_root).returns(false)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths1).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths2).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths3).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :project, :build_root).returns(false)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths1).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths2).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths3).returns(true)
     @configurator_validator.expects.validate_path('plugins', :plugins, :base_path).returns(true)
     @configurator_validator.expects.validate_path('plugins/berry', :plugins, :enabled, :berry).returns(true)
     @configurator_validator.expects.validate_path('plugins/boo', :plugins, :enabled, :boo).returns(true)
     
-    assert_equal(false, @helper.validate_paths(@test_config))
+    assert_equal(false, @helper.validate_path_list(@test_config))
 
-    @configurator_validator.expects.validate_paths(@test_config, :project, :build_root).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths1).returns(false)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths2).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths3).returns(false)
+    @configurator_validator.expects.validate_path_list(@test_config, :project, :build_root).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths1).returns(false)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths2).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths3).returns(false)
     @configurator_validator.expects.validate_path('plugins', :plugins, :base_path).returns(true)
     @configurator_validator.expects.validate_path('plugins/berry', :plugins, :enabled, :berry).returns(true)
     @configurator_validator.expects.validate_path('plugins/boo', :plugins, :enabled, :boo).returns(true)
     
-    assert_equal(false, @helper.validate_paths(@test_config))
+    assert_equal(false, @helper.validate_path_list(@test_config))
 
-    @configurator_validator.expects.validate_paths(@test_config, :project, :build_root).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths1).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths2).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths3).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :project, :build_root).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths1).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths2).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths3).returns(true)
     @configurator_validator.expects.validate_path('plugins', :plugins, :base_path).returns(false)
     @configurator_validator.expects.validate_path('plugins/berry', :plugins, :enabled, :berry).returns(true)
     @configurator_validator.expects.validate_path('plugins/boo', :plugins, :enabled, :boo).returns(true)
     
-    assert_equal(false, @helper.validate_paths(@test_config))
+    assert_equal(false, @helper.validate_path_list(@test_config))
 
-    @configurator_validator.expects.validate_paths(@test_config, :project, :build_root).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths1).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths2).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths3).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :project, :build_root).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths1).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths2).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths3).returns(true)
     @configurator_validator.expects.validate_path('plugins', :plugins, :base_path).returns(true)
     @configurator_validator.expects.validate_path('plugins/berry', :plugins, :enabled, :berry).returns(true)
     @configurator_validator.expects.validate_path('plugins/boo', :plugins, :enabled, :boo).returns(false)
     
-    assert_equal(false, @helper.validate_paths(@test_config))
+    assert_equal(false, @helper.validate_path_list(@test_config))
   end
 
   should "successfully validate all paths in the configuration" do
@@ -172,16 +172,16 @@ class ConfiguratorHelperTest < Test::Unit::TestCase
     @test_config[:paths] = {:paths1 => [], :paths2 => [], :paths3 => []}
     @test_config[:plugins] = {:base_path => 'plugins', :enabled => ['boo', 'berry']}
     
-    @configurator_validator.expects.validate_paths(@test_config, :project, :build_root).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths1).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths2).returns(true)
-    @configurator_validator.expects.validate_paths(@test_config, :paths, :paths3).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :project, :build_root).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths1).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths2).returns(true)
+    @configurator_validator.expects.validate_path_list(@test_config, :paths, :paths3).returns(true)
 
     @configurator_validator.expects.validate_path('plugins', :plugins, :base_path).returns(true)
     @configurator_validator.expects.validate_path('plugins/berry', :plugins, :enabled, :berry).returns(true)
     @configurator_validator.expects.validate_path('plugins/boo', :plugins, :enabled, :boo).returns(true)
     
-    assert(@helper.validate_paths(@test_config))
+    assert(@helper.validate_path_list(@test_config))
   end
 
 

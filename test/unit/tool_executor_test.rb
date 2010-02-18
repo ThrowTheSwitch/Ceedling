@@ -117,11 +117,42 @@ class ToolExecutorTest < Test::Unit::TestCase
         - '--D $':
           - DIFFERENT_DEFINE
           - STILL_ANOTHER_DEFINE
+        - $:
+          - A
+          - B
         - --a_setting
     ].left_margin(0)
     config = YAML.load(yaml)
 
-    command_line = 'compiler.exe --no_cse --D DIFFERENT_DEFINE --D STILL_ANOTHER_DEFINE --a_setting'
+    command_line = 'compiler.exe --no_cse --D DIFFERENT_DEFINE --D STILL_ANOTHER_DEFINE A B --a_setting'
+
+    assert_equal(command_line, @tool_executor.build_command_line(config[:tool]))
+  end
+
+
+  should "build a command line using ruby string substitution for simple arguments and '$' string replacement" do
+
+    abc_string = "-\#{" + "['a', 'b', 'c'].join}"
+    num_string = "\#{" + "s = String.new; (1..9).to_a.each {|val| s += val.to_s}}"
+    sym_string = "\#{" + "\'*!~\'.reverse}"
+
+    @system_wrapper.expects.eval(abc_string).returns('-abc')
+    @system_wrapper.expects.eval(num_string).returns('123456789')
+    @system_wrapper.expects.eval(sym_string).returns('~!*')
+
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: compiler.exe
+      :arguments:
+        - "#{abc_string}"
+        - '--i $': "#{num_string}"
+        - '--o $':
+          - "#{sym_string}"
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    command_line = 'compiler.exe -abc --i 123456789 --o ~!*'
 
     assert_equal(command_line, @tool_executor.build_command_line(config[:tool]))
   end
@@ -172,23 +203,6 @@ class ToolExecutorTest < Test::Unit::TestCase
   end
 
 
-  should "complain when building a command line if a referenced constant is undefined" do
-    
-    yaml = %Q[
-    :tool:
-      :name: test_compiler
-      :executable: tool.exe
-      :arguments:
-        - -x$: NON_EXISTENT_GLOBAL_CONSTANT
-    ].left_margin(0)
-    config = YAML.load(yaml)
-
-    @streaminator.expects.stderr_puts("ERROR: Tool 'test_compiler' found constant 'NON_EXISTENT_GLOBAL_CONSTANT' undefined.", Verbosity::ERRORS)
-
-    assert_raise(RuntimeError) { @tool_executor.build_command_line(config[:tool]) }
-  end
-
-
   should "complain when building a command line if a referenced constant is nil" do
     
     yaml = %Q[
@@ -197,6 +211,23 @@ class ToolExecutorTest < Test::Unit::TestCase
       :executable: tool.exe
       :arguments:
         - -x$: NIL_GLOBAL_CONSTANT
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    @streaminator.expects.stderr_puts("ERROR: Tool 'test_compiler' found constant 'NIL_GLOBAL_CONSTANT' to be nil.", Verbosity::ERRORS)
+
+    assert_raise(RuntimeError) { @tool_executor.build_command_line(config[:tool]) }  
+  end
+
+
+  should "complain when building a command line if expansion elements are nil" do
+    
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: tool.exe
+      :arguments:
+        - -x$:
     ].left_margin(0)
     config = YAML.load(yaml)
 

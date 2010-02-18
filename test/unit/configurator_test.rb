@@ -123,7 +123,7 @@ class ConfiguratorTest < Test::Unit::TestCase
         }
       }
     
-    @configurator.build_cmock_defaults(config)
+    @configurator.populate_cmock_defaults(config)
     
     assert_equal(expected, config)
   end
@@ -143,7 +143,7 @@ class ConfiguratorTest < Test::Unit::TestCase
     
     expected = config.clone
     
-    @configurator.build_cmock_defaults(config)
+    @configurator.populate_cmock_defaults(config)
     
     assert_equal(expected, config)
   end
@@ -153,13 +153,13 @@ class ConfiguratorTest < Test::Unit::TestCase
       
   should "build up configuration and constantize and create accessor methods from it" do
     # prep before hashification
-    @configurator_builder.expects.insert_tool_names(@test_config)
+    @configurator_builder.expects.populate_tool_names(@test_config)
     
     # set environment variables
     @configurator_helper.expects.set_environment_variables(@test_config)
     
-    # hashify the config object
-    @configurator_builder.expects.hashify(@test_config).returns(@test_hash)
+    # flattenify the config object
+    @configurator_builder.expects.flattenify(@test_config).returns(@test_hash)
 
     # insert info into configuration
     @configurator_builder.expects.populate_defaults(@test_hash).returns(@test_hash)

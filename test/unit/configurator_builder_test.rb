@@ -24,7 +24,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
         :zinger => {:executable => 'zinger', :arguments => ['-option', '-flag']}
     }}
     
-    @builder.insert_tool_names(in_hash)
+    @builder.populate_tool_names(in_hash)
     
     assert_equal('thinger', in_hash[:tools][:thinger][:name])
     assert_equal('/bin/thinger', in_hash[:tools][:thinger][:executable])
@@ -36,9 +36,9 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
     
   end
 
-  ############# hashify #############
+  ############# flattenify #############
     
-  should "hashify keys and values contained in yaml and not blow up on empty top-level entries" do
+  should "flattenify keys and values contained in yaml and not blow up on empty top-level entries" do
     
     config = %Q{
       ---
@@ -64,7 +64,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
 
       ...
       }.left_margin
-    hash = @builder.hashify( YAML.load(config) )
+    hash = @builder.flattenify( YAML.load(config) )
     
     assert_equal(hash[:project_name], 'App')
     assert_equal(hash[:project_dirs], ['.', 'gui', '../common/modules/'])

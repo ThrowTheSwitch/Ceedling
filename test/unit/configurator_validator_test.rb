@@ -50,12 +50,12 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
   end
 
 
-  ######### validate_paths ##########
+  ######### validate_path_list ##########
   
   should "fail for missing entries in config when validating path entries" do
     config = {:project => {}}
     
-    assert_equal(false, @validator.validate_paths(config, :project, :build_root))
+    assert_equal(false, @validator.validate_path_list(config, :project, :build_root))
   end
   
   should "complain about non-existent paths for given path entries in config" do
@@ -65,7 +65,7 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
     
     @stream_wrapper.expects.stderr_puts("ERROR: Config path [:project][:build_root]['project/build'] does not exist on disk.")
     
-    assert_equal(false, @validator.validate_paths(config, :project, :build_root))
+    assert_equal(false, @validator.validate_path_list(config, :project, :build_root))
   end
 
   should "successfully validate paths for given path entries in config" do
@@ -77,7 +77,7 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
     @file_wrapper.expects.exist?('main/test').returns(true)
     @file_wrapper.expects.exist?('modules').returns(true)
         
-    assert(@validator.validate_paths(config, :project, :test_paths))
+    assert(@validator.validate_path_list(config, :project, :test_paths))
   end
   
   ######### validate_filepath ##########
@@ -165,29 +165,5 @@ class ConfiguratorValidatorTest < Test::Unit::TestCase
     
     assert(@validator.validate_filepath(config, :tools, :thinger, :executable))
   end
-
-  
-  # should "successfully validate paths for given path entries in config" do
-  #   config = {
-  #     :project => {
-  #       :test_paths => ['main/test', 'modules/*/test']
-  #     }}
-  # 
-  #   @file_wrapper.expects.exist?('main/test').returns(true)
-  #   @file_wrapper.expects.exist?('modules').returns(true)
-  #       
-  #   assert(@validator.validate_paths(config, :project, :test_paths))
-  # end
-  # 
-  # should "complain about non-existent paths for given path entries in config" do
-  #   config = {:project => {:build_root => 'project/build'}}
-  #   
-  #   @file_wrapper.expects.exist?('project/build').returns(false)
-  #   
-  #   @stream_wrapper.expects.stderr_puts("ERROR: Config path [:project][:build_root]['project/build'] does not exist on disk.")
-  #   
-  #   assert_equal(false, @validator.validate_paths(config, :project, :build_root))
-  # end
-  
   
 end
