@@ -64,6 +64,33 @@ class ToolExecutorTest < Test::Unit::TestCase
   end
 
 
+  should "build a command line where the executable is specified by argument parameter input replacement and ruby string substitution" do
+
+    # use funky string construction to prevent ruby from performing actual string substitution we're simulating
+    filepath_string = "\#{" + "File.join(A_PATH, '${2}'}"
+    
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: ${1}
+      :arguments:
+        - "> #{filepath_string}"
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    @system_wrapper.expects.eval("> \#{" + "File.join(A_PATH, 'file.out'}").returns('> files/build/tmp/file.out')
+    @system_wrapper.expects.eval("> \#{" + "File.join(A_PATH, 'results.out'}").returns('> files/build/tmp/results.out')
+    
+    assert_equal(
+      'a_tool > files/build/tmp/file.out',
+      @tool_executor.build_command_line(config[:tool], 'a_tool', 'file.out'))
+      
+    assert_equal(
+      'test.exe > files/build/tmp/results.out',
+      @tool_executor.build_command_line(config[:tool], 'test.exe', 'results.out'))      
+  end
+
+
   should "complain when building a command line if tool executable is specified with a replacement parameter but referenced input is nil" do
     
     yaml = %Q[
@@ -132,6 +159,7 @@ class ToolExecutorTest < Test::Unit::TestCase
 
   should "build a command line using ruby string substitution for simple arguments and '$' string replacement" do
 
+    # use funky string construction to prevent ruby from performing actual string substitution we're simulating
     abc_string = "-\#{" + "['a', 'b', 'c'].join}"
     num_string = "\#{" + "s = String.new; (1..9).to_a.each {|val| s += val.to_s}}"
     sym_string = "\#{" + "\'*!~\'.reverse}"
