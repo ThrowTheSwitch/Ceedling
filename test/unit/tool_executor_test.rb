@@ -157,6 +157,32 @@ class ToolExecutorTest < Test::Unit::TestCase
   end
 
 
+  should "build a command line with duplicates in argument array" do
+
+    yaml = %Q[
+    :tool:
+      :name: test_compiler
+      :executable: compiler.exe
+      :arguments:
+        - ${1}
+        - --option1
+        - --option1
+        - '-D $':
+          - DEFINE_A
+          - DEFINE_A
+        - $:
+          - Z
+          - Z
+        - ${1}
+    ].left_margin(0)
+    config = YAML.load(yaml)
+
+    command_line = 'compiler.exe arg --option1 --option1 -D DEFINE_A -D DEFINE_A Z Z arg'
+
+    assert_equal(command_line, @tool_executor.build_command_line(config[:tool], 'arg'))
+  end
+
+
   should "build a command line using ruby string substitution for simple arguments and '$' string replacement" do
 
     # use funky string construction to prevent ruby from performing actual string substitution we're simulating
