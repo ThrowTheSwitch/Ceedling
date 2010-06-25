@@ -13,3 +13,8 @@ DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    # supplemental user config fi
 
 TESTS_TASKS_ROOT_NAME   = 'test'
 RELEASE_TASKS_ROOT_NAME = 'release'
+
+RUBY_STRING_REPLACEMENT_PATTERN = /#\{.+\}/
+TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN = /(\$\{(\d+)\})/
+
+NULL_FILE_PATH = '/dev/null'

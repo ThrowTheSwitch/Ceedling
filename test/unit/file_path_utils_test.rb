@@ -13,7 +13,7 @@ class FilePathUtilsTest < Test::Unit::TestCase
   end
 
 
-  should "standardize paths with forward slash file separators and prepend with ./" do    
+  should "standardize paths with forward slash file separators and prepend with ./" do
     assert_equal('files/dir/dir',       FilePathUtils::standardize("files\\dir\\dir/"))
     assert_equal('root/subdir/dir',     FilePathUtils::standardize("root\\subdir\\dir\\"))
     assert_equal('files/modules/tests', FilePathUtils::standardize("files/modules/tests"))
@@ -43,6 +43,8 @@ class FilePathUtilsTest < Test::Unit::TestCase
     assert_equal('project/files', FilePathUtils::dirname('project/files/test[123]'))
 
     assert_equal('project/files', FilePathUtils::dirname('project/files/test{ing,s}'))
+
+    assert_equal('project/files', FilePathUtils::dirname('project/files/**/**'))
   end
 
 

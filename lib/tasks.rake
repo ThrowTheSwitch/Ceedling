@@ -32,27 +32,27 @@ namespace TESTS_TASKS_ROOT_NAME.to_sym do
   task :all => [:directories] do
     @objects[:test_invoker].invoke_tests(COLLECTION_ALL_TESTS)
   end
-      
+
   COLLECTION_ALL_TESTS.each do |test|
     # by test file name
     name = File.basename(test)
-    task name.to_sym  => [:directories] do
+    task name.to_sym => [:directories] do
       @objects[:test_invoker].invoke_tests(test)
     end
 
     # by source file name
     name = File.basename(test).sub(/#{PROJECT_TEST_FILE_PREFIX}/, '')
-    task name.to_sym  => [:directories] do
+    task name.to_sym => [:directories] do
       @objects[:test_invoker].invoke_tests(test)
     end
     
     # by header file name
     name = File.basename(test).ext(EXTENSION_HEADER).sub(/#{PROJECT_TEST_FILE_PREFIX}/, '')
-    task name.to_sym  => [:directories] do
+    task name.to_sym => [:directories] do
       @objects[:test_invoker].invoke_tests(test)
     end
   end
-    
+
   desc "Run tests for changed files."
   task :delta => [:directories] do
     @objects[:test_invoker].invoke_tests(COLLECTION_ALL_TESTS, {:force_run => false})

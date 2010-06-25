@@ -4,13 +4,14 @@ class GeneratorTestRunner
   constructor :configurator, :file_wrapper
     
   
-  def find_test_cases(test_file)
-    test_cases = []
+  def find_test_cases(test_file_to_parse, raw_test_file)
+    tests = []
+    tests_and_line_numbers = []
     lines = []
     
     # if we don't have preprocessor assistance, do some basic preprocessing of our own
-    if (@configurator.project_use_preprocessor == false)
-      source = @file_wrapper.read(test_file)
+    if (not @configurator.project_use_preprocessor)
+      source = @file_wrapper.read(test_file_to_parse)
     
       # remove line comments
       source = source.gsub(/\/\/.*$/, '')
@@ -21,16 +22,35 @@ class GeneratorTestRunner
       lines = source.split(/(^\s*\#.*$) | (;|\{|\}) /x) # match ;, {, and } as end of lines
     # otherwise, read the preprocessed file raw
     else
-      lines = @file_wrapper.read(test_file).split(/;|\{|\}/)
+      lines = @file_wrapper.read(test_file_to_parse).split(/;|\{|\}/)
     end
     
+    # step 1. find test functions in (possibly preprocessed) file
+    # (note that lines are not broken up at end of lines)
     lines.each do |line|
-      if (line =~ /^\s*void\s+(test.*)\s*\(\s*(void)?\s*\)/m)
-        test_cases << $1.strip
+      if (line =~ /^\s*void\s+((T|t)est.*)\s*\(\s*(void)?\s*\)/m)
+        tests << ($1.strip)
       end
     end
     
-    return test_cases
+    # step 2. associate test functions with line numbers in (non-preprocessed) original file
+    # (note that this time we must scan file contents broken up by end of lines)
+    raw_lines = @file_wrapper.read(raw_test_file).split("\n")
+    raw_index = 0
+    
+    tests.each do |test|
+      raw_lines[raw_index..-1].each_with_index do |line, index|
+        # test function might be declared across lines; look for it by its name followed
+        #  by a few tell-tale signs
+        if (line =~ /#{test}\s*($|\(|\()/)
+          raw_index += (index + 1)
+          tests_and_line_numbers << {:test => test, :line_number => raw_index}
+          break
+        end
+      end
+    end
+    
+    return tests_and_line_numbers
   end
   
   
@@ -73,8 +93,8 @@ class GeneratorTestRunner
     output << "extern void tearDown(void);\n"
     output << "\n" if not test_cases.empty?
     
-    test_cases.each do |test|
-      output << "extern void #{test}(void);\n"
+    test_cases.each do |item|
+      output << "extern void #{item[:test]}(void);\n"
     end    
   end
   
@@ -169,8 +189,8 @@ class GeneratorTestRunner
     output << "\n"
 
     output << "  // RUN_TEST calls runTest\n" unless (test_cases.empty?)
-    test_cases.each do |test|
-      output << "  RUN_TEST(#{test});\n"
+    test_cases.each do |item|
+      output << "  RUN_TEST(#{item[:test]}, #{item[:line_number]});\n"
     end
 
     output << "\n"

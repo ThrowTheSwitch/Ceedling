@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'rake' # for FileList
+require 'constants'
 require 'fileutils'
 
 
@@ -10,6 +11,7 @@ class FileWrapper
   end
 
   def exist?(filepath)
+    return true if (filepath == NULL_FILE_PATH)
     return File.exist?(filepath)
   end
 
@@ -21,8 +23,8 @@ class FileWrapper
     return File.dirname(path)
   end
 
-  def directory_listing(path)
-    return Dir.entries(path)
+  def directory_listing(glob)
+    return Dir.glob(glob)
   end
 
   def rm_f(filepath)

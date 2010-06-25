@@ -1,9 +1,9 @@
 
 class TestIncludesExtractor
 
-  constructor :configurator, :yaml_wrapper, :file_wrapper
+  constructor :yaml_wrapper, :file_wrapper
 
-  attr_writer :cmock_mock_prefix, :extension_header  
+  attr_writer :configurator
 
   def setup
     @includes  = {}
@@ -49,10 +49,18 @@ class TestIncludesExtractor
 
   def extract_from_file(file)
     includes = []
+    header_extension = @configurator.extension_header
     
-    @file_wrapper.readlines(file).each do |line|
+    contents = @file_wrapper.read(file)
+
+    # remove line comments
+    contents = contents.gsub(/\/\/.*$/, '')
+    # remove block comments
+    contents = contents.gsub(/\/\*.*?\*\//m, '')
+    
+    contents.split("\n").each do |line|
       # look for include statement
-      scan_results = line.scan(/#include\s+\"\s*(.+#{'\\'+@extension_header})\s*\"/)
+      scan_results = line.scan(/#include\s+\"\s*(.+#{'\\'+header_extension})\s*\"/)
       
       includes << scan_results[0][0] if (scan_results.size > 0)
     end
@@ -61,6 +69,9 @@ class TestIncludesExtractor
   end
 
   def gather_and_store_includes(files)
+    mock_prefix      = @configurator.cmock_mock_prefix
+    header_extension = @configurator.extension_header
+  
     files.each do |file|
       file_key = form_file_key(file)
       @mocks[file_key] = []
@@ -73,11 +84,11 @@ class TestIncludesExtractor
       
       includes.each do |include_file|          
         # check if include is a mock
-        scan_results = include_file.scan(/(#{@cmock_mock_prefix}.+)#{'\\'+@extension_header}/)
+        scan_results = include_file.scan(/(#{mock_prefix}.+)#{'\\'+header_extension}/)
         if (scan_results.size > 0)
           # add mock to list of all mocks and to lookup hash
           mock = scan_results[0][0]
-          @all_mocks << "#{mock}#{@extension_header}" 
+          @all_mocks << "#{mock}#{header_extension}" 
           @mocks[file_key] << mock
         end          
       end

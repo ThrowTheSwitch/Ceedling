@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'rake' # for ext()
 require 'fileutils'
+require 'rbconfig'
 
 
 class FilePathUtils
@@ -16,16 +17,20 @@ class FilePathUtils
   def self.standardize(path)
     path.strip!
     path.gsub!(/\\/, '/')
-    path.gsub!(/^\.\//, '')
+    path.gsub!(/^((\+|-):)?\.\//, '')
     path.chomp!('/')
     return path
   end
 
+  def self.ext_exe(executable)
+    return executable.ext('.exe') if (Config::CONFIG['host_os'] =~ /mswin|mingw/)
+    return executable
+  end
 
-  # extract directory path up to glob specifiers
+  # extract directory path from between optional add/subtract aggregation modifiers and up to glob specifiers
   # note: slightly different than File.dirname in that /files/foo remains /files/foo and does not become /files
-  def self.dirname(path)
-    path.strip!
+  def self.extract_path(path)
+    path = path.sub(/^(\+|-):/, '')
     
     # find first occurrence of path separator followed by directory glob specifier: *, ?, {, }, [, ]
     find_index = (path =~ GLOB_MATCHER)
@@ -44,6 +49,15 @@ class FilePathUtils
     return path
   end
 
+  # return whether the given path is to be aggregated (no aggregation modifier defaults to same as +:)
+  def self.add_path?(path)
+    return (path =~ /^-:/).nil?
+  end
+  
+  # get path (and glob) lopping off optional +: / -: prefixed aggregation modifiers
+  def self.extract_path_no_aggregation_operators(path)
+    return path.sub(/^(\+|-):/, '')
+  end
   
   # all the globs that may be in a path string work fine with one exception;
   # to recurse through all subdirectories, the glob is dir/**/** but our paths use
@@ -58,20 +72,34 @@ class FilePathUtils
   end
 
   ######### instance methods ##########
- 
+
   def form_temp_path(filepath)
     return File.join( @configurator.project_temp_path, File.basename(filepath) )    
   end
 
-  def form_runner_object_filepath_from_test(filepath)
-    return (form_object_filepath(filepath)).sub(/(#{@configurator.extension_object})$/, "#{@configurator.test_runner_file_suffix}\\1")
+
+  def form_release_dependencies_filepath(filepath)
+    return File.join( @configurator.project_release_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies) )
+  end
+  
+  def form_release_c_object_filepath(filepath)
+    return File.join( @configurator.project_release_build_output_c_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
-  def form_object_filepath(filepath)
+  def form_release_asm_object_filepath(filepath)
+    return File.join( @configurator.project_release_build_output_asm_path, File.basename(filepath).ext(@configurator.extension_object) )
+  end
+
+
+  def form_runner_object_filepath_from_test(filepath)
+    return (form_test_object_filepath(filepath)).sub(/(#{@configurator.extension_object})$/, "#{@configurator.test_runner_file_suffix}\\1")
+  end
+
+  def form_test_object_filepath(filepath)
     return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
-  def form_executable_filepath(filepath)
+  def form_test_executable_filepath(filepath)
     return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_executable) )    
   end
 
@@ -104,7 +132,7 @@ class FilePathUtils
     return (@file_wrapper.instantiate_file_list(mocks)).pathmap("#{@configurator.cmock_mock_path}/%n#{@configurator.extension_source}")
   end
 
-  def form_dependencies_filelist(files)
+  def form_test_dependencies_filelist(files)
     return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_test_dependencies_path}/%n#{@configurator.extension_dependencies}")    
   end
 

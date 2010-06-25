@@ -32,12 +32,11 @@ class FileFinderHelper
     return file_to_find
   end
 
-  private ###########################
-  
   def blow_up(file_name, extra_message='.')
     @streaminator.stderr_puts("ERROR: Could not find '#{file_name}'" + extra_message, Verbosity::ERRORS)
     raise
   end
+  
 
 end
 

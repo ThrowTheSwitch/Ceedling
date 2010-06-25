@@ -1,78 +1,7 @@
 require 'rubygems'
 require 'rake'            # for ext() method
 require 'file_path_utils' # for form_vendor_path() class method
-require 'constants'    # for Verbosity constants class
-
-
-DEFAULT_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => 'cpp',
-  :name => 'includes_preprocessor',
-  :arguments => [
-    '-MM', '-MG',
-    {"-D$" => 'COLLECTION_DEFINES_TEST'},        
-    "\"${1}\""
-    ]
-  }
-
-DEFAULT_FILE_PREPROCESSOR_TOOL = {
-  :executable => 'gcc',
-  :name => 'file_preprocessor',
-  :arguments => [
-    '-E',
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SOURCE_INCLUDE'},
-    {"-D$" => 'COLLECTION_DEFINES_TEST'},        
-    "\"${1}\"",
-    "-o \"${2}\""
-    ]
-  }
-
-DEFAULT_DEPENDENCIES_GENERATOR_TOOL = {
-  :executable => 'gcc',
-  :name => 'dependencies_generator',
-  :arguments => [
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SOURCE_INCLUDE'},
-    {"-D$" => 'COLLECTION_DEFINES_TEST'},        
-    "-MT \"${3}\"",
-    '-MM', '-MD', '-MG',
-    "-MF \"${2}\"",
-    "-c \"${1}\"",
-    ]
-  }
-
-DEFAULT_CEEDLING_CONFIG = {
-    :project_use_exceptions => true,
-    :project_use_mocks => true,
-    :project_use_preprocessor => false,
-    :project_use_auxiliary_dependencies => false,
-    :project_test_file_prefix => 'test_',
-    :project_verbosity => Verbosity::NORMAL,
-
-    :paths_support => [],
-    :paths_include => [],
-                   
-    :defines_test => [],
-    :defines_source => [],
-                
-    :extension_header => '.h',
-    :extension_source => '.c',
-    :extension_object => '.o',
-    :extension_executable => '.out',
-    :extension_testpass => '.pass',
-    :extension_testfail => '.fail',
-    :extension_dependencies => '.d',
-
-    :unity_int_width => 32,
-    :unity_exclude_float => false,
-    :unity_float_type => 'float',    
-    :unity_float_precision => '0.00001f',
-                                        
-    :test_runner_includes => [],
-    :test_runner_file_suffix => '_runner',
-    
-    :tools_includes_preprocessor  => DEFAULT_INCLUDES_PREPROCESSOR_TOOL,
-    :tools_file_preprocessor      => DEFAULT_FILE_PREPROCESSOR_TOOL,
-    :tools_dependencies_generator => DEFAULT_DEPENDENCIES_GENERATOR_TOOL,
-  }
+require 'constants'       # for Verbosity constants class
 
 
 
@@ -81,56 +10,74 @@ class ConfiguratorBuilder
   constructor :project_file_loader, :file_system_utils, :file_wrapper
     
   
-  def insert_tool_names(config)
-    config[:tools].each_key do |name|
-      tool = config[:tools][name]
-      tool[:name] = name.to_s
+  def build_global_constants(config)
+    config.each_pair do |key, value|
+      formatted_key = key.to_s.upcase
+      # undefine global constant if it already exists
+      Object.send(:remove_const, formatted_key.to_sym) if Object.constants.include?(formatted_key)
+      # create global constant
+      Object.module_eval("#{formatted_key} = value")
     end
   end
+
   
+  def build_accessor_methods(config, context)
+    config.each_pair do |key, value|
+      # fill configurator object with accessor methods
+      eval("def #{key.to_s.downcase}() return @project_config_hash[:#{key.to_s}] end", context)
+    end
+  end
+
   
   # create a flattened hash from the original configuration structure
-  def hashify(config)
-    hash = {}
+  def flattenify(config)
+    new_hash = {}
     
     config.each_key do | parent |
-      
+
       # gracefully handle empty top-level entries
       next if (config[parent].nil?)
-      
-      config[parent].each_pair do | child, value |
-        key = "#{parent.to_s.downcase}_#{child.to_s.downcase}".to_sym
-        hash[key] = value
+
+      case config[parent]
+        when Array
+          config[parent].each do |hash|
+            key = "#{parent.to_s.downcase}_#{hash.keys[0].to_s.downcase}".to_sym
+            new_hash[key] = hash[hash.keys[0]]
+          end
+        when Hash
+          config[parent].each_pair do | child, value |
+            key = "#{parent.to_s.downcase}_#{child.to_s.downcase}".to_sym
+            new_hash[key] = value
+          end
       end
+      
     end
     
-    return hash
+    return new_hash
   end
 
 
-  # set default values for those settings necessary for the project that a user may optionally overwrite in config file
-  def populate_defaults(in_hash)
-    # copy defaults hash in preparation for merging
-    out_hash = DEFAULT_CEEDLING_CONFIG.clone
-        
-    # first, perform a simple deep merge of defaults hash with input hash
-    out_hash.each_pair do |key, value|
-      if (!in_hash[key].nil?)
-        case(value)
-          when Hash then out_hash[key].merge!(in_hash[key])
-          else out_hash[key] = in_hash[key]
-        end
-      end
-    end
-
-    # second, copy into output hash anything unique that exists in input hash
-    in_hash.each_pair do |key, value|
-      out_hash[key] = value if (out_hash[key].nil?)
-    end
-
-    return out_hash
+  def populate_default_test_tools(config)
+    config[:tools][:test_compiler] = DEFAULT_TEST_COMPILER_TOOL  if (config[:tools][:test_compiler].nil?)
+    config[:tools][:test_linker]   = DEFAULT_TEST_LINKER_TOOL    if (config[:tools][:test_linker].nil?)
+    config[:tools][:test_fixture]  = DEFAULT_TEST_FIXTURE_TOOL   if (config[:tools][:test_fixture].nil?)
+  end
+  
+  
+  def populate_default_test_helper_tools(config)
+    config[:tools][:test_includes_preprocessor]  = DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL   if (config[:tools][:test_includes_preprocessor].nil? and config[:project][:use_preprocessor])
+    config[:tools][:test_file_preprocessor]      = DEFAULT_TEST_FILE_PREPROCESSOR_TOOL       if (config[:tools][:file_preprocessor].nil? and config[:project][:use_preprocessor])
+    config[:tools][:test_dependencies_generator] = DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL  if (config[:tools][:test_dependencies_generator].nil? and config[:project][:use_auxiliary_dependencies])
   end
 
+
+  def populate_default_release_tools(config)
+    config[:tools][:release_compiler]               = DEFAULT_RELEASE_COMPILER_TOOL                if (config[:tools][:release_compiler].nil? and config[:release_build][:enabled])
+    config[:tools][:release_assembler]              = DEFAULT_RELEASE_ASSEMBLER_TOOL               if (config[:tools][:release_assembler].nil? and config[:release_build][:enabled] and config[:release_build][:use_assembly])
+    config[:tools][:release_linker]                 = DEFAULT_RELEASE_LINKER_TOOL                  if (config[:tools][:release_linker].nil? and config[:release_build][:enabled])
+    config[:tools][:release_dependencies_generator] = DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL  if (config[:tools][:release_dependencies_generator].nil? and config[:project][:use_auxiliary_dependencies])
+  end
+  
   
   def clean(in_hash)
     # ensure that include files inserted into test runners have file extensions & proper ones at that
@@ -139,25 +86,40 @@ class ConfiguratorBuilder
 
 
   def set_build_paths(in_hash)
-    test_path = 'tests'
+    test_path    = 'tests'
     release_path = 'release'
+
     build_paths = []
     out_hash = {}
 
-    out_hash[:project_release_artifacts_path] = File.join(in_hash[:project_build_root], release_path, 'artifacts')
-    out_hash[:project_release_build_output_path] = File.join(in_hash[:project_build_root], release_path, 'out')
+    project_build_artifacts_root = File.join(in_hash[:project_build_root], 'artifacts')
+    project_build_tests_root     = File.join(in_hash[:project_build_root], test_path)
+    project_build_release_root   = File.join(in_hash[:project_build_root], release_path) if in_hash[:release_build_enabled]
     
-    out_hash[:project_test_artifacts_path] = File.join(in_hash[:project_build_root], test_path, 'artifacts')
-    out_hash[:project_test_runners_path] = File.join(in_hash[:project_build_root], test_path, 'runners')
-    out_hash[:project_test_results_path] = File.join(in_hash[:project_build_root], test_path, 'results')
-    out_hash[:project_test_build_output_path] = File.join(in_hash[:project_build_root], test_path, 'out')
+    out_hash[:project_build_artifacts_root] = project_build_artifacts_root
+    out_hash[:project_build_tests_root]     = project_build_tests_root
+    out_hash[:project_build_release_root]   = project_build_release_root if in_hash[:release_build_enabled]
+
+    if (in_hash[:release_build_enabled])
+      out_hash[:project_release_artifacts_path]        = File.join(project_build_artifacts_root, release_path)
+      out_hash[:project_release_build_output_path]     = File.join(project_build_release_root, 'out')
+      out_hash[:project_release_build_output_asm_path] = File.join(project_build_release_root, 'out', 'asm')
+      out_hash[:project_release_build_output_c_path]   = File.join(project_build_release_root, 'out', 'c')
+      out_hash[:project_release_dependencies_path]     = File.join(project_build_release_root, 'dependencies') if in_hash[:project_use_auxiliary_dependencies]
+    end
+    
+    out_hash[:project_test_artifacts_path]    = File.join(project_build_artifacts_root, test_path)
+    out_hash[:project_test_runners_path]      = File.join(project_build_tests_root, 'runners')
+    out_hash[:project_test_results_path]      = File.join(project_build_tests_root, 'results')
+    out_hash[:project_test_build_output_path] = File.join(project_build_tests_root, 'out')
+    out_hash[:project_log_path]               = File.join(in_hash[:project_build_root], 'logs')
     
     out_hash[:project_temp_path] = File.join(in_hash[:project_build_root], 'temp') if in_hash[:project_use_preprocessor]
 
-    out_hash[:project_test_preprocess_includes_path] = File.join(in_hash[:project_build_root], test_path, 'preprocess/includes') if in_hash[:project_use_preprocessor]
-    out_hash[:project_test_preprocess_files_path]    = File.join(in_hash[:project_build_root], test_path, 'preprocess/files')    if in_hash[:project_use_preprocessor]
+    out_hash[:project_test_preprocess_includes_path] = File.join(project_build_tests_root, 'preprocess/includes') if in_hash[:project_use_preprocessor]
+    out_hash[:project_test_preprocess_files_path]    = File.join(project_build_tests_root, 'preprocess/files')    if in_hash[:project_use_preprocessor]
 
-    out_hash[:project_test_dependencies_path] = File.join(in_hash[:project_build_root], test_path, 'dependencies') if in_hash[:project_use_auxiliary_dependencies]
+    out_hash[:project_test_dependencies_path] = File.join(project_build_tests_root, 'dependencies') if in_hash[:project_use_auxiliary_dependencies]
 
     # fetch already set mock path
     build_paths << in_hash[:cmock_mock_path] if in_hash[:project_use_mocks]
@@ -172,31 +134,105 @@ class ConfiguratorBuilder
   end
 
 
+  def set_log_filepath(in_hash)
+    return {} if (not in_hash[:project_logging])
+
+    log_name = File.basename(@project_file_loader.main_project_filepath).ext('')
+    
+    if (not @project_file_loader.user_project_filepath.empty?)
+      log_name += "_#{File.basename(@project_file_loader.user_project_filepath).ext('')}"
+    end
+    
+    if (not @project_file_loader.project_options_filepath.empty?)
+      log_name += "_#{File.basename(@project_file_loader.project_options_filepath).ext('')}"
+    end
+
+    return {
+      # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
+      :project_log_filepath => File.join( in_hash[:project_log_path], log_name.ext('.log') )
+      }
+  end
+
+
   def set_rakefile_components(in_hash)
     out_hash = {
       :project_rakefile_component_files => 
-        [File.join(CEEDLING_LIB, 'tasks.rake'),
+        [File.join(CEEDLING_LIB, 'tasks_base.rake'),
          File.join(CEEDLING_LIB, 'tasks_filesystem.rake'),
-         File.join(CEEDLING_LIB, 'rules.rake')]}
-    
+         File.join(CEEDLING_LIB, 'tasks_tests.rake'),
+         File.join(CEEDLING_LIB, 'rules_tests.rake')]}
+
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_cmock.rake') if (in_hash[:project_use_mocks])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_preprocess.rake') if (in_hash[:project_use_preprocessor])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_aux_dependencies.rake') if (in_hash[:project_use_auxiliary_dependencies])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_tests_aux_dependencies.rake') if (in_hash[:project_use_auxiliary_dependencies])
+
+    # order is important because of how rake processes and collapses the tasks & rules defined within
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release_aux_dependencies.rake') if (in_hash[:release_build_enabled] and in_hash[:project_use_auxiliary_dependencies])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release.rake') if (in_hash[:release_build_enabled])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release_aux_dependencies.rake') if (in_hash[:release_build_enabled] and in_hash[:project_use_auxiliary_dependencies])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release.rake') if (in_hash[:release_build_enabled])
 
     return out_hash
   end
   
   
-  def collect_test_and_source_include_paths(in_hash)
+  def set_release_target(in_hash)
+    return {} if (not in_hash[:release_build_enabled])
+    return {
+      # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
+      :project_release_build_target => File.join(in_hash[:project_release_artifacts_path], in_hash[:release_build_output])
+      }
+  end
+  
+  
+  def collect_project_options(in_hash)
+    return {
+      :collection_project_options => @file_wrapper.directory_listing( File.join(in_hash[:project_options_path], '*.yml') )
+      }
+  end
+  
+
+  def expand_all_path_globs(in_hash)
+    out_hash = {}
+    path_keys = []
+    
+    in_hash.each_key do |key|
+      next if (not key.to_s[0..4] == 'paths')
+      path_keys << key
+    end
+    
+    # sorted to provide assured order of traversal in test calls on mocks
+    path_keys.sort.each do |key|
+      out_hash["collection_#{key.to_s}".to_sym] = @file_system_utils.collect_paths( in_hash[key] )
+    end
+    
+    return out_hash
+  end
+
+
+  def collect_source_and_include_paths(in_hash)
+    extra_paths = []
+    extra_paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (in_hash[:project_use_exceptions])
+
+    return {
+      :collection_paths_source_and_include => 
+        in_hash[:collection_paths_source] + 
+        in_hash[:collection_paths_include] + 
+        extra_paths
+      }    
+  end
+
+  
+  def collect_test_and_source_and_include_paths(in_hash)
     extra_paths = []
     insert_vendor_paths(extra_paths, in_hash)
 
     return {
-      :paths_test_and_source_include => 
-        in_hash[:paths_test] +
-        in_hash[:paths_support] +
-        in_hash[:paths_source] + 
-        in_hash[:paths_include] + 
+      :collection_paths_test_and_source_and_include => 
+        in_hash[:collection_paths_test] +
+        in_hash[:collection_paths_support] +
+        in_hash[:collection_paths_source] + 
+        in_hash[:collection_paths_include] + 
         extra_paths
       }    
   end
@@ -208,10 +244,10 @@ class ConfiguratorBuilder
     extra_paths << in_hash[:project_test_runners_path]
 
     return {
-      :paths_test_and_source => 
-        in_hash[:paths_test] +
-        in_hash[:paths_support] +
-        in_hash[:paths_source] + 
+      :collection_paths_test_and_source => 
+        in_hash[:collection_paths_test] +
+        in_hash[:collection_paths_support] +
+        in_hash[:collection_paths_source] + 
         extra_paths
       }    
   end
@@ -219,19 +255,32 @@ class ConfiguratorBuilder
   
   def collect_tests(in_hash)
     all_tests = @file_wrapper.instantiate_file_list
-    
-    in_hash[:paths_test].each do |path|
+
+    in_hash[:collection_paths_test].each do |path|
       all_tests.include( File.join(path, "#{in_hash[:project_test_file_prefix]}*#{in_hash[:extension_source]}") )
     end
-    
+
     return {:collection_all_tests => all_tests}
+  end
+
+
+  def collect_assembly(in_hash)
+    all_assembly = @file_wrapper.instantiate_file_list
+
+    return {:collection_all_assembly => all_assembly} if (not in_hash[:release_build_use_assembly])
+    
+    in_hash[:collection_paths_source].each do |path|
+      all_assembly.include( File.join(path, "*#{in_hash[:extension_assembly]}") )
+    end
+    
+    return {:collection_all_assembly => all_assembly}
   end
 
 
   def collect_source(in_hash)
     all_source = @file_wrapper.instantiate_file_list
     
-    in_hash[:paths_source].each do |path|
+    in_hash[:collection_paths_source].each do |path|
       all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
     end
     
@@ -242,7 +291,7 @@ class ConfiguratorBuilder
   def collect_headers(in_hash)
     all_headers = @file_wrapper.instantiate_file_list
     
-    paths = in_hash[:paths_support] + in_hash[:paths_source] + in_hash[:paths_include]
+    paths = in_hash[:collection_paths_support] + in_hash[:collection_paths_source] + in_hash[:collection_paths_include]
     
     (paths).each do |path|
       all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
@@ -252,29 +301,30 @@ class ConfiguratorBuilder
   end
 
 
-  def collect_all_compilation_input(in_hash)
+  def collect_all_existing_compilation_input(in_hash)
     all_input = @file_wrapper.instantiate_file_list
 
     paths = 
-      in_hash[:paths_test] + 
-      in_hash[:paths_support] + 
-      in_hash[:paths_source] + 
-      in_hash[:paths_include]
+      in_hash[:collection_paths_test] + 
+      in_hash[:collection_paths_support] + 
+      in_hash[:collection_paths_source] + 
+      in_hash[:collection_paths_include] +
+      [FilePathUtils::form_ceedling_vendor_path('unity/src')]
     
-    paths << in_hash[:project_test_runners_path]
-    insert_vendor_paths(paths, in_hash)
+    paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (in_hash[:project_use_exceptions])
+    paths << FilePathUtils::form_ceedling_vendor_path('cmock/src') if (in_hash[:project_use_mocks])
 
     (paths).each do |path|
       all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
       all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
     end
     
-    return {:collection_all_compilation_input => all_input}    
+    return {:collection_all_existing_compilation_input => all_input}    
   end
 
 
   def collect_test_defines(in_hash)
-    test_defines = in_hash[:defines_test]
+    test_defines = in_hash[:defines_test].clone
     
     test_defines << "UNITY_INT_WIDTH=#{in_hash[:unity_int_width]}"
     
@@ -316,30 +366,12 @@ class ConfiguratorBuilder
     return out_hash
   end
 
-
-  def expand_all_path_globs(in_hash)
-    out_hash = {}
-    path_keys = []
-    
-    # to provide assured order of traversal in test calls on mocks
-    in_hash.each_key do |key|
-      next if (not key.to_s[0..4] == 'paths')
-      path_keys << key.to_s
-    end
-    
-    path_keys.sort.each do |key|
-      out_hash["collection_#{key}".to_sym] = @file_system_utils.collect_paths( in_hash[key.to_sym] )
-    end
-    
-    
-    return out_hash
-  end
-  
   private ##############################
   
   def insert_vendor_paths(paths, config)
     paths << FilePathUtils::form_ceedling_vendor_path('unity/src')
     paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (config[:project_use_exceptions])
+    paths << FilePathUtils::form_ceedling_vendor_path('cmock/src') if (config[:project_use_mocks])
     paths << config[:cmock_mock_path] if (config[:project_use_mocks])
   end
   

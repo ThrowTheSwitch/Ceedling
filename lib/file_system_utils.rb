@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'rake'
+require 'set'
 require 'fileutils'
 require 'file_path_utils.rb'
 
@@ -8,27 +9,49 @@ class FileSystemUtils
   
   constructor :file_wrapper
 
-  # build up a FileList of directory paths from input of one or more strings, arrays, or filelists
+  # build up path list from input of one or more strings or arrays of (+/-) paths & globs
   def collect_paths(*paths)
-    # collection of all files & directories assembled by filelists
-    all = @file_wrapper.instantiate_file_list
+    raw   = []  # all paths and globs
+    plus  = Set.new # all paths to expand and add
+    minus = Set.new # all paths to remove from plus set
     
-    # container for only directories
-    dirs = @file_wrapper.instantiate_file_list
-    
+    # assemble all globs and simple paths, reforming our glob notation to ruby globs
     paths.each do |paths_container|
       case (paths_container)
-        when FileList then all += paths_container
-        when String   then all.include(FilePathUtils::reform_glob(paths_container))
-        when Array    then paths_container.each {|path| all.include(FilePathUtils::reform_glob(path))}
+        when String then raw << (FilePathUtils::reform_glob(paths_container))
+        when Array  then paths_container.each {|path| raw << (FilePathUtils::reform_glob(path))}
+        else raise "Don't know how to handle #{paths_container.class}"
       end
     end
 
-    all.each do |item|
-      dirs.include(item) if @file_wrapper.directory?(item)
-    end
+    # iterate through each path and glob
+    raw.each do |path|
     
-    return dirs
+      dirs = []  # container for only (expanded) paths
+    
+      # if a glob, expand it and slurp up all non-file paths
+      if path.include?('*')
+        # grab base directory
+        dirs << FilePathUtils.extract_path(path)
+        
+        # grab expanded sub-directory globs
+        expanded = @file_wrapper.directory_listing( FilePathUtils.extract_path_no_aggregation_operators(path) )
+        expanded.each do |entry|
+          dirs << entry if @file_wrapper.directory?(entry)
+        end
+        
+      # else just grab simple path
+      # note: we could just run this through glob expansion but such an
+      #       approach doesn't handle a path not yet on disk)
+      else
+        dirs << FilePathUtils.extract_path_no_aggregation_operators(path)
+      end
+      
+      # add dirs to the appropriate set based on path aggregation modifier if present
+      FilePathUtils.add_path?(path) ? plus.merge(dirs) : minus.merge(dirs)
+    end
+
+    return (plus - minus).to_a.uniq
   end
 
 end

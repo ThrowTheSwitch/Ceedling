@@ -2,13 +2,16 @@ require 'constants'
 
 class ProjectFileLoader
 
-  attr_reader :main_project_filepath, :user_project_filepath
+  attr_reader :main_project_filepath, :user_project_filepath, :config_hash
+  attr_accessor :project_options_filepath
 
   constructor :yaml_wrapper, :stream_wrapper, :system_wrapper, :file_wrapper
 
   def setup
     @main_project_filepath = ''
     @user_project_filepath = ''
+    @project_options_filepath = ''
+    @config_hash = {}
   end
 
 
@@ -43,11 +46,16 @@ class ProjectFileLoader
 
   def load_project_file
     # if there's no user project file, then just provide hash from project file
-    return @yaml_wrapper.load(@main_project_filepath) if (@user_project_filepath.empty?)
-    
+    if (@user_project_filepath.empty?)
+      @config_hash = @yaml_wrapper.load(@main_project_filepath)
     # if there is a user project file, load it too and merge it on top of the project file,
     # superseding anything that's common between them
-    return (@yaml_wrapper.load(@main_project_filepath)).merge(@yaml_wrapper.load(@user_project_filepath))
+    else
+      @config_hash = (@yaml_wrapper.load(@main_project_filepath)).merge(@yaml_wrapper.load(@user_project_filepath))
+    end
+    
+    return @config_hash
   end
   
+
 end

@@ -1,7 +1,5 @@
-require 'constants' # for Verbosity enumeration
+require 'constants'
 
-
-TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN = /(\$\{(\d+)\})/
 
 class ToolExecutor
 
@@ -25,15 +23,15 @@ class ToolExecutor
 
 
   # shell out, execute command, and return response
-  def exec(command, args=[])
+  def exec(command, args=[], boom=true)
     command_str = "#{command} #{args.join(' ')}".strip
     
     shell_result = @system_wrapper.shell_execute(command_str)
 
     @tool_executor_helper.print_happy_results(command_str, shell_result)
-    @tool_executor_helper.print_error_results(command_str, shell_result)
+    @tool_executor_helper.print_error_results(command_str, shell_result) if boom
 
-    raise if (shell_result[:exit_code] != 0)
+    raise if ((shell_result[:exit_code] != 0) and boom)
 
     return shell_result[:output]
   end
@@ -48,7 +46,11 @@ class ToolExecutor
     return '' if (config.nil?)
     
     # iterate through each argument
-    config.each do |element|
+
+    # the yaml blog array needs to be flattened so that yaml substitution
+    # is handled correctly, since it creates a nested array when an anchor is
+    # dereferenced
+    config.flatten.each do |element|
       
       case(element)
         # if we find a simple string then look for string replacement operators
@@ -71,7 +73,7 @@ class ToolExecutor
     match = //
     to_process = nil
     args_index = 0
-    
+
     # handle ${#} input replacement
     if (element =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
       args_index = ($2.to_i - 1)
@@ -83,10 +85,11 @@ class ToolExecutor
 
       match = /#{Regexp.escape($1)}/
       to_process = args[args_index]
-    # simple string argument: replace escaped '\$' and strip
-    else
-      return element.sub(/\\\$/, '$').strip
     end
+      
+    # simple string argument: replace escaped '\$' and strip
+    element.sub!(/\\\$/, '$')
+    element.strip!
 
     build_string = ''
     # handle escaped $
@@ -97,7 +100,12 @@ class ToolExecutor
       when Array then to_process.each {|value| build_string.concat( "#{scrubbed_element.sub(match, value.to_s)} " ) }
       else build_string.concat( scrubbed_element.sub(match, to_process.to_s) )
     end
-        
+
+    # handle ruby string replacement
+    if (build_string =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      build_string.replace(@system_wrapper.eval(build_string))
+    end
+    
     return build_string.strip
   end
 
@@ -111,27 +119,35 @@ class ToolExecutor
     format = hash.keys[0].to_s
     # grab the string(s) to squirt into the format string (hash value)
     expand = hash[hash.keys[0]]
-    
-    case(expand)
-      # if String then assume we're looking up global constant
-      when String
-        if (not Object.constants.include?(expand))
-          @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' found constant '#{expand}' undefined.", Verbosity::ERRORS)
-          raise          
-        end
-        elements = Object.const_get(expand)
-      # if array, then it's inline array provided in yaml
-      when Array then elements = expand
+
+    if (expand.nil?)
+      @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' could not expand nil elements for format string '#{format}'.", Verbosity::ERRORS)
+      raise
     end
     
-    if (elements.nil?)
-      @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' could not expand nil elements for format string '#{format}'.", Verbosity::ERRORS)
-      raise      
+    expand.each do |item|
+      # string substitution
+      if (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
+        elements << @system_wrapper.eval(item)
+      # global constants
+      elsif (Object.constants.include?(item))
+        const = Object.const_get(item)
+        if (const.nil?)
+          @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' found constant '#{item}' to be nil.", Verbosity::ERRORS)
+          raise
+        else
+          elements << const
+        end
+      # plain ol' string or array
+      else
+        elements << item
+      end
     end
     
     # expand elements (whether string or array) into format string & replace escaped '\$'
+    elements.flatten!
     elements.each do |element|
-      build_string.concat( format.sub(/([^\\])\$/, "\\1#{element}") )
+      build_string.concat( format.sub(/([^\\]*)\$/, "\\1#{element}") ) # don't replace escaped '\$' but allow us to replace just a lonesome '$'
       build_string.gsub!(/\\\$/, '$')
       build_string.concat(' ')
     end

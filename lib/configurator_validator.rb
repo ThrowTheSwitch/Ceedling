@@ -21,7 +21,7 @@ class ConfiguratorValidator
 
 
   # walk into config hash. verify directory path(s) at given key depth
-  def validate_paths(config, *keys)
+  def validate_path_list(config, *keys)
     hash = retrieve_value(config, keys)
     list = hash[:value]
 
@@ -37,7 +37,7 @@ class ConfiguratorValidator
     end
     
     path_list.each do |path|
-      base_path = FilePathUtils::dirname(path) # lop off glob specifiers
+      base_path = FilePathUtils::extract_path(path) # lop off add/subtract notation & glob specifiers
       
       if (not @file_wrapper.exist?(base_path))
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
@@ -51,16 +51,30 @@ class ConfiguratorValidator
 
   
   # simple path verification
-  def validate_path(path, *keys)
-    if (not @file_wrapper.exist?(path))
+  def validate_simple_path(path, *keys)
+    validate_path = path
+    
+    case(path)
+      when String
+      when Array
+        if (path.size != 1)
+          @stream_wrapper.stderr_puts("ERROR: Config path associated with #{format_key_sequence(keys, keys.size)} must be a single path.") 
+          return false
+        end
+        validate_path = path[0]
+    end
+
+    if (not @file_wrapper.exist?(validate_path))
       # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
-      @stream_wrapper.stderr_puts("ERROR: Config path '#{path}' associated with #{format_key_sequence(keys, keys.size)} does not exist on disk.") 
-      exist = false
+      @stream_wrapper.stderr_puts("ERROR: Config path '#{validate_path}' associated with #{format_key_sequence(keys, keys.size)} does not exist on disk.") 
+      return false
     end 
+    
+    return true
   end
 
  
-  # walk into config hash. verify file path at given key depth.
+  # walk into config hash. verify specified file exists.
   def validate_filepath(config, *keys)
     hash = retrieve_value(config, keys)
     filepath = hash[:value]

@@ -7,31 +7,26 @@ class PluginManager
 
   def setup
     @build_fail_registry = []
+    @plugin_objects = [] # so we can preserve order
   end
   
   def load_plugin_scripts(script_plugins, system_objects)
-    @plugin_objects = []
-    
     script_plugins.each do |plugin|
+			next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
+			# build up load path in case there are ruby files in plugin directory that main ruby file wants to load
+      @system_wrapper.add_load_path( File.join(@configurator.plugins_base_path, plugin ) )
       @system_wrapper.require_file( File.join(@configurator.plugins_base_path, plugin, "#{plugin}.rb") )
-      @plugin_objects << @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects )
+      
+      object = @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects, plugin )
+      @plugin_objects << object
+      
+      # add plugins to hash of all system objects
+      system_objects[plugin.downcase.to_sym] = object
     end
   end
   
   def build_failed?
     return (@build_fail_registry.size > 0)
-  end
-  
-  def test_build?
-    return @plugin_manager_helper.rake_task_invoked?(/^#{TESTS_TASKS_ROOT_NAME}:/)
-  end
-  
-  def release_build?
-    return @plugin_manager_helper.rake_task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}:/)
-  end
-  
-  def rake_task_invoked?(task_regex)
-    return @plugin_manager_helper.rake_task_invoked?(task_regex)
   end
   
   def print_build_failures
@@ -49,31 +44,38 @@ class PluginManager
   end
   
   def register_build_failure(message)
-    @build_fail_registry << message
+    @build_fail_registry << message  if not message.empty?
   end
 
-  def pre_test_execute(arg_hash)
-    @plugin_objects.each do |plugin|
-      plugin.pre_test_execute(arg_hash)
-    end    
-  end
+  #### execute all plugin methods ####
+
+  def pre_build; execute_plugins(:pre_build); end
+
+  def pre_mock_execute(arg_hash); execute_plugins(:pre_mock_execute, arg_hash); end
+  def post_mock_execute(arg_hash); execute_plugins(:post_mock_execute, arg_hash); end
+
+  def pre_runner_execute(arg_hash); execute_plugins(:pre_runner_execute, arg_hash); end
+  def post_runner_execute(arg_hash); execute_plugins(:post_runner_execute, arg_hash); end
+
+  def pre_compile_execute(arg_hash); execute_plugins(:pre_compile_execute, arg_hash); end
+  def post_compile_execute(arg_hash); execute_plugins(:post_compile_execute, arg_hash); end
+
+  def pre_link_execute(arg_hash); execute_plugins(:pre_link_execute, arg_hash); end
+  def post_link_execute(arg_hash); execute_plugins(:post_link_execute, arg_hash); end
+
+  def pre_test_execute(arg_hash); execute_plugins(:pre_test_execute, arg_hash); end
+  def post_test_execute(arg_hash); execute_plugins(:post_test_execute, arg_hash); end
   
-  def post_test_execute(arg_hash)
-    @plugin_objects.each do |plugin|
-      plugin.post_test_execute(arg_hash)
-    end    
-  end
+  def post_build; execute_plugins(:post_build); end
   
-  def post_build
-    @plugin_objects.each do |plugin|
-      plugin.post_build
-    end
-  end
-  
-  private
+  private ####################################
   
   def camelize(underscored_name)
     return underscored_name.gsub(/(_|^)([a-z0-9])/) {$2.upcase}
+  end
+
+  def execute_plugins(method, *args)
+    @plugin_objects.each {|plugin| plugin.send(method, *args) }
   end
 
 end

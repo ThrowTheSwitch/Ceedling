@@ -18,6 +18,7 @@ class DeepMergeFixTest < Test::Unit::TestCase
 
     source = {
       :array => [1, 2, 3],
+      :int => 9,
       :string => 'hello',
       :boolean1 => false,
       :boolean2 => true,
@@ -27,6 +28,7 @@ class DeepMergeFixTest < Test::Unit::TestCase
     
     destination = {
       :array => [3, 4, 5],
+      :int => 1,
       :string => 'world',
       :boolean1 => true,
       :boolean2 => false,
@@ -36,6 +38,7 @@ class DeepMergeFixTest < Test::Unit::TestCase
 
     merged  = {
       :array => [1, 2, 3, 4, 5],
+      :int => 9,
       :string => 'hello',
       :boolean1 => false,
       :boolean2 => true,

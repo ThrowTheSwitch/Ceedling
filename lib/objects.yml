@@ -36,9 +36,7 @@ tool_executor:
     - system_wrapper
 
 tool_executor_helper:
-  compose:
-    - verbosinator
-    - stream_wrapper
+  compose: streaminator
 
 configurator:
   compose:
@@ -46,11 +44,12 @@ configurator:
     - configurator_plugins
     - configurator_builder
     - yaml_wrapper
+    - system_wrapper
 
 configurator_helper:
   compose:
+    - configurator_builder
     - configurator_validator
-    - system_wrapper
 
 configurator_plugins:
   compose:
@@ -62,17 +61,27 @@ configurator_validator:
     - file_wrapper
     - stream_wrapper
     - system_wrapper
-      
+
 configurator_builder:
   compose:
     - project_file_loader
     - file_system_utils
     - file_wrapper
 
+loginator:
+  compose:
+    - configurator
+    - file_wrapper
+    - system_wrapper
+
 streaminator:
   compose:
+    - streaminator_helper
     - verbosinator
+    - loginator
     - stream_wrapper
+
+streaminator_helper:
 
 setupinator:
   compose:
@@ -80,6 +89,7 @@ setupinator:
     - project_file_loader
     - test_includes_extractor
     - plugin_manager
+    - plugin_reportinator
     - file_finder
 
 plugin_manager:
@@ -89,9 +99,22 @@ plugin_manager:
     - streaminator
     - reportinator
     - system_wrapper
-  
+
 plugin_manager_helper:
-  compose: rake_wrapper
+
+plugin_reportinator:
+  compose:
+    - plugin_reportinator_helper
+    - plugin_manager
+    - reportinator
+
+plugin_reportinator_helper:
+  compose:
+    - configurator
+    - streaminator
+    - yaml_wrapper
+    - file_wrapper
+    - rake_wrapper
 
 verbosinator:
   compose: configurator
@@ -100,16 +123,16 @@ file_finder:
   compose:
     - configurator
     - file_finder_helper
+    - file_wrapper
 
 file_finder_helper:
   compose: streaminator
 
 test_includes_extractor:
   compose:
-    - configurator
     - yaml_wrapper
     - file_wrapper
-    
+
 task_invoker:
   compose:
     - configurator
@@ -140,20 +163,6 @@ generator_test_runner:
   compose:
     - configurator
     - file_wrapper
-
-reporter_test_results:
-  compose:
-    - reporter_test_results_helper
-    - configurator
-    - plugin_manager
-    - streaminator
-    - yaml_wrapper
-    - file_wrapper
-
-reporter_test_results_helper:
-  compose:
-    - reportinator
-    - streaminator
 
 dependinator:
   compose:
@@ -209,13 +218,13 @@ test_invoker:
     - preprocessinator
     - task_invoker
     - dependinator
+    - file_finder
     - file_wrapper    
-    
+
 test_invoker_helper:
   compose:
     - configurator
     - task_invoker
     - dependinator
     - file_path_utils
-    - file_finder
     - file_wrapper
