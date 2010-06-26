@@ -45,7 +45,7 @@ class StdoutPrettyTestsReport < Plugin
       %   results[:stdout].each do |string|
       [<%=string[:source][:file]%>]
       %     string[:collection].each do |item|
-        :"<%=item%>"
+        - "<%=item%>"
       %     end
 
       %   end

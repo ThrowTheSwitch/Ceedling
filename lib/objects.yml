@@ -123,7 +123,9 @@ file_finder:
   compose:
     - configurator
     - file_finder_helper
+    - file_path_utils
     - file_wrapper
+    - yaml_wrapper
 
 file_finder_helper:
   compose: streaminator
@@ -156,8 +158,13 @@ generator:
 generator_test_results:
   compose:
     - configurator  
+    - generator_test_results_sanity_checker
     - yaml_wrapper  
+
+generator_test_results_sanity_checker:
+  compose:
     - streaminator
+
 
 generator_test_runner:
   compose:
@@ -226,5 +233,7 @@ test_invoker_helper:
     - configurator
     - task_invoker
     - dependinator
+    - file_finder
     - file_path_utils
     - file_wrapper
+    - rake_wrapper

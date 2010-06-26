@@ -56,13 +56,6 @@ class ConfiguratorBuilder
     return new_hash
   end
 
-
-  def populate_default_test_tools(config, new_config)
-    new_config[:tools][:test_compiler] = DEFAULT_TEST_COMPILER_TOOL
-    new_config[:tools][:test_linker]   = DEFAULT_TEST_LINKER_TOOL
-    new_config[:tools][:test_fixture]  = DEFAULT_TEST_FIXTURE_TOOL
-  end
-  
   
   def populate_default_test_helper_tools(config, new_config)
     new_config[:tools][:test_includes_preprocessor]  = DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL   if (config[:project][:use_preprocessor])

@@ -3,7 +3,7 @@
 rule(/#{PROJECT_TEST_FILE_PREFIX}#{'.+'+TEST_RUNNER_FILE_SUFFIX}#{'\\'+EXTENSION_SOURCE}$/ => [
     proc do |task_name|
       return @ceedling[:file_finder].find_test_from_runner_path(task_name)
-    end  
+    end
   ]) do |runner|
   @ceedling[:generator].generate_test_runner(runner.source, runner.name)
 end

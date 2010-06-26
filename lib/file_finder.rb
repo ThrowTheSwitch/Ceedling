@@ -3,7 +3,7 @@ require 'rake' # for adding ext() method to string
 
 class FileFinder
 
-  constructor :configurator, :file_finder_helper, :file_wrapper
+  constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper
 
   def prepare_search_sources
     @test_source_header_file_collection = @configurator.collection_all_tests + @configurator.collection_all_source + @configurator.collection_all_headers
@@ -134,6 +134,17 @@ class FileFinder
   def find_assembly_file(file_path)
     assembly_file = File.basename(file_path).ext(@configurator.extension_assembly)
     return @file_finder_helper.find_file_in_collection(assembly_file, @configurator.collection_all_assembly)
+  end
+
+  # given a test, open its shallow include list and build an include list with full paths from it
+  def find_header_files_included_by_test(test_file)
+    includes = @yaml_wrapper.load( @file_path_utils.form_preprocessed_includes_list_path(test_file) )
+
+    # ignore files (e.g. mocks) which may not yet exist on disk
+    includes.map! { |header| @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_existing_compilation_input, {:should_complain => false}) }
+    includes.delete_if { |header| header.empty? } 
+
+    return includes
   end
     
 end

@@ -1,12 +1,10 @@
 require 'rubygems'
 require 'rake' # for .ext()
-require 'constants' # for Verbosity constants class
-
 
  
 class GeneratorTestResults
 
-  constructor :configurator, :yaml_wrapper, :streaminator
+  constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper
 
   
   def process_and_write_results(raw_unity_output, results_file, test_file)
@@ -40,6 +38,8 @@ class GeneratorTestResults
         results[:stdout] << line.chomp
       end
     end
+    
+    @generator_test_results_sanity_checker.verify(results)
     
     output_file = results_file.ext(@configurator.extension_testfail) if (results[:counts][:failed] > 0)
     
