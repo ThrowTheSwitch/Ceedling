@@ -26,6 +26,7 @@ DEFAULT_TEST_LINKER_TOOL = {
 DEFAULT_TEST_FIXTURE_TOOL = {
   :executable => '${1}',
   :name => 'default_test_fixture',
+  :arguments => []
   }
 
 
@@ -178,7 +179,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :file_suffix => '_runner',
     },
 
-	:tools => {},
+    :tools => {},
 
     :plugins => {
       :base_path => NULL_FILE_PATH,
