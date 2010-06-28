@@ -25,7 +25,7 @@ class PreprocessinatorIncludesHandler
     #  ignore the fact that it can't find the included files
     command_line     = @tool_executor.build_command_line(@configurator.tools_test_includes_preprocessor, temp_filepath)
     command_response = @tool_executor.exec(command_line)
-#    @file_wrapper.rm_f(temp_filepath)
+    @file_wrapper.rm_f(temp_filepath)
     return command_response
   end
   
@@ -35,6 +35,8 @@ class PreprocessinatorIncludesHandler
     header_extension = @configurator.extension_header
     
     headers = make_rule.scan(/#{'(\S+\\'}#{header_extension + ')'}/).flatten
+    
+    headers.uniq!
     headers.map! { |header| header.sub(/@@@@/, '') }
     headers.map! { |header| header.sub(/.+\//, '') }
     headers.sort!

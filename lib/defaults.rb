@@ -38,10 +38,11 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
     '-MM', '-MG',
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE'},
     {"-I\"$\"" => 'COLLECTION_PATHS_INCLUDE'},
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
     '-w',
+    '-nostdinc',
     "\"${1}\""
     ]
   }
@@ -52,7 +53,6 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
   :arguments => [
     '-E',
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SOURCE_AND_INCLUDE'},
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
     "\"${1}\"",
