@@ -39,16 +39,19 @@ class ConfiguratorBuilder
       next if (config[parent].nil?)
 
       case config[parent]
-        when Array
-          config[parent].each do |hash|
-            key = "#{parent.to_s.downcase}_#{hash.keys[0].to_s.downcase}".to_sym
-            new_hash[key] = hash[hash.keys[0]]
-          end
-        when Hash
-          config[parent].each_pair do | child, value |
-            key = "#{parent.to_s.downcase}_#{child.to_s.downcase}".to_sym
-            new_hash[key] = value
-          end
+      when Array
+        config[parent].each do |hash|
+          key = "#{parent.to_s.downcase}_#{hash.keys[0].to_s.downcase}".to_sym
+          new_hash[key] = hash[hash.keys[0]]
+        end
+      when Hash
+        config[parent].each_pair do | child, value |
+          key = "#{parent.to_s.downcase}_#{child.to_s.downcase}".to_sym
+          new_hash[key] = value
+        end
+      # handle entries with no children, only values
+      else
+        new_hash["#{parent.to_s.downcase}".to_sym] = config[parent]
       end
       
     end
@@ -58,17 +61,24 @@ class ConfiguratorBuilder
 
   
   def populate_default_test_helper_tools(config, new_config)
-    new_config[:tools][:test_includes_preprocessor]  = DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL   if (config[:project][:use_preprocessor])
-    new_config[:tools][:test_file_preprocessor]      = DEFAULT_TEST_FILE_PREPROCESSOR_TOOL       if (config[:project][:use_preprocessor])
-    new_config[:tools][:test_dependencies_generator] = DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL  if (config[:project][:use_auxiliary_dependencies])
+    use_test_preprocessor = (( config[:project].nil? or config[:project][:use_test_preprocessor].nil? or (config[:project][:use_test_preprocessor] == false) ) ? false : true )
+    use_aux_dependencies  = (( config[:project].nil? or config[:project][:use_auxiliary_dependencies].nil? or (config[:project][:use_auxiliary_dependencies] == false) ) ? false : true )
+    
+    new_config[:tools][:test_includes_preprocessor]  = DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL   if (use_test_preprocessor)
+    new_config[:tools][:test_file_preprocessor]      = DEFAULT_TEST_FILE_PREPROCESSOR_TOOL       if (use_test_preprocessor)
+    new_config[:tools][:test_dependencies_generator] = DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL  if (use_aux_dependencies)
   end
 
 
-  def populate_default_release_tools(config, new_config)
-    new_config[:tools][:release_compiler]               = DEFAULT_RELEASE_COMPILER_TOOL                if (config[:release_build][:enabled])
-    new_config[:tools][:release_assembler]              = DEFAULT_RELEASE_ASSEMBLER_TOOL               if (config[:release_build][:enabled] and config[:release_build][:use_assembly])
-    new_config[:tools][:release_linker]                 = DEFAULT_RELEASE_LINKER_TOOL                  if (config[:release_build][:enabled])
-    new_config[:tools][:release_dependencies_generator] = DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL  if (config[:project][:use_auxiliary_dependencies])
+  def populate_default_release_tools_and_settings(config, new_config)
+    release_build         = (( config[:project].nil? or config[:project][:release_build].nil? or (config[:project][:release_build] == false) ) ? false : true )
+    use_aux_dependencies  = (( config[:project].nil? or config[:project][:use_auxiliary_dependencies].nil? or (config[:project][:use_auxiliary_dependencies] == false) ) ? false : true )
+    use_assembly          = (( config[:release_build].nil? or config[:release_build][:use_assembly].nil? or (config[:release_build][:use_assembly] == false) ) ? false : true )
+        
+    new_config[:tools][:release_compiler]               = DEFAULT_RELEASE_COMPILER_TOOL                if (release_build)
+    new_config[:tools][:release_assembler]              = DEFAULT_RELEASE_ASSEMBLER_TOOL               if (release_build and use_assembly)
+    new_config[:tools][:release_linker]                 = DEFAULT_RELEASE_LINKER_TOOL                  if (release_build)
+    new_config[:tools][:release_dependencies_generator] = DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL  if (release_build and use_aux_dependencies)
   end
   
   
@@ -87,13 +97,13 @@ class ConfiguratorBuilder
 
     project_build_artifacts_root = File.join(in_hash[:project_build_root], 'artifacts')
     project_build_tests_root     = File.join(in_hash[:project_build_root], test_path)
-    project_build_release_root   = File.join(in_hash[:project_build_root], release_path) if in_hash[:release_build_enabled]
+    project_build_release_root   = File.join(in_hash[:project_build_root], release_path) if in_hash[:project_release_build]
     
     out_hash[:project_build_artifacts_root] = project_build_artifacts_root
     out_hash[:project_build_tests_root]     = project_build_tests_root
-    out_hash[:project_build_release_root]   = project_build_release_root if in_hash[:release_build_enabled]
+    out_hash[:project_build_release_root]   = project_build_release_root if in_hash[:project_release_build]
 
-    if (in_hash[:release_build_enabled])
+    if (in_hash[:project_release_build])
       out_hash[:project_release_artifacts_path]        = File.join(project_build_artifacts_root, release_path)
       out_hash[:project_release_build_output_path]     = File.join(project_build_release_root, 'out')
       out_hash[:project_release_build_output_asm_path] = File.join(project_build_release_root, 'out', 'asm')
@@ -107,10 +117,10 @@ class ConfiguratorBuilder
     out_hash[:project_test_build_output_path] = File.join(project_build_tests_root, 'out')
     out_hash[:project_log_path]               = File.join(in_hash[:project_build_root], 'logs')
     
-    out_hash[:project_temp_path] = File.join(in_hash[:project_build_root], 'temp') if in_hash[:project_use_preprocessor]
+    out_hash[:project_temp_path] = File.join(in_hash[:project_build_root], 'temp') if in_hash[:project_use_test_preprocessor]
 
-    out_hash[:project_test_preprocess_includes_path] = File.join(project_build_tests_root, 'preprocess/includes') if in_hash[:project_use_preprocessor]
-    out_hash[:project_test_preprocess_files_path]    = File.join(project_build_tests_root, 'preprocess/files')    if in_hash[:project_use_preprocessor]
+    out_hash[:project_test_preprocess_includes_path] = File.join(project_build_tests_root, 'preprocess/includes') if in_hash[:project_use_test_preprocessor]
+    out_hash[:project_test_preprocess_files_path]    = File.join(project_build_tests_root, 'preprocess/files')    if in_hash[:project_use_test_preprocessor]
 
     out_hash[:project_test_dependencies_path] = File.join(project_build_tests_root, 'dependencies') if in_hash[:project_use_auxiliary_dependencies]
 
@@ -156,21 +166,21 @@ class ConfiguratorBuilder
          File.join(CEEDLING_LIB, 'rules_tests.rake')]}
 
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_cmock.rake') if (in_hash[:project_use_mocks])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_preprocess.rake') if (in_hash[:project_use_preprocessor])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_preprocess.rake') if (in_hash[:project_use_test_preprocessor])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_tests_aux_dependencies.rake') if (in_hash[:project_use_auxiliary_dependencies])
 
     # order is important because of how rake processes and collapses the tasks & rules defined within
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release_aux_dependencies.rake') if (in_hash[:release_build_enabled] and in_hash[:project_use_auxiliary_dependencies])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release.rake') if (in_hash[:release_build_enabled])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release_aux_dependencies.rake') if (in_hash[:release_build_enabled] and in_hash[:project_use_auxiliary_dependencies])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release.rake') if (in_hash[:release_build_enabled])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release_aux_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_auxiliary_dependencies])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release.rake') if (in_hash[:project_release_build])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release_aux_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_auxiliary_dependencies])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release.rake') if (in_hash[:project_release_build])
 
     return out_hash
   end
   
   
   def set_release_target(in_hash)
-    return {} if (not in_hash[:release_build_enabled])
+    return {} if (not in_hash[:project_release_build])
     return {
       # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
       :project_release_build_target => File.join(in_hash[:project_release_artifacts_path], in_hash[:release_build_output])

@@ -36,8 +36,12 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
   :name => 'default_test_includes_preprocessor',
   :arguments => [
     '-MM', '-MG',
+    {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE'},
+    {"-I\"$\"" => 'COLLECTION_PATHS_INCLUDE'},
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
+    '-w',
     "\"${1}\""
     ]
   }
@@ -125,16 +129,16 @@ DEFAULT_CEEDLING_CONFIG = {
       :logging => false,
       :use_exceptions => true,
       :use_mocks => true,
-      :use_preprocessor => false,
+      :use_test_preprocessor => false,
       :use_auxiliary_dependencies => false,
       :test_file_prefix => 'test_',
       :verbosity => Verbosity::NORMAL,
       :options_path => NULL_FILE_PATH,
+      :release_build => false,
     },
 
     :release_build => {
       :output => 'project.out',
-      :enabled => false,
       :use_assembly => false,      
     },
 

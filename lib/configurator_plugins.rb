@@ -66,7 +66,7 @@ class ConfiguratorPlugins
     missing_plugins = Set.new(enabled_plugins) - Set.new(@rake_plugins) - Set.new(@script_plugins)
     
     missing_plugins.each do |plugin|
-      @stream_wrapper.stdout_puts.stderr_puts("ERROR: Plugin '#{plugin}' contains no rake or script entry point. (Misspelled or missing files?)")
+      @stream_wrapper.stdout_puts.stderr_puts("ERROR: Ceedling plugin '#{plugin}' contains no rake or script entry point. (Misspelled or missing files?)")
     end
     
     raise if (missing_plugins.size > 0)

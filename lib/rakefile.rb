@@ -35,7 +35,6 @@ require 'constants'
 # one-stop shopping for all our setup and whatnot post construction
 @ceedling[:setupinator].do_setup(@ceedling, @ceedling[:setupinator].load_project_files)
 
-
 # set as global constant our discovered project file so it's available for use
 # (we don't use it but maybe custom extensions will need it somehow)
 CEEDLING_MAIN_PROJECT_FILE = @ceedling[:project_file_loader].main_project_filepath

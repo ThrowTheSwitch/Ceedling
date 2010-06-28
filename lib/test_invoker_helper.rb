@@ -12,25 +12,10 @@ class TestInvokerHelper
   end
 
   def preprocessing_setup_for_runners(runner_list)
-    return if (not @configurator.project_use_preprocessor)
+    return if (not @configurator.project_use_test_preprocessor)
 
     runner_list.each do |runner|
-      test = @file_finder.find_test_from_runner_path(runner)
-      @rake_wrapper.create_file_task(
-        @file_path_utils.form_preprocessed_file_path(test),
-        [test] + 
-         @file_finder.find_header_files_included_by_test(runner.sub(/#{TEST_RUNNER_FILE_SUFFIX}/, '')))  
-    end
-  end
-
-  def auxiliary_dependencies_setup_for_runners(runner_list)
-    return if (not @configurator.project_use_auxiliary_dependencies)
-
-    runner_list.each do |runner|
-      @rake_wrapper.create_file_task(
-        runner,
-        [@file_finder.find_test_from_runner_path(runner)] + 
-         @file_finder.find_header_files_included_by_test(runner.sub(/#{TEST_RUNNER_FILE_SUFFIX}/, '')))  
+      @rake_wrapper.create_file_task(runner, @file_path_utils.form_preprocessed_file_path( runner.sub(/#{TEST_RUNNER_FILE_SUFFIX}/, '') ))
     end
   end
 

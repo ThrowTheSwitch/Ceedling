@@ -30,7 +30,7 @@ class Preprocessinator
   def preprocess_shallow_includes(filepath)
     dependencies_rule = @preprocessinator_includes_handler.form_shallow_dependencies_rule(filepath)
     includes          = @preprocessinator_includes_handler.extract_shallow_includes(dependencies_rule)
-    
+
     @preprocessinator_includes_handler.write_shallow_includes_list(
       @file_path_utils.form_preprocessed_includes_list_path(filepath), includes)
   end
@@ -41,7 +41,7 @@ class Preprocessinator
   end
 
   def form_file_path(filepath)
-    return @file_path_utils.form_preprocessed_file_path(filepath) if (@configurator.project_use_preprocessor)
+    return @file_path_utils.form_preprocessed_file_path(filepath) if (@configurator.project_use_test_preprocessor)
     return filepath
   end
 

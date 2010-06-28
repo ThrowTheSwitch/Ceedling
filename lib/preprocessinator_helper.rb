@@ -6,12 +6,12 @@ class PreprocessinatorHelper
 
 
   def assemble_test_list(test_list)
-    return @file_path_utils.form_preprocessed_files_filelist(test_list) if (@configurator.project_use_preprocessor)
+    return @file_path_utils.form_preprocessed_files_filelist(test_list) if (@configurator.project_use_test_preprocessor)
     return test_list
   end
 
   def preprocess_includes(test_list)
-    if (@configurator.project_use_preprocessor)
+    if (@configurator.project_use_test_preprocessor)
       includes_lists = @file_path_utils.form_preprocessed_includes_list_filelist(test_list)
       @task_invoker.invoke_shallow_include_lists(includes_lists)
       @test_includes_extractor.parse_includes_lists(includes_lists)
@@ -25,16 +25,16 @@ class PreprocessinatorHelper
   end
 
   def preprocess_mockable_headers(mock_list, preprocess_file_proc)
-    if (@configurator.project_use_preprocessor)
+    if (@configurator.project_use_test_preprocessor)
       preprocess_files_smartly(
         @file_path_utils.form_preprocessed_mockable_headers_filelist(mock_list),
         preprocess_file_proc) { |file| @file_finder.find_mockable_header(file) }
     end
   end
 
-  def preprocess_test_files(test_list, preprocess_file_proc)
-    if (@configurator.project_use_preprocessor)
-      preprocess_files_smartly(test_list, preprocess_file_proc) { |file| @file_finder.find_test_from_file_path(file) }
+  def preprocess_test_files(preprocess_test_list, preprocess_file_proc)
+    if (@configurator.project_use_test_preprocessor)
+      preprocess_test_list.each { |prepro_test| preprocess_file_proc.call( @file_finder.find_test_from_file_path(prepro_test) ) }
     end
   end
   

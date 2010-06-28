@@ -6,7 +6,10 @@ class FileFinder
   constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper
 
   def prepare_search_sources
-    @test_source_header_file_collection = @configurator.collection_all_tests + @configurator.collection_all_source + @configurator.collection_all_headers
+    @test_source_header_file_collection = 
+      @configurator.collection_all_tests +
+      @configurator.collection_all_source + 
+      @configurator.collection_all_headers
   end
 
 

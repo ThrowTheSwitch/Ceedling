@@ -18,21 +18,32 @@ class PreprocessinatorIncludesHandler
     # (decorating the names creates file names that don't exist, thus preventing the preprocessor 
     #  from snaking out and discovering the entire include path that winds through the code)
     contents = @file_wrapper.read(filepath)
-    contents.gsub!( /#include\s+\"\s*(\S+)\s*\"/, "#include \"@@@@\\1\"" )
+    contents.gsub!( /#include\s+\"\s*(\S+)\s*\"/, "#include \"\\1\"\n#include \"@@@@\\1\"" )
     @file_wrapper.write( temp_filepath, contents )
     
     # extract the make-style dependency rule telling the preprocessor to 
     #  ignore the fact that it can't find the included files
     command_line     = @tool_executor.build_command_line(@configurator.tools_test_includes_preprocessor, temp_filepath)
     command_response = @tool_executor.exec(command_line)
-    @file_wrapper.rm_f(temp_filepath)
+#    @file_wrapper.rm_f(temp_filepath)
     return command_response
   end
   
   # headers only; ignore any crazy .c includes
   def extract_shallow_includes(make_rule)
+    list = []
     header_extension = @configurator.extension_header
-    return make_rule.scan(/#{'@@@@(\S+\\'}#{header_extension + ')'}/).flatten
+    
+    headers = make_rule.scan(/#{'(\S+\\'}#{header_extension + ')'}/).flatten
+    headers.map! { |header| header.sub(/@@@@/, '') }
+    headers.map! { |header| header.sub(/.+\//, '') }
+    headers.sort!
+    
+    headers.each_with_index do |header, index|
+      list << header if (header == headers[index + 1])
+    end
+
+    return list
   end
   
   def write_shallow_includes_list(filepath, list)

@@ -10,7 +10,7 @@ class GeneratorTestRunner
     lines = []
     
     # if we don't have preprocessor assistance, do some basic preprocessing of our own
-    if (not @configurator.project_use_preprocessor)
+    if (not @configurator.project_use_test_preprocessor)
       source = @file_wrapper.read(test_file_to_parse)
     
       # remove line comments
