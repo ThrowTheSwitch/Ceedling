@@ -60,25 +60,32 @@ class ConfiguratorBuilder
   end
 
   
+  def populate_default_test_tools(config, new_config)
+    new_config[:tools][:test_compiler] = DEFAULT_TEST_COMPILER_TOOL if (config[:tools].nil? or config[:tools][:test_compiler].nil?)
+    new_config[:tools][:test_linker]   = DEFAULT_TEST_LINKER_TOOL   if (config[:tools].nil? or config[:tools][:test_linker].nil?)
+    new_config[:tools][:test_fixture]  = DEFAULT_TEST_FIXTURE_TOOL  if (config[:tools].nil? or config[:tools][:test_fixture].nil?)
+  end
+  
+  
   def populate_default_test_helper_tools(config, new_config)
     use_test_preprocessor = (( config[:project].nil? or config[:project][:use_test_preprocessor].nil? or (config[:project][:use_test_preprocessor] == false) ) ? false : true )
     use_aux_dependencies  = (( config[:project].nil? or config[:project][:use_auxiliary_dependencies].nil? or (config[:project][:use_auxiliary_dependencies] == false) ) ? false : true )
     
-    new_config[:tools][:test_includes_preprocessor]  = DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL   if (use_test_preprocessor)
-    new_config[:tools][:test_file_preprocessor]      = DEFAULT_TEST_FILE_PREPROCESSOR_TOOL       if (use_test_preprocessor)
-    new_config[:tools][:test_dependencies_generator] = DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL  if (use_aux_dependencies)
+    new_config[:tools][:test_includes_preprocessor]  = DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL   if (use_test_preprocessor and (config[:tools].nil? or config[:tools][:test_includes_preprocessor].nil?))
+    new_config[:tools][:test_file_preprocessor]      = DEFAULT_TEST_FILE_PREPROCESSOR_TOOL       if (use_test_preprocessor and (config[:tools].nil? or config[:tools][:test_file_preprocessor].nil?))
+    new_config[:tools][:test_dependencies_generator] = DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL  if (use_aux_dependencies and (config[:tools].nil? or config[:tools][:test_dependencies_generator].nil?))
   end
 
 
-  def populate_default_release_tools_and_settings(config, new_config)
+  def populate_default_release_tools(config, new_config)
     release_build         = (( config[:project].nil? or config[:project][:release_build].nil? or (config[:project][:release_build] == false) ) ? false : true )
     use_aux_dependencies  = (( config[:project].nil? or config[:project][:use_auxiliary_dependencies].nil? or (config[:project][:use_auxiliary_dependencies] == false) ) ? false : true )
     use_assembly          = (( config[:release_build].nil? or config[:release_build][:use_assembly].nil? or (config[:release_build][:use_assembly] == false) ) ? false : true )
         
-    new_config[:tools][:release_compiler]               = DEFAULT_RELEASE_COMPILER_TOOL                if (release_build)
-    new_config[:tools][:release_assembler]              = DEFAULT_RELEASE_ASSEMBLER_TOOL               if (release_build and use_assembly)
-    new_config[:tools][:release_linker]                 = DEFAULT_RELEASE_LINKER_TOOL                  if (release_build)
-    new_config[:tools][:release_dependencies_generator] = DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL  if (release_build and use_aux_dependencies)
+    new_config[:tools][:release_compiler]               = DEFAULT_RELEASE_COMPILER_TOOL                if (release_build and (config[:tools].nil? or config[:tools][:release_compiler].nil?))
+    new_config[:tools][:release_assembler]              = DEFAULT_RELEASE_ASSEMBLER_TOOL               if (release_build and use_assembly and (config[:tools].nil? or config[:tools][:release_assembler].nil?))
+    new_config[:tools][:release_linker]                 = DEFAULT_RELEASE_LINKER_TOOL                  if (release_build and (config[:tools].nil? or config[:tools][:release_linker].nil?))
+    new_config[:tools][:release_dependencies_generator] = DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL  if (release_build and use_aux_dependencies and (config[:tools].nil? or config[:tools][:release_dependencies_generator].nil?))
   end
   
   

@@ -183,13 +183,8 @@ DEFAULT_CEEDLING_CONFIG = {
       :file_suffix => '_runner',
     },
 
-    # just our bare essential test tools;
-    # release and preprocessing tools are added in to the config during assembly of configurator
-    :tools => {
-      :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
-      :test_linker   => DEFAULT_TEST_LINKER_TOOL,
-      :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL      
-    },
+    # all tools populated while building up config structure
+    :tools => {},
 
     :plugins => {
       :base_path => NULL_FILE_PATH,

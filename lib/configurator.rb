@@ -47,12 +47,9 @@ class Configurator
   def populate_defaults(config)
     new_config = DEFAULT_CEEDLING_CONFIG.clone
 
+    @configurator_builder.populate_default_test_tools(config, new_config)
     @configurator_builder.populate_default_test_helper_tools(config, new_config)
-
-    # all test tools are in the default config;
-    # we don't include the other tools to preempt verification of tools in system search paths
-    @configurator_builder.populate_default_test_helper_tools(config, new_config)
-    @configurator_builder.populate_default_release_tools_and_settings(config, new_config)
+    @configurator_builder.populate_default_release_tools(config, new_config)
  
     new_config.deep_merge!(config)
 
