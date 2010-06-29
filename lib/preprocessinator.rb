@@ -7,15 +7,16 @@ class Preprocessinator
 
 
   def setup
-    # fashion ourselves a call back @preprocessinator_helper can use
-    @preprocess_file_proc = Proc.new {|filepath| self.preprocess_file(filepath)}  
+    # fashion ourselves callbacks @preprocessinator_helper can use
+    @preprocess_includes_proc = Proc.new { |filepath| self.preprocess_shallow_includes(filepath) }
+    @preprocess_file_proc     = Proc.new { |filepath| self.preprocess_file(filepath) }
   end
 
 
   def preprocess_tests_and_invoke_mocks(tests)
     tests_list = @preprocessinator_helper.assemble_test_list(tests)
     
-    @preprocessinator_helper.preprocess_includes(tests_list)
+    @preprocessinator_helper.preprocess_includes(tests_list, @preprocess_includes_proc)
     mocks_list = @preprocessinator_helper.assemble_mocks_list
 
     @preprocessinator_helper.preprocess_mockable_headers(mocks_list, @preprocess_file_proc)

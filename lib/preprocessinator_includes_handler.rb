@@ -37,11 +37,11 @@ class PreprocessinatorIncludesHandler
     headers = make_rule.scan(/#{'(\S+\\'}#{header_extension + ')'}/).flatten
     
     headers.uniq!
-    headers.map! { |header| header.sub(/@@@@/, '') }
-    headers.map! { |header| header.sub(/.+\//, '') }
+    headers.map! { |header| header.sub(/(@@@@)|(.+\/)/, '') }
     headers.sort!
     
     headers.each_with_index do |header, index|
+      break if (headers.size == (index-1))
       list << header if (header == headers[index + 1])
     end
 

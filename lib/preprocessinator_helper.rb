@@ -10,10 +10,10 @@ class PreprocessinatorHelper
     return test_list
   end
 
-  def preprocess_includes(test_list)
+  def preprocess_includes(test_list, preprocess_includes_proc)
     if (@configurator.project_use_test_preprocessor)
       includes_lists = @file_path_utils.form_preprocessed_includes_list_filelist(test_list)
-      @task_invoker.invoke_shallow_include_lists(includes_lists)
+      includes_lists.each { |preprocessed_includes| preprocess_includes_proc.call( @file_finder.find_test_from_file_path(preprocessed_includes) ) }
       @test_includes_extractor.parse_includes_lists(includes_lists)
     else
       @test_includes_extractor.parse_test_files(test_list)      
@@ -34,7 +34,7 @@ class PreprocessinatorHelper
 
   def preprocess_test_files(preprocess_test_list, preprocess_file_proc)
     if (@configurator.project_use_test_preprocessor)
-      preprocess_test_list.each { |prepro_test| preprocess_file_proc.call( @file_finder.find_test_from_file_path(prepro_test) ) }
+      preprocess_test_list.each { |preprocessed_test| preprocess_file_proc.call( @file_finder.find_test_from_file_path(preprocessed_test) ) }
     end
   end
   

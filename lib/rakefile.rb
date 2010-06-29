@@ -20,7 +20,6 @@ $LOAD_PATH.unshift( CEEDLING_VENDOR + 'cmock/lib' )
 $LOAD_PATH.unshift( CEEDLING_VENDOR + 'deep_merge/lib' )
 
 require 'rake'
-require 'rake/clean'
 
 require 'diy'
 require 'constructor'
