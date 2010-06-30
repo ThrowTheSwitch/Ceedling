@@ -33,6 +33,7 @@ class Dependinator
       dependencies.include( @file_path_utils.form_test_object_filepath(test) )
       dependencies.include( @file_path_utils.form_test_object_filepath('CException.c') ) if (@configurator.project_use_exceptions)
       dependencies.include( @file_path_utils.form_test_object_filepath('cmock.c') ) if (@configurator.project_use_mocks)
+      dependencies.include( @file_path_utils.form_test_object_filepath(@configurator.cmock_unity_helper) ) if (@configurator.project_use_mocks and @configurator.cmock_unity_helper)
       
       dependencies.uniq!
 

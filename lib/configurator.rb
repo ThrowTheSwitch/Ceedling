@@ -69,10 +69,17 @@ class Configurator
     cmock[:mock_path] = File.join(config[:project][:build_root], 'tests/mocks')  if (cmock[:mock_path].nil?)
     cmock[:verbosity] = config[:project][:verbosity]                             if (cmock[:verbosity].nil?)
 
-    cmock[:plugins] = []               if (cmock[:plugins].nil?)
+    cmock[:plugins] = []                             if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym }
-    cmock[:plugins] << (:cexception)   if (!cmock[:plugins].include?(:cexception) and (config[:project][:use_exceptions]))
+    cmock[:plugins] << (:cexception)                 if (!cmock[:plugins].include?(:cexception) and (config[:project][:use_exceptions]))
 
+    cmock[:unity_helper] = false                     if (cmock[:unity_helper].nil?)
+    
+    if (cmock[:unity_helper])
+      cmock[:includes] << File.basename(cmock[:unity_helper])
+      cmock[:includes].uniq!
+    end
+    
     config[:cmock] = cmock if config[:cmock].nil?
 
     @cmock_config_hash = config[:cmock].clone
