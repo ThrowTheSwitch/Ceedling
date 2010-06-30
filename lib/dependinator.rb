@@ -3,7 +3,7 @@ require 'rake' # for .ext()
 
 class Dependinator
 
-  constructor :configurator, :test_includes_extractor, :file_finder, :file_path_utils, :rake_wrapper
+  constructor :configurator, :test_includes_extractor, :file_finder, :file_path_utils, :rake_wrapper, :file_wrapper
 
 
   def setup_object_dependencies(*files_lists)

@@ -177,7 +177,8 @@ dependinator:
     - test_includes_extractor
     - file_finder            
     - file_path_utils        
-    - rake_wrapper           
+    - rake_wrapper
+    - file_wrapper
 
 preprocessinator:
   compose:
