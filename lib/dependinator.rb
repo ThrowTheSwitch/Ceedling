@@ -1,3 +1,5 @@
+require 'rubygems'
+require 'rake' # for .ext()
 
 class Dependinator
 
@@ -33,7 +35,14 @@ class Dependinator
       dependencies.include( @file_path_utils.form_test_object_filepath(test) )
       dependencies.include( @file_path_utils.form_test_object_filepath('CException.c') ) if (@configurator.project_use_exceptions)
       dependencies.include( @file_path_utils.form_test_object_filepath('cmock.c') ) if (@configurator.project_use_mocks)
-      dependencies.include( @file_path_utils.form_test_object_filepath(@configurator.cmock_unity_helper) ) if (@configurator.project_use_mocks and @configurator.cmock_unity_helper)
+      
+      # if we're using mocks & a unity helper is defined & that unity helper includes a source file component (not only a header of macros),
+      # then link in a unity_helper object file
+      if ( @configurator.project_use_mocks and
+           @configurator.cmock_unity_helper and 
+           @file_wrapper.exist?(@configurator.cmock_unity_helper.ext(@configurator.extension_source)) )
+        dependencies.include( @file_path_utils.form_test_object_filepath(@configurator.cmock_unity_helper) )
+      end
       
       dependencies.uniq!
 
