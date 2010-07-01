@@ -386,7 +386,7 @@ class ConfiguratorBuilder
     if ( hash[:project_use_mocks] and
          hash[:cmock_unity_helper] and 
          @file_wrapper.exist?(hash[:cmock_unity_helper].ext(hash[:extension_source])) )
-      hash[:test_fixture_link_objects] << File.join(hash[:project_test_build_output_path], hash[:cmock_unity_helper])
+      hash[:test_fixture_link_objects] << File.join(hash[:project_test_build_output_path], File.basename(hash[:cmock_unity_helper]))
     end
     
     hash[:test_fixture_link_objects].map! { |link_object| link_object.ext(hash[:extension_object]) }

@@ -51,19 +51,9 @@ class ConfiguratorValidator
 
   
   # simple path verification
-  def validate_simple_path(path, *keys)
+  def validate_filepath_simple(path, *keys)
     validate_path = path
     
-    case(path)
-      when String
-      when Array
-        if (path.size != 1)
-          @stream_wrapper.stderr_puts("ERROR: Config path associated with #{format_key_sequence(keys, keys.size)} must be a single path.") 
-          return false
-        end
-        validate_path = path[0]
-    end
-
     if (not @file_wrapper.exist?(validate_path))
       # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
       @stream_wrapper.stderr_puts("ERROR: Config path '#{validate_path}' associated with #{format_key_sequence(keys, keys.size)} does not exist on disk.") 
@@ -75,7 +65,7 @@ class ConfiguratorValidator
 
  
   # walk into config hash. verify specified file exists.
-  def validate_filepath(config, *keys)
+  def validate_filepath(config, options, *keys)
     hash = retrieve_value(config, keys)
     filepath = hash[:value]
 
@@ -86,7 +76,7 @@ class ConfiguratorValidator
     return true if (filepath =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
     
     # if there's no path included, verify file exists somewhere in system search paths
-    if (not filepath.include?('/'))
+    if (not filepath.include?('/') and options[:search_system_path])
       exists = false
       
       @system_wrapper.search_paths.each do |path|

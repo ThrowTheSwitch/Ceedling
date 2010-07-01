@@ -76,10 +76,12 @@ class ConfiguratorHelper
   def validate_paths(config)
     validation = []
 
-    validation << @configurator_validator.validate_simple_path(config[:project][:build_root],          :project, :build_root)
-    validation << @configurator_validator.validate_simple_path(config[:project][:options_path],        :project, :options_path)
-    validation << @configurator_validator.validate_simple_path(config[:plugins][:base_path],           :plugins, :base_path)
-    validation << @configurator_validator.validate_simple_path(config[:plugins][:auxiliary_load_path], :plugins, :auxiliary_load_path)
+    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :project, :build_root)
+    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :project, :options_path)
+    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :plugins, :base_path)
+    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :plugins, :auxiliary_load_path)
+
+    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :cmock, :unity_helper) if config[:cmock][:unity_helper]
 
     config[:paths].keys.sort.each do |key|
       validation << @configurator_validator.validate_path_list(config, :paths, key)
@@ -94,7 +96,7 @@ class ConfiguratorHelper
 
     config[:tools].keys.sort.each do |key|
       validation << @configurator_validator.exists?(config, :tools, key, :executable)
-      validation << @configurator_validator.validate_filepath(config, :tools, key, :executable)    
+      validation << @configurator_validator.validate_filepath(config, {:search_system_path => true}, :tools, key, :executable)    
     end
 
     return false if (validation.include?(false))
@@ -105,7 +107,7 @@ class ConfiguratorHelper
     validation = []
 
     config[:plugins][:enabled].sort.each do |plugin|
-      validation << @configurator_validator.validate_simple_path( File.join(config[:plugins][:base_path], plugin), :plugins, :enabled, plugin.to_sym )
+      validation << @configurator_validator.validate_filepath_simple( File.join(config[:plugins][:base_path], plugin), :plugins, :enabled, plugin.to_sym )
     end
   
     return false if (validation.include?(false))
