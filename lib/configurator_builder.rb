@@ -88,7 +88,7 @@ class ConfiguratorBuilder
     new_config[:tools][:release_dependencies_generator] = DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL  if (release_build and use_aux_dependencies and (config[:tools].nil? or config[:tools][:release_dependencies_generator].nil?))
   end
   
-  
+    
   def clean(in_hash)
     # ensure that include files inserted into test runners have file extensions & proper ones at that
     in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
@@ -194,7 +194,7 @@ class ConfiguratorBuilder
       }
   end
   
-  
+
   def collect_project_options(in_hash)
     return {
       :collection_project_options => @file_wrapper.directory_listing( File.join(in_hash[:project_options_path], '*.yml') )
@@ -375,6 +375,25 @@ class ConfiguratorBuilder
     
     return out_hash
   end
+
+
+  def collect_test_fixture_link_objects(hash)    
+    hash[:test_fixture_link_objects] << File.join(hash[:project_test_build_output_path], 'CException.c') if (hash[:project_use_exceptions])
+    hash[:test_fixture_link_objects] << File.join(hash[:project_test_build_output_path], 'cmock.c')      if (hash[:project_use_mocks])
+    
+    # if we're using mocks & a unity helper is defined & that unity helper includes a source file component (not only a header of macros),
+    # then link in the unity_helper object file
+    if ( hash[:project_use_mocks] and
+         hash[:cmock_unity_helper] and 
+         @file_wrapper.exist?(hash[:cmock_unity_helper].ext(hash[:extension_source])) )
+      hash[:test_fixture_link_objects] << File.join(hash[:project_test_build_output_path], hash[:cmock_unity_helper])
+    end
+    
+    hash[:test_fixture_link_objects].map! { |link_object| link_object.ext(hash[:extension_object]) }
+    
+    hash[:test_fixture_link_objects].uniq!
+  end
+
 
   private ##############################
   

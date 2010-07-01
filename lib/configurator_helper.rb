@@ -42,6 +42,8 @@ class ConfiguratorHelper
     new_config.merge!(@configurator_builder.collect_test_defines(new_config))    
     new_config.merge!(@configurator_builder.collect_environment_dependencies)
 
+    @configurator_builder.collect_test_fixture_link_objects(new_config)
+
     return new_config
   end
 

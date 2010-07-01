@@ -178,7 +178,6 @@ dependinator:
     - file_finder            
     - file_path_utils        
     - rake_wrapper
-    - file_wrapper
 
 preprocessinator:
   compose:

@@ -207,7 +207,10 @@ DEFAULT_CEEDLING_CONFIG = {
     # (these can be overridden in project file to add arguments to tools without totally redefining tools)
     :test_compiler => { :arguments => [] },
     :test_linker   => { :arguments => [] },
-    :test_fixture  => { :arguments => [] },
+    :test_fixture  => { 
+      :arguments => [],
+      :link_objects => [], # compiled object files to always be linked in (e.g. cmock.o if using mocks)
+    },
     :test_includes_preprocessor  => { :arguments => [] },
     :test_file_preprocessor      => { :arguments => [] },
     :test_dependencies_generator => { :arguments => [] },
