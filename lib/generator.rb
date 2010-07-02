@@ -96,7 +96,7 @@ class Generator
     @plugin_manager.pre_test_execute(arg_hash)
     
     @streaminator.stdout_puts("Running #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
-    output = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:executable]) )
+    output = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:executable]), [], {:boom => true, :stderr_capture => true} )
     
     if (output.nil? or output.strip.empty?)
       @streaminator.stderr_puts("ERROR: Test executable \"#{File.basename(executable)}\" did not produce any results.", Verbosity::ERRORS)

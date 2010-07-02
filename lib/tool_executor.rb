@@ -3,7 +3,7 @@ require 'constants'
 
 class ToolExecutor
 
-  constructor :tool_executor_helper, :streaminator, :system_wrapper
+  constructor :configurator, :tool_executor_helper, :streaminator, :system_wrapper
 
   def setup
     @tool_name  = ''
@@ -23,15 +23,15 @@ class ToolExecutor
 
 
   # shell out, execute command, and return response
-  def exec(command, args=[], boom=true)
+  def exec(command, args=[], options={:boom => true, :stderr_capture => false})
     command_str = "#{command} #{args.join(' ')}".strip
     
-    shell_result = @system_wrapper.shell_execute(command_str)
+    shell_result = @system_wrapper.shell_execute(command_str, options)
 
     @tool_executor_helper.print_happy_results(command_str, shell_result)
-    @tool_executor_helper.print_error_results(command_str, shell_result) if boom
+    @tool_executor_helper.print_error_results(command_str, shell_result) if (options[:boom])
 
-    raise if ((shell_result[:exit_code] != 0) and boom)
+    raise if ((shell_result[:exit_code] != 0) and options[:boom])
 
     return shell_result[:output]
   end

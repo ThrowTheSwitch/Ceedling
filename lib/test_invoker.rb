@@ -8,7 +8,7 @@ class TestInvoker
 
   
   def invoke_tests(tests, options={:force_run => true})
-
+  
     tests.each do |test|
       # announce beginning of test run
       header = "Test '#{File.basename(test)}'"
