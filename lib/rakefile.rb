@@ -38,6 +38,7 @@ require 'constants'
 # (we don't use it but maybe custom extensions will need it somehow)
 CEEDLING_MAIN_PROJECT_FILE = @ceedling[:project_file_loader].main_project_filepath
 
+PROJECT_STDERR_FILEPATH = File.join(PROJECT_TEMP_PATH, 'temp')
 
 # control Rake's verbosity
 if (not @ceedling[:verbosinator].should_output?(Verbosity::OBNOXIOUS))

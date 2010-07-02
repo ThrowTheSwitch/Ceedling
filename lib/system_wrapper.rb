@@ -27,13 +27,13 @@ class SystemWrapper
 
   def shell_execute(command, options={:stderr_capture => false})
     # this is a hack to redirect $stderr as all other mechanisms so far fail to do anything
-    $stderr.reopen(PROJECT_STDERR_PATH, 'w') if (options[:stderr_capture])
+    $stderr.reopen(PROJECT_STDERR_FILEPATH, 'w') if (options[:stderr_capture])
 
     shell  = `#{command}`
     stderr = ''
     
     if (options[:stderr_capture])
-      stderr = File.read(PROJECT_STDERR_PATH).strip
+      stderr = File.read(PROJECT_STDERR_FILEPATH).strip
       stderr += "\n" if (stderr.length > 1)
     end
     
