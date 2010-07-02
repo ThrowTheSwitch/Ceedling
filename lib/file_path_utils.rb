@@ -109,10 +109,10 @@ class FilePathUtils
 
   
   def form_runner_object_filepath_from_test(filepath)
-    return (form_test_object_filepath(filepath)).sub(/(#{@configurator.extension_object})$/, "#{@configurator.test_runner_file_suffix}\\1")
+    return (form_test_build_object_filepath(filepath)).sub(/(#{@configurator.extension_object})$/, "#{@configurator.test_runner_file_suffix}\\1")
   end
 
-  def form_test_object_filepath(filepath)
+  def form_test_build_object_filepath(filepath)
     return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
@@ -128,7 +128,7 @@ class FilePathUtils
     return File.join( @configurator.project_test_preprocess_includes_path, File.basename(filepath) )    
   end
 
-  def form_source_objects_filelist(sources)
+  def form_test_build_objects_filelist(sources)
     return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{@configurator.project_test_build_output_path}/%n#{@configurator.extension_object}")
   end
   

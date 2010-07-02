@@ -16,7 +16,7 @@ class Dependinator
 
   def enhance_object_with_environment_dependencies(sources)
     sources.each do |source|
-      @rake_wrapper[@file_path_utils.form_test_object_filepath(source)].enhance(@configurator.collection_environment_dependencies)
+      @rake_wrapper[@file_path_utils.form_test_build_object_filepath(source)].enhance(@configurator.collection_environment_dependencies)
     end
   end
   
@@ -26,10 +26,9 @@ class Dependinator
     headers = @test_includes_extractor.lookup_includes_list(test)
     sources = @file_finder.find_source_files_from_headers(headers)
     
-    dependencies = @file_path_utils.form_source_objects_filelist(sources)
+    dependencies = @file_path_utils.form_test_build_objects_filelist(sources + @configurator.test_fixture_link_objects)
     dependencies.include( @file_path_utils.form_runner_object_filepath_from_test(test) )
-    dependencies.include( @file_path_utils.form_test_object_filepath(test) )
-    dependencies.include( @configurator.test_fixture_link_objects )
+    dependencies.include( @file_path_utils.form_test_build_object_filepath(test) )
     
     dependencies.uniq!
 

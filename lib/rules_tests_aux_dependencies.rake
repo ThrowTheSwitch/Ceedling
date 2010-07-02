@@ -8,7 +8,7 @@ rule(/#{PROJECT_TEST_DEPENDENCIES_PATH}\/#{'.+\\'+EXTENSION_DEPENDENCIES}$/ => [
   @ceedling[:generator].generate_dependencies_file(
   	TOOLS_TEST_DEPENDENCIES_GENERATOR,
   	dep.source,
-  	@ceedling[:file_path_utils].form_test_object_filepath(dep.source),
+  	@ceedling[:file_path_utils].form_test_build_object_filepath(dep.source),
   	dep.name)
 end
 

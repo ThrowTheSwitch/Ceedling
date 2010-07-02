@@ -377,16 +377,17 @@ class ConfiguratorBuilder
   end
 
 
-  def collect_test_fixture_link_objects(hash)    
-    hash[:test_fixture_link_objects] << File.join(hash[:project_test_build_output_path], 'CException.c') if (hash[:project_use_exceptions])
-    hash[:test_fixture_link_objects] << File.join(hash[:project_test_build_output_path], 'cmock.c')      if (hash[:project_use_mocks])
+  def collect_test_fixture_link_objects(hash)
+    # we don't include paths here because use of plugins or mixing compilers may require different build paths
+    hash[:test_fixture_link_objects] << 'CException.c' if (hash[:project_use_exceptions])
+    hash[:test_fixture_link_objects] << 'cmock.c'      if (hash[:project_use_mocks])
     
     # if we're using mocks & a unity helper is defined & that unity helper includes a source file component (not only a header of macros),
     # then link in the unity_helper object file
     if ( hash[:project_use_mocks] and
          hash[:cmock_unity_helper] and 
          @file_wrapper.exist?(hash[:cmock_unity_helper].ext(hash[:extension_source])) )
-      hash[:test_fixture_link_objects] << File.join(hash[:project_test_build_output_path], File.basename(hash[:cmock_unity_helper]))
+      hash[:test_fixture_link_objects] << File.basename(hash[:cmock_unity_helper])
     end
     
     hash[:test_fixture_link_objects].map! { |link_object| link_object.ext(hash[:extension_object]) }
