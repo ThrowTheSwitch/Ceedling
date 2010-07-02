@@ -124,7 +124,7 @@ class ConfiguratorBuilder
     out_hash[:project_test_build_output_path] = File.join(project_build_tests_root, 'out')
  
     out_hash[:project_log_path]  = File.join(in_hash[:project_build_root], 'logs')
-    out_hash[:project_temp_path] = File.join(in_hash[:project_build_root], 'temp')
+    out_hash[:project_temp_path] = File.join(in_hash[:project_build_root], 'temp') if in_hash[:project_use_test_preprocessor]
 
     out_hash[:project_test_preprocess_includes_path] = File.join(project_build_tests_root, 'preprocess/includes') if in_hash[:project_use_test_preprocessor]
     out_hash[:project_test_preprocess_files_path]    = File.join(project_build_tests_root, 'preprocess/files')    if in_hash[:project_use_test_preprocessor]

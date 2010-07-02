@@ -23,10 +23,10 @@ class ToolExecutor
 
 
   # shell out, execute command, and return response
-  def exec(command, args=[], options={:boom => true, :stderr_capture => false})
+  def exec(command, args=[], options={:boom => true})
     command_str = "#{command} #{args.join(' ')}".strip
     
-    shell_result = @system_wrapper.shell_execute(command_str, options)
+    shell_result = @system_wrapper.shell_execute(command_str)
 
     @tool_executor_helper.print_happy_results(command_str, shell_result)
     @tool_executor_helper.print_error_results(command_str, shell_result) if (options[:boom])

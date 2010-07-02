@@ -25,26 +25,11 @@ class SystemWrapper
     return Time.now.asctime
   end
 
-  def shell_execute(command, options={:stderr_capture => false})
-    # this is a hack to redirect $stderr as all other mechanisms so far fail to do anything
-    $stderr.reopen(PROJECT_STDERR_FILEPATH, 'w') if (options[:stderr_capture])
-
-    shell  = `#{command}`
-    stderr = ''
-    
-    if (options[:stderr_capture])
-      stderr = File.read(PROJECT_STDERR_FILEPATH).strip
-      stderr += "\n" if (stderr.length > 1)
-    end
-    
-    result = {
-      :output =>  stderr + shell,
+  def shell_execute(command)
+    return {
+      :output =>  `#{command}`,
       :exit_code => ($?.exitstatus)
     }
-
-    $stderr.reopen(IO.new(2)) if (options[:stderr_capture])
-    
-    return result
   end
   
   def add_load_path(path)
