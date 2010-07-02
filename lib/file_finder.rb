@@ -33,21 +33,14 @@ class FileFinder
   end
 
 
-  def find_sources_from_tests(tests)
-    source_files = []
-    
+  def find_source_from_test(test)
     test_prefix  = @configurator.project_test_file_prefix
     source_paths = @configurator.collection_all_source
     
-    tests.each do |test|
-      source = File.basename(test).sub(/#{test_prefix}/, '')
+    source = File.basename(test).sub(/#{test_prefix}/, '')
 
-      # we don't blow up if a test file has no corresponding source file
-      found_path = @file_finder_helper.find_file_in_collection(source, source_paths, {:should_complain => false})
-      source_files << found_path if (not found_path.empty?)
-    end
-
-    return source_files    
+    # we don't blow up if a test file has no corresponding source file
+    return @file_finder_helper.find_file_in_collection(source, source_paths, {:should_complain => false})
   end
 
 
@@ -104,7 +97,7 @@ class FileFinder
           @configurator.collection_all_existing_compilation_input)
     end
 
-    @file_finder.blow_up(source_file) if (found_file.empty?)
+    @file_finder.blow_up(source_file) if (found_file.nil?)
     return found_file
   end
 
@@ -123,7 +116,7 @@ class FileFinder
     headers.each do |header|
       # we don't blow up if a header file has no corresponding source file
       source = @file_finder_helper.find_file_in_collection(header.ext(source_extension), all_files, {:should_complain => false})
-      source_files << source if (not source.empty?)
+      source_files << source if (not source.nil?)
     end
     
     return source_files
@@ -145,7 +138,7 @@ class FileFinder
 
     # ignore files (e.g. mocks) which may not yet exist on disk
     includes.map! { |header| @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_existing_compilation_input, {:should_complain => false}) }
-    includes.delete_if { |header| header.empty? } 
+    includes.delete_if { |header| header.nil? } 
 
     return includes
   end

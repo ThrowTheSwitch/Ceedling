@@ -93,7 +93,7 @@ class Configurator
       tool[:name] = name.to_s
     end
   end
-    
+  
 
   def find_and_merge_plugins(config)
     @system_wrapper.add_load_path(config[:plugins][:auxiliary_load_path]) if (not config[:plugins][:auxiliary_load_path].nil?)

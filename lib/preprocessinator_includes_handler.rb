@@ -7,7 +7,7 @@ class PreprocessinatorIncludesHandler
   # shallow includes: only those headers a source file explicitly includes
 
   def invoke_shallow_includes_list(filepath)
-    @task_invoker.invoke_shallow_include_lists( @file_path_utils.form_preprocessed_includes_list_path(filepath) )
+    @task_invoker.invoke_shallow_include_lists( @file_path_utils.form_preprocessed_includes_list_filepath(filepath) )
   end
 
   # ask the preprocessor for a make-style dependency rule of only the headers the source file immediately includes

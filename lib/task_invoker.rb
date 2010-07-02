@@ -8,8 +8,8 @@ class TaskInvoker
     invoke_with_enhancements(mocks)
   end
   
-  def invoke_runners(runners)
-    invoke_with_enhancements(runners)
+  def invoke_runner(runner)
+    invoke_with_enhancements(runner)
   end
 
   def invoke_shallow_include_lists(files)
@@ -28,9 +28,7 @@ class TaskInvoker
     # since everything needed to create results will have been regenerated
     # appropriately, there's no needed to enhance the dependencies -
     # they will always be superfluous
-    results.each do |result|
-      @rake_wrapper[result].invoke
-    end
+    @rake_wrapper[results].invoke
   end
 
 

@@ -8,7 +8,7 @@ class FileFinderHelper
   
   def find_file_in_collection(file_name, file_list, options = {:should_complain => true})
     
-    file_to_find = ''
+    file_to_find = nil
     
     file_list.each do |item|
       base_file = File.basename(item)
@@ -27,7 +27,7 @@ class FileFinderHelper
       
     end
     
-    blow_up(file_name) if (file_to_find.empty? and options[:should_complain])
+    blow_up(file_name) if (file_to_find.nil? and options[:should_complain])
     
     return file_to_find
   end

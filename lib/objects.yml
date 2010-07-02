@@ -221,19 +221,18 @@ preprocessinator_extractor:
 test_invoker:
   compose:
     - test_invoker_helper
-    - configurator
+    - streaminator
     - preprocessinator
     - task_invoker
     - dependinator
     - file_finder
-    - file_wrapper    
+    - file_path_utils
 
 test_invoker_helper:
   compose:
     - configurator
     - task_invoker
     - dependinator
-    - file_finder
     - file_path_utils
     - file_wrapper
     - rake_wrapper

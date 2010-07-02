@@ -4,30 +4,39 @@ require 'rake' # for ext()
 
 class TestInvoker
 
-  constructor :test_invoker_helper, :configurator, :preprocessinator, :task_invoker, :dependinator, :file_finder, :file_wrapper
-  attr_reader :source_list, :test_list, :mock_list
+  constructor :test_invoker_helper, :streaminator, :preprocessinator, :task_invoker, :dependinator, :file_finder, :file_path_utils
 
+  
   def invoke_tests(tests, options={:force_run => true})
-    @test_list        = @file_wrapper.instantiate_file_list(tests)
-    fail_results_list = @test_list.pathmap("#{@configurator.project_test_results_path}/%n#{@configurator.extension_testfail}")
-    pass_results_list = @test_list.pathmap("#{@configurator.project_test_results_path}/%n#{@configurator.extension_testpass}")
 
-    @test_invoker_helper.clean_results(options, fail_results_list, pass_results_list)
+    tests.each do |test|
+      # announce beginning of test run
+      header = "Test '#{File.basename(test)}'"
+      @streaminator.stdout_puts("\n\n#{header}\n#{'-' * header.length}")
+      
+      # collect up test components
+      runner     = @file_path_utils.form_runner_filepath_from_test(test)
+      mock_list  = @preprocessinator.preprocess_test_and_invoke_mocks(test)
+      source     = @file_finder.find_source_from_test(test) # source may be nil if test has no corresponding source file
+      files      = ([test, runner, source] + mock_list).compact
+      
+      # clean results files so we have a missing file to kick off rake's dependency rules with
+      @test_invoker_helper.clean_results(options, test)
 
-    runner_list  = @test_list.pathmap("#{@configurator.project_test_runners_path}/%n#{@configurator.test_runner_file_suffix}%x")
-    @mock_list   = @preprocessinator.preprocess_tests_and_invoke_mocks(@test_list)
-    @source_list = @file_finder.find_sources_from_tests(@test_list)
+      # runner setup
+      @test_invoker_helper.preprocessing_setup_for_runner(runner)
+      @task_invoker.invoke_runner(runner)
 
-    @test_invoker_helper.preprocessing_setup_for_runners(runner_list)
-    @task_invoker.invoke_runners(runner_list)
+      # load up auxiliary dependencies so things that deep changes cause rebuilding appropriately
+      @test_invoker_helper.process_auxiliary_dependencies(files)
 
-    @test_invoker_helper.process_auxiliary_dependencies(@test_list, @source_list, @mock_list, runner_list)
+      # plug in a few more dependencies to cause regeneration of generated files
+      @dependinator.enhance_object_with_environment_dependencies(files) if (!source.nil?)
+      @dependinator.setup_executable_dependencies(test)
 
-    @dependinator.enhance_objects_with_environment_dependencies(@source_list)
-
-    @dependinator.setup_executable_dependencies(@test_list)
-
-    @task_invoker.invoke_results(pass_results_list)
+      # go
+      @task_invoker.invoke_results( @file_path_utils.form_pass_results_filepath(test) )
+    end
   end
 
 end

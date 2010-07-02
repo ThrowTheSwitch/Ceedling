@@ -166,7 +166,7 @@ DEFAULT_CEEDLING_CONFIG = {
     
     # unlike other top-level entries, environment's value is an array to preserve order
     :environment => [
-      # when evaludated, this provides wider text field for rake task comments
+      # when evaluated, this provides wider text field for rake task comments
       {:rake_columns => '120'},
     ],
     

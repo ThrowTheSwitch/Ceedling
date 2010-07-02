@@ -88,7 +88,7 @@ class ConfiguratorBuilder
     new_config[:tools][:release_dependencies_generator] = DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL  if (release_build and use_aux_dependencies and (config[:tools].nil? or config[:tools][:release_dependencies_generator].nil?))
   end
   
-    
+  
   def clean(in_hash)
     # ensure that include files inserted into test runners have file extensions & proper ones at that
     in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
@@ -390,7 +390,6 @@ class ConfiguratorBuilder
     end
     
     hash[:test_fixture_link_objects].map! { |link_object| link_object.ext(hash[:extension_object]) }
-    
     hash[:test_fixture_link_objects].uniq!
   end
 
