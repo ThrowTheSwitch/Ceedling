@@ -105,7 +105,8 @@ class Generator
     
     @generator_test_results.process_and_write_results(output, arg_hash[:result], @file_finder.find_test_from_file_path(arg_hash[:executable]))
     
-    @streaminator.stdout_puts(output) if (@configurator.project_raw_test_results)
+    # special arbitrator value so raw results are pritten or overridden by plugins handling the job
+    @streaminator.stdout_puts(output) if (@configurator.plugins_display_raw_test_results)
     
     arg_hash[:tool_output] = output
     @plugin_manager.post_test_execute(arg_hash)

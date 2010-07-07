@@ -1,7 +1,13 @@
 
 class Setupinator
 
+  attr_reader :config_hash
+
   constructor :project_file_loader, :configurator, :test_includes_extractor, :plugin_manager, :plugin_reportinator, :file_finder
+
+  def setup
+    @config_hash = {}
+  end
 
   def load_project_files
     @project_file_loader.find_project_files
@@ -9,6 +15,8 @@ class Setupinator
   end
 
   def do_setup(system_objects, config_hash)
+    @config_hash = config_hash
+
     # load up all the constants and accessors our rake files, objects, & external scripts will need;
     # note: configurator modifies the cmock section of the hash with a couple defaults to tie 
     #       project together - the modified hash is used to build cmock object
@@ -21,6 +29,7 @@ class Setupinator
     @configurator.standardize_paths(config_hash)
     @configurator.validate(config_hash)
     @configurator.build(config_hash)
+        
     @configurator.insert_rake_plugins(@configurator.rake_plugins)
 
     @plugin_manager.load_plugin_scripts(@configurator.script_plugins, system_objects)

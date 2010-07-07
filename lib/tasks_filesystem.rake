@@ -7,16 +7,16 @@ CLEAN.clear_exclude.exclude { |fn| fn.pathmap("%f") == 'core' && File.directory?
 
 CLEAN.include(File.join(PROJECT_TEST_BUILD_OUTPUT_PATH, '*'))
 CLEAN.include(File.join(PROJECT_TEST_RESULTS_PATH, '*'))
-CLEAN.include(File.join(PROJECT_RELEASE_BUILD_OUTPUT_PATH, '*')) if (PROJECT_RELEASE_BUILD)
+CLEAN.include(File.join(PROJECT_RELEASE_BUILD_OUTPUT_PATH, '*'))
 
 CLOBBER.include(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, '**/*'))
 CLOBBER.include(File.join(PROJECT_BUILD_TESTS_ROOT, '**/*'))
-CLOBBER.include(File.join(PROJECT_BUILD_RELEASE_ROOT, '**/*')) if (PROJECT_RELEASE_BUILD)
+CLOBBER.include(File.join(PROJECT_BUILD_RELEASE_ROOT, '**/*'))
 CLOBBER.include(File.join(PROJECT_LOG_PATH, '**/*'))
-CLOBBER.include(File.join(PROJECT_TEMP_PATH, '**/*')) if (PROJECT_USE_TEST_PREPROCESSOR)
+CLOBBER.include(File.join(PROJECT_TEMP_PATH, '**/*'))
 
 # because of cmock config, mock path can optionally exist apart from standard test build paths
-CLOBBER.include(File.join(CMOCK_MOCK_PATH, '*')) if (PROJECT_USE_MOCKS)
+CLOBBER.include(File.join(CMOCK_MOCK_PATH, '*'))
 
 REMOVE_FILE_PROC = Proc.new { |fn| rm_r fn rescue nil }
 

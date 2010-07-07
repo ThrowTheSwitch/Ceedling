@@ -11,7 +11,7 @@ desc "Set verbose output (silent:[#{Verbosity::SILENT}] - obnoxious:[#{Verbosity
 task :verbosity, :level do |t, args|
   verbosity_level = args.level.to_i
 
-  hash = @ceedling[:project_file_loader].config_hash
+  hash = @ceedling[:setupinator].config_hash
   hash[:project][:verbosity] = verbosity_level
   @ceedling[:configurator].cmock_config_hash[:verbosity] = verbosity_level
   
@@ -23,7 +23,7 @@ end
 
 desc "Enable logging"
 task :logging do
-  hash = @ceedling[:project_file_loader].config_hash
+  hash = @ceedling[:setupinator].config_hash
   hash[:project][:logging] = true
 
   @ceedling[:configurator].build( hash )
@@ -38,7 +38,7 @@ namespace :options do
     task option.downcase.to_sym do
       @ceedling[:project_file_loader].project_options_filepath = option_path
 
-      hash = @ceedling[:project_file_loader].config_hash
+      hash = @ceedling[:setupinator].config_hash
       hash.deep_merge( @ceedling[:yaml_wrapper].load(option_path) )
       
       @ceedling[:setupinator].do_setup( @ceedling, hash )

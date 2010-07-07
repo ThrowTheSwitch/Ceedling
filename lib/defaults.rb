@@ -148,7 +148,6 @@ DEFAULT_CEEDLING_CONFIG = {
       :verbosity => Verbosity::NORMAL,
       :options_path => NULL_FILE_PATH,
       :release_build => false,
-      :raw_test_results => true,
     },
 
     :release_build => {

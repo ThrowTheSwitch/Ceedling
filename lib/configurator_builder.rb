@@ -1,11 +1,16 @@
 require 'rubygems'
 require 'rake'            # for ext() method
 require 'file_path_utils' # for form_vendor_path() class method
-require 'constants'       # for Verbosity constants class
+require 'constants'       # for Verbosity constants class & base file paths
 
 
 
 class ConfiguratorBuilder
+
+  BUILD_PATH_NAME          = 0
+  BUILD_PATH               = 1
+  BUILD_PATH_ADD_CONDITION = 2
+
   
   constructor :project_file_loader, :file_system_utils, :file_wrapper
     
@@ -96,49 +101,48 @@ class ConfiguratorBuilder
 
 
   def set_build_paths(in_hash)
-    test_path    = 'tests'
-    release_path = 'release'
-
-    build_paths = []
     out_hash = {}
 
     project_build_artifacts_root = File.join(in_hash[:project_build_root], 'artifacts')
-    project_build_tests_root     = File.join(in_hash[:project_build_root], test_path)
-    project_build_release_root   = File.join(in_hash[:project_build_root], release_path) if in_hash[:project_release_build]
-    
-    out_hash[:project_build_artifacts_root] = project_build_artifacts_root
-    out_hash[:project_build_tests_root]     = project_build_tests_root
-    out_hash[:project_build_release_root]   = project_build_release_root if in_hash[:project_release_build]
+    project_build_tests_root     = File.join(in_hash[:project_build_root], TESTS_BASE_PATH)
+    project_build_release_root   = File.join(in_hash[:project_build_root], RELEASE_BASE_PATH)
 
-    if (in_hash[:project_release_build])
-      out_hash[:project_release_artifacts_path]        = File.join(project_build_artifacts_root, release_path)
-      out_hash[:project_release_build_output_path]     = File.join(project_build_release_root, 'out')
-      out_hash[:project_release_build_output_asm_path] = File.join(project_build_release_root, 'out', 'asm')
-      out_hash[:project_release_build_output_c_path]   = File.join(project_build_release_root, 'out', 'c')
-      out_hash[:project_release_dependencies_path]     = File.join(project_build_release_root, 'dependencies') if in_hash[:project_use_auxiliary_dependencies]
-    end
-    
-    out_hash[:project_test_artifacts_path]    = File.join(project_build_artifacts_root, test_path)
-    out_hash[:project_test_runners_path]      = File.join(project_build_tests_root, 'runners')
-    out_hash[:project_test_results_path]      = File.join(project_build_tests_root, 'results')
-    out_hash[:project_test_build_output_path] = File.join(project_build_tests_root, 'out')
- 
-    out_hash[:project_log_path]  = File.join(in_hash[:project_build_root], 'logs')
-    out_hash[:project_temp_path] = File.join(in_hash[:project_build_root], 'temp') if in_hash[:project_use_test_preprocessor]
+    paths = [
+      [:project_build_artifacts_root,  project_build_artifacts_root, true ],
+      [:project_build_tests_root,      project_build_tests_root,     true ],
+      [:project_build_release_root,    project_build_release_root,   in_hash[:project_release_build] ],
 
-    out_hash[:project_test_preprocess_includes_path] = File.join(project_build_tests_root, 'preprocess/includes') if in_hash[:project_use_test_preprocessor]
-    out_hash[:project_test_preprocess_files_path]    = File.join(project_build_tests_root, 'preprocess/files')    if in_hash[:project_use_test_preprocessor]
+      [:project_test_artifacts_path,     File.join(project_build_artifacts_root, TESTS_BASE_PATH), true ],
+      [:project_test_runners_path,       File.join(project_build_tests_root, 'runners'),           true ],
+      [:project_test_results_path,       File.join(project_build_tests_root, 'results'),           true ],
+      [:project_test_build_output_path,  File.join(project_build_tests_root, 'out'),               true ],
 
-    out_hash[:project_test_dependencies_path] = File.join(project_build_tests_root, 'dependencies') if in_hash[:project_use_auxiliary_dependencies]
+      [:project_release_artifacts_path,         File.join(project_build_artifacts_root, RELEASE_BASE_PATH), in_hash[:project_release_build] ],
+      [:project_release_build_output_path,      File.join(project_build_release_root, 'out'),               in_hash[:project_release_build] ],
+      [:project_release_build_output_asm_path,  File.join(project_build_release_root, 'out', 'asm'),        in_hash[:project_release_build] ],
+      [:project_release_build_output_c_path,    File.join(project_build_release_root, 'out', 'c'),          in_hash[:project_release_build] ],
+      [:project_release_dependencies_path,      File.join(project_build_release_root, 'dependencies'),      in_hash[:project_release_build] && in_hash[:project_use_auxiliary_dependencies] ],
+
+      [:project_log_path,   File.join(in_hash[:project_build_root], 'logs'), true ],
+      [:project_temp_path,  File.join(in_hash[:project_build_root], 'temp'), in_hash[:project_use_test_preprocessor] ],
+
+      [:project_test_preprocess_includes_path,  File.join(project_build_tests_root, 'preprocess/includes'), in_hash[:project_use_test_preprocessor] ],
+      [:project_test_preprocess_files_path,     File.join(project_build_tests_root, 'preprocess/files'),    in_hash[:project_use_test_preprocessor] ],
+
+      [:project_test_dependencies_path,  File.join(project_build_tests_root, 'dependencies'), in_hash[:project_use_auxiliary_dependencies] ],
+    ]
+
+    out_hash[:project_build_paths] = []
 
     # fetch already set mock path
-    build_paths << in_hash[:cmock_mock_path] if in_hash[:project_use_mocks]
-    
-    out_hash.each_pair do |key, value|
-      build_paths << out_hash[key]
-    end
+    out_hash[:project_build_paths] << in_hash[:cmock_mock_path] if (in_hash[:project_use_mocks])
 
-    out_hash[:project_build_paths] = build_paths
+    paths.each do |path|
+      # insert path into build paths if associated with true condition
+      out_hash[:project_build_paths] << path[BUILD_PATH] if path[BUILD_PATH_ADD_CONDITION]
+      # set path symbol name and path for each entry in paths array
+      out_hash[ path[BUILD_PATH_NAME] ] = path[BUILD_PATH]
+    end
 
     return out_hash
   end
@@ -350,11 +354,11 @@ class ConfiguratorBuilder
 
 
   # gather up all files that if changed should cause generated files on-disk to be regenerated
-  def collect_environment_dependencies
+  def collect_environment_dependencies(hash)
     dependencies = []
     
     ceedling_build_file = File.join(CEEDLING_RELEASE, 'build.info')
-    cmock_build_file    = File.join(CEEDLING_VENDOR, 'cmock/release', 'build.info')
+    cmock_build_file    = FilePathUtils::form_ceedling_vendor_path('cmock/release', 'build.info')
 
     # project files: anything changes in them & everything should regenerate
     dependencies << @project_file_loader.main_project_filepath
@@ -365,7 +369,10 @@ class ConfiguratorBuilder
     dependencies << ceedling_build_file
     
     # cmock: same as ceedling
-    dependencies << cmock_build_file
+    if (hash[:project_use_mocks])
+      dependencies << cmock_build_file
+      dependencies << hash[:cmock_unity_helper] if (hash[:cmock_unity_helper])
+    end
     
     # Note: since Unity and CException are C files, changes to them are noticed elsewhere
 

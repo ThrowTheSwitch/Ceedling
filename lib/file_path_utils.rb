@@ -67,8 +67,8 @@ class FilePathUtils
     return path + '/**'
   end
 
-  def self.form_ceedling_vendor_path(filepath)
-    return File.join( CEEDLING_VENDOR, filepath)
+  def self.form_ceedling_vendor_path(*filepaths)
+    return File.join( CEEDLING_VENDOR, filepaths )
   end
 
   ######### instance methods ##########

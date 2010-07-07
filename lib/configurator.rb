@@ -64,10 +64,10 @@ class Configurator
     cmock = {}    
     cmock = config[:cmock] if not config[:cmock].nil?
 
-    cmock[:mock_prefix] = 'Mock'                                                 if (cmock[:mock_prefix].nil?)
-    cmock[:enforce_strict_ordering] = true                                       if (cmock[:enforce_strict_ordering].nil?)
-    cmock[:mock_path] = File.join(config[:project][:build_root], 'tests/mocks')  if (cmock[:mock_path].nil?)
-    cmock[:verbosity] = config[:project][:verbosity]                             if (cmock[:verbosity].nil?)
+    cmock[:mock_prefix] = 'Mock'                                                            if (cmock[:mock_prefix].nil?)
+    cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
+    cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
+    cmock[:verbosity] = config[:project][:verbosity]                                        if (cmock[:verbosity].nil?)
 
     cmock[:plugins] = []                             if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym }
@@ -105,6 +105,9 @@ class Configurator
     config_plugins.each do |plugin|
       config.deep_merge( @yaml_wrapper.load(plugin) )
     end
+    
+    # special plugin setting for results printing
+    config[:plugins][:display_raw_test_results] = true if (config[:plugins][:display_raw_test_results].nil?)
   end
 
   

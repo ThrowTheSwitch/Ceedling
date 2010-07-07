@@ -65,10 +65,10 @@ class StdoutPrettyTestsReport < Plugin
 
       }.left_margin
 
-      # turn off raw test results since we're doing much prettier job here
-      @ceedling[:configurator].replace_flattened_config( {:project_raw_test_results => false} )
+      # turn off raw test results since we're doing much prettier job in here
+      @ceedling[:setupinator].config_hash[:project][:raw_test_results] = false
   end
-  
+    
   def post_test_execute(arg_hash)
     test = File.basename(arg_hash[:executable], EXTENSION_EXECUTABLE)
     

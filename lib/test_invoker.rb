@@ -4,10 +4,19 @@ require 'rake' # for ext()
 
 class TestInvoker
 
+  attr_reader :sources, :tests, :mocks
+
   constructor :test_invoker_helper, :streaminator, :preprocessinator, :task_invoker, :dependinator, :file_finder, :file_path_utils
 
+  def setup
+    @sources = []
+    @tests   = []
+    @mocks   = []
+  end
   
   def invoke_tests(tests, options={:force_run => true})
+  
+    @tests = tests
   
     tests.each do |test|
       # announce beginning of test run
@@ -31,12 +40,20 @@ class TestInvoker
       @test_invoker_helper.process_auxiliary_dependencies(files)
 
       # plug in a few more dependencies to cause regeneration of generated files
-      @dependinator.enhance_object_with_environment_dependencies(files) if (!source.nil?)
+      @dependinator.enhance_object_with_environment_dependencies(files)
       @dependinator.setup_executable_dependencies(test)
 
       # go
       @task_invoker.invoke_results( @file_path_utils.form_pass_results_filepath(test) )
+      
+      @sources << source if (!source.nil?)
+      @mocks   << mock_list
     end
+    
+    @mocks.flatten!
+    @mocks.uniq!
+    
+    @sources.uniq!
   end
 
 end
