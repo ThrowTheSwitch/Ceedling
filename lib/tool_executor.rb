@@ -18,7 +18,10 @@ class ToolExecutor
     # basic premise is to iterate top to bottom through arguments using '$' as 
     #  a string replacement indicator to expand globals or inline yaml arrays
     #  into command line arguments via format strings
-    return "#{expandify_element(@executable, *args)} #{build_arguments(tool_config[:arguments], *args)}".strip
+    return [
+      expandify_element(@executable, *args),
+      build_arguments(tool_config[:arguments], *args),
+      @tool_executor_helper.stderr_redirect_addendum(tool_config) ].compact.join(' ')
   end
 
 
@@ -43,7 +46,7 @@ class ToolExecutor
   def build_arguments(config, *args)
     build_string = ''
     
-    return '' if (config.nil?)
+    return nil if (config.nil?)
     
     # iterate through each argument
 
@@ -64,7 +67,9 @@ class ToolExecutor
       build_string.concat(' ')
     end
     
-    return build_string.strip
+    build_string.strip!
+    return build_string if (build_string.length > 0)
+    return nil
   end
 
 

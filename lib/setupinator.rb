@@ -23,7 +23,7 @@ class Setupinator
     @configurator.populate_defaults(config_hash)
     @configurator.populate_cmock_defaults(config_hash)
     @configurator.find_and_merge_plugins(config_hash)
-    @configurator.populate_tool_names(config_hash)
+    @configurator.populate_tool_names_and_stderr_redirect(config_hash)
     @configurator.eval_environment_variables(config_hash)
     @configurator.eval_paths(config_hash)
     @configurator.standardize_paths(config_hash)

@@ -1,8 +1,20 @@
-require 'constants' # for Verbosity enumeration
+require 'constants' # for Verbosity enumeration & $stderr redirect enumeration
 
 class ToolExecutorHelper
 
   constructor :streaminator
+
+  def stderr_redirect_addendum(tool_config)
+    return '' if (tool_config[:stderr_redirect].nil?)
+    
+    case tool_config[:stderr_redirect]
+      when StdErrRedirect::NONE then ''
+      when StdErrRedirect::AUTO then '2>&1'
+      when StdErrRedirect::DOS  then '2>&1'
+      when StdErrRedirect::UNIX then '2>&1'
+      when StdErrRedirect::TCSH then '|&'
+    end
+  end
 
   # if command succeeded and we have verbosity cranked up, spill our guts
   def print_happy_results(command_str, shell_result)

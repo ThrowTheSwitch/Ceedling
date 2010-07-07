@@ -7,6 +7,14 @@ class Verbosity
   OBNOXIOUS   = 4  # all messages including extra verbose output (likely used for debugging)
 end
 
+class StdErrRedirect
+  NONE = :none
+  AUTO = :auto
+  DOS  = :dos
+  UNIX = :unix
+  TCSH = :tcsh
+end
+
 
 DEFAULT_CEEDLING_MAIN_PROJECT_FILE = 'project.yml' # main project file
 DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    # supplemental user config file

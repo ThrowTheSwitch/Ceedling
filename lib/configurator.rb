@@ -87,10 +87,15 @@ class Configurator
 
 
   # grab tool names from yaml and insert into tool structures so available for error messages
-  def populate_tool_names(config)
+  def populate_tool_names_and_stderr_redirect(config)
     config[:tools].each_key do |name|
       tool = config[:tools][name]
-      tool[:name] = name.to_s
+      
+      # populate name if not given      
+      tool[:name] = name.to_s if (tool[:name].nil?)
+
+      # populate stderr redirect option
+      tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
     end
   end
   
