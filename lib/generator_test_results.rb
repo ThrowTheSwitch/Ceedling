@@ -3,10 +3,10 @@ require 'rake' # for .ext()
 
  
 class GeneratorTestResults
+  TEST_STATISTICS_REGEX = /-+\s+(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
 
   constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper
-
-  
+ 
   def process_and_write_results(raw_unity_output, results_file, test_file)
     output_file = results_file
     
@@ -15,26 +15,36 @@ class GeneratorTestResults
     results[:source][:path] = File.dirname(test_file)
     results[:source][:file] = File.basename(test_file)
     
+    # process test statistics
+    if (raw_unity_output =~ TEST_STATISTICS_REGEX)
+      results[:counts][:total]   = $1.to_i
+      results[:counts][:failed]  = $2.to_i
+      results[:counts][:ignored] = $3.to_i
+      results[:counts][:passed]  = (results[:counts][:total] - results[:counts][:failed] - results[:counts][:ignored])
+    end
+
+    # remove test statistics lines
+    raw_unity_output.sub!(TEST_STATISTICS_REGEX, '')
+    
+    # bust up the output into individual lines
     raw_unity_lines = raw_unity_output.split(/\n|\r\n/)
-    raw_unity_lines.delete_at(-1) # final 'FAIL' or 'OK'
-    raw_unity_lines.delete_at(-2) # '-----------------' line before final stats
     
     raw_unity_lines.each do |line|
       # process unity output
       case line
       when /(:IGNORE)/
-        results[:ignores]   << extract_line_elements(line)
+        elements = extract_line_elements(line, results[:source][:file])
+        results[:ignores]   << elements[0]
+        results[:stdout]    << elements[1] if (!elements[1].nil?)
       when /(:PASS$)/
-        results[:successes] << extract_line_elements(line)
+        elements = extract_line_elements(line, results[:source][:file])
+        results[:successes] << elements[0]
+        results[:stdout]    << elements[1] if (!elements[1].nil?)
       when /(:FAIL)/
-        results[:failures]  << extract_line_elements(line)
-      # process test statistics
-      when /^(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored/i
-        results[:counts][:total]   = $1.to_i
-        results[:counts][:failed]  = $2.to_i
-        results[:counts][:ignored] = $3.to_i
-        results[:counts][:passed]  = (results[:counts][:total] - results[:counts][:failed] - results[:counts][:ignored])
-      else
+        elements = extract_line_elements(line, results[:source][:file])
+        results[:failures]  << elements[0]
+        results[:stdout]    << elements[1] if (!elements[1].nil?)
+      else # collect up all other
         results[:stdout] << line.chomp
       end
     end
@@ -59,9 +69,19 @@ class GeneratorTestResults
       }
   end
   
-  def extract_line_elements(line)
+  def extract_line_elements(line, filename)
+    # handle anything preceding filename in line as extra output to be collected
+    stdout = nil
+    stdout_regex = /(.+)#{Regexp.escape(filename)}.+/i
+    
+    if (line =~ stdout_regex)
+      stdout = $1.clone
+      line.sub!(/#{Regexp.escape(stdout)}/, '')
+    end
+    
+    # collect up test results minus and extra output
     elements = (line.strip.split(':'))[1..-1]
-    return {:test => elements[1], :line => elements[0].to_i, :message => (elements[3..-1].join(':')).strip}
+    return {:test => elements[1], :line => elements[0].to_i, :message => (elements[3..-1].join(':')).strip}, stdout
   end
 
 end

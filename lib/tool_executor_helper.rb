@@ -8,6 +8,7 @@ class ToolExecutorHelper
     return '' if (tool_config[:stderr_redirect].nil?)
     
     case tool_config[:stderr_redirect]
+      # we may need more complicated processing after some learning with various environments
       when StdErrRedirect::NONE then ''
       when StdErrRedirect::AUTO then '2>&1'
       when StdErrRedirect::DOS  then '2>&1'

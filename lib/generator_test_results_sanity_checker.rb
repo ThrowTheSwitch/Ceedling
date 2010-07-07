@@ -22,7 +22,7 @@ class GeneratorTestResultsSanityChecker
   private
   
   def sanity_check_warning(file, message)
-    @streaminator.stderr_puts("ERROR: Internal framework sanity check for test fixture '#{file}' finds that #{message}")
+    @streaminator.stderr_puts("ERROR: Internal sanity check for test fixture '#{file}' finds that #{message}")
     raise
   end
 
