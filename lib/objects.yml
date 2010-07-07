@@ -36,7 +36,9 @@ tool_executor:
     - system_wrapper
 
 tool_executor_helper:
-  compose: streaminator
+  compose:
+    - streaminator
+    - system_wrapper
 
 configurator:
   compose:

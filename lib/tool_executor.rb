@@ -19,7 +19,7 @@ class ToolExecutor
     #  a string replacement indicator to expand globals or inline yaml arrays
     #  into command line arguments via format strings
     return [
-      expandify_element(@executable, *args),
+      @tool_executor_helper.osify_path_separators( expandify_element(@executable, *args) ),
       build_arguments(tool_config[:arguments], *args),
       @tool_executor_helper.stderr_redirect_addendum(tool_config) ].compact.join(' ')
   end

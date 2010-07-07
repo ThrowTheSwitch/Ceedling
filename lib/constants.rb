@@ -11,6 +11,7 @@ class StdErrRedirect
   NONE = :none
   AUTO = :auto
   DOS  = :dos
+  WIN  = :win
   UNIX = :unix
   TCSH = :tcsh
 end

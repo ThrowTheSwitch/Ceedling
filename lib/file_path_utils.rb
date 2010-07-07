@@ -1,8 +1,7 @@
 require 'rubygems'
 require 'rake' # for ext()
 require 'fileutils'
-require 'rbconfig'
-
+require 'system_wrapper'
 
 class FilePathUtils
 
@@ -22,8 +21,8 @@ class FilePathUtils
     return path
   end
 
-  def self.ext_exe(executable)
-    return executable.ext('.exe') if (Config::CONFIG['host_os'] =~ /mswin|mingw/)
+  def self.os_executable_ext(executable)
+    return executable.ext('.exe') if SystemWrapper.is_windows?
     return executable
   end
 

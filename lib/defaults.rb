@@ -1,9 +1,10 @@
 require 'constants'
+require 'system_wrapper'
 require 'file_path_utils'
 
 
 DEFAULT_TEST_COMPILER_TOOL = {
-  :executable => FilePathUtils.ext_exe('gcc'),
+  :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_test_compiler',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
@@ -17,7 +18,7 @@ DEFAULT_TEST_COMPILER_TOOL = {
   }
 
 DEFAULT_TEST_LINKER_TOOL = {
-  :executable => FilePathUtils.ext_exe('gcc'),
+  :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_test_linker',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
@@ -39,7 +40,7 @@ DEFAULT_TEST_FIXTURE_TOOL = {
 
 
 DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => FilePathUtils.ext_exe('cpp'),
+  :executable => FilePathUtils.os_executable_ext('cpp'),
   :name => 'default_test_includes_preprocessor',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
@@ -58,7 +59,7 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
   }
 
 DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
-  :executable => FilePathUtils.ext_exe('gcc'),
+  :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_test_file_preprocessor',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
@@ -74,7 +75,7 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
   }
 
 DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
-  :executable => FilePathUtils.ext_exe('gcc'),
+  :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_test_dependencies_generator',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
@@ -91,7 +92,7 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   }
 
 DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
-  :executable => FilePathUtils.ext_exe('gcc'),
+  :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_release_dependencies_generator',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
@@ -109,7 +110,7 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
 
 
 DEFAULT_RELEASE_COMPILER_TOOL = {
-  :executable => FilePathUtils.ext_exe('gcc'),
+  :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_release_compiler',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
@@ -123,7 +124,7 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
   }
 
 DEFAULT_RELEASE_ASSEMBLER_TOOL = {
-  :executable => FilePathUtils.ext_exe('as'),
+  :executable => FilePathUtils.os_executable_ext('as'),
   :name => 'default_release_assembler',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
@@ -136,7 +137,7 @@ DEFAULT_RELEASE_ASSEMBLER_TOOL = {
   }
 
 DEFAULT_RELEASE_LINKER_TOOL = {
-  :executable => FilePathUtils.ext_exe('gcc'),
+  :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_release_linker',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
@@ -192,7 +193,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :source => '.c',
       :assembly => '.s',
       :object => '.o',
-      :executable => '.out',
+      :executable => ( SystemWrapper.is_windows? ? '.exe' : '.out' ),
       :testpass => '.pass',
       :testfail => '.fail',
       :dependencies => '.d',

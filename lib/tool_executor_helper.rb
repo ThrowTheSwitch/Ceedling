@@ -2,8 +2,13 @@ require 'constants' # for Verbosity enumeration & $stderr redirect enumeration
 
 class ToolExecutorHelper
 
-  constructor :streaminator
+  constructor :streaminator, :system_wrapper
 
+  def osify_path_separators(executable)
+    return executable.gsub(/\//, '\\') if (@system_wrapper.is_windows?)
+    return executable
+  end
+  
   def stderr_redirect_addendum(tool_config)
     return nil if (tool_config[:stderr_redirect].nil?)
     
@@ -12,6 +17,7 @@ class ToolExecutorHelper
       when StdErrRedirect::NONE then ''
       when StdErrRedirect::AUTO then '2>&1'
       when StdErrRedirect::DOS  then '2>&1'
+      when StdErrRedirect::WIN  then '2>&1'
       when StdErrRedirect::UNIX then '2>&1'
       when StdErrRedirect::TCSH then '|&'
     end
@@ -35,7 +41,7 @@ class ToolExecutorHelper
     if (shell_result[:exit_code] != 0)
       output  = "ERROR: Shell command failed.\n"
       output += "> Shell executed command:\n"
-      output += "#{command_str}\n"
+      output += "'#{command_str}'\n"
       output += "> Produced response:\n"           if (not shell_result[:output].empty?)
       output += "#{shell_result[:output].strip}\n" if (not shell_result[:output].empty?)
       output += "> And exited with status: [#{shell_result[:exit_code]}].\n" if (shell_result[:exit_code] != nil)

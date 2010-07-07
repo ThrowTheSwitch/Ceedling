@@ -1,6 +1,17 @@
+require 'rbconfig'
 
 class SystemWrapper
 
+  # static method for use in defaults
+  def self.is_windows?
+    return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
+  end
+
+  # class method so as to be mockable for tests
+  def is_windows?
+    return SystemWrapper.is_windows?
+  end
+  
   def eval(string)
     return Object.module_eval("\"" + string + "\"")
   end
