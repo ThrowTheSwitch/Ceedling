@@ -5,7 +5,7 @@ class ToolExecutorHelper
   constructor :streaminator
 
   def stderr_redirect_addendum(tool_config)
-    return '' if (tool_config[:stderr_redirect].nil?)
+    return nil if (tool_config[:stderr_redirect].nil?)
     
     case tool_config[:stderr_redirect]
       # we may need more complicated processing after some learning with various environments
