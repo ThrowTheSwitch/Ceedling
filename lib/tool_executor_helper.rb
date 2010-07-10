@@ -16,7 +16,6 @@ class ToolExecutorHelper
       # we may need more complicated processing after some learning with various environments
       when StdErrRedirect::NONE then nil
       when StdErrRedirect::AUTO then '2>&1'
-      when StdErrRedirect::DOS  then '2>&1'
       when StdErrRedirect::WIN  then '2>&1'
       when StdErrRedirect::UNIX then '2>&1'
       when StdErrRedirect::TCSH then '|&'
