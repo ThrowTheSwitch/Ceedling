@@ -129,7 +129,6 @@ DEFAULT_RELEASE_ASSEMBLER_TOOL = {
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_AND_INCLUDE'},
-    {"-I\"$\"" => 'COLLECTION_PATHS_TARGET_INCLUDE'},
     {"$" => 'RELEASE_ASSEMBLER_ARGUMENTS'},
     '${1}',
     "-o \"${2}\"",
@@ -204,6 +203,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :exclude_float => false,
       :float_type => 'float',    
       :float_precision => '0.00001f',
+      :float_verbose => true,
     },
 
     :test_runner => {

@@ -347,6 +347,7 @@ class ConfiguratorBuilder
     else
       test_defines << "UNITY_FLOAT_TYPE=#{in_hash[:unity_float_type]}"
       test_defines << "UNITY_FLOAT_PRECISION=#{in_hash[:unity_float_precision]}"
+      test_defines << 'UNITY_FLOAT_VERBOSE' if in_hash[:unity_float_verbose]
     end
     
     return {:collection_defines_test => test_defines}
