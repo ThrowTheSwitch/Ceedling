@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'rake'            # for ext() method
-require 'file_path_utils' # for form_vendor_path() class method
+require 'file_path_utils' # for class methods
+require 'defaults'
 require 'constants'       # for Verbosity constants class & base file paths
 
 
@@ -192,9 +193,12 @@ class ConfiguratorBuilder
   
   def set_release_target(in_hash)
     return {} if (not in_hash[:project_release_build])
+    
+    release_target_file = ((in_hash[:release_build_output].nil?) ? (DEFAULT_RELEASE_TARGET_NAME.ext(in_hash[:extension_executable])) : in_hash[:release_build_output])
+    
     return {
       # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
-      :project_release_build_target => File.join(in_hash[:project_release_artifacts_path], in_hash[:release_build_output])
+      :project_release_build_target => File.join(in_hash[:project_release_artifacts_path], release_target_file)
       }
   end
   
@@ -237,31 +241,16 @@ class ConfiguratorBuilder
   end
 
   
-  def collect_test_and_source_and_include_paths(in_hash)
+  def collect_test_and_support_and_source_and_include_paths(in_hash)
     extra_paths = []
     insert_vendor_paths(extra_paths, in_hash)
 
     return {
-      :collection_paths_test_and_source_and_include => 
+      :collection_paths_test_and_support_and_source_and_include => 
         in_hash[:collection_paths_test] +
         in_hash[:collection_paths_support] +
         in_hash[:collection_paths_source] + 
         in_hash[:collection_paths_include] + 
-        extra_paths
-      }    
-  end
-
-    
-  def collect_test_and_source_paths(in_hash)
-    extra_paths = []
-    insert_vendor_paths(extra_paths, in_hash)
-    extra_paths << in_hash[:project_test_runners_path]
-
-    return {
-      :collection_paths_test_and_source => 
-        in_hash[:collection_paths_test] +
-        in_hash[:collection_paths_support] +
-        in_hash[:collection_paths_source] + 
         extra_paths
       }    
   end
@@ -304,8 +293,12 @@ class ConfiguratorBuilder
 
   def collect_headers(in_hash)
     all_headers = @file_wrapper.instantiate_file_list
-    
-    paths = in_hash[:collection_paths_support] + in_hash[:collection_paths_source] + in_hash[:collection_paths_include]
+
+    paths = 
+      in_hash[:collection_paths_test] +
+      in_hash[:collection_paths_support] +
+      in_hash[:collection_paths_source] + 
+      in_hash[:collection_paths_include]
     
     (paths).each do |path|
       all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )

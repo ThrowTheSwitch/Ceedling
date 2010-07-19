@@ -6,7 +6,7 @@ class FileFinder
   constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper
 
   def prepare_search_sources
-    @test_source_header_file_collection = 
+    @all_test_source_and_header_file_collection = 
       @configurator.collection_all_tests +
       @configurator.collection_all_source + 
       @configurator.collection_all_headers
@@ -66,7 +66,7 @@ class FileFinder
 
   def find_test_or_source_or_header_file(file_path)
     file = File.basename(file_path)
-    return @file_finder_helper.find_file_in_collection(file, @test_source_header_file_collection)
+    return @file_finder_helper.find_file_in_collection(file, @all_test_source_and_header_file_collection)
   end
   
   

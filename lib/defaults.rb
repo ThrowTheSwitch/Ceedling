@@ -9,7 +9,7 @@ DEFAULT_TEST_COMPILER_TOOL = {
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SOURCE_AND_INCLUDE'},
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SUPPORT_AND_SOURCE_AND_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"$" => 'TEST_COMPILER_ARGUMENTS'},
     "-c ${1}",
@@ -64,7 +64,7 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
     '-E',
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SOURCE_AND_INCLUDE'},
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SUPPORT_AND_SOURCE_AND_INCLUDE'},
     {"-I\"$\"" => 'PATHS_TEST_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
@@ -79,7 +79,7 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :name => 'default_test_dependencies_generator',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SOURCE_AND_INCLUDE'},
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SUPPORT_AND_SOURCE_AND_INCLUDE'},
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},   
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},     
@@ -146,9 +146,11 @@ DEFAULT_RELEASE_LINKER_TOOL = {
     ]
   }
 
+DEFAULT_RELEASE_TARGET_NAME = 'project'
 
 DEFAULT_CEEDLING_CONFIG = {
     :project => {
+      # :build_root must be set by user
       :logging => false,
       :use_exceptions => true,
       :use_mocks => true,
@@ -161,13 +163,13 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :release_build => {
-      :output => 'project.out',
+      # :output is set while building configuration -- allows smart default system-dependent file extension handling
       :use_assembly => false,      
     },
 
     :paths => {
-      :test => [],
-      :source => [],
+      :test => [],   # must be populated by user
+      :source => [], # must be populated by user
       :support => [],
       :include => [],
       :test_toolchain_include => [],

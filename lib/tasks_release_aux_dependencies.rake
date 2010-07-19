@@ -2,10 +2,10 @@
 
 COLLECTION_ALL_RELEASE_DEPENDENCIES_FILES = COLLECTION_ALL_SOURCE.pathmap("#{PROJECT_RELEASE_DEPENDENCIES_PATH}/%n#{EXTENSION_DEPENDENCIES}")
 
+# add to the base :release task
+task :release => [:directories] + COLLECTION_ALL_RELEASE_DEPENDENCIES_FILES
 
 namespace :build do
-
-  task :release => [:directories] + COLLECTION_ALL_RELEASE_DEPENDENCIES_FILES
 
   COLLECTION_ALL_SOURCE.each do |source|
     # by source file name
