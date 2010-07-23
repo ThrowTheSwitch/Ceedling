@@ -32,7 +32,8 @@ class ConfiguratorHelper
     new_config.merge!(@configurator_builder.expand_all_path_globs(new_config))
     
     new_config.merge!(@configurator_builder.collect_source_and_include_paths(new_config))
-    new_config.merge!(@configurator_builder.collect_test_and_support_and_source_and_include_paths(new_config))
+    new_config.merge!(@configurator_builder.collect_test_support_source_include_paths(new_config))
+    new_config.merge!(@configurator_builder.collect_test_support_source_include_vendor_paths(new_config))
     new_config.merge!(@configurator_builder.collect_tests(new_config))
     new_config.merge!(@configurator_builder.collect_assembly(new_config))
     new_config.merge!(@configurator_builder.collect_source(new_config))

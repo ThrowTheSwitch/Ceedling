@@ -36,13 +36,14 @@ task :directories => PROJECT_BUILD_PATHS
 # list paths discovered at load time
 namespace :paths do
   
-  desc "List all test paths."
-  task(:test)    { COLLECTION_PATHS_TEST.sort.each { |path| puts " - #{path}" } }
-  
-  desc "List all source paths."
-  task(:source)  { COLLECTION_PATHS_SOURCE.sort.each { |path| puts " - #{path}" } }
-  
-  desc "List all include paths."
-  task(:include) { COLLECTION_PATHS_INCLUDE.sort.each { |path| puts " - #{path}" } }
-  
+  paths = @ceedling[:setupinator].config_hash[:paths]
+  paths.each_key do |section|
+    name = section.to_s.downcase
+    path_list = Object.const_get("COLLECTION_PATHS_#{name.upcase}")
+    
+    if (path_list.size != 0)
+      desc "List all collected #{name} paths."
+      task(name.to_sym) { path_list.sort.each {|path| puts " - #{path}" } }
+    end
+  end
 end

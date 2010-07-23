@@ -8,8 +8,8 @@ DEFAULT_TEST_COMPILER_TOOL = {
   :name => 'default_test_compiler',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SUPPORT_AND_SOURCE_AND_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"$" => 'TEST_COMPILER_ARGUMENTS'},
     "-c ${1}",
@@ -45,10 +45,8 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
     '-MM', '-MG',
-    {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE'},
-    {"-I\"$\"" => 'COLLECTION_PATHS_INCLUDE'},
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST'},
-    {"-I\"$\"" => 'COLLECTION_PATHS_SUPPORT'},
+    # avoiding possibilities of deep system lib header file complications by omitting vendor paths
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
     {"$" => 'TEST_INCLUDES_PREPROCESSOR_ARGUMENTS'},
@@ -64,7 +62,7 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
     '-E',
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SUPPORT_AND_SOURCE_AND_INCLUDE'},
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'PATHS_TEST_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
@@ -79,7 +77,7 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :name => 'default_test_dependencies_generator',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_AND_SUPPORT_AND_SOURCE_AND_INCLUDE'},
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},   
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},     
@@ -114,8 +112,8 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
   :name => 'default_release_compiler',
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
-    {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'},
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_AND_INCLUDE'},
+    {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'DEFINES_RELEASE'},        
     {"$" => 'RELEASE_COMPILER_ARGUMENTS'},
     "-c \"${1}\"",

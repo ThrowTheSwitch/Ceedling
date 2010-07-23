@@ -240,17 +240,26 @@ class ConfiguratorBuilder
       }    
   end
 
-  
-  def collect_test_and_support_and_source_and_include_paths(in_hash)
-    extra_paths = []
-    insert_vendor_paths(extra_paths, in_hash)
-
+  def collect_test_support_source_include_paths(in_hash)
     return {
-      :collection_paths_test_and_support_and_source_and_include => 
+      :collection_paths_test_support_source_include => 
         in_hash[:collection_paths_test] +
         in_hash[:collection_paths_support] +
         in_hash[:collection_paths_source] + 
-        in_hash[:collection_paths_include] + 
+        in_hash[:collection_paths_include]
+      }    
+  end
+  
+  def collect_test_support_source_include_vendor_paths(in_hash)
+    extra_paths = []
+    extra_paths << FilePathUtils::form_ceedling_vendor_path('unity/src')
+    extra_paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (in_hash[:project_use_exceptions])
+    extra_paths << FilePathUtils::form_ceedling_vendor_path('cmock/src')       if (in_hash[:project_use_mocks])
+    extra_paths << in_hash[:cmock_mock_path]                                   if (in_hash[:project_use_mocks])
+
+    return {
+      :collection_paths_test_support_source_include_vendor => 
+        in_hash[:collection_paths_test_support_source_include] +
         extra_paths
       }    
   end
@@ -393,16 +402,6 @@ class ConfiguratorBuilder
     
     hash[:test_fixture_link_objects].map! { |link_object| link_object.ext(hash[:extension_object]) }
     hash[:test_fixture_link_objects].uniq!
-  end
-
-
-  private ##############################
-  
-  def insert_vendor_paths(paths, config)
-    paths << FilePathUtils::form_ceedling_vendor_path('unity/src')
-    paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (config[:project_use_exceptions])
-    paths << FilePathUtils::form_ceedling_vendor_path('cmock/src') if (config[:project_use_mocks])
-    paths << config[:cmock_mock_path] if (config[:project_use_mocks])
   end
   
 end
