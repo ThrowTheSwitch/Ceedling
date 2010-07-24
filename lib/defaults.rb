@@ -12,8 +12,8 @@ DEFAULT_TEST_COMPILER_TOOL = {
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"$" => 'TEST_COMPILER_ARGUMENTS'},
-    "-c ${1}",
-    "-o ${2}",
+    "-c \"${1}\"",
+    "-o \"${2}\"",
     ]
   }
 
@@ -23,8 +23,8 @@ DEFAULT_TEST_LINKER_TOOL = {
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
     {"$" => 'TEST_LINKER_ARGUMENTS'},
-    "${1}",
-    "-o ${2}",
+    "\"${1}\"",
+    "-o \"${2}\"",
     ]
   }
   
@@ -45,7 +45,7 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
     '-MM', '-MG',
-    # avoiding possibilities of deep system lib header file complications by omitting vendor paths
+    # avoid some possibility of deep system lib header file complications by omitting vendor paths
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
@@ -128,7 +128,7 @@ DEFAULT_RELEASE_ASSEMBLER_TOOL = {
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_AND_INCLUDE'},
     {"$" => 'RELEASE_ASSEMBLER_ARGUMENTS'},
-    '${1}',
+    "\"${1}\"",
     "-o \"${2}\"",
     ]
   }
@@ -139,7 +139,7 @@ DEFAULT_RELEASE_LINKER_TOOL = {
   :stderr_redirect => StdErrRedirect::NONE,
   :arguments => [
     {"$" => 'RELEASE_LINKER_ARGUMENTS'},
-    '${1}',
+    "\"${1}\"",
     "-o \"${2}\"",
     ]
   }
@@ -201,7 +201,7 @@ DEFAULT_CEEDLING_CONFIG = {
     :unity => {
       :int_width => 32,
       :exclude_float => false,
-      :float_type => 'float',    
+      :float_type => 'float',
       :float_precision => '0.00001f',
       :float_verbose => true,
     },
