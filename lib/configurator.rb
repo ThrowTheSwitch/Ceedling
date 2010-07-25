@@ -121,7 +121,7 @@ class Configurator
       key = hash.keys[0]
       value_string = hash[key].to_s
       if (value_string =~ RUBY_STRING_REPLACEMENT_PATTERN)
-        value_string.replace(@system_wrapper.eval(value_string))
+        value_string.replace(@system_wrapper.module_eval(value_string))
       end
       @system_wrapper.env_set(key.to_s.upcase, value_string)
     end    
@@ -139,11 +139,11 @@ class Configurator
     # hence, we'll complain about them having multiple entries later
     # for now, just eval them
     individual_paths.each do |individual|
-      individual.each { |path| path.replace(@system_wrapper.eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN) }
+      individual.each { |path| path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN) }
     end
   
     config[:paths].each_pair do |key, list|
-      list.each { |path_entry| path_entry.replace(@system_wrapper.eval(path_entry)) if (path_entry =~ RUBY_STRING_REPLACEMENT_PATTERN) }
+      list.each { |path_entry| path_entry.replace(@system_wrapper.module_eval(path_entry)) if (path_entry =~ RUBY_STRING_REPLACEMENT_PATTERN) }
     end    
   end
   

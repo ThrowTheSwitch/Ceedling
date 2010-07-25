@@ -30,7 +30,7 @@ module Rake
       
       # split at non-escaped space boundary between files (i.e. escaped spaces in paths are left alone)
       dependents = args.split(/\b\s+/)
-      # replace escaped spaces and clean up any whitespace
+      # replace escaped spaces and clean up any extra whitespace
       dependents.map! { |path| path.gsub(/\\ /, ' ').strip }
 
       file_tasks.strip.split.each do |file_task|

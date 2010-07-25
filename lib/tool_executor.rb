@@ -131,8 +131,11 @@ class ToolExecutor
     end
     
     expand.each do |item|
-      # string substitution
-      if (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      # code eval substitution
+      if (item =~ RUBY_EVAL_REPLACEMENT_PATTERN)
+        elements << eval($1)
+      # string eval substitution
+      elsif (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
         elements << @system_wrapper.eval(item)
       # global constants
       elsif (Object.constants.include?(item))

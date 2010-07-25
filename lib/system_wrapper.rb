@@ -12,8 +12,12 @@ class SystemWrapper
     return SystemWrapper.is_windows?
   end
   
-  def eval(string)
+  def module_eval(string)
     return Object.module_eval("\"" + string + "\"")
+  end
+
+  def eval(string)
+    return eval(string)
   end
 
   def search_paths

@@ -9,7 +9,7 @@ end
 class RakeWrapper
 
   def initialize
-    @makefile_loader = Rake::MakefileLoader.new
+    @makefile_loader = Rake::MakefileLoader.new # use our custom replacement noted above
   end
 
   def [](task)
