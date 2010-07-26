@@ -108,7 +108,7 @@ class ToolExecutor
 
     # handle ruby string replacement
     if (build_string =~ RUBY_STRING_REPLACEMENT_PATTERN)
-      build_string.replace(@system_wrapper.eval(build_string))
+      build_string.replace(@system_wrapper.module_eval(build_string))
     end
     
     return build_string.strip
@@ -136,7 +136,7 @@ class ToolExecutor
         elements << eval($1)
       # string eval substitution
       elsif (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
-        elements << @system_wrapper.eval(item)
+        elements << @system_wrapper.module_eval(item)
       # global constants
       elsif (Object.constants.include?(item))
         const = Object.const_get(item)
