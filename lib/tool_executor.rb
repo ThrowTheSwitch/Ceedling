@@ -50,21 +50,22 @@ class ToolExecutor
     
     # iterate through each argument
 
-    # the yaml blog array needs to be flattened so that yaml substitution
+    # the yaml blob array needs to be flattened so that yaml substitution
     # is handled correctly, since it creates a nested array when an anchor is
     # dereferenced
     config.flatten.each do |element|
+      argument = ''
       
       case(element)
         # if we find a simple string then look for string replacement operators
         #  and expand with the parameters in this method's argument list
-        when String then build_string.concat( expandify_element(element, *args) )
+        when String then argument = expandify_element(element, *args)
         # if we find a hash, then we grab the key as a format string and expand the
         #  hash's value(s) within that format string
-        when Hash   then build_string.concat( dehashify_argument_elements(element) )
+        when Hash   then argument = dehashify_argument_elements(element)
       end
 
-      build_string.concat(' ')
+      build_string.concat("#{argument} ") if (argument.length > 0)
     end
     
     build_string.strip!
@@ -99,16 +100,19 @@ class ToolExecutor
     # handle inline ruby execution
     if (element =~ RUBY_EVAL_REPLACEMENT_PATTERN)
       element.replace(eval($1))
-    elsif (element =~ RUBY_STRING_REPLACEMENT_PATTERN)
-      element.replace(@system_wrapper.module_eval(element))
     end
 
     build_string = ''
 
     # handle array or anything else passed into method to be expanded in place of replacement operators
     case (to_process)
-      when Array then to_process.each {|value| build_string.concat( "#{element.sub(match, value.to_s)} " ) }
+      when Array then to_process.each {|value| build_string.concat( "#{element.sub(match, value.to_s)} " ) } if (to_process.size > 0)
       else build_string.concat( element.sub(match, to_process.to_s) )
+    end
+
+    # handle inline ruby string substitution
+    if (build_string =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      build_string.replace(@system_wrapper.module_eval(build_string))
     end
     
     return build_string.strip
@@ -159,7 +163,7 @@ class ToolExecutor
       build_string.gsub!(/\\\$/, '$')
       build_string.concat(' ')
     end
-    
+
     return build_string.strip
   end
 
