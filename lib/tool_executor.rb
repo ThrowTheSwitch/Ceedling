@@ -96,19 +96,19 @@ class ToolExecutor
     element.sub!(/\\\$/, '$')
     element.strip!
 
+    # handle inline ruby execution
+    if (element =~ RUBY_EVAL_REPLACEMENT_PATTERN)
+      element.replace(eval($1))
+    elsif (element =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      element.replace(@system_wrapper.module_eval(element))
+    end
+
     build_string = ''
-    # handle escaped $
-    scrubbed_element = element.sub(/\\\$/, '$')
 
     # handle array or anything else passed into method to be expanded in place of replacement operators
     case (to_process)
-      when Array then to_process.each {|value| build_string.concat( "#{scrubbed_element.sub(match, value.to_s)} " ) }
-      else build_string.concat( scrubbed_element.sub(match, to_process.to_s) )
-    end
-
-    # handle ruby string replacement
-    if (build_string =~ RUBY_STRING_REPLACEMENT_PATTERN)
-      build_string.replace(@system_wrapper.module_eval(build_string))
+      when Array then to_process.each {|value| build_string.concat( "#{element.sub(match, value.to_s)} " ) }
+      else build_string.concat( element.sub(match, to_process.to_s) )
     end
     
     return build_string.strip

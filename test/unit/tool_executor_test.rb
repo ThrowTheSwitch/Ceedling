@@ -8,7 +8,7 @@ NIL_GLOBAL_CONSTANT = nil
 class ToolExecutorTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:tool_executor_helper, :streaminator, :system_wrapper)
+    objects = create_mocks(:configurator, :tool_executor_helper, :streaminator, :system_wrapper)
     @tool_executor = ToolExecutor.new(objects)
   end
 

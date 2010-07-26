@@ -229,16 +229,25 @@ class ConfiguratorBuilder
 
 
   def collect_source_and_include_paths(in_hash)
+    return {
+      :collection_paths_source_and_include => 
+        in_hash[:collection_paths_source] + 
+        in_hash[:collection_paths_include]
+      }    
+  end
+
+
+  def collect_source_include_vendor_paths(in_hash)
     extra_paths = []
     extra_paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (in_hash[:project_use_exceptions])
 
     return {
-      :collection_paths_source_and_include => 
-        in_hash[:collection_paths_source] + 
-        in_hash[:collection_paths_include] + 
+      :collection_paths_source_include_vendor => 
+        in_hash[:collection_paths_source_and_include] + 
         extra_paths
       }    
   end
+
 
   def collect_test_support_source_include_paths(in_hash)
     return {
@@ -249,6 +258,7 @@ class ConfiguratorBuilder
         in_hash[:collection_paths_include]
       }    
   end
+  
   
   def collect_test_support_source_include_vendor_paths(in_hash)
     extra_paths = []
