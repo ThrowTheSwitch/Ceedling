@@ -349,18 +349,22 @@ class ConfiguratorBuilder
   end
 
 
-  def collect_test_defines(in_hash)
+  def collect_unity_and_test_defines(in_hash)
     test_defines = in_hash[:defines_test].clone
     
-    test_defines << "UNITY_INT_WIDTH=#{in_hash[:unity_int_width]}"
-    
-    if (in_hash[:unity_exclude_float])
-      test_defines << 'UNITY_EXCLUDE_FLOAT'
-    else
-      test_defines << "UNITY_FLOAT_TYPE=#{in_hash[:unity_float_type]}"
-      test_defines << "UNITY_FLOAT_PRECISION=#{in_hash[:unity_float_precision]}"
-      test_defines << 'UNITY_FLOAT_VERBOSE' if in_hash[:unity_float_verbose]
-    end
+    test_defines << "UNITY_INT_WIDTH=#{in_hash[:unity_int_width]}"           if (not in_hash[:unity_int_width].nil?)
+    test_defines << "UNITY_LONG_WIDTH=#{in_hash[:unity_long_width]}"         if (not in_hash[:unity_long_width].nil?)
+    test_defines << "UNITY_POINTER_WIDTH=#{in_hash[:unity_pointer_width]}"   if (not in_hash[:unity_pointer_width].nil?)
+
+    test_defines << "UNITY_LINE_TYPE=\"#{in_hash[:unity_line_type]}\""       if (not in_hash[:unity_line_type].nil?)
+    test_defines << "UNITY_COUNTER_TYPE=\"#{in_hash[:unity_counter_type]}\"" if (not in_hash[:unity_counter_type].nil?)
+
+    test_defines << 'UNITY_SUPPORT_64' if ((!in_hash[:unity_support_64].nil?) and in_hash[:unity_support_64])
+
+    test_defines << 'UNITY_EXCLUDE_FLOAT' if ((!in_hash[:unity_exclude_float].nil?) and in_hash[:unity_exclude_float])
+    test_defines << 'UNITY_FLOAT_VERBOSE' if ((!in_hash[:unity_float_verbose].nil?) and in_hash[:unity_float_verbose])
+    test_defines << "UNITY_FLOAT_TYPE=\"#{in_hash[:unity_float_type]}\""             if (not in_hash[:unity_float_type].nil?)
+    test_defines << "UNITY_FLOAT_PRECISION=\"(#{in_hash[:unity_float_precision]})\"" if (not in_hash[:unity_float_precision].nil?)
     
     return {:collection_defines_test => test_defines}
   end
@@ -387,7 +391,8 @@ class ConfiguratorBuilder
       dependencies << hash[:cmock_unity_helper] if (hash[:cmock_unity_helper])
     end
     
-    # Note: since Unity and CException are C files, changes to them are noticed elsewhere
+    # Note: Symbols passed to compiler at command line can change Unity and CException behavior / configuration;
+    #       we handle such dependencies elsewhere
 
     out_hash = {
       :collection_environment_dependencies => dependencies

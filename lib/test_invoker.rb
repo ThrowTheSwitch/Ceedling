@@ -40,6 +40,7 @@ class TestInvoker
       @test_invoker_helper.process_auxiliary_dependencies(files)
 
       # plug in a few more dependencies to cause regeneration of generated files
+      @dependinator.enhance_vendor_objects_with_environment_dependencies()
       @dependinator.enhance_object_with_environment_dependencies(files)
       @dependinator.setup_executable_dependencies(test)
 

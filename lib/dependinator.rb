@@ -14,6 +14,11 @@ class Dependinator
   end
 
 
+  def enhance_vendor_objects_with_environment_dependencies
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('unity.c')].enhance(@configurator.collection_environment_dependencies)
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cexception.c')].enhance(@configurator.collection_environment_dependencies) if (@configurator.project_use_exceptions)
+  end
+
   def enhance_object_with_environment_dependencies(sources)
     sources.each do |source|
       @rake_wrapper[@file_path_utils.form_test_build_object_filepath(source)].enhance(@configurator.collection_environment_dependencies)

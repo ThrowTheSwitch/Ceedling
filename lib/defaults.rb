@@ -199,13 +199,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :dependencies => '.d',
     },
 
-    :unity => {
-      :int_width => 32,
-      :exclude_float => false,
-      :float_type => 'float',
-      :float_precision => '0.00001f',
-      :float_verbose => true,
-    },
+    :unity => {},
 
     :test_runner => {
       :includes => [],
