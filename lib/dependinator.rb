@@ -16,6 +16,7 @@ class Dependinator
 
   def enhance_vendor_objects_with_environment_dependencies
     @rake_wrapper[@file_path_utils.form_test_build_object_filepath('unity.c')].enhance(@configurator.collection_environment_dependencies)
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cmock.c')].enhance(@configurator.collection_environment_dependencies)      if (@configurator.project_use_mocks)
     @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cexception.c')].enhance(@configurator.collection_environment_dependencies) if (@configurator.project_use_exceptions)
   end
 

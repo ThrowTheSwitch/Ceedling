@@ -10,7 +10,7 @@ DEFAULT_TEST_COMPILER_TOOL = {
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
-    {"-D$" => 'COLLECTION_DEFINES_TEST'},
+    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'},
     {"$" => 'TEST_COMPILER_ARGUMENTS'},
     "-c \"${1}\"",
     "-o \"${2}\"",
@@ -48,7 +48,7 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
     # avoid some possibility of deep system lib header file complications by omitting vendor paths
     # if cpp is run on *nix system, escape spaces in paths; if cpp on windows just use the paths collection as is
     {"-I\"$\"" => "{SystemWrapper.is_windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"},
-    {"-D$" => 'COLLECTION_DEFINES_TEST'},
+    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
     {"$" => 'TEST_INCLUDES_PREPROCESSOR_ARGUMENTS'},
     '-w',
@@ -65,7 +65,7 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
     '-E',
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'PATHS_TEST_TOOLCHAIN_INCLUDE'},
-    {"-D$" => 'COLLECTION_DEFINES_TEST'},
+    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
     {"$" => 'TEST_FILE_PREPROCESSOR_ARGUMENTS'},
     "\"${1}\"",
@@ -80,7 +80,7 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
-    {"-D$" => 'COLLECTION_DEFINES_TEST'},   
+    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'},   
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},     
     "-MT \"${3}\"",
     '-MM', '-MD', '-MG',
@@ -97,7 +97,7 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_AND_INCLUDE'},
     {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'},
-    {"-D$" => 'DEFINES_RELEASE'},
+    {"-D$" => 'COLLECTION_DEFINES_RELEASE_AND_VENDOR'},
     {"-D$" => 'DEFINES_RELEASE_PREPROCESS'},
     "-MT \"${3}\"",
     '-MM', '-MD', '-MG',
@@ -115,7 +115,7 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'},
-    {"-D$" => 'DEFINES_RELEASE'},        
+    {"-D$" => 'COLLECTION_DEFINES_RELEASE_AND_VENDOR'},        
     {"$" => 'RELEASE_COMPILER_ARGUMENTS'},
     "-c \"${1}\"",
     "-o \"${2}\"",
@@ -199,7 +199,18 @@ DEFAULT_CEEDLING_CONFIG = {
       :dependencies => '.d',
     },
 
-    :unity => {},
+    :unity => {
+      :defines => []
+    },
+
+    # filled out elsewhere programmatically before passed off to cmock itself
+    :cmock => {
+      :defines => [] #only relevant to ceedling though passed to cmock
+    },
+
+    :cexception => {
+      :defines => []
+    },
 
     :test_runner => {
       :includes => [],

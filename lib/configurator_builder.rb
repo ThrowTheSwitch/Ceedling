@@ -349,26 +349,23 @@ class ConfiguratorBuilder
   end
 
 
-  def collect_unity_and_test_defines(in_hash)
+  def collect_test_and_vendor_defines(in_hash)
     test_defines = in_hash[:defines_test].clone
+
+    test_defines.concat(in_hash[:unity_defines])
+    test_defines.concat(in_hash[:cmock_defines])      if (in_hash[:project_use_mocks])
+    test_defines.concat(in_hash[:cexception_defines]) if (in_hash[:project_use_exceptions])
     
-    test_defines << "UNITY_INT_WIDTH=#{in_hash[:unity_int_width]}"           if (not in_hash[:unity_int_width].nil?)
-    test_defines << "UNITY_LONG_WIDTH=#{in_hash[:unity_long_width]}"         if (not in_hash[:unity_long_width].nil?)
-    test_defines << "UNITY_POINTER_WIDTH=#{in_hash[:unity_pointer_width]}"   if (not in_hash[:unity_pointer_width].nil?)
-
-    test_defines << "UNITY_LINE_TYPE=\"#{in_hash[:unity_line_type]}\""       if (not in_hash[:unity_line_type].nil?)
-    test_defines << "UNITY_COUNTER_TYPE=\"#{in_hash[:unity_counter_type]}\"" if (not in_hash[:unity_counter_type].nil?)
-
-    test_defines << 'UNITY_SUPPORT_64' if ((!in_hash[:unity_support_64].nil?) and in_hash[:unity_support_64])
-
-    test_defines << 'UNITY_EXCLUDE_FLOAT' if ((!in_hash[:unity_exclude_float].nil?) and in_hash[:unity_exclude_float])
-    test_defines << 'UNITY_FLOAT_VERBOSE' if ((!in_hash[:unity_float_verbose].nil?) and in_hash[:unity_float_verbose])
-    test_defines << "UNITY_FLOAT_TYPE=\"#{in_hash[:unity_float_type]}\""             if (not in_hash[:unity_float_type].nil?)
-    test_defines << "UNITY_FLOAT_PRECISION=\"(#{in_hash[:unity_float_precision]})\"" if (not in_hash[:unity_float_precision].nil?)
-    
-    return {:collection_defines_test => test_defines}
+    return {:collection_defines_test_and_vendor => test_defines}
   end
 
+  def collect_release_and_vendor_defines(in_hash)
+    release_defines = in_hash[:defines_release].clone
+    
+    release_defines.concat(in_hash[:cexception_defines]) if (in_hash[:project_use_exceptions])
+    
+    return {:collection_defines_release_and_vendor => release_defines}
+  end
 
   # gather up all files that if changed should cause generated files on-disk to be regenerated
   def collect_environment_dependencies(hash)

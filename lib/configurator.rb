@@ -61,10 +61,14 @@ class Configurator
     # cmock has its own internal defaults handling, but we need to set these specific values
     # so they're present for the build environment to access;
     # note: these need to end up in the hash given to initialize cmock for this to be successful
-    cmock = {}    
-    cmock = config[:cmock] if not config[:cmock].nil?
+    cmock = config[:cmock]
 
+    # yes, we're duplicating the default mock_prefix in cmock, but it's because we need CMOCK_MOCK_PREFIX always available in Ceedling's environment
+    cmock[:mock_prefix] = 'Mock' if (cmock[:mock_prefix].nil?)
+    
+    # just because strict ordering is the way to go
     cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
+    
     cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
     cmock[:verbosity] = config[:project][:verbosity]                                        if (cmock[:verbosity].nil?)
 
@@ -78,8 +82,6 @@ class Configurator
       cmock[:includes] << File.basename(cmock[:unity_helper])
       cmock[:includes].uniq!
     end
-    
-    config[:cmock] = cmock if config[:cmock].nil?
 
     @cmock_config_hash = config[:cmock].clone
   end

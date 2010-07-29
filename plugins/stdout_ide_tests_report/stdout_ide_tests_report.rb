@@ -1,7 +1,7 @@
 require 'plugin'
 
 
-class StdoutPrettyTestsReport < Plugin
+class StdoutIdeTestsReport < Plugin
   
   def setup
     @test_list = []
@@ -13,42 +13,39 @@ class StdoutPrettyTestsReport < Plugin
       % if (ignored > 0)
       <%=@ceedling[:plugin_reportinator].generate_banner('IGNORED UNIT TEST SUMMARY')%>
       %   results[:ignores].each do |ignore|
-      [<%=ignore[:source][:file]%>]
       %     ignore[:collection].each do |item|
-        Test: <%=item[:test]%>
-      % if (not item[:message].empty?)
-        At line (<%=item[:line]%>): "<%=item[:message]%>"
+      <%=ignore[:source][:path]%><%=File::SEPARATOR%><%=ignore[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+      % if (item[:message].length > 0)
+      : "<%=item[:message]%>"
       % else
-        At line (<%=item[:line]%>)
+      <%="\n"%>
       % end
-
       %     end
       %   end
+      
       % end
       % if (failed > 0)
       <%=@ceedling[:plugin_reportinator].generate_banner('FAILED UNIT TEST SUMMARY')%>
       %   results[:failures].each do |failure|
-      [<%=failure[:source][:file]%>]
       %     failure[:collection].each do |item|
-        Test: <%=item[:test]%>
-      % if (not item[:message].empty?)
-        At line (<%=item[:line]%>): "<%=item[:message]%>"
+      <%=failure[:source][:path]%><%=File::SEPARATOR%><%=failure[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+      % if (item[:message].length > 0)
+      : "<%=item[:message]%>"
       % else
-        At line (<%=item[:line]%>)
+      <%="\n"%>
       % end
-
       %     end
       %   end
+      
       % end
       % if (stdout_count > 0)
       <%=@ceedling[:plugin_reportinator].generate_banner('UNIT TEST OTHER OUTPUT')%>
       %   results[:stdout].each do |string|
-      [<%=string[:source][:file]%>]
       %     string[:collection].each do |item|
-        - "<%=item%>"
+      <%=string[:source][:path]%><%=File::SEPARATOR%><%=string[:source][:file]%>: "<%=item%>"
       %     end
-
       %   end
+      
       % end
       % total_string = results[:counts][:total].to_s
       % format_string = "%#{total_string.length}i"
@@ -64,6 +61,9 @@ class StdoutPrettyTestsReport < Plugin
       % end
 
       }.left_margin
+
+      # turn off raw test results since we're doing job in here
+      @ceedling[:setupinator].config_hash[:project][:raw_test_results] = false
   end
     
   def post_test_execute(arg_hash)
@@ -77,11 +77,7 @@ class StdoutPrettyTestsReport < Plugin
 
     results = @ceedling[:plugin_reportinator].assemble_test_results(PROJECT_TEST_RESULTS_PATH, @test_list)
 
-    @ceedling[:plugin_reportinator].run_report($stdout, @template, results) do
-      message = ''
-      message = 'Unit test failures.' if (results[:counts][:failed] > 0)
-      message
-    end
+    @ceedling[:plugin_reportinator].run_report($stdout, @template, results)
   end
 
 end
