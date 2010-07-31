@@ -1,9 +1,21 @@
 require 'constants'
+require 'file_path_utils'
 
 
 desc "Display build environment version info."
 task :version do
-# print ceedling, cmock, unity info
+  tools = [
+      ['  Ceedling', CEEDLING_ROOT],
+      ['CException', File.join( CEEDLING_VENDOR, 'c_exception')],
+      ['     CMock', File.join( CEEDLING_VENDOR, 'cmock')],
+      ['     Unity', File.join( CEEDLING_VENDOR, 'unity')],
+    ]
+  
+  tools.each do |tool|
+    version_string = @ceedling[:file_wrapper].read( File.join(tool[1], 'release', 'version.info') ).strip
+    build_string   = @ceedling[:file_wrapper].read( File.join(tool[1], 'release', 'build.info') ).strip
+    puts "#{tool[0]}:: #{version_string} (#{build_string})"
+  end
 end
 
 
@@ -21,13 +33,12 @@ task :verbosity, :level do |t, args|
   verbose( ((verbosity_level == Verbosity::OBNOXIOUS) ? true : false) )
 end
 
+
 desc "Enable logging"
 task :logging do
-  hash = @ceedling[:setupinator].config_hash
-  hash[:project][:logging] = true
-
-  @ceedling[:configurator].build( hash )
+  @ceedling[:configurator].project_logging = true
 end
+
 
 namespace :options do
 
@@ -42,8 +53,6 @@ namespace :options do
       hash.deep_merge( @ceedling[:yaml_wrapper].load(option_path) )
       
       @ceedling[:setupinator].do_setup( @ceedling, hash )
-      
-      COLLECTION_ENVIRONMENT_DEPENDENCIES << option_path
     end
   end
 

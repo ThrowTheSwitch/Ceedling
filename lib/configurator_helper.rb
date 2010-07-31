@@ -42,7 +42,7 @@ class ConfiguratorHelper
     new_config.merge!(@configurator_builder.collect_all_existing_compilation_input(new_config))
     new_config.merge!(@configurator_builder.collect_test_and_vendor_defines(new_config))
     new_config.merge!(@configurator_builder.collect_release_and_vendor_defines(new_config))
-    new_config.merge!(@configurator_builder.collect_environment_dependencies(new_config))
+    new_config.merge!(@configurator_builder.collect_code_generation_dependencies(new_config))
 
     @configurator_builder.collect_test_fixture_link_objects(new_config)
 

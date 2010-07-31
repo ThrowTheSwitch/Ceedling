@@ -150,8 +150,6 @@ class ConfiguratorBuilder
 
 
   def set_log_filepath(in_hash)
-    return {} if (not in_hash[:project_logging])
-
     log_name = File.basename(@project_config_manager.main_project_filepath).ext('')
     
     if (not @project_config_manager.user_project_filepath.empty?)
@@ -368,17 +366,19 @@ class ConfiguratorBuilder
   end
 
   # gather up all files that if changed should cause generated files on-disk to be regenerated
-  def collect_environment_dependencies(hash)
+  # dependency on a change to our input configuration hash is handled elsewhere as it is dynamically formed during ceedling's execution
+  def collect_code_generation_dependencies(hash)
     dependencies = []
+
+    # Notes:
+    #  - Compiled vendor dependencies like cmock.o, unity.o, cexception.o are handled below;
+    #    here we're interested only in code generation dependencies
+    #  - Symbols passed to compiler at command line can change Unity and CException behavior / configuration;
+    #    we also handle those dependencies elsewhere in compilation dependencies
     
     ceedling_build_file = File.join(CEEDLING_RELEASE, 'build.info')
     cmock_build_file    = FilePathUtils::form_ceedling_vendor_path('cmock/release', 'build.info')
 
-    # project files: anything changes in them & everything should regenerate
-    dependencies << @project_config_manager.main_project_filepath
-    user_project_file = @project_config_manager.user_project_filepath
-    dependencies << user_project_file if (not user_project_file.empty?)
-    
     # ceedling itself: if it changes we gotta regenerate files
     dependencies << ceedling_build_file
     
@@ -388,11 +388,8 @@ class ConfiguratorBuilder
       dependencies << hash[:cmock_unity_helper] if (hash[:cmock_unity_helper])
     end
     
-    # Note: Symbols passed to compiler at command line can change Unity and CException behavior / configuration;
-    #       we handle such dependencies elsewhere
-
     out_hash = {
-      :collection_environment_dependencies => dependencies
+      :collection_code_generation_dependencies => dependencies
     }
     
     return out_hash
@@ -405,7 +402,7 @@ class ConfiguratorBuilder
     hash[:test_fixture_link_objects] << 'cmock.c'      if (hash[:project_use_mocks])
     
     # if we're using mocks & a unity helper is defined & that unity helper includes a source file component (not only a header of macros),
-    # then link in the unity_helper object file
+    # then link in the unity_helper object file too
     if ( hash[:project_use_mocks] and
          hash[:cmock_unity_helper] and 
          @file_wrapper.exist?(hash[:cmock_unity_helper].ext(hash[:extension_source])) )

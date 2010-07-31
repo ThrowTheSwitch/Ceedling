@@ -205,7 +205,7 @@ class ConfiguratorTest < Test::Unit::TestCase
     @test_hash.expects.merge!(@test_hash).returns(@test_hash)
     
     # build up configuration
-    @configurator_builder.expects.collect_environment_dependencies.returns(@test_hash)
+    @configurator_builder.expects.collect_code_generation_dependencies.returns(@test_hash)
     @test_hash.expects.merge!(@test_hash).returns(@test_hash)
     
     # expand paths

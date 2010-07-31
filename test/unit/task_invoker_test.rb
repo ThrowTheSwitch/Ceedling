@@ -19,7 +19,7 @@ class TaskInvokerTest < Test::Unit::TestCase
     
     if (enhance)
       @rake_wrapper.expects(:[], @task_list[0]).returns(@task1)
-      @configurator.expects.collection_environment_dependencies.returns(environment_files)
+      @configurator.expects.collection_code_generation_dependencies.returns(environment_files)
       @task1.expects.enhance(environment_files)
     end
     @rake_wrapper.expects(:[], @task_list[0]).returns(@task1)
@@ -27,7 +27,7 @@ class TaskInvokerTest < Test::Unit::TestCase
     
     if (enhance)
       @rake_wrapper.expects(:[], @task_list[1]).returns(@task2)
-      @configurator.expects.collection_environment_dependencies.returns(environment_files)
+      @configurator.expects.collection_code_generation_dependencies.returns(environment_files)
       @task2.expects.enhance(environment_files)
     end
     @rake_wrapper.expects(:[], @task_list[1]).returns(@task2)

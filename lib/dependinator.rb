@@ -5,8 +5,9 @@ class Dependinator
 
   attr_reader :environment_prerequisites
 
+  # pull together all depenendencies outside C source code (ceedling, cmock, input configuration changes) so we can trigger full rebuilds
   def assemble_environment_dependencies
-    @environment_prerequisites = @configurator.collection_environment_dependencies.clone
+    @environment_prerequisites = @configurator.collection_code_generation_dependencies.clone
     @environment_prerequisites << @project_config_manager.input_config_cache_filepath if @project_config_manager.input_configuration_changed_from_last_run?
   end
 
@@ -22,9 +23,10 @@ class Dependinator
 
 
   def enhance_vendor_objects_with_environment_dependencies
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('unity.c')].enhance(@configurator.collection_environment_dependencies)
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cmock.c')].enhance(@configurator.collection_environment_dependencies)      if (@configurator.project_use_mocks)
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cexception.c')].enhance(@configurator.collection_environment_dependencies) if (@configurator.project_use_exceptions)
+    # if ceedling or cmock is updated, make sure these guys get rebuilt
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('unity.c')].enhance(@configurator.collection_code_generation_dependencies)
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cmock.c')].enhance(@configurator.collection_code_generation_dependencies)      if (@configurator.project_use_mocks)
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cexception.c')].enhance(@configurator.collection_code_generation_dependencies) if (@configurator.project_use_exceptions)
   end
 
   def enhance_object_with_environment_dependencies(sources)
@@ -39,7 +41,7 @@ class Dependinator
     headers = @test_includes_extractor.lookup_includes_list(test)
     sources = @file_finder.find_source_files_from_headers(headers)
     
-    dependencies = @file_path_utils.form_test_build_objects_filelist(sources + @configurator.test_fixture_link_objects)
+    dependencies = @file_path_utils.form_test_build_objects_filelist(sources + @configurator.test_fixture_link_objects) # compiled vendor dependencies
     dependencies.include( @file_path_utils.form_runner_object_filepath_from_test(test) )
     dependencies.include( @file_path_utils.form_test_build_object_filepath(test) )
     

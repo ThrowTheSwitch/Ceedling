@@ -6,10 +6,13 @@ require 'deep_merge'
 
 
 class Configurator
-  
+
   attr_reader :project_config_hash, :cmock_config_hash, :environment, :script_plugins, :rake_plugins, :config_plugins
+  attr_accessor :project_logging
   
-  constructor :configurator_helper, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper
+  constructor(:configurator_helper, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper) do
+    @project_logging = false
+  end
   
   def setup
     # special copy of cmock config to provide to cmock for construction

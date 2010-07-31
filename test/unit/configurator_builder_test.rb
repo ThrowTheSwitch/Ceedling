@@ -520,27 +520,27 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
     @project_config_manager.expects.main_project_filepath.returns('/home/project/config/project.yaml')
     @project_config_manager.expects.user_project_filepath.returns('')
     
-    out_hash = @builder.collect_environment_dependencies
+    out_hash = @builder.collect_code_generation_dependencies
     
     assert_equal(
       ["#{CEEDLING_RELEASE}build.info",
        "#{CEEDLING_VENDOR}cmock/release/build.info",
        '/home/project/config/project.yaml'].sort,
-      out_hash[:collection_environment_dependencies].sort)
+      out_hash[:collection_code_generation_dependencies].sort)
   end
 
   should "collect environment source files plus project file and user project file" do    
     @project_config_manager.expects.main_project_filepath.returns('/home/project/config/project.yaml')
     @project_config_manager.expects.user_project_filepath.returns('/home/project/config/user.yaml')
     
-    out_hash = @builder.collect_environment_dependencies
+    out_hash = @builder.collect_code_generation_dependencies
     
     assert_equal(
       ["#{CEEDLING_RELEASE}build.info",
        "#{CEEDLING_VENDOR}cmock/release/build.info",
        '/home/project/config/project.yaml',
        '/home/project/config/user.yaml'].sort,
-      out_hash[:collection_environment_dependencies].sort)
+      out_hash[:collection_code_generation_dependencies].sort)
   end
 
   ############# expand path globs #############
