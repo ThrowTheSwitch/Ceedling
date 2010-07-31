@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'project_file_loader'
+require 'project_config_manager'
 require 'yaml'
 
 class ProjectFileLoaderTest < Test::Unit::TestCase
@@ -116,7 +116,7 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
     
     @loader.find_project_files
     
-    assert_equal(yaml, @loader.load_project_file)
+    assert_equal(yaml, @loader.load_project_configuration)
   end
 
   should "load yaml of main project file merged with user project file" do
@@ -135,7 +135,7 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
     
     @loader.find_project_files
     
-    assert_equal(merged_yaml, @loader.load_project_file)
+    assert_equal(merged_yaml, @loader.load_project_configuration)
   end
 
 end

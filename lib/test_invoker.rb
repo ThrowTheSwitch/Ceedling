@@ -36,7 +36,7 @@ class TestInvoker
       @test_invoker_helper.preprocessing_setup_for_runner(runner)
       @task_invoker.invoke_runner(runner)
 
-      # load up auxiliary dependencies so things that deep changes cause rebuilding appropriately
+      # load up auxiliary dependencies so deep changes cause rebuilding appropriately
       @test_invoker_helper.process_auxiliary_dependencies(files)
 
       # plug in a few more dependencies to cause regeneration of generated files

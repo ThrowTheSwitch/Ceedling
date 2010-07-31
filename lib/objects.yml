@@ -21,7 +21,7 @@ file_path_utils:
 file_system_utils:
   compose: file_wrapper
 
-project_file_loader:
+project_config_manager:
   compose:
     - yaml_wrapper
     - stream_wrapper
@@ -66,7 +66,7 @@ configurator_validator:
 
 configurator_builder:
   compose:
-    - project_file_loader
+    - project_config_manager
     - file_system_utils
     - file_wrapper
 
@@ -88,7 +88,8 @@ streaminator_helper:
 setupinator:
   compose:
     - configurator
-    - project_file_loader
+    - project_config_manager
+    - dependinator
     - test_includes_extractor
     - plugin_manager
     - plugin_reportinator
@@ -139,7 +140,7 @@ test_includes_extractor:
 
 task_invoker:
   compose:
-    - configurator
+    - dependinator
     - rake_wrapper
 
 generator:
@@ -176,6 +177,7 @@ generator_test_runner:
 dependinator:
   compose:
     - configurator
+    - project_config_manager
     - test_includes_extractor
     - file_finder            
     - file_path_utils        

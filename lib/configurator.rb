@@ -7,7 +7,7 @@ require 'deep_merge'
 
 class Configurator
   
-  attr_reader :project_config_hash, :cmock_config_hash, :environment, :script_plugins, :rake_plugins
+  attr_reader :project_config_hash, :cmock_config_hash, :environment, :script_plugins, :rake_plugins, :config_plugins
   
   constructor :configurator_helper, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper
   
@@ -24,6 +24,8 @@ class Configurator
     @project_config_hash_backup = {}
     
     @script_plugins = []
+    @rake_plugins   = []
+    @config_plugins = []
   end
 
   
@@ -106,9 +108,9 @@ class Configurator
   
     @rake_plugins   = @configurator_plugins.find_rake_plugins(config)
     @script_plugins = @configurator_plugins.find_script_plugins(config)
-    config_plugins  = @configurator_plugins.find_config_plugins(config)
+    @config_plugins = @configurator_plugins.find_config_plugins(config)
     
-    config_plugins.each do |plugin|
+    @config_plugins.each do |plugin|
       config.deep_merge( @yaml_wrapper.load(plugin) )
     end
     

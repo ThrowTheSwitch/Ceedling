@@ -7,7 +7,7 @@ require 'constants' # for Verbosity constants class
 class ConfiguratorBuilderTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:project_file_loader, :file_system_utils, :file_wrapper)
+    objects = create_mocks(:project_config_manager, :file_system_utils, :file_wrapper)
     create_mocks(:file_list)
     @builder = ConfiguratorBuilder.new(objects)
   end
@@ -517,8 +517,8 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
   ############# collect environment files #############
 
   should "collect environment source files plus project file but no user project file" do
-    @project_file_loader.expects.main_project_filepath.returns('/home/project/config/project.yaml')
-    @project_file_loader.expects.user_project_filepath.returns('')
+    @project_config_manager.expects.main_project_filepath.returns('/home/project/config/project.yaml')
+    @project_config_manager.expects.user_project_filepath.returns('')
     
     out_hash = @builder.collect_environment_dependencies
     
@@ -530,8 +530,8 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
   end
 
   should "collect environment source files plus project file and user project file" do    
-    @project_file_loader.expects.main_project_filepath.returns('/home/project/config/project.yaml')
-    @project_file_loader.expects.user_project_filepath.returns('/home/project/config/user.yaml')
+    @project_config_manager.expects.main_project_filepath.returns('/home/project/config/project.yaml')
+    @project_config_manager.expects.user_project_filepath.returns('/home/project/config/user.yaml')
     
     out_hash = @builder.collect_environment_dependencies
     

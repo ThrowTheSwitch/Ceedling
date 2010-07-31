@@ -29,7 +29,7 @@ require 'constants'
 
 # set as global constant our discovered project file so it's available for use
 # (we don't use it but maybe custom extensions will need it somehow)
-CEEDLING_MAIN_PROJECT_FILE = @ceedling[:project_file_loader].main_project_filepath
+CEEDLING_MAIN_PROJECT_FILE = @ceedling[:project_config_manager].main_project_filepath
 
 # control Rake's verbosity
 if (not @ceedling[:verbosinator].should_output?(Verbosity::OBNOXIOUS))

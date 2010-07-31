@@ -5,7 +5,7 @@ require 'setupinator'
 class SetupinatorTest < Test::Unit::TestCase
 
   def setup
-    objects = create_mocks(:project_file_loader, :configurator, :test_includes_extractor, :plugin_manager, :file_finder)
+    objects = create_mocks(:project_config_manager, :configurator, :test_includes_extractor, :plugin_manager, :file_finder)
     create_mocks(:config_hash, :system_objects)
     @setupinator = Setupinator.new(objects)
   end
@@ -15,8 +15,8 @@ class SetupinatorTest < Test::Unit::TestCase
   
   
   should "perform all post-instantiation setup steps" do
-    @project_file_loader.expects.find_project_files
-    @project_file_loader.expects.load_project_file.returns(@config_hash)
+    @project_config_manager.expects.find_project_files
+    @project_config_manager.expects.load_project_configuration.returns(@config_hash)
 
     @configurator.expects.populate_plugins_defaults(@config_hash)
     @configurator.expects.standardize_paths(@config_hash)

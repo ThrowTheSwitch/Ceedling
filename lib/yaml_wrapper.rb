@@ -10,7 +10,7 @@ class YamlWrapper
   def dump(filepath, structure)
     File.open(filepath, 'w') do |output|
       YAML.dump(structure, output)
-    end    
+    end
   end
 
 end

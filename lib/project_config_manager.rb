@@ -1,8 +1,11 @@
+require 'rubygems'
+require 'rake' # for ext()
 require 'constants'
 
-class ProjectFileLoader
 
-  attr_reader :main_project_filepath, :user_project_filepath
+class ProjectConfigManager
+
+  attr_reader :main_project_filepath, :user_project_filepath, :input_config_cache_filepath
   attr_accessor :project_options_filepath
 
   constructor :yaml_wrapper, :stream_wrapper, :system_wrapper, :file_wrapper
@@ -10,7 +13,12 @@ class ProjectFileLoader
   def setup
     @main_project_filepath = ''
     @user_project_filepath = ''
+    
+    # only used outside this file
     @project_options_filepath = ''
+    
+    @input_config_cache_filepath          = ''
+    @previous_input_config_cache_filepath = ''
   end
 
 
@@ -43,7 +51,7 @@ class ProjectFileLoader
   end
 
 
-  def load_project_file
+  def load_project_configuration
     config_hash = {}
     
     # if there's no user project file, then just provide hash from project file
@@ -58,5 +66,21 @@ class ProjectFileLoader
     return config_hash
   end
   
+  
+  def cache_project_configuration(path, config)
+    @input_config_cache_filepath          = File.join(path, 'input_config.yml')
+    @previous_input_config_cache_filepath = @input_config_cache_filepath.ext('.previous')
+
+    @file_wrapper.cp( @input_config_cache_filepath, @previous_input_config_cache_filepath ) if @file_wrapper.exist?(@input_config_cache_filepath)
+    @yaml_wrapper.dump( @input_config_cache_filepath, config )
+  end
+  
+  
+  def input_configuration_changed_from_last_run?
+    return false if not @file_wrapper.exist?(@input_config_cache_filepath)
+    return false if not @file_wrapper.exist?(@previous_input_config_cache_filepath)
+    
+    return !(@yaml_wrapper.load(@input_config_cache_filepath) == @yaml_wrapper.load(@previous_input_config_cache_filepath))
+  end
 
 end

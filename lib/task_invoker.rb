@@ -1,7 +1,7 @@
 
 class TaskInvoker
 
-  constructor :configurator, :rake_wrapper
+  constructor :dependinator, :rake_wrapper
 
 
   def invoke_mocks(mocks)
@@ -35,8 +35,10 @@ class TaskInvoker
   private #############################
   
   def invoke_with_enhancements(tasks)
+    dependencies = @dependinator.environment_prerequisites
+    
     tasks.each do |task|
-      @rake_wrapper[task].enhance(@configurator.collection_environment_dependencies)
+      @rake_wrapper[task].enhance(dependencies)
       @rake_wrapper[task].invoke
     end
   end

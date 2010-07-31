@@ -61,9 +61,6 @@ class StdoutIdeTestsReport < Plugin
       % end
 
       }.left_margin
-
-      # turn off raw test results since we're doing job in here
-      @ceedling[:setupinator].config_hash[:project][:raw_test_results] = false
   end
     
   def post_test_execute(arg_hash)

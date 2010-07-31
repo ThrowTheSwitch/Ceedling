@@ -3,15 +3,15 @@ class Setupinator
 
   attr_reader :config_hash
 
-  constructor :project_file_loader, :configurator, :test_includes_extractor, :plugin_manager, :plugin_reportinator, :file_finder
+  constructor :configurator, :project_config_manager, :dependinator, :test_includes_extractor, :plugin_manager, :plugin_reportinator, :file_finder
 
   def setup
     @config_hash = {}
   end
 
   def load_project_files
-    @project_file_loader.find_project_files
-    return @project_file_loader.load_project_file
+    @project_config_manager.find_project_files
+    return @project_config_manager.load_project_configuration
   end
 
   def do_setup(system_objects, config_hash)
@@ -29,8 +29,13 @@ class Setupinator
     @configurator.standardize_paths(config_hash)
     @configurator.validate(config_hash)
     @configurator.build(config_hash)
-        
     @configurator.insert_rake_plugins(@configurator.rake_plugins)
+    
+    # capture our built up input configuration
+    # we're capturing (project.yml + user.yml + any option *.yml) configuration
+    @project_config_manager.cache_project_configuration( @configurator.project_temp_path, config_hash  )
+    
+    @dependinator.assemble_environment_dependencies
 
     @plugin_manager.load_plugin_scripts(@configurator.script_plugins, system_objects)
     @plugin_reportinator.set_system_objects(system_objects)

@@ -1,7 +1,14 @@
 
 class Dependinator
 
-  constructor :configurator, :test_includes_extractor, :file_finder, :file_path_utils, :rake_wrapper
+  constructor :configurator, :project_config_manager, :test_includes_extractor, :file_finder, :file_path_utils, :rake_wrapper
+
+  attr_reader :environment_prerequisites
+
+  def assemble_environment_dependencies
+    @environment_prerequisites = @configurator.collection_environment_dependencies.clone
+    @environment_prerequisites << @project_config_manager.input_config_cache_filepath if @project_config_manager.input_configuration_changed_from_last_run?
+  end
 
 
   def setup_object_dependencies(*files_lists)
@@ -22,7 +29,7 @@ class Dependinator
 
   def enhance_object_with_environment_dependencies(sources)
     sources.each do |source|
-      @rake_wrapper[@file_path_utils.form_test_build_object_filepath(source)].enhance(@configurator.collection_environment_dependencies)
+      @rake_wrapper[@file_path_utils.form_test_build_object_filepath(source)].enhance( @environment_prerequisites )
     end
   end
   

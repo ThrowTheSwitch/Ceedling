@@ -13,7 +13,7 @@ class ConfiguratorBuilder
   BUILD_PATH_ADD_CONDITION = 2
 
   
-  constructor :project_file_loader, :file_system_utils, :file_wrapper
+  constructor :project_config_manager, :file_system_utils, :file_wrapper
     
   
   def build_global_constants(config)
@@ -125,7 +125,7 @@ class ConfiguratorBuilder
       [:project_release_dependencies_path,      File.join(project_build_release_root, 'dependencies'),      in_hash[:project_release_build] && in_hash[:project_use_auxiliary_dependencies] ],
 
       [:project_log_path,   File.join(in_hash[:project_build_root], 'logs'), true ],
-      [:project_temp_path,  File.join(in_hash[:project_build_root], 'temp'), in_hash[:project_use_test_preprocessor] ],
+      [:project_temp_path,  File.join(in_hash[:project_build_root], 'temp'), true ],
 
       [:project_test_preprocess_includes_path,  File.join(project_build_tests_root, 'preprocess/includes'), in_hash[:project_use_test_preprocessor] ],
       [:project_test_preprocess_files_path,     File.join(project_build_tests_root, 'preprocess/files'),    in_hash[:project_use_test_preprocessor] ],
@@ -152,14 +152,14 @@ class ConfiguratorBuilder
   def set_log_filepath(in_hash)
     return {} if (not in_hash[:project_logging])
 
-    log_name = File.basename(@project_file_loader.main_project_filepath).ext('')
+    log_name = File.basename(@project_config_manager.main_project_filepath).ext('')
     
-    if (not @project_file_loader.user_project_filepath.empty?)
-      log_name += "_#{File.basename(@project_file_loader.user_project_filepath).ext('')}"
+    if (not @project_config_manager.user_project_filepath.empty?)
+      log_name += "_#{File.basename(@project_config_manager.user_project_filepath).ext('')}"
     end
     
-    if (not @project_file_loader.project_options_filepath.empty?)
-      log_name += "_#{File.basename(@project_file_loader.project_options_filepath).ext('')}"
+    if (not @project_config_manager.project_options_filepath.empty?)
+      log_name += "_#{File.basename(@project_config_manager.project_options_filepath).ext('')}"
     end
 
     return {
@@ -375,8 +375,8 @@ class ConfiguratorBuilder
     cmock_build_file    = FilePathUtils::form_ceedling_vendor_path('cmock/release', 'build.info')
 
     # project files: anything changes in them & everything should regenerate
-    dependencies << @project_file_loader.main_project_filepath
-    user_project_file = @project_file_loader.user_project_filepath
+    dependencies << @project_config_manager.main_project_filepath
+    user_project_file = @project_config_manager.user_project_filepath
     dependencies << user_project_file if (not user_project_file.empty?)
     
     # ceedling itself: if it changes we gotta regenerate files

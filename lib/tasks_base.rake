@@ -36,7 +36,7 @@ namespace :options do
 
     desc "Merge #{option} project options."
     task option.downcase.to_sym do
-      @ceedling[:project_file_loader].project_options_filepath = option_path
+      @ceedling[:project_config_manager].project_options_filepath = option_path
 
       hash = @ceedling[:setupinator].config_hash
       hash.deep_merge( @ceedling[:yaml_wrapper].load(option_path) )
