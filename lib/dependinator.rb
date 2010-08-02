@@ -40,7 +40,7 @@ class Dependinator
     # if ceedling or cmock is updated, make sure these guys get rebuilt
     @rake_wrapper[@file_path_utils.form_test_build_object_filepath('unity.c')].enhance(@configurator.collection_code_generation_dependencies)
     @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cmock.c')].enhance(@configurator.collection_code_generation_dependencies)      if (@configurator.project_use_mocks)
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cexception.c')].enhance(@configurator.collection_code_generation_dependencies) if (@configurator.project_use_exceptions)
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('CException.c')].enhance(@configurator.collection_code_generation_dependencies) if (@configurator.project_use_exceptions)
   end
 
   def enhance_test_build_object_with_environment_dependencies(sources)
