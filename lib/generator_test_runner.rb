@@ -167,7 +167,7 @@ class GeneratorTestRunner
       output << "#{tab}setUp();\n"
       output << "#{tab}test();\n"
       output << "#{tab}CMock_Verify();\n" unless (mock_list.empty?)
-      output << "    } Catch(e) { TEST_FAIL(\"Unhandled Exception!\"); }\n" if use_exceptions
+      output << "    } Catch(e) { TEST_FAIL_MESSAGE(\"Unhandled Exception!\"); }\n" if use_exceptions
       output << "  }\n"
       output << "  CMock_Destroy();\n"    unless (mock_list.empty?)
       output << "  if (TEST_PROTECT())\n"
