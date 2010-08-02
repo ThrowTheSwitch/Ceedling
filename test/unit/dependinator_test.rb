@@ -17,7 +17,7 @@ class DependinatorTest < Test::Unit::TestCase
 
 
   should "set up no object dependencies for empty files lists" do
-    @dependinator.setup_object_dependencies
+    @dependinator.setup_test_object_dependencies
   end
 
 
@@ -30,12 +30,12 @@ class DependinatorTest < Test::Unit::TestCase
     @rake_wrapper.expects.load_dependencies('projects/build/dependencies/MockAroundTheClock.d')
     @rake_wrapper.expects.load_dependencies('projects/build/dependencies/MockHimOut.d')
     
-    @dependinator.setup_object_dependencies(@files_list1, @files_list2)
+    @dependinator.setup_test_object_dependencies(@files_list1, @files_list2)
   end
 
 
   should "set up no executable dependencies for blank test list" do
-    @dependinator.setup_executable_dependencies([])
+    @dependinator.setup_test_executable_dependencies([])
   end
 
 
@@ -80,7 +80,7 @@ class DependinatorTest < Test::Unit::TestCase
     @rake_wrapper.expects.create_file_task('project/build/out/test2.exe', @dependencies2)
 
     
-    @dependinator.setup_executable_dependencies(test_list)
+    @dependinator.setup_test_executable_dependencies(test_list)
   end
 
 
@@ -121,7 +121,7 @@ class DependinatorTest < Test::Unit::TestCase
     @rake_wrapper.expects.create_file_task('project/build/out/testing2.exe', @dependencies2)
 
     
-    @dependinator.setup_executable_dependencies(test_list)
+    @dependinator.setup_test_executable_dependencies(test_list)
   end
 
 

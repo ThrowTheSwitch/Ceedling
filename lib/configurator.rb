@@ -7,10 +7,10 @@ require 'deep_merge'
 
 class Configurator
 
-  attr_reader :project_config_hash, :cmock_config_hash, :environment, :script_plugins, :rake_plugins, :config_plugins
+  attr_reader :project_config_hash, :environment, :script_plugins, :rake_plugins, :config_plugins
   attr_accessor :project_logging
   
-  constructor(:configurator_helper, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper) do
+  constructor(:configurator_helper, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
     @project_logging = false
   end
   
@@ -88,7 +88,7 @@ class Configurator
       cmock[:includes].uniq!
     end
 
-    @cmock_config_hash = config[:cmock].clone
+    @cmock_builder.manufacture(cmock)
   end
 
 

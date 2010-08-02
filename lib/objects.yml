@@ -9,7 +9,7 @@ yaml_wrapper:
 
 system_wrapper:
 
-cmock_factory:
+cmock_builder:
 
 reportinator:
 
@@ -45,6 +45,7 @@ configurator:
     - configurator_helper
     - configurator_plugins
     - configurator_builder
+    - cmock_builder
     - yaml_wrapper
     - system_wrapper
 
@@ -89,7 +90,6 @@ setupinator:
   compose:
     - configurator
     - project_config_manager
-    - dependinator
     - test_includes_extractor
     - plugin_manager
     - plugin_reportinator
@@ -147,7 +147,7 @@ generator:
   compose:
     - configurator
     - preprocessinator
-    - cmock_factory
+    - cmock_builder
     - generator_test_runner
     - generator_test_results
     - test_includes_extractor
@@ -177,6 +177,7 @@ generator_test_runner:
 dependinator:
   compose:
     - configurator
+    - setupinator
     - project_config_manager
     - test_includes_extractor
     - file_finder            
@@ -239,4 +240,11 @@ test_invoker_helper:
     - dependinator
     - file_path_utils
     - file_wrapper
+    - rake_wrapper
+
+release_invoker:
+  compose:
+    - configurator
+    - dependinator
+    - file_path_utils
     - rake_wrapper

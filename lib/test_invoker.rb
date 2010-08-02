@@ -17,6 +17,8 @@ class TestInvoker
   def invoke_tests(tests, options={:force_run => true})
   
     @tests = tests
+
+    @dependinator.assemble_test_environment_dependencies
   
     tests.each do |test|
       # announce beginning of test run
@@ -40,9 +42,9 @@ class TestInvoker
       @test_invoker_helper.process_auxiliary_dependencies(files)
 
       # plug in a few more dependencies to cause regeneration of generated files
-      @dependinator.enhance_vendor_objects_with_environment_dependencies()
-      @dependinator.enhance_object_with_environment_dependencies(files)
-      @dependinator.setup_executable_dependencies(test)
+      @dependinator.enhance_test_vendor_objects_with_environment_dependencies()
+      @dependinator.enhance_test_build_object_with_environment_dependencies(files)
+      @dependinator.setup_test_executable_dependencies(test)
 
       # go
       @task_invoker.invoke_results( @file_path_utils.form_pass_results_filepath(test) )

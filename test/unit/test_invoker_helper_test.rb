@@ -41,19 +41,19 @@ class TestInvokerHelperTest < Test::Unit::TestCase
     
     @file_path_utils.expects.form_dependencies_filelist(@tests_list).returns(@dependencies_list1)
     @task_invoker.expects.invoke_dependencies_files(@dependencies_list1)
-    @dependinator.expects.setup_object_dependencies(@dependencies_list1)
+    @dependinator.expects.setup_test_object_dependencies(@dependencies_list1)
 
     @file_path_utils.expects.form_dependencies_filelist(@sources_list).returns(@dependencies_list2)
     @task_invoker.expects.invoke_dependencies_files(@dependencies_list2)
-    @dependinator.expects.setup_object_dependencies(@dependencies_list2)
+    @dependinator.expects.setup_test_object_dependencies(@dependencies_list2)
 
     @file_path_utils.expects.form_dependencies_filelist(@mocks_list).returns(@dependencies_list3)
     @task_invoker.expects.invoke_dependencies_files(@dependencies_list3)
-    @dependinator.expects.setup_object_dependencies(@dependencies_list3)
+    @dependinator.expects.setup_test_object_dependencies(@dependencies_list3)
 
     @file_path_utils.expects.form_dependencies_filelist(@runners_list).returns(@dependencies_list4)
     @task_invoker.expects.invoke_dependencies_files(@dependencies_list4)
-    @dependinator.expects.setup_object_dependencies(@dependencies_list4)
+    @dependinator.expects.setup_test_object_dependencies(@dependencies_list4)
 
     @test_invoker_helper.process_auxiliary_dependencies(@tests_list, @mocks_list, @runners_list)
   end

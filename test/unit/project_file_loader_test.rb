@@ -116,7 +116,7 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
     
     @loader.find_project_files
     
-    assert_equal(yaml, @loader.load_project_configuration)
+    assert_equal(yaml, @loader.load_project_config)
   end
 
   should "load yaml of main project file merged with user project file" do
@@ -135,7 +135,7 @@ class ProjectFileLoaderTest < Test::Unit::TestCase
     
     @loader.find_project_files
     
-    assert_equal(merged_yaml, @loader.load_project_configuration)
+    assert_equal(merged_yaml, @loader.load_project_config)
   end
 
 end

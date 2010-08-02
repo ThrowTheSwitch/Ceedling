@@ -76,7 +76,7 @@ class FilePathUtils
     return File.join( @configurator.project_temp_path, File.basename(filepath) )    
   end
 
-
+  ### release ###
   def form_release_dependencies_filepath(filepath)
     return File.join( @configurator.project_release_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies) )
   end
@@ -89,7 +89,16 @@ class FilePathUtils
     return File.join( @configurator.project_release_build_output_asm_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
+  def form_release_c_objects_filelist
+    return (@file_wrapper.instantiate_file_list(@configurator.collection_all_source)).pathmap("#{@configurator.project_release_build_output_c_path}/%n#{@configurator.extension_object}")
+  end
+
+  def form_release_asm_objects_filelist
+    return (@file_wrapper.instantiate_file_list(@configurator.collection_all_assembly)).pathmap("#{@configurator.project_release_build_output_asm_path}/%n#{@configurator.extension_object}")
+  end
   
+  
+  ### tests ###
   def form_pass_results_filepath(filepath)
     return File.join( @configurator.project_test_results_path, File.basename(filepath).ext(@configurator.extension_testpass) )
   end
@@ -106,7 +115,6 @@ class FilePathUtils
     return filepath.sub(/#{TEST_RUNNER_FILE_SUFFIX}/, '')
   end
 
-  
   def form_runner_object_filepath_from_test(filepath)
     return (form_test_build_object_filepath(filepath)).sub(/(#{@configurator.extension_object})$/, "#{@configurator.test_runner_file_suffix}\\1")
   end

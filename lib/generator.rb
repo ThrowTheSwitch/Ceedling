@@ -3,12 +3,8 @@ require 'constants' # for Verbosity constants class
 
 class Generator
 
-  constructor :configurator, :preprocessinator, :cmock_factory, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :plugin_manager, :file_wrapper
+  constructor :configurator, :preprocessinator, :cmock_builder, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :plugin_manager, :file_wrapper
 
-
-  def setup
-    @cmock = nil
-  end
 
   def generate_shallow_includes_list(file)
     @preprocessinator.preprocess_shallow_includes(file)
@@ -33,13 +29,10 @@ class Generator
   end
 
   def generate_mock(header_file)
-    # delay building cmock object until needed to allow for cmock_config changes after loading project file
-    @cmock = @cmock_factory.manufacture(@configurator.cmock_config_hash) if (@cmock.nil?)
-
     arg_hash = {:header_file => header_file}
     @plugin_manager.pre_mock_execute(arg_hash)
     
-    @cmock.setup_mocks( @preprocessinator.form_file_path(arg_hash[:header_file]) )
+    @cmock_builder.cmock.setup_mocks( @preprocessinator.form_file_path(arg_hash[:header_file]) )
 
     @plugin_manager.post_mock_execute(arg_hash)
   end

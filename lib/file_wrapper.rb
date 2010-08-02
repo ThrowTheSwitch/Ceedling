@@ -45,6 +45,10 @@ class FileWrapper
     return File.read(filepath)
   end
 
+  def touch(filepath, options={})
+    FileUtils.touch(filepath, options)
+  end
+
   def write(filepath, contents, flags='w')
     File.open(filepath, flags) do |file|
       file.write(contents)

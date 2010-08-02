@@ -14,11 +14,8 @@ class ProjectConfigManager
     @main_project_filepath = ''
     @user_project_filepath = ''
     
-    # only used outside this file
+    # only used outside this file as a place to stash a filepath
     @project_options_filepath = ''
-    
-    @input_config_cache_filepath          = ''
-    @previous_input_config_cache_filepath = ''
   end
 
 
@@ -51,7 +48,7 @@ class ProjectConfigManager
   end
 
 
-  def load_project_configuration
+  def load_project_config
     config_hash = {}
     
     # if there's no user project file, then just provide hash from project file
@@ -67,20 +64,20 @@ class ProjectConfigManager
   end
   
   
-  def cache_project_configuration(path, config)
-    @input_config_cache_filepath          = File.join(path, 'input_config.yml')
-    @previous_input_config_cache_filepath = @input_config_cache_filepath.ext('.previous')
-
-    @file_wrapper.cp( @input_config_cache_filepath, @previous_input_config_cache_filepath ) if @file_wrapper.exist?(@input_config_cache_filepath)
-    @yaml_wrapper.dump( @input_config_cache_filepath, config )
+  # cache our project configuration so we can diff it later and force full project rebuilds
+  def cache_project_config(path, config)
+    filepath = File.join(path, "#{DEFAULT_CEEDLING_MAIN_PROJECT_FILE}.previous")
+    @yaml_wrapper.dump( filepath, config )
   end
   
   
-  def input_configuration_changed_from_last_run?
-    return false if not @file_wrapper.exist?(@input_config_cache_filepath)
-    return false if not @file_wrapper.exist?(@previous_input_config_cache_filepath)
+  def input_config_changed_since_last_build(path, config)
+    filepath = File.join(path, "#{DEFAULT_CEEDLING_MAIN_PROJECT_FILE}.previous")
     
-    return !(@yaml_wrapper.load(@input_config_cache_filepath) == @yaml_wrapper.load(@previous_input_config_cache_filepath))
+    if ( (@file_wrapper.exist?(filepath)) and (!(@yaml_wrapper.load(filepath) == config)) )
+      @file_wrapper.touch(filepath) # update timestamp just to be thorough
+      yield filepath
+    end
   end
 
 end

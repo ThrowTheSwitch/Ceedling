@@ -24,7 +24,7 @@ class TestInvokerHelper
 
     dependencies_list = @file_path_utils.form_test_dependencies_filelist(files)
     @task_invoker.invoke_dependencies_files(dependencies_list)
-    @dependinator.setup_object_dependencies(dependencies_list)
+    @dependinator.setup_test_object_dependencies(dependencies_list)
   end
   
 end

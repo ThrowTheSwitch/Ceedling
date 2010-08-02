@@ -16,7 +16,7 @@ class SetupinatorTest < Test::Unit::TestCase
   
   should "perform all post-instantiation setup steps" do
     @project_config_manager.expects.find_project_files
-    @project_config_manager.expects.load_project_configuration.returns(@config_hash)
+    @project_config_manager.expects.load_project_config.returns(@config_hash)
 
     @configurator.expects.populate_plugins_defaults(@config_hash)
     @configurator.expects.standardize_paths(@config_hash)

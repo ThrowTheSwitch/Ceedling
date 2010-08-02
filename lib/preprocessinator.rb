@@ -14,7 +14,6 @@ class Preprocessinator
 
 
   def preprocess_test_and_invoke_mocks(test)
-puts "LOGGING: #{@configurator.project_logging}"
     @preprocessinator_helper.preprocess_includes(test, @preprocess_includes_proc)
 
     mocks_list = @preprocessinator_helper.assemble_mocks_list(test)

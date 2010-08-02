@@ -25,7 +25,7 @@ task :verbosity, :level do |t, args|
 
   hash = @ceedling[:setupinator].config_hash
   hash[:project][:verbosity] = verbosity_level
-  @ceedling[:configurator].cmock_config_hash[:verbosity] = verbosity_level
+  hash[:cmock][:verbosity]   = verbosity_level if (PROJECT_USE_MOCKS)
   
   @ceedling[:configurator].build( hash )
 

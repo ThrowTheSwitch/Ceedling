@@ -35,7 +35,7 @@ class TaskInvoker
   private #############################
   
   def invoke_with_enhancements(tasks)
-    dependencies = @dependinator.environment_prerequisites
+    dependencies = @dependinator.test_environment_prerequisites
     
     tasks.each do |task|
       @rake_wrapper[task].enhance(dependencies)
