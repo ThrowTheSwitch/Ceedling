@@ -31,8 +31,10 @@ class FileSystemUtils
     
       # if a glob, expand it and slurp up all non-file paths
       if path.include?('*')
-        # grab base directory
-        dirs << FilePathUtils.extract_path(path)
+        # grab base directory only if globs are snug up to final path separator
+        if (path =~ /\/\*+$/)
+          dirs << FilePathUtils.extract_path(path)
+        end
         
         # grab expanded sub-directory globs
         expanded = @file_wrapper.directory_listing( FilePathUtils.extract_path_no_aggregation_operators(path) )
