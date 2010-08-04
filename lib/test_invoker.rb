@@ -14,7 +14,7 @@ class TestInvoker
     @mocks   = []
   end
   
-  def invoke_tests(tests, options={:force_run => true})
+  def setup_and_invoke(tests, options={:force_run => true})
   
     @tests = tests
 
@@ -52,6 +52,8 @@ class TestInvoker
       @sources << source if (!source.nil?)
       @mocks   << mock_list
     end
+
+    @test_invoker_helper.cache_input_config
     
     @mocks.flatten!
     @mocks.uniq!

@@ -48,9 +48,6 @@ end
 
 # end block executed following each rake run
 END {
-  # save our configuration to determine configuration changes upon next run
-  @ceedling[:project_config_manager].cache_project_config( @ceedling[:configurator].project_temp_path, @ceedling[:setupinator].config_hash )
-  
 	# only run plugins if we got here without runtime exceptions or errors
 	if (@ceedling[:system_wrapper].ruby_success)
 	  @ceedling[:plugin_manager].post_build

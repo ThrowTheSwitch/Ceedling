@@ -236,6 +236,8 @@ test_invoker:
 test_invoker_helper:
   compose:
     - configurator
+    - setupinator
+    - project_config_manager
     - task_invoker
     - dependinator
     - file_path_utils
@@ -245,6 +247,8 @@ test_invoker_helper:
 release_invoker:
   compose:
     - configurator
+    - setupinator
+    - project_config_manager
     - dependinator
     - file_path_utils
     - rake_wrapper

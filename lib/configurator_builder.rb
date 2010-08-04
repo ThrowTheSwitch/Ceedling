@@ -117,8 +117,10 @@ class ConfiguratorBuilder
       [:project_test_runners_path,       File.join(project_build_tests_root, 'runners'),           true ],
       [:project_test_results_path,       File.join(project_build_tests_root, 'results'),           true ],
       [:project_test_build_output_path,  File.join(project_build_tests_root, 'out'),               true ],
+      [:project_test_build_cache_path,   File.join(project_build_tests_root, 'cache'),             true ],
 
       [:project_release_artifacts_path,         File.join(project_build_artifacts_root, RELEASE_BASE_PATH), in_hash[:project_release_build] ],
+      [:project_release_build_cache_path,       File.join(project_build_release_root, 'cache'),             in_hash[:project_release_build] ],
       [:project_release_build_output_path,      File.join(project_build_release_root, 'out'),               in_hash[:project_release_build] ],
       [:project_release_build_output_asm_path,  File.join(project_build_release_root, 'out', 'asm'),        in_hash[:project_release_build] ],
       [:project_release_build_output_c_path,    File.join(project_build_release_root, 'out', 'c'),          in_hash[:project_release_build] ],

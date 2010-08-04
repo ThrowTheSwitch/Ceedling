@@ -40,7 +40,7 @@ class TestInvokerTest < Test::Unit::TestCase
 
     @task_invoker.expects.invoke_results(@pass_results_list)
 
-    @test_invoker.invoke_tests(['project/tests/TestIng.c', 'project/tests/TestIcular.c'])
+    @test_invoker.setup_and_invoke(['project/tests/TestIng.c', 'project/tests/TestIcular.c'])
   end
 
 

@@ -40,7 +40,7 @@ class RakeTasksTest < Test::Unit::TestCase
     setup()
 
     # set up expectations
-    @test_invoker.expects.invoke_tests(all_tests)
+    @test_invoker.expects.setup_and_invoke(all_tests)
     
     # invoke the task
     @rake['test:all'].invoke
@@ -54,7 +54,7 @@ class RakeTasksTest < Test::Unit::TestCase
     setup()
 
     # set up expectations
-    @test_invoker.expects.invoke_tests('tests/test_yo.c')
+    @test_invoker.expects.setup_and_invoke('tests/test_yo.c')
     
     # invoke the task
     @rake['test:test_yo.c'].invoke
@@ -68,7 +68,7 @@ class RakeTasksTest < Test::Unit::TestCase
     setup()
 
     # set up expectations
-    @test_invoker.expects.invoke_tests('tests/TestIcle.c')
+    @test_invoker.expects.setup_and_invoke('tests/TestIcle.c')
     
     # invoke the task
     @rake['test:Icle.c'].invoke
@@ -82,7 +82,7 @@ class RakeTasksTest < Test::Unit::TestCase
     setup()
 
     # set up expectations
-    @test_invoker.expects.invoke_tests('tests/TestYoMama.c')
+    @test_invoker.expects.setup_and_invoke('tests/TestYoMama.c')
     
     # invoke the task
     @rake['test:YoMama.h'].invoke

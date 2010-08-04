@@ -4,7 +4,7 @@ require 'rake' # for ext()
 
 class TestInvokerHelper
 
-  constructor :configurator, :task_invoker, :dependinator, :file_path_utils, :file_wrapper, :rake_wrapper
+  constructor :configurator, :project_config_manager, :setupinator, :task_invoker, :dependinator, :file_path_utils, :file_wrapper, :rake_wrapper
 
   def clean_results(options, test)
     @file_wrapper.rm_f(@file_path_utils.form_fail_results_filepath(test))
@@ -25,6 +25,11 @@ class TestInvokerHelper
     dependencies_list = @file_path_utils.form_test_dependencies_filelist(files)
     @task_invoker.invoke_dependencies_files(dependencies_list)
     @dependinator.setup_test_object_dependencies(dependencies_list)
+  end
+  
+  def cache_input_config
+    # save our configuration to determine configuration changes upon next run
+    @project_config_manager.cache_project_config( @configurator.project_test_build_cache_path, @setupinator.config_hash )    
   end
   
 end

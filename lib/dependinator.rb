@@ -9,19 +9,19 @@ class Dependinator
   def assemble_test_environment_dependencies
     @test_environment_prerequisites = @configurator.collection_code_generation_dependencies.clone
 
-    @project_config_manager.input_config_changed_since_last_build( @configurator.project_temp_path, @setupinator.config_hash ) do |input_config_cache_filepath|
-      @test_environment_prerequisites << input_config_cache_filepath
+    @project_config_manager.input_config_changed_since_last_build( @configurator.project_test_build_cache_path, @setupinator.config_hash ) do |config_cache_filepath|
+      @test_environment_prerequisites << config_cache_filepath
     end
   end
 
 
-  # pull together all depenendencies outside C source code (ceedling & input configuration changes) so we can trigger full rebuilds
+  # pull together all release depenendencies outside C source code (ceedling & input configuration changes) so we can trigger full rebuilds
   def setup_release_objects_dependencies(objects)
     cexception_object = @file_path_utils.form_release_c_object_filepath('CException.c')
     
-    @project_config_manager.input_config_changed_since_last_build( @configurator.project_temp_path, @setupinator.config_hash ) do |input_config_cache_filepath|
-      @rake_wrapper[cexception_object].enhance( [input_config_cache_filepath] ) if (@configurator.project_use_exceptions)
-      objects.each { |object| @rake_wrapper[object].enhance( [input_config_cache_filepath] ) }
+    @project_config_manager.input_config_changed_since_last_build( @configurator.project_release_build_cache_path, @setupinator.config_hash ) do |config_cache_filepath|
+      @rake_wrapper[cexception_object].enhance( [config_cache_filepath] ) if (@configurator.project_use_exceptions)
+      objects.each { |object| @rake_wrapper[object].enhance( [config_cache_filepath] ) }
     end
   end
 
