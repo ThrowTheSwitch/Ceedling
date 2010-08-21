@@ -7,11 +7,6 @@ require 'constants'       # for Verbosity constants class & base file paths
 
 
 class ConfiguratorBuilder
-
-  BUILD_PATH_NAME          = 0
-  BUILD_PATH               = 1
-  BUILD_PATH_ADD_CONDITION = 2
-
   
   constructor :project_config_manager, :file_system_utils, :file_wrapper
     
@@ -141,10 +136,14 @@ class ConfiguratorBuilder
     out_hash[:project_build_paths] << in_hash[:cmock_mock_path] if (in_hash[:project_use_mocks])
 
     paths.each do |path|
+      build_path_name          = path[0]
+      build_path               = path[1]
+      build_path_add_condition = path[2]
+      
       # insert path into build paths if associated with true condition
-      out_hash[:project_build_paths] << path[BUILD_PATH] if path[BUILD_PATH_ADD_CONDITION]
+      out_hash[:project_build_paths] << build_path if build_path_add_condition
       # set path symbol name and path for each entry in paths array
-      out_hash[ path[BUILD_PATH_NAME] ] = path[BUILD_PATH]
+      out_hash[build_path_name] = build_path
     end
 
     return out_hash

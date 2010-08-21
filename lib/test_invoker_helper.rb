@@ -4,7 +4,7 @@ require 'rake' # for ext()
 
 class TestInvokerHelper
 
-  constructor :configurator, :project_config_manager, :setupinator, :task_invoker, :dependinator, :file_path_utils, :file_wrapper, :rake_wrapper
+  constructor :configurator, :task_invoker, :dependinator, :test_includes_extractor, :file_finder, :file_path_utils, :file_wrapper, :rake_wrapper
 
   def clean_results(options, test)
     @file_wrapper.rm_f(@file_path_utils.form_fail_results_filepath(test))
@@ -27,9 +27,13 @@ class TestInvokerHelper
     @dependinator.setup_test_object_dependencies(dependencies_list)
   end
   
-  def cache_input_config
-    # save our configuration to determine configuration changes upon next run
-    @project_config_manager.cache_project_config( @configurator.project_test_build_cache_path, @setupinator.config_hash )    
+  def extract_sources(test)
+    sources  = []
+    includes = @test_includes_extractor.lookup_includes_list(test)
+    
+    includes.each { |include| sources << @file_finder.find_source_file(include, {:should_complain => false}) }
+    
+    return sources
   end
   
 end

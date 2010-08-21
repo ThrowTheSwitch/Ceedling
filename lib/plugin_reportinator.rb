@@ -21,7 +21,7 @@ class PluginReportinator
 
   
   def release_build?
-    return @plugin_reportinator_helper.rake_task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}:/)
+    return @plugin_reportinator_helper.rake_task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}/)
   end
 
   

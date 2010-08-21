@@ -122,9 +122,9 @@ class FileFinder
     return source_files
   end
 
-  def find_source_file(file_path)
+  def find_source_file(file_path, complain = {:should_complain => true})
     source_file = File.basename(file_path).ext(@configurator.extension_source)
-    return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_source)
+    return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_source, complain)
   end
 
   def find_assembly_file(file_path)

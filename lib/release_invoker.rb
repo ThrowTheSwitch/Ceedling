@@ -2,7 +2,7 @@
 
 class ReleaseInvoker
 
-  constructor :configurator, :setupinator, :project_config_manager, :dependinator, :file_path_utils, :rake_wrapper
+  constructor :configurator, :dependinator, :file_path_utils, :rake_wrapper
 
 
   def setup_and_invoke
@@ -17,9 +17,6 @@ class ReleaseInvoker
     @rake_wrapper.create_file_task(PROJECT_RELEASE_BUILD_TARGET, release_build_components)
 
     @rake_wrapper[PROJECT_RELEASE_BUILD_TARGET].invoke
-    
-    # save our configuration to determine configuration changes upon next run
-    @project_config_manager.cache_project_config( @configurator.project_release_build_cache_path, @setupinator.config_hash )    
   end
 
 end

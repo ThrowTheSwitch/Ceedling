@@ -49,15 +49,17 @@ class TestInvoker
       # go
       @task_invoker.invoke_results( @file_path_utils.form_pass_results_filepath(test) )
       
-      @sources << source if (!source.nil?)
       @mocks   << mock_list
+      @sources << @test_invoker_helper.extract_sources(test)
     end
 
-    @test_invoker_helper.cache_input_config
-    
+    # process collected mock list
     @mocks.flatten!
     @mocks.uniq!
     
+    # process collected sources list
+    @sources.flatten!
+    @sources.compact!
     @sources.uniq!
   end
 

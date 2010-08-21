@@ -7,7 +7,6 @@ class FileFinderHelper
   
   
   def find_file_in_collection(file_name, file_list, options = {:should_complain => true})
-    
     file_to_find = nil
     
     file_list.each do |item|

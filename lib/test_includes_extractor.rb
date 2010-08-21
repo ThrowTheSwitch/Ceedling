@@ -7,7 +7,7 @@ class TestIncludesExtractor
 
   def setup
     @includes  = {}
-    @mocks     = {}    
+    @mocks     = {}
   end
 
 

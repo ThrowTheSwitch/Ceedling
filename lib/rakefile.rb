@@ -50,6 +50,17 @@ end
 END {
 	# only run plugins if we got here without runtime exceptions or errors
 	if (@ceedling[:system_wrapper].ruby_success)
+    
+    # save our test configuration to determine configuration changes upon next run
+    if (@ceedling[:plugin_reportinator].test_build?)
+      @ceedling[:project_config_manager].cache_project_config( @ceedling[:configurator].project_test_build_cache_path, @ceedling[:setupinator].config_hash )
+    end
+    
+    # save our release configuration to determine configuration changes upon next run
+    if (@ceedling[:plugin_reportinator].release_build?)
+      @ceedling[:project_config_manager].cache_project_config( @ceedling[:configurator].project_release_build_cache_path, @ceedling[:setupinator].config_hash )
+    end
+
 	  @ceedling[:plugin_manager].post_build
 	  
 	  if (@ceedling[:plugin_manager].build_failed?)
