@@ -55,7 +55,7 @@ namespace :files do
   categories = [
     ['test',   COLLECTION_ALL_TESTS],
     ['source', COLLECTION_ALL_SOURCE],
-    ['header', COLLECTION_ALL_HEADERS],
+    ['header', COLLECTION_ALL_HEADERS]
     ]
   categories << ['assembly', COLLECTION_ALL_ASSEMBLY] if (RELEASE_BUILD_USE_ASSEMBLY)
   
@@ -63,12 +63,11 @@ namespace :files do
     name       = category[0]
     collection = category[1]
     
-    namespace(name.to_sym) do
-      desc "List all collected #{name} files."
-      task(:list) { puts "#{name} files:"; collection.sort.each {|filepath| puts " - #{filepath}" } }
-
-      desc "List collected #{name} file count."
-      task(:count) { puts "#{name} file count: #{collection.size}" }  
+    desc "List all collected #{name} files."
+    task(name.to_sym) do
+      puts "#{name} files:"
+      collection.sort.each { |filepath| puts " - #{filepath}" }
+      puts "file count: #{collection.size}"
     end
   end
   

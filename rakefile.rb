@@ -26,7 +26,7 @@ ALL_SYSTEM_TESTS        = FileList[system_test_pattern]
 
 namespace :test do
   desc "Run all unit, integration, and system tests"
-  task :all => ['test:unit:all', 'test:integration:all', 'test:system:all']
+  task :all => ['test:unit:all']
 
   Rake::TestTask.new('unit:all') do |t|
     t.pattern = unit_test_pattern
