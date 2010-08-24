@@ -140,7 +140,6 @@ test_includes_extractor:
 
 task_invoker:
   compose:
-    - dependinator
     - rake_wrapper
 
 generator:
@@ -246,7 +245,14 @@ test_invoker_helper:
 
 release_invoker:
   compose:
+    - release_invoker_helper
     - configurator
     - dependinator
     - file_path_utils
     - rake_wrapper
+
+release_invoker_helper:
+  compose:
+    - configurator
+    - dependinator
+    - task_invoker

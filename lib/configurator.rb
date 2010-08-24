@@ -8,10 +8,11 @@ require 'deep_merge'
 class Configurator
 
   attr_reader :project_config_hash, :environment, :script_plugins, :rake_plugins, :config_plugins
-  attr_accessor :project_logging
+  attr_accessor :project_logging, :project_verbosity
   
   constructor(:configurator_helper, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
     @project_logging = false
+    @project_verbosity = Verbosity::NORMAL
   end
   
   def setup
@@ -75,7 +76,7 @@ class Configurator
     cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
     
     cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
-    cmock[:verbosity] = config[:project][:verbosity]                                        if (cmock[:verbosity].nil?)
+    cmock[:verbosity] = @project_verbosity                                                  if (cmock[:verbosity].nil?)
 
     cmock[:plugins] = []                             if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym }

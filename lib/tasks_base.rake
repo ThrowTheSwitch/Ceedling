@@ -22,12 +22,15 @@ end
 desc "Set verbose output (silent:[#{Verbosity::SILENT}] - obnoxious:[#{Verbosity::OBNOXIOUS}])."
 task :verbosity, :level do |t, args|
   verbosity_level = args.level.to_i
-
-  hash = @ceedling[:setupinator].config_hash
-  hash[:project][:verbosity] = verbosity_level
-  hash[:cmock][:verbosity]   = verbosity_level if (PROJECT_USE_MOCKS)
   
-  @ceedling[:configurator].build( hash )
+  if (PROJECT_USE_MOCKS)
+    hash = @ceedling[:setupinator].config_hash[:cmock]
+    hash[:verbosity] = verbosity_level
+
+    @ceedling[:cmock_builder].manufacture( hash )  
+  end
+
+  @ceedling[:configurator].project_verbosity = verbosity_level
 
   # control rake's verbosity with new setting
   verbose( ((verbosity_level == Verbosity::OBNOXIOUS) ? true : false) )

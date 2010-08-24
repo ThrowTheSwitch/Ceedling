@@ -183,7 +183,6 @@ class ConfiguratorBuilder
     # order is important because of how rake processes and collapses the tasks & rules defined within
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release_aux_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_auxiliary_dependencies])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release.rake') if (in_hash[:project_release_build])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release_aux_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_auxiliary_dependencies])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release.rake') if (in_hash[:project_release_build])
 
     return out_hash
@@ -358,6 +357,7 @@ class ConfiguratorBuilder
     return {:collection_defines_test_and_vendor => test_defines}
   end
 
+
   def collect_release_and_vendor_defines(in_hash)
     release_defines = in_hash[:defines_release].clone
     
@@ -366,31 +366,43 @@ class ConfiguratorBuilder
     return {:collection_defines_release_and_vendor => release_defines}
   end
 
+
   # gather up all files that if changed should cause generated files on-disk to be regenerated
-  # dependency on a change to our input configuration hash is handled elsewhere as it is dynamically formed during ceedling's execution
-  def collect_code_generation_dependencies(hash)
+  def collect_code_generation_ceedling_dependency(hash)
     dependencies = []
 
     # Notes:
+    #  - Dependency on a change to our input configuration hash is handled elsewhere as it is 
+    #    dynamically formed during ceedling's execution
     #  - Compiled vendor dependencies like cmock.o, unity.o, cexception.o are handled below;
-    #    here we're interested only in code generation dependencies
-    #  - Symbols passed to compiler at command line can change Unity and CException behavior / configuration;
-    #    we also handle those dependencies elsewhere in compilation dependencies
+    #    here we're interested only in ceedling-based code generation dependencies
     
     ceedling_build_file = File.join(CEEDLING_RELEASE, 'build.info')
-    cmock_build_file    = FilePathUtils::form_ceedling_vendor_path('cmock/release', 'build.info')
 
     # ceedling itself: if it changes we gotta regenerate files
     dependencies << ceedling_build_file
     
-    # cmock: same as ceedling
+    out_hash = {
+      :collection_code_generation_ceedling_dependency => dependencies
+    }
+    
+    return out_hash
+  end
+
+
+  # gather up all files that if changed should cause generated mocks on-disk to be regenerated
+  def collect_code_generation_cmock_dependencies(hash)
+    dependencies = []
+
+    cmock_build_file = FilePathUtils::form_ceedling_vendor_path('cmock/release', 'build.info')
+
     if (hash[:project_use_mocks])
       dependencies << cmock_build_file
       dependencies << hash[:cmock_unity_helper] if (hash[:cmock_unity_helper])
     end
     
     out_hash = {
-      :collection_code_generation_dependencies => dependencies
+      :collection_code_generation_cmock_dependencies => dependencies
     }
     
     return out_hash
@@ -398,6 +410,9 @@ class ConfiguratorBuilder
 
 
   def collect_test_fixture_link_objects(hash)
+    #  Note: Symbols passed to compiler at command line can change Unity and CException behavior / configuration;
+    #    we also handle those dependencies elsewhere in compilation dependencies
+    
     # we don't include paths here because use of plugins or mixing compilers may require different build paths
     hash[:test_fixture_link_objects] << 'CException.c' if (hash[:project_use_exceptions])
     hash[:test_fixture_link_objects] << 'cmock.c'      if (hash[:project_use_mocks])

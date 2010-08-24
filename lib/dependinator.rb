@@ -7,7 +7,8 @@ class Dependinator
 
   # pull together all depenendencies outside C source code (ceedling, cmock, input configuration changes) so we can trigger full rebuilds
   def assemble_test_environment_dependencies
-    @test_environment_prerequisites = @configurator.collection_code_generation_dependencies.clone
+#    @test_environment_prerequisites = @configurator.collection_code_generation_dependencies.clone
+    @test_environment_prerequisites = []
 
     @project_config_manager.input_config_changed_since_last_build( @configurator.project_test_build_cache_path, @setupinator.config_hash ) do |config_cache_filepath|
       @test_environment_prerequisites << config_cache_filepath
@@ -15,32 +16,30 @@ class Dependinator
   end
 
 
-  # pull together all release depenendencies outside C source code (ceedling & input configuration changes) so we can trigger full rebuilds
-  def setup_release_objects_dependencies(objects)
-    cexception_object = @file_path_utils.form_release_c_object_filepath('CException.c')
-    
+  def enhance_release_dependencies(files)
     @project_config_manager.input_config_changed_since_last_build( @configurator.project_release_build_cache_path, @setupinator.config_hash ) do |config_cache_filepath|
-      @rake_wrapper[cexception_object].enhance( [config_cache_filepath] ) if (@configurator.project_use_exceptions)
-      objects.each { |object| @rake_wrapper[object].enhance( [config_cache_filepath] ) }
+      files.each { |file| @rake_wrapper[file].enhance( [config_cache_filepath] ) }
     end
   end
 
 
-  def setup_test_object_dependencies(*files_lists)
-    files_lists.each do |files_list|
-      dependencies_list = @file_path_utils.form_test_dependencies_filelist(files_list)
-      dependencies_list.each do |dependencies_file|
-        @rake_wrapper.load_dependencies(dependencies_file)
-      end
-    end
+  def setup_release_object_dependencies(files_list)
+    dependencies_list = @file_path_utils.form_release_dependencies_filelist(files_list)
+    dependencies_list.each { |dependencies_file| @rake_wrapper.load_dependencies(dependencies_file) }
+  end
+
+
+  def setup_test_object_dependencies(files_list)
+    dependencies_list = @file_path_utils.form_test_dependencies_filelist(files_list)
+    dependencies_list.each { |dependencies_file| @rake_wrapper.load_dependencies(dependencies_file) }
   end
 
 
   def enhance_test_vendor_objects_with_environment_dependencies
-    # if ceedling or cmock is updated, make sure these guys get rebuilt
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('unity.c')].enhance(@configurator.collection_code_generation_dependencies)
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cmock.c')].enhance(@configurator.collection_code_generation_dependencies)      if (@configurator.project_use_mocks)
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('CException.c')].enhance(@configurator.collection_code_generation_dependencies) if (@configurator.project_use_exceptions)
+    # if test environment changes, make sure these guys get rebuilt
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('unity.c')].enhance(@configurator.collection_code_generation_ceedling_dependency)
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cmock.c')].enhance(@configurator.collection_code_generation_ceedling_dependency)      if (@configurator.project_use_mocks)
+    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('CException.c')].enhance(@configurator.collection_code_generation_ceedling_dependency) if (@configurator.project_use_exceptions)
   end
 
   def enhance_test_build_object_with_environment_dependencies(sources)

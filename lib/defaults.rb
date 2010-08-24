@@ -155,7 +155,6 @@ DEFAULT_CEEDLING_CONFIG = {
       :use_test_preprocessor => false,
       :use_auxiliary_dependencies => false,
       :test_file_prefix => 'test_',
-      :verbosity => Verbosity::NORMAL,
       :options_path => NULL_FILE_PATH,
       :release_build => false,
     },

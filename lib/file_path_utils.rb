@@ -97,6 +97,9 @@ class FilePathUtils
     return (@file_wrapper.instantiate_file_list(@configurator.collection_all_assembly)).pathmap("#{@configurator.project_release_build_output_asm_path}/%n#{@configurator.extension_object}")
   end
   
+  def form_release_dependencies_filelist(files)
+    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_dependencies_path}/%n#{@configurator.extension_dependencies}")
+  end
   
   ### tests ###
   def form_pass_results_filepath(filepath)
