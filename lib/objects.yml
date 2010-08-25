@@ -248,8 +248,8 @@ release_invoker:
     - release_invoker_helper
     - configurator
     - dependinator
+    - task_invoker
     - file_path_utils
-    - rake_wrapper
 
 release_invoker_helper:
   compose:

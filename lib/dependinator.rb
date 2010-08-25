@@ -3,7 +3,19 @@ class Dependinator
 
   constructor :configurator, :setupinator, :project_config_manager, :test_includes_extractor, :file_finder, :file_path_utils, :rake_wrapper
 
-  attr_reader :test_environment_prerequisites
+
+  def enhance_release_dependencies(files)
+    @project_config_manager.input_config_changed_since_last_build( @configurator.project_release_build_cache_path, @setupinator.config_hash ) do |config_cache_filepath|
+      files.each { |file| @rake_wrapper[file].enhance( [config_cache_filepath] ) }
+    end
+  end
+
+
+  def setup_release_object_deep_dependencies(dependencies_list)
+    dependencies_list.each { |dependencies_file| @rake_wrapper.load_dependencies( dependencies_file ) }
+  end
+
+
 
   # pull together all depenendencies outside C source code (ceedling, cmock, input configuration changes) so we can trigger full rebuilds
   def assemble_test_environment_dependencies
@@ -13,19 +25,6 @@ class Dependinator
     @project_config_manager.input_config_changed_since_last_build( @configurator.project_test_build_cache_path, @setupinator.config_hash ) do |config_cache_filepath|
       @test_environment_prerequisites << config_cache_filepath
     end
-  end
-
-
-  def enhance_release_dependencies(files)
-    @project_config_manager.input_config_changed_since_last_build( @configurator.project_release_build_cache_path, @setupinator.config_hash ) do |config_cache_filepath|
-      files.each { |file| @rake_wrapper[file].enhance( [config_cache_filepath] ) }
-    end
-  end
-
-
-  def setup_release_object_dependencies(files_list)
-    dependencies_list = @file_path_utils.form_release_dependencies_filelist(files_list)
-    dependencies_list.each { |dependencies_file| @rake_wrapper.load_dependencies(dependencies_file) }
   end
 
 

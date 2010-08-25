@@ -24,6 +24,14 @@ class TaskInvoker
     files.each { |file| @rake_wrapper[file].invoke }
   end
 
+  def invoke_objects(objects)
+    objects.each { |object| @rake_wrapper[object].invoke }
+  end
+
+  def invoke_executable(executable)
+      @rake_wrapper[executable].invoke
+  end
+
   def invoke_results(results)
     results.each { |result| @rake_wrapper[result].invoke }
   end

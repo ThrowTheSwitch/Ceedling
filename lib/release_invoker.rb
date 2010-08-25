@@ -2,26 +2,28 @@
 
 class ReleaseInvoker
 
-  constructor :configurator, :release_invoker_helper, :dependinator, :file_path_utils, :rake_wrapper
+  constructor :configurator, :release_invoker_helper, :dependinator, :task_invoker, :file_path_utils
 
 
-  def setup_and_invoke
-    release_build_objects = []
+  def setup_and_invoke_c_objects(c_files)
+    objects = ( @file_path_utils.form_release_c_objects_filelist( c_files ) )
+
+    @release_invoker_helper.process_auxiliary_dependencies( @file_path_utils.form_release_dependencies_filelist( c_files ) )
+
+    @dependinator.enhance_release_dependencies( objects )
+    @task_invoker.invoke_objects( objects )
+
+    return objects
+  end
+
+
+  def setup_and_invoke_asm_objects(asm_files)
+    objects = @file_path_utils.form_release_asm_objects_filelist( asm_files )
+
+    @dependinator.enhance_release_dependencies( objects )
+    @task_invoker.invoke_objects( objects )
     
-    source_files = @configurator.collection_all_source.clone
-    source_files << 'CException.c' if (@configurator.project_use_exceptions)
-    
-    release_build_objects.concat( @file_path_utils.form_release_c_objects_filelist )
-    release_build_objects.concat( @file_path_utils.form_release_asm_objects_filelist )
-    release_build_objects << @file_path_utils.form_release_c_object_filepath( 'CException.c' ) if (@configurator.project_use_exceptions)
-
-    dependencies_list = @file_path_utils.form_release_dependencies_filelist( source_files )
-    @release_invoker_helper.process_auxiliary_dependencies( dependencies_list )
-
-    @dependinator.enhance_release_dependencies( release_build_objects )
-
-    @rake_wrapper.create_file_task(PROJECT_RELEASE_BUILD_TARGET, release_build_objects)
-    @rake_wrapper[PROJECT_RELEASE_BUILD_TARGET].invoke
+    return objects
   end
 
 end

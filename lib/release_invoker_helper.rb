@@ -10,7 +10,7 @@ class ReleaseInvokerHelper
 
     @dependinator.enhance_release_dependencies( dependencies_list )
     @task_invoker.invoke_dependencies_files( dependencies_list )
-    @dependinator.setup_release_object_dependencies( dependencies_list )
+    @dependinator.setup_release_object_deep_dependencies( dependencies_list )
   end
 
 end
