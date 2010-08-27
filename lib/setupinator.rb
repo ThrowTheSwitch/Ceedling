@@ -3,7 +3,7 @@ class Setupinator
 
   attr_reader :config_hash
 
-  constructor :configurator, :project_file_loader, :test_includes_extractor, :plugin_manager, :plugin_reportinator, :file_finder
+  constructor :configurator, :project_file_loader, :project_config_manager, :test_includes_extractor, :plugin_manager, :plugin_reportinator, :loginator, :file_finder, :file_wrapper
 
   def setup
     @config_hash = {}
@@ -39,6 +39,13 @@ class Setupinator
     @test_includes_extractor.configurator = @configurator
     
     @file_finder.prepare_search_sources
+    @loginator.setup_log_filepath
+    @project_config_manager.config_hash = config_hash
+  end
+
+  def touch_force_rebuild_files
+    @file_wrapper.touch( @configurator.project_test_force_rebuild_filepath ) 
+    @file_wrapper.touch( @configurator.project_release_force_rebuild_filepath ) if (@configurator.project_release_build)
   end
 
 end

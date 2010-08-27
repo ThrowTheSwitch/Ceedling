@@ -8,7 +8,7 @@ require 'constants'       # for Verbosity constants class & base file paths
 
 class ConfiguratorBuilder
   
-  constructor :project_file_loader, :project_config_manager, :file_system_utils, :file_wrapper
+  constructor :file_system_utils, :file_wrapper
     
   
   def build_global_constants(config)
@@ -113,21 +113,20 @@ class ConfiguratorBuilder
       [:project_test_results_path,       File.join(project_build_tests_root, 'results'),           true ],
       [:project_test_build_output_path,  File.join(project_build_tests_root, 'out'),               true ],
       [:project_test_build_cache_path,   File.join(project_build_tests_root, 'cache'),             true ],
+      [:project_test_dependencies_path,  File.join(project_build_tests_root, 'dependencies'),      true ],
 
       [:project_release_artifacts_path,         File.join(project_build_artifacts_root, RELEASE_BASE_PATH), in_hash[:project_release_build] ],
       [:project_release_build_cache_path,       File.join(project_build_release_root, 'cache'),             in_hash[:project_release_build] ],
       [:project_release_build_output_path,      File.join(project_build_release_root, 'out'),               in_hash[:project_release_build] ],
       [:project_release_build_output_asm_path,  File.join(project_build_release_root, 'out', 'asm'),        in_hash[:project_release_build] ],
       [:project_release_build_output_c_path,    File.join(project_build_release_root, 'out', 'c'),          in_hash[:project_release_build] ],
-      [:project_release_dependencies_path,      File.join(project_build_release_root, 'dependencies'),      in_hash[:project_release_build] && in_hash[:project_use_auxiliary_dependencies] ],
+      [:project_release_dependencies_path,      File.join(project_build_release_root, 'dependencies'),      in_hash[:project_release_build] ],
 
       [:project_log_path,   File.join(in_hash[:project_build_root], 'logs'), true ],
       [:project_temp_path,  File.join(in_hash[:project_build_root], 'temp'), true ],
 
       [:project_test_preprocess_includes_path,  File.join(project_build_tests_root, 'preprocess/includes'), in_hash[:project_use_test_preprocessor] ],
       [:project_test_preprocess_files_path,     File.join(project_build_tests_root, 'preprocess/files'),    in_hash[:project_use_test_preprocessor] ],
-
-      [:project_test_dependencies_path,  File.join(project_build_tests_root, 'dependencies'), in_hash[:project_use_auxiliary_dependencies] ],
     ]
 
     out_hash[:project_build_paths] = []
@@ -150,20 +149,13 @@ class ConfiguratorBuilder
   end
 
 
-  def set_log_filepath(in_hash)
-    config_files = []
-    config_files << @project_file_loader.main_file
-    config_files << @project_file_loader.user_file
-    config_files.concat( @project_config_manager.options_files )
-    config_files.compact!
-    config_files.map! { |file| file.ext('') }
+  def set_force_build_filepaths(in_hash)
+    out_hash = {}
     
-    log_name = config_files.join( '_' )
+    out_hash[:project_test_force_rebuild_filepath]    = File.join( in_hash[:project_test_dependencies_path], 'force_build' )
+    out_hash[:project_release_force_rebuild_filepath] = File.join( in_hash[:project_release_dependencies_path], 'force_build' ) if (in_hash[:project_release_build])
 
-    return {
-      # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
-      :project_log_filepath => File.join( in_hash[:project_log_path], log_name.ext('.log') )
-      }
+    return out_hash
   end
 
 

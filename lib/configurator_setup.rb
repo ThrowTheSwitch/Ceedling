@@ -9,7 +9,7 @@ class Symbol
 end
 
 
-class ConfiguratorHelper
+class ConfiguratorSetup
   
   constructor :configurator_builder, :configurator_validator
   
@@ -23,7 +23,7 @@ class ConfiguratorHelper
     
     # add to hash values we build up from configuration & file system contents
     new_config.merge!(@configurator_builder.set_build_paths(new_config))
-    new_config.merge!(@configurator_builder.set_log_filepath(new_config))
+    new_config.merge!(@configurator_builder.set_force_build_filepaths(new_config))
     new_config.merge!(@configurator_builder.set_rakefile_components(new_config))
     new_config.merge!(@configurator_builder.set_release_target(new_config))
     new_config.merge!(@configurator_builder.collect_project_options(new_config))

@@ -26,6 +26,7 @@ require 'constants'
 
 # one-stop shopping for all our setup and such after construction
 @ceedling[:setupinator].do_setup(@ceedling, @ceedling[:setupinator].load_project_files)
+@ceedling[:setupinator].touch_force_rebuild_files
 
 # control Rake's verbosity (verbose defaults to true when rake loads)
 verbose(false) if (not @ceedling[:verbosinator].should_output?(Verbosity::OBNOXIOUS))

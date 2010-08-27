@@ -34,6 +34,7 @@ project_file_loader:
 
 project_config_manager:
   compose:
+    - configurator
     - yaml_wrapper
     - file_wrapper
 
@@ -58,14 +59,14 @@ tool_executor_helper:
 
 configurator:
   compose:
-    - configurator_helper
+    - configurator_setup
     - configurator_plugins
     - configurator_builder
     - cmock_builder
     - yaml_wrapper
     - system_wrapper
 
-configurator_helper:
+configurator_setup:
   compose:
     - configurator_builder
     - configurator_validator
@@ -83,14 +84,14 @@ configurator_validator:
 
 configurator_builder:
   compose:
-    - project_file_loader
-    - project_config_manager
     - file_system_utils
     - file_wrapper
 
 loginator:
   compose:
     - configurator
+    - project_file_loader
+    - project_config_manager
     - file_wrapper
     - system_wrapper
 
@@ -107,10 +108,13 @@ setupinator:
   compose:
     - configurator
     - project_file_loader
+    - project_config_manager
     - test_includes_extractor
     - plugin_manager
     - plugin_reportinator
+    - loginator
     - file_finder
+    - file_wrapper
 
 plugin_manager:
   compose:
@@ -246,6 +250,7 @@ test_invoker:
     - preprocessinator
     - task_invoker
     - dependinator
+    - project_config_manager
     - file_finder
     - file_path_utils
 

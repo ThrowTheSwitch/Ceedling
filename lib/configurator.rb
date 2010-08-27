@@ -10,7 +10,7 @@ class Configurator
   attr_reader :project_config_hash, :environment, :script_plugins, :rake_plugins, :config_plugins
   attr_accessor :project_logging, :project_verbosity
   
-  constructor(:configurator_helper, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
+  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
     @project_logging = false
     @project_verbosity = Verbosity::NORMAL
   end
@@ -35,7 +35,7 @@ class Configurator
   
   def replace_flattened_config(config)
     @project_config_hash.merge!(config)
-    @configurator_helper.build_constants_and_accessors(@project_config_hash, binding())
+    @configurator_setup.build_constants_and_accessors(@project_config_hash, binding())
   end
 
   
@@ -46,7 +46,7 @@ class Configurator
   
   def restore_config
     @project_config_hash = @project_config_hash_backup
-    @configurator_helper.build_constants_and_accessors(@project_config_hash, binding())
+    @configurator_setup.build_constants_and_accessors(@project_config_hash, binding())
   end
 
 
@@ -184,27 +184,27 @@ class Configurator
 
   def validate(config)
     # collect felonies and go straight to jail
-    raise if (not @configurator_helper.validate_required_sections(config))
+    raise if (not @configurator_setup.validate_required_sections(config))
     
     # collect all misdemeanors, everybody on probation
     blotter = []
-    blotter << @configurator_helper.validate_required_section_values(config)
-    blotter << @configurator_helper.validate_paths(config)
-    blotter << @configurator_helper.validate_tools(config)
-    blotter << @configurator_helper.validate_plugins(config)
+    blotter << @configurator_setup.validate_required_section_values(config)
+    blotter << @configurator_setup.validate_paths(config)
+    blotter << @configurator_setup.validate_tools(config)
+    blotter << @configurator_setup.validate_plugins(config)
     
     raise if (blotter.include?(false))
   end
     
   
   def build(config)
-    built_config = @configurator_helper.build_project_config(config)
+    built_config = @configurator_setup.build_project_config(config)
     
     @source_config_hash   = config.clone
     @project_config_hash  = built_config.clone
     store_config()
 
-    @configurator_helper.build_constants_and_accessors(built_config, binding())
+    @configurator_setup.build_constants_and_accessors(built_config, binding())
   end
     
   

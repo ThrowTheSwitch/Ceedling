@@ -6,7 +6,7 @@ class TestInvoker
 
   attr_reader :sources, :tests, :mocks
 
-  constructor :test_invoker_helper, :streaminator, :preprocessinator, :task_invoker, :dependinator, :file_finder, :file_path_utils
+  constructor :test_invoker_helper, :streaminator, :preprocessinator, :task_invoker, :dependinator, :project_config_manager, :file_finder, :file_path_utils
 
   def setup
     @sources = []
@@ -18,7 +18,7 @@ class TestInvoker
   
     @tests = tests
 
-    @dependinator.assemble_test_environment_dependencies
+    @project_config_manager.process_test_config_change
   
     tests.each do |test|
       # announce beginning of test run

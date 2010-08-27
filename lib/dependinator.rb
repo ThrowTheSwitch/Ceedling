@@ -5,9 +5,7 @@ class Dependinator
 
 
   def enhance_release_file_dependencies(files)
-    @project_config_manager.input_config_changed_since_last_build( @configurator.project_release_build_cache_path, @setupinator.config_hash ) do |config_cache_filepath|
-      files.each { |file| @rake_wrapper[file].enhance( [config_cache_filepath] ) }
-    end
+    files.each { |file| @rake_wrapper[file].enhance( [@configurator.project_release_force_rebuild_filepath] ) } if (@project_config_manager.release_config_changed)
   end
 
 
@@ -15,16 +13,6 @@ class Dependinator
     dependencies_list.each { |dependencies_file| @rake_wrapper.load_dependencies( dependencies_file ) }
   end
 
-
-
-  # pull together all depenendencies outside C source code (ceedling, cmock, input configuration changes) so we can trigger full rebuilds
-  def assemble_test_environment_dependencies
-    @test_environment_prerequisites = []
-
-    @project_config_manager.input_config_changed_since_last_build( @configurator.project_test_build_cache_path, @setupinator.config_hash ) do |config_cache_filepath|
-      @test_environment_prerequisites << config_cache_filepath
-    end
-  end
 
 
   def setup_test_object_dependencies(files_list)
