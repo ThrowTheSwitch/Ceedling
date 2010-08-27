@@ -110,6 +110,7 @@ setupinator:
     - project_file_loader
     - project_config_manager
     - test_includes_extractor
+    - dependinator
     - plugin_manager
     - plugin_reportinator
     - loginator
@@ -197,12 +198,12 @@ generator_test_runner:
 dependinator:
   compose:
     - configurator
-    - setupinator
     - project_config_manager
     - test_includes_extractor
     - file_finder            
     - file_path_utils        
     - rake_wrapper
+    - file_wrapper
 
 preprocessinator:
   compose:
