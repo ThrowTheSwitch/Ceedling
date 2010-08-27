@@ -8,7 +8,7 @@ require 'constants'       # for Verbosity constants class & base file paths
 
 class ConfiguratorBuilder
   
-  constructor :project_config_manager, :file_system_utils, :file_wrapper
+  constructor :project_file_loader, :project_config_manager, :file_system_utils, :file_wrapper
     
   
   def build_global_constants(config)
@@ -151,15 +151,14 @@ class ConfiguratorBuilder
 
 
   def set_log_filepath(in_hash)
-    log_name = File.basename(@project_config_manager.main_project_filepath).ext('')
+    config_files = []
+    config_files << @project_file_loader.main_file
+    config_files << @project_file_loader.user_file
+    config_files.concat( @project_config_manager.options_files )
+    config_files.compact!
+    config_files.map! { |file| file.ext('') }
     
-    if (not @project_config_manager.user_project_filepath.empty?)
-      log_name += "_#{File.basename(@project_config_manager.user_project_filepath).ext('')}"
-    end
-    
-    if (not @project_config_manager.project_options_filepath.empty?)
-      log_name += "_#{File.basename(@project_config_manager.project_options_filepath).ext('')}"
-    end
+    log_name = config_files.join( '_' )
 
     return {
       # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
@@ -180,7 +179,6 @@ class ConfiguratorBuilder
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_preprocess.rake') if (in_hash[:project_use_test_preprocessor])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_tests_aux_dependencies.rake') if (in_hash[:project_use_auxiliary_dependencies])
 
-    # order is important because of how rake processes and collapses the tasks & rules defined within
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release_aux_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_auxiliary_dependencies])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release.rake') if (in_hash[:project_release_build])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release.rake') if (in_hash[:project_release_build])

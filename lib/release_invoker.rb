@@ -10,7 +10,7 @@ class ReleaseInvoker
 
     @release_invoker_helper.process_auxiliary_dependencies( @file_path_utils.form_release_dependencies_filelist( c_files ) )
 
-    @dependinator.enhance_release_dependencies( objects )
+    @dependinator.enhance_release_file_dependencies( objects )
     @task_invoker.invoke_objects( objects )
 
     return objects
@@ -20,7 +20,7 @@ class ReleaseInvoker
   def setup_and_invoke_asm_objects(asm_files)
     objects = @file_path_utils.form_release_asm_objects_filelist( asm_files )
 
-    @dependinator.enhance_release_dependencies( objects )
+    @dependinator.enhance_release_file_dependencies( objects )
     @task_invoker.invoke_objects( objects )
     
     return objects

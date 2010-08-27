@@ -14,21 +14,6 @@ class PluginReportinator
     return @plugin_reportinator_helper.fetch_results(test_results_path, test)
   end
 
-
-  def test_build?
-    return @plugin_reportinator_helper.rake_task_invoked?(/^#{TESTS_TASKS_ROOT_NAME}:/)
-  end
-
-  
-  def release_build?
-    return @plugin_reportinator_helper.rake_task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}/)
-  end
-
-  
-  def rake_task_invoked?(task_regex)
-    return @plugin_reportinator_helper.rake_task_invoked?(task_regex)
-  end
-
   
   def generate_banner(message)
     return @reportinator.generate_banner(message)

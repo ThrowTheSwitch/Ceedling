@@ -70,7 +70,7 @@ class StdoutIdeTestsReport < Plugin
   end
   
   def post_build
-    return if (not @ceedling[:plugin_reportinator].test_build?)
+    return if (not @ceedling[:task_invoker].test_invoked?)
 
     results = @ceedling[:plugin_reportinator].assemble_test_results(PROJECT_TEST_RESULTS_PATH, @test_list)
 

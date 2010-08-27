@@ -13,6 +13,10 @@ cmock_builder:
 
 reportinator:
 
+rake_utils:
+  compose:
+    - rake_wrapper  
+
 file_path_utils:
   compose:
     - configurator
@@ -21,12 +25,24 @@ file_path_utils:
 file_system_utils:
   compose: file_wrapper
 
-project_config_manager:
+project_file_loader:
   compose:
     - yaml_wrapper
     - stream_wrapper
     - system_wrapper
     - file_wrapper
+
+project_config_manager:
+  compose:
+    - yaml_wrapper
+    - file_wrapper
+
+cacheinator:
+  compose:
+    - configurator
+    - setupinator
+    - task_invoker
+    - yaml_wrapper
 
 tool_executor:
   compose:
@@ -67,6 +83,7 @@ configurator_validator:
 
 configurator_builder:
   compose:
+    - project_file_loader
     - project_config_manager
     - file_system_utils
     - file_wrapper
@@ -89,7 +106,7 @@ streaminator_helper:
 setupinator:
   compose:
     - configurator
-    - project_config_manager
+    - project_file_loader
     - test_includes_extractor
     - plugin_manager
     - plugin_reportinator
@@ -117,7 +134,6 @@ plugin_reportinator_helper:
     - streaminator
     - yaml_wrapper
     - file_wrapper
-    - rake_wrapper
 
 verbosinator:
   compose: configurator
@@ -140,6 +156,7 @@ test_includes_extractor:
 
 task_invoker:
   compose:
+    - rake_utils
     - rake_wrapper
 
 generator:

@@ -46,6 +46,7 @@ namespace :paths do
       task(name.to_sym) { puts "#{name} paths:"; path_list.sort.each {|path| puts " - #{path}" } }
     end
   end
+  
 end
 
 

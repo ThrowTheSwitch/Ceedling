@@ -25,11 +25,11 @@ class PluginManager
     end
   end
   
-  def build_failed?
+  def plugins_failed?
     return (@build_fail_registry.size > 0)
   end
   
-  def print_build_failures
+  def print_plugin_failures
     if (@build_fail_registry.size > 0)
       report = @reportinator.generate_banner('BUILD FAILURE SUMMARY')
       

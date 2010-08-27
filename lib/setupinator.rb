@@ -3,15 +3,15 @@ class Setupinator
 
   attr_reader :config_hash
 
-  constructor :configurator, :project_config_manager, :test_includes_extractor, :plugin_manager, :plugin_reportinator, :file_finder
+  constructor :configurator, :project_file_loader, :test_includes_extractor, :plugin_manager, :plugin_reportinator, :file_finder
 
   def setup
     @config_hash = {}
   end
 
   def load_project_files
-    @project_config_manager.find_project_files
-    return @project_config_manager.load_project_config
+    @project_file_loader.find_project_files
+    return @project_file_loader.load_project_config
   end
 
   def do_setup(system_objects, config_hash)

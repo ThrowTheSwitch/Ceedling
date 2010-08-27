@@ -1,8 +1,15 @@
 
 class TaskInvoker
 
-  constructor :rake_wrapper
+  constructor :rake_utils, :rake_wrapper
 
+  def test_invoked?
+    return @rake_utils.task_invoked?(/^#{TESTS_TASKS_ROOT_NAME}:/)
+  end
+  
+  def release_invoked?
+    return @rake_utils.task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}/)
+  end
 
   def invoke_mocks(mocks)
     mocks.each { |mock| @rake_wrapper[mock].invoke }

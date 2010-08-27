@@ -6,19 +6,7 @@ class PluginReportinatorHelper
   
   attr_writer :ceedling
   
-  constructor :configurator, :streaminator, :yaml_wrapper, :file_wrapper, :rake_wrapper
-
-  def rake_task_invoked?(task_regex)
-    task_invoked = false
-    @rake_wrapper.task_list.each do |task|
-      if ((task.already_invoked) and (task.to_s =~ task_regex))
-        task_invoked = true
-        break
-      end
-    end
-    return task_invoked
-  end
-
+  constructor :configurator, :streaminator, :yaml_wrapper, :file_wrapper
   
   def fetch_results(test_results_path, test)
     filepath = ''
