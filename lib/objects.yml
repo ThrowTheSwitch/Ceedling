@@ -105,17 +105,6 @@ streaminator:
 streaminator_helper:
 
 setupinator:
-  compose:
-    - configurator
-    - project_file_loader
-    - project_config_manager
-    - test_includes_extractor
-    - dependinator
-    - plugin_manager
-    - plugin_reportinator
-    - loginator
-    - file_finder
-    - file_wrapper
 
 plugin_manager:
   compose:
@@ -156,6 +145,7 @@ file_finder_helper:
 
 test_includes_extractor:
   compose:
+    - configurator
     - yaml_wrapper
     - file_wrapper
 

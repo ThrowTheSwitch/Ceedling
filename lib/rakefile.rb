@@ -25,7 +25,8 @@ require 'constants'
 @ceedling.build_everything
 
 # one-stop shopping for all our setup and such after construction
-@ceedling[:setupinator].do_setup(@ceedling, @ceedling[:setupinator].load_project_files)
+@ceedling[:setupinator].ceedling = @ceedling
+@ceedling[:setupinator].do_setup( @ceedling[:setupinator].load_project_files )
 
 # control Rake's verbosity (verbose defaults to true when rake loads)
 verbose(false) if (not @ceedling[:verbosinator].should_output?(Verbosity::OBNOXIOUS))
