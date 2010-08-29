@@ -20,7 +20,7 @@ class Cacheinator
   
   # cache our project configuration so we can diff it later and force project rebuilds
   def dump_project_config(path, config)
-    filepath = File.join(path, "#{DEFAULT_CEEDLING_MAIN_PROJECT_FILE}")
+    filepath = File.join(path, "#{INPUT_CONFIGURATION_CACHE_FILE}")
     @yaml_wrapper.dump( filepath, config )
   end
 

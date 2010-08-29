@@ -37,7 +37,7 @@ class PreprocessinatorHelper
 
   def preprocess_files_smartly(file_list, preprocess_file_proc)
     if (@configurator.project_use_auxiliary_dependencies)
-      @task_invoker.invoke_preprocessed_files(file_list)
+      @task_invoker.invoke_test_preprocessed_files(file_list)
     else
       file_list.each { |file| preprocess_file_proc.call( yield(file) ) }
     end

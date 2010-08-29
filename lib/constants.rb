@@ -15,9 +15,16 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
+CEXCEPTION_C_FILE = 'CException.c'
+UNITY_C_FILE      = 'unity.c'
+CMOCK_C_FILE      = 'cmock.c'
+
 
 DEFAULT_CEEDLING_MAIN_PROJECT_FILE = 'project.yml' # main project file
 DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    # supplemental user config file
+
+INPUT_CONFIGURATION_CACHE_FILE     = 'input.yml'   # input configuration file dump
+
 
 TESTS_TASKS_ROOT_NAME   = 'test'
 RELEASE_TASKS_ROOT_NAME = 'release'

@@ -35,7 +35,7 @@ class ProjectConfigManager
   private
     
   def config_changed_since_last_build?(path, config)
-    filepath = File.join(path, "#{DEFAULT_CEEDLING_MAIN_PROJECT_FILE}")
+    filepath = File.join(path, "#{INPUT_CONFIGURATION_CACHE_FILE}")
     
     return true if ( not @file_wrapper.exist?(filepath) )
     return true if ( (@file_wrapper.exist?(filepath)) and (!(@yaml_wrapper.load(filepath) == config)) )

@@ -178,6 +178,26 @@ class ConfiguratorBuilder
     return out_hash
   end
   
+
+  def set_library_build_info_filepaths(hash)
+
+    # Notes:
+    #  - Dependency on a change to our input configuration hash is handled elsewhere as it is 
+    #    dynamically formed during ceedling's execution
+    #  - Compiled vendor dependencies like cmock.o, unity.o, cexception.o are handled below;
+    #    here we're interested only in ceedling-based code generation dependencies
+    
+    ceedling_build_info_filepath = File.join(CEEDLING_RELEASE, 'build.info')
+    cmock_build_info_filepath    = FilePathUtils::form_ceedling_vendor_path('cmock/release', 'build.info')
+
+    out_hash = {
+      :ceedling_build_info_filepath => ceedling_build_info_filepath,
+      :cmock_build_info_filepath => cmock_build_info_filepath
+    }
+    
+    return out_hash
+  end
+
   
   def set_release_target(in_hash)
     return {} if (not in_hash[:project_release_build])
@@ -357,66 +377,27 @@ class ConfiguratorBuilder
   end
 
 
-  # gather up all files that if changed should cause generated files on-disk to be regenerated
-  def collect_code_generation_ceedling_dependency(hash)
-    dependencies = []
-
-    # Notes:
-    #  - Dependency on a change to our input configuration hash is handled elsewhere as it is 
-    #    dynamically formed during ceedling's execution
-    #  - Compiled vendor dependencies like cmock.o, unity.o, cexception.o are handled below;
-    #    here we're interested only in ceedling-based code generation dependencies
-    
-    ceedling_build_file = File.join(CEEDLING_RELEASE, 'build.info')
-
-    # ceedling itself: if it changes we gotta regenerate files
-    dependencies << ceedling_build_file
-    
-    out_hash = {
-      :collection_code_generation_ceedling_dependency => dependencies
-    }
-    
-    return out_hash
-  end
-
-
-  # gather up all files that if changed should cause generated mocks on-disk to be regenerated
-  def collect_code_generation_cmock_dependencies(hash)
-    dependencies = []
-
-    cmock_build_file = FilePathUtils::form_ceedling_vendor_path('cmock/release', 'build.info')
-
-    if (hash[:project_use_mocks])
-      dependencies << cmock_build_file
-      dependencies << hash[:cmock_unity_helper] if (hash[:cmock_unity_helper])
-    end
-    
-    out_hash = {
-      :collection_code_generation_cmock_dependencies => dependencies
-    }
-    
-    return out_hash
-  end
-
-
-  def collect_test_fixture_link_objects(hash)
+  def collect_test_fixture_extra_link_objects(in_hash)
     #  Note: Symbols passed to compiler at command line can change Unity and CException behavior / configuration;
     #    we also handle those dependencies elsewhere in compilation dependencies
     
-    # we don't include paths here because use of plugins or mixing compilers may require different build paths
-    hash[:test_fixture_link_objects] << 'CException.c' if (hash[:project_use_exceptions])
-    hash[:test_fixture_link_objects] << 'cmock.c'      if (hash[:project_use_mocks])
+    objects = [UNITY_C_FILE]
+    
+    # we don't include paths here because use of plugins or mixing different compilers may require different build paths
+    objects << CEXCEPTION_C_FILE if (in_hash[:project_use_exceptions])
+    objects << CMOCK_C_FILE      if (in_hash[:project_use_mocks])
     
     # if we're using mocks & a unity helper is defined & that unity helper includes a source file component (not only a header of macros),
     # then link in the unity_helper object file too
-    if ( hash[:project_use_mocks] and
-         hash[:cmock_unity_helper] and 
-         @file_wrapper.exist?(hash[:cmock_unity_helper].ext(hash[:extension_source])) )
-      hash[:test_fixture_link_objects] << File.basename(hash[:cmock_unity_helper])
+    if ( in_hash[:project_use_mocks] and
+         in_hash[:cmock_unity_helper] and 
+         @file_wrapper.exist?(in_hash[:cmock_unity_helper].ext(in_hash[:extension_source])) )
+      objects << File.basename(in_hash[:cmock_unity_helper])
     end
     
-    hash[:test_fixture_link_objects].map! { |link_object| link_object.ext(hash[:extension_object]) }
-    hash[:test_fixture_link_objects].uniq!
+    objects.map! { |object| File.join( in_hash[:project_test_build_output_path], object.ext(in_hash[:extension_object]) ) }
+    
+    return { :collection_test_fixture_extra_link_objects => objects }
   end
   
 end

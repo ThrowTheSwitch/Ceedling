@@ -53,7 +53,7 @@ namespace :options do
     desc "Merge #{option} project options."
     task option.downcase.to_sym do
       hash = @ceedling[:project_config_manager].merge_options( @ceedling[:setupinator].config_hash, option_path )
-      @ceedling[:setupinator].do_setup( @ceedling, hash )
+      @ceedling[:setupinator].do_setup( hash )
     end
   end
 

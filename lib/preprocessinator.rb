@@ -13,14 +13,14 @@ class Preprocessinator
   end
 
 
-  def preprocess_test_and_invoke_mocks(test)
+  def preprocess_test_and_invoke_test_mocks(test)
     @preprocessinator_helper.preprocess_includes(test, @preprocess_includes_proc)
 
     mocks_list = @preprocessinator_helper.assemble_mocks_list(test)
 
     @preprocessinator_helper.preprocess_mockable_headers(mocks_list, @preprocess_file_proc)
 
-    @task_invoker.invoke_mocks(mocks_list)
+    @task_invoker.invoke_test_mocks(mocks_list)
 
     @preprocessinator_helper.preprocess_test_file(test, @preprocess_file_proc)
     

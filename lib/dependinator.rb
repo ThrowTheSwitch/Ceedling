@@ -10,49 +10,94 @@ class Dependinator
 
 
 
-  def enhance_release_file_dependencies(files)
-    files.each { |file| @rake_wrapper[file].enhance( [@configurator.project_release_force_rebuild_filepath] ) } if (@project_config_manager.release_config_changed)
-  end
-
-
-  def setup_release_object_deep_dependencies(dependencies_list)
+  def load_release_object_deep_dependencies(dependencies_list)
     dependencies_list.each { |dependencies_file| @rake_wrapper.load_dependencies( dependencies_file ) }
   end
 
 
+  def enhance_release_file_dependencies(files)
+    files.each do |filepath| 
+      @rake_wrapper[filepath].enhance( [@configurator.project_release_force_rebuild_filepath] ) if (@project_config_manager.release_config_changed)
+      @rake_wrapper[filepath].enhance( [@configurator.ceedling_build_info_filepath] )
+    end
+  end
 
-  def setup_test_object_dependencies(files_list)
+
+
+  def load_test_object_deep_dependencies(files_list)
     dependencies_list = @file_path_utils.form_test_dependencies_filelist(files_list)
     dependencies_list.each { |dependencies_file| @rake_wrapper.load_dependencies(dependencies_file) }
   end
 
 
-  def enhance_test_vendor_objects_with_environment_dependencies
-    # if test environment changes, make sure these guys get rebuilt
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('unity.c')].enhance(@configurator.collection_code_generation_ceedling_dependency)
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('cmock.c')].enhance(@configurator.collection_code_generation_ceedling_dependency)      if (@configurator.project_use_mocks)
-    @rake_wrapper[@file_path_utils.form_test_build_object_filepath('CException.c')].enhance(@configurator.collection_code_generation_ceedling_dependency) if (@configurator.project_use_exceptions)
+  def enhance_runner_dependencies(runner_filepath)
+    @rake_wrapper[runner_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
+    @rake_wrapper[runner_filepath].enhance( [@configurator.ceedling_build_info_filepath] )    
+  end
+  
+
+  def enhance_shallow_include_lists_dependencies(include_lists)
+    include_lists.each do |include_list_filepath|
+      @rake_wrapper[include_list_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
+      @rake_wrapper[include_list_filepath].enhance( [@configurator.ceedling_build_info_filepath] )
+    end
   end
 
-  def enhance_test_build_object_with_environment_dependencies(sources)
-    sources.each do |source|
-      @rake_wrapper[@file_path_utils.form_test_build_object_filepath(source)].enhance( @test_environment_prerequisites )
+
+  def enhance_preprocesed_file_dependencies(files)
+    files.each do |filepath|
+      @rake_wrapper[filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
+      @rake_wrapper[filepath].enhance( [@configurator.ceedling_build_info_filepath] )
+    end
+  end
+
+
+  def enhance_mock_dependencies(mocks_list)
+    # if input configuration or ceedling changes, make sure these guys get rebuilt
+    mocks_list.each do |mock_filepath|
+      @rake_wrapper[mock_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
+      @rake_wrapper[mock_filepath].enhance( [@configurator.cmock_unity_helper] )                  if (@configurator.cmock_unity_helper)
+      @rake_wrapper[mock_filepath].enhance( [@configurator.ceedling_build_info_filepath] )
+      @rake_wrapper[mock_filepath].enhance( [@configurator.cmock_build_info_filepath] )
+    end
+  end
+
+
+  def enhance_test_fixture_extra_link_objects_dependencies
+    # if input configuration or ceedling changes, make sure these guys get rebuilt
+    @configurator.collection_test_fixture_extra_link_objects.each do |object_filepath|
+      @rake_wrapper[object_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
+      @rake_wrapper[object_filepath].enhance( [@configurator.ceedling_build_info_filepath] )
+    end
+  end
+
+
+  def enhance_dependencies_dependencies(dependencies)
+    dependencies.each do |dependencies_filepath|
+      @rake_wrapper[dependencies_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
+      @rake_wrapper[dependencies_filepath].enhance( [@configurator.ceedling_build_info_filepath] )
+    end
+  end
+
+
+  def enhance_test_build_object_dependencies(objects)
+    objects.each do |object_filepath|
+      @rake_wrapper[object_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
+      @rake_wrapper[object_filepath].enhance( [@configurator.ceedling_build_info_filepath] )
     end
   end
   
 
-  def setup_test_executable_dependencies(test)
-    dependencies = []
-    headers = @test_includes_extractor.lookup_includes_list(test)
-    sources = @file_finder.find_source_files_from_headers(headers)
-    
-    dependencies = @file_path_utils.form_test_build_objects_filelist(sources + @configurator.test_fixture_link_objects) # compiled vendor dependencies
-    dependencies.include( @file_path_utils.form_runner_object_filepath_from_test(test) )
-    dependencies.include( @file_path_utils.form_test_build_object_filepath(test) )
-    
-    dependencies.uniq!
+  def enhance_results_dependencies(result_filepath)
+    @rake_wrapper[result_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
+    @rake_wrapper[result_filepath].enhance( [@configurator.ceedling_build_info_filepath] )    
+  end
 
-    @rake_wrapper.create_file_task(@file_path_utils.form_test_executable_filepath(test), dependencies)
+
+  def setup_test_executable_dependencies(test, objects)
+    @rake_wrapper.create_file_task(
+      @file_path_utils.form_test_executable_filepath(test),
+      @configurator.collection_test_fixture_extra_link_objects + objects)
   end
 
 end

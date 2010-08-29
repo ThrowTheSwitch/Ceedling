@@ -29,8 +29,8 @@ task(:clobber => [:clean]) { CLOBBER.each { |fn| REMOVE_FILE_PROC.call(fn) } }
 
 PROJECT_BUILD_PATHS.each { |path| directory(path) }
 
-# create directories that hold build output and generated files
-task :directories => PROJECT_BUILD_PATHS
+# create directories that hold build output and generated files & touching rebuild dependency sources
+task(:directories => PROJECT_BUILD_PATHS) { @ceedling[:dependinator].touch_force_rebuild_files }
 
 
 # list paths discovered at load time

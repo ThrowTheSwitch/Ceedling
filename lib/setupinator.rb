@@ -36,7 +36,6 @@ class Setupinator
     @ceedling[:file_finder].prepare_search_sources
     @ceedling[:loginator].setup_log_filepath
     @ceedling[:project_config_manager].config_hash = config_hash
-    @ceedling[:dependinator].touch_force_rebuild_files
   end
 
 end

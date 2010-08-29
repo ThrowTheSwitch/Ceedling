@@ -25,6 +25,7 @@ class ConfiguratorSetup
     new_config.merge!(@configurator_builder.set_build_paths(new_config))
     new_config.merge!(@configurator_builder.set_force_build_filepaths(new_config))
     new_config.merge!(@configurator_builder.set_rakefile_components(new_config))
+    new_config.merge!(@configurator_builder.set_library_build_info_filepaths(new_config))
     new_config.merge!(@configurator_builder.set_release_target(new_config))
     new_config.merge!(@configurator_builder.collect_project_options(new_config))
     
@@ -42,10 +43,7 @@ class ConfiguratorSetup
     new_config.merge!(@configurator_builder.collect_all_existing_compilation_input(new_config))
     new_config.merge!(@configurator_builder.collect_test_and_vendor_defines(new_config))
     new_config.merge!(@configurator_builder.collect_release_and_vendor_defines(new_config))
-    new_config.merge!(@configurator_builder.collect_code_generation_ceedling_dependency(new_config))
-    new_config.merge!(@configurator_builder.collect_code_generation_cmock_dependencies(new_config))
-
-    @configurator_builder.collect_test_fixture_link_objects(new_config)
+    new_config.merge!(@configurator_builder.collect_test_fixture_extra_link_objects(new_config))
 
     return new_config
   end
