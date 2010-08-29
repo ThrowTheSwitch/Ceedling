@@ -6,11 +6,9 @@ desc "Build release target."
 task :release => [:directories] do
   objects = []
   
-  c_files = COLLECTION_ALL_SOURCE.clone
-  c_files << FilePathUtils.form_ceedling_vendor_path( CEXCEPTION_C_FILE ) if (PROJECT_USE_EXCEPTIONS)
-  
   @ceedling[:project_config_manager].process_release_config_change
-  objects.concat( @ceedling[:release_invoker].setup_and_invoke_c_objects( c_files ) )
+  objects.concat( @ceedling[:release_invoker].setup_and_invoke_c_objects( COLLECTION_ALL_SOURCE ) )
+  objects.concat( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
   objects.concat( @ceedling[:release_invoker].setup_and_invoke_asm_objects( COLLECTION_ALL_ASSEMBLY ) )
   
   file( PROJECT_RELEASE_BUILD_TARGET => objects )

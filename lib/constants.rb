@@ -15,9 +15,21 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
-CEXCEPTION_C_FILE = 'CException.c'
-UNITY_C_FILE      = 'unity.c'
-CMOCK_C_FILE      = 'cmock.c'
+CEXCEPTION_ROOT_PATH = 'c_exception'
+CEXCEPTION_LIB_PATH  = "#{CEXCEPTION_ROOT_PATH}/lib"
+CEXCEPTION_C_FILE    = 'CException.c'
+CEXCEPTION_H_FILE    = 'CException.h'
+
+UNITY_ROOT_PATH        = 'unity'
+UNITY_LIB_PATH         = "#{UNITY_ROOT_PATH}/src"
+UNITY_C_FILE           = 'unity.c'
+UNITY_H_FILE           = 'unity.h'
+UNITY_INTERNALS_H_FILE = 'unity_internals.h'
+
+CMOCK_ROOT_PATH = 'cmock'
+CMOCK_LIB_PATH  = "#{CMOCK_ROOT_PATH}/src"
+CMOCK_C_FILE    = 'cmock.c'
+CMOCK_H_FILE    = 'cmock.h'
 
 
 DEFAULT_CEEDLING_MAIN_PROJECT_FILE = 'project.yml' # main project file

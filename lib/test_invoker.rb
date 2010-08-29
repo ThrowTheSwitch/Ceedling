@@ -52,7 +52,7 @@ class TestInvoker
 
       # go
       @task_invoker.invoke_test_results( results_pass )
-      
+
       # store away what's been processed
       @mocks.concat( mock_list )
       @sources.concat( sources )

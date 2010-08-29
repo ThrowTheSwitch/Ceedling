@@ -6,15 +6,18 @@ desc "Display build environment version info."
 task :version do
   tools = [
       ['  Ceedling', CEEDLING_ROOT],
-      ['CException', File.join( CEEDLING_VENDOR, 'c_exception')],
-      ['     CMock', File.join( CEEDLING_VENDOR, 'cmock')],
-      ['     Unity', File.join( CEEDLING_VENDOR, 'unity')],
+      ['CException', File.join( CEEDLING_VENDOR, CEXCEPTION_ROOT_PATH)],
+      ['     CMock', File.join( CEEDLING_VENDOR, CMOCK_ROOT_PATH)],
+      ['     Unity', File.join( CEEDLING_VENDOR, CMOCK_ROOT_PATH)],
     ]
   
   tools.each do |tool|
-    version_string = @ceedling[:file_wrapper].read( File.join(tool[1], 'release', 'version.info') ).strip
-    build_string   = @ceedling[:file_wrapper].read( File.join(tool[1], 'release', 'build.info') ).strip
-    puts "#{tool[0]}:: #{version_string} (#{build_string})"
+    name      = tool[0]
+    base_path = tool[1]
+    
+    version_string = @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip
+    build_string   = @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'build.info') ).strip
+    puts "#{name}:: #{version_string} (#{build_string})"
   end
 end
 

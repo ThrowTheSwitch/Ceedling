@@ -81,19 +81,19 @@ class FilePathUtils
     return File.join( @configurator.project_release_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies) )
   end
   
-  def form_release_c_object_filepath(filepath)
+  def form_release_build_c_object_filepath(filepath)
     return File.join( @configurator.project_release_build_output_c_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
-  def form_release_asm_object_filepath(filepath)
+  def form_release_build_asm_object_filepath(filepath)
     return File.join( @configurator.project_release_build_output_asm_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
-  def form_release_c_objects_filelist(files)
+  def form_release_build_c_objects_filelist(files)
     return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_build_output_c_path}/%n#{@configurator.extension_object}")
   end
 
-  def form_release_asm_objects_filelist(files)
+  def form_release_build_asm_objects_filelist(files)
     return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_build_output_asm_path}/%n#{@configurator.extension_object}")
   end
   

@@ -165,6 +165,7 @@ class ConfiguratorBuilder
         [File.join(CEEDLING_LIB, 'tasks_base.rake'),
          File.join(CEEDLING_LIB, 'tasks_filesystem.rake'),
          File.join(CEEDLING_LIB, 'tasks_tests.rake'),
+         File.join(CEEDLING_LIB, 'tasks_vendor.rake'),
          File.join(CEEDLING_LIB, 'rules_tests.rake')]}
 
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_cmock.rake') if (in_hash[:project_use_mocks])
@@ -247,7 +248,7 @@ class ConfiguratorBuilder
 
   def collect_source_include_vendor_paths(in_hash)
     extra_paths = []
-    extra_paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (in_hash[:project_use_exceptions])
+    extra_paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
 
     return {
       :collection_paths_source_include_vendor => 
@@ -270,9 +271,9 @@ class ConfiguratorBuilder
   
   def collect_test_support_source_include_vendor_paths(in_hash)
     extra_paths = []
-    extra_paths << FilePathUtils::form_ceedling_vendor_path('unity/src')
-    extra_paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (in_hash[:project_use_exceptions])
-    extra_paths << FilePathUtils::form_ceedling_vendor_path('cmock/src')       if (in_hash[:project_use_mocks])
+    extra_paths << FilePathUtils::form_ceedling_vendor_path(UNITY_LIB_PATH)
+    extra_paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
+    extra_paths << FilePathUtils::form_ceedling_vendor_path(CMOCK_LIB_PATH)       if (in_hash[:project_use_mocks])
     extra_paths << in_hash[:cmock_mock_path]                                   if (in_hash[:project_use_mocks])
 
     return {
@@ -343,10 +344,10 @@ class ConfiguratorBuilder
       in_hash[:collection_paths_support] + 
       in_hash[:collection_paths_source] + 
       in_hash[:collection_paths_include] +
-      [FilePathUtils::form_ceedling_vendor_path('unity/src')]
+      [FilePathUtils::form_ceedling_vendor_path(UNITY_LIB_PATH)]
     
-    paths << FilePathUtils::form_ceedling_vendor_path('c_exception/lib') if (in_hash[:project_use_exceptions])
-    paths << FilePathUtils::form_ceedling_vendor_path('cmock/src') if (in_hash[:project_use_mocks])
+    paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
+    paths << FilePathUtils::form_ceedling_vendor_path(CMOCK_LIB_PATH) if (in_hash[:project_use_mocks])
 
     (paths).each do |path|
       all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
@@ -376,6 +377,15 @@ class ConfiguratorBuilder
     return {:collection_defines_release_and_vendor => release_defines}
   end
 
+
+  def collect_release_artifact_extra_link_objects(in_hash)
+    objects = []
+
+    objects << File.join( in_hash[:project_release_build_output_c_path], CEXCEPTION_C_FILE.ext(in_hash[:extension_object]) ) if (in_hash[:project_use_exceptions])
+    
+    return {:collection_release_artifact_extra_link_objects => objects}
+  end
+  
 
   def collect_test_fixture_extra_link_objects(in_hash)
     #  Note: Symbols passed to compiler at command line can change Unity and CException behavior / configuration;

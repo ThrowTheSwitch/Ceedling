@@ -8,7 +8,7 @@ rule(/#{PROJECT_RELEASE_DEPENDENCIES_PATH}\/#{'.+\\'+EXTENSION_DEPENDENCIES}$/ =
   @ceedling[:generator].generate_dependencies_file(
   	TOOLS_RELEASE_DEPENDENCIES_GENERATOR,
   	dep.source,
-  	@ceedling[:file_path_utils].form_release_c_object_filepath(dep.source),
+  	@ceedling[:file_path_utils].form_release_build_c_object_filepath(dep.source),
   	dep.name)
 end
 

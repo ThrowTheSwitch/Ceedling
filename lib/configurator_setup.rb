@@ -43,6 +43,7 @@ class ConfiguratorSetup
     new_config.merge!(@configurator_builder.collect_all_existing_compilation_input(new_config))
     new_config.merge!(@configurator_builder.collect_test_and_vendor_defines(new_config))
     new_config.merge!(@configurator_builder.collect_release_and_vendor_defines(new_config))
+    new_config.merge!(@configurator_builder.collect_release_artifact_extra_link_objects(new_config))
     new_config.merge!(@configurator_builder.collect_test_fixture_extra_link_objects(new_config))
 
     return new_config
