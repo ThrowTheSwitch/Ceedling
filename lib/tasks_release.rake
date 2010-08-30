@@ -4,14 +4,14 @@ require 'file_path_utils'
 
 desc "Build release target."
 task :release => [:directories] do
-  objects = []
+  core_objects  = []
+  extra_objects = @ceedling[:file_path_utils].form_release_build_c_objects_filelist( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
   
   @ceedling[:project_config_manager].process_release_config_change
-  objects.concat( @ceedling[:release_invoker].setup_and_invoke_c_objects( COLLECTION_ALL_SOURCE ) )
-  objects.concat( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
-  objects.concat( @ceedling[:release_invoker].setup_and_invoke_asm_objects( COLLECTION_ALL_ASSEMBLY ) )
+  core_objects.concat( @ceedling[:release_invoker].setup_and_invoke_c_objects( COLLECTION_ALL_SOURCE ) )
+  core_objects.concat( @ceedling[:release_invoker].setup_and_invoke_asm_objects( COLLECTION_ALL_ASSEMBLY ) )
   
-  file( PROJECT_RELEASE_BUILD_TARGET => objects )
+  file( PROJECT_RELEASE_BUILD_TARGET => (core_objects + extra_objects) )
   Rake::Task[PROJECT_RELEASE_BUILD_TARGET].invoke
 end
 
