@@ -381,7 +381,8 @@ class ConfiguratorBuilder
   def collect_release_artifact_extra_link_objects(in_hash)
     objects = []
 
-    objects << File.join( in_hash[:project_release_build_output_c_path], CEXCEPTION_C_FILE.ext(in_hash[:extension_object]) ) if (in_hash[:project_use_exceptions])
+    # no build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
+    objects << CEXCEPTION_C_FILE.ext( in_hash[:extension_object] ) if (in_hash[:project_use_exceptions])
     
     return {:collection_release_artifact_extra_link_objects => objects}
   end
@@ -404,8 +405,9 @@ class ConfiguratorBuilder
          @file_wrapper.exist?(in_hash[:cmock_unity_helper].ext(in_hash[:extension_source])) )
       objects << File.basename(in_hash[:cmock_unity_helper])
     end
-    
-    objects.map! { |object| File.join( in_hash[:project_test_build_output_path], object.ext(in_hash[:extension_object]) ) }
+
+    # no build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
+    objects.map! { |object| object.ext(in_hash[:extension_object]) }
     
     return { :collection_test_fixture_extra_link_objects => objects }
   end

@@ -237,13 +237,13 @@ preprocessinator_extractor:
 
 test_invoker:
   compose:
+    - configurator
     - test_invoker_helper
     - streaminator
     - preprocessinator
     - task_invoker
     - dependinator
     - project_config_manager
-    - file_finder
     - file_path_utils
 
 test_invoker_helper:

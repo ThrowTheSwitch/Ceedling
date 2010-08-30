@@ -6,7 +6,7 @@ class TestInvoker
 
   attr_reader :sources, :tests, :mocks
 
-  constructor :test_invoker_helper, :streaminator, :preprocessinator, :task_invoker, :dependinator, :project_config_manager, :file_finder, :file_path_utils
+  constructor :configurator, :test_invoker_helper, :streaminator, :preprocessinator, :task_invoker, :dependinator, :project_config_manager, :file_path_utils
 
   def setup
     @sources = []
@@ -29,8 +29,9 @@ class TestInvoker
       runner       = @file_path_utils.form_runner_filepath_from_test( test )
       mock_list    = @preprocessinator.preprocess_test_and_invoke_test_mocks( test )
       sources      = @test_invoker_helper.extract_sources( test )
-      components   = [test, runner] + mock_list + sources
-      objects      = @file_path_utils.form_test_build_objects_filelist( components )
+      extras       = @configurator.collection_test_fixture_extra_link_objects
+      core         = [test, runner] + mock_list + sources
+      objects      = @file_path_utils.form_test_build_objects_filelist( core + extras )
       results_pass = @file_path_utils.form_pass_results_filepath( test )
       results_fail = @file_path_utils.form_fail_results_filepath( test )
       
@@ -42,10 +43,9 @@ class TestInvoker
       @task_invoker.invoke_test_runner( runner )
 
       # load up auxiliary dependencies so deep changes cause rebuilding appropriately
-      @test_invoker_helper.process_auxiliary_dependencies(components)
+      @test_invoker_helper.process_auxiliary_dependencies( core )
 
       @dependinator.enhance_test_build_object_dependencies( objects )
-      @dependinator.enhance_test_fixture_extra_link_objects_dependencies
 
       # associate object files with executable
       @dependinator.setup_test_executable_dependencies( test, objects )

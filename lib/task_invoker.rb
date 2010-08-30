@@ -11,7 +11,11 @@ class TaskInvoker
     return @rake_utils.task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}/)
   end
 
+  def invoked?(regex)
+    return @rake_utils.task_invoked?(regex)
+  end
 
+  
   def invoke_test_mocks(mocks)
     @dependinator.enhance_mock_dependencies( mocks )
     mocks.each { |mock| @rake_wrapper[mock].invoke }

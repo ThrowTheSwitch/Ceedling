@@ -63,15 +63,6 @@ class Dependinator
   end
 
 
-  def enhance_test_fixture_extra_link_objects_dependencies
-    # if input configuration or ceedling changes, make sure these guys get rebuilt
-    @configurator.collection_test_fixture_extra_link_objects.each do |object_filepath|
-      @rake_wrapper[object_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
-      @rake_wrapper[object_filepath].enhance( [@configurator.ceedling_build_info_filepath] )
-    end
-  end
-
-
   def enhance_dependencies_dependencies(dependencies)
     dependencies.each do |dependencies_filepath|
       @rake_wrapper[dependencies_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
@@ -95,9 +86,7 @@ class Dependinator
 
 
   def setup_test_executable_dependencies(test, objects)
-    @rake_wrapper.create_file_task(
-      @file_path_utils.form_test_executable_filepath(test),
-      @configurator.collection_test_fixture_extra_link_objects + objects)
+    @rake_wrapper.create_file_task( @file_path_utils.form_test_executable_filepath(test), objects)
   end
 
 end
