@@ -8,7 +8,7 @@ class TaskInvoker
   end
   
   def release_invoked?
-    return @rake_utils.task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}/)
+    return @rake_utils.task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}(:|$)/)
   end
 
   def invoked?(regex)
