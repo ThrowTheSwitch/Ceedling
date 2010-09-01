@@ -40,11 +40,11 @@ PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 
 # end block always executed following rake run
 END {
+  # cache our input configuration to use in comparison upon next execution
+  @ceedling[:cacheinator].cache_project_config
+  
 	# only perform these final steps if we got here without runtime exceptions or errors
 	if (@ceedling[:system_wrapper].ruby_success)
-    
-    # cache our input configuration to use in comparison upon next execution
-    @ceedling[:cacheinator].cache_project_config
 
     # tell all our plugins the build is done and process results
 	  @ceedling[:plugin_manager].post_build
