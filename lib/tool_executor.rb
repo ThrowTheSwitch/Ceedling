@@ -17,7 +17,7 @@ class ToolExecutor
 
     # basic premise is to iterate top to bottom through arguments using '$' as 
     #  a string replacement indicator to expand globals or inline yaml arrays
-    #  into command line arguments via format strings
+    #  into command line arguments via substitution strings
     return [
       @tool_executor_helper.osify_path_separators( expandify_element(@executable, *args) ),
       build_arguments(tool_config[:arguments], *args),
@@ -60,8 +60,8 @@ class ToolExecutor
         # if we find a simple string then look for string replacement operators
         #  and expand with the parameters in this method's argument list
         when String then argument = expandify_element(element, *args)
-        # if we find a hash, then we grab the key as a format string and expand the
-        #  hash's value(s) within that format string
+        # if we find a hash, then we grab the key as a substitution string and expand the
+        #  hash's value(s) within that substitution string
         when Hash   then argument = dehashify_argument_elements(element)
       end
 
@@ -119,18 +119,18 @@ class ToolExecutor
   end
 
   
-  # handle argument hash: keys are format strings, values are data to be expanded within format strings
+  # handle argument hash: keys are substitution strings, values are data to be expanded within substitution strings
   def dehashify_argument_elements(hash)
     build_string = ''
     elements = []
 
-    # grab the format string (hash key)
-    format = hash.keys[0].to_s
-    # grab the string(s) to squirt into the format string (hash value)
+    # grab the substitution string (hash key)
+    substitution = hash.keys[0].to_s
+    # grab the string(s) to squirt into the substitution string (hash value)
     expand = hash[hash.keys[0]]
 
     if (expand.nil?)
-      @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' could not expand nil elements for format string '#{format}'.", Verbosity::ERRORS)
+      @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' could not expand nil elements for substitution string '#{substitution}'.", Verbosity::ERRORS)
       raise
     end
     
@@ -150,16 +150,21 @@ class ToolExecutor
         else
           elements << const
         end
-      # plain ol' string or array
-      else
+      elsif (item.class == Array)
         elements << item
+      elsif (item.class == String)
+        @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' cannot expand nonexistent value '#{item}' for substitution string '#{substitution}'.", Verbosity::ERRORS)
+        raise        
+      else
+        @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' cannot expand value having type '#{item.class}' for substitution string '#{substitution}'.", Verbosity::ERRORS)
+        raise        
       end
     end
     
-    # expand elements (whether string or array) into format string & replace escaped '\$'
+    # expand elements (whether string or array) into substitution string & replace escaped '\$'
     elements.flatten!
     elements.each do |element|
-      build_string.concat( format.sub(/([^\\]*)\$/, "\\1#{element}") ) # don't replace escaped '\$' but allow us to replace just a lonesome '$'
+      build_string.concat( substitution.sub(/([^\\]*)\$/, "\\1#{element}") ) # don't replace escaped '\$' but allow us to replace just a lonesome '$'
       build_string.gsub!(/\\\$/, '$')
       build_string.concat(' ')
     end
