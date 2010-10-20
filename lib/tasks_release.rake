@@ -4,6 +4,9 @@ require 'file_path_utils'
 
 desc "Build release target."
 task :release => [:directories] do
+  header = "Release build '#{File.basename(PROJECT_RELEASE_BUILD_TARGET)}'"
+  @ceedling[:streaminator].stdout_puts("\n\n#{header}\n#{'-' * header.length}")  
+  
   core_objects  = []
   extra_objects = @ceedling[:file_path_utils].form_release_build_c_objects_filelist( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
   
