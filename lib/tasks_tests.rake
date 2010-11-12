@@ -31,4 +31,34 @@ namespace TESTS_TASKS_ROOT_NAME.to_sym do
     @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, {:force_run => false})
   end
   
+  desc "Run tests by matching regular expression pattern."
+  task :pattern, :regex do |t, args|
+    matches = []
+    
+    COLLECTION_ALL_TESTS.each do |test|
+      matches << test if test =~ /#{args.regex}/
+    end
+  
+    if (matches.size > 0)
+      @ceedling[:test_invoker].setup_and_invoke(matches, {:force_run => false})
+    else
+      @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
+    end
+  end
+
+  desc "Run tests whose path contains [dir] or [dir] string."
+  task :path, :dir do |t, args|
+    matches = []
+    
+    COLLECTION_ALL_TESTS.each do |test|
+      matches << test if File.dirname(test).include?(args.dir.gsub(/\\/, '/'))
+    end
+  
+    if (matches.size > 0)
+      @ceedling[:test_invoker].setup_and_invoke(matches, {:force_run => false})
+    else
+      @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
+    end
+  end
+  
 end
