@@ -28,30 +28,30 @@ class Generator
     @tool_executor.exec(command_line)
   end
 
-  def generate_mock(header_file)
-    arg_hash = {:header_file => header_file}
+  def generate_mock(header_filepath)
+    arg_hash = {:header_file => header_filepath}
     @plugin_manager.pre_mock_execute(arg_hash)
     
-    @cmock_builder.cmock.setup_mocks( @preprocessinator.form_file_path(arg_hash[:header_file]) )
+    @cmock_builder.cmock.setup_mocks( arg_hash[:header_file] )
 
     @plugin_manager.post_mock_execute(arg_hash)
   end
 
-  def generate_test_runner(raw_test_file, test_runner_file)
-    test_file_to_parse = @preprocessinator.form_file_path(raw_test_file)
+  # test_filepath may be either preprocessed test file or original test file
+  def generate_test_runner(test_filepath, runner_filepath)
+    arg_hash = {:test_file => test_filepath, :runner_file => runner_filepath}
 
-    arg_hash = {:test_file => test_file_to_parse, :runner_file => test_runner_file}
     @plugin_manager.pre_runner_execute(arg_hash)
     
     # collect info we need
     module_name = File.basename(arg_hash[:test_file])
-    test_cases  = @generator_test_runner.find_test_cases(arg_hash[:test_file], raw_test_file)
+    test_cases  = @generator_test_runner.find_test_cases( @file_finder.find_test_from_runner_path(runner_filepath) )
     mock_list   = @test_includes_extractor.lookup_raw_mock_list(arg_hash[:test_file])
-    
-    @streaminator.stdout_puts("Creating test runner for #{module_name}...", Verbosity::NORMAL)
 
+    @streaminator.stdout_puts("Generating runner for #{module_name}...", Verbosity::NORMAL)
+    
     # build runner file
-    @file_wrapper.open(arg_hash[:runner_file], 'w') do |output|
+    @file_wrapper.open(runner_filepath, 'w') do |output|
       @generator_test_runner.create_header(output, mock_list)
       @generator_test_runner.create_externs(output, test_cases)
       @generator_test_runner.create_mock_management(output, mock_list)

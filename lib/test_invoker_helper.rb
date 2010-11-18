@@ -4,19 +4,11 @@ require 'rake' # for ext()
 
 class TestInvokerHelper
 
-  constructor :configurator, :task_invoker, :dependinator, :test_includes_extractor, :file_finder, :file_path_utils, :file_wrapper, :rake_wrapper
+  constructor :configurator, :task_invoker, :dependinator, :test_includes_extractor, :file_finder, :file_path_utils, :streaminator, :file_wrapper
 
   def clean_results(results, options)
     @file_wrapper.rm_f( results[:fail] )
     @file_wrapper.rm_f( results[:pass] ) if (options[:force_run])
-  end
-
-  def preprocessing_setup_for_runner(runner)
-    return if (not @configurator.project_use_test_preprocessor)
-
-    @rake_wrapper.create_file_task(
-      runner,
-      @file_path_utils.form_preprocessed_file_filepath( @file_path_utils.form_test_filepath_from_runner(runner) ))
   end
 
   def process_auxiliary_dependencies(files)
@@ -34,6 +26,16 @@ class TestInvokerHelper
     includes.each { |include| sources << @file_finder.find_source_file(include, {:should_complain => false}) }
     
     return sources.compact
+  end
+  
+  def process_exception(exception)
+    if (exception.message =~ /Don't know how to build task '(.+)'/i)
+      @streaminator.stderr_puts("ERROR: Rake could not find file referenced in source or test: '#{$1}'.")
+      @streaminator.stderr_puts("Possible stale dependency due to a file name change, etc. Execute 'clean' task and try again.") if (@configurator.project_use_auxiliary_dependencies)
+      raise ''
+    else
+      raise exception
+    end
   end
   
 end

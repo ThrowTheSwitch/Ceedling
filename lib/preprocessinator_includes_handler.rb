@@ -12,7 +12,8 @@ class PreprocessinatorIncludesHandler
 
   # ask the preprocessor for a make-style dependency rule of only the headers the source file immediately includes
   def form_shallow_dependencies_rule(filepath)
-    temp_filepath = @file_path_utils.form_temp_path(filepath)
+    # change filename (prefix of '_') to prevent preprocessor from finding include files in temp directory containing file it's scanning
+    temp_filepath = @file_path_utils.form_temp_path(filepath, '_')
     
     # read the file and replace all include statements with a decorated version
     # (decorating the names creates file names that don't exist, thus preventing the preprocessor 
@@ -25,7 +26,7 @@ class PreprocessinatorIncludesHandler
     #  ignore the fact that it can't find the included files
     command_line     = @tool_executor.build_command_line(@configurator.tools_test_includes_preprocessor, temp_filepath)
     command_response = @tool_executor.exec(command_line)
-    @file_wrapper.rm_f(temp_filepath)
+    
     return command_response
   end
   

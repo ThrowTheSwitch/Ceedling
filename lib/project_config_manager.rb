@@ -3,10 +3,10 @@ require 'constants'
 
 class ProjectConfigManager
 
-  attr_reader :options_files, :release_config_changed, :test_config_changed
+  attr_reader   :options_files, :release_config_changed, :test_config_changed
   attr_accessor :config_hash
 
-  constructor :configurator, :yaml_wrapper, :file_wrapper
+  constructor :cacheinator, :yaml_wrapper
 
 
   def setup
@@ -22,24 +22,17 @@ class ProjectConfigManager
     return config_hash
   end 
   
+
   
   def process_release_config_change
-    @release_config_changed = config_changed_since_last_build?( @configurator.project_release_build_cache_path, @config_hash )
+    # has project configuration changed since last release build
+    @release_config_changed = @cacheinator.diff_cached_release_config?( @config_hash )
   end
 
 
   def process_test_config_change
-    @test_config_changed = config_changed_since_last_build?( @configurator.project_test_build_cache_path, @config_hash )
-  end
-
-  private
-    
-  def config_changed_since_last_build?(path, config)
-    filepath = File.join(path, "#{INPUT_CONFIGURATION_CACHE_FILE}")
-    
-    return true if ( not @file_wrapper.exist?(filepath) )
-    return true if ( (@file_wrapper.exist?(filepath)) and (!(@yaml_wrapper.load(filepath) == config)) )
-    return false
+    # has project configuration changed since last test build
+    @test_config_changed = @cacheinator.diff_cached_test_config?( @config_hash )
   end
 
 end

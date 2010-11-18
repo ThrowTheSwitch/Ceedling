@@ -34,15 +34,19 @@ project_file_loader:
 
 project_config_manager:
   compose:
-    - configurator
+    - cacheinator
     - yaml_wrapper
-    - file_wrapper
 
 cacheinator:
   compose:
-    - configurator
-    - setupinator
-    - task_invoker
+    - cacheinator_helper
+    - file_path_utils
+    - file_wrapper
+    - yaml_wrapper
+
+cacheinator_helper:
+  compose:
+    - file_wrapper
     - yaml_wrapper
 
 tool_executor:
@@ -136,6 +140,7 @@ file_finder:
   compose:
     - configurator
     - file_finder_helper
+    - cacheinator
     - file_path_utils
     - file_wrapper
     - yaml_wrapper
@@ -184,6 +189,7 @@ generator_test_results_sanity_checker:
 generator_test_runner:
   compose:
     - configurator
+    - file_path_utils
     - file_wrapper
 
 dependinator:
@@ -191,14 +197,12 @@ dependinator:
     - configurator
     - project_config_manager
     - test_includes_extractor
-    - file_finder            
     - file_path_utils        
     - rake_wrapper
     - file_wrapper
 
 preprocessinator:
   compose:
-    - configurator    
     - preprocessinator_helper          
     - preprocessinator_includes_handler
     - preprocessinator_file_handler
@@ -254,8 +258,8 @@ test_invoker_helper:
     - test_includes_extractor
     - file_finder
     - file_path_utils
+    - streaminator
     - file_wrapper
-    - rake_wrapper
 
 release_invoker:
   compose:

@@ -3,7 +3,7 @@ require 'rake' # for adding ext() method to string
 
 class FileFinder
 
-  constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper
+  constructor :configurator, :file_finder_helper, :cacheinator, :file_path_utils, :file_wrapper, :yaml_wrapper
 
   def prepare_search_sources
     @all_test_source_and_header_file_collection = 
@@ -13,7 +13,7 @@ class FileFinder
   end
 
 
-  def find_mockable_header(mock_file)
+  def find_header_file(mock_file)
     header = File.basename(mock_file).sub(/#{@configurator.cmock_mock_prefix}/, '').ext(@configurator.extension_header)
 
     found_path = @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_headers)
@@ -22,16 +22,17 @@ class FileFinder
   end
 
 
-  def find_mockable_headers(mock_files)
-    headers = []
+  def find_header_input_for_mock_file(mock_file)
+    found_path = find_header_file(mock_file)
+    mock_input = found_path
     
-    mock_files.each do |mock_file|
-      headers << find_mockable_header(mock_file)
+    if (@configurator.project_use_test_preprocessor)
+      mock_input = @cacheinator.diff_cached_test_file( @file_path_utils.form_preprocessed_file_filepath( found_path ) )
     end
     
-    return headers
+    return mock_input
   end
-
+  
 
   def find_source_from_test(test)
     test_prefix  = @configurator.project_test_file_prefix
@@ -50,8 +51,20 @@ class FileFinder
     test_file = File.basename(runner_path).sub(/#{@configurator.test_runner_file_suffix}#{'\\'+extension_source}/, extension_source)
     
     found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests)
-    
+
     return found_path
+  end
+
+  
+  def find_test_input_for_runner_file(runner_path)
+    found_path   = find_test_from_runner_path(runner_path)
+    runner_input = found_path
+    
+    if (@configurator.project_use_test_preprocessor)
+      runner_input = @cacheinator.diff_cached_test_file( @file_path_utils.form_preprocessed_file_filepath( found_path ) )
+    end
+    
+    return runner_input
   end
   
 

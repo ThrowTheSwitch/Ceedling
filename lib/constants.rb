@@ -4,7 +4,8 @@ class Verbosity
   ERRORS      = 1  # only errors
   COMPLAIN    = 2  # spit out errors and warnings/notices
   NORMAL      = 3  # errors, warnings/notices, standard status messages
-  OBNOXIOUS   = 4  # all messages including extra verbose output (likely used for debugging)
+  OBNOXIOUS   = 4  # all messages including extra verbose output (used for lite debugging / verification)
+  DEBUG       = 5  # special extra verbose output for hardcore debugging
 end
 
 class StdErrRedirect

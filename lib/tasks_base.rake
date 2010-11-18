@@ -38,13 +38,20 @@ task :verbosity, :level do |t, args|
   @ceedling[:configurator].project_verbosity = verbosity_level
 
   # control rake's verbosity with new setting
-  verbose( ((verbosity_level == Verbosity::OBNOXIOUS) ? true : false) )
+  verbose( ((verbosity_level >= Verbosity::OBNOXIOUS) ? true : false) )
 end
 
 
 desc "Enable logging"
 task :logging do
   @ceedling[:configurator].project_logging = true
+end
+
+
+# non advertised debug task
+task :debug do
+  Rake::Task[:verbosity].invoke(Verbosity::DEBUG)
+  @ceedling[:configurator].project_debug = true
 end
 
 

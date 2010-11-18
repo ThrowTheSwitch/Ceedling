@@ -3,7 +3,7 @@ class Preprocessinator
 
   attr_reader :preprocess_file_proc
   
-  constructor :configurator, :preprocessinator_helper, :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_path_utils, :yaml_wrapper
+  constructor :preprocessinator_helper, :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_path_utils, :yaml_wrapper
 
 
   def setup
@@ -38,11 +38,6 @@ class Preprocessinator
   def preprocess_file(filepath)
     @preprocessinator_includes_handler.invoke_shallow_includes_list(filepath)
     @preprocessinator_file_handler.preprocess_file( filepath, @yaml_wrapper.load(@file_path_utils.form_preprocessed_includes_list_filepath(filepath)) )
-  end
-
-  def form_file_path(filepath)
-    return @file_path_utils.form_preprocessed_file_filepath(filepath) if (@configurator.project_use_test_preprocessor)
-    return filepath
   end
 
 end

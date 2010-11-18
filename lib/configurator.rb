@@ -8,10 +8,11 @@ require 'deep_merge'
 class Configurator
 
   attr_reader :project_config_hash, :environment, :script_plugins, :rake_plugins, :config_plugins
-  attr_accessor :project_logging, :project_verbosity
+  attr_accessor :project_logging, :project_debug, :project_verbosity
   
   constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
-    @project_logging = false
+    @project_logging   = false
+    @project_debug     = false
     @project_verbosity = Verbosity::NORMAL
   end
   

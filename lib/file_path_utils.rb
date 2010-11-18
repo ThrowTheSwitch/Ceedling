@@ -3,6 +3,13 @@ require 'rake' # for ext()
 require 'fileutils'
 require 'system_wrapper'
 
+# global utility methods (for plugins, project files, etc.)
+def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)
+  filename = File.basename(original_filepath)
+  filename.replace(filename.ext(new_extension)) if (!new_extension.nil?)
+  return File.join( destination_path.gsub(/\\/, '/'), filename )
+end
+
 class FilePathUtils
 
   GLOB_MATCHER = /[\*\?\{\}\[\]]/
@@ -72,11 +79,15 @@ class FilePathUtils
 
   ######### instance methods ##########
 
-  def form_temp_path(filepath)
-    return File.join( @configurator.project_temp_path, File.basename(filepath) )    
+  def form_temp_path(filepath, prefix='')
+    return File.join( @configurator.project_temp_path, prefix + File.basename(filepath) )    
   end
-
+  
   ### release ###
+  def form_release_build_cache_path(filepath)
+    return File.join( @configurator.project_release_build_cache_path, File.basename(filepath) )    
+  end
+  
   def form_release_dependencies_filepath(filepath)
     return File.join( @configurator.project_release_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies) )
   end
@@ -102,6 +113,10 @@ class FilePathUtils
   end
   
   ### tests ###
+  def form_test_build_cache_path(filepath)
+    return File.join( @configurator.project_test_build_cache_path, File.basename(filepath) )    
+  end
+  
   def form_pass_results_filepath(filepath)
     return File.join( @configurator.project_test_results_path, File.basename(filepath).ext(@configurator.extension_testpass) )
   end
@@ -147,7 +162,7 @@ class FilePathUtils
     return (@file_wrapper.instantiate_file_list(mocks)).pathmap("#{@configurator.project_test_preprocess_files_path}/%{#{@configurator.cmock_mock_prefix},}n#{@configurator.extension_header}")
   end
 
-  def form_mocks_filelist(mocks)
+  def form_mocks_source_filelist(mocks)
     return (@file_wrapper.instantiate_file_list(mocks)).pathmap("#{@configurator.cmock_mock_path}/%n#{@configurator.extension_source}")
   end
 

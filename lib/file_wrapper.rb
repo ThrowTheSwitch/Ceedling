@@ -2,6 +2,7 @@ require 'rubygems'
 require 'rake' # for FileList
 require 'constants'
 require 'fileutils'
+require 'ftools'
 
 
 class FileWrapper
@@ -27,14 +28,22 @@ class FileWrapper
     return Dir.glob(glob)
   end
 
-  def rm_f(filepath)
-    FileUtils.rm_f(filepath)
+  def rm_f(filepath, options={})
+    FileUtils.rm_f(filepath, options)
   end
 
+  def rm_r(filepath, options={})
+    FileUtils.rm_r(filepath, options={})
+  end
+  
   def cp(source, destination, options={})
     FileUtils.cp(source, destination, options)
   end
 
+  def compare(from, to)
+    return File.compare(from, to)
+  end
+  
   def open(filepath, flags)
     File.open(filepath, flags) do |file|
       yield(file)
