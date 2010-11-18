@@ -32,12 +32,10 @@ namespace TESTS_TASKS_ROOT_NAME.to_sym do
   end
   
   desc "Run tests by matching regular expression pattern."
-  task :pattern, :regex do |t, args|
+  task :pattern, [:regex] => [:directories] do |t, args|
     matches = []
     
-    COLLECTION_ALL_TESTS.each do |test|
-      matches << test if test =~ /#{args.regex}/
-    end
+    COLLECTION_ALL_TESTS.each { |test| matches << test if (test =~ /#{args.regex}/) }
   
     if (matches.size > 0)
       @ceedling[:test_invoker].setup_and_invoke(matches, {:force_run => false})
@@ -47,12 +45,10 @@ namespace TESTS_TASKS_ROOT_NAME.to_sym do
   end
 
   desc "Run tests whose path contains [dir] or [dir] string."
-  task :path, :dir do |t, args|
+  task :path, [:dir] => [:directories] do |t, args|
     matches = []
     
-    COLLECTION_ALL_TESTS.each do |test|
-      matches << test if File.dirname(test).include?(args.dir.gsub(/\\/, '/'))
-    end
+    COLLECTION_ALL_TESTS.each { |test| matches << test if File.dirname(test).include?(args.dir.gsub(/\\/, '/')) }
   
     if (matches.size > 0)
       @ceedling[:test_invoker].setup_and_invoke(matches, {:force_run => false})
