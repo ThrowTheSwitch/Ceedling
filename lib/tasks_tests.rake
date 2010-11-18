@@ -6,6 +6,15 @@ namespace TESTS_TASKS_ROOT_NAME.to_sym do
     @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS)
   end
 
+  desc "Run single test ([*] real test or source file name, no path)."
+  task :* do
+    message = "\nOops! '#{TESTS_TASKS_ROOT_NAME}:*' isn't a real task. " +
+              "Use a real test or source file name (no path) in place of the wildcard.\n" +
+              "Example: rake #{TESTS_TASKS_ROOT_NAME}:foo.c\n\n"
+  
+    @ceedling[:streaminator].stdout_puts( message )
+  end
+  
   COLLECTION_ALL_TESTS.each do |test|
     # by test file name
     name = File.basename(test)
