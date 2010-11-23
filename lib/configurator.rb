@@ -63,6 +63,22 @@ class Configurator
     config.replace(new_config)
   end
   
+
+  def populate_unity_defines(config)
+    run_test = true
+  
+    config[:unity][:defines].each do |define|
+      if (define =~ /RUN_TEST\s*\(.+\)\s*=/)
+        run_test = false
+        break
+      end
+    end
+  
+    if (run_test)
+      config[:unity][:defines] << "\"RUN_TEST(func, line_num)=TestRun(func, #func, line_num)\""
+    end
+  end
+  
   
   def populate_cmock_defaults(config)
     # cmock has its own internal defaults handling, but we need to set these specific values

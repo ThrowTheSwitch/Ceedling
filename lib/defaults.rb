@@ -207,9 +207,8 @@ DEFAULT_CEEDLING_CONFIG = {
       :defines => []
     },
 
-    # filled out elsewhere programmatically before passed off to cmock itself
     :cmock => {
-      :defines => [] #only relevant to ceedling though passed to cmock
+      :defines => []
     },
 
     :cexception => {

@@ -157,15 +157,18 @@ class GeneratorTestRunner
       tab = '      ' if (use_exceptions)
 
       output << "\n"
-      output << "static void runTest(UnityTestFunction test)\n"
+      output << "static void TestRun(UnityTestFunction Func, const char* FuncName, const int FuncLineNum)\n"
       output << "{\n"
+      output << "  Unity.CurrentTestName = FuncName;\n"
+      output << "  Unity.CurrentTestLineNumber = FuncLineNum;\n"
+      output << "  Unity.NumberOfTests++;\n"
       output << "  if (TEST_PROTECT())\n"
       output << "  {\n"
       output << "    CEXCEPTION_T e;\n"   if use_exceptions
       output << "    Try {\n"             if use_exceptions
       output << "#{tab}CMock_Init();\n"   unless (mock_list.empty?) 
       output << "#{tab}setUp();\n"
-      output << "#{tab}test();\n"
+      output << "#{tab}Func();\n"
       output << "#{tab}CMock_Verify();\n" unless (mock_list.empty?)
       output << "    } Catch(e) { TEST_FAIL_MESSAGE(\"Unhandled Exception!\"); }\n" if use_exceptions
       output << "  }\n"
@@ -174,6 +177,7 @@ class GeneratorTestRunner
       output << "  {\n"
       output << "    tearDown();\n"
       output << "  }\n"
+      output << "  UnityConcludeTest();\n"
       output << "}\n"
     end
     
