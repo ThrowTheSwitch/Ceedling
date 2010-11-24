@@ -36,7 +36,7 @@ class ToolExecutor
 
     raise if ((shell_result[:exit_code] != 0) and options[:boom])
 
-    return shell_result[:output]
+    return shell_result
   end
 
   

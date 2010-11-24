@@ -67,9 +67,9 @@ class Generator
     @plugin_manager.pre_compile_execute(arg_hash)
 
     @streaminator.stdout_puts("Compiling #{File.basename(arg_hash[:source])}...", Verbosity::NORMAL)
-    output = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:source], arg_hash[:object]) )
+    shell_result = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:source], arg_hash[:object]) )
 
-    arg_hash[:tool_output] = output
+    arg_hash[:shell_result] = shell_result
     @plugin_manager.post_compile_execute(arg_hash)
   end
 
@@ -78,9 +78,9 @@ class Generator
     @plugin_manager.pre_link_execute(arg_hash)
     
     @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
-    output = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:objects], arg_hash[:executable]) )
+    shell_result = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:objects], arg_hash[:executable]) )
     
-    arg_hash[:tool_output] = output
+    arg_hash[:shell_result] = shell_result
     @plugin_manager.post_link_execute(arg_hash)
   end
 
@@ -89,16 +89,19 @@ class Generator
     @plugin_manager.pre_test_execute(arg_hash)
     
     @streaminator.stdout_puts("Running #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
-    output = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:executable]) )
     
-    if (output.nil? or output.strip.empty?)
+    # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
+    # so that we can run all tests and collect all results
+    shell_result = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:executable]), [], {:boom => false} )
+    
+    if (shell_result[:output].nil? or shell_result[:output].strip.empty?)
       @streaminator.stderr_puts("ERROR: Test executable \"#{File.basename(executable)}\" did not produce any results.", Verbosity::ERRORS)
       raise
     end
     
-    @generator_test_results.process_and_write_results(output, arg_hash[:result], @file_finder.find_test_from_file_path(arg_hash[:executable]))
+    @generator_test_results.process_and_write_results(shell_result, arg_hash[:result], @file_finder.find_test_from_file_path(arg_hash[:executable]))
     
-    arg_hash[:tool_output] = output
+    arg_hash[:shell_result] = shell_result
     @plugin_manager.post_test_execute(arg_hash)
   end
   

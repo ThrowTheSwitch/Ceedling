@@ -66,7 +66,7 @@ class PluginManager
   def pre_test_execute(arg_hash); execute_plugins(:pre_test_execute, arg_hash); end
   def post_test_execute(arg_hash)
     # special arbitration: raw test results are printed or taken over by plugins handling the job
-    @streaminator.stdout_puts(arg_hash[:tool_output]) if (@configurator.plugins_display_raw_test_results)
+    @streaminator.stdout_puts(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
     execute_plugins(:post_test_execute, arg_hash)
   end
   

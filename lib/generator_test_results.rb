@@ -7,7 +7,7 @@ class GeneratorTestResults
 
   constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper
  
-  def process_and_write_results(raw_unity_output, results_file, test_file)
+  def process_and_write_results(unity_shell_result, results_file, test_file)
     output_file = results_file
     
     results = get_results_structure
@@ -16,7 +16,7 @@ class GeneratorTestResults
     results[:source][:file] = File.basename(test_file)
     
     # process test statistics
-    if (raw_unity_output =~ TEST_STATISTICS_REGEX)
+    if (unity_shell_result[:output] =~ TEST_STATISTICS_REGEX)
       results[:counts][:total]   = $1.to_i
       results[:counts][:failed]  = $2.to_i
       results[:counts][:ignored] = $3.to_i
@@ -24,10 +24,10 @@ class GeneratorTestResults
     end
 
     # remove test statistics lines
-    raw_unity_output.sub!(TEST_STATISTICS_REGEX, '')
+    unity_shell_result[:output].sub!(TEST_STATISTICS_REGEX, '')
     
     # bust up the output into individual lines
-    raw_unity_lines = raw_unity_output.split(/\n|\r\n/)
+    raw_unity_lines = unity_shell_result[:output].split(/\n|\r\n/)
     
     raw_unity_lines.each do |line|
       # process unity output
@@ -49,7 +49,7 @@ class GeneratorTestResults
       end
     end
     
-    @generator_test_results_sanity_checker.verify(results)
+    @generator_test_results_sanity_checker.verify(results, unity_shell_result[:exit_code])
     
     output_file = results_file.ext(@configurator.extension_testfail) if (results[:counts][:failed] > 0)
     

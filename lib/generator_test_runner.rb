@@ -173,7 +173,7 @@ class GeneratorTestRunner
       output << "    } Catch(e) { TEST_FAIL_MESSAGE(\"Unhandled Exception!\"); }\n" if use_exceptions
       output << "  }\n"
       output << "  CMock_Destroy();\n"    unless (mock_list.empty?)
-      output << "  if (TEST_PROTECT())\n"
+      output << "  if (TEST_PROTECT() && !(Unity.CurrentTestIgnored))\n"
       output << "  {\n"
       output << "    tearDown();\n"
       output << "  }\n"
@@ -198,8 +198,7 @@ class GeneratorTestRunner
     end
 
     output << "\n"
-    output << "  UnityEnd();\n"
-    output << "  return 0;\n"
+    output << "  return UnityEnd();\n"
     output << "}\n"
     output << "\n"
   end
