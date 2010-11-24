@@ -1,0 +1,65 @@
+---
+
+:project:
+  :use_exceptions: FALSE
+  :use_test_preprocessor: TRUE
+  :use_auxiliary_dependencies: TRUE
+  :build_root: build
+  :release_build: TRUE
+
+:release_build:
+  :output: TempSensor.out
+  :use_assembly: FALSE
+
+:environment:
+
+:extension:
+  :executable: .out
+
+:paths:
+  :test:
+    - src/**
+    - test/**
+  :source:
+    - src/**
+  :include:
+    - src/**
+
+:module_generator:
+  :project_root: ./
+  :source_root: src/
+  :test_root: test/
+  :header_includes:
+  :test_includes:
+
+:defines:
+  :commmon: &common_defines
+  :test:
+    - *common_defines
+    - TEST
+  :test_preprocess:
+    - *common_defines
+    - TEST
+
+:cmock:
+  :mock_prefix: mock_
+  :when_no_prototypes: :warn
+  :enforce_strict_ordering: TRUE
+  :includes:
+    - 
+  :plugins:
+    - :ignore
+  :treat_as:
+    U8:    HEX8
+    U16:   HEX16
+    U32:   HEX32
+    S8:    HEX8
+    "C8*": STRING
+    F32:   FLOAT
+  :attributes:
+
+:tools:
+
+:plugins:
+  :enabled:
+...
