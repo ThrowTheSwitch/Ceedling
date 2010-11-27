@@ -12,13 +12,16 @@ class ToolExecutorHelper
   def stderr_redirect_addendum(tool_config)
     return nil if (tool_config[:stderr_redirect].nil?)
     
-    case tool_config[:stderr_redirect]
+    redirect = tool_config[:stderr_redirect]
+    
+    case redirect
       # we may need more complicated processing after some learning with various environments
       when StdErrRedirect::NONE then nil
       when StdErrRedirect::AUTO then '2>&1'
       when StdErrRedirect::WIN  then '2>&1'
       when StdErrRedirect::UNIX then '2>&1'
       when StdErrRedirect::TCSH then '|&'
+      else redirect.to_s
     end
   end
 

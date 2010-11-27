@@ -74,11 +74,29 @@ class Generator
   end
 
   def generate_executable_file(tool, objects, executable)
+    shell_result = {}
     arg_hash = {:tool => tool, :objects => objects, :executable => executable}
     @plugin_manager.pre_link_execute(arg_hash)
     
     @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
-    shell_result = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:objects], arg_hash[:executable]) )
+    
+    begin
+      shell_result = @tool_executor.exec( @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:objects], arg_hash[:executable]) )
+    rescue
+      notice =    "\n" +
+                  "NOTICE: If the linker reports missing symbols, the following may be to blame:\n" +
+                  "  1. Test lacks #include statements corresponding to needed source files.\n" +
+                  "  2. Project search paths do not contain source files corresponding to #include statements in the test.\n"
+      
+      if (@configurator.project_use_mocks)
+        notice += "  3. Test does not #include needed mocks.\n\n"
+      else
+        notice += "\n"
+      end
+               
+      @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
+      raise
+    end
     
     arg_hash[:shell_result] = shell_result
     @plugin_manager.post_link_execute(arg_hash)

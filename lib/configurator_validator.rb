@@ -1,3 +1,4 @@
+require 'constants'
 require 'tool_executor'    # for argument replacement pattern
 require 'file_path_utils'  # for glob handling class methods
 
@@ -101,6 +102,20 @@ class ConfiguratorValidator
       end      
     end
 
+    return true
+  end
+  
+  def validate_tool_stderr_redirect(config, tools, tool)
+    redirect = config[tools][tool][:stderr_redirect]
+    if (redirect.class == Symbol)
+      if (not StdErrRedirect.constants.include?(redirect.to_s.upcase))
+        error = "ERROR: [:#{tools}][:#{tool}][:stderr_redirect][:#{redirect}] is not a recognized option " +
+                "{#{StdErrRedirect.constants.map{|constant| ':' + constant.downcase}.join(', ')}}."
+        @stream_wrapper.stderr_puts(error) 
+        return false        
+      end
+    end
+    
     return true
   end
   

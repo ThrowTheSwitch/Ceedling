@@ -98,7 +98,8 @@ class ConfiguratorSetup
 
     config[:tools].keys.sort.each do |key|
       validation << @configurator_validator.exists?(config, :tools, key, :executable)
-      validation << @configurator_validator.validate_filepath(config, {:search_system_path => true}, :tools, key, :executable)    
+      validation << @configurator_validator.validate_filepath(config, {:search_system_path => true}, :tools, key, :executable)
+      validation << @configurator_validator.validate_tool_stderr_redirect(config, :tools, key)
     end
 
     return false if (validation.include?(false))
