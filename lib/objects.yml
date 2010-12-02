@@ -183,8 +183,8 @@ generator_test_results:
 
 generator_test_results_sanity_checker:
   compose:
+    - configurator  
     - streaminator
-
 
 generator_test_runner:
   compose:

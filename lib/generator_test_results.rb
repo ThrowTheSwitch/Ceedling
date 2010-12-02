@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'rake' # for .ext()
+require 'constants'
 
  
 class GeneratorTestResults

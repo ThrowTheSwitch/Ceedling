@@ -55,6 +55,14 @@ task :debug do
 end
 
 
+# non advertised sanity checking task
+task :sanity_checks, :level do |t, args|
+  check_level = args.level.to_i
+  
+  @ceedling[:configurator].sanity_checks = check_level
+end
+
+
 namespace :options do
 
   @ceedling[:configurator].collection_project_options.each do |option_path|

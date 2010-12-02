@@ -8,13 +8,15 @@ require 'deep_merge'
 class Configurator
 
   attr_reader :project_config_hash, :environment, :script_plugins, :rake_plugins, :config_plugins
-  attr_accessor :project_logging, :project_debug, :project_verbosity
+  attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
   
   constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
     @project_logging   = false
     @project_debug     = false
     @project_verbosity = Verbosity::NORMAL
+    @sanity_checks     = TestResultsSanityChecks::NORMAL
   end
+  
   
   def setup
     # special copy of cmock config to provide to cmock for construction

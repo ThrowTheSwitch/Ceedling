@@ -1,20 +1,30 @@
- 
+require 'constants'
+
+
 class GeneratorTestResultsSanityChecker
 
-  constructor :streaminator
+  constructor :configurator, :streaminator
   
   def verify(results, unity_exit_code)
+  
+    # do no sanity checking if it's disabled
+    return if (@configurator.sanity_checks == TestResultsSanityChecks::NONE)
+  
     ceedling_ignores_count   = results[:ignores].size
     ceedling_failures_count  = results[:failures].size
     ceedling_tests_summation = (ceedling_ignores_count + ceedling_failures_count + results[:successes].size)
 
-    # many platforms limit exit codes to a maximum of 255
-    if ((ceedling_failures_count != unity_exit_code) and (unity_exit_code < 255))
-      sanity_check_warning(results[:source][:file], "Unity's exit code (#{unity_exit_code}) does not match Ceedling's summation of failed test cases (#{ceedling_failures_count}).")
-    end
-
-    if ((ceedling_failures_count < 255) and (unity_exit_code == 255))
-      sanity_check_warning(results[:source][:file], "Ceedling's summation of failed test cases (#{ceedling_failures_count}) is less than Unity's exit code (255 or more).")
+    # Exit code handling is not a sanity check that can always be performed because 
+    # command line simulators may or may not pass through Unity's exit code
+    if (@configurator.sanity_checks >= TestResultsSanityChecks::THOROUGH)
+      # many platforms limit exit codes to a maximum of 255
+      if ((ceedling_failures_count != unity_exit_code) and (unity_exit_code < 255))
+        sanity_check_warning(results[:source][:file], "Unity's exit code (#{unity_exit_code}) does not match Ceedling's summation of failed test cases (#{ceedling_failures_count}).")
+      end
+      
+      if ((ceedling_failures_count < 255) and (unity_exit_code == 255))
+        sanity_check_warning(results[:source][:file], "Ceedling's summation of failed test cases (#{ceedling_failures_count}) is less than Unity's exit code (255 or more).")
+      end
     end
     
     if (ceedling_ignores_count != results[:counts][:ignored])

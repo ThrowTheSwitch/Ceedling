@@ -8,6 +8,14 @@ class Verbosity
   DEBUG       = 5  # special extra verbose output for hardcore debugging
 end
 
+
+class TestResultsSanityChecks
+  NONE      = 0  # no sanity checking of test results
+  NORMAL    = 1  # perform non-problematic checks
+  THOROUGH  = 2  # perform checks that require inside knowledge of system workings
+end
+
+
 class StdErrRedirect
   NONE = :none
   AUTO = :auto
