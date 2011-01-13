@@ -8,7 +8,7 @@ task :version do
       ['  Ceedling', CEEDLING_ROOT],
       ['CException', File.join( CEEDLING_VENDOR, CEXCEPTION_ROOT_PATH)],
       ['     CMock', File.join( CEEDLING_VENDOR, CMOCK_ROOT_PATH)],
-      ['     Unity', File.join( CEEDLING_VENDOR, CMOCK_ROOT_PATH)],
+      ['     Unity', File.join( CEEDLING_VENDOR, UNITY_ROOT_PATH)],
     ]
   
   tools.each do |tool|
