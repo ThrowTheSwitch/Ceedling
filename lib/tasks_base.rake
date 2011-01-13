@@ -17,7 +17,7 @@ task :version do
     
     version_string = @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip
     build_string   = @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'build.info') ).strip
-    puts "#{name}:: #{version_string.empty? ? '#.#.#' : version_string} (build #{build_string.empty? ? '?' : build_string})"
+    puts "#{name}:: #{version_string.empty? ? '#.#.' : (version_string + '.')}#{build_string.empty? ? '?' : build_string}"
   end
 end
 
