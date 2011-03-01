@@ -63,6 +63,19 @@ task :sanity_checks, :level do |t, args|
 end
 
 
+# list expanded environment variables
+desc "List all configured environment variables."
+task :environment do
+  environment = @ceedling[:setupinator].config_hash[:environment]
+  environment.each do |env|
+    env.each_key do |key|
+      name = key.to_s.upcase
+      puts " - #{name}: \"#{env[key]}\""
+    end
+  end  
+end
+
+
 namespace :options do
 
   @ceedling[:configurator].collection_project_options.each do |option_path|
@@ -70,6 +83,7 @@ namespace :options do
 
     desc "Merge #{option} project options."
     task option.downcase.to_sym do
+      @ceedling[:setupinator].reset_defaults( @ceedling[:setupinator].config_hash )
       hash = @ceedling[:project_config_manager].merge_options( @ceedling[:setupinator].config_hash, option_path )
       @ceedling[:setupinator].do_setup( hash )
     end

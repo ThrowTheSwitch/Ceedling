@@ -22,19 +22,19 @@ CLOBBER.include(File.join(CMOCK_MOCK_PATH, '*'))
 REMOVE_FILE_PROC = Proc.new { |fn| rm_r fn rescue nil }
 
 # redefine clean so we can override how it advertises itself
-desc "Delete all compilation artifacts and temporary products."
+desc "Delete all build artifacts and temporary products."
 task(:clean) do
   # because :clean is a prerequisite for :clobber, intelligently display the progress message
   if (not @ceedling[:task_invoker].invoked?(/^clobber$/))
-    puts "\nCleaning build artifacts...\n(For large projects, this task may take a long time to complete)\n\n"
+    @ceedling[:streaminator].stdout_puts("\nCleaning build artifacts...\n(For large projects, this task may take a long time to complete)\n\n")
   end
   CLEAN.each { |fn| REMOVE_FILE_PROC.call(fn) }
 end
 
 # redefine clobber so we can override how it advertises itself
-desc "Delete all generated files including compilation artifacts."
+desc "Delete all generated files (and build artifacts)."
 task(:clobber => [:clean]) do
-  puts "\nClobbering all generated files...\n(For large projects, this task may take a long time to complete)\n\n"
+  @ceedling[:streaminator].stdout_puts("\nClobbering all generated files...\n(For large projects, this task may take a long time to complete)\n\n")
   CLOBBER.each { |fn| REMOVE_FILE_PROC.call(fn) }
 end
 

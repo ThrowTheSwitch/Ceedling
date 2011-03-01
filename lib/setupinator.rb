@@ -39,4 +39,7 @@ class Setupinator
     @ceedling[:project_config_manager].config_hash = config_hash
   end
 
+  def reset_defaults(config_hash)
+    @ceedling[:configurator].reset_defaults( config_hash )
+  end
 end

@@ -53,7 +53,7 @@ namespace TESTS_TASKS_ROOT_NAME.to_sym do
     end
   end
 
-  desc "Run tests whose path contains [dir] or [dir] string."
+  desc "Run tests whose path contains [dir] or [dir] substring."
   task :path, [:dir] => [:directories] do |t, args|
     matches = []
     

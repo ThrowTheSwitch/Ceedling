@@ -36,7 +36,7 @@ class GeneratorTestResultsSanityChecker
     end
 
     if (ceedling_tests_summation != results[:counts][:total])
-      sanity_check_warning(results[:source][:file], "Unity's final test count ((#{results[:counts][:total]})) does not match Ceedling's summation of all test cases (#{ceedling_tests_summation}).")
+      sanity_check_warning(results[:source][:file], "Unity's final test count (#{results[:counts][:total]}) does not match Ceedling's summation of all test cases (#{ceedling_tests_summation}).")
     end
     
   end

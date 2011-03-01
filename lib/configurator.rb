@@ -53,6 +53,22 @@ class Configurator
   end
 
 
+  def reset_defaults(config)
+    [:test_compiler,
+     :test_linker,
+     :test_fixture,
+     :test_includes_preprocessor,
+     :test_file_preprocessor,
+     :test_dependencies_generator,
+     :release_compiler,
+     :release_assembler,
+     :release_linker,
+     :release_dependencies_generator].each do |tool|
+      config[:tools].delete(tool) if (not (config[:tools][tool].nil?))
+    end
+  end
+
+
   def populate_defaults(config)
     new_config = DEFAULT_CEEDLING_CONFIG.clone
 
@@ -100,6 +116,7 @@ class Configurator
     cmock[:plugins] = []                             if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym }
     cmock[:plugins] << (:cexception)                 if (!cmock[:plugins].include?(:cexception) and (config[:project][:use_exceptions]))
+    cmock[:plugins].uniq!
 
     cmock[:unity_helper] = false                     if (cmock[:unity_helper].nil?)
     

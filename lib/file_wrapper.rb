@@ -2,7 +2,6 @@ require 'rubygems'
 require 'rake' # for FileList
 require 'constants'
 require 'fileutils'
-require 'ftools'
 
 
 class FileWrapper
