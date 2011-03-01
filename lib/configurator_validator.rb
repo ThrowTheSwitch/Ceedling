@@ -108,9 +108,9 @@ class ConfiguratorValidator
   def validate_tool_stderr_redirect(config, tools, tool)
     redirect = config[tools][tool][:stderr_redirect]
     if (redirect.class == Symbol)
-      if (not StdErrRedirect.constants.include?(redirect.to_s.upcase))
+      if (not StdErrRedirect.constants.include?(redirect.to_s.upcase.to_sym))
         error = "ERROR: [:#{tools}][:#{tool}][:stderr_redirect][:#{redirect}] is not a recognized option " +
-                "{#{StdErrRedirect.constants.map{|constant| ':' + constant.downcase}.join(', ')}}."
+                "{#{StdErrRedirect.constants.map{|constant| ':' + constant.to_s.downcase}.join(', ')}}."
         @stream_wrapper.stderr_puts(error) 
         return false        
       end

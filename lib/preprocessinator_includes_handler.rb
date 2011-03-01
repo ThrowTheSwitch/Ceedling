@@ -35,7 +35,7 @@ class PreprocessinatorIncludesHandler
     list = []
     header_extension = @configurator.extension_header
 
-    headers = make_rule.scan(/#{'(\S+\\'}#{header_extension + ')'}/).flatten
+    headers = make_rule.scan(/(\S+\\#{header_extension})/).flatten # escape slashes before dot file extension
     headers.uniq!
     headers.map! { |header| header.sub(/(@@@@)|(.+\/)/, '') }
     headers.sort!

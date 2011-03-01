@@ -181,8 +181,8 @@ class Configurator
     # these are intended to be only single paths but we don't validate that until later
     # hence, we'll complain about them having multiple entries later
     # for now, just eval them
-    individual_paths.each do |individual|
-      individual.each { |path| path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN) }
+    individual_paths.flatten.each do |path|
+      path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
     end
   
     config[:paths].each_pair do |key, list|
@@ -202,9 +202,7 @@ class Configurator
     # these are intended to be only single paths but we don't validate that until later
     # hence, we'll complain about them having multiple entries later
     # for now, just standardize them
-    individual_paths.each do |individual|
-      individual.each{|path| FilePathUtils::standardize(path)}
-    end
+    individual_paths.flatten.each { |path| FilePathUtils::standardize(path) }
 
     config[:paths].each_pair do |key, list|
       list.each{|path| FilePathUtils::standardize(path)}

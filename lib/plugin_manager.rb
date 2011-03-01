@@ -15,7 +15,7 @@ class PluginManager
 			next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
 			# build up load path in case there are ruby files in plugin directory that main ruby file wants to load
       @system_wrapper.add_load_path( File.join(@configurator.plugins_base_path, plugin ) )
-      @system_wrapper.require_file( File.join(@configurator.plugins_base_path, plugin, "#{plugin}.rb") )
+      @system_wrapper.require_file( "#{plugin}.rb" )
       
       object = @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects, plugin )
       @plugin_objects << object
