@@ -40,7 +40,7 @@ class FileWrapper
   end
 
   def compare(from, to)
-    return File.compare(from, to)
+    return FileUtils.compare_file(from, to)
   end
   
   def open(filepath, flags)

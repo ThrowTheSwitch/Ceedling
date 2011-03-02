@@ -1,5 +1,5 @@
 
-rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_ASM_PATH}\/#{'.+\\'+EXTENSION_OBJECT}/ => [
+rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_ASM_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       @ceedling[:file_finder].find_assembly_file(task_name)
     end  
@@ -8,7 +8,7 @@ rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_ASM_PATH}\/#{'.+\\'+EXTENSION_OBJECT}/ => [
 end
 
 
-rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}/ => [
+rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       @ceedling[:file_finder].find_compilation_input_file(task_name)
     end  
