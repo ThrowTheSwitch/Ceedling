@@ -8,14 +8,14 @@ require 'constants'       # for Verbosity constants class & base file paths
 
 class ConfiguratorBuilder
   
-  constructor :file_system_utils, :file_wrapper
+  constructor :file_system_utils, :file_wrapper, :system_wrapper
     
   
   def build_global_constants(config)
     config.each_pair do |key, value|
       formatted_key = key.to_s.upcase
       # undefine global constant if it already exists
-      Object.send(:remove_const, formatted_key.to_sym) if Object.constants.include?(formatted_key)
+      Object.send(:remove_const, formatted_key.to_sym) if @system_wrapper.constants_include?(formatted_key)
       # create global constant
       Object.module_eval("#{formatted_key} = value")
     end

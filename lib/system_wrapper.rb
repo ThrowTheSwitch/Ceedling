@@ -59,4 +59,9 @@ class SystemWrapper
     return ($!.nil? || $!.is_a?(SystemExit) && $!.success?)
   end
 
+  def constants_include?(item)
+    # forcing to strings provides consistency across Ruby versions
+    return Object.constants.map{|constant| constant.to_s}.include?(item.to_s)
+  end
+  
 end

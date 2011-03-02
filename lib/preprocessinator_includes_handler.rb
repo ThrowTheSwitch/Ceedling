@@ -7,7 +7,7 @@ class PreprocessinatorIncludesHandler
   # shallow includes: only those headers a source file explicitly includes
 
   def invoke_shallow_includes_list(filepath)
-    @task_invoker.invoke_test_shallow_include_lists( @file_path_utils.form_preprocessed_includes_list_filepath(filepath) )
+    @task_invoker.invoke_test_shallow_include_lists( [@file_path_utils.form_preprocessed_includes_list_filepath(filepath)] )
   end
 
   # ask the preprocessor for a make-style dependency rule of only the headers the source file immediately includes
@@ -35,7 +35,7 @@ class PreprocessinatorIncludesHandler
     list = []
     header_extension = @configurator.extension_header
 
-    headers = make_rule.scan(/(\S+\\#{header_extension})/).flatten # escape slashes before dot file extension
+    headers = make_rule.scan(/(\S+#{'\\'+header_extension})/).flatten # escape slashes before dot file extension
     headers.uniq!
     headers.map! { |header| header.sub(/(@@@@)|(.+\/)/, '') }
     headers.sort!

@@ -28,14 +28,14 @@ require 'constants'
 @ceedling[:setupinator].ceedling = @ceedling
 @ceedling[:setupinator].do_setup( @ceedling[:setupinator].load_project_files )
 
-# control Rake's verbosity (verbose defaults to true when rake loads)
-verbose(false) if (not @ceedling[:verbosinator].should_output?(Verbosity::OBNOXIOUS))
-
 # tell all our plugins we're about to do something
 @ceedling[:plugin_manager].pre_build
 
 # load rakefile component files (*.rake)
 PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
+
+# tell rake to shut up by default (overridden in verbosity / debug tasks as appropriate)
+verbose(false)
 
 
 # end block always executed following rake run
@@ -48,7 +48,7 @@ END {
   if (not @ceedling[:configurator].project_debug)
     @ceedling[:file_wrapper].rm_f( @ceedling[:file_wrapper].directory_listing( File.join(@ceedling[:configurator].project_temp_path, '*') ))
   end
-  
+
 	# only perform these final steps if we got here without runtime exceptions or errors
 	if (@ceedling[:system_wrapper].ruby_success)
 

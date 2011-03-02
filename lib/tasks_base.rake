@@ -51,6 +51,7 @@ end
 # non advertised debug task
 task :debug do
   Rake::Task[:verbosity].invoke(Verbosity::DEBUG)
+  Rake.application.options.trace = true
   @ceedling[:configurator].project_debug = true
 end
 

@@ -23,7 +23,7 @@ class PreprocessinatorHelper
     if (@configurator.project_use_test_preprocessor)
       preprocess_files_smartly(
         @file_path_utils.form_preprocessed_mockable_headers_filelist(mock_list),
-        preprocess_file_proc) { |file| @file_finder.find_header_file(file) }
+        preprocess_file_proc ) { |file| @file_finder.find_header_file(file) }
     end
   end
 

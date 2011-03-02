@@ -134,7 +134,10 @@ class ToolExecutor
       raise
     end
     
-    expand.each do |item|
+    # array-ify expansion input if only a single string
+    expansion = ((expand.class == String) ? [expand] : expand)
+    
+    expansion.each do |item|
       # code eval substitution
       if (item =~ RUBY_EVAL_REPLACEMENT_PATTERN)
         elements << eval($1)
@@ -142,7 +145,7 @@ class ToolExecutor
       elsif (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
         elements << @system_wrapper.module_eval(item)
       # global constants
-      elsif (Object.constants.include?(item))
+      elsif (@system_wrapper.constants_include?(item))
         const = Object.const_get(item)
         if (const.nil?)
           @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' found constant '#{item}' to be nil.", Verbosity::ERRORS)

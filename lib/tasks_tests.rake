@@ -19,19 +19,19 @@ namespace TESTS_TASKS_ROOT_NAME.to_sym do
     # by test file name
     name = File.basename(test)
     task name.to_sym => [:directories] do
-      @ceedling[:test_invoker].setup_and_invoke(test)
+      @ceedling[:test_invoker].setup_and_invoke([test])
     end
 
     # by source file name
     name = File.basename(test).sub(/#{PROJECT_TEST_FILE_PREFIX}/, '')
     task name.to_sym => [:directories] do
-      @ceedling[:test_invoker].setup_and_invoke(test)
+      @ceedling[:test_invoker].setup_and_invoke([test])
     end
     
     # by header file name
     name = File.basename(test).ext(EXTENSION_HEADER).sub(/#{PROJECT_TEST_FILE_PREFIX}/, '')
     task name.to_sym => [:directories] do
-      @ceedling[:test_invoker].setup_and_invoke(test)
+      @ceedling[:test_invoker].setup_and_invoke([test])
     end
   end
 

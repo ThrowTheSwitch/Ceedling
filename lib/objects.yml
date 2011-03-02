@@ -90,6 +90,7 @@ configurator_builder:
   compose:
     - file_system_utils
     - file_wrapper
+    - system_wrapper
 
 loginator:
   compose:

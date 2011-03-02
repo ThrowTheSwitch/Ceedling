@@ -20,7 +20,7 @@ class TestInvoker
 
     @project_config_manager.process_test_config_change
   
-    tests.each do |test|
+    @tests.each do |test|
       # announce beginning of test run
       header = "Test '#{File.basename(test)}'"
       @streaminator.stdout_puts("\n\n#{header}\n#{'-' * header.length}")

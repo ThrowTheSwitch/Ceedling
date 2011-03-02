@@ -41,9 +41,9 @@ class TaskInvoker
     files.each { |file| @rake_wrapper[file].invoke }
   end
 
-  def invoke_test_results(results)
-    @dependinator.enhance_results_dependencies( results )
-    results.each { |result| @rake_wrapper[result].invoke }
+  def invoke_test_results(result)
+    @dependinator.enhance_results_dependencies( result )
+    @rake_wrapper[result].invoke
   end
 
 
