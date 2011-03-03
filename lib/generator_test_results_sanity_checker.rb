@@ -1,4 +1,6 @@
 require 'constants'
+require 'rubygems'
+require 'rake' # for ext() method
 
 
 class GeneratorTestResultsSanityChecker
@@ -44,7 +46,15 @@ class GeneratorTestResultsSanityChecker
   private
   
   def sanity_check_warning(file, message)
-    @streaminator.stderr_puts("\nERROR: Internal sanity check for test fixture '#{file}' finds that #{message}")
+    notice = "\n" + 
+             "ERROR: Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable)}' finds that #{message}\n" +
+             "  Possible causes:\n" +
+             "    1. Your test + source dereferenced a null pointer or unterminated string.\n" +
+             "    2. Your test + source committed a memory access violation.\n" +
+             "    3. Your test fixture's simulator (if a simulator is being used) exited prematurely.\n" +
+             "  Sanity check failures (i.e. inconsistent result counts) are usually a symptom of interrupted test execution.\n\n"
+    
+    @streaminator.stderr_puts( notice )
     raise
   end
 
