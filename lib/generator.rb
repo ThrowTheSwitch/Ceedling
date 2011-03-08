@@ -121,8 +121,9 @@ class Generator
                                                                    arg_hash[:result_file],
                                                                    @file_finder.find_test_from_file_path(arg_hash[:executable]) )
     
-    arg_hash[:result_file] = processed[:result_file]
-    arg_hash[:results]     = processed[:results]
+    arg_hash[:result_file]  = processed[:result_file]
+    arg_hash[:results]      = processed[:results]
+    arg_hash[:shell_result] = shell_result # for raw output display if no plugins for formatted display
     
     @plugin_manager.post_test_execute(arg_hash)
   end
