@@ -3,12 +3,39 @@ class TaskInvoker
 
   constructor :dependinator, :rake_utils, :rake_wrapper
 
+  def setup
+    @test_regexs = [/^#{TESTS_TASKS_ROOT_NAME}:/]
+    @release_regexs = [/^#{RELEASE_TASKS_ROOT_NAME}(:|$)/]
+  end
+  
+  def add_test_task_regex(regex)
+    @test_regexs << regex
+  end
+
+  def add_release_task_regex(regex)
+    @release_regexs << regex
+  end
+  
   def test_invoked?
-    return @rake_utils.task_invoked?(/^#{TESTS_TASKS_ROOT_NAME}:/)
+    invoked = false
+    
+    @test_regexs.each do |regex|
+      invoked = true if (@rake_utils.task_invoked?(regex))
+      break if invoked
+    end
+    
+    return invoked
   end
   
   def release_invoked?
-    return @rake_utils.task_invoked?(/^#{RELEASE_TASKS_ROOT_NAME}(:|$)/)
+    invoked = false
+    
+    @release_regexs.each do |regex|
+      invoked = true if (@rake_utils.task_invoked?(regex))
+      break if invoked
+    end
+    
+    return invoked
   end
 
   def invoked?(regex)

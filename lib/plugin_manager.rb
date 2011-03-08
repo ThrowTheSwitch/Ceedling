@@ -12,11 +12,9 @@ class PluginManager
   
   def load_plugin_scripts(script_plugins, system_objects)
     script_plugins.each do |plugin|
+      # protect against instantiating object multiple times due to processing config multiple times (options, etc)
 			next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
-			# build up load path in case there are ruby files in plugin directory that main ruby file wants to load
-      @system_wrapper.add_load_path( File.join(@configurator.plugins_base_path, plugin ) )
       @system_wrapper.require_file( "#{plugin}.rb" )
-      
       object = @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects, plugin )
       @plugin_objects << object
       
@@ -71,6 +69,8 @@ class PluginManager
   end
   
   def post_build; execute_plugins(:post_build); end
+  
+  def summary; execute_plugins(:summary); end
   
   private ####################################
   

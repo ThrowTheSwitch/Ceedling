@@ -93,4 +93,13 @@ namespace :options do
 end
 
 
+# do not present task if there's no plugins
+if (not PLUGINS_ENABLED.empty?)
+desc "Execute plugin result summaries (no build triggering)."
+task :summary do
+	@ceedling[:plugin_manager].summary
+  
+  puts "\nNOTE: Summaries may be out of date with project sources.\n\n"
+end
+end
 

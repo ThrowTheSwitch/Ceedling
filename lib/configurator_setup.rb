@@ -79,11 +79,15 @@ class ConfiguratorSetup
     validation = []
 
     validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :project, :build_root)
-    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :project, :options_path)
-    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :plugins, :base_path)
-    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :plugins, :auxiliary_load_path)
-
     validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :cmock, :unity_helper) if config[:cmock][:unity_helper]
+
+    config[:project][:options_paths].each do |path|
+      validation << @configurator_validator.validate_filepath_simple( path, :project, :options_paths )
+    end
+
+    config[:plugins][:load_paths].each do |path|
+      validation << @configurator_validator.validate_filepath_simple( path, :plugins, :load_paths )
+    end
 
     config[:paths].keys.sort.each do |key|
       validation << @configurator_validator.validate_path_list(config, :paths, key)
@@ -106,15 +110,4 @@ class ConfiguratorSetup
     return true
   end
 
-  def validate_plugins(config)
-    validation = []
-
-    config[:plugins][:enabled].sort.each do |plugin|
-      validation << @configurator_validator.validate_filepath_simple( File.join(config[:plugins][:base_path], plugin), :plugins, :enabled, plugin.to_sym )
-    end
-  
-    return false if (validation.include?(false))
-    return true
-  end
-  
 end

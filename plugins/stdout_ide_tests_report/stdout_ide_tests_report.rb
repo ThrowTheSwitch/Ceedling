@@ -4,7 +4,7 @@ require 'plugin'
 class StdoutIdeTestsReport < Plugin
   
   def setup
-    @test_list = []
+    @result_list = []
     
     @template = %q{
       % ignored      = results[:counts][:ignored]
@@ -64,15 +64,26 @@ class StdoutIdeTestsReport < Plugin
   end
     
   def post_test_execute(arg_hash)
-    test = File.basename(arg_hash[:executable], EXTENSION_EXECUTABLE)
-    
-    @test_list << test if not @test_list.include?(test)
+    @result_list << arg_hash[:result_file] if not @result_list.include?(arg_hash[:result_file])
   end
   
   def post_build
     return if (not @ceedling[:task_invoker].test_invoked?)
 
-    results = @ceedling[:plugin_reportinator].assemble_test_results(PROJECT_TEST_RESULTS_PATH, @test_list)
+    results = @ceedling[:plugin_reportinator].assemble_test_results(@result_list)
+
+    @ceedling[:plugin_reportinator].run_report($stdout, @template, results) do
+      message = ''
+      message = 'Unit test failures.' if (results[:counts][:failed] > 0)
+      message
+    end
+  end
+
+  def summary
+    result_list = @ceedling[:file_path_utils].form_pass_results_filelist( COLLECTION_ALL_TESTS )
+
+    # get test results for only those tests in our configuration and of those only tests with results on disk
+    results = @ceedling[:plugin_reportinator].assemble_test_results(result_list, {:boom => false})
 
     @ceedling[:plugin_reportinator].run_report($stdout, @template, results)
   end

@@ -170,4 +170,8 @@ class FilePathUtils
     return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_test_dependencies_path}/%n#{@configurator.extension_dependencies}")    
   end
 
+  def form_pass_results_filelist(files)
+    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_test_results_path}/%n#{@configurator.extension_testpass}")    
+  end
+
 end

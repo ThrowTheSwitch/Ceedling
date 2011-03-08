@@ -151,6 +151,49 @@ DEFAULT_RELEASE_LINKER_TOOL = {
     ]
   }
 
+  
+DEFAULT_TOOLS_TEST = {
+  :tools => {
+    :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
+    :test_linker   => DEFAULT_TEST_LINKER_TOOL,
+    :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
+    }
+  }
+  
+DEFAULT_TOOLS_TEST_PREPROCESSORS = {
+  :tools => {
+    :test_includes_preprocessor => DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL,
+    :test_file_preprocessor     => DEFAULT_TEST_FILE_PREPROCESSOR_TOOL,
+    }
+  }
+
+DEFAULT_TOOLS_TEST_DEPENDENCIES = {
+  :tools => {
+    :test_dependencies_generator => DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL,
+    }
+  }
+
+
+DEFAULT_TOOLS_RELEASE = {
+  :tools => {
+    :release_compiler => DEFAULT_RELEASE_COMPILER_TOOL,
+    :release_linker   => DEFAULT_RELEASE_LINKER_TOOL,
+    }
+  }
+
+DEFAULT_TOOLS_RELEASE_ASSEMBLER = {
+  :tools => {
+    :release_assembler => DEFAULT_RELEASE_ASSEMBLER_TOOL,
+    }
+  }
+
+DEFAULT_TOOLS_RELEASE_DEPENDENCIES = {
+  :tools => {
+    :release_dependencies_generator => DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL,
+    }
+  }
+
+  
 DEFAULT_RELEASE_TARGET_NAME = 'project'
 
 DEFAULT_CEEDLING_CONFIG = {
@@ -161,7 +204,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :use_test_preprocessor => false,
       :use_auxiliary_dependencies => false,
       :test_file_prefix => 'test_',
-      :options_path => NULL_FILE_PATH,
+      :options_paths => [],
       :release_build => false,
     },
 
@@ -240,8 +283,7 @@ DEFAULT_CEEDLING_CONFIG = {
     :release_dependencies_generator => { :arguments => [] },
 
     :plugins => {
-      :base_path => NULL_FILE_PATH,
-      :auxiliary_load_path => NULL_FILE_PATH,
+      :load_paths => [],
       :enabled => [],
     }
   }

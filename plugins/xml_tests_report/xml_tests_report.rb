@@ -5,40 +5,20 @@ class XmlTestsReport < Plugin
 
   def setup
     @file_path    = File.join( PROJECT_TEST_ARTIFACTS_PATH, 'report.xml' )
-    @test_list    = []
+    @results_list = []
     @test_counter = 1
   end
 
-  def pre_build
-    empty_results = {
-      :successes => [],
-      :failures  => [],
-      :ignores   => [],
-      :counts => {
-        :total   => 0,
-        :passed  => 0,
-        :failed  => 0,
-        :ignored => 0
-      }
-    }
-  
-    @ceedling[:file_wrapper].open( @file_path, 'w' ) do |f|
-      write_results( empty_results, f )
-    end
-  end
-  
   def post_test_execute(arg_hash)
-    test_base_name  = File.basename(arg_hash[:executable], EXTENSION_EXECUTABLE)
-
     # ensure we have unique test run
     # (in case of things like coverage testing that introduce multiple test runs)
-    return if @test_list.include?(test_base_name)
-    
-    @test_list << test_base_name
+    @results_list << arg_hash[:result_file] if not @results_list.include?(arg_hash[:result_file])    
   end
   
   def post_build
-    results = @ceedling[:plugin_reportinator].assemble_test_results(PROJECT_TEST_RESULTS_PATH, @test_list)
+    return if (not @ceedling[:task_invoker].test_invoked?)
+    
+    results = @ceedling[:plugin_reportinator].assemble_test_results(@results_list)
   
     @ceedling[:file_wrapper].open( @file_path, 'w' ) do |f|
       write_results( results, f )

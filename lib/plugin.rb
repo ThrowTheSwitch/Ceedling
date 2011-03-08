@@ -37,8 +37,7 @@ class Plugin
     self.setup
   end
 
-  def setup
-  end
+  def setup; end
 
   def pre_build; end
 
@@ -58,5 +57,7 @@ class Plugin
   def post_test_execute(arg_hash); end
 
   def post_build; end
+  
+  def summary; end
 
 end

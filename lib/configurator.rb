@@ -7,7 +7,7 @@ require 'deep_merge'
 
 class Configurator
 
-  attr_reader :project_config_hash, :environment, :script_plugins, :rake_plugins, :config_plugins
+  attr_reader :project_config_hash, :environment, :script_plugins, :rake_plugins
   attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
   
   constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
@@ -32,7 +32,6 @@ class Configurator
     
     @script_plugins = []
     @rake_plugins   = []
-    @config_plugins = []
   end
 
   
@@ -71,14 +70,16 @@ class Configurator
 
   def populate_defaults(config)
     new_config = DEFAULT_CEEDLING_CONFIG.clone
-
-    @configurator_builder.populate_default_test_tools(config, new_config)
-    @configurator_builder.populate_default_test_helper_tools(config, new_config)
-    @configurator_builder.populate_default_release_tools(config, new_config)
- 
     new_config.deep_merge!(config)
-
     config.replace(new_config)
+
+    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST )
+    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_PREPROCESSORS ) if (config[:project][:use_test_preprocessor])
+    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_DEPENDENCIES ) if (config[:project][:use_auxiliary_dependencies])
+    
+    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE )              if (config[:project][:release_build])
+    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_ASSEMBLER )    if (config[:project][:release_build] and config[:release_build][:use_assembly])
+    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_DEPENDENCIES ) if (config[:project][:release_build] and config[:project][:use_auxiliary_dependencies])
   end
   
 
@@ -144,14 +145,19 @@ class Configurator
   
 
   def find_and_merge_plugins(config)
-    @system_wrapper.add_load_path(config[:plugins][:auxiliary_load_path]) if (not config[:plugins][:auxiliary_load_path].nil?)
+    @configurator_plugins.add_load_paths(config)
   
     @rake_plugins   = @configurator_plugins.find_rake_plugins(config)
     @script_plugins = @configurator_plugins.find_script_plugins(config)
-    @config_plugins = @configurator_plugins.find_config_plugins(config)
+    config_plugins  = @configurator_plugins.find_config_plugins(config)
+    plugin_defaults = @configurator_plugins.find_plugin_defaults(config)
     
-    @config_plugins.each do |plugin|
+    config_plugins.each do |plugin|
       config.deep_merge( @yaml_wrapper.load(plugin) )
+    end
+    
+    plugin_defaults.each do |defaults|
+      @configurator_builder.populate_defaults( config, @yaml_wrapper.load(defaults) )
     end
     
     # special plugin setting for results printing
@@ -174,13 +180,9 @@ class Configurator
   def eval_paths(config)
     individual_paths = [
       config[:project][:build_root],
-      config[:project][:options_path],
-      config[:plugins][:base_path],
-      config[:plugins][:auxiliary_load_path]]
+      config[:project][:options_paths],
+      config[:plugins][:load_paths]]
       
-    # these are intended to be only single paths but we don't validate that until later
-    # hence, we'll complain about them having multiple entries later
-    # for now, just eval them
     individual_paths.flatten.each do |path|
       path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
     end
@@ -194,14 +196,10 @@ class Configurator
   def standardize_paths(config)
     individual_paths = [
       config[:project][:build_root],
-      config[:project][:options_path],
-      config[:plugins][:base_path],
-      config[:plugins][:auxiliary_load_path],
+      config[:project][:options_paths],
+      config[:plugins][:load_paths],
       config[:cmock][:mock_path]] # cmock path in case it was explicitly set in config
 
-    # these are intended to be only single paths but we don't validate that until later
-    # hence, we'll complain about them having multiple entries later
-    # for now, just standardize them
     individual_paths.flatten.each { |path| FilePathUtils::standardize(path) }
 
     config[:paths].each_pair do |key, list|
@@ -225,7 +223,6 @@ class Configurator
     blotter << @configurator_setup.validate_required_section_values(config)
     blotter << @configurator_setup.validate_paths(config)
     blotter << @configurator_setup.validate_tools(config)
-    blotter << @configurator_setup.validate_plugins(config)
     
     raise if (blotter.include?(false))
   end

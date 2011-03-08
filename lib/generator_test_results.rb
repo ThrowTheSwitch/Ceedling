@@ -55,6 +55,8 @@ class GeneratorTestResults
     output_file = results_file.ext(@configurator.extension_testfail) if (results[:counts][:failed] > 0)
     
     @yaml_wrapper.dump(output_file, results)
+    
+    return { :result_file => output_file, :result => results }
   end
 
   private

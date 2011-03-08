@@ -79,6 +79,7 @@ configurator_plugins:
   compose:
     - stream_wrapper
     - file_wrapper
+    - system_wrapper
 
 configurator_validator:
   compose:

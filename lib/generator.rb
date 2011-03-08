@@ -103,7 +103,7 @@ class Generator
   end
 
   def generate_test_results(tool, executable, result)
-    arg_hash = {:tool => tool, :executable => executable, :result => result}
+    arg_hash = {:tool => tool, :executable => executable, :result_file => result}
     @plugin_manager.pre_test_execute(arg_hash)
     
     @streaminator.stdout_puts("Running #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
@@ -117,9 +117,13 @@ class Generator
       raise
     end
     
-    @generator_test_results.process_and_write_results(shell_result, arg_hash[:result], @file_finder.find_test_from_file_path(arg_hash[:executable]))
+    processed = @generator_test_results.process_and_write_results( shell_result,
+                                                                   arg_hash[:result_file],
+                                                                   @file_finder.find_test_from_file_path(arg_hash[:executable]) )
     
-    arg_hash[:shell_result] = shell_result
+    arg_hash[:result_file] = processed[:result_file]
+    arg_hash[:results]     = processed[:results]
+    
     @plugin_manager.post_test_execute(arg_hash)
   end
   

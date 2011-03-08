@@ -20,11 +20,11 @@ class PluginReportinator
   end
 
   
-  def assemble_test_results(results_path, test_list)
+  def assemble_test_results(results_list, options={:boom => false})
     aggregated_results = get_results_structure
     
-    test_list.each do |test| 
-      results = @plugin_reportinator_helper.fetch_results( results_path, test )
+    results_list.each do |result_path| 
+      results = @plugin_reportinator_helper.fetch_results( result_path, options )
       @plugin_reportinator_helper.process_results(aggregated_results, results)
     end
 

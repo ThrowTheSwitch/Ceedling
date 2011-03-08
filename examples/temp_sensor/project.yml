@@ -60,6 +60,9 @@
 
 :tools:
 
-:plugins:
-  :enabled:
+#:plugins:
+#  :load_paths:
+#    - ../../plugins
+#  :enabled:
+#    - stdout_pretty_tests_report
 ...
