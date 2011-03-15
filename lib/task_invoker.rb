@@ -4,8 +4,8 @@ class TaskInvoker
   constructor :dependinator, :rake_utils, :rake_wrapper
 
   def setup
-    @test_regexs = [/^#{TESTS_TASKS_ROOT_NAME}:/]
-    @release_regexs = [/^#{RELEASE_TASKS_ROOT_NAME}(:|$)/]
+    @test_regexs = [/^#{TEST_ROOT_NAME}:/]
+    @release_regexs = [/^#{RELEASE_ROOT_NAME}(:|$)/]
   end
   
   def add_test_task_regex(regex)

@@ -42,7 +42,7 @@ class PluginManager
   end
   
   def register_build_failure(message)
-    @build_fail_registry << message  if not message.empty?
+    @build_fail_registry << message if (message and not message.empty?)
   end
 
   #### execute all plugin methods ####

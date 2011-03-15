@@ -6,16 +6,16 @@ class Generator
   constructor :configurator, :preprocessinator, :cmock_builder, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :plugin_manager, :file_wrapper
 
 
-  def generate_shallow_includes_list(file)
+  def generate_shallow_includes_list(context, file)
     @preprocessinator.preprocess_shallow_includes(file)
   end
 
-  def generate_preprocessed_file(file)
+  def generate_preprocessed_file(context, file)
     @streaminator.stdout_puts("Preprocessing #{File.basename(file)}...", Verbosity::NORMAL)
     @preprocessinator.preprocess_file(file)
   end
 
-  def generate_dependencies_file(tool, source, object, dependencies)
+  def generate_dependencies_file(tool, context, source, object, dependencies)
     @streaminator.stdout_puts("Generating dependencies for #{File.basename(source)}...", Verbosity::NORMAL)
     
     command_line = 
@@ -28,8 +28,8 @@ class Generator
     @tool_executor.exec(command_line)
   end
 
-  def generate_mock(header_filepath)
-    arg_hash = {:header_file => header_filepath}
+  def generate_mock(context, header_filepath)
+    arg_hash = {:header_file => header_filepath, :context => context}
     @plugin_manager.pre_mock_execute(arg_hash)
     
     @cmock_builder.cmock.setup_mocks( arg_hash[:header_file] )
@@ -38,8 +38,8 @@ class Generator
   end
 
   # test_filepath may be either preprocessed test file or original test file
-  def generate_test_runner(test_filepath, runner_filepath)
-    arg_hash = {:test_file => test_filepath, :runner_file => runner_filepath}
+  def generate_test_runner(context, test_filepath, runner_filepath)
+    arg_hash = {:context => context, :test_file => test_filepath, :runner_file => runner_filepath}
 
     @plugin_manager.pre_runner_execute(arg_hash)
     
@@ -62,8 +62,8 @@ class Generator
     @plugin_manager.post_runner_execute(arg_hash)
   end
 
-  def generate_object_file(tool, source, object)    
-    arg_hash = {:tool => tool, :source => source, :object => object}
+  def generate_object_file(tool, context, source, object)    
+    arg_hash = {:tool => tool, :context => context, :source => source, :object => object}
     @plugin_manager.pre_compile_execute(arg_hash)
 
     @streaminator.stdout_puts("Compiling #{File.basename(arg_hash[:source])}...", Verbosity::NORMAL)
@@ -73,9 +73,9 @@ class Generator
     @plugin_manager.post_compile_execute(arg_hash)
   end
 
-  def generate_executable_file(tool, objects, executable)
+  def generate_executable_file(tool, context, objects, executable)
     shell_result = {}
-    arg_hash = {:tool => tool, :objects => objects, :executable => executable}
+    arg_hash = {:tool => tool, :context => context, :objects => objects, :executable => executable}
     @plugin_manager.pre_link_execute(arg_hash)
     
     @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
@@ -102,8 +102,8 @@ class Generator
     @plugin_manager.post_link_execute(arg_hash)
   end
 
-  def generate_test_results(tool, executable, result)
-    arg_hash = {:tool => tool, :executable => executable, :result_file => result}
+  def generate_test_results(tool, context, executable, result)
+    arg_hash = {:tool => tool, :context => context, :executable => executable, :result_file => result}
     @plugin_manager.pre_test_execute(arg_hash)
     
     @streaminator.stdout_puts("Running #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)

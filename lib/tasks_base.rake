@@ -59,27 +59,27 @@ end
 # non advertised sanity checking task
 task :sanity_checks, :level do |t, args|
   check_level = args.level.to_i
-  
   @ceedling[:configurator].sanity_checks = check_level
 end
 
 
 # list expanded environment variables
+if (not COLLECTION_ENVIRONMENT.empty?)
 desc "List all configured environment variables."
 task :environment do
-  environment = @ceedling[:setupinator].config_hash[:environment]
-  environment.each do |env|
+  COLLECTION_ENVIRONMENT.each do |env|
     env.each_key do |key|
       name = key.to_s.upcase
       puts " - #{name}: \"#{env[key]}\""
     end
   end  
 end
+end
 
 
 namespace :options do
 
-  @ceedling[:configurator].collection_project_options.each do |option_path|
+  COLLECTION_PROJECT_OPTIONS.each do |option_path|
     option = File.basename(option_path, '.yml')
 
     desc "Merge #{option} project options."
@@ -98,7 +98,6 @@ if (not PLUGINS_ENABLED.empty?)
 desc "Execute plugin result summaries (no build triggering)."
 task :summary do
 	@ceedling[:plugin_manager].summary
-  
   puts "\nNOTE: Summaries may be out of date with project sources.\n\n"
 end
 end

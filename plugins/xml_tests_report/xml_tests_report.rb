@@ -10,9 +10,9 @@ class XmlTestsReport < Plugin
   end
 
   def post_test_execute(arg_hash)
-    # ensure we have unique test run
-    # (in case of things like coverage testing that introduce multiple test runs)
-    @results_list << arg_hash[:result_file] if not @results_list.include?(arg_hash[:result_file])    
+    return if not (arg_hash[:context] == TEST_TASKS_CONTEXT)
+
+    @results_list << arg_hash[:result_file]
   end
   
   def post_build

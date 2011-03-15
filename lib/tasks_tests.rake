@@ -1,5 +1,5 @@
 
-namespace TESTS_TASKS_ROOT_NAME.to_sym do
+namespace TEST_CONTEXT do
   
   desc "Run all unit tests."
   task :all => [:directories] do
@@ -8,33 +8,13 @@ namespace TESTS_TASKS_ROOT_NAME.to_sym do
 
   desc "Run single test ([*] real test or source file name, no path)."
   task :* do
-    message = "\nOops! '#{TESTS_TASKS_ROOT_NAME}:*' isn't a real task. " +
+    message = "\nOops! '#{TEST_ROOT_NAME}:*' isn't a real task. " +
               "Use a real test or source file name (no path) in place of the wildcard.\n" +
-              "Example: rake #{TESTS_TASKS_ROOT_NAME}:foo.c\n\n"
+              "Example: rake #{TEST_ROOT_NAME}:foo.c\n\n"
   
     @ceedling[:streaminator].stdout_puts( message )
   end
   
-  COLLECTION_ALL_TESTS.each do |test|
-    # by test file name
-    name = File.basename(test)
-    task name.to_sym => [:directories] do
-      @ceedling[:test_invoker].setup_and_invoke([test])
-    end
-
-    # by source file name
-    name = File.basename(test).sub(/#{PROJECT_TEST_FILE_PREFIX}/, '')
-    task name.to_sym => [:directories] do
-      @ceedling[:test_invoker].setup_and_invoke([test])
-    end
-    
-    # by header file name
-    name = File.basename(test).ext(EXTENSION_HEADER).sub(/#{PROJECT_TEST_FILE_PREFIX}/, '')
-    task name.to_sym => [:directories] do
-      @ceedling[:test_invoker].setup_and_invoke([test])
-    end
-  end
-
   desc "Run tests for changed files."
   task :delta => [:directories] do
     @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, {:force_run => false})
@@ -53,7 +33,7 @@ namespace TESTS_TASKS_ROOT_NAME.to_sym do
     end
   end
 
-  desc "Run tests whose path contains [dir] or [dir] substring."
+  desc "Run tests whose test path contains [dir] or [dir] substring."
   task :path, [:dir] => [:directories] do |t, args|
     matches = []
     

@@ -287,3 +287,63 @@ DEFAULT_CEEDLING_CONFIG = {
       :enabled => [],
     }
   }
+
+  
+DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
+% ignored        = hash[:results][:counts][:ignored]
+% failed         = hash[:results][:counts][:failed]
+% stdout_count   = hash[:results][:counts][:stdout]
+% header_prepend = ((hash[:header].length > 0) ? "#{hash[:header]}: " : '')
+% banner_width   = 25 + header_prepend.length # widest message
+
+% if (ignored > 0)
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'IGNORED UNIT TEST SUMMARY')%>
+%   hash[:results][:ignores].each do |ignore|
+%     ignore[:collection].each do |item|
+<%=ignore[:source][:path]%><%=File::SEPARATOR%><%=ignore[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+% if (item[:message].length > 0)
+: "<%=item[:message]%>"
+% else
+<%="\n"%>
+% end
+%     end
+%   end
+
+% end
+% if (failed > 0)
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'FAILED UNIT TEST SUMMARY')%>
+%   hash[:results][:failures].each do |failure|
+%     failure[:collection].each do |item|
+<%=failure[:source][:path]%><%=File::SEPARATOR%><%=failure[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+% if (item[:message].length > 0)
+: "<%=item[:message]%>"
+% else
+<%="\n"%>
+% end
+%     end
+%   end
+
+% end
+% if (stdout_count > 0)
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'UNIT TEST OTHER OUTPUT')%>
+%   hash[:results][:stdout].each do |string|
+%     string[:collection].each do |item|
+<%=string[:source][:path]%><%=File::SEPARATOR%><%=string[:source][:file]%>: "<%=item%>"
+%     end
+%   end
+
+% end
+% total_string = hash[:results][:counts][:total].to_s
+% format_string = "%#{total_string.length}i"
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'OVERALL UNIT TEST SUMMARY')%>
+% if (hash[:results][:counts][:total] > 0)
+TESTED:  <%=hash[:results][:counts][:total].to_s%>
+PASSED:  <%=sprintf(format_string, hash[:results][:counts][:passed])%>
+FAILED:  <%=sprintf(format_string, failed)%>
+IGNORED: <%=sprintf(format_string, ignored)%>
+% else
+
+No tests executed.
+% end
+
+}

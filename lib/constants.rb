@@ -47,8 +47,10 @@ DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    # supplemental user config fi
 INPUT_CONFIGURATION_CACHE_FILE     = 'input.yml'   # input configuration file dump
 
 
-TESTS_TASKS_ROOT_NAME   = 'test'
-RELEASE_TASKS_ROOT_NAME = 'release'
+TEST_ROOT_NAME    = 'test'
+TEST_TASK_ROOT    = TEST_ROOT_NAME + ':'
+TEST_CONTEXT      = TEST_ROOT_NAME.to_sym
+RELEASE_ROOT_NAME = 'release'
 
 RUBY_STRING_REPLACEMENT_PATTERN = /#\{.+\}/
 RUBY_EVAL_REPLACEMENT_PATTERN   = /^\{(.+)\}$/

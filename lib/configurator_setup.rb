@@ -28,6 +28,7 @@ class ConfiguratorSetup
     new_config.merge!(@configurator_builder.set_library_build_info_filepaths(new_config))
     new_config.merge!(@configurator_builder.set_release_target(new_config))
     new_config.merge!(@configurator_builder.collect_project_options(new_config))
+    new_config.merge!(@configurator_builder.collect_environment_variables(config))
     
     # iterate through all entries in paths section and expand any & all globs to actual paths
     new_config.merge!(@configurator_builder.expand_all_path_globs(new_config))

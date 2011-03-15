@@ -1,18 +1,21 @@
 require 'plugin'
-
+require 'defaults'
 
 class StdoutPrettyTestsReport < Plugin
   
   def setup
     @result_list = []
     
-    @template = %q{
-      % ignored      = results[:counts][:ignored]
-      % failed       = results[:counts][:failed]
-      % stdout_count = results[:counts][:stdout]
+    template = %q{
+      % ignored      = hash[:results][:counts][:ignored]
+      % failed       = hash[:results][:counts][:failed]
+      % stdout_count = hash[:results][:counts][:stdout]
+      % header_prepend = ((hash[:header].length > 0) ? "#{hash[:header]}: " : '')
+      % banner_width   = 25 + header_prepend.length # widest message
+      
       % if (ignored > 0)
-      <%=@ceedling[:plugin_reportinator].generate_banner('IGNORED UNIT TEST SUMMARY')%>
-      %   results[:ignores].each do |ignore|
+      <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'IGNORED UNIT TEST SUMMARY')%>
+      %   hash[:results][:ignores].each do |ignore|
       [<%=ignore[:source][:file]%>]
       %     ignore[:collection].each do |item|
         Test: <%=item[:test]%>
@@ -26,8 +29,8 @@ class StdoutPrettyTestsReport < Plugin
       %   end
       % end
       % if (failed > 0)
-      <%=@ceedling[:plugin_reportinator].generate_banner('FAILED UNIT TEST SUMMARY')%>
-      %   results[:failures].each do |failure|
+      <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'FAILED UNIT TEST SUMMARY')%>
+      %   hash[:results][:failures].each do |failure|
       [<%=failure[:source][:file]%>]
       %     failure[:collection].each do |item|
         Test: <%=item[:test]%>
@@ -41,8 +44,8 @@ class StdoutPrettyTestsReport < Plugin
       %   end
       % end
       % if (stdout_count > 0)
-      <%=@ceedling[:plugin_reportinator].generate_banner('UNIT TEST OTHER OUTPUT')%>
-      %   results[:stdout].each do |string|
+      <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'UNIT TEST OTHER OUTPUT')%>
+      %   hash[:results][:stdout].each do |string|
       [<%=string[:source][:file]%>]
       %     string[:collection].each do |item|
         - "<%=item%>"
@@ -50,12 +53,12 @@ class StdoutPrettyTestsReport < Plugin
 
       %   end
       % end
-      % total_string = results[:counts][:total].to_s
+      % total_string = hash[:results][:counts][:total].to_s
       % format_string = "%#{total_string.length}i"
-      <%=@ceedling[:plugin_reportinator].generate_banner('OVERALL UNIT TEST SUMMARY')%>
-      % if (results[:counts][:total] > 0)
-      TESTED:  <%=results[:counts][:total].to_s%>
-      PASSED:  <%=sprintf(format_string, results[:counts][:passed])%>
+      <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'OVERALL UNIT TEST SUMMARY')%>
+      % if (hash[:results][:counts][:total] > 0)
+      TESTED:  <%=hash[:results][:counts][:total].to_s%>
+      PASSED:  <%=sprintf(format_string, hash[:results][:counts][:passed])%>
       FAILED:  <%=sprintf(format_string, failed)%>
       IGNORED: <%=sprintf(format_string, ignored)%>
       % else
@@ -64,18 +67,26 @@ class StdoutPrettyTestsReport < Plugin
       % end
 
       }.left_margin
+      
+      @ceedling[:plugin_reportinator].register_test_results_template( template )
   end
   
   def post_test_execute(arg_hash)
-    @result_list << arg_hash[:result_file] if not @result_list.include?(arg_hash[:result_file])
+    return if not (arg_hash[:context] == TEST_CONTEXT)
+  
+    @result_list << arg_hash[:result_file]
   end
   
   def post_build
-    return if (not @ceedling[:task_invoker].test_invoked?)
+    return if not (@ceedling[:task_invoker].test_invoked?)
 
     results = @ceedling[:plugin_reportinator].assemble_test_results(@result_list)
+    hash = {
+      :header => '',
+      :results => results
+    }
 
-    @ceedling[:plugin_reportinator].run_report($stdout, @template, results) do
+    @ceedling[:plugin_reportinator].run_test_results_report(hash) do
       message = ''
       message = 'Unit test failures.' if (results[:counts][:failed] > 0)
       message
@@ -83,12 +94,15 @@ class StdoutPrettyTestsReport < Plugin
   end
 
   def summary
-    result_list = @ceedling[:file_path_utils].form_pass_results_filelist( COLLECTION_ALL_TESTS )
+    result_list = @ceedling[:file_path_utils].form_pass_results_filelist( PROJECT_TEST_RESULTS_PATH, COLLECTION_ALL_TESTS )
 
     # get test results for only those tests in our configuration and of those only tests with results on disk
-    results = @ceedling[:plugin_reportinator].assemble_test_results(result_list, {:boom => false})
+    hash = {
+      :header => '',
+      :results => @ceedling[:plugin_reportinator].assemble_test_results(result_list, {:boom => false})
+    }
 
-    @ceedling[:plugin_reportinator].run_report($stdout, @template, results)
+    @ceedling[:plugin_reportinator].run_test_results_report(hash)
   end
 
 end
