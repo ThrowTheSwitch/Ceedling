@@ -1,6 +1,8 @@
 #ifndef _ADCCONDUCTOR_H
 #define _ADCCONDUCTOR_H
 
+#include "Types.h"
+
 void AdcConductor_Init(void);
 void AdcConductor_Run(void);
 

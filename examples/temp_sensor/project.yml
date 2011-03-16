@@ -5,11 +5,12 @@
   :use_test_preprocessor: TRUE
   :use_auxiliary_dependencies: TRUE
   :build_root: build
-  :release_build: TRUE
+#  :release_build: TRUE
+  :test_file_prefix: Test
 
-:release_build:
-  :output: TempSensor.out
-  :use_assembly: FALSE
+#:release_build:
+#  :output: TempSensor.out
+#  :use_assembly: FALSE
 
 :environment:
 
@@ -18,19 +19,12 @@
 
 :paths:
   :test:
-    - src/**
-    - test/**
+    - +:test/**
+    - -:test/support
   :source:
     - src/**
-  :include:
-    - src/**
-
-:module_generator:
-  :project_root: ./
-  :source_root: src/
-  :test_root: test/
-  :header_includes:
-  :test_includes:
+  :support:
+    - test/support
 
 :defines:
   :commmon: &common_defines
@@ -42,27 +36,22 @@
     - TEST
 
 :cmock:
-  :mock_prefix: mock_
   :when_no_prototypes: :warn
   :enforce_strict_ordering: TRUE
-  :includes:
-    - 
   :plugins:
     - :ignore
   :treat_as:
-    U8:    HEX8
-    U16:   HEX16
-    U32:   HEX32
-    S8:    HEX8
-    "C8*": STRING
-    F32:   FLOAT
-  :attributes:
+    uint8:    HEX8
+    uint16:   HEX16
+    uint32:   UINT32
+    int8:     INT8
+    bool:     UINT8
 
 :tools:
 
-#:plugins:
-#  :load_paths:
-#    - ../../plugins
-#  :enabled:
-#    - stdout_pretty_tests_report
+:plugins:
+  :load_paths:
+    - ../../plugins
+  :enabled:
+    - stdout_pretty_tests_report
 ...

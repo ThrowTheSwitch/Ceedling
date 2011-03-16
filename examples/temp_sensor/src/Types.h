@@ -1,20 +1,7 @@
 #ifndef _MYTYPES_H_
 #define _MYTYPES_H_
 
-#include "AT91SAM7X256.h"
 #include <math.h>
-
-#ifndef __monitor
-#define __monitor
-#endif
-
-// Peripheral Helper Definitions
-#define USART0_CLOCK_ENABLE (AT91C_ID_US0)
-#define USART0_TX_PIN       (AT91C_PA1_TXD0)
-#define TIMER0_CLOCK_ENABLE (((uint32)0x1) << AT91C_ID_TC0)
-#define PIOA_CLOCK_ENABLE   (((uint32)0x1) << AT91C_ID_PIOA)
-#define PIOB_CLOCK_ENABLE   (((uint32)0x1) << AT91C_ID_PIOB)
-#define TIOA0_PIN_MASK      (((uint32)0x1) << 23) // Timer/Counter Output Pin
 
 // Application Type Definitions
 typedef unsigned int uint32;

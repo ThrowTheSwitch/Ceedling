@@ -1,7 +1,6 @@
 #include "unity.h"
 #include "Types.h"
 #include "UsartHardware.h"
-#include "AT91SAM7X256.h"
 #include "MockUsartConfigurator.h"
 #include "MockUsartPutChar.h"
 
