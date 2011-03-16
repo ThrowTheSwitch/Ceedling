@@ -1,5 +1,10 @@
 ---
 
+# Notes:
+# Sample project C code is not presently written to produce a release artifact.
+# As such, release build options are disabled.
+# This sample, therefore, only demonstrates running a collection of unit tests.
+
 :project:
   :use_exceptions: FALSE
   :use_test_preprocessor: TRUE
@@ -47,7 +52,10 @@
     int8:     INT8
     bool:     UINT8
 
-:tools:
+#:tools:
+# Ceedling defaults to using gcc for compiling, linking, etc.
+# As [:tools] is blank, gcc will be used (so long as it's in your system path)
+# See documentation to configure a given toolchain for use
 
 :plugins:
   :load_paths:
