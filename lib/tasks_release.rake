@@ -3,7 +3,7 @@ require 'file_path_utils'
 
 
 desc "Build release target."
-task :release => [:directories] do
+task RELEASE_CONTEXT => [:directories] do
   header = "Release build '#{File.basename(PROJECT_RELEASE_BUILD_TARGET)}'"
   @ceedling[:streaminator].stdout_puts("\n\n#{header}\n#{'-' * header.length}")  
   
@@ -19,7 +19,7 @@ task :release => [:directories] do
 end
 
 
-namespace :release do
+namespace RELEASE_CONTEXT do
 
   namespace :compile do
     COLLECTION_ALL_SOURCE.each do |source|
