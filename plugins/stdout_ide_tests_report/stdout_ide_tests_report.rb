@@ -24,7 +24,7 @@ class StdoutIdeTestsReport < Plugin
     
     @ceedling[:plugin_reportinator].run_test_results_report(hash) do
       message = ''
-      message = 'Unit test failures.' if (hash[:results[:counts][:failed] > 0)
+      message = 'Unit test failures.' if (hash[:results][:counts][:failed] > 0)
       message
     end
   end
