@@ -1,6 +1,8 @@
 
 # modified version of Rake's provided make-style dependency loader
-# customizations: (1) handles windows drives in paths -- colons don't confuse task demarcation (2) handles spaces in directory paths
+# customizations: 
+#  (1) handles windows drives in paths -- colons don't confuse task demarcation
+#  (2) handles spaces in directory paths
 
 module Rake
 

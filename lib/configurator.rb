@@ -145,6 +145,12 @@ class Configurator
   
 
   def find_and_merge_plugins(config)
+    # plugins must be loaded before generic path evaluation & magic that happen later: perform path magic here as discrete step
+    config[:plugins][:load_paths].each do |path|
+      path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      FilePathUtils::standardize(path)
+    end
+    
     @configurator_plugins.add_load_paths(config)
   
     @rake_plugins   = @configurator_plugins.find_rake_plugins(config)
@@ -178,10 +184,10 @@ class Configurator
 
   
   def eval_paths(config)
+    # [:plugins]:load_paths] already handled
     individual_paths = [
       config[:project][:build_root],
-      config[:project][:options_paths],
-      config[:plugins][:load_paths]]
+      config[:project][:options_paths]]
       
     individual_paths.flatten.each do |path|
       path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
@@ -194,10 +200,10 @@ class Configurator
   
   
   def standardize_paths(config)
+    # [:plugins]:load_paths] already handled
     individual_paths = [
       config[:project][:build_root],
       config[:project][:options_paths],
-      config[:plugins][:load_paths],
       config[:cmock][:mock_path]] # cmock path in case it was explicitly set in config
 
     individual_paths.flatten.each { |path| FilePathUtils::standardize(path) }
