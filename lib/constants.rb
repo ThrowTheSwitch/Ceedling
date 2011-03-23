@@ -24,6 +24,15 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
+
+class BackgroundExec
+  NONE = :none
+  AUTO = :auto
+  WIN  = :win
+  UNIX = :unix
+end
+
+
 CEXCEPTION_ROOT_PATH = 'c_exception'
 CEXCEPTION_LIB_PATH  = "#{CEXCEPTION_ROOT_PATH}/lib"
 CEXCEPTION_C_FILE    = 'CException.c'

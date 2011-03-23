@@ -4,20 +4,56 @@ class ToolExecutorHelper
 
   constructor :streaminator, :system_wrapper
 
+  def background_exec_cmdline_prepend(tool_config)
+    return nil if (tool_config[:background_exec].nil?)
+    
+    config_exec = tool_config[:background_exec]
+    
+    if ((config_exec == BackgroundExec::AUTO) and (@system_wrapper.is_windows?))
+      return 'start'
+    end
+
+    if (config_exec == BackgroundExec::WIN)
+      return 'start'
+    end
+
+    return nil
+  end
+
   def osify_path_separators(executable)
     return executable.gsub(/\//, '\\') if (@system_wrapper.is_windows?)
     return executable
   end
   
-  def stderr_redirect_addendum(tool_config)
+  def background_exec_cmdline_addendum(tool_config)
+    return nil if (tool_config[:background_exec].nil?)
+
+    config_exec = tool_config[:background_exec]
+    
+    if ((config_exec == BackgroundExec::AUTO) and (not @system_wrapper.is_windows?))
+      return '&'
+    end
+
+    if (config_exec == BackgroundExec::UNIX)
+      return '&'
+    end
+
+    return nil
+  end
+
+  def stderr_redirect_cmdline_addendum(tool_config)
     return nil if (tool_config[:stderr_redirect].nil?)
     
-    redirect = tool_config[:stderr_redirect]
+    config_redirect = tool_config[:stderr_redirect]
+    redirect        = StdErrRedirect::NONE
+    
+    if (config_redirect == StdErrRedirect::AUTO)
+      redirect = ((@system_wrapper.is_windows?) ? StdErrRedirect::WIN : StdErrRedirect::UNIX)
+    end
     
     case redirect
       # we may need more complicated processing after some learning with various environments
       when StdErrRedirect::NONE then nil
-      when StdErrRedirect::AUTO then '2>&1'
       when StdErrRedirect::WIN  then '2>&1'
       when StdErrRedirect::UNIX then '2>&1'
       when StdErrRedirect::TCSH then '|&'

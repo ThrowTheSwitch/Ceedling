@@ -131,7 +131,8 @@ class Configurator
 
 
   # grab tool names from yaml and insert into tool structures so available for error messages
-  def populate_tool_names_and_stderr_redirect(config)
+  # set up default values
+  def populate_tool_defaults(config)
     config[:tools].each_key do |name|
       tool = config[:tools][name]
       
@@ -140,6 +141,9 @@ class Configurator
 
       # populate stderr redirect option
       tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
+
+      # populate background execution option
+      tool[:background_exec] = BackgroundExec::NONE if (tool[:background_exec].nil?)
     end
   end
   
