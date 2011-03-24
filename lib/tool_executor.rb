@@ -15,30 +15,53 @@ class ToolExecutor
     @tool_name  = tool_config[:name]
     @executable = tool_config[:executable]
 
+    command = {}
+
     # basic premise is to iterate top to bottom through arguments using '$' as 
     #  a string replacement indicator to expand globals or inline yaml arrays
     #  into command line arguments via substitution strings
-    return [
-      @tool_executor_helper.background_exec_cmdline_prepend(tool_config),
+    command[:string] = [
       @tool_executor_helper.osify_path_separators( expandify_element(@executable, *args) ),
       build_arguments(tool_config[:arguments], *args),
-      @tool_executor_helper.background_exec_cmdline_addendum(tool_config),
-      @tool_executor_helper.stderr_redirect_cmdline_addendum(tool_config)
-      ].compact.join(' ')
+      ].join(' ')
+
+    command[:options] = {
+      :stderr_redirect => tool_config[:stderr_redirect],
+      :background_exec => tool_config[:background_exec]
+      }
+    
+    return command
   end
 
 
   # shell out, execute command, and return response
-  def exec(command, args=[], options={:boom => true})
-    command_str = "#{command} #{args.join(' ')}".strip
+  def exec(command, args=[])
+    options = command[:options]
+    options[:boom] = true if (options[:boom].nil?)
+    options[:stderr_redirect] = StdErrRedirect::NONE if (options[:stderr_redirect].nil?)
+    options[:background_exec] = BackgroundExec::NONE if (options[:background_exec].nil?)
     
-    shell_result = @system_wrapper.shell_execute(command_str)
+    command_str = [
+      @tool_executor_helper.background_exec_cmdline_prepend( options ),
+      command[:string],
+      args,
+      @tool_executor_helper.stderr_redirect_cmdline_addendum( options ),
+      @tool_executor_helper.background_exec_cmdline_addendum( options ),
+      ].flatten.compact.join(' ')
 
+    shell_result = {}
+    
+    if (options[:background_exec] != BackgroundExec::NONE)
+      shell_result = @system_wrapper.shell_system( command_str )
+    else
+      shell_result = @system_wrapper.shell_backticks( command_str )
+    end
+    
     @tool_executor_helper.print_happy_results(command_str, shell_result)
     @tool_executor_helper.print_error_results(command_str, shell_result) if (options[:boom])
-
+    
     raise if ((shell_result[:exit_code] != 0) and options[:boom])
-
+    
     return shell_result
   end
 

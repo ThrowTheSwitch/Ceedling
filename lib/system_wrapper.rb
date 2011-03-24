@@ -40,9 +40,17 @@ class SystemWrapper
     return Time.now.asctime
   end
 
-  def shell_execute(command)
+  def shell_backticks(command)
     return {
-      :output =>  `#{command}`,
+      :output    => `#{command}`,
+      :exit_code => ($?.exitstatus)
+    }
+  end
+
+  def shell_system(command)
+    system( command )
+    return {
+      :output    => '',
       :exit_code => ($?.exitstatus)
     }
   end

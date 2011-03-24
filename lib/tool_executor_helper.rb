@@ -25,6 +25,26 @@ class ToolExecutorHelper
     return executable
   end
   
+  def stderr_redirect_cmdline_addendum(tool_config)
+    return nil if (tool_config[:stderr_redirect].nil?)
+    
+    config_redirect = tool_config[:stderr_redirect]
+    redirect        = StdErrRedirect::NONE
+    
+    if (config_redirect == StdErrRedirect::AUTO)
+      redirect = ((@system_wrapper.is_windows?) ? StdErrRedirect::WIN : StdErrRedirect::UNIX)
+    end
+
+    case redirect
+      # we may need more complicated processing after some learning with various environments
+      when StdErrRedirect::NONE then nil
+      when StdErrRedirect::WIN  then '2>&1'
+      when StdErrRedirect::UNIX then '2>&1'
+      when StdErrRedirect::TCSH then '|&'
+      else redirect.to_s
+    end
+  end
+
   def background_exec_cmdline_addendum(tool_config)
     return nil if (tool_config[:background_exec].nil?)
 
@@ -39,26 +59,6 @@ class ToolExecutorHelper
     end
 
     return nil
-  end
-
-  def stderr_redirect_cmdline_addendum(tool_config)
-    return nil if (tool_config[:stderr_redirect].nil?)
-    
-    config_redirect = tool_config[:stderr_redirect]
-    redirect        = StdErrRedirect::NONE
-    
-    if (config_redirect == StdErrRedirect::AUTO)
-      redirect = ((@system_wrapper.is_windows?) ? StdErrRedirect::WIN : StdErrRedirect::UNIX)
-    end
-    
-    case redirect
-      # we may need more complicated processing after some learning with various environments
-      when StdErrRedirect::NONE then nil
-      when StdErrRedirect::WIN  then '2>&1'
-      when StdErrRedirect::UNIX then '2>&1'
-      when StdErrRedirect::TCSH then '|&'
-      else redirect.to_s
-    end
   end
 
   # if command succeeded and we have verbosity cranked up, spill our guts
