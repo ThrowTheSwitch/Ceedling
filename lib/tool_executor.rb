@@ -23,7 +23,7 @@ class ToolExecutor
     command[:string] = [
       @tool_executor_helper.osify_path_separators( expandify_element(@executable, *args) ),
       build_arguments(tool_config[:arguments], *args),
-      ].join(' ')
+      ].join(' ').strip
 
     command[:options] = {
       :stderr_redirect => tool_config[:stderr_redirect],
@@ -43,7 +43,7 @@ class ToolExecutor
     
     command_str = [
       @tool_executor_helper.background_exec_cmdline_prepend( options ),
-      command[:string],
+      command[:string].strip,
       args,
       @tool_executor_helper.stderr_redirect_cmdline_addendum( options ),
       @tool_executor_helper.background_exec_cmdline_addendum( options ),
@@ -57,8 +57,11 @@ class ToolExecutor
       shell_result = @system_wrapper.shell_backticks( command_str )
     end
     
-    @tool_executor_helper.print_happy_results(command_str, shell_result)
-    @tool_executor_helper.print_error_results(command_str, shell_result) if (options[:boom])
+    if (not options[:boom])
+      @tool_executor_helper.print_happy_results(command_str, shell_result)
+    else
+      @tool_executor_helper.print_error_results(command_str, shell_result)
+    end
     
     raise if ((shell_result[:exit_code] != 0) and options[:boom])
     
