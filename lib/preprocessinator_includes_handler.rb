@@ -24,8 +24,8 @@ class PreprocessinatorIncludesHandler
     
     # extract the make-style dependency rule telling the preprocessor to 
     #  ignore the fact that it can't find the included files
-    command_line = @tool_executor.build_command_line(@configurator.tools_test_includes_preprocessor, temp_filepath)
-    shell_result = @tool_executor.exec(command_line)
+    command = @tool_executor.build_command_line(@configurator.tools_test_includes_preprocessor, temp_filepath)
+    shell_result = @tool_executor.exec(command[:line], command[:options])
     
     return shell_result[:output]
   end

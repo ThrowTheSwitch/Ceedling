@@ -20,7 +20,7 @@ class ToolExecutor
     # basic premise is to iterate top to bottom through arguments using '$' as 
     #  a string replacement indicator to expand globals or inline yaml arrays
     #  into command line arguments via substitution strings
-    command[:string] = [
+    command[:line] = [
       @tool_executor_helper.osify_path_separators( expandify_element(@executable, *args) ),
       build_arguments(tool_config[:arguments], *args),
       ].join(' ').strip
@@ -35,15 +35,15 @@ class ToolExecutor
 
 
   # shell out, execute command, and return response
-  def exec(command, args=[])
-    options = command[:options]
+  def exec(command, options={}, args=[])
     options[:boom] = true if (options[:boom].nil?)
     options[:stderr_redirect] = StdErrRedirect::NONE if (options[:stderr_redirect].nil?)
     options[:background_exec] = BackgroundExec::NONE if (options[:background_exec].nil?)
     
-    command_str = [
+    # build command line
+    command_line = [
       @tool_executor_helper.background_exec_cmdline_prepend( options ),
-      command[:string].strip,
+      command.strip,
       args,
       @tool_executor_helper.stderr_redirect_cmdline_addendum( options ),
       @tool_executor_helper.background_exec_cmdline_addendum( options ),
@@ -51,18 +51,21 @@ class ToolExecutor
 
     shell_result = {}
     
+    # depending on background exec option, we shell out differently
     if (options[:background_exec] != BackgroundExec::NONE)
-      shell_result = @system_wrapper.shell_system( command_str )
+      shell_result = @system_wrapper.shell_system( command_line )
     else
-      shell_result = @system_wrapper.shell_backticks( command_str )
+      shell_result = @system_wrapper.shell_backticks( command_line )
     end
     
+    # :boom modifies our display options (logic works in conjunction with printer methods)
     if (not options[:boom])
-      @tool_executor_helper.print_happy_results(command_str, shell_result)
+      @tool_executor_helper.print_happy_results( command_line, shell_result )
     else
-      @tool_executor_helper.print_error_results(command_str, shell_result)
+      @tool_executor_helper.print_error_results( command_line, shell_result )
     end
     
+    # go boom if exit code isn't 0 (but in some cases we don't want a non-0 exit code to raise)
     raise if ((shell_result[:exit_code] != 0) and options[:boom])
     
     return shell_result

@@ -11,14 +11,21 @@ class ConfiguratorPlugins
 
   
   def add_load_paths(config)
+    plugin_paths = {}
+    
     config[:plugins][:load_paths].each do |root|
       @system_wrapper.add_load_path( root ) if ( not @file_wrapper.directory_listing( File.join( root, '*.rb' ) ).empty? )
     
       config[:plugins][:enabled].each do |plugin|
         path = File.join( root, plugin )
-        @system_wrapper.add_load_path( path ) if ( not @file_wrapper.directory_listing( File.join( path, '*.rb' ) ).empty? )
+        if ( not @file_wrapper.directory_listing( File.join( path, '*.rb' ) ).empty? )
+          plugin_paths[(plugin + '_path').to_sym] = path
+          @system_wrapper.add_load_path( path )
+        end
       end
     end
+    
+    return plugin_paths
   end
   
   

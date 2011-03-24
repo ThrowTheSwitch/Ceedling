@@ -1,3 +1,5 @@
+require 'rubygems'
+require 'rake' # for ext()
 require 'constants'
 require 'tool_executor'    # for argument replacement pattern
 require 'file_path_utils'  # for glob handling class methods
@@ -63,12 +65,32 @@ class ConfiguratorValidator
     
     return true
   end
-
  
   # walk into config hash. verify specified file exists.
-  def validate_filepath(config, options, *keys)
-    hash = retrieve_value(config, keys)
-    filepath = hash[:value]
+  def validate_filepath(config, *keys)
+    hash          = retrieve_value(config, keys)
+    filepath      = hash[:value]
+
+    # return early if we couldn't walk into hash and find a value
+    return false if (filepath.nil?)
+
+    # skip everything if we've got an argument replacement pattern
+    return true if (filepath =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
+    
+    if (not @file_wrapper.exist?(filepath))
+      # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
+      @stream_wrapper.stderr_puts("ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk.") 
+      return false
+    end      
+
+    return true
+  end
+
+  # walk into config hash. verify specified file exists.
+  def validate_executable_filepath(config, *keys)
+    exe_extension = config[:extension][:executable]
+    hash          = retrieve_value(config, keys)
+    filepath      = hash[:value]
 
     # return early if we couldn't walk into hash and find a value
     return false if (filepath.nil?)
@@ -77,11 +99,16 @@ class ConfiguratorValidator
     return true if (filepath =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
     
     # if there's no path included, verify file exists somewhere in system search paths
-    if (not filepath.include?('/') and options[:search_system_path])
+    if (not filepath.include?('/'))
       exists = false
       
       @system_wrapper.search_paths.each do |path|
         if (@file_wrapper.exist?(File.join(path, filepath)))
+          exists = true
+          break
+        end
+        
+        if (@file_wrapper.exist?( (File.join(path, filepath)).ext( exe_extension ) ))
           exists = true
           break
         end

@@ -15,22 +15,23 @@ class ConfiguratorSetup
   
   
   def build_project_config(config)
-    # convert config object to flattened hash
+    ### convert config object to flattened hash
     new_config = @configurator_builder.flattenify(config)
 
-    # flesh out config
+    ### flesh out config
     @configurator_builder.clean(new_config)
     
-    # add to hash values we build up from configuration & file system contents
+    ### add to hash values we build up from configuration & file system contents
     new_config.merge!(@configurator_builder.set_build_paths(new_config))
     new_config.merge!(@configurator_builder.set_force_build_filepaths(new_config))
     new_config.merge!(@configurator_builder.set_rakefile_components(new_config))
     new_config.merge!(@configurator_builder.set_library_build_info_filepaths(new_config))
     new_config.merge!(@configurator_builder.set_release_target(new_config))
     new_config.merge!(@configurator_builder.collect_project_options(new_config))
+    # note: config passed b/c environment variables do not flattenify
     new_config.merge!(@configurator_builder.collect_environment_variables(config))
     
-    # iterate through all entries in paths section and expand any & all globs to actual paths
+    ### iterate through all entries in paths section and expand any & all globs to actual paths
     new_config.merge!(@configurator_builder.expand_all_path_globs(new_config))
     
     new_config.merge!(@configurator_builder.collect_source_and_include_paths(new_config))
@@ -79,8 +80,8 @@ class ConfiguratorSetup
   def validate_paths(config)
     validation = []
 
-    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :project, :build_root)
-    validation << @configurator_validator.validate_filepath(config, {:search_system_path => false}, :cmock, :unity_helper) if config[:cmock][:unity_helper]
+    validation << @configurator_validator.validate_filepath(config, :project, :build_root)
+    validation << @configurator_validator.validate_filepath(config, :cmock, :unity_helper) if config[:cmock][:unity_helper]
 
     config[:project][:options_paths].each do |path|
       validation << @configurator_validator.validate_filepath_simple( path, :project, :options_paths )
@@ -103,7 +104,7 @@ class ConfiguratorSetup
 
     config[:tools].keys.sort.each do |key|
       validation << @configurator_validator.exists?(config, :tools, key, :executable)
-      validation << @configurator_validator.validate_filepath(config, {:search_system_path => true}, :tools, key, :executable)
+      validation << @configurator_validator.validate_executable_filepath(config, :tools, key, :executable)
       validation << @configurator_validator.validate_tool_stderr_redirect(config, :tools, key)
     end
 

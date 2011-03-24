@@ -135,7 +135,7 @@ class Configurator
   def populate_tool_defaults(config)
     config[:tools].each_key do |name|
       tool = config[:tools][name]
-      
+
       # populate name if not given      
       tool[:name] = name.to_s if (tool[:name].nil?)
 
@@ -155,7 +155,7 @@ class Configurator
       FilePathUtils::standardize(path)
     end
     
-    @configurator_plugins.add_load_paths(config)
+    paths_hash = @configurator_plugins.add_load_paths(config)
   
     @rake_plugins   = @configurator_plugins.find_rake_plugins(config)
     @script_plugins = @configurator_plugins.find_script_plugins(config)
@@ -172,6 +172,8 @@ class Configurator
     
     # special plugin setting for results printing
     config[:plugins][:display_raw_test_results] = true if (config[:plugins][:display_raw_test_results].nil?)
+    
+    paths_hash.each_pair { |name, path| config[:plugins][name] = path }
   end
 
   
