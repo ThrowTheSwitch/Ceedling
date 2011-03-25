@@ -39,5 +39,10 @@
       - --width 120
       - --no-source
       - "\"${1}\""
+  :bullseye_browser:
+    :executable: CoverageBrowser
+    :background_exec: :auto
+    :arguments:
+      - "$": ENVIRONMENT_COVFILE
 
 ...

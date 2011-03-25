@@ -130,7 +130,8 @@ namespace BULLSEYE_CONTEXT do
   
   desc "Open code coverage browser"
   task :open do
-    sh "start CoverageBrowser.exe #{ENVIRONMENT_COVFILE}"
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BROWSER)
+    @ceedling[:tool_executor].exec(command[:line], command[:options])
   end
 
 end

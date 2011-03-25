@@ -58,12 +58,8 @@ class ToolExecutor
       shell_result = @system_wrapper.shell_backticks( command_line )
     end
     
-    # :boom modifies our display options (logic works in conjunction with printer methods)
-    if (not options[:boom])
-      @tool_executor_helper.print_happy_results( command_line, shell_result )
-    else
-      @tool_executor_helper.print_error_results( command_line, shell_result )
-    end
+    @tool_executor_helper.print_happy_results( command_line, shell_result, options[:boom] )
+    @tool_executor_helper.print_error_results( command_line, shell_result, options[:boom] )
     
     # go boom if exit code isn't 0 (but in some cases we don't want a non-0 exit code to raise)
     raise if ((shell_result[:exit_code] != 0) and options[:boom])

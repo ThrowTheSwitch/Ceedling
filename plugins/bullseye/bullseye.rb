@@ -65,10 +65,9 @@ class Bullseye < Plugin
     end
     
     # coverage results
-    command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC)
-    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
-
     if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
+      command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC)
+      shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
       report_coverage_results_all(shell_result[:output])
     else
       report_per_function_coverage_results(@ceedling[:test_invoker].sources)
