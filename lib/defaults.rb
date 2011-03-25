@@ -7,13 +7,12 @@ DEFAULT_TEST_COMPILER_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_test_compiler',
   :stderr_redirect => StdErrRedirect::NONE,
-  :background_exec => false,
+  :background_exec => BackgroundExec::NONE,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'},
     "-DGNU_COMPILER",
-    {"$" => 'TEST_COMPILER_ARGUMENTS'},
     "-c \"${1}\"",
     "-o \"${2}\"",
     ]
@@ -23,9 +22,8 @@ DEFAULT_TEST_LINKER_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_test_linker',
   :stderr_redirect => StdErrRedirect::NONE,
-  :background_exec => false,
+  :background_exec => BackgroundExec::NONE,
   :arguments => [
-    {"$" => 'TEST_LINKER_ARGUMENTS'},
     "\"${1}\"",
     "-o \"${2}\"",
     ]
@@ -35,10 +33,8 @@ DEFAULT_TEST_FIXTURE_TOOL = {
   :executable => '${1}',
   :name => 'default_test_fixture',
   :stderr_redirect => StdErrRedirect::AUTO,
-  :background_exec => false,
-  :arguments => [
-    {"$" => 'TEST_FIXTURE_ARGUMENTS'},
-    ]
+  :background_exec => BackgroundExec::NONE,
+  :arguments => []
   }
 
 
@@ -47,7 +43,7 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('cpp'),
   :name => 'default_test_includes_preprocessor',
   :stderr_redirect => StdErrRedirect::NONE,
-  :background_exec => false,
+  :background_exec => BackgroundExec::NONE,
   :arguments => [
     '-MM', '-MG',
     # avoid some possibility of deep system lib header file complications by omitting vendor paths
@@ -56,7 +52,6 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
     "-DGNU_PREPROCESSOR",
-    {"$" => 'TEST_INCLUDES_PREPROCESSOR_ARGUMENTS'},
     '-w',
     '-nostdinc',
     "\"${1}\""
@@ -67,7 +62,7 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_test_file_preprocessor',
   :stderr_redirect => StdErrRedirect::NONE,
-  :background_exec => false,
+  :background_exec => BackgroundExec::NONE,
   :arguments => [
     '-E',
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
@@ -75,7 +70,6 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
     "-DGNU_PREPROCESSOR",
-    {"$" => 'TEST_FILE_PREPROCESSOR_ARGUMENTS'},
     "\"${1}\"",
     "-o \"${2}\""
     ]
@@ -85,7 +79,7 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_test_dependencies_generator',
   :stderr_redirect => StdErrRedirect::NONE,
-  :background_exec => false,
+  :background_exec => BackgroundExec::NONE,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
@@ -95,7 +89,6 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
     "-MT \"${3}\"",
     '-MM', '-MD', '-MG',
     "-MF \"${2}\"",
-    {"$" => 'TEST_DEPENDENCIES_GENERATOR_ARGUMENTS'},
     "-c \"${1}\"",
     ]
   }
@@ -104,7 +97,7 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_release_dependencies_generator',
   :stderr_redirect => StdErrRedirect::NONE,
-  :background_exec => false,
+  :background_exec => BackgroundExec::NONE,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_AND_INCLUDE'},
     {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'},
@@ -114,7 +107,6 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
     "-MT \"${3}\"",
     '-MM', '-MD', '-MG',
     "-MF \"${2}\"",
-    {"$" => 'RELEASE_DEPENDENCIES_GENERATOR_ARGUMENTS'},
     "-c \"${1}\"",
     ]
   }
@@ -124,13 +116,12 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_release_compiler',
   :stderr_redirect => StdErrRedirect::NONE,
-  :background_exec => false,
+  :background_exec => BackgroundExec::NONE,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'},
     {"-D$" => 'COLLECTION_DEFINES_RELEASE_AND_VENDOR'},        
     "-DGNU_COMPILER",
-    {"$" => 'RELEASE_COMPILER_ARGUMENTS'},
     "-c \"${1}\"",
     "-o \"${2}\"",
     ]
@@ -140,10 +131,9 @@ DEFAULT_RELEASE_ASSEMBLER_TOOL = {
   :executable => FilePathUtils.os_executable_ext('as'),
   :name => 'default_release_assembler',
   :stderr_redirect => StdErrRedirect::NONE,
-  :background_exec => false,
+  :background_exec => BackgroundExec::NONE,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_AND_INCLUDE'},
-    {"$" => 'RELEASE_ASSEMBLER_ARGUMENTS'},
     "\"${1}\"",
     "-o \"${2}\"",
     ]
@@ -153,9 +143,8 @@ DEFAULT_RELEASE_LINKER_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc'),
   :name => 'default_release_linker',
   :stderr_redirect => StdErrRedirect::NONE,
-  :background_exec => false,
+  :background_exec => BackgroundExec::NONE,
   :arguments => [
-    {"$" => 'RELEASE_LINKER_ARGUMENTS'},
     "\"${1}\"",
     "-o \"${2}\"",
     ]

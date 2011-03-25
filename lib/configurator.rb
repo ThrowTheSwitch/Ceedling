@@ -132,7 +132,7 @@ class Configurator
 
   # grab tool names from yaml and insert into tool structures so available for error messages
   # set up default values
-  def populate_tool_defaults(config)
+  def tools_setup(config)
     config[:tools].each_key do |name|
       tool = config[:tools][name]
 
@@ -144,6 +144,14 @@ class Configurator
 
       # populate background execution option
       tool[:background_exec] = BackgroundExec::NONE if (tool[:background_exec].nil?)
+      
+      # smoosh in extra arguments if specified at top-level of config (useful for plugins & default gcc tools)
+      # arguments are squirted in at beginning of list
+      top_level_tool = ('tool_' + name.to_s).to_sym
+      if (not config[top_level_tool].nil?)
+        tool[:arguments].insert( 0, config[top_level_tool][:arguments] )
+        tool[:arguments].flatten!
+      end
     end
   end
   
