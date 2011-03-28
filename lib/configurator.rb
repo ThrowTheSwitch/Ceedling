@@ -7,24 +7,21 @@ require 'deep_merge'
 
 class Configurator
 
-  attr_reader :project_config_hash, :environment, :script_plugins, :rake_plugins
-  attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
+  attr_reader :project_config_hash, :script_plugins, :rake_plugins
+  attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks, :environment_vars
   
   constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
     @project_logging   = false
     @project_debug     = false
     @project_verbosity = Verbosity::NORMAL
     @sanity_checks     = TestResultsSanityChecks::NORMAL
+    @environment_vars  = []
   end
-  
   
   def setup
     # special copy of cmock config to provide to cmock for construction
     @cmock_config_hash = {}
 
-    # capture our source config for later merge operations
-    @source_config_hash = {}
-    
     # note: project_config_hash is an instance variable so constants and accessors created
     # in eval() statements in build() have something of proper scope and persistence to reference
     @project_config_hash = {}
@@ -33,7 +30,7 @@ class Configurator
     @script_plugins = []
     @rake_plugins   = []
   end
-
+  
   
   def replace_flattened_config(config)
     @project_config_hash.merge!(config)
@@ -193,7 +190,8 @@ class Configurator
         value_string.replace(@system_wrapper.module_eval(value_string))
       end
       @system_wrapper.env_set(key.to_s.upcase, value_string)
-    end    
+      @environment_vars << hash
+    end
   end
 
   
@@ -249,13 +247,22 @@ class Configurator
     
   
   def build(config)
-    built_config = @configurator_setup.build_project_config(config)
+    built_config = @configurator_setup.build_project_config( config, @configurator_builder.flattenify( config ) )
     
-    @source_config_hash   = config.clone
-    @project_config_hash  = built_config.clone
+    @project_config_hash = built_config.clone
     store_config()
 
     @configurator_setup.build_constants_and_accessors(built_config, binding())
+  end
+
+
+  def build_merge(config_base, config_more)
+    config_base.deep_merge!( config_more )
+    
+    @project_config_hash.deep_merge!( @configurator_builder.flattenify( config_more ) )
+    store_config()
+
+    @configurator_setup.build_constants_and_accessors(config_more, binding())
   end
     
   

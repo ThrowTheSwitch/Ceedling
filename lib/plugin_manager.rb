@@ -11,16 +11,21 @@ class PluginManager
   end
   
   def load_plugin_scripts(script_plugins, system_objects)
+    environment = []
+    
     script_plugins.each do |plugin|
-      # protect against instantiating object multiple times due to processing config multiple times (options, etc)
+      # protect against instantiating object multiple times due to processing config multiple times (option files, etc)
 			next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
       @system_wrapper.require_file( "#{plugin}.rb" )
       object = @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects, plugin )
       @plugin_objects << object
+      environment += object.environment
       
       # add plugins to hash of all system objects
       system_objects[plugin.downcase.to_sym] = object
     end
+    
+    yield environment if (environment.size > 0)
   end
   
   def plugins_failed?

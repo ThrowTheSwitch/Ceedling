@@ -192,13 +192,6 @@ class ConfiguratorBuilder
   end
   
 
-  def collect_environment_variables(in_hash)
-    return {
-      :collection_environment => in_hash[:environment]
-      }
-  end
-
-  
   def collect_project_options(in_hash)
     options = []
     

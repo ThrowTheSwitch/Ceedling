@@ -29,9 +29,10 @@ class String
 end
 
 class Plugin
-  attr_reader :name
+  attr_reader :name, :environment
 
   def initialize(system_objects, name)
+    @environment = []
     @ceedling = system_objects
     @name = name
     self.setup

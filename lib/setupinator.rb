@@ -32,7 +32,12 @@ class Setupinator
     @ceedling[:configurator].build( config_hash )
     @ceedling[:configurator].insert_rake_plugins( @ceedling[:configurator].rake_plugins )
     
-    @ceedling[:plugin_manager].load_plugin_scripts( @ceedling[:configurator].script_plugins, @ceedling )
+    @ceedling[:plugin_manager].load_plugin_scripts( @ceedling[:configurator].script_plugins, @ceedling ) do |environment|
+      env_hash = { :environment => environment }
+      @ceedling[:configurator].eval_environment_variables( env_hash )
+      @ceedling[:configurator].build_merge( config_hash, env_hash )
+    end
+    
     @ceedling[:plugin_reportinator].set_system_objects( @ceedling )
     @ceedling[:file_finder].prepare_search_sources
     @ceedling[:loginator].setup_log_filepath

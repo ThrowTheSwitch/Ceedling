@@ -117,7 +117,11 @@ class Generator
     shell_result = @tool_executor.exec( command[:line], command[:options] )
     
     if (shell_result[:output].nil? or shell_result[:output].strip.empty?)
-      @streaminator.stderr_puts("ERROR: Test executable \"#{File.basename(executable)}\" did not produce any results.", Verbosity::ERRORS)
+      notice = "\n" +
+               "ERROR: Test executable \"#{File.basename(executable)}\" did not produce any results.\n" +
+               "This is most often a symptom of bad memory accesses in source or test code.\n\n"
+      
+      @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
       raise
     end
     

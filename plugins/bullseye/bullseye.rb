@@ -11,11 +11,6 @@ BULLSEYE_RESULTS_PATH      = "#{BULLSEYE_BUILD_PATH}/results"
 BULLSEYE_DEPENDENCIES_PATH = "#{BULLSEYE_BUILD_PATH}/dependencies"
 BULLSEYE_ARTIFACTS_PATH    = "#{PROJECT_BUILD_ARTIFACTS_ROOT}/#{BULLSEYE_ROOT_NAME}"
 
-# because of when in setup BULLSEYE_ARTIFACTS_PATH is available, we slip
-# covfile into environment here instead of through [:environment] facility in config yaml
-ENVIRONMENT_COVFILE = File.join( BULLSEYE_ARTIFACTS_PATH, 'test.cov' )
-ENV['COVFILE']      = ENVIRONMENT_COVFILE
-
 
 class Bullseye < Plugin
 
@@ -27,9 +22,11 @@ class Bullseye < Plugin
     @config = {
       :project_test_build_output_path => BULLSEYE_BUILD_OUTPUT_PATH,
       :project_test_results_path      => BULLSEYE_RESULTS_PATH,
-      :project_test_dependencies_path => BULLSEYE_DEPENDENCIES_PATH,
+      :project_test_dependencies_path => BULLSEYE_DEPENDENCIES_PATH
       }
     
+    @environment = [ {:covfile => File.join( BULLSEYE_ARTIFACTS_PATH, 'test.cov' )} ]
+      
     @coverage_template_all = @ceedling[:file_wrapper].read( File.join( PLUGINS_BULLSEYE_PATH, 'template.erb') )
   end
 
