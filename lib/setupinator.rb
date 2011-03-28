@@ -29,7 +29,7 @@ class Setupinator
     @ceedling[:configurator].eval_paths( config_hash )
     @ceedling[:configurator].standardize_paths( config_hash )
     @ceedling[:configurator].validate( config_hash )
-    @ceedling[:configurator].build( config_hash )
+    @ceedling[:configurator].build( config_hash, :environment )
     @ceedling[:configurator].insert_rake_plugins( @ceedling[:configurator].rake_plugins )
     
     @ceedling[:plugin_manager].load_plugin_scripts( @ceedling[:configurator].script_plugins, @ceedling ) do |environment|

@@ -128,10 +128,15 @@ namespace BULLSEYE_CONTEXT do
     @ceedling[:configurator].restore_config
   end
   
-  desc "Open code coverage browser"
-  task :open do
+end
+
+namespace UTILS_SYM do
+  
+  desc "Open Bullseye code coverage browser"
+  task BULLSEYE_CONTEXT do
     command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BROWSER)
     @ceedling[:tool_executor].exec(command[:line], command[:options])
   end
-
+  
 end
+

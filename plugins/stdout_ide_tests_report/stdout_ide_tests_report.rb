@@ -8,7 +8,7 @@ class StdoutIdeTestsReport < Plugin
   end
     
   def post_test_execute(arg_hash)
-    return if not (arg_hash[:context] == TEST_CONTEXT)
+    return if not (arg_hash[:context] == TEST_SYM)
 
     @result_list << arg_hash[:result_file]
   end

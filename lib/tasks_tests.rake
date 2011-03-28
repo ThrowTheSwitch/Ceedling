@@ -1,5 +1,5 @@
 
-namespace TEST_CONTEXT do
+namespace TEST_SYM do
   
   desc "Run all unit tests."
   task :all => [:directories] do

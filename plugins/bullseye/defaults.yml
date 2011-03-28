@@ -38,11 +38,11 @@
       - '--file $': ENVIRONMENT_COVFILE
       - --width 120
       - --no-source
-      - "\"${1}\""
+      - '"${1}"'
   :bullseye_browser:
     :executable: CoverageBrowser
     :background_exec: :auto
     :arguments:
-      - "$": ENVIRONMENT_COVFILE
+      - '"$"': ENVIRONMENT_COVFILE
 
 ...

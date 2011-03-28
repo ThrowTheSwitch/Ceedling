@@ -11,7 +11,7 @@ rule(/#{PROJECT_TEST_PREPROCESS_FILES_PATH}\/.+/ => [
   if (not @ceedling[:configurator].project_use_auxiliary_dependencies)
     raise 'ERROR: Ceedling preprocessing rule invoked though neccessary auxiliary dependency support not enabled.'
   end
-  @ceedling[:generator].generate_preprocessed_file(TEST_CONTEXT, file.source)
+  @ceedling[:generator].generate_preprocessed_file(TEST_SYM, file.source)
 end
 
 
@@ -21,6 +21,6 @@ rule(/#{PROJECT_TEST_PREPROCESS_INCLUDES_PATH}\/.+/ => [
       @ceedling[:file_finder].find_test_or_source_or_header_file(task_name)
     end  
   ]) do |file|
-  @ceedling[:generator].generate_shallow_includes_list(TEST_CONTEXT, file.source)
+  @ceedling[:generator].generate_shallow_includes_list(TEST_SYM, file.source)
 end
 

@@ -9,7 +9,7 @@ rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_ASM_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => 
       @ceedling[:file_finder].find_assembly_file(task_name)
     end  
   ]) do |object|
-  @ceedling[:generator].generate_object_file(TOOLS_RELEASE_ASSEMBLER, RELEASE_CONTEXT, object.source, object.name)
+  @ceedling[:generator].generate_object_file(TOOLS_RELEASE_ASSEMBLER, RELEASE_SYM, object.source, object.name)
 end
 end
 
@@ -19,16 +19,16 @@ rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
       @ceedling[:file_finder].find_compilation_input_file(task_name)
     end  
   ]) do |object|
-  @ceedling[:generator].generate_object_file(TOOLS_RELEASE_COMPILER, RELEASE_CONTEXT, object.source, object.name)
+  @ceedling[:generator].generate_object_file(TOOLS_RELEASE_COMPILER, RELEASE_SYM, object.source, object.name)
 end
 
 
 rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
-  @ceedling[:generator].generate_executable_file(TOOLS_RELEASE_LINKER, RELEASE_CONTEXT, bin_file.prerequisites, bin_file.name)
+  @ceedling[:generator].generate_executable_file(TOOLS_RELEASE_LINKER, RELEASE_SYM, bin_file.prerequisites, bin_file.name)
 end
 
 
-namespace RELEASE_CONTEXT do
+namespace RELEASE_SYM do
   # use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
 
   namespace :compile do

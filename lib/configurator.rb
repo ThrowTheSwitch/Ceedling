@@ -8,14 +8,13 @@ require 'deep_merge'
 class Configurator
 
   attr_reader :project_config_hash, :script_plugins, :rake_plugins
-  attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks, :environment_vars
+  attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
   
   constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
     @project_logging   = false
     @project_debug     = false
     @project_verbosity = Verbosity::NORMAL
     @sanity_checks     = TestResultsSanityChecks::NORMAL
-    @environment_vars  = []
   end
   
   def setup
@@ -190,7 +189,6 @@ class Configurator
         value_string.replace(@system_wrapper.module_eval(value_string))
       end
       @system_wrapper.env_set(key.to_s.upcase, value_string)
-      @environment_vars << hash
     end
   end
 
@@ -246,23 +244,44 @@ class Configurator
   end
     
   
-  def build(config)
+  # create constants and accessors (attached to this object) from given hash
+  def build(config, *keys)
+    # create flattened & expanded configuration hash
     built_config = @configurator_setup.build_project_config( config, @configurator_builder.flattenify( config ) )
     
     @project_config_hash = built_config.clone
     store_config()
 
     @configurator_setup.build_constants_and_accessors(built_config, binding())
+    
+    # top-level keys disappear when we flatten, so create global constants & accessors to any specified keys
+    keys.each do |key|
+      hash = { key => config[key] }
+      @configurator_setup.build_constants_and_accessors(hash, binding())      
+    end
   end
 
 
+  # add to constants and accessors, post build step
   def build_merge(config_base, config_more)
+    # merge in our post-build additions to base configuration hash
     config_base.deep_merge!( config_more )
+
+    # flatten our addition hash
+    config_more_flattened = @configurator_builder.flattenify( config_more )
     
-    @project_config_hash.deep_merge!( @configurator_builder.flattenify( config_more ) )
+    # merge our flattened hash with built hash from previous build
+    @project_config_hash.deep_merge!( config_more_flattened )
     store_config()
 
-    @configurator_setup.build_constants_and_accessors(config_more, binding())
+    # create more constants and accessors
+    @configurator_setup.build_constants_and_accessors(config_more_flattened, binding())
+    
+    # recreate constants & update accessors with new merged, base values
+    config_more.keys.each do |key|
+      hash = { key => config_base[key] }
+      @configurator_setup.build_constants_and_accessors(hash, binding())
+    end
   end
     
   
