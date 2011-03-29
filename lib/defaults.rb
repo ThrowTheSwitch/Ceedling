@@ -48,7 +48,7 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
     '-MM', '-MG',
     # avoid some possibility of deep system lib header file complications by omitting vendor paths
     # if cpp is run on *nix system, escape spaces in paths; if cpp on windows just use the paths collection as is
-    {"-I\"$\"" => "{SystemWrapper.is_windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"},
+    {"-I\"$\"" => "{SystemWrapper.windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"},
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'},
     {"-D$" => 'DEFINES_TEST_PREPROCESS'},
     "-DGNU_PREPROCESSOR",
@@ -239,7 +239,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :source => '.c',
       :assembly => '.s',
       :object => '.o',
-      :executable => ( SystemWrapper.is_windows? ? '.exe' : '.out' ),
+      :executable => ( SystemWrapper.windows? ? '.exe' : '.out' ),
       :testpass => '.pass',
       :testfail => '.fail',
       :dependencies => '.d',

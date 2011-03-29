@@ -26,7 +26,7 @@ class ToolExecutor
       ].join(' ').strip
 
     command[:options] = {
-      :stderr_redirect => tool_config[:stderr_redirect],
+      :stderr_redirect => @tool_executor_helper.stderr_redirection(tool_config, @configurator.project_logging),
       :background_exec => tool_config[:background_exec]
       }
     
@@ -45,8 +45,8 @@ class ToolExecutor
       @tool_executor_helper.background_exec_cmdline_prepend( options ),
       command.strip,
       args,
-      @tool_executor_helper.stderr_redirect_cmdline_addendum( options ),
-      @tool_executor_helper.background_exec_cmdline_addendum( options ),
+      @tool_executor_helper.stderr_redirect_cmdline_append( options ),
+      @tool_executor_helper.background_exec_cmdline_append( options ),
       ].flatten.compact.join(' ')
 
     shell_result = {}

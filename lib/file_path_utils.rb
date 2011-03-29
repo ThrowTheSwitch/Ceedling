@@ -29,7 +29,7 @@ class FilePathUtils
   end
 
   def self.os_executable_ext(executable)
-    return executable.ext('.exe') if SystemWrapper.is_windows?
+    return executable.ext('.exe') if SystemWrapper.windows?
     return executable
   end
 

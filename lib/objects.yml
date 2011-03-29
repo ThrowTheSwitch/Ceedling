@@ -17,6 +17,10 @@ rake_utils:
   compose:
     - rake_wrapper  
 
+system_utils:
+  compose:
+    - system_wrapper  
+
 file_path_utils:
   compose:
     - configurator
@@ -59,6 +63,7 @@ tool_executor:
 tool_executor_helper:
   compose:
     - streaminator
+    - system_utils
     - system_wrapper
 
 configurator:

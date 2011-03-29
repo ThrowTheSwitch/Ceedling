@@ -2,14 +2,25 @@ require 'constants' # for Verbosity enumeration & $stderr redirect enumeration
 
 class ToolExecutorHelper
 
-  constructor :streaminator, :system_wrapper
+  constructor :streaminator, :system_utils, :system_wrapper
+
+  def stderr_redirection(tool_config, logging)
+    # if there's no logging enabled, return :stderr_redirect unmodified
+    return tool_config[:stderr_redirect] if (not logging)
+    
+    # if there is logging enabled but the redirect is a custom value (not enum), return the custom string
+    return tool_config[:stderr_redirect] if (tool_config[:stderr_redirect].class == String)
+ 
+    # if logging is enabled but there's no custom string, return the AUTO enumeration so $stderr goes into the log
+    return StdErrRedirect::AUTO
+  end
 
   def background_exec_cmdline_prepend(tool_config)
     return nil if (tool_config[:background_exec].nil?)
     
     config_exec = tool_config[:background_exec]
     
-    if ((config_exec == BackgroundExec::AUTO) and (@system_wrapper.is_windows?))
+    if ((config_exec == BackgroundExec::AUTO) and (@system_wrapper.windows?))
       return 'start'
     end
 
@@ -21,18 +32,26 @@ class ToolExecutorHelper
   end
 
   def osify_path_separators(executable)
-    return executable.gsub(/\//, '\\') if (@system_wrapper.is_windows?)
+    return executable.gsub(/\//, '\\') if (@system_wrapper.windows?)
     return executable
   end
   
-  def stderr_redirect_cmdline_addendum(tool_config)
+  def stderr_redirect_cmdline_append(tool_config)
     return nil if (tool_config[:stderr_redirect].nil?)
     
     config_redirect = tool_config[:stderr_redirect]
     redirect        = StdErrRedirect::NONE
     
     if (config_redirect == StdErrRedirect::AUTO)
-      redirect = ((@system_wrapper.is_windows?) ? StdErrRedirect::WIN : StdErrRedirect::UNIX)
+       if (@system_wrapper.windows?)
+         redirect = StdErrRedirect::WIN
+       else
+         if (@system_utils.tcsh_shell?)
+           redirect = StdErrRedirect::TCSH
+         else
+           redirect = StdErrRedirect::UNIX           
+         end
+       end
     end
 
     case redirect
@@ -45,19 +64,21 @@ class ToolExecutorHelper
     end
   end
 
-  def background_exec_cmdline_addendum(tool_config)
+  def background_exec_cmdline_append(tool_config)
     return nil if (tool_config[:background_exec].nil?)
 
     config_exec = tool_config[:background_exec]
     
-    if ((config_exec == BackgroundExec::AUTO) and (not @system_wrapper.is_windows?))
-      return '&'
-    end
+    # if :auto & windows, then we already prepended 'start' and should append nothing
+    return nil if ((config_exec == BackgroundExec::AUTO) and (@system_wrapper.windows?))
 
-    if (config_exec == BackgroundExec::UNIX)
-      return '&'
-    end
+    # if :auto & not windows, then we append standard '&'
+    return '&' if ((config_exec == BackgroundExec::AUTO) and (not @system_wrapper.windows?))
 
+    # if explicitly Unix, then append '&'
+    return '&' if (config_exec == BackgroundExec::UNIX)
+    
+    # all other cases, including :none, :win, & anything unrecognized, append nothing
     return nil
   end
 

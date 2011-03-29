@@ -262,8 +262,8 @@ class Configurator
   end
 
 
-  # add to constants and accessors, post build step
-  def build_merge(config_base, config_more)
+  # add to constants and accessors as post build step
+  def build_supplement(config_base, config_more)
     # merge in our post-build additions to base configuration hash
     config_base.deep_merge!( config_more )
 

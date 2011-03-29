@@ -25,7 +25,7 @@ class PluginManager
       system_objects[plugin.downcase.to_sym] = object
     end
     
-    yield environment if (environment.size > 0)
+    yield( { :environment => environment } ) if (environment.size > 0)
   end
   
   def plugins_failed?

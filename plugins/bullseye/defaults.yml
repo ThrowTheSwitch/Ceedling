@@ -11,7 +11,7 @@
     :arguments:
       - -g
       - -I"$": COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR
-      - -I"$": COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE
+      - -I"$": COLLECTION_PATHS_BULLSEYE_TOOLCHAIN_INCLUDE
       - -D$: COLLECTION_DEFINES_TEST_AND_VENDOR
       - -DCODE_COVERAGE
       - -c "${1}"
@@ -21,7 +21,7 @@
     :arguments:
       - ${1}
       - -o ${2}
-      - -L$: BULLSEYE_LIB_PATH
+      - -L$: PLUGINS_BULLSEYE_LIB_PATH
       - -lcov
   :bullseye_fixture:
     :executable: ${1}
