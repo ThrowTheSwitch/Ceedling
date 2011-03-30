@@ -140,6 +140,9 @@ class Configurator
 
       # populate background execution option
       tool[:background_exec] = BackgroundExec::NONE if (tool[:background_exec].nil?)
+
+      # populate optional option to control verification of executable in search paths
+      tool[:optional] = false if (tool[:optional].nil?)
       
       # smoosh in extra arguments if specified at top-level of config (useful for plugins & default gcc tools)
       # arguments are squirted in at beginning of list

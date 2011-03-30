@@ -8,6 +8,7 @@ DEFAULT_TEST_COMPILER_TOOL = {
   :name => 'default_test_compiler',
   :stderr_redirect => StdErrRedirect::NONE,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
@@ -23,6 +24,7 @@ DEFAULT_TEST_LINKER_TOOL = {
   :name => 'default_test_linker',
   :stderr_redirect => StdErrRedirect::NONE,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => [
     "\"${1}\"",
     "-o \"${2}\"",
@@ -34,6 +36,7 @@ DEFAULT_TEST_FIXTURE_TOOL = {
   :name => 'default_test_fixture',
   :stderr_redirect => StdErrRedirect::AUTO,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => []
   }
 
@@ -44,6 +47,7 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
   :name => 'default_test_includes_preprocessor',
   :stderr_redirect => StdErrRedirect::NONE,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => [
     '-MM', '-MG',
     # avoid some possibility of deep system lib header file complications by omitting vendor paths
@@ -63,6 +67,7 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
   :name => 'default_test_file_preprocessor',
   :stderr_redirect => StdErrRedirect::NONE,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => [
     '-E',
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
@@ -80,6 +85,7 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :name => 'default_test_dependencies_generator',
   :stderr_redirect => StdErrRedirect::NONE,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'},
@@ -98,6 +104,7 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :name => 'default_release_dependencies_generator',
   :stderr_redirect => StdErrRedirect::NONE,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_AND_INCLUDE'},
     {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'},
@@ -117,6 +124,7 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
   :name => 'default_release_compiler',
   :stderr_redirect => StdErrRedirect::NONE,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR'},
     {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'},
@@ -132,6 +140,7 @@ DEFAULT_RELEASE_ASSEMBLER_TOOL = {
   :name => 'default_release_assembler',
   :stderr_redirect => StdErrRedirect::NONE,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_AND_INCLUDE'},
     "\"${1}\"",
@@ -144,6 +153,7 @@ DEFAULT_RELEASE_LINKER_TOOL = {
   :name => 'default_release_linker',
   :stderr_redirect => StdErrRedirect::NONE,
   :background_exec => BackgroundExec::NONE,
+  :optional => false,
   :arguments => [
     "\"${1}\"",
     "-o \"${2}\"",
