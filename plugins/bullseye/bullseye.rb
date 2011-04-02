@@ -31,10 +31,17 @@ class Bullseye < Plugin
   end
 
   def generate_coverage_object_file(source, object)
+    arg_hash = {:tool => TOOLS_BULLSEYE_INSTRUMENTATION, :context => BULLSEYE_CONTEXT, :source => source, :object => object}
+    @ceedling[:plugin_manager].pre_compile_execute(arg_hash)
+
+    @ceedling[:streaminator].stdout_puts("Compiling #{File.basename(source)} with coverage...")
     compile_command  = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_COMPILER, source, object)
     coverage_command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_INSTRUMENTATION, compile_command[:line] )
-    @ceedling[:streaminator].stdout_puts("Compiling #{File.basename(source)} with coverage...")
-    @ceedling[:tool_executor].exec( coverage_command[:line], coverage_command[:options] )
+
+    shell_result     = @ceedling[:tool_executor].exec( coverage_command[:line], coverage_command[:options] )
+    
+    arg_hash[:shell_result] = shell_result
+    @ceedling[:plugin_manager].post_compile_execute(arg_hash)
   end
 
   def post_test_execute(arg_hash)

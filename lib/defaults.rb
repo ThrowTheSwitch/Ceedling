@@ -37,7 +37,7 @@ DEFAULT_TEST_FIXTURE_TOOL = {
   :stderr_redirect => StdErrRedirect::AUTO,
   :background_exec => BackgroundExec::NONE,
   :optional => false,
-  :arguments => []
+  :arguments => [].freeze
   }
 
 

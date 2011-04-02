@@ -65,13 +65,13 @@ class Configurator
 
 
   def populate_defaults(config)
-    new_config = DEFAULT_CEEDLING_CONFIG.clone
+    new_config = DEFAULT_CEEDLING_CONFIG.deep_clone
     new_config.deep_merge!(config)
     config.replace(new_config)
 
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST )
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_PREPROCESSORS ) if (config[:project][:use_test_preprocessor])
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_DEPENDENCIES ) if (config[:project][:use_auxiliary_dependencies])
+    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_DEPENDENCIES )  if (config[:project][:use_auxiliary_dependencies])
     
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE )              if (config[:project][:release_build])
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_ASSEMBLER )    if (config[:project][:release_build] and config[:release_build][:use_assembly])
@@ -143,17 +143,23 @@ class Configurator
 
       # populate optional option to control verification of executable in search paths
       tool[:optional] = false if (tool[:optional].nil?)
-      
+    end
+  end
+  
+  def tools_supplement_arguments(config)
+    config[:tools].each_key do |name|
+      tool = @project_config_hash[('tools_' + name.to_s).to_sym]
+
       # smoosh in extra arguments if specified at top-level of config (useful for plugins & default gcc tools)
       # arguments are squirted in at beginning of list
       top_level_tool = ('tool_' + name.to_s).to_sym
       if (not config[top_level_tool].nil?)
-        tool[:arguments].insert( 0, config[top_level_tool][:arguments] )
-        tool[:arguments].flatten!
+         # adding and flattening is not a good idea: might over-flatten if there's array nesting in tool args
+         # use _with_index to preserve order
+         config[top_level_tool][:arguments].each_with_index { |arg, index| tool[:arguments].insert( index, arg ) }
       end
     end
   end
-  
 
   def find_and_merge_plugins(config)
     # plugins must be loaded before generic path evaluation & magic that happen later: perform path magic here as discrete step
