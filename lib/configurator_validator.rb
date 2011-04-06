@@ -103,12 +103,15 @@ class ConfiguratorValidator
       exists = false
       
       @system_wrapper.search_paths.each do |path|
-        if (@file_wrapper.exist?(File.join(path, filepath)))
+        if (@file_wrapper.exist?( File.join(path, filepath)) )
           exists = true
           break
         end
         
         if (@file_wrapper.exist?( (File.join(path, filepath)).ext( exe_extension ) ))
+          exists = true
+          break
+        elsif (@system_wrapper.windows? and @file_wrapper.exist?( (File.join(path, filepath)).ext( EXTENSION_WIN_EXE ) ))
           exists = true
           break
         end

@@ -33,6 +33,10 @@ class BackgroundExec
 end
 
 
+EXTENSION_WIN_EXE    = '.exe'
+EXTENSION_NONWIN_EXE = '.out'
+
+
 CEXCEPTION_ROOT_PATH = 'c_exception'
 CEXCEPTION_LIB_PATH  = "#{CEXCEPTION_ROOT_PATH}/lib"
 CEXCEPTION_C_FILE    = 'CException.c'
