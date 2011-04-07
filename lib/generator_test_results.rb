@@ -4,7 +4,6 @@ require 'constants'
 
  
 class GeneratorTestResults
-  TEST_STATISTICS_REGEX = /-+\s+(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
 
   constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper
  
@@ -17,7 +16,7 @@ class GeneratorTestResults
     results[:source][:file] = File.basename(test_file)
     
     # process test statistics
-    if (unity_shell_result[:output] =~ TEST_STATISTICS_REGEX)
+    if (unity_shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN)
       results[:counts][:total]   = $1.to_i
       results[:counts][:failed]  = $2.to_i
       results[:counts][:ignored] = $3.to_i
@@ -25,7 +24,7 @@ class GeneratorTestResults
     end
 
     # remove test statistics lines
-    unity_shell_result[:output].sub!(TEST_STATISTICS_REGEX, '')
+    unity_shell_result[:output].sub!(TEST_STDOUT_STATISTICS_PATTERN, '')
     
     # bust up the output into individual lines
     raw_unity_lines = unity_shell_result[:output].split(/\n|\r\n/)

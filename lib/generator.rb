@@ -1,9 +1,9 @@
-require 'constants' # for Verbosity constants class
+require 'constants'
 
 
 class Generator
 
-  constructor :configurator, :preprocessinator, :cmock_builder, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :plugin_manager, :file_wrapper
+  constructor :configurator, :generator_helper, :preprocessinator, :cmock_builder, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :plugin_manager, :file_wrapper
 
 
   def generate_shallow_includes_list(context, file)
@@ -116,14 +116,7 @@ class Generator
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
     
-    if (shell_result[:output].nil? or shell_result[:output].strip.empty?)
-      notice = "\n" +
-               "ERROR: Test executable \"#{File.basename(executable)}\" did not produce any results.\n" +
-               "This is most often a symptom of bad memory accesses in source or test code.\n\n"
-      
-      @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
-      raise
-    end
+    @generator_helper.test_results_error_handler(shell_result)
     
     processed = @generator_test_results.process_and_write_results( shell_result,
                                                                    arg_hash[:result_file],

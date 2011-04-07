@@ -170,6 +170,7 @@ task_invoker:
 generator:
   compose:
     - configurator
+    - generator_helper
     - preprocessinator
     - cmock_builder
     - generator_test_runner
@@ -181,6 +182,10 @@ generator:
     - streaminator
     - plugin_manager
     - file_wrapper
+
+generator_helper:
+  compose:
+    - streaminator
 
 generator_test_results:
   compose:
