@@ -87,7 +87,7 @@ class ToolExecutorHelper
     if ((shell_result[:exit_code] == 0) or ((shell_result[:exit_code] != 0) and not boom))
       output  = "> Shell executed command:\n"
       output += "#{command_str}\n"
-      output += "> Produced response:\n"           if (not shell_result[:output].empty?)
+      output += "> Produced output:\n"             if (not shell_result[:output].empty?)
       output += "#{shell_result[:output].strip}\n" if (not shell_result[:output].empty?)
       output += "> And exited with status: [#{shell_result[:exit_code]}].\n" if (shell_result[:exit_code] != 0)
       output += "\n"
@@ -102,7 +102,7 @@ class ToolExecutorHelper
       output  = "ERROR: Shell command failed.\n"
       output += "> Shell executed command:\n"
       output += "'#{command_str}'\n"
-      output += "> Produced response:\n"           if (not shell_result[:output].empty?)
+      output += "> Produced output:\n"             if (not shell_result[:output].empty?)
       output += "#{shell_result[:output].strip}\n" if (not shell_result[:output].empty?)
       output += "> And exited with status: [#{shell_result[:exit_code]}].\n" if (shell_result[:exit_code] != nil)
       output += "> And then likely crashed.\n"                               if (shell_result[:exit_code] == nil)

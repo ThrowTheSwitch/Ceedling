@@ -8,7 +8,7 @@ class GeneratorTestResults
   constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper
  
   def process_and_write_results(unity_shell_result, results_file, test_file)
-    output_file = results_file
+    output_file   = results_file
     
     results = get_results_structure
     
@@ -24,10 +24,10 @@ class GeneratorTestResults
     end
 
     # remove test statistics lines
-    unity_shell_result[:output].sub!(TEST_STDOUT_STATISTICS_PATTERN, '')
+    output_string = unity_shell_result[:output].sub(TEST_STDOUT_STATISTICS_PATTERN, '')
     
     # bust up the output into individual lines
-    raw_unity_lines = unity_shell_result[:output].split(/\n|\r\n/)
+    raw_unity_lines = output_string.split(/\n|\r\n/)
     
     raw_unity_lines.each do |line|
       # process unity output

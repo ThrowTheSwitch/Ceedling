@@ -42,16 +42,16 @@ class SystemWrapper
 
   def shell_backticks(command)
     return {
-      :output    => `#{command}`,
-      :exit_code => ($?.exitstatus)
+      :output    => `#{command}`.freeze,
+      :exit_code => ($?.exitstatus).freeze
     }
   end
 
   def shell_system(command)
     system( command )
     return {
-      :output    => '',
-      :exit_code => ($?.exitstatus)
+      :output    => ''.freeze,
+      :exit_code => ($?.exitstatus).freeze
     }
   end
   

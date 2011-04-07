@@ -6,7 +6,7 @@ class GeneratorHelper
   constructor :streaminator
 
 
-  def test_results_error_handler(shell_result)
+  def test_results_error_handler(executable, shell_result)
     notice = ''
     error  = false
     
@@ -16,14 +16,13 @@ class GeneratorHelper
       notice  = "\n" +
                 "ERROR: Test executable \"#{File.basename(executable)}\" failed.\n" +
                 "> Produced no output to $stdout.\n"
-    end
-
-    if ((shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN).nil?)
+    elsif ((shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN).nil?)
       error = true
       # mirror style of generic tool_executor failure output
       notice  = "\n" +
                 "ERROR: Test executable \"#{File.basename(executable)}\" failed.\n" +
-                "> Produced no test results.\n"
+                "> Produced no test results in $stdout:\n" +
+                "#{shell_result[:output].strip}\n"
     end
     
     if (error)

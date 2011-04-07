@@ -116,7 +116,7 @@ class Generator
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
     
-    @generator_helper.test_results_error_handler(shell_result)
+    @generator_helper.test_results_error_handler(executable, shell_result)
     
     processed = @generator_test_results.process_and_write_results( shell_result,
                                                                    arg_hash[:result_file],
