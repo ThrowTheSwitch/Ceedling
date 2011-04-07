@@ -145,6 +145,10 @@ class FilePathUtils
     return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_executable) )    
   end
 
+  def form_test_build_map_filepath(filepath)
+    return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_map) )
+  end
+
   def form_preprocessed_file_filepath(filepath)
     return File.join( @configurator.project_test_preprocess_files_path, File.basename(filepath) )    
   end

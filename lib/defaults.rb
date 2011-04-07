@@ -255,6 +255,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :assembly => '.s',
       :object => '.o',
       :executable => ( SystemWrapper.windows? ? EXTENSION_WIN_EXE : EXTENSION_NONWIN_EXE ),
+      :map => '.map',
       :testpass => '.pass',
       :testfail => '.fail',
       :dependencies => '.d',

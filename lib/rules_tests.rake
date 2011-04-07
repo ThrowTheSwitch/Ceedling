@@ -19,7 +19,12 @@ end
 
 
 rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
-  @ceedling[:generator].generate_executable_file(TOOLS_TEST_LINKER, TEST_SYM, bin_file.prerequisites, bin_file.name)
+  @ceedling[:generator].generate_executable_file(
+    TOOLS_TEST_LINKER,
+    TEST_SYM,
+    bin_file.prerequisites,
+    bin_file.name,
+    @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name))
 end
 
 

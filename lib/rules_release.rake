@@ -24,7 +24,12 @@ end
 
 
 rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
-  @ceedling[:generator].generate_executable_file(TOOLS_RELEASE_LINKER, RELEASE_SYM, bin_file.prerequisites, bin_file.name)
+  @ceedling[:generator].generate_executable_file(
+    TOOLS_RELEASE_LINKER,
+    RELEASE_SYM,
+    bin_file.prerequisites,
+    bin_file.name,
+    @ceedling[:configurator].project_release_build_map)
 end
 
 

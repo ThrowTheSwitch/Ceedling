@@ -184,10 +184,12 @@ class ConfiguratorBuilder
     return {} if (not in_hash[:project_release_build])
     
     release_target_file = ((in_hash[:release_build_output].nil?) ? (DEFAULT_RELEASE_TARGET_NAME.ext(in_hash[:extension_executable])) : in_hash[:release_build_output])
+    release_map_file    = ((in_hash[:release_build_output].nil?) ? (DEFAULT_RELEASE_TARGET_NAME.ext(in_hash[:extension_map])) : in_hash[:release_build_output].ext(in_hash[:extension_map]))
     
     return {
       # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
-      :project_release_build_target => File.join(in_hash[:project_release_artifacts_path], release_target_file)
+      :project_release_build_target => File.join(in_hash[:project_release_artifacts_path], release_target_file),
+      :project_release_build_map    => File.join(in_hash[:project_release_artifacts_path], release_map_file)
       }
   end
   

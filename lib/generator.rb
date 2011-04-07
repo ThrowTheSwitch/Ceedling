@@ -74,15 +74,15 @@ class Generator
     @plugin_manager.post_compile_execute(arg_hash)
   end
 
-  def generate_executable_file(tool, context, objects, executable)
+  def generate_executable_file(tool, context, objects, executable, map='')
     shell_result = {}
-    arg_hash = {:tool => tool, :context => context, :objects => objects, :executable => executable}
+    arg_hash = {:tool => tool, :context => context, :objects => objects, :executable => executable, :map => map}
     @plugin_manager.pre_link_execute(arg_hash)
     
     @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
     
     begin
-      command = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:objects], arg_hash[:executable])
+      command = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:objects], arg_hash[:executable], arg_hash[:map])
       shell_result = @tool_executor.exec( command[:line], command[:options] )
     rescue
       notice =    "\n" +
