@@ -18,7 +18,12 @@ rule(/#{BULLSEYE_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
   ]) do |object|
 
   if (File.basename(object.source) =~ /^(#{PROJECT_TEST_FILE_PREFIX}|#{CMOCK_MOCK_PREFIX}|unity|cmock|cexception)/i)
-    @ceedling[:generator].generate_object_file(TOOLS_BULLSEYE_COMPILER, BULLSEYE_CONTEXT, object.source, object.name)
+    @ceedling[:generator].generate_object_file(
+      TOOLS_BULLSEYE_COMPILER,
+      BULLSEYE_CONTEXT,
+      object.source,
+      object.name,
+      @ceedling[:file_path_utils].form_test_build_list_filepath( object.name ) )
   else
     @ceedling[BULLSEYE_CONTEXT].generate_coverage_object_file(object.source, object.name)
   end

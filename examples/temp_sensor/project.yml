@@ -62,4 +62,5 @@
     - ../../plugins
   :enabled:
     - stdout_pretty_tests_report
+    - bullseye
 ...

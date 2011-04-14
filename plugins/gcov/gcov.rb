@@ -29,7 +29,12 @@ class Gcov < Plugin
   end
 
   def generate_coverage_object_file(source, object)
-    compile_command  = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_COMPILER, source, object)
+    compile_command = 
+      @ceedling[:tool_executor].build_command_line(
+        TOOLS_GCOV_COMPILER,
+        source,
+        object,
+        @ceedling[:file_path_utils].form_test_build_list_filepath( object ) )
     @ceedling[:streaminator].stdout_puts("Compiling #{File.basename(source)} with coverage...")
     @ceedling[:tool_executor].exec( compile_command[:line], compile_command[:options] )
   end
@@ -101,7 +106,7 @@ class Gcov < Plugin
 
       if (coverage_results.strip =~ /(File\s+'#{Regexp.escape(source)}'.+$)/m)
         report = ((($1.lines.to_a)[1..-1])).map{|line| basename + ' ' + line}.join('')
-        @ceedling[:streaminator].stdout_puts (report + "\n\n")
+        @ceedling[:streaminator].stdout_puts(report + "\n\n")
       end
     end
   end

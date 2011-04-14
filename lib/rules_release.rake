@@ -9,7 +9,11 @@ rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_ASM_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => 
       @ceedling[:file_finder].find_assembly_file(task_name)
     end  
   ]) do |object|
-  @ceedling[:generator].generate_object_file(TOOLS_RELEASE_ASSEMBLER, RELEASE_SYM, object.source, object.name)
+  @ceedling[:generator].generate_object_file(
+    TOOLS_RELEASE_ASSEMBLER,
+    RELEASE_SYM,
+    object.source,
+    object.name )
 end
 end
 
@@ -19,7 +23,12 @@ rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
       @ceedling[:file_finder].find_compilation_input_file(task_name)
     end  
   ]) do |object|
-  @ceedling[:generator].generate_object_file(TOOLS_RELEASE_COMPILER, RELEASE_SYM, object.source, object.name)
+  @ceedling[:generator].generate_object_file(
+    TOOLS_RELEASE_COMPILER,
+    RELEASE_SYM,
+    object.source,
+    object.name,
+    @ceedling[:file_path_utils].form_release_build_c_list_filepath( object.name ) )
 end
 
 

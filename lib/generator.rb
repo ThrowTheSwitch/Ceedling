@@ -62,12 +62,12 @@ class Generator
     @plugin_manager.post_runner_execute(arg_hash)
   end
 
-  def generate_object_file(tool, context, source, object)    
-    arg_hash = {:tool => tool, :context => context, :source => source, :object => object}
+  def generate_object_file(tool, context, source, object, list='')    
+    arg_hash = {:tool => tool, :context => context, :source => source, :object => object, :list => list}
     @plugin_manager.pre_compile_execute(arg_hash)
 
     @streaminator.stdout_puts("Compiling #{File.basename(arg_hash[:source])}...", Verbosity::NORMAL)
-    command      = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:source], arg_hash[:object])
+    command      = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:source], arg_hash[:object], arg_hash[:list])
     shell_result = @tool_executor.exec( command[:line], command[:options] )
 
     arg_hash[:shell_result] = shell_result

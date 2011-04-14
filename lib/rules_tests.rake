@@ -14,7 +14,12 @@ rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
       @ceedling[:file_finder].find_compilation_input_file(task_name)
     end
   ]) do |object|
-  @ceedling[:generator].generate_object_file(TOOLS_TEST_COMPILER, TEST_SYM, object.source, object.name)
+  @ceedling[:generator].generate_object_file(
+    TOOLS_TEST_COMPILER,
+    TEST_SYM,
+    object.source,
+    object.name,
+    @ceedling[:file_path_utils].form_test_build_list_filepath( object.name ) )
 end
 
 
@@ -24,7 +29,7 @@ rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |b
     TEST_SYM,
     bin_file.prerequisites,
     bin_file.name,
-    @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name))
+    @ceedling[:file_path_utils].form_test_build_map_filepath( bin_file.name ) )
 end
 
 

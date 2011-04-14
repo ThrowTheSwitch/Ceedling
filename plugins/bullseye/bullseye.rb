@@ -35,7 +35,12 @@ class Bullseye < Plugin
     @ceedling[:plugin_manager].pre_compile_execute(arg_hash)
 
     @ceedling[:streaminator].stdout_puts("Compiling #{File.basename(source)} with coverage...")
-    compile_command  = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_COMPILER, source, object)
+    compile_command  = 
+      @ceedling[:tool_executor].build_command_line(
+        TOOLS_BULLSEYE_COMPILER,
+        source,
+        object,
+        @ceedling[:file_path_utils].form_test_build_list_filepath( object ) )
     coverage_command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_INSTRUMENTATION, compile_command[:line] )
 
     shell_result     = @ceedling[:tool_executor].exec( coverage_command[:line], coverage_command[:options] )

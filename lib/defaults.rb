@@ -16,6 +16,7 @@ DEFAULT_TEST_COMPILER_TOOL = {
     "-DGNU_COMPILER".freeze,
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
+    # gcc's list file output options are complex; no use of ${3} parameter in default config    
     ].freeze
   }
 
@@ -137,6 +138,7 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
     "-DGNU_COMPILER".freeze,
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
+    # gcc's list file output options are complex; no use of ${3} parameter in default config    
     ].freeze
   }
 
@@ -256,6 +258,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :object => '.o',
       :executable => ( SystemWrapper.windows? ? EXTENSION_WIN_EXE : EXTENSION_NONWIN_EXE ),
       :map => '.map',
+      :list => '.lst',
       :testpass => '.pass',
       :testfail => '.fail',
       :dependencies => '.d',
