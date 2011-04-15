@@ -73,7 +73,7 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
   :arguments => [
     '-E'.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
-    {"-I\"$\"" => 'PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
     "-DGNU_PREPROCESSOR".freeze,
