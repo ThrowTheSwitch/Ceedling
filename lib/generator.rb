@@ -40,7 +40,6 @@ class Generator
   # test_filepath may be either preprocessed test file or original test file
   def generate_test_runner(context, test_filepath, runner_filepath)
     arg_hash = {:context => context, :test_file => test_filepath, :runner_file => runner_filepath}
-
     @plugin_manager.pre_runner_execute(arg_hash)
     
     # collect info we need
@@ -51,13 +50,7 @@ class Generator
     @streaminator.stdout_puts("Generating runner for #{module_name}...", Verbosity::NORMAL)
     
     # build runner file
-    @file_wrapper.open(runner_filepath, 'w') do |output|
-      @generator_test_runner.create_header(output, mock_list)
-      @generator_test_runner.create_externs(output, test_cases)
-      @generator_test_runner.create_mock_management(output, mock_list)
-      @generator_test_runner.create_runtest(output, mock_list, test_cases)
-      @generator_test_runner.create_main(output, module_name, test_cases)
-    end
+    @generator_test_runner.generate(module_name, runner_filepath, test_cases, mock_list)
 
     @plugin_manager.post_runner_execute(arg_hash)
   end

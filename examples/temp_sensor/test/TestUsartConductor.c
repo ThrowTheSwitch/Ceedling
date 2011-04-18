@@ -16,9 +16,9 @@ void tearDown(void)
 void testShouldInitializeHardwareWhenInitCalled(void)
 {
   UsartModel_GetBaudRateRegisterSetting_ExpectAndReturn(4);
+  UsartHardware_Init_Expect(4);
   UsartModel_GetWakeupMessage_ExpectAndReturn("Hey there!");
   UsartHardware_TransmitString_Expect("Hey there!");
-  UsartHardware_Init_Expect(4);
 
   UsartConductor_Init();
 }

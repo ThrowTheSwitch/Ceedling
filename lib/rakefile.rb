@@ -7,6 +7,7 @@ CEEDLING_VENDOR  = File.join(CEEDLING_ROOT, 'vendor')
 CEEDLING_RELEASE = File.join(CEEDLING_ROOT, 'release')
 
 $LOAD_PATH.unshift( CEEDLING_LIB )
+$LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'unity/auto') )
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'diy/lib') )
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'constructor/lib') )
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'cmock/lib') )

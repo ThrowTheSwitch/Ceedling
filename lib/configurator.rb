@@ -80,18 +80,18 @@ class Configurator
   
 
   def populate_unity_defines(config)
-    run_test = true
+    # run_test = true
   
-    config[:unity][:defines].each do |define|
-      if (define =~ /RUN_TEST\s*\(.+\)\s*=/)
-        run_test = false
-        break
-      end
-    end
+    # config[:unity][:defines].each do |define|
+      # if (define =~ /RUN_TEST\s*\(.+\)\s*=/)
+        # run_test = false
+        # break
+      # end
+    # end
   
-    if (run_test)
-      config[:unity][:defines] << "\"RUN_TEST(func, line_num)=TestRun(func, #func, line_num)\""
-    end
+    # if (run_test)
+      # config[:unity][:defines] << "\"RUN_TEST(func, line_num)=TestRun(func, #func, line_num)\""
+    # end
   end
   
   
@@ -122,9 +122,13 @@ class Configurator
       cmock[:includes].uniq!
     end
 
+    @runner_config = cmock
     @cmock_builder.manufacture(cmock)
   end
-
+  
+  def get_runner_config
+    @runner_config
+  end
 
   # grab tool names from yaml and insert into tool structures so available for error messages
   # set up default values
