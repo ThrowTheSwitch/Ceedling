@@ -9,7 +9,7 @@ task RELEASE_SYM => [:directories] do
   
   core_objects  = []
   extra_objects = @ceedling[:file_path_utils].form_release_build_c_objects_filelist( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
-  
+
   @ceedling[:project_config_manager].process_release_config_change
   core_objects.concat( @ceedling[:release_invoker].setup_and_invoke_c_objects( COLLECTION_ALL_SOURCE ) )
   

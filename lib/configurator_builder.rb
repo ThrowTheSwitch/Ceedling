@@ -261,8 +261,8 @@ class ConfiguratorBuilder
     extra_paths = []
     extra_paths << FilePathUtils::form_ceedling_vendor_path(UNITY_LIB_PATH)
     extra_paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
-    extra_paths << FilePathUtils::form_ceedling_vendor_path(CMOCK_LIB_PATH)       if (in_hash[:project_use_mocks])
-    extra_paths << in_hash[:cmock_mock_path]                                   if (in_hash[:project_use_mocks])
+    extra_paths << FilePathUtils::form_ceedling_vendor_path(CMOCK_LIB_PATH)      if (in_hash[:project_use_mocks])
+    extra_paths << in_hash[:cmock_mock_path]                                     if (in_hash[:project_use_mocks])
 
     return {
       :collection_paths_test_support_source_include_vendor => 
@@ -371,7 +371,7 @@ class ConfiguratorBuilder
 
     # no build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
     objects << CEXCEPTION_C_FILE.ext( in_hash[:extension_object] ) if (in_hash[:project_use_exceptions])
-    
+
     return {:collection_release_artifact_extra_link_objects => objects}
   end
   
