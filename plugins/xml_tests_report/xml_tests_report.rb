@@ -10,7 +10,7 @@ class XmlTestsReport < Plugin
   end
 
   def post_test_execute(arg_hash)
-    return if not (arg_hash[:context] == TEST_TASKS_CONTEXT)
+    return if not (arg_hash[:context] == TEST_SYM)
 
     @results_list << arg_hash[:result_file]
   end
