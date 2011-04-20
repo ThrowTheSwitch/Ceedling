@@ -83,8 +83,8 @@ class FileFinder
   end
   
   
-  def find_compilation_input_file(file_path)
-    found_file = ''
+  def find_compilation_input_file(file_path, complain=:error)
+    found_file = nil
     
     source_file = File.basename(file_path).ext(@configurator.extension_source)
 
@@ -96,21 +96,21 @@ class FileFinder
         @file_finder_helper.find_file_in_collection(
           source_file,
           @file_wrapper.directory_listing( File.join(@configurator.project_test_runners_path, '*') ),
-          :error)
+          complain)
           
     elsif (@configurator.project_use_mocks and (source_file =~ /#{@configurator.cmock_mock_prefix}/))
       found_file = 
         @file_finder_helper.find_file_in_collection(
           source_file,
           @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '*') ),
-          :error)
+          complain)
 
     else
       found_file = 
         @file_finder_helper.find_file_in_collection(
           source_file,
           @configurator.collection_all_existing_compilation_input,
-          :error)
+          complain)
     end
 
     return found_file

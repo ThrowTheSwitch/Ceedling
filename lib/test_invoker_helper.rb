@@ -23,7 +23,7 @@ class TestInvokerHelper
     sources  = []
     includes = @test_includes_extractor.lookup_includes_list(test)
     
-    includes.each { |include| sources << @file_finder.find_source_file(include, :ignore) }
+    includes.each { |include| sources << @file_finder.find_compilation_input_file(include, :ignore) }
     
     return sources.compact
   end

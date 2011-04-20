@@ -129,7 +129,7 @@ class Bullseye < Plugin
     sources.each do |source|
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, source)
       shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
-      coverage_results = shell_results[:output]
+      coverage_results = shell_results[:output].deep_clone
       coverage_results.sub!(/.*\n.*\n/,'') # Remove the Bullseye tool banner
       if (coverage_results =~ /warning cov814: report is empty/)
         coverage_results = "WARNING: #{source} contains no coverage data!\n\n"
