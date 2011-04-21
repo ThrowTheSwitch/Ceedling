@@ -180,12 +180,17 @@ class Configurator
   
   def eval_environment_variables(config)
     config[:environment].each do |hash|
-      key = hash.keys[0]
-      value_string = hash[key].to_s
-      if (value_string =~ RUBY_STRING_REPLACEMENT_PATTERN)
-        value_string.replace(@system_wrapper.module_eval(value_string))
-      end
-      @system_wrapper.env_set(key.to_s.upcase, value_string)
+      key   = hash.keys[0]
+      value = hash[key]
+      items = []
+            
+      interstitial = ((key == :path) ? File::PATH_SEPARATOR : '')
+      items = ((value.class == Array) ? hash[key] : [value])
+      
+      items.map { |item| item.replace( @system_wrapper.module_eval( item ) ) if (item =~ RUBY_STRING_REPLACEMENT_PATTERN) }
+      hash[key] = items.join( interstitial )
+      
+      @system_wrapper.env_set( key.to_s.upcase, hash[key] )
     end
   end
 
