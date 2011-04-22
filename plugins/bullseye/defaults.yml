@@ -5,6 +5,7 @@
     :executable: covc
     :arguments:
       - '--file $': ENVIRONMENT_COVFILE
+      - -q
       - ${1}
   :bullseye_compiler:
     :executable: gcc

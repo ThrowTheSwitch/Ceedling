@@ -3,13 +3,15 @@ require 'constants'
 
 BULLSEYE_ROOT_NAME         = 'bullseye'
 BULLSEYE_TASK_ROOT         = BULLSEYE_ROOT_NAME + ':'
-BULLSEYE_CONTEXT           = BULLSEYE_ROOT_NAME.to_sym
+BULLSEYE_SYM               = BULLSEYE_ROOT_NAME.to_sym
 
 BULLSEYE_BUILD_PATH        = "#{PROJECT_BUILD_ROOT}/#{BULLSEYE_ROOT_NAME}"
 BULLSEYE_BUILD_OUTPUT_PATH = "#{BULLSEYE_BUILD_PATH}/out"
 BULLSEYE_RESULTS_PATH      = "#{BULLSEYE_BUILD_PATH}/results"
 BULLSEYE_DEPENDENCIES_PATH = "#{BULLSEYE_BUILD_PATH}/dependencies"
 BULLSEYE_ARTIFACTS_PATH    = "#{PROJECT_BUILD_ARTIFACTS_ROOT}/#{BULLSEYE_ROOT_NAME}"
+
+BULLSEYE_IGNORE_SOURCES    = ['unity', 'cmock', 'cexception']
 
 
 class Bullseye < Plugin
@@ -31,7 +33,7 @@ class Bullseye < Plugin
   end
 
   def generate_coverage_object_file(source, object)
-    arg_hash = {:tool => TOOLS_BULLSEYE_INSTRUMENTATION, :context => BULLSEYE_CONTEXT, :source => source, :object => object}
+    arg_hash = {:tool => TOOLS_BULLSEYE_INSTRUMENTATION, :context => BULLSEYE_SYM, :source => source, :object => object}
     @ceedling[:plugin_manager].pre_compile_execute(arg_hash)
 
     @ceedling[:streaminator].stdout_puts("Compiling #{File.basename(source)} with coverage...")
@@ -126,7 +128,11 @@ class Bullseye < Plugin
     banner = @ceedling[:plugin_reportinator].generate_banner "#{BULLSEYE_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY"
     @ceedling[:streaminator].stdout_puts "\n" + banner
 
-    sources.each do |source|
+    coverage_sources = sources.clone
+    coverage_sources.delete_if {|item| item =~ /#{CMOCK_MOCK_PREFIX}.+#{EXTENSION_SOURCE}$/}
+    coverage_sources.delete_if {|item| item =~ /#{BULLSEYE_IGNORE_SOURCES.join('|')}#{EXTENSION_SOURCE}$/}
+
+    coverage_sources.each do |source|
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, source)
       shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
       coverage_results = shell_results[:output].deep_clone

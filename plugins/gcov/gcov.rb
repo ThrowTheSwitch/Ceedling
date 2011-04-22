@@ -3,13 +3,15 @@ require 'constants'
 
 GCOV_ROOT_NAME         = 'gcov'
 GCOV_TASK_ROOT         = GCOV_ROOT_NAME + ':'
-GCOV_CONTEXT           = GCOV_ROOT_NAME.to_sym
+GCOV_SYM               = GCOV_ROOT_NAME.to_sym
 
 GCOV_BUILD_PATH        = "#{PROJECT_BUILD_ROOT}/#{GCOV_ROOT_NAME}"
 GCOV_BUILD_OUTPUT_PATH = "#{GCOV_BUILD_PATH}/out"
 GCOV_RESULTS_PATH      = "#{GCOV_BUILD_PATH}/results"
 GCOV_DEPENDENCIES_PATH = "#{GCOV_BUILD_PATH}/dependencies"
 GCOV_ARTIFACTS_PATH    = "#{PROJECT_BUILD_ARTIFACTS_ROOT}/#{GCOV_ROOT_NAME}"
+
+GCOV_IGNORE_SOURCES    = ['unity', 'cmock', 'cexception']
 
 
 class Gcov < Plugin
@@ -98,7 +100,11 @@ class Gcov < Plugin
     banner = @ceedling[:plugin_reportinator].generate_banner "#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY"
     @ceedling[:streaminator].stdout_puts "\n" + banner
 
-    sources.each do |source|
+    coverage_sources = sources.clone
+    coverage_sources.delete_if {|item| item =~ /#{CMOCK_MOCK_PREFIX}.+#{EXTENSION_SOURCE}$/}
+    coverage_sources.delete_if {|item| item =~ /#{GCOV_IGNORE_SOURCES.join('|')}#{EXTENSION_SOURCE}$/}
+
+    coverage_sources.each do |source|
       basename         = File.basename(source)
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, basename)
       shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])

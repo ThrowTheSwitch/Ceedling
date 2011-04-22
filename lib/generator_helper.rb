@@ -21,7 +21,7 @@ class GeneratorHelper
       # mirror style of generic tool_executor failure output
       notice  = "\n" +
                 "ERROR: Test executable \"#{File.basename(executable)}\" failed.\n" +
-                "> Produced no test results in $stdout:\n" +
+                "> Produced no final test result counts in $stdout:\n" +
                 "#{shell_result[:output].strip}\n"
     end
     
