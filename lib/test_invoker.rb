@@ -63,10 +63,10 @@ class TestInvoker
     end
 
     # post-process collected mock list
-    @mocks.uniq!.freeze
+    @mocks.uniq!
     
     # post-process collected sources list
-    @sources.uniq!.freeze
+    @sources.uniq!
   end
 
 end
