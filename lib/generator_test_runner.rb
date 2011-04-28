@@ -58,7 +58,6 @@ class GeneratorTestRunner
     @test_runner_generator.generate( module_name, 
                                      runner_filepath, 
                                      test_cases, 
-                                     @configurator.test_runner_includes, 
                                      mock_list)
   end
 end
