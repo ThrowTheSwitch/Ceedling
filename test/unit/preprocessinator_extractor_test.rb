@@ -30,7 +30,8 @@ class PreprocessinatorExtractorTest < Test::Unit::TestCase
       Jill
       # 45
       
-      #TestIcle.c
+      # TestIcle.c
+      #pragma pack()
       
       Went up the hill
       ].left_margin(0)
@@ -44,6 +45,7 @@ class PreprocessinatorExtractorTest < Test::Unit::TestCase
       Jack
        and
       Jill
+      #pragma pack()
       
       Went up the hill
       ].left_margin(0)
