@@ -79,6 +79,8 @@ configurator_setup:
   compose:
     - configurator_builder
     - configurator_validator
+    - configurator_plugins
+    - stream_wrapper
 
 configurator_plugins:
   compose:

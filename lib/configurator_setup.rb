@@ -11,7 +11,7 @@ end
 
 class ConfiguratorSetup
   
-  constructor :configurator_builder, :configurator_validator
+  constructor :configurator_builder, :configurator_validator, :configurator_plugins, :stream_wrapper
   
   
   def build_project_config(config, flattened_config)
@@ -105,6 +105,19 @@ class ConfiguratorSetup
 
     return false if (validation.include?(false))
     return true
+  end
+
+  def validate_plugins(config)
+    missing_plugins = 
+      Set.new( config[:plugins][:enabled] ) - 
+      Set.new( @configurator_plugins.rake_plugins ) - 
+      Set.new( @configurator_plugins.script_plugins )
+    
+    missing_plugins.each do |plugin|
+      @stream_wrapper.stderr_puts("ERROR: Ceedling plugin '#{plugin}' contains no rake or ruby class entry point. (Misspelled or missing files?)")
+    end
+    
+    return ( (missing_plugins.size > 0) ? false : true )
   end
 
 end

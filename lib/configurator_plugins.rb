@@ -3,6 +3,7 @@ require 'constants'
 class ConfiguratorPlugins
 
   constructor :stream_wrapper, :file_wrapper, :system_wrapper
+  attr_reader :rake_plugins, :script_plugins
 
   def setup
     @rake_plugins   = []
@@ -89,15 +90,4 @@ class ConfiguratorPlugins
     return defaults_with_path    
   end
   
-  
-  def validate_plugins(enabled_plugins)
-    missing_plugins = Set.new(enabled_plugins) - Set.new(@rake_plugins) - Set.new(@script_plugins)
-    
-    missing_plugins.each do |plugin|
-      @stream_wrapper.stdout_puts.stderr_puts("ERROR: Ceedling plugin '#{plugin}' contains no rake or ruby class entry point. (Misspelled or missing files?)")
-    end
-    
-    raise if (missing_plugins.size > 0)
-  end
-
 end
