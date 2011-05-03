@@ -106,7 +106,7 @@ class Configurator
       cmock[:includes].uniq!
     end
 
-    @runner_config = cmock.merge(config[:runner] || {})
+    @runner_config = cmock.merge(config[:test_runner] || {})
     @cmock_builder.manufacture(cmock)
   end
   
