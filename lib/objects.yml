@@ -257,6 +257,7 @@ test_invoker:
   compose:
     - configurator
     - test_invoker_helper
+    - build_invoker_helper
     - streaminator
     - preprocessinator
     - task_invoker
@@ -272,13 +273,13 @@ test_invoker_helper:
     - test_includes_extractor
     - file_finder
     - file_path_utils
-    - streaminator
     - file_wrapper
 
 release_invoker:
   compose:
-    - release_invoker_helper
     - configurator
+    - release_invoker_helper
+    - build_invoker_helper
     - dependinator
     - task_invoker
     - file_path_utils
@@ -288,3 +289,8 @@ release_invoker_helper:
     - configurator
     - dependinator
     - task_invoker
+
+build_invoker_helper:
+  compose:
+    - configurator
+    - streaminator

@@ -1,12 +1,9 @@
-require 'rubygems'
-require 'rake' # for ext()
-
 
 class TestInvoker
 
   attr_reader :sources, :tests, :mocks
 
-  constructor :configurator, :test_invoker_helper, :streaminator, :preprocessinator, :task_invoker, :dependinator, :project_config_manager, :file_path_utils
+  constructor :configurator, :test_invoker_helper, :build_invoker_helper, :streaminator, :preprocessinator, :task_invoker, :dependinator, :project_config_manager, :file_path_utils
 
   def setup
     @sources = []
@@ -54,7 +51,7 @@ class TestInvoker
         # 3, 2, 1... launch
         @task_invoker.invoke_test_results( results_pass )
       rescue => e
-        @test_invoker_helper.process_exception(e)
+        @build_invoker_helper.process_exception(e)
       end
       
       # store away what's been processed

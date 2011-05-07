@@ -53,7 +53,7 @@ class XmlTestsReport < Plugin
         result[:collection].each do |item|
           filename = File.join( result[:source][:path], result[:source][:file] )
         
-          stream.puts "\t\t<Test id=\"#{@test_counter}\">"
+          stream.puts "\t\t<FailedTest id=\"#{@test_counter}\">"
           stream.puts "\t\t\t<Name>#{filename}::#{item[:test]}</Name>"
   				stream.puts "\t\t\t<FailureType>Assertion</FailureType>"
           stream.puts "\t\t\t<Location>"
