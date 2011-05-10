@@ -83,7 +83,7 @@ class ToolExecutorHelper
   end
 
   # if command succeeded and we have verbosity cranked up, spill our guts
-  def print_happy_results(command_str, shell_result, boom)
+  def print_happy_results(command_str, shell_result, boom=true)
     if ((shell_result[:exit_code] == 0) or ((shell_result[:exit_code] != 0) and not boom))
       output  = "> Shell executed command:\n"
       output += "#{command_str}\n"
@@ -97,7 +97,7 @@ class ToolExecutorHelper
   end
 
   # if command failed and we have verbosity set to minimum error level, spill our guts
-  def print_error_results(command_str, shell_result, boom)
+  def print_error_results(command_str, shell_result, boom=true)
     if ((shell_result[:exit_code] != 0) and boom)
       output  = "ERROR: Shell command failed.\n"
       output += "> Shell executed command:\n"

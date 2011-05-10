@@ -9,6 +9,7 @@ CLEAN.include(File.join(PROJECT_TEST_BUILD_OUTPUT_PATH, '*'))
 CLEAN.include(File.join(PROJECT_TEST_RESULTS_PATH, '*'))
 CLEAN.include(File.join(PROJECT_TEST_DEPENDENCIES_PATH, '*'))
 CLEAN.include(File.join(PROJECT_RELEASE_BUILD_OUTPUT_PATH, '*'))
+CLEAN.include(File.join(PROJECT_RELEASE_DEPENDENCIES_PATH, '*'))
 
 CLOBBER.include(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, '**/*'))
 CLOBBER.include(File.join(PROJECT_BUILD_TESTS_ROOT, '**/*'))

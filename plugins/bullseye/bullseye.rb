@@ -22,9 +22,11 @@ class Bullseye < Plugin
     @result_list = []  
   
     @config = {
-      :project_test_build_output_path => BULLSEYE_BUILD_OUTPUT_PATH,
-      :project_test_results_path      => BULLSEYE_RESULTS_PATH,
-      :project_test_dependencies_path => BULLSEYE_DEPENDENCIES_PATH
+      :project_test_build_output_path     => BULLSEYE_BUILD_OUTPUT_PATH,
+      :project_test_results_path          => BULLSEYE_RESULTS_PATH,
+      :project_test_dependencies_path     => BULLSEYE_DEPENDENCIES_PATH,
+      :defines_test                       => DEFINES_TEST + ['CODE_COVERAGE'],
+      :collection_defines_test_and_vendor => COLLECTION_DEFINES_TEST_AND_VENDOR + ['CODE_COVERAGE']
       }
     
     @environment = [ {:covfile => File.join( BULLSEYE_ARTIFACTS_PATH, 'test.cov' )} ]

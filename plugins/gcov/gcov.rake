@@ -69,7 +69,7 @@ namespace GCOV_SYM do
   desc "Run code coverage for all tests"
   task :all => [:directories] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS)
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM)
     @ceedling[:configurator].restore_config
   end
 
@@ -92,7 +92,7 @@ namespace GCOV_SYM do
   
     if (matches.size > 0)
       @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, {:force_run => false})
+      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, {:force_run => false})
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
@@ -109,7 +109,7 @@ namespace GCOV_SYM do
   
     if (matches.size > 0)
       @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, {:force_run => false})
+      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, {:force_run => false})
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
@@ -119,7 +119,7 @@ namespace GCOV_SYM do
   desc "Run code coverage for changed files"
   task :delta => [:directories] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, {:force_run => false})
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM, {:force_run => false})
     @ceedling[:configurator].restore_config
   end
   
@@ -134,13 +134,16 @@ namespace GCOV_SYM do
   ]) do |test|
     @ceedling[:rake_wrapper][:directories].invoke
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke([test.source])
+    @ceedling[:test_invoker].setup_and_invoke([test.source], GCOV_SYM)
     @ceedling[:configurator].restore_config
   end
   
-  desc "Open code coverage browser"
-  task :open do
-    sh "start CoverageBrowser.exe #{ENVIRONMENT_COVFILE}"
+  if PROJECT_USE_AUXILIARY_DEPENDENCIES
+  task :refresh do
+    @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
+    @ceedling[:test_invoker].refresh_auxiliary_dependencies
+    @ceedling[:configurator].restore_config
+  end
   end
 
 end

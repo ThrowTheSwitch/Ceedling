@@ -17,7 +17,7 @@ namespace TEST_SYM do
   
   desc "Run tests for changed files."
   task :delta => [:directories] do
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, {:force_run => false})
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, TEST_SYM, {:force_run => false})
   end
   
   desc "Run tests by matching regular expression pattern."
@@ -27,7 +27,7 @@ namespace TEST_SYM do
     COLLECTION_ALL_TESTS.each { |test| matches << test if (test =~ /#{args.regex}/) }
   
     if (matches.size > 0)
-      @ceedling[:test_invoker].setup_and_invoke(matches, {:force_run => false})
+      @ceedling[:test_invoker].setup_and_invoke(matches, TEST_SYM, {:force_run => false})
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
     end
@@ -40,10 +40,16 @@ namespace TEST_SYM do
     COLLECTION_ALL_TESTS.each { |test| matches << test if File.dirname(test).include?(args.dir.gsub(/\\/, '/')) }
   
     if (matches.size > 0)
-      @ceedling[:test_invoker].setup_and_invoke(matches, {:force_run => false})
+      @ceedling[:test_invoker].setup_and_invoke(matches, TEST_SYM, {:force_run => false})
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
     end
   end
-  
+
+  if PROJECT_USE_AUXILIARY_DEPENDENCIES
+  task :refresh do
+      @ceedling[:test_invoker].refresh_auxiliary_dependencies
+  end
+  end
+
 end

@@ -1,3 +1,5 @@
+require 'constants'
+
 
 class TestInvoker
 
@@ -11,7 +13,7 @@ class TestInvoker
     @mocks   = []
   end
   
-  def setup_and_invoke(tests, options={:force_run => true})
+  def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true})
   
     @tests = tests
 
@@ -49,9 +51,9 @@ class TestInvoker
         @dependinator.setup_test_executable_dependencies( test, objects )
 
         # 3, 2, 1... launch
-        @task_invoker.invoke_test_results( results_pass )
+        @task_invoker.invoke_test_results( results_pass )        
       rescue => e
-        @build_invoker_helper.process_exception(e)
+        @build_invoker_helper.process_exception(e, context)
       end
       
       # store away what's been processed
@@ -64,6 +66,16 @@ class TestInvoker
     
     # post-process collected sources list
     @sources.uniq!
+  end
+
+
+  def refresh_auxiliary_dependencies
+    return if (not @configurator.project_use_auxiliary_dependencies)
+
+    dependencies_list = 
+      @file_path_utils.form_test_dependencies_filelist(
+        (@configurator.collection_all_tests + @configurator.collection_all_source) )
+    @task_invoker.invoke_test_dependencies_files( dependencies_list )
   end
 
 end
