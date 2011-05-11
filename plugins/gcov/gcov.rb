@@ -22,9 +22,11 @@ class Gcov < Plugin
     @result_list = []  
   
     @config = {
-      :project_test_build_output_path => GCOV_BUILD_OUTPUT_PATH,
-      :project_test_results_path      => GCOV_RESULTS_PATH,
-      :project_test_dependencies_path => GCOV_DEPENDENCIES_PATH,
+      :project_test_build_output_path     => GCOV_BUILD_OUTPUT_PATH,
+      :project_test_results_path          => GCOV_RESULTS_PATH,
+      :project_test_dependencies_path     => GCOV_DEPENDENCIES_PATH,
+      :defines_test                       => DEFINES_TEST + ['CODE_COVERAGE'],
+      :collection_defines_test_and_vendor => COLLECTION_DEFINES_TEST_AND_VENDOR + ['CODE_COVERAGE']
       }
     
     @coverage_template_all = @ceedling[:file_wrapper].read( File.join( PLUGINS_GCOV_PATH, 'template.erb') )
