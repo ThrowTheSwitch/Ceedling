@@ -138,14 +138,16 @@ namespace BULLSEYE_SYM do
     @ceedling[:configurator].restore_config
   end
 
-  if PROJECT_USE_AUXILIARY_DEPENDENCIES
-  task :refresh do
+end
+
+if PROJECT_USE_AUXILIARY_DEPENDENCIES
+namespace REFRESH_SYM do
+  task BULLSEYE_SYM do
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[:test_invoker].refresh_auxiliary_dependencies
     @ceedling[:configurator].restore_config
   end
-  end
-  
+end
 end
 
 namespace UTILS_SYM do

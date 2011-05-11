@@ -46,10 +46,12 @@ namespace TEST_SYM do
     end
   end
 
-  if PROJECT_USE_AUXILIARY_DEPENDENCIES
-  task :refresh do
-      @ceedling[:test_invoker].refresh_auxiliary_dependencies
-  end
-  end
+end
 
+if PROJECT_USE_AUXILIARY_DEPENDENCIES
+namespace REFRESH_SYM do
+  task TEST_SYM do
+    @ceedling[:test_invoker].refresh_auxiliary_dependencies
+  end
+end
 end

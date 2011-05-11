@@ -264,12 +264,12 @@ test_invoker:
     - dependinator
     - project_config_manager
     - file_path_utils
+    - file_wrapper
 
 test_invoker_helper:
   compose:
     - configurator
     - task_invoker
-    - dependinator
     - test_includes_extractor
     - file_finder
     - file_path_utils
@@ -283,6 +283,7 @@ release_invoker:
     - dependinator
     - task_invoker
     - file_path_utils
+    - file_wrapper
 
 release_invoker_helper:
   compose:

@@ -3,7 +3,7 @@ require 'constants'
 
 class ReleaseInvoker
 
-  constructor :configurator, :release_invoker_helper, :build_invoker_helper, :dependinator, :task_invoker, :file_path_utils
+  constructor :configurator, :release_invoker_helper, :build_invoker_helper, :dependinator, :task_invoker, :file_path_utils, :file_wrapper
 
 
   def setup_and_invoke_c_objects(c_files)
@@ -38,6 +38,10 @@ class ReleaseInvoker
 
   def refresh_c_auxiliary_dependencies
     return if (not @configurator.project_use_auxiliary_dependencies)
+
+    @file_wrapper.rm_f( 
+      @file_wrapper.directory_listing( 
+        File.join( @configurator.project_release_dependencies_path, '*' + @configurator.extension_dependencies ) ) )
 
     @release_invoker_helper.process_auxiliary_dependencies( 
       @file_path_utils.form_release_dependencies_filelist( 

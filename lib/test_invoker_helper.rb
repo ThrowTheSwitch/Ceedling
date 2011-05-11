@@ -1,10 +1,7 @@
-require 'rubygems'
-require 'rake' # for ext()
-
 
 class TestInvokerHelper
 
-  constructor :configurator, :task_invoker, :dependinator, :test_includes_extractor, :file_finder, :file_path_utils, :file_wrapper
+  constructor :configurator, :task_invoker, :test_includes_extractor, :file_finder, :file_path_utils, :file_wrapper
 
   def clean_results(results, options)
     @file_wrapper.rm_f( results[:fail] )
@@ -16,7 +13,7 @@ class TestInvokerHelper
 
     dependencies_list = @file_path_utils.form_test_dependencies_filelist( files )
     @task_invoker.invoke_test_dependencies_files( dependencies_list )
-    @dependinator.load_test_object_deep_dependencies( dependencies_list )
+    yield( dependencies_list ) if block_given?
   end
   
   def extract_sources(test)
