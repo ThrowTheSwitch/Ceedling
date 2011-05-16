@@ -32,9 +32,13 @@ class Generator
     arg_hash = {:header_file => header_filepath, :context => context}
     @plugin_manager.pre_mock_execute(arg_hash)
     
-    @cmock_builder.cmock.setup_mocks( arg_hash[:header_file] )
-
-    @plugin_manager.post_mock_execute(arg_hash)
+    begin
+      @cmock_builder.cmock.setup_mocks( arg_hash[:header_file] )
+    rescue
+      raise
+    ensure
+      @plugin_manager.post_mock_execute(arg_hash)
+    end
   end
 
   # test_filepath may be either preprocessed test file or original test file
@@ -50,21 +54,32 @@ class Generator
     @streaminator.stdout_puts("Generating runner for #{module_name}...", Verbosity::NORMAL)
     
     # build runner file
-    @generator_test_runner.generate(module_name, runner_filepath, test_cases, mock_list)
-
-    @plugin_manager.post_runner_execute(arg_hash)
+    begin
+      @generator_test_runner.generate(module_name, runner_filepath, test_cases, mock_list)
+    rescue
+      raise
+    ensure
+      @plugin_manager.post_runner_execute(arg_hash)    
+    end
   end
 
   def generate_object_file(tool, context, source, object, list='')    
+    shell_result = {}
     arg_hash = {:tool => tool, :context => context, :source => source, :object => object, :list => list}
     @plugin_manager.pre_compile_execute(arg_hash)
 
     @streaminator.stdout_puts("Compiling #{File.basename(arg_hash[:source])}...", Verbosity::NORMAL)
-    command      = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:source], arg_hash[:object], arg_hash[:list])
-    shell_result = @tool_executor.exec( command[:line], command[:options] )
+    command = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:source], arg_hash[:object], arg_hash[:list])
 
-    arg_hash[:shell_result] = shell_result
-    @plugin_manager.post_compile_execute(arg_hash)
+    begin
+      shell_result = @tool_executor.exec( command[:line], command[:options] )
+    rescue ShellExecutionException => ex
+      shell_result = ex.shell_result
+      raise ''
+    ensure
+      arg_hash[:shell_result] = shell_result
+      @plugin_manager.post_compile_execute(arg_hash)
+    end
   end
 
   def generate_executable_file(tool, context, objects, executable, map='')
@@ -73,11 +88,11 @@ class Generator
     @plugin_manager.pre_link_execute(arg_hash)
     
     @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
+    command = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:objects], arg_hash[:executable], arg_hash[:map])
     
     begin
-      command = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:objects], arg_hash[:executable], arg_hash[:map])
       shell_result = @tool_executor.exec( command[:line], command[:options] )
-    rescue
+    rescue ShellExecutionException => ex
       notice =    "\n" +
                   "NOTICE: If the linker reports missing symbols, the following may be to blame:\n" +
                   "  1. Test lacks #include statements corresponding to needed source files.\n" +
@@ -88,13 +103,14 @@ class Generator
       else
         notice += "\n"
       end
-               
+      
       @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
-      raise
+      shell_result = ex.shell_result
+      raise ''
+    ensure
+      arg_hash[:shell_result] = shell_result
+      @plugin_manager.post_link_execute(arg_hash)
     end
-    
-    arg_hash[:shell_result] = shell_result
-    @plugin_manager.post_link_execute(arg_hash)
   end
 
   def generate_test_results(tool, context, executable, result)

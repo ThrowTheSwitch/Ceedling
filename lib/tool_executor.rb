@@ -1,5 +1,11 @@
 require 'constants'
 
+class ShellExecutionException < RuntimeError
+  attr_reader :shell_result
+  def initialize(shell_result)
+    @shell_result = shell_result
+  end
+end
 
 class ToolExecutor
 
@@ -62,7 +68,7 @@ class ToolExecutor
     @tool_executor_helper.print_error_results( command_line, shell_result, options[:boom] )
     
     # go boom if exit code isn't 0 (but in some cases we don't want a non-0 exit code to raise)
-    raise if ((shell_result[:exit_code] != 0) and options[:boom])
+    raise ShellExecutionException.new(shell_result) if ((shell_result[:exit_code] != 0) and options[:boom])
     
     return shell_result
   end
