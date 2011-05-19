@@ -188,8 +188,8 @@ class ConfiguratorBuilder
     
     return {
       # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
-      :project_release_build_target => File.join(in_hash[:project_release_artifacts_path], release_target_file),
-      :project_release_build_map    => File.join(in_hash[:project_release_artifacts_path], release_map_file)
+      :project_release_build_target => File.join(in_hash[:project_build_release_root], release_target_file),
+      :project_release_build_map    => File.join(in_hash[:project_build_release_root], release_map_file)
       }
   end
   

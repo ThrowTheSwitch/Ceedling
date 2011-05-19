@@ -8,6 +8,7 @@ CLEAN.clear_exclude.exclude { |fn| fn.pathmap("%f") == 'core' && File.directory?
 CLEAN.include(File.join(PROJECT_TEST_BUILD_OUTPUT_PATH, '*'))
 CLEAN.include(File.join(PROJECT_TEST_RESULTS_PATH, '*'))
 CLEAN.include(File.join(PROJECT_TEST_DEPENDENCIES_PATH, '*'))
+CLEAN.include(File.join(PROJECT_BUILD_RELEASE_ROOT, '*.*'))
 CLEAN.include(File.join(PROJECT_RELEASE_BUILD_OUTPUT_PATH, '*'))
 CLEAN.include(File.join(PROJECT_RELEASE_DEPENDENCIES_PATH, '*'))
 

@@ -33,12 +33,14 @@ end
 
 
 rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
+  map_file = @ceedling[:configurator].project_release_build_map
   @ceedling[:generator].generate_executable_file(
     TOOLS_RELEASE_LINKER,
     RELEASE_SYM,
     bin_file.prerequisites,
     bin_file.name,
-    @ceedling[:configurator].project_release_build_map)
+    map_file )
+  @ceedling[:release_invoker].artifactinate( bin_file.name, map_file )
 end
 
 

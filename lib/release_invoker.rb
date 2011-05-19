@@ -6,7 +6,7 @@ class ReleaseInvoker
   constructor :configurator, :release_invoker_helper, :build_invoker_helper, :dependinator, :task_invoker, :file_path_utils, :file_wrapper
 
 
-  def setup_and_invoke_c_objects(c_files)
+  def setup_and_invoke_c_objects( c_files )
     objects = @file_path_utils.form_release_build_c_objects_filelist( c_files )
 
     begin
@@ -22,7 +22,7 @@ class ReleaseInvoker
   end
 
 
-  def setup_and_invoke_asm_objects(asm_files)
+  def setup_and_invoke_asm_objects( asm_files )
     objects = @file_path_utils.form_release_build_asm_objects_filelist( asm_files )
 
     begin
@@ -46,6 +46,13 @@ class ReleaseInvoker
     @release_invoker_helper.process_auxiliary_dependencies( 
       @file_path_utils.form_release_dependencies_filelist( 
         @configurator.collection_all_source ) )    
+  end
+
+
+  def artifactinate( *files )
+    files.each do |file|
+      @file_wrapper.cp( file, @configurator.project_release_artifacts_path ) if @file_wrapper.exist?( file)
+    end
   end
 
 end
