@@ -78,6 +78,7 @@ class Bullseye < Plugin
     end
     
     # coverage results
+    return if (verify_coverage_file() == false)
     if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
       command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC)
       shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
@@ -88,6 +89,7 @@ class Bullseye < Plugin
   end
 
   def summary
+    return if (verify_coverage_file() == false)
     result_list = @ceedling[:file_path_utils].form_pass_results_filelist( BULLSEYE_RESULTS_PATH, COLLECTION_ALL_TESTS )
 
     # test results
@@ -149,7 +151,19 @@ class Bullseye < Plugin
     end
   end
 
+  def verify_coverage_file
+    exist = @ceedling[:file_wrapper].exist?( ENVIRONMENT_COVFILE )
+  
+    if (!exist)
+      banner = @ceedling[:plugin_reportinator].generate_banner "#{BULLSEYE_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY"
+      @ceedling[:streaminator].stdout_puts "\n" + banner + "\nNo coverage file.\n\n"
+    end
+    
+    return exist
+  end
+  
 end
+
 
 # end blocks always executed following rake run
 END {
