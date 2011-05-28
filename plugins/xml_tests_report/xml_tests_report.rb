@@ -4,24 +4,28 @@ require 'constants'
 class XmlTestsReport < Plugin
 
   def setup
-    @file_path    = File.join( PROJECT_TEST_ARTIFACTS_PATH, 'report.xml' )
-    @results_list = []
-    @test_counter = 1
+    @results_list = {}
+    @test_counter = 0
   end
 
   def post_test_execute(arg_hash)
-    return if not (arg_hash[:context] == TEST_SYM)
+    context = arg_hash[:context]
 
-    @results_list << arg_hash[:result_file]
+    @results_list[context] = [] if (@results_list[context].nil?)
+
+    @results_list[context] << arg_hash[:result_file]
   end
   
   def post_build
-    return if (not @ceedling[:task_invoker].test_invoked?)
-    
-    results = @ceedling[:plugin_reportinator].assemble_test_results(@results_list)
+    @results_list.each_key do |context|
+      results = @ceedling[:plugin_reportinator].assemble_test_results(@results_list[context])
+
+      file_path = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, 'report.xml' )
   
-    @ceedling[:file_wrapper].open( @file_path, 'w' ) do |f|
-      write_results( results, f )
+      @ceedling[:file_wrapper].open( file_path, 'w' ) do |f|
+        @test_counter = 1
+        write_results( results, f )
+      end
     end
   end
   
