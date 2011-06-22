@@ -73,8 +73,8 @@ class PluginManager
     execute_plugins(:post_test_execute, arg_hash)
   end
 
-  def pre_release_execute; execute_plugins(:pre_release_execute); end
-  def post_release_execute; execute_plugins(:post_release_execute); end
+  def pre_release; execute_plugins(:pre_release); end
+  def post_release; execute_plugins(:post_release); end
   
   def post_build; execute_plugins(:post_build); end
   

@@ -40,8 +40,6 @@ class Plugin
 
   def setup; end
 
-  def pre_build; end
-
   def pre_mock_execute(arg_hash); end
   def post_mock_execute(arg_hash); end
 
@@ -57,9 +55,10 @@ class Plugin
   def pre_test_execute(arg_hash); end
   def post_test_execute(arg_hash); end
 
-  def pre_release_execute; end
-  def post_release_execute; end
+  def pre_release; end
+  def post_release; end
 
+  def pre_build; end
   def post_build; end
   
   def summary; end

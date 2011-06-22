@@ -8,7 +8,7 @@ task RELEASE_SYM => [:directories] do
   @ceedling[:streaminator].stdout_puts("\n\n#{header}\n#{'-' * header.length}")  
   
   begin
-    @ceedling[:plugin_manager].pre_release_execute
+    @ceedling[:plugin_manager].pre_release
 
     core_objects  = []
     extra_objects = @ceedling[:file_path_utils].form_release_build_c_objects_filelist( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
@@ -22,7 +22,7 @@ task RELEASE_SYM => [:directories] do
     file( PROJECT_RELEASE_BUILD_TARGET => (core_objects + extra_objects) )
     Rake::Task[PROJECT_RELEASE_BUILD_TARGET].invoke
   ensure
-    @ceedling[:plugin_manager].post_release_execute  
+    @ceedling[:plugin_manager].post_release  
   end
 end
 
