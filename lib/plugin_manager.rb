@@ -72,6 +72,9 @@ class PluginManager
     @streaminator.stdout_puts(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
     execute_plugins(:post_test_execute, arg_hash)
   end
+
+  def pre_release_execute; execute_plugins(:pre_release_execute); end
+  def post_release_execute; execute_plugins(:post_release_execute); end
   
   def post_build; execute_plugins(:post_build); end
   

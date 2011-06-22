@@ -30,14 +30,14 @@ class Generator
 
   def generate_mock(context, header_filepath)
     arg_hash = {:header_file => header_filepath, :context => context}
-    @plugin_manager.pre_mock_execute(arg_hash)
+    @plugin_manager.pre_mock_execute( arg_hash )
     
     begin
       @cmock_builder.cmock.setup_mocks( arg_hash[:header_file] )
     rescue
       raise
     ensure
-      @plugin_manager.post_mock_execute(arg_hash)
+      @plugin_manager.post_mock_execute( arg_hash )
     end
   end
 

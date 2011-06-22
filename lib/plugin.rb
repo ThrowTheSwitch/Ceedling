@@ -57,6 +57,9 @@ class Plugin
   def pre_test_execute(arg_hash); end
   def post_test_execute(arg_hash); end
 
+  def pre_release_execute; end
+  def post_release_execute; end
+
   def post_build; end
   
   def summary; end
