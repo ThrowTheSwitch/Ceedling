@@ -238,6 +238,14 @@ DEFAULT_CEEDLING_CONFIG = {
       :release_toolchain_include => [],
     },
     
+    :files => {
+      :test => [],
+      :source_c => [],
+      :source_asm => [],
+      :support => [],
+      :include => [],
+    },
+    
     # unlike other top-level entries, environment's value is an array to preserve order
     :environment => [
       # when evaluated, this provides wider text field for rake task comments

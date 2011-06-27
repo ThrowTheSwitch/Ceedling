@@ -212,6 +212,10 @@ class Configurator
   
     config[:paths].each_pair do |key, list|
       list.each { |path_entry| path_entry.replace(@system_wrapper.module_eval(path_entry)) if (path_entry =~ RUBY_STRING_REPLACEMENT_PATTERN) }
+    end
+
+    config[:files].each_pair do |key, list|
+      list.each { |path_entry| path_entry.replace(@system_wrapper.module_eval(path_entry)) if (path_entry =~ RUBY_STRING_REPLACEMENT_PATTERN) }
     end    
   end
   
@@ -230,6 +234,10 @@ class Configurator
       # ensure that list is an array (i.e. handle case of list being a single string)
       config[:paths][key] = [list].flatten
     end
+
+    config[:files].each_pair do |key, list|
+      list.each{|path| FilePathUtils::standardize(path)}
+    end    
 
     config[:tools].each_pair do |key, tool_config|
       FilePathUtils::standardize(tool_config[:executable])

@@ -281,6 +281,8 @@ class ConfiguratorBuilder
       all_tests.include( File.join(path, "#{in_hash[:project_test_file_prefix]}*#{in_hash[:extension_source]}") )
     end
 
+    @file_system_utils.revise_file_list( all_tests, in_hash[:files_test] )
+
     return {:collection_all_tests => all_tests}
   end
 
@@ -294,6 +296,8 @@ class ConfiguratorBuilder
       all_assembly.include( File.join(path, "*#{in_hash[:extension_assembly]}") )
     end
     
+    @file_system_utils.revise_file_list( all_assembly, in_hash[:files_source_asm] )
+
     return {:collection_all_assembly => all_assembly}
   end
 
@@ -304,6 +308,8 @@ class ConfiguratorBuilder
     in_hash[:collection_paths_source].each do |path|
       all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
     end
+    
+    @file_system_utils.revise_file_list( all_source, in_hash[:files_source_c] )
     
     return {:collection_all_source => all_source}
   end
@@ -318,9 +324,11 @@ class ConfiguratorBuilder
       in_hash[:collection_paths_source] + 
       in_hash[:collection_paths_include]
     
-    (paths).each do |path|
+    paths.each do |path|
       all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
     end
+
+    @file_system_utils.revise_file_list( all_headers, in_hash[:files_include] )
     
     return {:collection_all_headers => all_headers}
   end
@@ -339,11 +347,17 @@ class ConfiguratorBuilder
     paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
     paths << FilePathUtils::form_ceedling_vendor_path(CMOCK_LIB_PATH) if (in_hash[:project_use_mocks])
 
-    (paths).each do |path|
+    paths.each do |path|
       all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
       all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
     end
     
+    @file_system_utils.revise_file_list( all_input, in_hash[:files_test] )
+    @file_system_utils.revise_file_list( all_input, in_hash[:files_support] )
+    @file_system_utils.revise_file_list( all_input, in_hash[:files_source_c] )
+    @file_system_utils.revise_file_list( all_input, in_hash[:files_include] )
+    # finding assembly files handled explicitly through other means
+
     return {:collection_all_existing_compilation_input => all_input}    
   end
 

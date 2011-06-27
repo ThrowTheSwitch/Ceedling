@@ -56,4 +56,14 @@ class FileSystemUtils
     return (plus - minus).to_a.uniq
   end
 
+
+  # given a file list, add to it or remove from it
+  def revise_file_list(list, revisions)
+    revisions.each do |revision|
+      # include or exclude file or glob to file list
+      file = FilePathUtils.extract_path_no_aggregation_operators( revision )
+      FilePathUtils.add_path?(revision) ? list.include(file) : list.exclude(file)
+    end
+  end
+
 end
