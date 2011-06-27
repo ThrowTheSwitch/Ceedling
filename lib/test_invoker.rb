@@ -41,7 +41,7 @@ class TestInvoker
         @test_invoker_helper.clean_results( {:pass => results_pass, :fail => results_fail}, options )
 
         # load up auxiliary dependencies so deep changes cause rebuilding appropriately
-        @test_invoker_helper.process_auxiliary_dependencies( core ) do |dependencies_list| 
+        @test_invoker_helper.process_deep_dependencies( core ) do |dependencies_list| 
           @dependinator.load_test_object_deep_dependencies( dependencies_list )
         end
 
@@ -75,12 +75,12 @@ class TestInvoker
   end
 
 
-  def refresh_auxiliary_dependencies
+  def refresh_deep_dependencies
     @file_wrapper.rm_f( 
       @file_wrapper.directory_listing( 
         File.join( @configurator.project_test_dependencies_path, '*' + @configurator.extension_dependencies ) ) )
 
-    @test_invoker_helper.process_auxiliary_dependencies( 
+    @test_invoker_helper.process_deep_dependencies( 
       @configurator.collection_all_tests + @configurator.collection_all_source )
   end
 

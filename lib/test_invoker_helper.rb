@@ -8,8 +8,8 @@ class TestInvokerHelper
     @file_wrapper.rm_f( results[:pass] ) if (options[:force_run])
   end
 
-  def process_auxiliary_dependencies(files)
-    return if (not @configurator.project_use_auxiliary_dependencies)
+  def process_deep_dependencies(files)
+    return if (not @configurator.project_use_deep_dependencies)
 
     dependencies_list = @file_path_utils.form_test_dependencies_filelist( files )
     @task_invoker.invoke_test_dependencies_files( dependencies_list )

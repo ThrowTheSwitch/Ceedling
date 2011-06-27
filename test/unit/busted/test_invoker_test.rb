@@ -34,7 +34,7 @@ class TestInvokerTest < Test::Unit::TestCase
 
     @task_invoker.expects.invoke_runners(@runners_list)
 
-    @test_invoker_helper.expects.process_auxiliary_dependencies(@tests_list, @mocks_list, @runners_list)
+    @test_invoker_helper.expects.process_deep_dependencies(@tests_list, @mocks_list, @runners_list)
 
     @dependinator.expects.setup_test_executable_dependencies(@tests_list)
 

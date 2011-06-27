@@ -29,13 +29,13 @@ class TestInvokerHelperTest < Test::Unit::TestCase
   end
 
   should "process no auxiliary dependencies" do
-    @configurator.expects.project_use_auxiliary_dependencies.returns(false)
+    @configurator.expects.project_use_deep_dependencies.returns(false)
     
-    @test_invoker_helper.process_auxiliary_dependencies(@tests_list)
+    @test_invoker_helper.process_deep_dependencies(@tests_list)
   end
 
   should "process auxiliary dependencies" do
-    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
+    @configurator.expects.project_use_deep_dependencies.returns(true)
     
     @file_finder.expects.find_sources_from_tests(@tests_list).returns(@sources_list)
     
@@ -55,7 +55,7 @@ class TestInvokerHelperTest < Test::Unit::TestCase
     @task_invoker.expects.invoke_dependencies_files(@dependencies_list4)
     @dependinator.expects.setup_test_object_dependencies(@dependencies_list4)
 
-    @test_invoker_helper.process_auxiliary_dependencies(@tests_list, @mocks_list, @runners_list)
+    @test_invoker_helper.process_deep_dependencies(@tests_list, @mocks_list, @runners_list)
   end
 
 

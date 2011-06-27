@@ -140,11 +140,11 @@ namespace GCOV_SYM do
   
 end
 
-if PROJECT_USE_AUXILIARY_DEPENDENCIES
+if PROJECT_USE_DEEP_DEPENDENCIES
 namespace REFRESH_SYM do
   task GCOV_SYM do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].refresh_auxiliary_dependencies
+    @ceedling[:test_invoker].refresh_deep_dependencies
     @ceedling[:configurator].restore_config
   end
 end

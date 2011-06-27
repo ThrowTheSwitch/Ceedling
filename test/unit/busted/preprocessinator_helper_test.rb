@@ -89,7 +89,7 @@ class PreprocessinatorHelperTest < Test::Unit::TestCase
 
     @file_path_utils.expects.form_preprocessed_mockable_headers_filelist(mocks_list).returns(mocks_filelist)
 
-    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
+    @configurator.expects.project_use_deep_dependencies.returns(true)
 
     @task_invoker.expects.invoke_preprocessed_files(mocks_filelist)
 
@@ -105,7 +105,7 @@ class PreprocessinatorHelperTest < Test::Unit::TestCase
 
     @file_path_utils.expects.form_preprocessed_mockable_headers_filelist(mocks_list).returns(mocks_filelist)
 
-    @configurator.expects.project_use_auxiliary_dependencies.returns(false)
+    @configurator.expects.project_use_deep_dependencies.returns(false)
 
     @file_finder.expects.find_mockable_header(mocks_filelist[0]).returns(headers_list[0])
     @preprocess_file_proc.expects.call(headers_list[0])
@@ -130,7 +130,7 @@ class PreprocessinatorHelperTest < Test::Unit::TestCase
 
     @configurator.expects.project_use_preprocessor.returns(true)
 
-    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
+    @configurator.expects.project_use_deep_dependencies.returns(true)
 
     @task_invoker.expects.invoke_preprocessed_files(preprocessed_test_list)
 
@@ -143,7 +143,7 @@ class PreprocessinatorHelperTest < Test::Unit::TestCase
   
     @configurator.expects.project_use_preprocessor.returns(true)
   
-    @configurator.expects.project_use_auxiliary_dependencies.returns(false)
+    @configurator.expects.project_use_deep_dependencies.returns(false)
   
     @file_finder.expects.find_test_from_file_path(preprocessed_test_list[0]).returns(test_list[0])
     @preprocess_file_proc.expects.call(test_list[0])

@@ -71,11 +71,11 @@ class Configurator
 
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST )
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_PREPROCESSORS ) if (config[:project][:use_test_preprocessor])
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_DEPENDENCIES )  if (config[:project][:use_auxiliary_dependencies])
+    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_DEPENDENCIES )  if (config[:project][:use_deep_dependencies])
     
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE )              if (config[:project][:release_build])
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_ASSEMBLER )    if (config[:project][:release_build] and config[:release_build][:use_assembly])
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_DEPENDENCIES ) if (config[:project][:release_build] and config[:project][:use_auxiliary_dependencies])
+    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_DEPENDENCIES ) if (config[:project][:release_build] and config[:project][:use_deep_dependencies])
   end
   
   
@@ -110,9 +110,11 @@ class Configurator
     @cmock_builder.manufacture(cmock)
   end
   
+  
   def get_runner_config
     @runner_config
   end
+
 
   # grab tool names from yaml and insert into tool structures so available for error messages
   # set up default values
@@ -134,6 +136,7 @@ class Configurator
     end
   end
   
+  
   def tools_supplement_arguments(config)
     tools_name_prefix = 'tools_'
     config[:tools].each_key do |name|
@@ -149,6 +152,7 @@ class Configurator
       end
     end
   end
+
 
   def find_and_merge_plugins(config)
     # plugins must be loaded before generic path evaluation & magic that happen later: perform path magic here as discrete step

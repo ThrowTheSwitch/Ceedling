@@ -150,10 +150,12 @@ class ConfiguratorBuilder
 
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_cmock.rake') if (in_hash[:project_use_mocks])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_preprocess.rake') if (in_hash[:project_use_test_preprocessor])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_tests_aux_dependencies.rake') if (in_hash[:project_use_auxiliary_dependencies])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_tests_deep_dependencies.rake') if (in_hash[:project_use_deep_dependencies])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_tests_deep_dependencies.rake') if (in_hash[:project_use_deep_dependencies])
 
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release_aux_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_auxiliary_dependencies])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release_deep_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_deep_dependencies])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release.rake') if (in_hash[:project_release_build])
+    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release_deep_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_deep_dependencies])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release.rake') if (in_hash[:project_release_build])
 
     return out_hash

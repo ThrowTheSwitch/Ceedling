@@ -1,3 +1,5 @@
+require 'constants'
+
 
 namespace TEST_SYM do
   
@@ -48,10 +50,3 @@ namespace TEST_SYM do
 
 end
 
-if PROJECT_USE_AUXILIARY_DEPENDENCIES
-namespace REFRESH_SYM do
-  task TEST_SYM do
-    @ceedling[:test_invoker].refresh_auxiliary_dependencies
-  end
-end
-end

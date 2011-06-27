@@ -90,7 +90,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
       :project_use_exceptions => false,
       :project_use_mocks => false,
       :project_use_preprocessor => true,
-      :project_use_auxiliary_dependencies => true,
+      :project_use_deep_dependencies => true,
       :project_test_file_prefix => 'yeehaw_',
       :project_verbosity => Verbosity::OBNOXIOUS,
 
@@ -247,7 +247,7 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
   should "construct and collect build paths including dependencies paths" do
     in_hash = {
       :project_build_root => 'files/build',
-      :project_use_auxiliary_dependencies => true}
+      :project_use_deep_dependencies => true}
       expected_build_paths = [
         'files/build/tests/runners',
         'files/build/tests/results',
@@ -299,23 +299,23 @@ class ConfiguratorBuilderTest < Test::Unit::TestCase
        "#{CEEDLING_LIB}tasks_filesystem.rake"].sort,
       out_hash[:project_rakefile_component_files].sort)
     
-    in_hash = {:project_use_auxiliary_dependencies => true}
+    in_hash = {:project_use_deep_dependencies => true}
     out_hash = @builder.set_rakefile_components(in_hash)
     assert_equal(
       ["#{CEEDLING_LIB}rules.rake",
        "#{CEEDLING_LIB}tasks.rake",
-       "#{CEEDLING_LIB}rules_aux_dependencies.rake",
+       "#{CEEDLING_LIB}rules_deep_dependencies.rake",
        "#{CEEDLING_LIB}tasks_filesystem.rake"].sort,
       out_hash[:project_rakefile_component_files].sort)
 
-    in_hash = {:project_use_mocks => true, :project_use_preprocessor => true, :project_use_auxiliary_dependencies => true}
+    in_hash = {:project_use_mocks => true, :project_use_preprocessor => true, :project_use_deep_dependencies => true}
     out_hash = @builder.set_rakefile_components(in_hash)
     assert_equal(
       ["#{CEEDLING_LIB}rules.rake",
        "#{CEEDLING_LIB}tasks.rake",
        "#{CEEDLING_LIB}rules_cmock.rake",
        "#{CEEDLING_LIB}rules_preprocess.rake",
-       "#{CEEDLING_LIB}rules_aux_dependencies.rake",
+       "#{CEEDLING_LIB}rules_deep_dependencies.rake",
        "#{CEEDLING_LIB}tasks_filesystem.rake"].sort,
       out_hash[:project_rakefile_component_files].sort)
   end

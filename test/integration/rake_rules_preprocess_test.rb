@@ -43,15 +43,15 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
   
     # set up expectations
     @file_finder.expects.find_test_or_source_or_header_file(preprocess1).returns(preprocess_src1)
-    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
+    @configurator.expects.project_use_deep_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src1)
 
     @file_finder.expects.find_test_or_source_or_header_file(preprocess2).returns(preprocess_src2)
-    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
+    @configurator.expects.project_use_deep_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src2)
 
     @file_finder.expects.find_test_or_source_or_header_file(preprocess3).returns(preprocess_src3)
-    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
+    @configurator.expects.project_use_deep_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src3)
     
     # invoke the test preprocess creation rule under test
@@ -79,7 +79,7 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
   
     # set up expectations
     @file_finder.expects.find_test_or_source_or_header_file(preprocess1).returns(preprocess_src1)
-    @configurator.expects.project_use_auxiliary_dependencies.returns(false)
+    @configurator.expects.project_use_deep_dependencies.returns(false)
     
     # invoke the test preprocess creation rule under test
     assert_raise(RuntimeError){ @rake[preprocess1].invoke }
@@ -103,7 +103,7 @@ class RakeRulesPreprocessTest < Test::Unit::TestCase
   
     # set up expectations
     @file_finder.expects.find_test_or_source_or_header_file(preprocess1).returns(preprocess_src1)
-    @configurator.expects.project_use_auxiliary_dependencies.returns(true)
+    @configurator.expects.project_use_deep_dependencies.returns(true)
     @generator.expects.generate_preprocessed_file(preprocess_src1)
 
     # invoke the test preprocess creation rule under test

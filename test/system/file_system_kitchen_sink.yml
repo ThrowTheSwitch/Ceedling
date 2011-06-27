@@ -1,7 +1,7 @@
 ---
 :project:
   :use_mocks: TRUE
-  :use_auxiliary_dependencies: TRUE
+  :use_deep_dependencies: TRUE
   :use_preprocessor: TRUE
   :build_root: test/system/file_system/build
 

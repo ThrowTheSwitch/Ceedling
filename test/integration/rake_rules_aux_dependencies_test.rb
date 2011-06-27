@@ -6,7 +6,7 @@ require 'rake'
 class RakeRulesAuxDependenciesTest < Test::Unit::TestCase
 
   def setup
-    rake_setup('rakefile_rules_aux_dependencies.rb', :file_finder, :generator)
+    rake_setup('rakefile_rules_deep_dependencies.rb', :file_finder, :generator)
   end
 
   def teardown
