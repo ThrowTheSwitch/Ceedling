@@ -130,7 +130,7 @@ class GeneratorTest < Test::Unit::TestCase
     tool_config = {:tools_test_runner => {}}
     arg_hash = {:executable => 'build/out/test.out', :result => 'build/results/test.pass'}
 
-    @plugin_manager.expects.pre_test_execute(arg_hash)
+    @plugin_manager.expects.pre_test_fixture_execute(arg_hash)
     
     @streaminator.expects.stdout_puts("Running test.out...", Verbosity::NORMAL)
     
@@ -143,7 +143,7 @@ class GeneratorTest < Test::Unit::TestCase
     
     @generator_test_results.expects.process_and_write_results('test results', arg_hash[:result], 'tests/test.c')
 
-    @plugin_manager.expects.post_test_execute(arg_hash)
+    @plugin_manager.expects.post_test_fixture_execute(arg_hash)
 
     @generator.generate_test_results(arg_hash[:executable], arg_hash[:result])    
   end
@@ -152,7 +152,7 @@ class GeneratorTest < Test::Unit::TestCase
     tool_config = {:tools_test_runner => {}}
     arg_hash = {:executable => 'build/out/test.out', :result => 'build/results/test.pass'}
 
-    @plugin_manager.expects.pre_test_execute(arg_hash)
+    @plugin_manager.expects.pre_test_fixture_execute(arg_hash)
 
     @streaminator.expects.stdout_puts("Running test.out...", Verbosity::NORMAL)
     
@@ -170,7 +170,7 @@ class GeneratorTest < Test::Unit::TestCase
     tool_config = {:tools_test_runner => {}}
     arg_hash = {:executable => 'build/out/test.out', :result => 'build/results/test.pass'}
 
-    @plugin_manager.expects.pre_test_execute(arg_hash)
+    @plugin_manager.expects.pre_test_fixture_execute(arg_hash)
 
     @streaminator.expects.stdout_puts("Running test.out...", Verbosity::NORMAL)
     

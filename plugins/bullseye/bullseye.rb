@@ -53,7 +53,7 @@ class Bullseye < Plugin
     @ceedling[:plugin_manager].post_compile_execute(arg_hash)
   end
 
-  def post_test_execute(arg_hash)
+  def post_test_fixture_execute(arg_hash)
     result_file = arg_hash[:result_file]
   
     if ((result_file =~ /#{BULLSEYE_RESULTS_PATH}/) and (not @result_list.include?(result_file)))

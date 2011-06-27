@@ -8,7 +8,7 @@ class XmlTestsReport < Plugin
     @test_counter = 0
   end
 
-  def post_test_execute(arg_hash)
+  def post_test_fixture_execute(arg_hash)
     context = arg_hash[:context]
 
     @results_list[context] = [] if (@results_list[context].nil?)

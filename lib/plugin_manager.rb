@@ -52,13 +52,11 @@ class PluginManager
 
   #### execute all plugin methods ####
 
-  def pre_build; execute_plugins(:pre_build); end
+  def pre_mock_generate(arg_hash); execute_plugins(:pre_mock_generate, arg_hash); end
+  def post_mock_generate(arg_hash); execute_plugins(:post_mock_generate, arg_hash); end
 
-  def pre_mock_execute(arg_hash); execute_plugins(:pre_mock_execute, arg_hash); end
-  def post_mock_execute(arg_hash); execute_plugins(:post_mock_execute, arg_hash); end
-
-  def pre_runner_execute(arg_hash); execute_plugins(:pre_runner_execute, arg_hash); end
-  def post_runner_execute(arg_hash); execute_plugins(:post_runner_execute, arg_hash); end
+  def pre_runner_generate(arg_hash); execute_plugins(:pre_runner_generate, arg_hash); end
+  def post_runner_generate(arg_hash); execute_plugins(:post_runner_generate, arg_hash); end
 
   def pre_compile_execute(arg_hash); execute_plugins(:pre_compile_execute, arg_hash); end
   def post_compile_execute(arg_hash); execute_plugins(:post_compile_execute, arg_hash); end
@@ -66,16 +64,20 @@ class PluginManager
   def pre_link_execute(arg_hash); execute_plugins(:pre_link_execute, arg_hash); end
   def post_link_execute(arg_hash); execute_plugins(:post_link_execute, arg_hash); end
 
-  def pre_test_execute(arg_hash); execute_plugins(:pre_test_execute, arg_hash); end
-  def post_test_execute(arg_hash)
+  def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
+  def post_test_fixture_execute(arg_hash)
     # special arbitration: raw test results are printed or taken over by plugins handling the job
     @streaminator.stdout_puts(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
-    execute_plugins(:post_test_execute, arg_hash)
+    execute_plugins(:post_test_fixture_execute, arg_hash)
   end
+
+  def pre_test; execute_plugins(:pre_test); end
+  def post_test; execute_plugins(:post_test); end
 
   def pre_release; execute_plugins(:pre_release); end
   def post_release; execute_plugins(:post_release); end
   
+  def pre_build; execute_plugins(:pre_build); end
   def post_build; execute_plugins(:post_build); end
   
   def summary; execute_plugins(:summary); end

@@ -257,12 +257,13 @@ test_invoker:
   compose:
     - configurator
     - test_invoker_helper
-    - build_invoker_helper
+    - plugin_manager
     - streaminator
     - preprocessinator
     - task_invoker
     - dependinator
     - project_config_manager
+    - build_invoker_utils
     - file_path_utils
     - file_wrapper
 
@@ -279,7 +280,7 @@ release_invoker:
   compose:
     - configurator
     - release_invoker_helper
-    - build_invoker_helper
+    - build_invoker_utils
     - dependinator
     - task_invoker
     - file_path_utils
@@ -291,7 +292,7 @@ release_invoker_helper:
     - dependinator
     - task_invoker
 
-build_invoker_helper:
+build_invoker_utils:
   compose:
     - configurator
     - streaminator

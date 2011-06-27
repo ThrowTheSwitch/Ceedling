@@ -7,7 +7,7 @@ class StdoutIdeTestsReport < Plugin
     @result_list = []
   end
     
-  def post_test_execute(arg_hash)
+  def post_test_fixture_execute(arg_hash)
     return if not (arg_hash[:context] == TEST_SYM)
 
     @result_list << arg_hash[:result_file]

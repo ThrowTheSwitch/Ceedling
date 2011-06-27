@@ -1,7 +1,7 @@
 require 'constants'
 
 
-class BuildInvokerHelper
+class BuildInvokerUtils
 
   constructor :configurator, :streaminator
   

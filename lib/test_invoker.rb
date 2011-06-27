@@ -5,7 +5,7 @@ class TestInvoker
 
   attr_reader :sources, :tests, :mocks
 
-  constructor :configurator, :test_invoker_helper, :build_invoker_helper, :streaminator, :preprocessinator, :task_invoker, :dependinator, :project_config_manager, :file_path_utils, :file_wrapper
+  constructor :configurator, :test_invoker_helper, :plugin_manager, :streaminator, :preprocessinator, :task_invoker, :dependinator, :project_config_manager, :build_invoker_utils, :file_path_utils, :file_wrapper
 
   def setup
     @sources = []
@@ -24,7 +24,9 @@ class TestInvoker
       header = "Test '#{File.basename(test)}'"
       @streaminator.stdout_puts("\n\n#{header}\n#{'-' * header.length}")
 
-      begin      
+      begin
+        @plugin_manager.pre_test
+        
         # collect up test fixture pieces & parts
         runner       = @file_path_utils.form_runner_filepath_from_test( test )
         mock_list    = @preprocessinator.preprocess_test_and_invoke_test_mocks( test )
@@ -55,7 +57,9 @@ class TestInvoker
         # 3, 2, 1... launch
         @task_invoker.invoke_test_results( results_pass )        
       rescue => e
-        @build_invoker_helper.process_exception( e, context )
+        @build_invoker_utils.process_exception( e, context )
+      ensure
+        @plugin_manager.post_test        
       end
       
       # store away what's been processed

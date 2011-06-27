@@ -30,21 +30,21 @@ class Generator
 
   def generate_mock(context, header_filepath)
     arg_hash = {:header_file => header_filepath, :context => context}
-    @plugin_manager.pre_mock_execute( arg_hash )
+    @plugin_manager.pre_mock_generate( arg_hash )
     
     begin
       @cmock_builder.cmock.setup_mocks( arg_hash[:header_file] )
     rescue
       raise
     ensure
-      @plugin_manager.post_mock_execute( arg_hash )
+      @plugin_manager.post_mock_generate( arg_hash )
     end
   end
 
   # test_filepath may be either preprocessed test file or original test file
   def generate_test_runner(context, test_filepath, runner_filepath)
     arg_hash = {:context => context, :test_file => test_filepath, :runner_file => runner_filepath}
-    @plugin_manager.pre_runner_execute(arg_hash)
+    @plugin_manager.pre_runner_generate(arg_hash)
     
     # collect info we need
     module_name = File.basename(arg_hash[:test_file])
@@ -59,7 +59,7 @@ class Generator
     rescue
       raise
     ensure
-      @plugin_manager.post_runner_execute(arg_hash)    
+      @plugin_manager.post_runner_generate(arg_hash)    
     end
   end
 
@@ -115,7 +115,7 @@ class Generator
 
   def generate_test_results(tool, context, executable, result)
     arg_hash = {:tool => tool, :context => context, :executable => executable, :result_file => result}
-    @plugin_manager.pre_test_execute(arg_hash)
+    @plugin_manager.pre_test_fixture_execute(arg_hash)
     
     @streaminator.stdout_puts("Running #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
     
@@ -135,7 +135,7 @@ class Generator
     arg_hash[:results]      = processed[:results]
     arg_hash[:shell_result] = shell_result # for raw output display if no plugins for formatted display
     
-    @plugin_manager.post_test_execute(arg_hash)
+    @plugin_manager.post_test_fixture_execute(arg_hash)
   end
   
 end
