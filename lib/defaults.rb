@@ -226,7 +226,8 @@ DEFAULT_CEEDLING_CONFIG = {
 
     :release_build => {
       # :output is set while building configuration -- allows smart default system-dependent file extension handling
-      :use_assembly => false,      
+      :use_assembly => false,
+      :artifacts => [],
     },
 
     :paths => {
@@ -240,8 +241,8 @@ DEFAULT_CEEDLING_CONFIG = {
     
     :files => {
       :test => [],
-      :source_c => [],
-      :source_asm => [],
+      :source => [],
+      :assembly => [],
       :support => [],
       :include => [],
     },

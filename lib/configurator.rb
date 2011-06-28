@@ -204,8 +204,10 @@ class Configurator
     # [:plugins]:load_paths] already handled
     individual_paths = [
       config[:project][:build_root],
-      config[:project][:options_paths]]
-      
+      config[:project][:options_paths],
+      config[:cmock][:mock_path],
+      config[:release_build][:artifacts]]
+
     individual_paths.flatten.each do |path|
       path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
     end
@@ -222,12 +224,13 @@ class Configurator
   
   def standardize_paths(config)
     # [:plugins]:load_paths] already handled
-    individual_paths = [
+    paths = [
       config[:project][:build_root],
       config[:project][:options_paths],
-      config[:cmock][:mock_path]] # cmock path in case it was explicitly set in config
+      config[:cmock][:mock_path],
+      config[:release_build][:artifacts]] # cmock path in case it was explicitly set in config
 
-    individual_paths.flatten.each { |path| FilePathUtils::standardize(path) }
+    paths.flatten.each { |path| FilePathUtils::standardize(path) }
 
     config[:paths].each_pair do |key, list|
       list.each{|path| FilePathUtils::standardize(path)}

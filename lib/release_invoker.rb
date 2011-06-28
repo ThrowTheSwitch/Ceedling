@@ -50,8 +50,8 @@ class ReleaseInvoker
 
 
   def artifactinate( *files )
-    files.each do |file|
-      @file_wrapper.cp( file, @configurator.project_release_artifacts_path ) if @file_wrapper.exist?( file)
+    files.flatten.each do |file|
+      @file_wrapper.cp( file, @configurator.project_release_artifacts_path ) if @file_wrapper.exist?( file )
     end
   end
 

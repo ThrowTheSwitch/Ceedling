@@ -40,7 +40,7 @@ rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
     bin_file.prerequisites,
     bin_file.name,
     map_file )
-  @ceedling[:release_invoker].artifactinate( bin_file.name, map_file )
+  @ceedling[:release_invoker].artifactinate( bin_file.name, map_file, @ceedling[:configurator].release_build_artifacts )
 end
 
 

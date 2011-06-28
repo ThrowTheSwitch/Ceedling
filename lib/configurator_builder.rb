@@ -296,7 +296,7 @@ class ConfiguratorBuilder
       all_assembly.include( File.join(path, "*#{in_hash[:extension_assembly]}") )
     end
     
-    @file_system_utils.revise_file_list( all_assembly, in_hash[:files_source_asm] )
+    @file_system_utils.revise_file_list( all_assembly, in_hash[:files_assembly] )
 
     return {:collection_all_assembly => all_assembly}
   end
@@ -309,7 +309,7 @@ class ConfiguratorBuilder
       all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
     end
     
-    @file_system_utils.revise_file_list( all_source, in_hash[:files_source_c] )
+    @file_system_utils.revise_file_list( all_source, in_hash[:files_source] )
     
     return {:collection_all_source => all_source}
   end
@@ -354,7 +354,7 @@ class ConfiguratorBuilder
     
     @file_system_utils.revise_file_list( all_input, in_hash[:files_test] )
     @file_system_utils.revise_file_list( all_input, in_hash[:files_support] )
-    @file_system_utils.revise_file_list( all_input, in_hash[:files_source_c] )
+    @file_system_utils.revise_file_list( all_input, in_hash[:files_source] )
     @file_system_utils.revise_file_list( all_input, in_hash[:files_include] )
     # finding assembly files handled explicitly through other means
 
