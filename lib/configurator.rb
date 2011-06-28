@@ -192,7 +192,7 @@ class Configurator
       interstitial = ((key == :path) ? File::PATH_SEPARATOR : '')
       items = ((value.class == Array) ? hash[key] : [value])
       
-      items.map { |item| item.replace( @system_wrapper.module_eval( item ) ) if (item =~ RUBY_STRING_REPLACEMENT_PATTERN) }
+      items.each { |item| item.replace( @system_wrapper.module_eval( item ) ) if (item =~ RUBY_STRING_REPLACEMENT_PATTERN) }
       hash[key] = items.join( interstitial )
       
       @system_wrapper.env_set( key.to_s.upcase, hash[key] )
@@ -201,49 +201,41 @@ class Configurator
 
   
   def eval_paths(config)
-    # [:plugins]:load_paths] already handled
-    individual_paths = [
+    # [:plugins]:[load_paths] already handled
+    paths = [
       config[:project][:build_root],
-      config[:project][:options_paths],
-      config[:cmock][:mock_path],
       config[:release_build][:artifacts]]
 
-    individual_paths.flatten.each do |path|
-      path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
-    end
-  
-    config[:paths].each_pair do |key, list|
-      list.each { |path_entry| path_entry.replace(@system_wrapper.module_eval(path_entry)) if (path_entry =~ RUBY_STRING_REPLACEMENT_PATTERN) }
-    end
+    eval_path_list( paths )
 
-    config[:files].each_pair do |key, list|
-      list.each { |path_entry| path_entry.replace(@system_wrapper.module_eval(path_entry)) if (path_entry =~ RUBY_STRING_REPLACEMENT_PATTERN) }
-    end    
+    config[:paths].each_pair { |collection, paths| eval_path_list( paths ) }
+
+    config[:files].each_pair { |collection, files| eval_path_list( paths ) }
+    
+    config.each_pair { |parent, child| eval_path_list( collect_path_list( child ) ) }    
   end
   
   
   def standardize_paths(config)
-    # [:plugins]:load_paths] already handled
+    # [:plugins]:[load_paths] already handled
     paths = [
       config[:project][:build_root],
-      config[:project][:options_paths],
-      config[:cmock][:mock_path],
       config[:release_build][:artifacts]] # cmock path in case it was explicitly set in config
 
-    paths.flatten.each { |path| FilePathUtils::standardize(path) }
+    paths.flatten.each { |path| FilePathUtils::standardize( path ) }
 
-    config[:paths].each_pair do |key, list|
-      list.each{|path| FilePathUtils::standardize(path)}
+    config[:paths].each_pair do |collection, paths|
+      paths.each{|path| FilePathUtils::standardize( path )}
       # ensure that list is an array (i.e. handle case of list being a single string)
-      config[:paths][key] = [list].flatten
+      config[:paths][collection] = [paths].flatten
     end
 
-    config[:files].each_pair do |key, list|
-      list.each{|path| FilePathUtils::standardize(path)}
-    end    
+    config[:files].each_pair { |collection, files| files.each{ |path| FilePathUtils::standardize( path ) } }
 
-    config[:tools].each_pair do |key, tool_config|
-      FilePathUtils::standardize(tool_config[:executable])
+    config[:tools].each_pair { |tool, config| FilePathUtils::standardize( config[:executable] ) }
+    
+    config.each_pair do |parent, child|
+      collect_path_list( child ).each { |path| FilePathUtils::standardize( path ) }
     end    
   end
 
@@ -309,5 +301,22 @@ class Configurator
       @project_config_hash[:project_rakefile_component_files] << plugin
     end
   end
+  
+  ### private ###
+  
+  private
+
+  def collect_path_list( container )
+    paths = []
+    container.each_key { |key| paths << container[key] if (key.to_s =~ /_path(s)?$/) } if (container.class == Hash)
+    return paths.flatten
+  end
+  
+  def eval_path_list( paths )
+    paths.flatten.each do |path|
+      path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+    end
+  end
+  
   
 end
