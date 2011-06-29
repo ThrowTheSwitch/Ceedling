@@ -169,6 +169,10 @@ task_invoker:
     - rake_utils
     - rake_wrapper
 
+flaginator:
+  compose:
+    - configurator
+
 generator:
   compose:
     - configurator
@@ -177,13 +181,12 @@ generator:
     - cmock_builder
     - generator_test_runner
     - generator_test_results
+    - flaginator
     - test_includes_extractor
     - tool_executor
     - file_finder
-    - file_path_utils
     - streaminator
     - plugin_manager
-    - file_wrapper
 
 generator_helper:
   compose:

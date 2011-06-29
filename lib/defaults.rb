@@ -260,6 +260,8 @@ DEFAULT_CEEDLING_CONFIG = {
       :release_preprocess => [],
     },
     
+    :flags => {},
+    
     :extension => {
       :header => '.h',
       :source => '.c',

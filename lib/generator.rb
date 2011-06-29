@@ -3,7 +3,18 @@ require 'constants'
 
 class Generator
 
-  constructor :configurator, :generator_helper, :preprocessinator, :cmock_builder, :generator_test_runner, :generator_test_results, :test_includes_extractor, :tool_executor, :file_finder, :file_path_utils, :streaminator, :plugin_manager, :file_wrapper
+  constructor :configurator, 
+              :generator_helper,
+              :preprocessinator,
+              :cmock_builder,
+              :generator_test_runner,
+              :generator_test_results,
+              :flaginator,
+              :test_includes_extractor,
+              :tool_executor,
+              :file_finder,
+              :streaminator,
+              :plugin_manager
 
 
   def generate_shallow_includes_list(context, file)
@@ -69,7 +80,12 @@ class Generator
     @plugin_manager.pre_compile_execute(arg_hash)
 
     @streaminator.stdout_puts("Compiling #{File.basename(arg_hash[:source])}...", Verbosity::NORMAL)
-    command = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:source], arg_hash[:object], arg_hash[:list])
+    command = 
+      @tool_executor.build_command_line( arg_hash[:tool],
+                                         arg_hash[:source],
+                                         arg_hash[:object],
+                                         arg_hash[:list],
+                                         @flaginator.flag_down( OPERATION_COMPILE_SYM, context, source ) )
 
     begin
       shell_result = @tool_executor.exec( command[:line], command[:options] )
@@ -88,7 +104,12 @@ class Generator
     @plugin_manager.pre_link_execute(arg_hash)
     
     @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
-    command = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:objects], arg_hash[:executable], arg_hash[:map])
+    command = 
+      @tool_executor.build_command_line( arg_hash[:tool],
+                                         arg_hash[:objects],
+                                         arg_hash[:executable],
+                                         arg_hash[:map],
+                                         @flaginator.flag_down( OPERATION_LINK_SYM, context, executable ) )
     
     begin
       shell_result = @tool_executor.exec( command[:line], command[:options] )

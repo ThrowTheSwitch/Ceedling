@@ -5,7 +5,17 @@ class TestInvoker
 
   attr_reader :sources, :tests, :mocks
 
-  constructor :configurator, :test_invoker_helper, :plugin_manager, :streaminator, :preprocessinator, :task_invoker, :dependinator, :project_config_manager, :build_invoker_utils, :file_path_utils, :file_wrapper
+  constructor :configurator,
+              :test_invoker_helper,
+              :plugin_manager,
+              :streaminator,
+              :preprocessinator,
+              :task_invoker,
+              :dependinator,
+              :project_config_manager,
+              :build_invoker_utils,
+              :file_path_utils,
+              :file_wrapper
 
   def setup
     @sources = []

@@ -155,7 +155,8 @@ class Configurator
 
 
   def find_and_merge_plugins(config)
-    # plugins must be loaded before generic path evaluation & magic that happen later: perform path magic here as discrete step
+    # plugins must be loaded before generic path evaluation & magic that happen later;
+    # perform path magic here as discrete step
     config[:plugins][:load_paths].each do |path|
       path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
       FilePathUtils::standardize(path)
@@ -202,7 +203,8 @@ class Configurator
   
   def eval_paths(config)
     # [:plugins]:[load_paths] already handled
-    paths = [
+    
+    paths = [ # individual paths that don't follow convention processed below
       config[:project][:build_root],
       config[:release_build][:artifacts]]
 
@@ -212,15 +214,18 @@ class Configurator
 
     config[:files].each_pair { |collection, files| eval_path_list( paths ) }
     
+    # all other paths at secondary hash key level processed by convention:
+    # ex. [:toplevel][:foo_path] & [:toplevel][:bar_paths] are evaluated
     config.each_pair { |parent, child| eval_path_list( collect_path_list( child ) ) }    
   end
   
   
   def standardize_paths(config)
     # [:plugins]:[load_paths] already handled
-    paths = [
+    
+    paths = [ # individual paths that don't follow convention processed below
       config[:project][:build_root],
-      config[:release_build][:artifacts]] # cmock path in case it was explicitly set in config
+      config[:release_build][:artifacts]]
 
     paths.flatten.each { |path| FilePathUtils::standardize( path ) }
 
@@ -234,6 +239,8 @@ class Configurator
 
     config[:tools].each_pair { |tool, config| FilePathUtils::standardize( config[:executable] ) }
     
+    # all other paths at secondary hash key level processed by convention:
+    # ex. [:toplevel][:foo_path] & [:toplevel][:bar_paths] are standardized
     config.each_pair do |parent, child|
       collect_path_list( child ).each { |path| FilePathUtils::standardize( path ) }
     end    
