@@ -45,10 +45,10 @@ class Flaginator
     if (flags.include?( file_key )) then return flags[file_key]
     # if our file isn't in the flags hash, but there is default for all other files, extract array of flags
     elsif (flags.include?( :* )) then return flags[:*]
+    end
 
     # fall through: flags were specified but none applying to present file
     return []
   end
-
 
 end
