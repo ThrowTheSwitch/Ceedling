@@ -43,7 +43,7 @@ class Gcov < Plugin
     @ceedling[:tool_executor].exec( compile_command[:line], compile_command[:options] )
   end
 
-  def post_test_execute(arg_hash)
+  def post_test_fixture_execute(arg_hash)
     result_file = arg_hash[:result_file]
   
     if ((result_file =~ /#{GCOV_RESULTS_PATH}/) and (not @result_list.include?(result_file)))
