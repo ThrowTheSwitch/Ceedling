@@ -95,8 +95,7 @@ class ModuleGenerator < Plugin
       @ceedling[:streaminator].stdout_puts "Destroying '#{path}'..."
       @files.each do |file|
         if File.exist?(file[:path])
-          @ceedling[:tool_executor].exec("svn delete \"#{file[:path]}\" --force")
-          @ceedling[:streaminator].stdout_puts "File #{file[:path]} deleted and removed from source control"
+          @ceedling[:streaminator].stdout_puts "File #{file[:path]} deleted"
         else
           @ceedling[:streaminator].stdout_puts "File #{file[:path]} does not exist!"
         end
@@ -108,7 +107,6 @@ class ModuleGenerator < Plugin
 
     [File.dirname(@files[0][:path]), File.dirname(@files[1][:path])].each do |dir|
       makedirs(dir, {:verbose => true})
-      @ceedling[:tool_executor].exec("svn add \"#{dir}\"")
     end
 
     # define_name = headername.gsub(/\.h$/, '_H').upcase
@@ -124,12 +122,7 @@ class ModuleGenerator < Plugin
         File.open(file[:path], 'w') do |new_file|
           new_file << ERB.new(file[:template], 0, "<>").result(binding)
         end
-        @ceedling[:tool_executor].exec("svn add \"#{file[:path]}\"")
-        if $?.exitstatus == 0
-          @ceedling[:streaminator].stdout_puts "File #{file[:path]} created and added to source control"
-        else
-          @ceedling[:streaminator].stdout_puts "File #{file[:path]} created but FAILED adding to source control!"
-        end
+        @ceedling[:streaminator].stdout_puts "File #{file[:path]} created"
       end
     end
 
