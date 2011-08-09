@@ -55,36 +55,6 @@ class ModuleGenerator < Plugin
       
       #endif // <%=@context[:name]%>_H
       EOS
-      
-      
-    #---- New function templates
-      
-    @func_test_template = (<<-EOS).left_margin
-      
-      /* ------ <%=@declaration[:name]%> ------ */
-      
-      void test_<%=@declaration[:name]%>_needs_to_be_implemented(void)
-      {
-          TEST_IGNORE();
-      }
-      
-      EOS
-      
-    
-    @func_decl_template = (<<-EOS).left_margin
-    
-      <%=@declaration[:returns]%> <%=@declaration[:name]%>(<%=@declaration[:arguments]%>);
-      
-      EOS
-    
-    @func_impl_template = (<<-EOS).left_margin
-    
-      <%=@declaration[:returns]%> <%=@declaration[:name]%>(<%=@declaration[:arguments]%>)
-      {
-          return;
-      }
-      
-      EOS
   end
 
   def create(path, optz={})
@@ -128,44 +98,7 @@ class ModuleGenerator < Plugin
 
   end
   
-  def add_function(path, optz={})
-    extract_context(path, optz)
-    
-    parse_function_declaration(optz[:declaration])
-    
-    @files[0][:template] = @func_test_template
-    @files[1][:template] = @func_impl_template
-    @files[2][:template] = @func_decl_template
-
-    @files.each do |file|
-      if File.exist?(file[:path])
-        puts "Appending content to " + file[:path] + "..."
-        File.open(file[:path], 'a+') do |cur_file|
-          cur_file << ERB.new(file[:template], 0, "<>").result(binding)
-        end
-      else
-        raise "Error: #{file[:path]} could not be opened!"
-      end
-    end
-    
-    @ceedling[:streaminator].stdout_puts "Done generating new function goods!"
-  end
-  
   private
-  
-  def parse_function_declaration(declaration)
-    p declaration
-    tokens = declaration.match(/^\\?\"?\s*([\w\s]+)\s+(\w+)\s*\((.*)\)\s*\"?$/)
-    p tokens
-    @declaration = {
-      :returns => tokens[1],
-      :name => tokens[2],
-      :arguments => tokens[3]
-    }
-    p "-"*10
-    p @declaration
-    p "-"*10
-  end
   
   def extract_context(path, optz={})
     if (!defined?(MODULE_GENERATOR_PROJECT_ROOT) ||
@@ -200,9 +133,9 @@ class ModuleGenerator < Plugin
     # p @context
 
     @files = [
-      {:path => File.join(PROJECT_ROOT, @context[:paths][:test], location, @context[:testname])},
-      {:path => File.join(PROJECT_ROOT, @context[:paths][:src],  location, @context[:sourcename])},
-      {:path => File.join(PROJECT_ROOT, @context[:paths][:src],  location, @context[:headername])}
+      {:path => File.join(MODULE_GENERATOR_PROJECT_ROOT, @context[:paths][:test], location, @context[:testname])},
+      {:path => File.join(MODULE_GENERATOR_PROJECT_ROOT, @context[:paths][:src],  location, @context[:sourcename])},
+      {:path => File.join(MODULE_GENERATOR_PROJECT_ROOT, @context[:paths][:src],  location, @context[:headername])}
     ]
     
     # p @files
