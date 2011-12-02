@@ -45,7 +45,7 @@ class ToolExecutor
     options[:boom] = true if (options[:boom].nil?)
     options[:stderr_redirect] = StdErrRedirect::NONE if (options[:stderr_redirect].nil?)
     options[:background_exec] = BackgroundExec::NONE if (options[:background_exec].nil?)
-    
+
     # build command line
     command_line = [
       @tool_executor_helper.background_exec_cmdline_prepend( options ),

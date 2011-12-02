@@ -3,7 +3,7 @@ require 'constants'
 
 class Generator
 
-  constructor :configurator, 
+  constructor :configurator,
               :generator_helper,
               :preprocessinator,
               :cmock_builder,
@@ -13,8 +13,10 @@ class Generator
               :test_includes_extractor,
               :tool_executor,
               :file_finder,
+              :file_path_utils,
               :streaminator,
-              :plugin_manager
+              :plugin_manager,
+              :file_wrapper
 
 
   def generate_shallow_includes_list(context, file)
@@ -80,7 +82,7 @@ class Generator
     @plugin_manager.pre_compile_execute(arg_hash)
 
     @streaminator.stdout_puts("Compiling #{File.basename(arg_hash[:source])}...", Verbosity::NORMAL)
-    command = 
+    command =
       @tool_executor.build_command_line( arg_hash[:tool],
                                          arg_hash[:source],
                                          arg_hash[:object],
@@ -104,7 +106,7 @@ class Generator
     @plugin_manager.pre_link_execute(arg_hash)
     
     @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
-    command = 
+    command =
       @tool_executor.build_command_line( arg_hash[:tool],
                                          arg_hash[:objects],
                                          arg_hash[:executable],

@@ -29,6 +29,7 @@ class ConfiguratorSetup
     ### iterate through all entries in paths section and expand any & all globs to actual paths
     flattened_config.merge!(@configurator_builder.expand_all_path_globs(flattened_config))
     
+    flattened_config.merge!(@configurator_builder.collect_vendor_paths(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_source_and_include_paths(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_source_include_vendor_paths(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_test_support_source_include_paths(flattened_config))

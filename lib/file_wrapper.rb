@@ -10,6 +10,11 @@ class FileWrapper
     return File.expand_path(path)
   end
 
+  def basename(path, extension=nil)
+    return File.basename(path, extension) if extension
+    return File.basename(path)
+  end
+
   def exist?(filepath)
     return true if (filepath == NULL_FILE_PATH)
     return File.exist?(filepath)

@@ -230,8 +230,8 @@ class ConfiguratorBuilder
   def collect_source_and_include_paths(in_hash)
     return {
       :collection_paths_source_and_include => 
-        in_hash[:collection_paths_source] + 
-        in_hash[:collection_paths_include]
+        ( in_hash[:collection_paths_source] + 
+          in_hash[:collection_paths_include] ).select {|x| File.directory?(x)}
       }    
   end
 
@@ -251,25 +251,24 @@ class ConfiguratorBuilder
   def collect_test_support_source_include_paths(in_hash)
     return {
       :collection_paths_test_support_source_include => 
-        in_hash[:collection_paths_test] +
+        (in_hash[:collection_paths_test] +
         in_hash[:collection_paths_support] +
         in_hash[:collection_paths_source] + 
-        in_hash[:collection_paths_include]
+        in_hash[:collection_paths_include] ).select {|x| File.directory?(x)}
       }    
   end
-  
-  
-  def collect_test_support_source_include_vendor_paths(in_hash)
-    extra_paths = []
-    extra_paths << FilePathUtils::form_ceedling_vendor_path(UNITY_LIB_PATH)
-    extra_paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
-    extra_paths << FilePathUtils::form_ceedling_vendor_path(CMOCK_LIB_PATH)      if (in_hash[:project_use_mocks])
-    extra_paths << in_hash[:cmock_mock_path]                                     if (in_hash[:project_use_mocks])
 
+
+  def collect_vendor_paths(in_hash)
+    return {:collection_paths_vendor => get_vendor_paths(in_hash)}
+  end
+  
+
+  def collect_test_support_source_include_vendor_paths(in_hash)
     return {
       :collection_paths_test_support_source_include_vendor => 
         in_hash[:collection_paths_test_support_source_include] +
-        extra_paths
+        get_vendor_paths(in_hash)
       }    
   end
   
@@ -304,11 +303,13 @@ class ConfiguratorBuilder
 
   def collect_source(in_hash)
     all_source = @file_wrapper.instantiate_file_list
-    
     in_hash[:collection_paths_source].each do |path|
-      all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
+      if File.exists?(path) and not File.directory?(path)
+        all_source.include( path )
+      else
+        all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
+      end
     end
-    
     @file_system_utils.revise_file_list( all_source, in_hash[:files_source] )
     
     return {:collection_all_source => all_source}
@@ -349,7 +350,11 @@ class ConfiguratorBuilder
 
     paths.each do |path|
       all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
-      all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
+      if File.exists?(path) and not File.directory?(path)
+        all_input.include( path )
+      else
+        all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
+      end
     end
     
     @file_system_utils.revise_file_list( all_input, in_hash[:files_test] )
@@ -414,6 +419,19 @@ class ConfiguratorBuilder
     objects.map! { |object| object.ext(in_hash[:extension_object]) }
     
     return { :collection_test_fixture_extra_link_objects => objects }
+  end
+
+
+  private
+
+  def get_vendor_paths(in_hash)
+    vendor_paths = []
+    vendor_paths << FilePathUtils::form_ceedling_vendor_path(UNITY_LIB_PATH)
+    vendor_paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
+    vendor_paths << FilePathUtils::form_ceedling_vendor_path(CMOCK_LIB_PATH)      if (in_hash[:project_use_mocks])
+    vendor_paths << in_hash[:cmock_mock_path]                                     if (in_hash[:project_use_mocks])
+
+    return vendor_paths
   end
   
 end

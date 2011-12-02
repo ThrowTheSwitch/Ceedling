@@ -225,7 +225,7 @@ class Configurator
     
     paths = [ # individual paths that don't follow convention processed below
       config[:project][:build_root],
-      config[:release_build][:artifacts]]
+      config[:release_build][:artifacts]] # cmock path in case it was explicitly set in config
 
     paths.flatten.each { |path| FilePathUtils::standardize( path ) }
 

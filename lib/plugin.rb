@@ -32,6 +32,7 @@ end
 
 class Plugin
   attr_reader :name, :environment
+  attr_accessor :plugin_objects
 
   def initialize(system_objects, name)
     @environment = []

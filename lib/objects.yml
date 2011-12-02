@@ -1,6 +1,8 @@
 
 file_wrapper:
 
+file_system_wrapper:
+
 stream_wrapper:
 
 rake_wrapper:
@@ -119,6 +121,8 @@ streaminator_helper:
 
 setupinator:
 
+plugin_builder:
+
 plugin_manager:
   compose:
     - configurator
@@ -185,8 +189,10 @@ generator:
     - test_includes_extractor
     - tool_executor
     - file_finder
+    - file_path_utils
     - streaminator
     - plugin_manager
+    - file_wrapper
 
 generator_helper:
   compose:
@@ -299,3 +305,5 @@ build_invoker_utils:
   compose:
     - configurator
     - streaminator
+
+erb_wrapper:
