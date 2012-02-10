@@ -23,3 +23,24 @@ support_dir = File.join(File.dirname(__FILE__), 'support')
 require 'preprocessinator_extractor'
 require 'configurator_builder'
 require 'configurator'
+
+class String
+  def left_margin(indentation_level = 0)
+    indent = " " * indentation_level
+
+    data_start_at_col = self.lines.map do |l|
+      white_space = l.match(/(^\s*)\S/)
+
+      if white_space
+        white_space[1].length
+      end
+    end.compact.min
+
+    self.lines.map do |l|
+      rel = l[data_start_at_col..-1]
+      if rel
+        indent + rel
+      end
+    end.compact.join
+  end
+end

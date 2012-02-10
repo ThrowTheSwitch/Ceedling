@@ -1,6 +1,10 @@
-
-
 class PreprocessinatorExtractor
+  def extract_base_file_from_preprocessed_expansion(filepath)
+
+  end
+end
+
+class Old_PreprocessinatorExtractor
   
   constructor :file_wrapper
 
