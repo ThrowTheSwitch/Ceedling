@@ -10,7 +10,7 @@
   :release_build: TRUE
   :test_file_prefix: test_
 
-#You'll have to specify these
+#
 :environment:
   - :mcu: atmega328p
   - :partno: #{ENV['MCU']}
