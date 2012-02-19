@@ -1,8 +1,8 @@
 // #include <stdint.h>
 
 #include "main.h"
-#include "blinkTask.h"
-    
+#include "BlinkTask.h"
+#include "Configure.h"    
 #ifdef TEST
   #define LOOP 
   #include "stub_io.h"
@@ -31,14 +31,14 @@ int AppMain(void)
 
   LOOP
   {
-    if(blinkTaskReady==0x01)
+    if(BlinkTaskReady==0x01)
     {
       // cli();
-      blinkTaskReady = 0x00;
+      BlinkTaskReady = 0x00;
       // sei();
 // SetLED()  ;
 
-      // blinkTask();
+      BlinkTask();
     }
     // Check for conversion complete
     
@@ -74,16 +74,12 @@ int AppMain(void)
 ISR(TIMER0_OVF_vect)
 {
   static uint16_t tick = 0;
-  // static char tick = 0;
 
-  /* preload the timer. */
-  TCNT0 = TIMER_RESET_VAL;
   /* toggle every thousand ticks */
-  if (tick >= 500)
+  if (tick >= 1000)
   {
-  PORTB ^= _BV(PORTB5);
     /* signal our periodic task. */
-    blinkTaskReady = 0x01;
+    BlinkTaskReady = 0x01;
     /* reset the tick */
     tick = 0;
   }    

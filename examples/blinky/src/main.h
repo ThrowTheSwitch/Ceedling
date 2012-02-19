@@ -12,6 +12,6 @@ void StartConversion();
 void task(void);
 int main(void);
 int AppMain(void);
-int blinkTaskReady;
+volatile int blinkTaskReady;
 
 #endif /* __MAIN_H__ */

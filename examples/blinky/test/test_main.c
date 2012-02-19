@@ -2,6 +2,7 @@
 #include "main.h"
 #include "stub_io.h"
 #include "mock_Configure.h"
+#include "mock_BlinkTask.h"
 void setUp(void) {}    // every test file requires this function;
                        // setUp() is called by the generated runner before each test case function
 void tearDown(void) {} // every test file requires this function;
@@ -10,7 +11,7 @@ void tearDown(void) {} // every test file requires this function;
 void test_AppMain_should_call_configure(void) //Reqs: 
 {
     /* Ensure known test state */
-    blinkTaskReady=0;
+    BlinkTaskReady=0;
     /* Setup expected call chain */
     Configure_Expect();
     /* Call function under test */
@@ -19,15 +20,16 @@ void test_AppMain_should_call_configure(void) //Reqs:
     /* Verify test results */
     // TEST_ASSERT_EQUAL(0x20, PORTB);
 }
-void test_AppMain_should_call_configure_and_blinkTask(void) //Reqs: 
+void test_AppMain_should_call_configure_and_BlinkTask(void) //Reqs: 
 {
     /* Ensure known test state */
-    blinkTaskReady=1;
+    BlinkTaskReady=1;
     /* Setup expected call chain */
     Configure_Expect();
+    BlinkTask_Expect();
     /* Call function under test */
     AppMain();
 
     /* Verify test results */
-    TEST_ASSERT_EQUAL(0, blinkTaskReady);
+    TEST_ASSERT_EQUAL(0, BlinkTaskReady);
 }
