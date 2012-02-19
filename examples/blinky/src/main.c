@@ -1,18 +1,14 @@
-// #include <avr/interrupt.h>
 // #include <stdint.h>
 
 #include "main.h"
-
+#include "blinkTask.h"
     
-// #define ConversionInProg()    ADCSRA && 0x40 
-#define ToggleLED()           PORTB ^= _BV(PORTB5)      
-#define SetLED()              PORTB |= 0x20
-// #define ClearLED()            PORTB &= ~0x20
-
 #ifdef TEST
   #define LOOP 
-  #include "mock_io.h"
+  #include "stub_io.h"
+  #include "stub_interrupt.h"
 #else
+  #include <avr/interrupt.h>
   #include <avr/io.h>
   #define LOOP while(1)
 int main(void)
@@ -21,17 +17,29 @@ int main(void)
 }
 #endif // TEST
 
-
+// #define ConversionInProg()    ADCSRA && 0x40 
+#define ToggleLED()           PORTB ^= _BV(PORTB5)      
+#define SetLED()              PORTB |= 0x20
+#define TOGGLE_LED()  PORTD ^= _BV(PORTD7)
+// #define ClearLED()            PORTB &= ~0x20
+// #define pinMode(x,y) ()
 int AppMain(void)
 {
-  configure();
+  int i;
 
-  // unsigned int maxValue = 0;
-  // unsigned int lastValue = 0;
-
+  Configure();
 
   LOOP
   {
+    if(blinkTaskReady==0x01)
+    {
+      // cli();
+      blinkTaskReady = 0x00;
+      // sei();
+// SetLED()  ;
+
+      // blinkTask();
+    }
     // Check for conversion complete
     
     // if( ConversionInProg() == 0x00 )
@@ -39,18 +47,20 @@ int AppMain(void)
       // int currentValue = ADCH;
       // currentValue <<= 2;
     // PORTB ^= _BV(PORTB5);
-
+// PORTD = _BV(PORTD7);
+// PORTD = 0x80;
       // if(currentValue > 0x01FF)
-        SetLED();
+// TOGGLE_LED();
       // else 
       //  ClearLED();
-
+// for(i=0;i<0xff;i++);
+    /* toggle the LED */
+    // PORTB ^= _BV(PORTB5);
+// SetLED();
       // Start another conversion
       // StartConversion();
     // }
-      
   }
-while(1){}
   return 0;
 }
 
@@ -60,30 +70,24 @@ while(1){}
   
 // }
 
-void configure(void)
+
+ISR(TIMER0_OVF_vect)
 {
-  /* disable interrupts */
-  // cli();
+  static uint16_t tick = 0;
+  // static char tick = 0;
 
-  /* configure TIMER0 to use the CLK/64 prescaler. */
-  TCCR0B = _BV(CS00) | _BV(CS01);
-
-  /* enable the TIMER0 overflow interrupt */
-  TIMSK0 = _BV(TOIE0);
-
-  /* set the initial timer counter value. */
+  /* preload the timer. */
   TCNT0 = TIMER_RESET_VAL;
-
-  /* confiure PB5 as an output. */
-  DDRB |= _BV(DDB5);
-
-  /* turn off surface mount LED on */
-  PORTB &= ~_BV(PORTB5);
-
-  // setupADC();
-
-  /* enable interrupts. */
-  // sei();
+  /* toggle every thousand ticks */
+  if (tick >= 500)
+  {
+  PORTB ^= _BV(PORTB5);
+    /* signal our periodic task. */
+    blinkTaskReady = 0x01;
+    /* reset the tick */
+    tick = 0;
+  }    
+  tick++;
 }
 
 // void setupADC()
@@ -110,30 +114,3 @@ void configure(void)
 //     // Start a conversion
 //     StartConversion();
 // }
-
-// void task(void)
-// {
-//   static uint16_t tick = 0;
-
-//   /* toggle every thousand ticks */
-//   if (tick >= 500)
-//   {
-//     /* toggle the LED */
-//     PORTB ^= _BV(PORTB5);
-
-//     /* reset the tick */
-//     tick = 0;
-//   }
-
-//   tick++;
-// }
-
-// ISR(TIMER0_OVF_vect)
-// {
-//   /* preload the timer. */
-//   TCNT0 = TIMER_RESET_VAL;
-  
-//   /* call our periodic task. */
-//   task();
-// }
-

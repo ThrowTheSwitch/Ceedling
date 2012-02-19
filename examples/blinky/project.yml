@@ -10,10 +10,10 @@
   :release_build: TRUE
   :test_file_prefix: test_
 
-#
+#You'll have to specify these
 :environment:
   - :mcu: atmega328p
-  - :partno: #{ENV['MCU']}
+#  - :partno: #{ENV['MCU']}
   - :f_cpu: 16000000UL 
   - :serial_port: COM8
   - :objcopy: avr-objcopy
@@ -67,6 +67,7 @@
       - -o ${2}.bin
 
 :cmock:
+  :mock_prefix: mock_
   :when_no_prototypes: :warn
   :enforce_strict_ordering: TRUE
   :plugins:
