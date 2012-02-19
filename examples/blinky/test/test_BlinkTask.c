@@ -1,7 +1,7 @@
 #include "unity.h"
 #include "BlinkTask.h"
-#include "main.h"
 #include "stub_io.h"
+
 void setUp(void) {
     PORTB = 0;
 }    // every test file requires this function;
