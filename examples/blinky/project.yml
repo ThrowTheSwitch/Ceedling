@@ -1,7 +1,8 @@
 ---
 
 # Notes:
-
+# This is a fully tested project that demonstrates the use
+# of a timer ISR to blink the on board LED of an Arduino UNO
 :project:
   :use_exceptions: FALSE
   :use_test_preprocessor: TRUE
@@ -13,18 +14,20 @@
 #You'll have to specify these
 :environment:
   - :mcu: atmega328p
-#  - :partno: #{ENV['MCU']}
   - :f_cpu: 16000000UL 
-  - :serial_port: COM8
+  - :serial_port: COM8  #change this to the serial port you are using!!!
   - :objcopy: avr-objcopy
-  - :path: "C:\mingw\bin;C:\WinAVR-20100110\bin;C:\WinAVR-20100110\utils\bin;#{ENV['PATH']}"
+  - :path: #remove these if you are not using windows!!!
+    - C:\mingw\bin
+    - C:\WinAVR-20100110\bin
+    - C:\WinAVR-20100110\utils\bin
+    - #{ENV['PATH']}
+
 :extension:
   :executable: .bin
 
 :release_build:
   :output: blinky
-#  :use_assembly: FALSE
-
 
 :paths:
   :test:
