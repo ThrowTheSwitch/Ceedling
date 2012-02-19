@@ -18,7 +18,7 @@ void test_AppMain_should_call_configure(void) //Reqs:
     AppMain();
 
     /* Verify test results */
-    // TEST_ASSERT_EQUAL(0x20, PORTB);
+    TEST_ASSERT_EQUAL(0, BlinkTaskReady);
 }
 void test_AppMain_should_call_configure_and_BlinkTask(void) //Reqs: 
 {
@@ -32,4 +32,29 @@ void test_AppMain_should_call_configure_and_BlinkTask(void) //Reqs:
 
     /* Verify test results */
     TEST_ASSERT_EQUAL(0, BlinkTaskReady);
+}
+void test_ISR_should_increment_tick(void) //Reqs: 
+{
+    /* Ensure known test state */
+    tick = 0;
+    /* Setup expected call chain */
+
+    /* Call function under test */
+    ISR();
+
+    /* Verify test results */
+    TEST_ASSERT_EQUAL(1, tick);
+}
+void test_ISR_should_set_blinkReady_increment_tick(void) //Reqs: 
+{
+    /* Ensure known test state */
+    tick = 1000;
+    /* Setup expected call chain */
+
+    /* Call function under test */
+    ISR();
+
+    /* Verify test results */
+    TEST_ASSERT_EQUAL(1, tick);
+    TEST_ASSERT_EQUAL(1, BlinkTaskReady);
 }

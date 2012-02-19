@@ -10,6 +10,14 @@
   #define LOOP while(1)
 #endif // TEST
 
+/* setup timer 0 to divide bus clock by 64.
+   This results in a 1.024ms overflow interrupt
+16000000/64
+    250000
+
+0.000 004s   *256
+0.001024 
+*/
 void Configure(void)
 {
   /* disable interrupts */
@@ -21,14 +29,8 @@ void Configure(void)
   /* enable the TIMER0 overflow interrupt */
   TIMSK0 = _BV(TOIE0);
 
-  /* set the initial timer counter value. */
-  TCNT0 = TIMER_RESET_VAL;
-
   /* confiure PB5 as an output. */
   DDRB |= _BV(DDB5);
-
-  /* turn off surface mount LED */
-  PORTB &= ~_BV(PORTB5);
 
   /* enable interrupts. */
   sei();
