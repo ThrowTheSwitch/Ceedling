@@ -259,8 +259,6 @@ preprocessinator_file_handler:
     - file_wrapper   
 
 preprocessinator_extractor:
-  compose:
-    - file_wrapper
 
 test_invoker:
   compose:
