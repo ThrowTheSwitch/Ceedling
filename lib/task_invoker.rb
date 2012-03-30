@@ -1,3 +1,20 @@
+def par_map(n, things, &block)
+  queue = Queue.new
+  things.each { |thing| queue << thing }
+  threads = (1..n).collect do
+    Thread.new do
+      begin
+        while true
+          yield queue.pop(true)
+        end
+      rescue ThreadError
+
+      end
+    end
+  end
+  threads.each { |t| t.join }
+end
+
 
 class TaskInvoker
 
@@ -75,11 +92,15 @@ class TaskInvoker
 
 
   def invoke_release_dependencies_files(files)
-    files.each { |file| @rake_wrapper[file].invoke }
+    par_map(4, files) do |file|
+       @rake_wrapper[file].invoke
+    end
   end
   
   def invoke_release_objects(objects)
-    objects.each { |object| @rake_wrapper[object].invoke }
+    par_map(4, objects) do |object|
+       @rake_wrapper[object].invoke
+    end
   end
   
 end
