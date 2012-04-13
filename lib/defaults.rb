@@ -217,6 +217,8 @@ DEFAULT_CEEDLING_CONFIG = {
       # :build_root must be set by user
       :use_exceptions => true,
       :use_mocks => true,
+      :compile_threads => 1,
+      :test_threads => 1,
       :use_test_preprocessor => false,
       :use_deep_dependencies => false,
       :test_file_prefix => 'test_',
