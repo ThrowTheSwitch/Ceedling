@@ -1,3 +1,4 @@
+require "par_map"
 
 class TaskInvoker
 
@@ -73,13 +74,16 @@ class TaskInvoker
     @rake_wrapper[result].invoke
   end
 
-
   def invoke_release_dependencies_files(files)
-    files.each { |file| @rake_wrapper[file].invoke }
+    par_map(PROJECT_COMPILE_THREADS, files) do |file|
+       @rake_wrapper[file].invoke
+    end
   end
   
   def invoke_release_objects(objects)
-    objects.each { |object| @rake_wrapper[object].invoke }
+    par_map(PROJECT_COMPILE_THREADS, objects) do |object|
+       @rake_wrapper[object].invoke
+    end
   end
   
 end
