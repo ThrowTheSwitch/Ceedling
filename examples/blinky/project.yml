@@ -1,0 +1,98 @@
+---
+
+# Notes:
+# This is a fully tested project that demonstrates the use
+# of a timer ISR to blink the on board LED of an Arduino UNO
+:project:
+  :use_exceptions: FALSE
+  :use_test_preprocessor: TRUE
+  :use_auxiliary_dependencies: TRUE
+  :build_root: build
+  :release_build: TRUE
+  :test_file_prefix: test_
+
+#You'll have to specify these
+:environment:
+  - :mcu: atmega328p
+  - :f_cpu: 16000000UL 
+  - :serial_port: COM8  #change this to the serial port you are using!!!
+  - :objcopy: avr-objcopy
+  # Uncomment these lines if you are using windows and don't have these tools in your path
+  # - :path:
+    # - C:\mingw\bin
+    # - C:\WinAVR-20100110\bin
+    # - C:\WinAVR-20100110\utils\bin
+    # - #{ENV['PATH']}
+
+:extension:
+  :executable: .bin
+
+:release_build:
+  :output: blinky
+
+:paths:
+  :test:
+    - +:test/**
+    - -:test/support
+  :source:
+    - src/**
+  :support:
+    - test/support
+
+:defines:
+  # in order to add common defines:
+  #  1) remove the trailing [] from the :common: section
+  #  2) add entries to the :common: section (e.g. :test: has TEST defined)
+  :commmon: &common_defines []
+  :test:
+    - *common_defines
+    - TEST
+  :test_preprocess:
+    - *common_defines
+    - TEST
+
+:tools:
+  :release_compiler:
+    :executable: avr-gcc
+    :arguments:
+      - ${1}
+      - -DTARGET
+      - -DF_CPU=#{ENV['F_CPU']}
+      - -mmcu=#{ENV['MCU']}
+      - -Iinclude/
+      - -Wall
+      - -Os
+      - -c
+      - -o ${2}
+  :release_linker:
+    :executable: avr-gcc
+    :arguments:
+      - -mmcu=#{ENV['MCU']}
+      - ${1}
+      - -o ${2}.bin
+
+:cmock:
+  :mock_prefix: mock_
+  :when_no_prototypes: :warn
+  :enforce_strict_ordering: TRUE
+  :plugins:
+    - :ignore
+  :treat_as:
+    uint8:    HEX8
+    uint16:   HEX16
+    uint32:   UINT32
+    int8:     INT8
+    bool:     UINT8
+
+#:tools:
+# Ceedling defaults to using gcc for compiling, linking, etc.
+# As [:tools] is blank, gcc will be used (so long as it's in your system path)
+# See documentation to configure a given toolchain for use
+
+:plugins:
+  :load_paths:
+    - vendor/ceedling/plugins
+  :enabled:
+    - stdout_pretty_tests_report
+    - module_generator
+...
