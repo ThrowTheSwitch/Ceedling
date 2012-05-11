@@ -63,6 +63,20 @@ class CeedlingTasks < Thor
     puts " - Execute 'rake -T' to view available test & build tasks"
     puts ''
   end
+
+  desc "examples", "list available example projects"
+  def examples()
+    puts "Available sample projects:"
+    FileUtils.cd(File.join(here, "examples")) do
+      Dir["*"].each {|proj| puts "  #{proj}"}
+    end
+  end
+
+  desc "example PROJ_NAME [DEST]", "create specified example project (in DEST, if specified)"
+  def example(proj_name, dest="temp_sensor")
+    throw "oshit"
+  end
+
 end
 
 CeedlingTasks.source_root here
