@@ -32,7 +32,7 @@
     - test/support
 
 :defines:
-  :common: &common_defines
+  :common: &common_defines []
   :test:
     - *common_defines
     - TEST
