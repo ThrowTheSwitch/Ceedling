@@ -73,10 +73,18 @@ class CeedlingTasks < Thor
   end
 
   desc "example PROJ_NAME [DEST]", "create specified example project (in DEST, if specified)"
-  def example(proj_name, dest="temp_sensor")
-    throw "oshit"
-  end
+  def example(proj_name, dest=nil)
+    if dest.nil? then dest = proj_name end
 
+    directory "examples/#{proj_name}", dest
+    directory "lib", "#{dest}/lib"
+    directory "vendor", "#{dest}/vendor"
+    puts "\n"
+    puts "Example project '#{proj_name}' created!"
+    puts " - Tool documentation is located in vendor/ceedling/docs"
+    puts " - Execute 'rake -T' to view available test & build tasks"
+    puts ''
+  end
 end
 
 CeedlingTasks.source_root here
