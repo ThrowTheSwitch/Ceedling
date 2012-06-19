@@ -8,16 +8,16 @@
 :project:
   :use_exceptions: FALSE
   :use_test_preprocessor: TRUE
-  :use_deep_dependencies: TRUE
+  :use_auxiliary_dependencies: TRUE
   :build_root: build
-#  :release_build: TRUE
+  # :release_build: TRUE
   :test_file_prefix: Test
 
 #:release_build:
 #  :output: TempSensor.out
 #  :use_assembly: FALSE
 
-:environment:
+:environment: []
 
 :extension:
   :executable: .out
@@ -64,7 +64,7 @@
 
 :plugins:
   :load_paths:
-    - ../../plugins
+    - vendor/ceedling/plugins
   :enabled:
     - stdout_pretty_tests_report
     #- stdout_ide_tests_report

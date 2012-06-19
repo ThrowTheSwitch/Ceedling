@@ -11,9 +11,9 @@ end
 class CeedlingTasks < Thor
   include Thor::Actions
 
-  desc "new PROJECT_NAME", "create a new ceedling project"
+  desc "new PROJECT_NAME", "new a new ceedling project"
   method_option :nodocs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
-  def new(name)
+  def new(name, silent = false)
     ceedling_path     = File.join(name, 'vendor', 'ceedling')
     source_path       = File.join(name, 'src')
     test_path         = File.join(name, 'test')
@@ -57,9 +57,44 @@ class CeedlingTasks < Thor
       copy_file File.join('assets', f), File.join(name, f)
     end
 
+    unless silent
+      puts "\n"
+      puts "Project '#{name}' created!"
+      puts " - Tool documentation is located in vendor/ceedling/docs" if not options[:nodocs]
+      puts " - Execute 'rake -T' to view available test & build tasks"
+      puts ''
+    end
+  end
+
+  desc "examples", "list available example projects"
+  def examples()
+    puts "Available sample projects:"
+    FileUtils.cd(File.join(here, "examples")) do
+      Dir["*"].each {|proj| puts "  #{proj}"}
+    end
+  end
+
+  desc "example PROJ_NAME [DEST]", "new specified example project (in DEST, if specified)"
+  def example(proj_name, dest=nil)
+    if dest.nil? then dest = proj_name end
+
+    invoke :new, [dest, true]
+
+    dest_src      = File.join(dest,'src')
+    dest_test     = File.join(dest,'test')
+    dest_rakefile = File.join(dest,'rakefile.rb')
+    dest_project  = File.join(dest,'project.yml')
+
+    directory "examples/#{proj_name}/src",         dest_src
+    directory "examples/#{proj_name}/test",        dest_test
+    remove_file dest_rakefile
+    remove_file dest_project
+    copy_file "examples/#{proj_name}/rakefile.rb", dest_rakefile
+    copy_file "examples/#{proj_name}/project.yml", dest_project
+
     puts "\n"
-    puts "Project '#{name}' created!"
-    puts " - Tool documentation is located in vendor/ceedling/docs" if not options[:nodocs]
+    puts "Example project '#{proj_name}' created!"
+    puts " - Tool documentation is located in vendor/ceedling/docs"
     puts " - Execute 'rake -T' to view available test & build tasks"
     puts ''
   end
