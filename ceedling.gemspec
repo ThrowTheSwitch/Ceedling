@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+$LOAD_PATH << File.expand_path(File.join(File.dirname(__FILE__), 'lib'))
 require "ceedling/version"
 
 Gem::Specification.new do |s|
