@@ -14,7 +14,6 @@ bare minimum required in order to use Ceedling this way:
 
     require 'ceedling'
 
-
 Additionally, a project.yml is required. Here is one to get you
 started:
 
@@ -86,3 +85,13 @@ started:
         - stdout_pretty_tests_report
         - module_generator
     ...
+
+Finally, you'll need to create something like the following directory structure. This one matches the project.yml
+defined above:
+
+    ./test
+    ./test/support
+    ./src
+    ./project.yml
+    ./Rakefile
+    ./build
