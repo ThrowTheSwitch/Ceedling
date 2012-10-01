@@ -19,6 +19,7 @@ require 'diy'
 require 'constructor'
 
 require 'constants'
+require 'target_loader'
 
 
 # construct all our objects
@@ -27,7 +28,19 @@ require 'constants'
 
 # one-stop shopping for all our setup and such after construction
 @ceedling[:setupinator].ceedling = @ceedling
-@ceedling[:setupinator].do_setup( @ceedling[:setupinator].load_project_files )
+
+project_config =
+  begin
+    cfg = @ceedling[:setupinator].load_project_files
+    TargetLoader.inspect(cfg, ENV['TARGET'])
+  rescue TargetLoader::NoTargets
+    cfg
+  rescue TargetLoader::RequestReload
+    @ceedling[:setupinator].load_project_files
+  end
+
+@ceedling[:setupinator].do_setup( project_config )
+
 
 # tell all our plugins we're about to do something
 @ceedling[:plugin_manager].pre_build

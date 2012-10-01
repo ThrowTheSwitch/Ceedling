@@ -24,7 +24,7 @@ class ProjectFileLoader
       @user_project_filepath = user_filepath
     elsif (@file_wrapper.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE))
       @user_project_filepath = DEFAULT_CEEDLING_USER_PROJECT_FILE
-    end        
+    end
     
     # next check for main project file by looking for environment variable and then default location on disk;
     # blow up if we don't find this guy -- like, he's so totally important
