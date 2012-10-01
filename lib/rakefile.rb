@@ -32,7 +32,7 @@ require 'target_loader'
 project_config =
   begin
     cfg = @ceedling[:setupinator].load_project_files
-    TargetLoader.inspect(cfg)
+    TargetLoader.inspect(cfg, ENV['TARGET'])
   rescue TargetLoader::NoTargets
     cfg
   rescue TargetLoader::RequestReload

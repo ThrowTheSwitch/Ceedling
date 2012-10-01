@@ -5,7 +5,7 @@ module TargetLoader
 
   class RequestReload < Exception; end
 
-  def self.inspect(config, target_name)
+  def self.inspect(config, target_name=nil)
     unless config[:targets]
       raise NoTargets
     end
@@ -20,8 +20,8 @@ module TargetLoader
 
     target_path = lambda {|name| File.join(targets[:targets_directory], name + ".yml")}
 
-    target = if ENV['TARGET']
-               target_path.call(ENV['TARGET'])
+    target = if target_name
+               target_path.call(target_name)
              else
                target_path.call(targets[:default_target])
              end
