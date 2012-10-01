@@ -29,15 +29,17 @@ require 'target_loader'
 # one-stop shopping for all our setup and such after construction
 @ceedling[:setupinator].ceedling = @ceedling
 
-project_config = @ceedling[:setupinator].load_project_files
+project_config =
+  begin
+    cfg = @ceedling[:setupinator].load_project_files
+    TargetLoader.inspect(cfg)
+  rescue TargetLoader::NoTargets
+    cfg
+  rescue TargetLoader::RequestReload
+    @ceedling[:setupinator].load_project_files
+  end
 
-config_to_use = begin
-                  TargetLoader.new(project_config)
-                rescue TargetLoader::NoTargets
-                  project_config
-                end
-
-@ceedling[:setupinator].do_setup( config_to_use )
+@ceedling[:setupinator].do_setup( project_config )
 
 
 # tell all our plugins we're about to do something
