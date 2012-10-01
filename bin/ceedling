@@ -68,7 +68,7 @@ class CeedlingTasks < Thor
     unless silent
       puts "\n"
       puts "Project '#{name}' created!"
-      puts " - Tool documentation is located in vendor/ceedling/docs" if not options[:nodocs]
+      puts " - Tool documentation is located in vendor/ceedling/docs" if (not options[:nodocs]) and (not options[:as_gem])
       puts " - Execute 'rake -T' to view available test & build tasks"
       puts ''
     end
