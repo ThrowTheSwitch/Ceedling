@@ -1,7 +1,8 @@
 module TargetLoader
-  class NoTargets   < Exception; end
-  class NoDirectory < Exception; end
-  class NoDefault   < Exception; end
+  class NoTargets    < Exception; end
+  class NoDirectory  < Exception; end
+  class NoDefault    < Exception; end
+  class NoSuchTarget < Exception; end
 
   class RequestReload < Exception; end
 
@@ -12,10 +13,10 @@ module TargetLoader
 
     targets = config[:targets]
     unless targets[:targets_directory]
-      raise NoDirectory
+      raise NoDirectory("No targets directory specified.")
     end
     unless targets[:default_target]
-      raise NoDefault
+      raise NoDefault("No default target specified.")
     end
 
     target_path = lambda {|name| File.join(targets[:targets_directory], name + ".yml")}
@@ -25,6 +26,10 @@ module TargetLoader
              else
                target_path.call(targets[:default_target])
              end
+
+    unless File.exists? target
+      raise NoSuchTarget.new("No such target: #{target}")
+    end
 
     ENV['CEEDLING_MAIN_PROJECT_FILE'] = target
 
