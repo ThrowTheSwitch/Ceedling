@@ -16,22 +16,21 @@ BULLSEYE_IGNORE_SOURCES    = ['unity', 'cmock', 'cexception']
 
 class Bullseye < Plugin
 
-  attr_reader :config
-
   def setup
-    @result_list = []  
-  
-    @config = {
+    @result_list = []
+    @environment = [ {:covfile => File.join( BULLSEYE_ARTIFACTS_PATH, 'test.cov' )} ]
+    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
+    @coverage_template_all = @ceedling[:file_wrapper].read(File.join(@plugin_root, 'assets/template.erb'))
+  end
+
+  def config
+    {
       :project_test_build_output_path     => BULLSEYE_BUILD_OUTPUT_PATH,
       :project_test_results_path          => BULLSEYE_RESULTS_PATH,
       :project_test_dependencies_path     => BULLSEYE_DEPENDENCIES_PATH,
       :defines_test                       => DEFINES_TEST + ['CODE_COVERAGE'],
       :collection_defines_test_and_vendor => COLLECTION_DEFINES_TEST_AND_VENDOR + ['CODE_COVERAGE']
-      }
-    
-    @environment = [ {:covfile => File.join( BULLSEYE_ARTIFACTS_PATH, 'test.cov' )} ]
-      
-    @coverage_template_all = @ceedling[:file_wrapper].read( File.join( PLUGINS_BULLSEYE_PATH, 'template.erb') )
+    }
   end
 
   def generate_coverage_object_file(source, object)
