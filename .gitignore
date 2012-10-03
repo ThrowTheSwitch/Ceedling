@@ -4,3 +4,4 @@ Gemfile.lock
 tags
 ceedling.sublime-project
 ceedling.sublime-workspace
+ceedling-*.gem
