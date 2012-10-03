@@ -11,6 +11,6 @@ module Ceedling
     # @private
     CMOCK = "2.0.215"
     # @private
-    UNITY = "2.0.136"
+    UNITY = "2.1.0
   end
 end
