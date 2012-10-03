@@ -13,7 +13,7 @@ class CeedlingTasks < Thor
 
   desc "new PROJECT_NAME", "new a new ceedling project"
   method_option :nodocs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
-  method_option :as_gem, :type => :boolean, :default => false, :desc => "Create the scaffold using Ceedling as a gem instead of filling in the vendor directory."
+  method_option :as_gem, :type => :boolean, :default => false, :desc => "Create the scaffold using Ceedling as a gem instead of filling in the vendor directory. Implies --no-docs."
   def new(name, silent = false)
     ceedling_path     = File.join(name, 'vendor', 'ceedling')
     source_path       = File.join(name, 'src')
@@ -28,9 +28,26 @@ class CeedlingTasks < Thor
     unless options[:as_gem]
       FileUtils.mkdir_p ceedling_path
 
-      folders = %w{plugins lib release}
-      folders << 'docs' unless options[:nodocs]
+      unless options[:nodocs]
+        doc_path = File.join(ceedling_path, 'docs')
+        FileUtils.mkdir_p doc_path
 
+        in_doc_path = lambda {|f| File.join(doc_path, f)}
+
+        puts Dir.pwd
+        doc_files = [
+                      'docs/CeedlingPacket.pdf',
+                      'vendor/c_exception/docs/CExceptionSummary.pdf',
+                      'vendor/cmock/docs/CMock Summary.pdf',
+                      'vendor/unity/docs/Unity Summary.pdf',
+                    ]
+
+        doc_files.each do |f|
+          copy_file f, in_doc_path.call(File.basename(f))
+        end
+      end
+
+      folders = %w{plugins lib release}
       folders.map do |f|
         {:src => f, :dst => File.join(ceedling_path, f)}
       end.each do |f|

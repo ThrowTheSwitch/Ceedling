@@ -19,6 +19,7 @@ Gem::Specification.new do |s|
 
   # Files needed from submodules
   s.files         = []
+  s.files        += Dir['vendor/**/docs/**/*.pdf', 'docs/**/*.pdf']
   s.files        += `find vendor/cmock/lib           -name "*.rb"`.split("\n")
   s.files        += `find vendor/cmock/config        -name "*.rb"`.split("\n")
   s.files        += `find vendor/cmock/release       -name "*.info"`.split("\n")
