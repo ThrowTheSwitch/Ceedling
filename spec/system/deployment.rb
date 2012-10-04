@@ -55,4 +55,37 @@ describe "Ceedling" do
     it { can_test_projects }
     it { can_use_the_module_plugin }
   end
+
+  describe "command: `ceedling examples`" do
+    before do
+      @c.with_context do
+        @output = `bundle exec ruby -S ceedling examples 2>&1`
+      end
+    end
+
+    it "should list out all the examples" do
+      @output.should match(/blinky/)
+      @output.should match(/temp_sensor/)
+      @output.lines.to_a.length.should == 3
+    end
+  end
+
+  describe "command: `ceedling example [example]`" do
+    before do
+      @c.with_context do
+        output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
+        output.should match(/created!/)
+      end
+    end
+
+    it "should be testable" do
+      @c.with_context do
+        Dir.chdir "temp_sensor" do
+          @output = `bundle exec ruby -S rake test:all`
+          @output.should match(/TESTED:\s+47/)
+          @output.should match(/PASSED:\s+47/)
+        end
+      end
+    end
+  end
 end
