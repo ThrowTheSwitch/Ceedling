@@ -41,13 +41,10 @@ describe "Ceedling" do
 
   describe "deployed as a gem" do
     before do
-      @proj_name = "fake_project"
       @c.with_context do
         `bundle exec ruby -S ceedling new --as-gem #{@proj_name} 2>&1`
       end
     end
-
-    after { @c.with_context { FileUtils.rm_rf @proj_name } }
 
     it { can_create_projects }
     it { does_not_contain_a_vendor_directory }
