@@ -95,3 +95,5 @@ defined above:
     ./project.yml
     ./Rakefile
     ./build
+
+Have fun!
