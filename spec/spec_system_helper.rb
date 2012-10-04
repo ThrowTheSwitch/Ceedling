@@ -42,9 +42,7 @@ class SystemContext
 
     Dir.chdir @dir do
       with_constrained_env do
-        puts `cat Gemfile`
-        puts @gem.install_dir
-        puts `bundle install --path #{@gem.install_dir}`
+        `bundle install --path #{@gem.install_dir}`
 
         checks = ["bundle exec ruby -S ceedling 2>&1"]
         checks.each do |c|
