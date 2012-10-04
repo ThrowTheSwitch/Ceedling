@@ -36,7 +36,11 @@ describe "Ceedling" do
       end
     end
 
+    it { can_create_projects }
+    it { contains_a_vendor_directory }
     it { does_not_contain_documentation }
+    it { can_test_projects }
+    it { can_use_the_module_plugin }
   end
 
   describe "deployed as a gem" do
