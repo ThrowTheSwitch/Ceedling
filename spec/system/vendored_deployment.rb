@@ -10,7 +10,14 @@ describe "Ceedling deployed in a project's `vendor` directory." do
     @c.done!
   end
 
-  xit "can create projects" do
+  it "can create projects" do
+    @c.with_context do
+      proj_name = "fake_project"
+      output = `bundle exec ruby -S ceedling new fake_project`
+      Dir.chdir proj_name do
+        1.should == 2
+      end
+    end
   end
 
   xit "can test projects" do
