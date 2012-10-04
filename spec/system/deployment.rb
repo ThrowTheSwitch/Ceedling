@@ -71,19 +71,40 @@ describe "Ceedling" do
   end
 
   describe "command: `ceedling example [example]`" do
-    before do
-      @c.with_context do
-        output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
-        output.should match(/created!/)
+    describe "temp_sensor" do
+      before do
+        @c.with_context do
+          output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
+          output.should match(/created!/)
+        end
+      end
+
+      it "should be testable" do
+        @c.with_context do
+          Dir.chdir "temp_sensor" do
+            @output = `bundle exec ruby -S rake test:all`
+            @output.should match(/TESTED:\s+47/)
+            @output.should match(/PASSED:\s+47/)
+          end
+        end
       end
     end
 
-    it "should be testable" do
-      @c.with_context do
-        Dir.chdir "temp_sensor" do
-          @output = `bundle exec ruby -S rake test:all`
-          @output.should match(/TESTED:\s+47/)
-          @output.should match(/PASSED:\s+47/)
+    describe "blinky" do
+      before do
+        @c.with_context do
+          output = `bundle exec ruby -S ceedling example blinky 2>&1`
+          output.should match(/created!/)
+        end
+      end
+
+      it "should be testable" do
+        @c.with_context do
+          Dir.chdir "blinky" do
+            @output = `bundle exec ruby -S rake test:all`
+            @output.should match(/TESTED:\s+7/)
+            @output.should match(/PASSED:\s+7/)
+          end
         end
       end
     end
