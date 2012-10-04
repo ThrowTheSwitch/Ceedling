@@ -1,6 +1,10 @@
 require 'fileutils'
 require 'tmpdir'
 
+def test_asset_path(asset_file_name)
+  File.join(File.dirname(__FILE__), '..', 'assets', asset_file_name)
+end
+
 class GemDirLayout
   def initialize(install_dir)
     @d = File.join install_dir, "gems"
@@ -42,8 +46,11 @@ class SystemContext
         puts @gem.install_dir
         puts `bundle install --path #{@gem.install_dir}`
 
-        checks = ["bundle exec ruby -S ceedling"]
-        raise VerificationFailed unless checks.map {|c| system(c)}.all?
+        checks = ["bundle exec ruby -S ceedling 2>&1"]
+        checks.each do |c|
+          `#{c}`
+          raise VerificationFailed.new(c) unless $?.success?
+        end
       end
     end
   end
@@ -94,6 +101,77 @@ class SystemContext
       yield
     ensure
       restore_env
+    end
+  end
+end
+
+module CeedlingTestCases
+  def can_create_projects
+    @c.with_context do
+      Dir.chdir @proj_name do
+        File.exists?("project.yml").should be_true
+        File.exists?("rakefile.rb").should be_true
+        File.exists?("src").should be_true
+        File.exists?("test").should be_true
+      end
+    end
+  end
+
+  def contains_a_vendor_directory
+    @c.with_context do
+      Dir.chdir @proj_name do
+        File.exists?("vendor/ceedling").should be_true
+      end
+    end
+  end
+
+  def does_not_contain_a_vendor_directory
+    @c.with_context do
+      Dir.chdir @proj_name do
+        File.exists?("vendor/ceedling").should be_false
+      end
+    end
+  end
+
+  def contains_documentation
+    @c.with_context do
+      Dir.chdir @proj_name do
+        Dir["vendor/ceedling/docs/*.pdf"].length.should == 4
+      end
+    end
+  end
+
+  def does_not_contain_documentation
+    @c.with_context do
+      Dir.chdir @proj_name do
+        File.exists?("vendor/ceedling/docs").should be_false
+        Dir["vendor/ceedling/**/*.pdf"].length.should == 0
+      end
+    end
+  end
+
+  def can_test_projects
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src'
+        FileUtils.cp test_asset_path("example_file.c"), 'src'
+        FileUtils.cp test_asset_path("test_example_file.c"), 'test'
+
+        output = `bundle exec ruby -S rake test:all 2>&1`
+        output.match(/TESTED:\s+2/).should_not be_nil
+        output.match(/PASSED:\s+1/).should_not be_nil
+        output.match(/IGNORED:\s+0/).should_not be_nil
+      end
+    end
+  end
+
+  def can_use_the_module_plugin
+    @c.with_context do
+      Dir.chdir @proj_name do
+        `bundle exec ruby -S rake module:create[ponies] 2>&1`
+        output = `bundle exec ruby -S rake test:all 2>&1`
+        output.match(/IGNORED:\s+1/).should_not be_nil
+      end
     end
   end
 end
