@@ -25,16 +25,16 @@ started:
       :build_root: build
     #  :release_build: TRUE
       :test_file_prefix: test_
-    
+
     #:release_build:
     #  :output: MyApp.out
     #  :use_assembly: FALSE
-    
+
     :environment:
-    
+
     :extension:
       :executable: .out
-    
+
     :paths:
       :test:
         - +:test/**
@@ -43,7 +43,7 @@ started:
         - src/**
       :support:
         - test/support
-    
+
     :defines:
       # in order to add common defines:
       #  1) remove the trailing [] from the :common: section
@@ -55,7 +55,7 @@ started:
       :test_preprocess:
         - *common_defines
         - TEST
-    
+
     :cmock:
       :when_no_prototypes: :warn
       :enforce_strict_ordering: TRUE
@@ -67,12 +67,12 @@ started:
         uint32:   UINT32
         int8:     INT8
         bool:     UINT8
-    
+
     #:tools:
     # Ceedling defaults to using gcc for compiling, linking, etc.
     # As [:tools] is blank, gcc will be used (so long as it's in your system path)
     # See documentation to configure a given toolchain for use
-    
+
     :plugins:
       :load_paths:
         # This is required to use builtin ceedling plugins
