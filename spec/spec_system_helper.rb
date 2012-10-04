@@ -156,9 +156,9 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file.c"), 'test'
 
         output = `bundle exec ruby -S rake test:all 2>&1`
-        output.match(/TESTED:\s+2/).should_not be_nil
-        output.match(/PASSED:\s+1/).should_not be_nil
-        output.match(/IGNORED:\s+0/).should_not be_nil
+        output.should match(/TESTED:\s+2/)
+        output.should match(/PASSED:\s+1/)
+        output.should match(/IGNORED:\s+0/)
       end
     end
   end
@@ -168,7 +168,7 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         `bundle exec ruby -S rake module:create[ponies] 2>&1`
         output = `bundle exec ruby -S rake test:all 2>&1`
-        output.match(/IGNORED:\s+1/).should_not be_nil
+        output.should match(/IGNORED:\s+1/)
       end
     end
   end
