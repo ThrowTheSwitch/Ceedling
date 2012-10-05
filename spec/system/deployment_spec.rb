@@ -90,23 +90,27 @@ describe "Ceedling" do
       end
     end
 
-    describe "blinky" do
-      before do
-        @c.with_context do
-          output = `bundle exec ruby -S ceedling example blinky 2>&1`
-          output.should match(/created!/)
-        end
-      end
-
-      it "should be testable" do
-        @c.with_context do
-          Dir.chdir "blinky" do
-            @output = `bundle exec ruby -S rake test:all`
-            @output.should match(/TESTED:\s+7/)
-            @output.should match(/PASSED:\s+7/)
-          end
-        end
-      end
-    end
+    # # blinky depends on avr-gcc. If you happen to have this installed, go
+    # # ahead and uncomment this test and run it. This will fail on CI, so I'm
+    # # removing it for now.
+    #
+    # describe "blinky" do
+    #   before do
+    #     @c.with_context do
+    #       output = `bundle exec ruby -S ceedling example blinky 2>&1`
+    #       output.should match(/created!/)
+    #     end
+    #   end
+    #
+    #   it "should be testable" do
+    #     @c.with_context do
+    #       Dir.chdir "blinky" do
+    #         @output = `bundle exec ruby -S rake test:all`
+    #         @output.should match(/TESTED:\s+7/)
+    #         @output.should match(/PASSED:\s+7/)
+    #       end
+    #     end
+    #   end
+    # end
   end
 end
