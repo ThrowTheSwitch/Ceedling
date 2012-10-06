@@ -57,10 +57,9 @@
 # As [:tools] is blank, gcc will be used (so long as it's in your system path)
 # See documentation to configure a given toolchain for use
 
-# some platforms need the default test_linker to explicitly link the math lib (uncomment if this is you)
-# :tools_test_linker:
-#   :arguments:
-#     - -lm
+:tools_test_linker:
+  :arguments:
+    - -lm
 
 :plugins:
   :load_paths:

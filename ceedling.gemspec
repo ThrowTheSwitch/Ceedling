@@ -20,19 +20,19 @@ Gem::Specification.new do |s|
   # Files needed from submodules
   s.files         = []
   s.files        += Dir['vendor/**/docs/**/*.pdf', 'docs/**/*.pdf']
-  s.files        += `find vendor/cmock/lib           -name "*.rb"`.split("\n")
-  s.files        += `find vendor/cmock/config        -name "*.rb"`.split("\n")
-  s.files        += `find vendor/cmock/release       -name "*.info"`.split("\n")
-  s.files        += `find vendor/cmock/src           -name "*.[ch]"`.split("\n")
-  s.files        += `find vendor/c_exception/lib     -name "*.[ch]"`.split("\n")
-  s.files        += `find vendor/c_exception/release -name "*.info"`.split("\n")
-  s.files        += `find vendor/unity/auto          -name "*.rb"`.split("\n")
-  s.files        += `find vendor/unity/release       -name "*.info"`.split("\n")
-  s.files        += `find vendor/unity/src           -name "*.[ch]"`.split("\n")
+  s.files        += Dir['vendor/cmock/lib/**/*.rb']
+  s.files        += Dir['vendor/cmock/config/**/*.rb']
+  s.files        += Dir['vendor/cmock/release/**/*.info']
+  s.files        += Dir['vendor/cmock/src/**/*.[ch]']
+  s.files        += Dir['vendor/c_exception/lib/**/*.[ch]']
+  s.files        += Dir['vendor/c_exception/release/**/*.info']
+  s.files        += Dir['vendor/unity/auto/**/*.rb']
+  s.files        += Dir['vendor/unity/release/**/*.info']
+  s.files        += Dir['vendor/unity/src/**/*.[ch]']
 
-  s.files        += `git ls-files`.split("\n")
-  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
-  s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  s.files      += Dir['**/*']
+  s.test_files  = Dir['test/**/*', 'spec/**/*', 'features/**/*']
+  s.executables = Dir['bin/**/*'].map{|f| File.basename(f)}
 
   s.require_paths = ["lib", "vendor/cmock/lib"]
 end
