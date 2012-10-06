@@ -1,23 +1,36 @@
 require 'fileutils'
 require 'tmpdir'
+require 'yaml'
 
 def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', 'assets', asset_file_name)
 end
 
+def convert_slashes(path)
+  if RUBY_PLATFORM.downcase.match(/mingw|win32/)
+    path.gsub("/","\\")
+  else
+    path
+  end
+end
+
 class GemDirLayout
+  attr_reader :gem_dir_base_name
+
   def initialize(install_dir)
-    @d = File.join install_dir, "gems"
+    @gem_dir_base_name = "gems"
+    @d = File.join install_dir, @gem_dir_base_name
     FileUtils.mkdir_p @d
   end
 
-  def install_dir; @d                   end
+  def install_dir; convert_slashes(@d)  end
   def bin;         File.join(@d, 'bin') end
   def lib;         File.join(@d, 'lib') end
 end
 
 class SystemContext
   class VerificationFailed < Exception; end
+  class InvalidBackupEnv < Exception; end
 
   attr_reader :dir, :gem
 
@@ -32,8 +45,9 @@ class SystemContext
 
   def deploy_gem
     git_repo = File.expand_path(File.join(File.dirname(__FILE__), '..'))
-    bundler_gem_file_data = [ %Q{source "http://rubygems.org/"} ,
-                              %Q{gem "ceedling", :path => "#{git_repo}"}
+    bundler_gem_file_data = [ %Q{source "http://rubygems.org/"},
+                              %Q{gem "rake"},
+                              %Q{gem "ceedling", :path => '#{git_repo.to_s}'}
                             ].join("\n")
 
     File.open(File.join(@dir, "Gemfile"), "w+") do |f|
@@ -43,8 +57,7 @@ class SystemContext
     Dir.chdir @dir do
       with_constrained_env do
         `bundle install --path #{@gem.install_dir}`
-
-        checks = ["bundle exec ruby -S ceedling 2>&1"]
+        checks = [ "bundle exec ruby -S ceedling 2>&1"]
         checks.each do |c|
           `#{c}`
           raise VerificationFailed.new(c) unless $?.success?
@@ -79,17 +92,21 @@ class SystemContext
     @_env = YAML.load(ENV.to_hash.to_yaml)
   end
 
-  def destroy_env(keep_keys=[])
-    ENV.keys.each {|k| ENV.delete(k) unless keep_keys.include?(k)}
+  def reduce_env(destroy_keys=[])
+    ENV.keys.each {|k| ENV.delete(k) if destroy_keys.include?(k) }
   end
 
   def constrain_env
-    keep_keys = %w{PATH rvm_bin_path GEM_HOME TMPDIR}
-    destroy_env(keep_keys)
+    destroy_keys = %w{BUNDLE_GEMFILE BUNDLE_BIN_PATH RUBYOPT}
+    reduce_env(destroy_keys)
   end
 
   def restore_env
-    @_env.each_pair {|k,v| ENV[k] = v}
+    if @_env
+      @_env.each_pair {|k,v| ENV[k] = v}
+    else
+      raise InvalidBackupEnv.new
+    end
   end
 
   def with_constrained_env
