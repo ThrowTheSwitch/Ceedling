@@ -34,7 +34,6 @@ class CeedlingTasks < Thor
 
         in_doc_path = lambda {|f| File.join(doc_path, f)}
 
-        puts Dir.pwd
         doc_files = [
                       'docs/CeedlingPacket.pdf',
                       'vendor/c_exception/docs/CExceptionSummary.pdf',
