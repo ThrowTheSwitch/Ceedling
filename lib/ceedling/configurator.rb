@@ -125,6 +125,11 @@ class Configurator
       # populate name if not given      
       tool[:name] = name.to_s if (tool[:name].nil?)
 
+      # handle inline ruby string substitution in executable
+      if (tool[:executable] =~ RUBY_STRING_REPLACEMENT_PATTERN)
+        tool[:executable].replace(@system_wrapper.module_eval(tool[:executable]))
+      end
+
       # populate stderr redirect option
       tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
 
