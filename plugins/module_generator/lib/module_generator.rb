@@ -65,6 +65,7 @@ class ModuleGenerator < Plugin
       @ceedling[:streaminator].stdout_puts "Destroying '#{path}'..."
       @files.each do |file|
         if File.exist?(file[:path])
+          File.delete(file[:path])
           @ceedling[:streaminator].stdout_puts "File #{file[:path]} deleted"
         else
           @ceedling[:streaminator].stdout_puts "File #{file[:path]} does not exist!"
