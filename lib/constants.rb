@@ -54,30 +54,30 @@ CMOCK_C_FILE    = 'cmock.c'
 CMOCK_H_FILE    = 'cmock.h'
 
 
-DEFAULT_CEEDLING_MAIN_PROJECT_FILE = 'project.yml' # main project file
-DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    # supplemental user config file
+DEFAULT_CEEDLING_MAIN_PROJECT_FILE ||= 'project.yml' # main project file
+DEFAULT_CEEDLING_USER_PROJECT_FILE ||= 'user.yml'    # supplemental user config file
 
-INPUT_CONFIGURATION_CACHE_FILE     = 'input.yml'   # input configuration file dump
+INPUT_CONFIGURATION_CACHE_FILE     ||= 'input.yml'   # input configuration file dump
 
 
-TEST_ROOT_NAME    = 'test'
-TEST_TASK_ROOT    = TEST_ROOT_NAME + ':'
-TEST_SYM          = TEST_ROOT_NAME.to_sym
+TEST_ROOT_NAME    ||= 'test'
+TEST_TASK_ROOT    ||= TEST_ROOT_NAME + ':'
+TEST_SYM          ||= TEST_ROOT_NAME.to_sym
 
-RELEASE_ROOT_NAME = 'release'
-RELEASE_TASK_ROOT = RELEASE_ROOT_NAME + ':'
-RELEASE_SYM       = RELEASE_ROOT_NAME.to_sym
+RELEASE_ROOT_NAME ||= 'release'
+RELEASE_TASK_ROOT ||= RELEASE_ROOT_NAME + ':'
+RELEASE_SYM       ||= RELEASE_ROOT_NAME.to_sym
 
-REFRESH_ROOT_NAME = 'refresh'
-REFRESH_TASK_ROOT = REFRESH_ROOT_NAME + ':'
-REFRESH_SYM       = REFRESH_ROOT_NAME.to_sym
+REFRESH_ROOT_NAME ||= 'refresh'
+REFRESH_TASK_ROOT ||= REFRESH_ROOT_NAME + ':'
+REFRESH_SYM       ||= REFRESH_ROOT_NAME.to_sym
 
-UTILS_ROOT_NAME   = 'utils'
-UTILS_TASK_ROOT   = UTILS_ROOT_NAME + ':'
-UTILS_SYM         = UTILS_ROOT_NAME.to_sym
+UTILS_ROOT_NAME   ||= 'utils'
+UTILS_TASK_ROOT   ||= UTILS_ROOT_NAME + ':'
+UTILS_SYM         ||= UTILS_ROOT_NAME.to_sym
 
-OPERATION_COMPILE_SYM = :compile
-OPERATION_LINK_SYM    = :link
+OPERATION_COMPILE_SYM ||= :compile
+OPERATION_LINK_SYM    ||= :link
 
 
 RUBY_STRING_REPLACEMENT_PATTERN = /#\{.+\}/
