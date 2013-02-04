@@ -6,8 +6,10 @@ to be used without having to worry about external dependencies.
 
     ceedling new [your new project name]
 
-Using Ceedling outside of a project as a gem (EXPERIMENTAL AND AWKWARD)
-=======================================================================
+Using Ceedling outside of a project as a gem
+============================================
+
+(Note: This is still somewhat experimental.)
 
 Ceedling can also be used as a gem. The following Rakefile is the
 bare minimum required in order to use Ceedling this way:
