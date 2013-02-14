@@ -143,12 +143,11 @@ class Configurator
       tool = @project_config_hash[(tools_name_prefix + name.to_s).to_sym]
 
       # smoosh in extra arguments if specified at top-level of config (useful for plugins & default gcc tools)
-      # arguments are squirted in at beginning of list
+      # arguments are squirted in at _end_ of list
       top_level_tool = (tools_name_prefix + name.to_s).to_sym
       if (not config[top_level_tool].nil?)
          # adding and flattening is not a good idea: might over-flatten if there's array nesting in tool args
-         # use _with_index to preserve order
-         config[top_level_tool][:arguments].each_with_index { |arg, index| tool[:arguments].insert( index, arg ) }
+         tool[:arguments].concat config[top_level_tool][:arguments]
       end
     end
   end
