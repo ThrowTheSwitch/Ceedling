@@ -14,6 +14,7 @@ DEFAULT_TEST_COMPILER_TOOL = {
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     "-DGNU_COMPILER".freeze,
+    "-g".freeze,
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     # gcc's list file output options are complex; no use of ${3} parameter in default config    
