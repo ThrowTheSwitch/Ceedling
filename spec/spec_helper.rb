@@ -20,9 +20,9 @@ support_dir = File.join(File.dirname(__FILE__), 'support')
 # # ceedling_files = File.join(File.dirname(__FILE__), '../lib/**/*.rb')
 # # require_all Dir.glob(ceedling_files)
 
-require 'preprocessinator_extractor'
-require 'configurator_builder'
-require 'configurator'
+require 'ceedling/preprocessinator_extractor'
+require 'ceedling/configurator_builder'
+require 'ceedling/configurator'
 
 class String
   def left_margin(indentation_level = 0)

@@ -1,5 +1,5 @@
-require 'plugin'
-require 'constants'
+require 'ceedling/plugin'
+require 'ceedling/constants'
 
 class XmlTestsReport < Plugin
 

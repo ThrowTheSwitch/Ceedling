@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'preprocessinator_file_handler'
+require 'ceedling/preprocessinator_file_handler'
 
 
 class PreprocessinatorFileHandlerTest < Test::Unit::TestCase
