@@ -1,5 +1,5 @@
-require 'plugin'
-require 'constants'
+require 'ceedling/plugin'
+require 'ceedling/constants'
 
 GCOV_ROOT_NAME         = 'gcov'
 GCOV_TASK_ROOT         = GCOV_ROOT_NAME + ':'

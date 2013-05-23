@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'generator'
+require 'ceedling/generator'
 
 
 class GeneratorTest < Test::Unit::TestCase

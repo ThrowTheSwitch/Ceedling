@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'project_config_manager'
+require 'ceedling/project_config_manager'
 require 'yaml'
 
 class ProjectFileLoaderTest < Test::Unit::TestCase

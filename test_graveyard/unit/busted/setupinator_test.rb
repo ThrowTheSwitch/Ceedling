@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'setupinator'
+require 'ceedling/setupinator'
 
 
 class SetupinatorTest < Test::Unit::TestCase

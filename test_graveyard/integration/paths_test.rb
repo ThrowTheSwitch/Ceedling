@@ -2,8 +2,8 @@ require File.dirname(__FILE__) + '/../integration_test_helper'
 require 'rubygems'
 require 'rake' # for FileList
 require 'constructor'
-require 'file_system_utils'
-require 'file_wrapper'
+require 'ceedling/file_system_utils'
+require 'ceedling/file_wrapper'
 
 
 PATHS_ROOT = INTEGRATION_TEST_ROOT + '/paths'
