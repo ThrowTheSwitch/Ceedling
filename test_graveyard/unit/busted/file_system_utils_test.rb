@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'file_system_utils'
+require 'ceedling/file_system_utils'
 
 
 class FileSystemUtilsTest < Test::Unit::TestCase

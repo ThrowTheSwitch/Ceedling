@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'configurator'
+require 'ceedling/configurator'
 
 
 class ConfiguratorTest < Test::Unit::TestCase

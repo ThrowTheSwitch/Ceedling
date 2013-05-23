@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'generator_test_runner'
+require 'ceedling/generator_test_runner'
 
 
 # redefine split for convenience of file content comparison in tests.

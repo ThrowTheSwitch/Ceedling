@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'preprocessinator_extractor'
+require 'ceedling/preprocessinator_extractor'
 
 
 class PreprocessinatorExtractorTest < Test::Unit::TestCase

@@ -1,7 +1,7 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'configurator_builder'
 require 'yaml'
-require 'constants' # for Verbosity constants class
+require 'ceedling/configurator_builder'
+require 'ceedling/constants' # for Verbosity constants class
 
 
 class ConfiguratorBuilderTest < Test::Unit::TestCase

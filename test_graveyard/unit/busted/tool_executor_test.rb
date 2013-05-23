@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'tool_executor'
+require 'ceedling/tool_executor'
 require 'yaml'
 
 

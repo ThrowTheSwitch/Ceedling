@@ -1,4 +1,4 @@
-require "par_map"
+require 'ceedling/par_map'
 
 def short_task_should(n) 
   done_count = 0
