@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'task_invoker'
+require 'ceedling/task_invoker'
 
 
 class TaskInvokerTest < Test::Unit::TestCase

@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'test_includes_extractor'
+require 'ceedling/test_includes_extractor'
 
 
 class TestIncludesExtractorTest < Test::Unit::TestCase
