@@ -53,7 +53,7 @@ class GeneratorTestRunner
   end
   
   def generate(module_name, runner_filepath, test_cases, mock_list)
-    require 'ceedling/generate_test_runner'
+    require 'generate_test_runner.rb'
     @test_runner_generator ||= UnityTestRunnerGenerator.new( @configurator.get_runner_config )
     @test_runner_generator.generate( module_name, 
                                      runner_filepath, 
