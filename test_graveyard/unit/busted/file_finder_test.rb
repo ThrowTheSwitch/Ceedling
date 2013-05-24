@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'file_finder'
+require 'ceedling/file_finder'
 
 
 class FileFinderTest < Test::Unit::TestCase

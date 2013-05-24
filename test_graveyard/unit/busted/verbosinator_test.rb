@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'verbosinator'
+require 'ceedling/verbosinator'
 
 
 class VerbosinatorTest < Test::Unit::TestCase
