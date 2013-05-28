@@ -19,6 +19,7 @@ end
 
 ceeling_lib_rakefile = File.join( ceedling_dir,
                                  'lib',
+                                 'ceedling',
                                  'rakefile.rb')
 if File.exists? "./project.yml"
   load ceeling_lib_rakefile

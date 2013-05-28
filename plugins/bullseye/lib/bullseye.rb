@@ -1,5 +1,5 @@
-require 'plugin'
-require 'constants'
+require 'ceedling/plugin'
+require 'ceedling/constants'
 
 BULLSEYE_ROOT_NAME         = 'bullseye'
 BULLSEYE_TASK_ROOT         = BULLSEYE_ROOT_NAME + ':'

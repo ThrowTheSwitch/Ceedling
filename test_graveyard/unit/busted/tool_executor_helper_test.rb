@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'tool_executor_helper'
+require 'ceedling/tool_executor_helper'
 
 
 class ToolExecutorHelperTest < Test::Unit::TestCase

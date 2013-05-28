@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/../unit_test_helper'
-require 'dependinator'
+require 'ceedling/dependinator'
 
 
 class DependinatorTest < Test::Unit::TestCase
