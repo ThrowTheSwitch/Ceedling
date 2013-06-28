@@ -32,6 +32,7 @@ class BackgroundExec
   UNIX = :unix
 end
 
+PROJECT_ROOT ||= Dir.pwd()
 
 EXTENSION_WIN_EXE    = '.exe'
 EXTENSION_NONWIN_EXE = '.out'
