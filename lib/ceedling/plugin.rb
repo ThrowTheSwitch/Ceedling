@@ -64,8 +64,8 @@ class Plugin
   def post_test_fixture_execute(arg_hash); end
 
   # test task
-  def pre_test; end
-  def post_test; end
+  def pre_test(test); end
+  def post_test(test); end
 
   # release task
   def pre_release; end
