@@ -76,8 +76,8 @@ class PluginManager
     execute_plugins(:post_test_fixture_execute, arg_hash)
   end
 
-  def pre_test; execute_plugins(:pre_test); end
-  def post_test; execute_plugins(:post_test); end
+  def pre_test(test); execute_plugins(:pre_test, test); end
+  def post_test(test); execute_plugins(:post_test, test); end
 
   def pre_release; execute_plugins(:pre_release); end
   def post_release; execute_plugins(:post_release); end

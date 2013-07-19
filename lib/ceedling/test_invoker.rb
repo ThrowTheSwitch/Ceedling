@@ -35,7 +35,7 @@ class TestInvoker
       @streaminator.stdout_puts("\n\n#{header}\n#{'-' * header.length}")
 
       begin
-        @plugin_manager.pre_test
+        @plugin_manager.pre_test( test )
         
         # collect up test fixture pieces & parts
         runner       = @file_path_utils.form_runner_filepath_from_test( test )
@@ -69,7 +69,7 @@ class TestInvoker
       rescue => e
         @build_invoker_utils.process_exception( e, context )
       ensure
-        @plugin_manager.post_test        
+        @plugin_manager.post_test( test )
       end
       
       # store away what's been processed
