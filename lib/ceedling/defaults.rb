@@ -16,7 +16,7 @@ DEFAULT_TEST_COMPILER_TOOL = {
     "-DGNU_COMPILER".freeze,
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
-    # gcc's list file output options are complex; no use of ${3} parameter in default config    
+    # gcc's list file output options are complex; no use of ${3} parameter in default config
     ].freeze
   }
 
@@ -31,7 +31,7 @@ DEFAULT_TEST_LINKER_TOOL = {
     "-o \"${2}\"".freeze,
     ].freeze
   }
-  
+
 DEFAULT_TEST_FIXTURE_TOOL = {
   :executable => '${1}'.freeze,
   :name => 'default_test_fixture'.freeze,
@@ -91,8 +91,8 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :arguments => [
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze, 
-    {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,     
+    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
+    {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
     "-DGNU_PREPROCESSOR".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
@@ -138,7 +138,7 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
     "-DGNU_COMPILER".freeze,
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
-    # gcc's list file output options are complex; no use of ${3} parameter in default config    
+    # gcc's list file output options are complex; no use of ${3} parameter in default config
     ].freeze
   }
 
@@ -167,7 +167,7 @@ DEFAULT_RELEASE_LINKER_TOOL = {
     ].freeze
   }
 
-  
+
 DEFAULT_TOOLS_TEST = {
   :tools => {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
@@ -175,7 +175,7 @@ DEFAULT_TOOLS_TEST = {
     :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
     }
   }
-  
+
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
     :test_includes_preprocessor => DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL,
@@ -209,7 +209,7 @@ DEFAULT_TOOLS_RELEASE_DEPENDENCIES = {
     }
   }
 
-  
+
 DEFAULT_RELEASE_TARGET_NAME = 'project'
 
 DEFAULT_CEEDLING_CONFIG = {
@@ -240,7 +240,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :test_toolchain_include => [],
       :release_toolchain_include => [],
     },
-    
+
     :files => {
       :test => [],
       :source => [],
@@ -248,22 +248,22 @@ DEFAULT_CEEDLING_CONFIG = {
       :support => [],
       :include => [],
     },
-    
+
     # unlike other top-level entries, environment's value is an array to preserve order
     :environment => [
       # when evaluated, this provides wider text field for rake task comments
       {:rake_columns => '120'},
     ],
-    
+
     :defines => {
       :test => [],
       :test_preprocess => [],
       :release => [],
       :release_preprocess => [],
     },
-    
+
     :flags => {},
-    
+
     :extension => {
       :header => '.h',
       :source => '.c',
@@ -301,7 +301,7 @@ DEFAULT_CEEDLING_CONFIG = {
     # (these can be overridden in project file to add arguments to tools without totally redefining tools)
     :test_compiler => { :arguments => [] },
     :test_linker   => { :arguments => [] },
-    :test_fixture  => { 
+    :test_fixture  => {
       :arguments => [],
       :link_objects => [], # compiled object files to always be linked in (e.g. cmock.o if using mocks)
     },
@@ -319,7 +319,7 @@ DEFAULT_CEEDLING_CONFIG = {
     }
   }.freeze
 
-  
+
 DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 % ignored        = hash[:results][:counts][:ignored]
 % failed         = hash[:results][:counts][:failed]
