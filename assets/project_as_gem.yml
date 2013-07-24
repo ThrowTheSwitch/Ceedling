@@ -64,7 +64,7 @@
 
 :plugins:
   :load_paths:
-    - "#{builtin_ceedling_plugins_path}"
+    - "#{Ceedling.load_path}"
   :enabled:
     - stdout_pretty_tests_report
     - module_generator
