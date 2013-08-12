@@ -65,7 +65,7 @@ class XmlTestsReport < Plugin
           stream.puts "\t\t\t\t<Line>#{item[:line]}</Line>"
           stream.puts "\t\t\t</Location>"
           stream.puts "\t\t\t<Message>#{item[:message]}</Message>"
-          stream.puts "\t\t</Test>"
+          stream.puts "\t\t</FailedTest>"
           @test_counter += 1
         end
     end
