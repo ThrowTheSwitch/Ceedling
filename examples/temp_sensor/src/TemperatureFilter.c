@@ -27,8 +27,7 @@ void TemperatureFilter_ProcessInput(float temperature)
   {
     if (temperature == +INFINITY ||
         temperature == -INFINITY ||
-        temperature == +NAN ||
-        temperature == -NAN)
+        isnan(temperature))
     {
       initialized = FALSE;
       temperature = -INFINITY;

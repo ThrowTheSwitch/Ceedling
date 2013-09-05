@@ -29,5 +29,5 @@ void testTemperatureCalculatorShouldCalculateTemperatureFromMillivolts(void)
 
 void testShouldReturnNegativeInfinityWhen_0_millivoltsInput(void)
 {
-  TEST_ASSERT_FLOAT_WITHIN(0.0000001f, -INFINITY, TemperatureCalculator_Calculate(0));
+  TEST_ASSERT_FLOAT_IS_NEG_INF(TemperatureCalculator_Calculate(0));
 }
