@@ -32,7 +32,9 @@ class BackgroundExec
   UNIX = :unix
 end
 
-PROJECT_ROOT ||= Dir.pwd()
+unless defined?(PROJECT_ROOT)
+  PROJECT_ROOT = Dir.pwd()
+end
 
 EXTENSION_WIN_EXE    = '.exe'
 EXTENSION_NONWIN_EXE = '.out'
@@ -55,30 +57,30 @@ CMOCK_C_FILE    = 'cmock.c'
 CMOCK_H_FILE    = 'cmock.h'
 
 
-DEFAULT_CEEDLING_MAIN_PROJECT_FILE ||= 'project.yml' # main project file
-DEFAULT_CEEDLING_USER_PROJECT_FILE ||= 'user.yml'    # supplemental user config file
+DEFAULT_CEEDLING_MAIN_PROJECT_FILE = 'project.yml' unless defined?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE) # main project file
+DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    unless defined?(DEFAULT_CEEDLING_USER_PROJECT_FILE) # supplemental user config file
 
-INPUT_CONFIGURATION_CACHE_FILE     ||= 'input.yml'   # input configuration file dump
+INPUT_CONFIGURATION_CACHE_FILE     = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
 
 
-TEST_ROOT_NAME    ||= 'test'
-TEST_TASK_ROOT    ||= TEST_ROOT_NAME + ':'
-TEST_SYM          ||= TEST_ROOT_NAME.to_sym
+TEST_ROOT_NAME    = 'test'                unless defined?(TEST_ROOT_NAME)
+TEST_TASK_ROOT    = TEST_ROOT_NAME + ':'  unless defined?(TEST_TASK_ROOT)
+TEST_SYM          = TEST_ROOT_NAME.to_sym unless defined?(TEST_SYM)
 
-RELEASE_ROOT_NAME ||= 'release'
-RELEASE_TASK_ROOT ||= RELEASE_ROOT_NAME + ':'
-RELEASE_SYM       ||= RELEASE_ROOT_NAME.to_sym
+RELEASE_ROOT_NAME = 'release'                unless defined?(RELEASE_ROOT_NAME)
+RELEASE_TASK_ROOT = RELEASE_ROOT_NAME + ':'  unless defined?(RELEASE_TASK_ROOT)
+RELEASE_SYM       = RELEASE_ROOT_NAME.to_sym unless defined?(RELEASE_SYM)
 
-REFRESH_ROOT_NAME ||= 'refresh'
-REFRESH_TASK_ROOT ||= REFRESH_ROOT_NAME + ':'
-REFRESH_SYM       ||= REFRESH_ROOT_NAME.to_sym
+REFRESH_ROOT_NAME = 'refresh'                unless defined?(REFRESH_ROOT_NAME)
+REFRESH_TASK_ROOT = REFRESH_ROOT_NAME + ':'  unless defined?(REFRESH_TASK_ROOT)
+REFRESH_SYM       = REFRESH_ROOT_NAME.to_sym unless defined?(REFRESH_SYM)
 
-UTILS_ROOT_NAME   ||= 'utils'
-UTILS_TASK_ROOT   ||= UTILS_ROOT_NAME + ':'
-UTILS_SYM         ||= UTILS_ROOT_NAME.to_sym
+UTILS_ROOT_NAME   = 'utils'                unless defined?(UTILS_ROOT_NAME)
+UTILS_TASK_ROOT   = UTILS_ROOT_NAME + ':'  unless defined?(UTILS_TASK_ROOT)
+UTILS_SYM         = UTILS_ROOT_NAME.to_sym unless defined?(UTILS_SYM)
 
-OPERATION_COMPILE_SYM ||= :compile
-OPERATION_LINK_SYM    ||= :link
+OPERATION_COMPILE_SYM = :compile unless defined?(OPERATION_COMPILE_SYM)
+OPERATION_LINK_SYM    = :link    unless defined?(OPERATION_LINK_SYM)
 
 
 RUBY_STRING_REPLACEMENT_PATTERN = /#\{.+\}/
