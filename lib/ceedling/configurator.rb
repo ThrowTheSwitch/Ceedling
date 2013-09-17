@@ -234,9 +234,9 @@ class Configurator
     paths.flatten.each { |path| FilePathUtils::standardize( path ) }
 
     config[:paths].each_pair do |collection, paths|
-      paths.each{|path| FilePathUtils::standardize( path )}
-      # ensure that list is an array (i.e. handle case of list being a single string)
-      config[:paths][collection] = [paths].flatten
+      # ensure that list is an array (i.e. handle case of list being a single string,
+      # or a multidimensional array)
+      config[:paths][collection] = [paths].flatten.map{|path| FilePathUtils::standardize( path )}
     end
 
     config[:files].each_pair { |collection, files| files.each{ |path| FilePathUtils::standardize( path ) } }
