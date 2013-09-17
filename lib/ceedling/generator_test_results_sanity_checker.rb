@@ -45,18 +45,20 @@ class GeneratorTestResultsSanityChecker
 
   private
   
-  def sanity_check_warning(file, message)
-    notice = "\n" + 
-             "ERROR: Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable)}' finds that #{message}\n" +
-             "  Possible causes:\n" +
-             "    1. Your test + source dereferenced a null pointer.\n" +
-             "    2. Your test + source indexed past the end of a buffer.\n" +
-             "    3. Your test + source committed a memory access violation.\n" +
-             "    4. Your test fixture produced an exit code of 0 despite execution ending prematurely.\n" +
-             "  Sanity check failures of test results are usually a symptom of interrupted test execution.\n\n"
-    
-    @streaminator.stderr_puts( notice )
-    raise
+ def sanity_check_warning(file, message)
+    unless defined?(CEEDLING_IGNORE_SANITY_CHECK)
+      notice = "\n" + 
+               "ERROR: Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable)}' finds that #{message}\n" +
+               "  Possible causes:\n" +
+               "    1. Your test + source dereferenced a null pointer.\n" +
+               "    2. Your test + source indexed past the end of a buffer.\n" +
+               "    3. Your test + source committed a memory access violation.\n" +
+               "    4. Your test fixture produced an exit code of 0 despite execution ending prematurely.\n" +
+               "  Sanity check failures of test results are usually a symptom of interrupted test execution.\n\n"
+      
+      @streaminator.stderr_puts( notice )
+      raise
+    end
   end
 
 end
