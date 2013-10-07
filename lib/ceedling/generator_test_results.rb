@@ -26,10 +26,7 @@ class GeneratorTestResults
     # remove test statistics lines
     output_string = unity_shell_result[:output].sub(TEST_STDOUT_STATISTICS_PATTERN, '')
     
-    # bust up the output into individual lines
-    raw_unity_lines = output_string.split(/\r|\r\n/)
-    
-    raw_unity_lines.each do |line|
+    output_string.lines do |line|
       # process unity output
       case line
       when /(:IGNORE)/
