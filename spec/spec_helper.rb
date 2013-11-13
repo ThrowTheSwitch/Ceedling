@@ -20,6 +20,7 @@ support_dir = File.join(File.dirname(__FILE__), 'support')
 # # ceedling_files = File.join(File.dirname(__FILE__), '../lib/**/*.rb')
 # # require_all Dir.glob(ceedling_files)
 
+require 'preprocessinator_includes_handler'
 require 'preprocessinator_extractor'
 require 'configurator_builder'
 require 'configurator'
@@ -42,5 +43,9 @@ class String
         indent + rel
       end
     end.compact.join
+  end
+
+  def strip_indentation
+    self.left_margin.rstrip
   end
 end
