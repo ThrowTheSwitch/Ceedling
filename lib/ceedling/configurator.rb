@@ -216,7 +216,7 @@ class Configurator
 
     config[:paths].each_pair { |collection, paths| eval_path_list( paths ) }
 
-    config[:files].each_pair { |collection, files| eval_path_list( paths ) }
+    config[:files].each_pair { |collection, files| eval_path_list( files ) }
     
     # all other paths at secondary hash key level processed by convention:
     # ex. [:toplevel][:foo_path] & [:toplevel][:bar_paths] are evaluated
