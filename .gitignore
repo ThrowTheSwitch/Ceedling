@@ -5,3 +5,4 @@ tags
 ceedling.sublime-project
 ceedling.sublime-workspace
 ceedling-*.gem
+.DS_Store
