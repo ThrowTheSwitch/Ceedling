@@ -9,12 +9,15 @@ to be used without having to worry about external dependencies.
 Using Ceedling outside of a project as a gem
 ============================================
 
-(Note: This is still somewhat experimental.)
-
 Ceedling can also be used as a gem. The following Rakefile is the
 bare minimum required in order to use Ceedling this way:
 
     require 'ceedling'
+    Ceedling.load_project
+
+If you want to load a Ceedling project YAML file other than the default `project.yml` (i.e. `./my_config.yml`), you can do:
+
+    Ceedling.load_project(config: './my_config.yml')
 
 Additionally, a project.yml is required. Here is one to get you
 started:
