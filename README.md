@@ -78,8 +78,8 @@ started:
     :plugins:
       :load_paths:
         # This is required to use builtin ceedling plugins
-        - "#{builtin_ceedling_plugins_path}"
-        # Uncomment this and create the directory in order to use your own 
+        - "#{Ceedling.load_path}"
+        # Uncomment this and create the directory in order to use your own
         # custom ceedling plugins
         # - ceedling_plugins
       :enabled:

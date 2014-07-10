@@ -11,6 +11,7 @@ Gem::Specification.new do |s|
   s.homepage    = "http://throwtheswitch.org/"
   s.summary     = %q{Ceedling is a set of tools for the automation of builds and test running for C}
   s.description = %q{Ceedling provides a set of tools to deploy its guts in a folder or which can be required in a Rakefile}
+  s.licenses    = ['MIT']
 
   s.rubyforge_project = "ceedling"
 
