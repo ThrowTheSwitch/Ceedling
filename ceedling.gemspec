@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
 
   # Files needed from submodules
   s.files         = []
-  s.files        += Dir['vendor/**/docs/**/*.pdf', 'docs/**/*.pdf']
+  s.files        += Dir['vendor/**/docs/**/*.pdf', 'docs/**/*.pdf', 'vendor/**/docs/**/*.md', 'docs/**/*.md']
   s.files        += Dir['vendor/cmock/lib/**/*.rb']
   s.files        += Dir['vendor/cmock/config/**/*.rb']
   s.files        += Dir['vendor/cmock/release/**/*.info']
