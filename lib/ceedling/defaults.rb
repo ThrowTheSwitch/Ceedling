@@ -42,15 +42,14 @@ DEFAULT_TEST_FIXTURE_TOOL = {
   :arguments => [].freeze
   }
 
-
-
 DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => FilePathUtils.os_executable_ext('cpp').freeze,
+  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
+    '-E'.freeze,
     '-MM'.freeze,
     '-MG'.freeze,
     # avoid some possibility of deep system lib header file complications by omitting vendor paths
@@ -58,7 +57,7 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
     {"-I\"$\"" => "{SystemWrapper.windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
-    "-DGNU_PREPROCESSOR".freeze,
+    "-DGNU_COMPILER".freeze,
     '-w'.freeze,
     '-nostdinc'.freeze,
     "\"${1}\"".freeze

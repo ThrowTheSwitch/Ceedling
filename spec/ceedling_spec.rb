@@ -47,7 +47,7 @@ describe 'Ceedling' do
       rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
-      Ceedling.should_receive(:load).with(rakefile_path)
+      expect(Ceedling).to receive(:load).with(rakefile_path)
       # execute method
       Ceedling.load_project
       # validate results
@@ -60,7 +60,7 @@ describe 'Ceedling' do
       rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
-      Ceedling.should_receive(:load).with(rakefile_path)
+      expect(Ceedling).to receive(:load).with(rakefile_path)
       # execute method
       Ceedling.load_project(config: './foo.yml')
       # validate results
@@ -73,7 +73,7 @@ describe 'Ceedling' do
       rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
-      Ceedling.should_receive(:load).with(rakefile_path)
+      expect(Ceedling).to receive(:load).with(rakefile_path)
       # execute method
       Ceedling.load_project
       # validate results
@@ -88,10 +88,10 @@ describe 'Ceedling' do
       rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
-      Gem::Specification.should_receive(:find_by_name).with('ceedling-foo').and_return(spec_double)
-      spec_double.should_receive(:gem_dir).and_return('dummy/path')
-      Ceedling.should_receive(:require).with('ceedling/defaults')
-      Ceedling.should_receive(:load).with(rakefile_path)
+      expect(Gem::Specification).to receive(:find_by_name).with('ceedling-foo').and_return(spec_double)
+      expect(spec_double).to receive(:gem_dir).and_return('dummy/path')
+      expect(Ceedling).to receive(:require).with('ceedling/defaults')
+      expect(Ceedling).to receive(:load).with(rakefile_path)
       # execute method
       Ceedling.load_project( config:  './foo.yml',
                              plugins: ['foo'])
@@ -107,7 +107,7 @@ describe 'Ceedling' do
       rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
-      Ceedling.should_receive(:load).with(rakefile_path)
+      expect(Ceedling).to receive(:load).with(rakefile_path)
       # execute method
       Ceedling.load_project( config:  './foo.yml',
                              root:    './')
@@ -124,9 +124,9 @@ describe 'Ceedling' do
       DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].clear()
       spec_double = double('spec-double')
       # mocks/stubs/expected calls
-      Gem::Specification.should_receive(:find_by_name).with('ceedling-foo').and_return(spec_double)
-      spec_double.should_receive(:gem_dir).and_return('dummy/path')
-      Ceedling.should_receive(:require).with('ceedling/defaults')
+      expect(Gem::Specification).to receive(:find_by_name).with('ceedling-foo').and_return(spec_double)
+      expect(spec_double).to receive(:gem_dir).and_return('dummy/path')
+      expect(Ceedling).to receive(:require).with('ceedling/defaults')
       # execute method
       Ceedling.register_plugin('foo')
       # validate results
@@ -140,9 +140,9 @@ describe 'Ceedling' do
       DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].clear()
       spec_double = double('spec-double')
       # mocks/stubs/expected calls
-      Gem::Specification.should_receive(:find_by_name).with('prefix-foo').and_return(spec_double)
-      spec_double.should_receive(:gem_dir).and_return('dummy/path')
-      Ceedling.should_receive(:require).with('ceedling/defaults')
+      expect(Gem::Specification).to receive(:find_by_name).with('prefix-foo').and_return(spec_double)
+      expect(spec_double).to receive(:gem_dir).and_return('dummy/path')
+      expect(Ceedling).to receive(:require).with('ceedling/defaults')
       # execute method
       Ceedling.register_plugin('foo','prefix-')
       # validate results

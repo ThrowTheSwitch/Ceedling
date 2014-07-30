@@ -124,10 +124,10 @@ module CeedlingTestCases
   def can_create_projects
     @c.with_context do
       Dir.chdir @proj_name do
-        File.exists?("project.yml").should be_true
-        File.exists?("rakefile.rb").should be_true
-        File.exists?("src").should be_true
-        File.exists?("test").should be_true
+        File.exists?("project.yml").should == true
+        File.exists?("rakefile.rb").should == true
+        File.exists?("src").should == true
+        File.exists?("test").should == true
       end
     end
   end
@@ -135,7 +135,7 @@ module CeedlingTestCases
   def contains_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do
-        File.exists?("vendor/ceedling").should be_true
+        File.exists?("vendor/ceedling").should == true
       end
     end
   end
@@ -143,7 +143,7 @@ module CeedlingTestCases
   def does_not_contain_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do
-        File.exists?("vendor/ceedling").should be_false
+        File.exists?("vendor/ceedling").should == false
       end
     end
   end
