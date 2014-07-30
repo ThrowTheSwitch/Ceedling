@@ -328,8 +328,17 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 % header_prepend = ((hash[:header].length > 0) ? "#{hash[:header]}: " : '')
 % banner_width   = 25 + header_prepend.length # widest message
 
+% if (stdout_count > 0)
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'TEST OUTPUT')%>
+%   hash[:results][:stdout].each do |string|
+%     string[:collection].each do |item|
+<%=string[:source][:path]%><%=File::SEPARATOR%><%=string[:source][:file]%>: "<%=item%>"
+%     end
+%   end
+
+% end
 % if (ignored > 0)
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'IGNORED UNIT TEST SUMMARY')%>
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'IGNORED TEST SUMMARY')%>
 %   hash[:results][:ignores].each do |ignore|
 %     ignore[:collection].each do |item|
 <%=ignore[:source][:path]%><%=File::SEPARATOR%><%=ignore[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
@@ -343,7 +352,7 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 
 % end
 % if (failed > 0)
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'FAILED UNIT TEST SUMMARY')%>
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'FAILED TEST SUMMARY')%>
 %   hash[:results][:failures].each do |failure|
 %     failure[:collection].each do |item|
 <%=failure[:source][:path]%><%=File::SEPARATOR%><%=failure[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
@@ -356,18 +365,9 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 %   end
 
 % end
-% if (stdout_count > 0)
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'UNIT TEST OTHER OUTPUT')%>
-%   hash[:results][:stdout].each do |string|
-%     string[:collection].each do |item|
-<%=string[:source][:path]%><%=File::SEPARATOR%><%=string[:source][:file]%>: "<%=item%>"
-%     end
-%   end
-
-% end
 % total_string = hash[:results][:counts][:total].to_s
 % format_string = "%#{total_string.length}i"
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'OVERALL UNIT TEST SUMMARY')%>
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'OVERALL TEST SUMMARY')%>
 % if (hash[:results][:counts][:total] > 0)
 TESTED:  <%=hash[:results][:counts][:total].to_s%>
 PASSED:  <%=sprintf(format_string, hash[:results][:counts][:passed])%>
