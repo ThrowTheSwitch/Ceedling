@@ -124,10 +124,10 @@ module CeedlingTestCases
   def can_create_projects
     @c.with_context do
       Dir.chdir @proj_name do
-        File.exists?("project.yml").should == true
-        File.exists?("rakefile.rb").should == true
-        File.exists?("src").should == true
-        File.exists?("test").should == true
+        expect(File.exists?("project.yml")).to eq true
+        expect(File.exists?("rakefile.rb")).to eq true
+        expect(File.exists?("src")).to eq true
+        expect(File.exists?("test")).to eq true
       end
     end
   end
@@ -135,7 +135,7 @@ module CeedlingTestCases
   def contains_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do
-        File.exists?("vendor/ceedling").should == true
+        expect(File.exists?("vendor/ceedling")).to eq true
       end
     end
   end
@@ -143,7 +143,7 @@ module CeedlingTestCases
   def does_not_contain_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do
-        File.exists?("vendor/ceedling").should == false
+        expect(File.exists?("vendor/ceedling")).to eq false
       end
     end
   end
@@ -151,7 +151,7 @@ module CeedlingTestCases
   def contains_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        Dir["vendor/ceedling/docs/*.pdf"].length.should == 4
+        expect(Dir["vendor/ceedling/docs/*.pdf"].length).to eq 4
       end
     end
   end
@@ -159,8 +159,8 @@ module CeedlingTestCases
   def does_not_contain_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        File.exists?("vendor/ceedling/docs").should be_false
-        Dir["vendor/ceedling/**/*.pdf"].length.should == 0
+        expect(File.exists?("vendor/ceedling/docs")).to eq false
+        expect(Dir["vendor/ceedling/**/*.pdf"].length).to eq 0
       end
     end
   end

@@ -66,7 +66,7 @@ describe "Ceedling" do
     it "should list out all the examples" do
       @output.should match(/blinky/)
       @output.should match(/temp_sensor/)
-      @output.lines.to_a.length.should == 3
+      expect(@output.lines.to_a.length).to eq 3
     end
   end
 

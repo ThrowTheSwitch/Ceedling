@@ -82,6 +82,13 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
     ].freeze
   }
 
+# Disable the -MD flag for OSX LLVM Clang, since unsupported
+if RUBY_PLATFORM =~ /darwin/ && `gcc --version 2> /dev/null` =~ /Apple LLVM version .* \(clang/m # OSX w/LLVM Clang
+  MD_FLAG = '' # Clang doesn't support the -MD flag
+else
+  MD_FLAG = '-MD'
+end
+
 DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_dependencies_generator'.freeze,
@@ -96,7 +103,7 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
     "-DGNU_PREPROCESSOR".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
-    '-MD'.freeze,
+    MD_FLAG,
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
     "-c \"${1}\"".freeze,
@@ -117,7 +124,7 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
     "-DGNU_PREPROCESSOR".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
-    '-MD'.freeze,
+    MD_FLAG,
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
     "-c \"${1}\"".freeze,

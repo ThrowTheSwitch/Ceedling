@@ -10,7 +10,7 @@ describe 'Ceedling' do
       # execute method
       location = Ceedling.location
       # validate results
-      location.should == ceedling_path
+      expect(location).to eq(ceedling_path)
     end
   end
 
@@ -23,7 +23,7 @@ describe 'Ceedling' do
       # execute method
       location = Ceedling.load_path
       # validate results
-      location.should == load_path
+      expect(location).to eq(load_path)
     end
   end
 
@@ -36,7 +36,7 @@ describe 'Ceedling' do
       # execute method
       location = Ceedling.rakefile
       # validate results
-      location.should == rakefile_path
+      expect(location).to eq(rakefile_path)
     end
   end
 
@@ -51,7 +51,7 @@ describe 'Ceedling' do
       # execute method
       Ceedling.load_project
       # validate results
-      ENV['CEEDLING_MAIN_PROJECT_FILE'].should == './project.yml'
+      expect(ENV['CEEDLING_MAIN_PROJECT_FILE']).to eq('./project.yml')
     end
 
     it 'should load the project with the specified yaml file' do
@@ -64,7 +64,7 @@ describe 'Ceedling' do
       # execute method
       Ceedling.load_project(config: './foo.yml')
       # validate results
-      ENV['CEEDLING_MAIN_PROJECT_FILE'].should == './foo.yml'
+      expect(ENV['CEEDLING_MAIN_PROJECT_FILE']).to eq('./foo.yml')
     end
 
     it 'should load the project with the yaml file specified by the existing environment variable' do
@@ -77,7 +77,7 @@ describe 'Ceedling' do
       # execute method
       Ceedling.load_project
       # validate results
-      ENV['CEEDLING_MAIN_PROJECT_FILE'].should == './bar.yml'
+      expect(ENV['CEEDLING_MAIN_PROJECT_FILE']).to eq('./bar.yml')
     end
 
     it 'should load the project with the specified plugins enabled' do
@@ -96,7 +96,7 @@ describe 'Ceedling' do
       Ceedling.load_project( config:  './foo.yml',
                              plugins: ['foo'])
       # validate results
-      ENV['CEEDLING_MAIN_PROJECT_FILE'].should == './foo.yml'
+      expect(ENV['CEEDLING_MAIN_PROJECT_FILE']).to eq('./foo.yml')
     end
 
     it 'should set the project root if the root key is provided' do
@@ -112,8 +112,8 @@ describe 'Ceedling' do
       Ceedling.load_project( config:  './foo.yml',
                              root:    './')
       # validate results
-      ENV['CEEDLING_MAIN_PROJECT_FILE'].should == './foo.yml'
-      PROJECT_ROOT.should == './'
+      expect(ENV['CEEDLING_MAIN_PROJECT_FILE']).to eq('./foo.yml')
+      expect(PROJECT_ROOT).to eq('./')
     end
   end
 
@@ -130,8 +130,8 @@ describe 'Ceedling' do
       # execute method
       Ceedling.register_plugin('foo')
       # validate results
-      DEFAULT_CEEDLING_CONFIG[:plugins][:enabled].should    == ["foo"]
-      DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].should == ["dummy/path"]
+      expect(DEFAULT_CEEDLING_CONFIG[:plugins][:enabled]).to eq ["foo"]
+      expect(DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths]).to eq(["dummy/path"])
     end
 
     it 'should register a plugin with an alternative prefix' do
@@ -146,8 +146,8 @@ describe 'Ceedling' do
       # execute method
       Ceedling.register_plugin('foo','prefix-')
       # validate results
-      DEFAULT_CEEDLING_CONFIG[:plugins][:enabled].should    == ["foo"]
-      DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].should == ["dummy/path"]
+      expect(DEFAULT_CEEDLING_CONFIG[:plugins][:enabled]).to eq(["foo"])
+      expect(DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths]).to eq(["dummy/path"])
     end
   end
 end
