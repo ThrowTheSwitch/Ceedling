@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 $LOAD_PATH << File.expand_path(File.join(File.dirname(__FILE__), 'lib'))
 require "ceedling/version"
+require 'date'
 
 Gem::Specification.new do |s|
   s.name        = "ceedling"
@@ -12,8 +13,6 @@ Gem::Specification.new do |s|
   s.summary     = %q{Ceedling is a set of tools for the automation of builds and test running for C}
   s.description = %q{Ceedling provides a set of tools to deploy its guts in a folder or which can be required in a Rakefile}
   s.licenses    = ['MIT']
-
-  s.rubyforge_project = "ceedling"
 
   s.add_dependency "thor", ">= 0.14.5"
   s.add_dependency "rake", ">= 0.8.7"

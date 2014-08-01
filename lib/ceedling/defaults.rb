@@ -57,13 +57,15 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
     '-MG'.freeze,
     # avoid some possibility of deep system lib header file complications by omitting vendor paths
     # if cpp is run on *nix system, escape spaces in paths; if cpp on windows just use the paths collection as is
-    {"-I\"$\"" => "{SystemWrapper.windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"}.freeze,
+    # {"-I\"$\"" => "{SystemWrapper.windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"}.freeze,
+    {"-I$" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
+    {"-I$" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
     # "-DGNU_PREPROCESSOR".freeze,
     "-DGNU_COMPILER".freeze, # OSX clang
     '-w'.freeze,
-    '-nostdinc'.freeze,
+    # '-nostdinc'.freeze,
     "\"${1}\"".freeze
     ].freeze
   }
@@ -80,7 +82,8 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
-    "-DGNU_PREPROCESSOR".freeze,
+    "-DGNU_COMPILER".freeze,
+    # '-nostdinc'.freeze,
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
     ].freeze
@@ -93,17 +96,19 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
+    '-E'.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
-    "-DGNU_PREPROCESSOR".freeze,
+    "-DGNU_COMPILER".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
-    '-MD'.freeze,
+    # '-MD'.freeze, # OSX clang
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
     "-c \"${1}\"".freeze,
+    # '-nostdinc'.freeze,
     ].freeze
   }
 
@@ -114,17 +119,19 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
+    '-E'.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR'}.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_RELEASE_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_RELEASE_PREPROCESS'}.freeze,
-    "-DGNU_PREPROCESSOR".freeze,
+    "-DGNU_COMPILER".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
-    '-MD'.freeze,
+    # '-MD'.freeze, # OSX clang
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
     "-c \"${1}\"".freeze,
+    # '-nostdinc'.freeze,
     ].freeze
   }
 
