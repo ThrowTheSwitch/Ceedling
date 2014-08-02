@@ -1,6 +1,5 @@
 require 'ceedling/constants'
 
-
 class Generator
 
   constructor :configurator,

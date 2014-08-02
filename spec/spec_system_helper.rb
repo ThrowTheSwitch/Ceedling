@@ -57,7 +57,7 @@ class SystemContext
     Dir.chdir @dir do
       with_constrained_env do
         `bundle install --path #{@gem.install_dir}`
-        checks = [ "bundle exec ruby -S ceedling 2>&1"]
+        checks = ["bundle exec ruby -S ceedling 2>&1"]
         checks.each do |c|
           `#{c}`
           raise VerificationFailed.new(c) unless $?.success?
