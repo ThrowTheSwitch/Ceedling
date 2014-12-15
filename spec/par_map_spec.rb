@@ -1,6 +1,6 @@
 require 'ceedling/par_map'
 
-def short_task_should(n) 
+def short_task_should(n)
   done_count = 0
   par_map(n, [0.01] * (n - 1) + [0] * 10) do |seconds|
     sleep(seconds)
@@ -18,14 +18,14 @@ describe "par_map" do
   end
 
   it "should run shorter tasks while larger tasks are blocking (with 3 threads)" do
-    short_task_should(3) 
+    short_task_should(3)
   end
 
   it "should run shorter tasks while larger tasks are blocking (with 4 threads)" do
     short_task_should(4)
-  end 
+  end
 
-  #the following two tests are still slightly nondeterministic and may occasionally 
+  #the following two tests are still slightly nondeterministic and may occasionally
   #  show false positives (though we think we've gotten it pretty stable)
   it "should collide if multiple threads are used" do
     is_running = false
@@ -40,18 +40,18 @@ describe "par_map" do
       sleep(0.01 * x)
       is_running = false
     end
-    collision.should be true
+    expect(collision).to eq true
   end
 
   it "should be serial if only one thread is used" do
     is_running = false
     par_map(1, (1..5).to_a) do |x|
-      is_running.should be false
+      expect(is_running).to eq false
       is_running = true
       sleep(0.01 * x)
       is_running = false
     end
   end
 
-  
+
 end
