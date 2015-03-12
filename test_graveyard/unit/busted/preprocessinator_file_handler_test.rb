@@ -19,6 +19,7 @@ class PreprocessinatorFileHandlerTest < Test::Unit::TestCase
     expected_file = %Q[
       #include "other_file.h"
       #include "file.h"
+      #include "protobuf.pb-c.h"
       
       void foo(void)
       {
