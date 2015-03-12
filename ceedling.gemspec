@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.version     = Ceedling::Version::GEM
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Mike Karlesky, Mark VanderVoord", "Greg Williams", "Matt Fletcher"]
-  s.email       = ["michael@karlesky.net, mvandervoord@gmail.com, williams@atomicembedded.com, fletcher@atomicobject.com"]
+  s.email       = ["michael@karlesky.net, mvandervoord@gmail.com, williams@atomicobject.com, fletcher@atomicobject.com"]
   s.homepage    = "http://throwtheswitch.org/"
   s.summary     = %q{Ceedling is a set of tools for the automation of builds and test running for C}
   s.description = %q{Ceedling provides a set of tools to deploy its guts in a folder or which can be required in a Rakefile}
