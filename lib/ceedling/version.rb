@@ -8,8 +8,8 @@ module Ceedling
     # @private
     CEXCEPTION = "1.3.17"
     # @private
-    CMOCK = "2.1.0"
+    CMOCK = "2.3.0"
     # @private
-    UNITY = "2.1.0"
+    UNITY = "2.2.0"
   end
 end
