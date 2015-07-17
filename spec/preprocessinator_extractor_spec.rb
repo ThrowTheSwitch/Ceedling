@@ -32,9 +32,9 @@ describe PreprocessinatorExtractor do
         'some_additional_awesome_want_text();',
       ]
 
-      File.should_receive(:readlines).with(file_path).and_return( input_str )
+      expect(File).to receive(:readlines).with(file_path).and_return( input_str )
 
-      subject.extract_base_file_from_preprocessed_expansion(file_path).should == expect_str
+      expect(subject.extract_base_file_from_preprocessed_expansion(file_path)).to eq expect_str
     end
 
     # These were originally hinted at by the old test, but we don't see anything

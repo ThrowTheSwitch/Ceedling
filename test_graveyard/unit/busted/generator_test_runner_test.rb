@@ -439,8 +439,7 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
     expected_output = %Q[
       int main(void)
       {
-        UnityBegin();
-        Unity.TestFile = "TestMe.c";
+        UnityBegin("TestMe.c");
 
         // RUN_TEST calls runTest
         RUN_TEST(test_a_little_test);
@@ -462,9 +461,7 @@ class GeneratorTestRunnerTest < Test::Unit::TestCase
     expected_output = %Q[
       int main(void)
       {
-        UnityBegin();
-        Unity.TestFile = "TestIfy.c";
-
+        UnityBegin("TestIfy.c");
 
         UnityEnd();
         return 0;

@@ -64,9 +64,9 @@ describe "Ceedling" do
     end
 
     it "should list out all the examples" do
-      @output.should match(/blinky/)
-      @output.should match(/temp_sensor/)
-      @output.lines.to_a.length.should == 3
+      expect(@output).to match(/blinky/)
+      expect(@output).to match(/temp_sensor/)
+      expect(@output.lines.to_a.length).to eq 3
     end
   end
 
@@ -75,7 +75,7 @@ describe "Ceedling" do
       before do
         @c.with_context do
           output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
-          output.should match(/created!/)
+          expect(output).to match(/created!/)
         end
       end
 
@@ -83,8 +83,8 @@ describe "Ceedling" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
             @output = `bundle exec ruby -S rake test:all`
-            @output.should match(/TESTED:\s+47/)
-            @output.should match(/PASSED:\s+47/)
+            expect(@output).to match(/TESTED:\s+47/)
+            expect(@output).to match(/PASSED:\s+47/)
           end
         end
       end
@@ -98,7 +98,7 @@ describe "Ceedling" do
     #   before do
     #     @c.with_context do
     #       output = `bundle exec ruby -S ceedling example blinky 2>&1`
-    #       output.should match(/created!/)
+    #       expect(output).to match(/created!/)
     #     end
     #   end
     #
@@ -106,8 +106,8 @@ describe "Ceedling" do
     #     @c.with_context do
     #       Dir.chdir "blinky" do
     #         @output = `bundle exec ruby -S rake test:all`
-    #         @output.should match(/TESTED:\s+7/)
-    #         @output.should match(/PASSED:\s+7/)
+    #         expect(@output).to match(/TESTED:\s+7/)
+    #         expect(@output).to match(/PASSED:\s+7/)
     #       end
     #     end
     #   end

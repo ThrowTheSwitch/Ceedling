@@ -125,6 +125,11 @@ class Configurator
       # populate name if not given      
       tool[:name] = name.to_s if (tool[:name].nil?)
 
+      # handle inline ruby string substitution in executable
+      if (tool[:executable] =~ RUBY_STRING_REPLACEMENT_PATTERN)
+        tool[:executable].replace(@system_wrapper.module_eval(tool[:executable]))
+      end
+
       # populate stderr redirect option
       tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
 
@@ -211,7 +216,7 @@ class Configurator
 
     config[:paths].each_pair { |collection, paths| eval_path_list( paths ) }
 
-    config[:files].each_pair { |collection, files| eval_path_list( paths ) }
+    config[:files].each_pair { |collection, files| eval_path_list( files ) }
     
     # all other paths at secondary hash key level processed by convention:
     # ex. [:toplevel][:foo_path] & [:toplevel][:bar_paths] are evaluated
@@ -229,9 +234,9 @@ class Configurator
     paths.flatten.each { |path| FilePathUtils::standardize( path ) }
 
     config[:paths].each_pair do |collection, paths|
-      paths.each{|path| FilePathUtils::standardize( path )}
-      # ensure that list is an array (i.e. handle case of list being a single string)
-      config[:paths][collection] = [paths].flatten
+      # ensure that list is an array (i.e. handle case of list being a single string,
+      # or a multidimensional array)
+      config[:paths][collection] = [paths].flatten.map{|path| FilePathUtils::standardize( path )}
     end
 
     config[:files].each_pair { |collection, files| files.each{ |path| FilePathUtils::standardize( path ) } }

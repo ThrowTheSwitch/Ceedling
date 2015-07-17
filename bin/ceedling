@@ -46,7 +46,7 @@ class CeedlingTasks < Thor
         end
       end
 
-      folders = %w{plugins lib release}
+      folders = %w{plugins lib}
       folders.map do |f|
         {:src => f, :dst => File.join(ceedling_path, f)}
       end.each do |f|

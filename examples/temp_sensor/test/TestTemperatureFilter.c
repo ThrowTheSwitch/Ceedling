@@ -15,7 +15,7 @@ void tearDown(void)
 void testShouldInitializeTemeratureToInvalidValue(void)
 {
   TemperatureFilter_Init();
-  TEST_ASSERT_FLOAT_WITHIN(0.0001f, -INFINITY, TemperatureFilter_GetTemperatureInCelcius());
+  TEST_ASSERT_FLOAT_IS_NEG_INF(TemperatureFilter_GetTemperatureInCelcius());
 }
 
 void testShouldInitializeTemperatureAfterCallToInit(void)
@@ -34,7 +34,17 @@ void setValueAndVerifyResponse(float input, float response)
   float actual;
   TemperatureFilter_ProcessInput(input);
   actual = TemperatureFilter_GetTemperatureInCelcius();
-  TEST_ASSERT_FLOAT_WITHIN(0.0001f, response, actual);
+
+  if (input == +INFINITY ||
+      input == -INFINITY ||
+      isnan(input))
+  {
+    TEST_ASSERT_FLOAT_IS_NEG_INF(actual);
+  }
+  else
+  {
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, response, actual);
+  }
 }
 
 void testShouldWeightEachSubsequentValueBy25PercentAfterInitialValue(void)

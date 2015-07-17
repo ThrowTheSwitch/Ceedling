@@ -1,10 +1,11 @@
 require 'yaml'
+require 'erb'
 
 
 class YamlWrapper
 
   def load(filepath)
-    return YAML.load(File.read(filepath))
+    return YAML.load(ERB.new(File.read(filepath)).result)
   end
 
   def dump(filepath, structure)

@@ -170,20 +170,28 @@ class FilePathUtils
   end
   
   def form_preprocessed_mockable_headers_filelist(mocks)
-    # pathmapping note: "%{#{@configurator.cmock_mock_prefix},}n" replaces mock_prefix with nothing (signified by absence of anything after comma inside replacement brackets)
-    return (@file_wrapper.instantiate_file_list(mocks)).pathmap("#{@configurator.project_test_preprocess_files_path}/%{#{@configurator.cmock_mock_prefix},}n#{@configurator.extension_header}")
+    list = @file_wrapper.instantiate_file_list(mocks)
+    headers = list.map do |file|
+      module_name = File.basename(file).sub(/^#{@configurator.cmock_mock_prefix}/, '').sub(/\.[a-zA-Z]+$/,'')
+      "#{@configurator.project_test_preprocess_files_path}/#{module_name}#{@configurator.extension_header}"
+    end
+    return headers
   end
 
   def form_mocks_source_filelist(mocks)
-    return (@file_wrapper.instantiate_file_list(mocks)).pathmap("#{@configurator.cmock_mock_path}/%n#{@configurator.extension_source}")
+    list = (@file_wrapper.instantiate_file_list(mocks))
+    sources = list.map{|file| "#{@configurator.cmock_mock_path}/#{file}#{@configurator.extension_source}"}
+    return sources
   end
 
   def form_test_dependencies_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_test_dependencies_path}/%n#{@configurator.extension_dependencies}")    
+    list = @file_wrapper.instantiate_file_list(files)
+    return list.pathmap("#{@configurator.project_test_dependencies_path}/%n#{@configurator.extension_dependencies}")    
   end
 
   def form_pass_results_filelist(path, files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{path}/%n#{@configurator.extension_testpass}")    
+    list = @file_wrapper.instantiate_file_list(files)
+    return list.pathmap("#{path}/%n#{@configurator.extension_testpass}")    
   end
 
 end

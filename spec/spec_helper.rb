@@ -1,9 +1,9 @@
 require 'require_all'
 require 'constructor'
 
-#RSpec.configure do |configuration|
-#  configuration.mock_with :rr
-#end
+RSpec.configure do |config|
+  config.raise_errors_for_deprecations!
+end
 
 here = File.dirname(__FILE__)
 

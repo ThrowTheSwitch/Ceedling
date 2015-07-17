@@ -1,3 +1,23 @@
+Ceedling - Build/test system for C based on Ruby/Rake
+=====================================================
+
+[![Ceedling Build Status](https://api.travis-ci.org/ThrowTheSwitch/Ceedling.png?branch=master)](https://travis-ci.org/ThrowTheSwitch/Ceedling)
+
+Ceedling is a build system for C projects that is something of an extension around Ruby’s Rake (make-ish) build system. Ceedling also makes TDD (Test-Driven Development) in C a breeze by integrating [CMock](https://github.com/throwtheswitch/cmock), [Unity](https://github.com/throwtheswitch/unity), and [CException](https://github.com/throwtheswitch/cexception) -- three other awesome open-source projects you can’t live without if you're creating awesomeness in the C language. Ceedling is also extensible with a handy plugin mechanism.
+
+Usage Documentation
+===================
+
+Documentation and license info exists [in the repo in docs/](docs/CeedlingPacket.md)
+
+Getting Started (Developers)
+============================
+
+    > git clone --recursive https://github.com/throwtheswitch/ceedling.git
+    > cd ceedling
+    > bundle install # Ensures you have all RubyGems needed
+    > bundle execute rake # Run all CMock library tests
+
 Using Ceedling inside of a project
 ==================================
 
@@ -9,12 +29,15 @@ to be used without having to worry about external dependencies.
 Using Ceedling outside of a project as a gem
 ============================================
 
-(Note: This is still somewhat experimental.)
-
 Ceedling can also be used as a gem. The following Rakefile is the
 bare minimum required in order to use Ceedling this way:
 
     require 'ceedling'
+    Ceedling.load_project
+
+If you want to load a Ceedling project YAML file other than the default `project.yml` (i.e. `./my_config.yml`), you can do:
+
+    Ceedling.load_project(config: './my_config.yml')
 
 Additionally, a project.yml is required. Here is one to get you
 started:
@@ -23,7 +46,7 @@ started:
     :project:
       :use_exceptions: FALSE
       :use_test_preprocessor: TRUE
-      :use_auxiliary_dependencies: TRUE
+      :use_deep_dependencies: TRUE
       :build_root: build
     #  :release_build: TRUE
       :test_file_prefix: test_
@@ -78,14 +101,16 @@ started:
     :plugins:
       :load_paths:
         # This is required to use builtin ceedling plugins
-        - "#{builtin_ceedling_plugins_path}"
-        # Uncomment this and create the directory in order to use your own 
+        - "#{Ceedling.load_path}"
+        # Uncomment this and create the directory in order to use your own
         # custom ceedling plugins
         # - ceedling_plugins
       :enabled:
-        # These two plugins ship with Ceedling.
+        # These plugins ship with Ceedling.
         - stdout_pretty_tests_report
-        - module_generator
+        # - stdout_ide_tests_report # IDE parseable output
+        # - teamcity_tests_report # TeamCity CI output (only enabled in TeamCity builds)
+        - module_generator # Adds tasks for creating code module files
     ...
 
 Finally, you'll need to create something like the following directory structure. This one matches the project.yml

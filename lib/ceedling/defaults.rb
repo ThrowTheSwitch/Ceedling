@@ -14,6 +14,7 @@ DEFAULT_TEST_COMPILER_TOOL = {
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     "-DGNU_COMPILER".freeze,
+    "-g".freeze,
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     # gcc's list file output options are complex; no use of ${3} parameter in default config
@@ -41,25 +42,26 @@ DEFAULT_TEST_FIXTURE_TOOL = {
   :arguments => [].freeze
   }
 
-
-
 DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => FilePathUtils.os_executable_ext('cpp').freeze,
+  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
+    '-E'.freeze, # OSX clang
     '-MM'.freeze,
     '-MG'.freeze,
     # avoid some possibility of deep system lib header file complications by omitting vendor paths
     # if cpp is run on *nix system, escape spaces in paths; if cpp on windows just use the paths collection as is
-    {"-I\"$\"" => "{SystemWrapper.windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"}.freeze,
+    # {"-I\"$\"" => "{SystemWrapper.windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"}.freeze,
+    {"-I$" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
+    {"-I$" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
-    "-DGNU_PREPROCESSOR".freeze,
+    "-DGNU_COMPILER".freeze, # OSX clang
     '-w'.freeze,
-    '-nostdinc'.freeze,
+    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "\"${1}\"".freeze
     ].freeze
   }
@@ -76,11 +78,19 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
-    "-DGNU_PREPROCESSOR".freeze,
+    "-DGNU_COMPILER".freeze,
+    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
     ].freeze
   }
+
+# Disable the -MD flag for OSX LLVM Clang, since unsupported
+if RUBY_PLATFORM =~ /darwin/ && `gcc --version 2> /dev/null` =~ /Apple LLVM version .* \(clang/m # OSX w/LLVM Clang
+  MD_FLAG = '' # Clang doesn't support the -MD flag
+else
+  MD_FLAG = '-MD'
+end
 
 DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
@@ -89,17 +99,19 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
+    '-E'.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
-    "-DGNU_PREPROCESSOR".freeze,
+    "-DGNU_COMPILER".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
-    '-MD'.freeze,
+    MD_FLAG.freeze, 
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
     "-c \"${1}\"".freeze,
+    # '-nostdinc'.freeze,
     ].freeze
   }
 
@@ -110,17 +122,19 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
+    '-E'.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR'}.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_RELEASE_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_RELEASE_PREPROCESS'}.freeze,
-    "-DGNU_PREPROCESSOR".freeze,
+    "-DGNU_COMPILER".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
-    '-MD'.freeze,
+    MD_FLAG.freeze, 
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
     "-c \"${1}\"".freeze,
+    # '-nostdinc'.freeze,
     ].freeze
   }
 
@@ -327,8 +341,17 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 % header_prepend = ((hash[:header].length > 0) ? "#{hash[:header]}: " : '')
 % banner_width   = 25 + header_prepend.length # widest message
 
+% if (stdout_count > 0)
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'TEST OUTPUT')%>
+%   hash[:results][:stdout].each do |string|
+%     string[:collection].each do |item|
+<%=string[:source][:path]%><%=File::SEPARATOR%><%=string[:source][:file]%>: "<%=item%>"
+%     end
+%   end
+
+% end
 % if (ignored > 0)
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'IGNORED UNIT TEST SUMMARY')%>
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'IGNORED TEST SUMMARY')%>
 %   hash[:results][:ignores].each do |ignore|
 %     ignore[:collection].each do |item|
 <%=ignore[:source][:path]%><%=File::SEPARATOR%><%=ignore[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
@@ -342,7 +365,7 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 
 % end
 % if (failed > 0)
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'FAILED UNIT TEST SUMMARY')%>
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'FAILED TEST SUMMARY')%>
 %   hash[:results][:failures].each do |failure|
 %     failure[:collection].each do |item|
 <%=failure[:source][:path]%><%=File::SEPARATOR%><%=failure[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
@@ -355,18 +378,9 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 %   end
 
 % end
-% if (stdout_count > 0)
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'UNIT TEST OTHER OUTPUT')%>
-%   hash[:results][:stdout].each do |string|
-%     string[:collection].each do |item|
-<%=string[:source][:path]%><%=File::SEPARATOR%><%=string[:source][:file]%>: "<%=item%>"
-%     end
-%   end
-
-% end
 % total_string = hash[:results][:counts][:total].to_s
 % format_string = "%#{total_string.length}i"
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'OVERALL UNIT TEST SUMMARY')%>
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'OVERALL TEST SUMMARY')%>
 % if (hash[:results][:counts][:total] > 0)
 TESTED:  <%=hash[:results][:counts][:total].to_s%>
 PASSED:  <%=sprintf(format_string, hash[:results][:counts][:passed])%>

@@ -26,8 +26,11 @@ class ToolExecutor
     # basic premise is to iterate top to bottom through arguments using '$' as 
     #  a string replacement indicator to expand globals or inline yaml arrays
     #  into command line arguments via substitution strings
+    # executable must be quoted if it includes spaces (common on windows)
+    executable = @tool_executor_helper.osify_path_separators( expandify_element(@executable, *args) )
+    executable = "\"#{executable}\"" if executable.include?(' ')
     command[:line] = [
-      @tool_executor_helper.osify_path_separators( expandify_element(@executable, *args) ),
+      executable,
       build_arguments(tool_config[:arguments], *args),
       ].join(' ').strip
 
