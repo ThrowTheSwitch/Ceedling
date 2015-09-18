@@ -55,8 +55,8 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
     # avoid some possibility of deep system lib header file complications by omitting vendor paths
     # if cpp is run on *nix system, escape spaces in paths; if cpp on windows just use the paths collection as is
     # {"-I\"$\"" => "{SystemWrapper.windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"}.freeze,
-    {"-I$" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
-    {"-I$" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
     {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
     {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
     "-DGNU_COMPILER".freeze, # OSX clang
