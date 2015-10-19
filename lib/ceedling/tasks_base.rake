@@ -4,7 +4,7 @@ require 'ceedling/version'
 
 desc "Display build environment version info."
 task :version do
-  puts "  Ceedling:: #{Ceedling::VERSION::Ceedling}"
+  puts "  Ceedling:: #{Ceedling::Version::CEEDLING}"
 
   [
       ['CException', File.join( CEEDLING_VENDOR, CEXCEPTION_ROOT_PATH)],
