@@ -117,7 +117,7 @@ class ModuleGenerator < Plugin
     }
 
     location = File.dirname(path.gsub('\\', '/'))
-	location.sub!(/^\/?#{Regexp.escape(@context[:paths][:base])}\/?/i, '')
+    location.sub!(/^\/?#{Regexp.escape(@context[:paths][:base])}\/?/i, '')
     location.sub!(/^\/?#{Regexp.escape(@context[:paths][:src])}\/?/i, '')
     location.sub!(/^\/?#{Regexp.escape(@context[:paths][:test])}\/?/i, '')
     
