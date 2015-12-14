@@ -202,11 +202,13 @@ Alternatively, from scratch:
    (tasks available to tie to `default` are listed in the next 
    section):
    
-    `load '<path>/ceedling/lib/rakefile.rb' 
-    # ex. run all tests & build release artifact
-    task :default => ['test:all', :release]
-         # namespaced tasks must be quoted 
-         # top-level tasks are Ruby symbols denoted by a leading ':'` 
+    ```ruby
+        load '<path>/ceedling/lib/rakefile.rb' 
+        # ex. run all tests & build release artifact
+        task :default => ['test:all', :release]
+            # namespaced tasks must be quoted 
+            # top-level tasks are Ruby symbols denoted by a leading ':'` 
+    ```
 
 6. Create your project YAML file (more on this later in this document). 
    `project.yml` is the default file name Ceedling recognizes 
