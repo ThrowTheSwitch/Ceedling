@@ -7,10 +7,11 @@ if (RELEASE_BUILD_USE_ASSEMBLY)
 rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_ASM_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       @ceedling[:file_finder].find_assembly_file(task_name)
-    end  
+    end
   ]) do |object|
   @ceedling[:generator].generate_object_file(
     TOOLS_RELEASE_ASSEMBLER,
+    OPERATION_ASSEMBLE_SYM,
     RELEASE_SYM,
     object.source,
     object.name )
@@ -21,10 +22,11 @@ end
 rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       @ceedling[:file_finder].find_compilation_input_file(task_name)
-    end  
+    end
   ]) do |object|
   @ceedling[:generator].generate_object_file(
     TOOLS_RELEASE_COMPILER,
+    OPERATION_COMPILE_SYM,
     RELEASE_SYM,
     object.source,
     object.name,
@@ -59,7 +61,7 @@ namespace RELEASE_SYM do
       @ceedling[:release_invoker].setup_and_invoke_c_objects( [compile.source] )
     end
   end
-  
+
   if (RELEASE_BUILD_USE_ASSEMBLY)
   namespace :assemble do
     rule(/^#{RELEASE_ASSEMBLE_TASK_ROOT}\S+#{'\\'+EXTENSION_ASSEMBLY}$/ => [ # assemble task names by regex

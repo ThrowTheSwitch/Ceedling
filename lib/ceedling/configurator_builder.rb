@@ -162,19 +162,6 @@ class ConfiguratorBuilder
   end
 
 
-  def set_library_build_info_filepaths(hash)
-    # Notes:
-    #  - Dependency on a change to our input configuration hash is handled elsewhere as it is
-    #    dynamically formed during ceedling's execution
-    #  - Compiled vendor dependencies like cmock.o, unity.o, cexception.o are handled below;
-    #    here we're interested only in ceedling-based code generation dependencies
-    out_hash = {
-      :cmock_build_info_filepath => FilePathUtils::form_ceedling_vendor_path('cmock/release', 'build.info')
-    }
-    return out_hash
-  end
-
-
   def set_release_target(in_hash)
     return {} if (not in_hash[:project_release_build])
 
@@ -231,7 +218,7 @@ class ConfiguratorBuilder
 
   def collect_source_include_vendor_paths(in_hash)
     extra_paths = []
-    extra_paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
+    extra_paths << File.join(in_hash[:cexception_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
 
     return {
       :collection_paths_source_include_vendor =>
@@ -336,10 +323,10 @@ class ConfiguratorBuilder
       in_hash[:collection_paths_support] +
       in_hash[:collection_paths_source] +
       in_hash[:collection_paths_include] +
-      [FilePathUtils::form_ceedling_vendor_path(UNITY_LIB_PATH)]
+      [File.join(in_hash[:unity_vendor_path], UNITY_LIB_PATH)]
 
-    paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
-    paths << FilePathUtils::form_ceedling_vendor_path(CMOCK_LIB_PATH) if (in_hash[:project_use_mocks])
+    paths << File.join(in_hash[:cexception_vendor_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
+    paths << File.join(in_hash[:cmock_vendor_path],      CMOCK_LIB_PATH)      if (in_hash[:project_use_mocks])
 
     paths.each do |path|
       all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
@@ -396,6 +383,8 @@ class ConfiguratorBuilder
 
     objects = [UNITY_C_FILE]
 
+    in_hash[:files_support].each { |file| objects << File.basename(file) }
+
     # we don't include paths here because use of plugins or mixing different compilers may require different build paths
     objects << CEXCEPTION_C_FILE if (in_hash[:project_use_exceptions])
     objects << CMOCK_C_FILE      if (in_hash[:project_use_mocks])
@@ -419,10 +408,10 @@ class ConfiguratorBuilder
 
   def get_vendor_paths(in_hash)
     vendor_paths = []
-    vendor_paths << FilePathUtils::form_ceedling_vendor_path(UNITY_LIB_PATH)
-    vendor_paths << FilePathUtils::form_ceedling_vendor_path(CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
-    vendor_paths << FilePathUtils::form_ceedling_vendor_path(CMOCK_LIB_PATH)      if (in_hash[:project_use_mocks])
-    vendor_paths << in_hash[:cmock_mock_path]                                     if (in_hash[:project_use_mocks])
+    vendor_paths << File.join(in_hash[:unity_vendor_path],      UNITY_LIB_PATH)
+    vendor_paths << File.join(in_hash[:cexception_vendor_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
+    vendor_paths << File.join(in_hash[:cmock_vendor_path],      CMOCK_LIB_PATH)      if (in_hash[:project_use_mocks])
+    vendor_paths << in_hash[:cmock_mock_path]                                        if (in_hash[:project_use_mocks])
 
     return vendor_paths
   end

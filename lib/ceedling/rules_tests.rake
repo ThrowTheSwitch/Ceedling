@@ -16,6 +16,7 @@ rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
   ]) do |object|
   @ceedling[:generator].generate_object_file(
     TOOLS_TEST_COMPILER,
+    OPERATION_COMPILE_SYM,
     TEST_SYM,
     object.source,
     object.name,
@@ -44,7 +45,7 @@ end
 
 namespace TEST_SYM do
   # use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
-  
+
   rule(/^#{TEST_TASK_ROOT}\S+$/ => [ # test task names by regex
       proc do |task_name|
         test = task_name.sub(/#{TEST_TASK_ROOT}/, '')

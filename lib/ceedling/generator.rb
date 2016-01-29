@@ -33,6 +33,7 @@ class Generator
     command =
       @tool_executor.build_command_line(
         tool,
+        [], # extra per-file command line parameters
         source,
         dependencies,
         object)
@@ -77,18 +78,18 @@ class Generator
     end
   end
 
-  def generate_object_file(tool, context, source, object, list='')
+  def generate_object_file(tool, operation, context, source, object, list='')
     shell_result = {}
-    arg_hash = {:tool => tool, :context => context, :source => source, :object => object, :list => list}
+    arg_hash = {:tool => tool, :operation => operation, :context => context, :source => source, :object => object, :list => list}
     @plugin_manager.pre_compile_execute(arg_hash)
 
     @streaminator.stdout_puts("Compiling #{File.basename(arg_hash[:source])}...", Verbosity::NORMAL)
     command =
       @tool_executor.build_command_line( arg_hash[:tool],
+                                         @flaginator.flag_down( operation, context, source ),
                                          arg_hash[:source],
                                          arg_hash[:object],
-                                         arg_hash[:list],
-                                         @flaginator.flag_down( OPERATION_COMPILE_SYM, context, source ) )
+                                         arg_hash[:list])
 
     begin
       shell_result = @tool_executor.exec( command[:line], command[:options] )
@@ -109,10 +110,10 @@ class Generator
     @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
     command =
       @tool_executor.build_command_line( arg_hash[:tool],
+                                         @flaginator.flag_down( OPERATION_LINK_SYM, context, executable ),
                                          arg_hash[:objects],
                                          arg_hash[:executable],
-                                         arg_hash[:map],
-                                         @flaginator.flag_down( OPERATION_LINK_SYM, context, executable ) )
+                                         arg_hash[:map])
 
     begin
       shell_result = @tool_executor.exec( command[:line], command[:options] )
@@ -145,7 +146,7 @@ class Generator
 
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results
-    command = @tool_executor.build_command_line(arg_hash[:tool], arg_hash[:executable])
+    command = @tool_executor.build_command_line(arg_hash[:tool], [], arg_hash[:executable])
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
 
