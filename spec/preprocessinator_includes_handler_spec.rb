@@ -46,7 +46,7 @@ describe PreprocessinatorIncludesHandler do
       expect(@file_wrapper).to receive(:write).with('_some_source_file.c', contents_double)
       expect(@configurator).to receive(:tools_test_includes_preprocessor).and_return('cpp')
       command_double = double('command-double')
-      expect(@tool_executor).to receive(:build_command_line).with('cpp', '_some_source_file.c').and_return(command_double)
+      expect(@tool_executor).to receive(:build_command_line).with('cpp', [], '_some_source_file.c').and_return(command_double)
       expect(command_double).to receive(:[]).with(:line).and_return('cpp')
       expect(command_double).to receive(:[]).with(:options).and_return(['arg1','arg2'])
       output_double = double('output-double')

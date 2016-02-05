@@ -2,6 +2,8 @@ require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/file_path_utils'
 
+#this should be defined already, but not always during system specs
+CEEDLING_VENDOR = File.expand_path(File.dirname(__FILE__) + '/../../vendor') unless defined? CEEDLING_VENDOR
 
 DEFAULT_TEST_COMPILER_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,

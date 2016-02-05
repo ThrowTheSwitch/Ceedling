@@ -33,7 +33,7 @@ class ToolExecutor
       executable,
       extra_params.join(' ').strip,
       build_arguments(tool_config[:arguments], *args),
-      ].reject{|s| s.empty?}.join(' ').strip
+      ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     command[:options] = {
       :stderr_redirect => @tool_executor_helper.stderr_redirection(tool_config, @configurator.project_logging),
