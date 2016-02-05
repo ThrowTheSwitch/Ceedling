@@ -4,5 +4,6 @@ rvm:
   - "2.0.0"
 install:
   - bundle install
+  - bundle update
 script:
   - bundle exec rake ci
