@@ -22,16 +22,17 @@ everything in between.
 For a build project including unit tests and using the default
 toolchain gcc, the configuration file could be as simple as this:
 
-    :project:
-      :build_root: project/build/
-      :release_build: TRUE
+```yaml
+:project:
+  :build_root: project/build/
+  :release_build: TRUE
 
-    :paths:
-      :test:
-        - tests/**
-      :source:
-        - source/**
-
+:paths:
+  :test:
+    - tests/**
+  :source:
+    - source/**
+```
 
 From the command line, to build the release version of your project,
 you would simply run `rake release`. To run all your unit tests,
@@ -532,41 +533,42 @@ A commented sample test file follows on the next page. Also, see
 the sample project contained in the Ceedling documentation
 bundle.
 
-    // test_foo.c -----------------------------------------------
-    #include "unity.h"     // compile/link in Unity test framework
-    #include "types.h"     // header file with no *.c file -- no compilation/linking
-    #include "foo.h"       // source file foo.c under test
-    #include "mock_bar.h"  // bar.h will be found and mocked as mock_bar.c + compiled/linked in;
-                           // foo.c includes bar.h and uses functions declared in it
-    #include "mock_baz.h"  // baz.h will be found and mocked as mock_baz.c + compiled/linked in
-                           // foo.c includes baz.h and uses functions declared in it
+```c
+// test_foo.c -----------------------------------------------
+#include "unity.h"     // compile/link in Unity test framework
+#include "types.h"     // header file with no *.c file -- no compilation/linking
+#include "foo.h"       // source file foo.c under test
+#include "mock_bar.h"  // bar.h will be found and mocked as mock_bar.c + compiled/linked in;
+                       // foo.c includes bar.h and uses functions declared in it
+#include "mock_baz.h"  // baz.h will be found and mocked as mock_baz.c + compiled/linked in
+                       // foo.c includes baz.h and uses functions declared in it
 
 
-    void setUp(void) {}    // every test file requires this function;
-                           // setUp() is called by the generated runner before each test case function
+void setUp(void) {}    // every test file requires this function;
+                       // setUp() is called by the generated runner before each test case function
 
-    void tearDown(void) {} // every test file requires this function;
-                           // tearDown() is called by the generated runner before each test case function
+void tearDown(void) {} // every test file requires this function;
+                       // tearDown() is called by the generated runner before each test case function
 
-    // a test case function
-    void test_Foo_Function1_should_Call_Bar_AndGrill(void)
-    {
-        Bar_AndGrill_Expect();                    // setup function from mock_bar.c that instructs our
-                                                  // framework to expect Bar_AndGrill() to be called once
-        TEST_ASSERT_EQUAL(0xFF, Foo_Function1()); // assertion provided by Unity
-                                                  // Foo_Function1() calls Bar_AndGrill() & returns a byte
-    }
+// a test case function
+void test_Foo_Function1_should_Call_Bar_AndGrill(void)
+{
+    Bar_AndGrill_Expect();                    // setup function from mock_bar.c that instructs our
+                                              // framework to expect Bar_AndGrill() to be called once
+    TEST_ASSERT_EQUAL(0xFF, Foo_Function1()); // assertion provided by Unity
+                                              // Foo_Function1() calls Bar_AndGrill() & returns a byte
+}
 
-    // another test case function
-    void test_Foo_Function2_should_Call_Baz_Tec(void)
-    {
-        Baz_Tec_ExpectAnd_Return(1);       // setup function provided by mock_baz.c that instructs our
-                                           // framework to expect Baz_Tec() to be called once and return 1
-        TEST_ASSERT_TRUE(Foo_Function2()); // assertion provided by Unity
-    }
+// another test case function
+void test_Foo_Function2_should_Call_Baz_Tec(void)
+{
+    Baz_Tec_ExpectAnd_Return(1);       // setup function provided by mock_baz.c that instructs our
+                                       // framework to expect Baz_Tec() to be called once and return 1
+    TEST_ASSERT_TRUE(Foo_Function2()); // assertion provided by Unity
+}
 
-    // end of test_foo.c ----------------------------------------
-
+// end of test_foo.c ----------------------------------------
+```
 
 From the test file specified above Ceedling will generate `test_foo_runner.c`;
 this runner file will contain `main()` and call both of the example
@@ -713,7 +715,6 @@ for this. A few highlights from that reference page:
   thereafter referenced with an asterisk ( * )
 
 
-
 Notes on what follows:
 
 * Each of the following sections represent top-level entries
@@ -758,7 +759,6 @@ Conventions / features of Ceedling-specific YAML:
   separators (i.e. "/") and to take advantage of inline Ruby
   string expansion (see [:environment] setting below for further
   explanation of string expansion).
-
 
 
 **Let's Be Careful Out There:** Ceedling performs validation
@@ -883,15 +883,17 @@ project: global project settings
 
 Example `[:project]` YAML blurb
 
-    :project:
-      :build_root: project_awesome/build
-      :use_exceptions: FALSE
-      :use_test_preprocessor: TRUE
-      :use_deep_dependencies: TRUE
-      :options_paths:
-        - project/options
-        - external/shared/options
-      :release_build: TRUE
+```yaml
+:project:
+  :build_root: project_awesome/build
+  :use_exceptions: FALSE
+  :use_test_preprocessor: TRUE
+  :use_deep_dependencies: TRUE
+  :options_paths:
+    - project/options
+    - external/shared/options
+  :release_build: TRUE
+```
 
 Ceedling is primarily concerned with facilitating the somewhat
 complicated mechanics of automating unit tests. The same mechanisms
@@ -936,16 +938,16 @@ that you execute on target hardware).
 
 Example `[:release_build]` YAML blurb
 
-    :release_build:
-      :output: top_secret.bin
-      :use_assembly: TRUE
-      :artifacts:
-        - build/release/out/c/top_secret.s19
+```yaml
+:release_build:
+  :output: top_secret.bin
+  :use_assembly: TRUE
+  :artifacts:
+    - build/release/out/c/top_secret.s19
+```
 
 **paths**: options controlling search paths for source and header
 (and assembly) files
-
-
 
 * `test`:
 
@@ -1046,17 +1048,17 @@ include the following * ** ? [-] {,} (note: this list is space separated
 and not comma separated as commas are used within the bracket
 operators).
 
-* ` *`:
+* `*`:
 
   All subdirectories of depth 1 below the parent path and including the
   parent path
 
-* ` **`:
+* `**`:
 
   All subdirectories recursively discovered below the parent path and
   including the parent path
 
-* ` ?`:
+* `?`:
 
   Single alphanumeric character wildcard
 
@@ -1070,27 +1072,29 @@ operators).
 
 Example [:paths] YAML blurbs
 
-    :paths:
-      :source:              #together the following comprise all source search paths
-        - project/source/*  #expansion yields all subdirectories of depth 1 plus parent directory
-        - project/lib       #single path
-      :test:                #all test search paths
-        - project/**/test?  #expansion yields any subdirectory found anywhere in the project that
-                            #begins with "test" and contains 5 characters
+```yaml
+:paths:
+  :source:              #together the following comprise all source search paths
+    - project/source/*  #expansion yields all subdirectories of depth 1 plus parent directory
+    - project/lib       #single path
+  :test:                #all test search paths
+    - project/**/test?  #expansion yields any subdirectory found anywhere in the project that
+                        #begins with "test" and contains 5 characters
 
-    :paths:
-      :source:                           #all source search paths
-        - +:project/source/**            #all subdirectories recursively discovered plus parent directory
-        - -:project/source/os/generated  #subtract os/generated directory from expansion of above glob
-                                         #note that '+:' notation is merely aesthetic; default is to add
+:paths:
+  :source:                           #all source search paths
+    - +:project/source/**            #all subdirectories recursively discovered plus parent directory
+    - -:project/source/os/generated  #subtract os/generated directory from expansion of above glob
+                                     #note that '+:' notation is merely aesthetic; default is to add
 
-      :test:                             #all test search paths
-        - project/test/bootloader        #explicit, single search paths (searched in the order specified)
-        - project/test/application
-        - project/test/utilities
+  :test:                             #all test search paths
+    - project/test/bootloader        #explicit, single search paths (searched in the order specified)
+    - project/test/application
+    - project/test/utilities
 
-      :custom:                           #custom path list
-        - "#{PROJECT_ROOT}/other"        #inline Ruby string expansion
+  :custom:                           #custom path list
+    - "#{PROJECT_ROOT}/other"        #inline Ruby string expansion
+```
 
 Globs and inline Ruby string expansion can require trial and
 error to arrive at your intended results. Use the `rake paths:*`
@@ -1140,14 +1144,15 @@ the directory level.
 
 Example [:files] YAML blurb
 
-    :files:
-      :source:
-        - callbacks/comm.c        # entry defaults to file addition
-        - +:callbacks/comm*.c     # add all comm files matching glob pattern
-        - -:source/board/atm134.c # not our board
-      :test:
-        - -:test/io/test_output_manager.c # remove unit tests from test build
-
+```yaml
+:files:
+  :source:
+    - callbacks/comm.c        # entry defaults to file addition
+    - +:callbacks/comm*.c     # add all comm files matching glob pattern
+    - -:source/board/atm134.c # not our board
+  :test:
+    - -:test/io/test_output_manager.c # remove unit tests from test build
+```
 
 **environment:** inserts environment variables into the shell
 instance executing configured tools
@@ -1183,18 +1188,19 @@ YAML arrays use simple concatenation.
 
 Example [:environment] YAML blurb
 
-    :environment:
-      - :license_server: gizmo.intranet        #LICENSE_SERVER set with value "gizmo.intranet"
-      - :license: "#{`license.exe`}"           #LICENSE set to string generated from shelling out to
-                                               #execute license.exe; note use of enclosing quotes
+```yaml
+:environment:
+  - :license_server: gizmo.intranet        #LICENSE_SERVER set with value "gizmo.intranet"
+  - :license: "#{`license.exe`}"           #LICENSE set to string generated from shelling out to
+                                           #execute license.exe; note use of enclosing quotes
 
-      - :path:                                 #concatenated with path separator (see special case above)
-         - Tools/gizmo/bin                     #prepend existing PATH with gizmo path
-         - "#{ENV['PATH']}"                    #pattern #{…} triggers ruby evaluation string substitution
-                                               #note: value string must be quoted because of '#'
+  - :path:                                 #concatenated with path separator (see special case above)
+     - Tools/gizmo/bin                     #prepend existing PATH with gizmo path
+     - "#{ENV['PATH']}"                    #pattern #{…} triggers ruby evaluation string substitution
+                                           #note: value string must be quoted because of '#'
 
-      - :logfile: system/logs/thingamabob.log  #LOGFILE set with path for a log file
-
+  - :logfile: system/logs/thingamabob.log  #LOGFILE set with path for a log file
+```
 
 **extension**: configure file name extensions used to collect lists of files searched in [:paths]
 
@@ -1296,14 +1302,16 @@ Example [:extension] YAML blurb
 
 Example [:defines] YAML blurb
 
-    :defines:
-      :test:
-        - UNIT_TESTING  #for select cases in source to allow testing with a changed behavior or interface
-        - OFF=0
-        - ON=1
-        - FEATURE_X=ON
-      :source:
-        - FEATURE_X=ON
+```yaml
+:defines:
+  :test:
+    - UNIT_TESTING  #for select cases in source to allow testing with a changed behavior or interface
+    - OFF=0
+    - ON=1
+    - FEATURE_X=ON
+  :source:
+    - FEATURE_X=ON
+```
 
 **flags**: configure per-file compilation and linking flags
 
@@ -1341,23 +1349,25 @@ Notes:
 
 Example [:flags] YAML blurb
 
-    :flags:
-      :release:
-        :compile:
-          :main:       # add '-Wall' to compilation of main.c
-            - -Wall
-          :fan:        # add '--O2' to compilation of fan.c
-            - --O2
-          :*:          # add '-foo' to compilation of all files not main.c or fan.c
-            - -foo
-      :test:
-        :compile:
-          :main:       # add '--O1' to compilation of main.c as part of test builds including main.c
-            - --O1
-        :link:
-          :test_main:  # add '--bar --baz' to linking of test_main.exe
-            - --bar
-            - --baz
+```yaml
+:flags:
+  :release:
+    :compile:
+      :main:       # add '-Wall' to compilation of main.c
+        - -Wall
+      :fan:        # add '--O2' to compilation of fan.c
+        - --O2
+      :*:          # add '-foo' to compilation of all files not main.c or fan.c
+        - -foo
+  :test:
+    :compile:
+      :main:       # add '--O1' to compilation of main.c as part of test builds including main.c
+        - --O1
+    :link:
+      :test_main:  # add '--bar --baz' to linking of test_main.exe
+        - --bar
+        - --baz
+```
 
 Ceedling sets values for a subset of CMock settings. All CMock
 options are available to be set, but only those options set by
@@ -1472,23 +1482,24 @@ Notes on Unity configuration:
 
 Example [:unity] YAML blurbs
 
-    :unity: #itty bitty processor & toolchain with limited test execution options
-      :defines:
-        - UNITY_INT_WIDTH=16           #16 bit processor without support for 32 bit instructions
-        - UNITY_EXCLUDE_FLOAT          #no floating point unit
-            #let's say environment & tools provide no way to run tests on desktop so we gotta go on target
-            #replace putchar() with write_usart() via command line specified macro (gcc style)
-            #note escaped quotes for our hypothetical shell that doesn't like parens in arguments
-            #transformed into -D"UNITY_OUTPUT_CHAR(a)=write_usart(a)" at command line by [:tools] entry
-        - "\"UNITY_OUTPUT_CHAR(a)=write_usart(a)\""
+```yaml
+:unity: #itty bitty processor & toolchain with limited test execution options
+  :defines:
+    - UNITY_INT_WIDTH=16           #16 bit processor without support for 32 bit instructions
+    - UNITY_EXCLUDE_FLOAT          #no floating point unit
+        #let's say environment & tools provide no way to run tests on desktop so we gotta go on target
+        #replace putchar() with write_usart() via command line specified macro (gcc style)
+        #note escaped quotes for our hypothetical shell that doesn't like parens in arguments
+        #transformed into -D"UNITY_OUTPUT_CHAR(a)=write_usart(a)" at command line by [:tools] entry
+    - "\"UNITY_OUTPUT_CHAR(a)=write_usart(a)\""
 
-    :unity: #great big gorilla processor that grunts and scratches
-      :defines:
-        - UNITY_SUPPORT_64                    #big memory, big counters, big registers
-        - UNITY_LINE_TYPE=\"unsigned int\"    #apparently we're using really long test files,
-        - UNITY_COUNTER_TYPE=\"unsigned int\" #and we've got a ton of test cases in those test files
-        - UNITY_FLOAT_TYPE=\"double\"         #you betcha
-
+:unity: #great big gorilla processor that grunts and scratches
+  :defines:
+    - UNITY_SUPPORT_64                    #big memory, big counters, big registers
+    - UNITY_LINE_TYPE=\"unsigned int\"    #apparently we're using really long test files,
+    - UNITY_COUNTER_TYPE=\"unsigned int\" #and we've got a ton of test cases in those test files
+    - UNITY_FLOAT_TYPE=\"double\"         #you betcha
+```
 
 **tools**: a means for representing command line tools for use under
 Ceedling's automation framework
@@ -1640,7 +1651,7 @@ A Ceedling tool's other form of dynamic substitution relies on a '$'
 notation. These '$' operators can exist anywhere in a string and can be
 decorated in any way needed. To use a literal '$', escape it as '\\$'.
 
-* ` $`:
+* `$`:
 
   Simple substitution for value(s) globally available within the runtime
   (most often a string or an array).
@@ -1661,38 +1672,39 @@ decorated in any way needed. To use a literal '$', escape it as '\\$'.
   binary input file given to a simulator in its arguments.
 
 
-
 Example [:tools] YAML blurbs
 
-    :tools:
-      :test_compiler:
-         :executable: compiler              #exists in system search path
-         :name: 'acme test compiler'
-         :arguments:
-            - -I"$”: COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE               #expands to -I search paths
-            - -I"$”: COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR   #expands to -I search paths
-            - -D$: COLLECTION_TEST_DEFINES  #expands to all -D defined symbols
-            - --network-license             #simple command line argument
-            - -optimize-level 4             #simple command line argument
-            - "#{`args.exe -m acme.prj`}"   #in-line ruby sub to shell out & build string of arguments
-            - -c ${1}                       #source code input file (Ruby method call param list sub)
-            - -o ${2}                       #object file output (Ruby method call param list sub)
-      :test_linker:
-         :executable: /programs/acme/bin/linker.exe    #absolute file path
-         :name: 'acme test linker'
-         :arguments:
-            - ${1}               #list of object files to link (Ruby method call param list sub)
-            - -l$-lib:           #inline yaml array substitution to link in foo-lib and bar-lib
-               - foo
-               - bar
-            - -o ${2}            #executable file output (Ruby method call param list sub)
-      :test_fixture:
-         :executable: tools/bin/acme_simulator.exe  #relative file path to command line simulator
-         :name: 'acme test fixture'
-         :stderr_redirect: :win                     #inform Ceedling what model of $stderr capture to use
-         :arguments:
-            - -mem large   #simple command line argument
-            - -f "${1}"    #binary executable input file to simulator (Ruby method call param list sub)
+```yaml
+:tools:
+  :test_compiler:
+     :executable: compiler              #exists in system search path
+     :name: 'acme test compiler'
+     :arguments:
+        - -I"$”: COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE               #expands to -I search paths
+        - -I"$”: COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR   #expands to -I search paths
+        - -D$: COLLECTION_TEST_DEFINES  #expands to all -D defined symbols
+        - --network-license             #simple command line argument
+        - -optimize-level 4             #simple command line argument
+        - "#{`args.exe -m acme.prj`}"   #in-line ruby sub to shell out & build string of arguments
+        - -c ${1}                       #source code input file (Ruby method call param list sub)
+        - -o ${2}                       #object file output (Ruby method call param list sub)
+  :test_linker:
+     :executable: /programs/acme/bin/linker.exe    #absolute file path
+     :name: 'acme test linker'
+     :arguments:
+        - ${1}               #list of object files to link (Ruby method call param list sub)
+        - -l$-lib:           #inline yaml array substitution to link in foo-lib and bar-lib
+           - foo
+           - bar
+        - -o ${2}            #executable file output (Ruby method call param list sub)
+  :test_fixture:
+     :executable: tools/bin/acme_simulator.exe  #relative file path to command line simulator
+     :name: 'acme test fixture'
+     :stderr_redirect: :win                     #inform Ceedling what model of $stderr capture to use
+     :arguments:
+        - -mem large   #simple command line argument
+        - -f "${1}"    #binary executable input file to simulator (Ruby method call param list sub)
+```
 
 Resulting command line constructions from preceding example [:tools] YAML blurbs
 
@@ -1839,15 +1851,16 @@ test results from all test fixtures executed.
 
 Example [:plugins] YAML blurb
 
-    :plugins:
-      :load_paths:
-        - project/tools/ceedling/plugins  #home to your collection of plugin directories
-        - project/support                 #maybe home to some ruby code your custom plugins share
-      :enabled:
-        - stdout_pretty_tests_report      #nice test results at your command line
-        - our_custom_code_metrics_report  #maybe you needed line count and complexity metrics, so you
-                                          #created a plugin to scan all your code and collect that info
-
+```yaml
+:plugins:
+  :load_paths:
+    - project/tools/ceedling/plugins  #home to your collection of plugin directories
+    - project/support                 #maybe home to some ruby code your custom plugins share
+  :enabled:
+    - stdout_pretty_tests_report      #nice test results at your command line
+    - our_custom_code_metrics_report  #maybe you needed line count and complexity metrics, so you
+                                      #created a plugin to scan all your code and collect that info
+```
 
 * `stdout_pretty_tests_report`:
 
