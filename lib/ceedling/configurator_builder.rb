@@ -218,7 +218,7 @@ class ConfiguratorBuilder
 
   def collect_source_include_vendor_paths(in_hash)
     extra_paths = []
-    extra_paths << File.join(in_hash[:cexception_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
+    extra_paths << File.join(in_hash[:cexception_vendor_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
 
     return {
       :collection_paths_source_include_vendor =>
