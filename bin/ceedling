@@ -11,7 +11,7 @@ end
 class CeedlingTasks < Thor
   include Thor::Actions
 
-  desc "new PROJECT_NAME", "new a new ceedling project"
+  desc "new PROJECT_NAME", "create a new ceedling project"
   method_option :nodocs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
   method_option :as_gem, :type => :boolean, :default => false, :desc => "Create the scaffold using Ceedling as a gem instead of filling in the vendor directory. Implies --no-docs."
   def new(name, silent = false)
@@ -80,6 +80,7 @@ class CeedlingTasks < Thor
       copy_file File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml')
       copy_file File.join('assets', 'rakefile_with_guts.rb'), File.join(name, 'rakefile.rb')
     end
+    copy_file File.join('assets', 'ceed'), File.join(name, 'ceed')
 
     unless silent
       puts "\n"

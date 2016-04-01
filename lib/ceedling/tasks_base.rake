@@ -14,8 +14,16 @@ task :version do
     name      = tool[0]
     base_path = tool[1]
 
-    version_string = @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip
-    build_string   = @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'build.info') ).strip
+    version_string = begin
+      @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip
+    rescue
+      "UNKNOWN"
+    end
+    build_string = begin
+      @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'build.info') ).strip
+    rescue
+      "UNKNOWN"
+    end
     puts "#{name}:: #{version_string.empty? ? '#.#.' : (version_string + '.')}#{build_string.empty? ? '?' : build_string}"
   end
 end
