@@ -35,8 +35,8 @@ toolchain gcc, the configuration file could be as simple as this:
 ```
 
 From the command line, to build the release version of your project,
-you would simply run `ceed release`. To run all your unit tests,
-you would run `ceed test:all`. That's it!
+you would simply run `ceedling release`. To run all your unit tests,
+you would run `ceedling test:all`. That's it!
 
 Of course, many more advanced options allow you to configure
 your project with a variety of features to meet a variety of needs.
@@ -272,7 +272,7 @@ add your own independent Rake tasks or create plugins to extend
 Ceedling (more on this later).
 
 
-* `ceed [no arguments]`:
+* `ceedling [no arguments]`:
 
   Run the default Rake task (conveniently recognized by the name default
   by Rake). Neither Rake nor Ceedling provide a default task. Rake will
@@ -280,13 +280,13 @@ Ceedling (more on this later).
   conveniently define a default task in the Rakefile discussed in the
   preceding setup & installation section of this document.
 
-* `ceed -T`:
+* `ceedling -T`:
 
   List all available Rake tasks with descriptions (Rake tasks without
   descriptions are not listed). -T is a command line switch for Rake and
   not the same as tasks that follow.
 
-* `ceed <tasks...> --trace`:
+* `ceedling <tasks...> --trace`:
 
   For advanced users troubleshooting a confusing build error, debug
   Ceedling or a plugin, --trace provides a stack trace of dependencies
@@ -294,31 +294,31 @@ Ceedling (more on this later).
   that --trace is a command line switch for Rake and is not the same as
   tasks that follow.
 
-* `ceed environment`:
+* `ceedling environment`:
 
   List all configured environment variable names and string values. This
   task is helpful in verifying the evaluatio of any Ruby expressions in
   the [:environment] section of your config file.`: Note: Ceedling may
   set some convenience environment variables by default.
 
-* `ceed paths:*`:
+* `ceedling paths:*`:
 
   List all paths collected from [:paths] entries in your YAML config
   file where * is the name of any section contained in [:paths]. This
   task is helpful in verifying the expansion of path wildcards / globs
   specified in the [:paths] section of your config file.
 
-* `ceed files:assembly`
-* `ceed files:header`
-* `ceed files:source`
-* `ceed files:test`
+* `ceedling files:assembly`
+* `ceedling files:header`
+* `ceedling files:source`
+* `ceedling files:test`
 
   List all files and file counts collected from the relevant search
   paths specified by the [:paths] entries of your YAML config file. The
   files:assembly task will only be available if assembly support is
   enabled in the [:release_build] section of your configuration file.
 
-* `ceed options:*`:
+* `ceedling options:*`:
 
   Load and merge configuration settings into the main project
   configuration. Each task is named after a *.yml file found in the
@@ -326,11 +326,11 @@ Ceedling (more on this later).
   setting [:project][:options_path] and for options files in advanced
   topics.
 
-* `ceed test:all`:
+* `ceedling test:all`:
 
   Run all unit tests (rebuilding anything that's changed along the way).
 
-* `ceed test:delta`:
+* `ceedling test:delta`:
 
   Run only those unit tests for which the source or test files have
   changed (i.e. incremental build). Note: with the
@@ -338,50 +338,50 @@ Ceedling (more on this later).
   runner files are always regenerated limiting the total efficiency this
   text execution option can afford.
 
-* `ceed test:*`:
+* `ceedling test:*`:
 
   Execute the named test file or the named source file that has an
-  accompanying test. No path. Examples: ceed test:foo.c or ceed
+  accompanying test. No path. Examples: ceedling test:foo.c or ceed
   test:test_foo.c
 
-* `ceed test:pattern[*]`:
+* `ceedling test:pattern[*]`:
 
   Execute any tests whose name and/or path match the regular expression
-  pattern (case sensitive). Example: ceed "test:pattern[(I|i)nit]" will
+  pattern (case sensitive). Example: ceedling "test:pattern[(I|i)nit]" will
   execute all tests named for initialization testing. Note: quotes may
-  be necessary around the ceed parameter to distinguish regex characters
+  be necessary around the ceedling parameter to distinguish regex characters
   from command line operators.
 
-* `ceed test:path[*]`:
+* `ceedling test:path[*]`:
 
   Execute any tests whose path contains the given string (case
-  sensitive). Example: ceed test:path[foo/bar] will execute all tests
+  sensitive). Example: ceedling test:path[foo/bar] will execute all tests
   whose path contains foo/bar. Note: both directory separator characters
   / and \ are valid.
 
-* `ceed release`:
+* `ceedling release`:
 
   Build all source into a release artifact (if the release build option
   is configured).
 
-* `ceed release:compile:*`:
+* `ceedling release:compile:*`:
 
   Sometimes you just need to compile a single file dagnabit. Example:
-  ceed release:compile:foo.c
+  ceedling release:compile:foo.c
 
-* `ceed release:assemble:*`:
+* `ceedling release:assemble:*`:
 
   Sometimes you just need to assemble a single file doggonit. Example:
-  ceed release:assemble:foo.s
+  ceedling release:assemble:foo.s
 
-* `ceed logging <tasks...>`:
+* `ceedling logging <tasks...>`:
 
   Enable logging to <build path>/logs. Must come before test and release
   tasks to log their steps and output. Log names are a concatenation of
   project, user, and option files loaded. User and option files are
   documented in the advanced topics section of this document.
 
-* `ceed verbosity[x] <tasks...>`:
+* `ceedling verbosity[x] <tasks...>`:
 
   Change the default verbosity level. [x] ranges from 0 (quiet) to 4
   (obnoxious). Level [3] is the default. The verbosity task must precede
@@ -389,20 +389,20 @@ Ceedling (more on this later).
   seen. Verbosity settings are generally most meaningful in conjunction
   with test and release tasks.
 
-* `ceed summary`:
+* `ceedling summary`:
 
   If plugins are enabled, this task will execute the summary method of
   any plugins supporting it. This task is intended to provide a quick
   roundup of build artifact metrics without re-running any part of the
   build.
 
-* `ceed clean`:
+* `ceedling clean`:
 
   Deletes all toolchain binary artifacts (object files, executables),
   test results, and any temporary files. Clean produces no output at the
   command line unless verbosity has been set to an appreciable level.
 
-* `ceed clobber`:
+* `ceedling clobber`:
 
   Extends clean task's behavior to also remove generated files: test
   runners, mocks, preprocessor output. Clobber produces no output at the
@@ -858,7 +858,7 @@ project: global project settings
   codebase, you may need variations of your project configuration.
 
   By specifying options paths, Ceedling will search for other project
-  YAML files, make command line tasks available (ceed options:variation
+  YAML files, make command line tasks available (ceedling options:variation
   for a variation.yml file), and merge the project configuration of
   these option files in with the main project file at runtime. See
   advanced topics.
@@ -1097,7 +1097,7 @@ Example [:paths] YAML blurbs
 ```
 
 Globs and inline Ruby string expansion can require trial and
-error to arrive at your intended results. Use the `ceed paths:*`
+error to arrive at your intended results. Use the `ceedling paths:*`
 command line options (documented in preceding section) to verify
 your settings.
 
