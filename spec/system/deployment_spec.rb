@@ -66,7 +66,6 @@ describe "Ceedling" do
     it "should list out all the examples" do
       expect(@output).to match(/blinky/)
       expect(@output).to match(/temp_sensor/)
-      expect(@output.lines.to_a.length).to eq 3
     end
   end
 

@@ -1,128 +1,241 @@
 #!/usr/bin/env ruby
 
+#these are always used
 require 'rubygems'
 require 'fileutils'
-require 'thor'
 
-def here
-  File.dirname(__FILE__) + "/.."
-end
+unless (File.exists?("project.yml"))
+#===================================== We Do Not Have A Project ================================================
 
-class CeedlingTasks < Thor
-  include Thor::Actions
+  puts "Welcome to Ceedling!"
+  require 'thor'
 
-  desc "new PROJECT_NAME", "new a new ceedling project"
-  method_option :nodocs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
-  method_option :as_gem, :type => :boolean, :default => false, :desc => "Create the scaffold using Ceedling as a gem instead of filling in the vendor directory. Implies --no-docs."
-  def new(name, silent = false)
-    ceedling_path     = File.join(name, 'vendor', 'ceedling')
-    source_path       = File.join(name, 'src')
-    test_path         = File.join(name, 'test')
-    test_support_path = File.join(name, 'test/support')
-    build_path        = File.join(name, 'build')
+  def here
+    File.dirname(__FILE__) + "/.."
+  end
 
-    [source_path, test_path, test_support_path, build_path].each do |d|
-      FileUtils.mkdir_p d
-    end
+  class CeedlingTasks < Thor
+    include Thor::Actions
 
-    unless options[:as_gem]
-      FileUtils.mkdir_p ceedling_path
+    desc "new PROJECT_NAME", "create a new ceedling project"
+    method_option :nodocs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
+    method_option :as_gem, :type => :boolean, :default => false, :desc => "Create the scaffold using Ceedling as a gem instead of filling in the vendor directory. Implies --no-docs."
+    def new(name, silent = false)
+      ceedling_path     = File.join(name, 'vendor', 'ceedling')
+      source_path       = File.join(name, 'src')
+      test_path         = File.join(name, 'test')
+      test_support_path = File.join(name, 'test/support')
+      build_path        = File.join(name, 'build')
 
-      unless options[:nodocs]
-        doc_path = File.join(ceedling_path, 'docs')
-        FileUtils.mkdir_p doc_path
+      [source_path, test_path, test_support_path, build_path].each do |d|
+        FileUtils.mkdir_p d
+      end
 
-        in_doc_path = lambda {|f| File.join(doc_path, f)}
+      unless options[:as_gem]
+        FileUtils.mkdir_p ceedling_path
 
-        doc_files = [
-                      'docs/CeedlingPacket.pdf',
-                      'vendor/c_exception/docs/CExceptionSummary.pdf',
-                      'vendor/cmock/docs/CMock Summary.pdf',
-                      'vendor/unity/docs/Unity Summary.pdf',
-                    ]
+        unless options[:nodocs]
+          doc_path = File.join(ceedling_path, 'docs')
+          FileUtils.mkdir_p doc_path
 
-        doc_files.each do |f|
-          copy_file f, in_doc_path.call(File.basename(f))
+          in_doc_path = lambda {|f| File.join(doc_path, f)}
+
+          doc_files = [
+                        'docs/CeedlingPacket.pdf',
+                        'vendor/c_exception/docs/CExceptionSummary.pdf',
+                        'vendor/cmock/docs/CMock Summary.pdf',
+                        'vendor/unity/docs/Unity Summary.pdf',
+                      ]
+
+          doc_files.each do |f|
+            copy_file f, in_doc_path.call(File.basename(f))
+          end
+        end
+
+        folders = %w{plugins lib}
+        folders.map do |f|
+          {:src => f, :dst => File.join(ceedling_path, f)}
+        end.each do |f|
+          directory f[:src], f[:dst]
+        end
+
+        sub_components = [
+          {:src => 'vendor/c_exception/lib/',     :dst => 'vendor/c_exception/lib'},
+          {:src => 'vendor/c_exception/release/', :dst => 'vendor/c_exception/release'},
+          {:src => 'vendor/cmock/config/',        :dst => 'vendor/cmock/config'},
+          {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
+          {:src => 'vendor/cmock/release/',       :dst => 'vendor/cmock/release'},
+          {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
+          {:src => 'vendor/constructor/lib/',     :dst => 'vendor/constructor/lib'},
+          {:src => 'vendor/deep_merge/lib/',      :dst => 'vendor/deep_merge/lib'},
+          {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
+          {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
+          {:src => 'vendor/unity/release/',       :dst => 'vendor/unity/release'},
+          {:src => 'vendor/unity/src/',           :dst => 'vendor/unity/src'},
+        ]
+
+        sub_components.each do |c|
+          directory c[:src], File.join(ceedling_path, c[:dst])
         end
       end
 
-      folders = %w{plugins lib}
-      folders.map do |f|
-        {:src => f, :dst => File.join(ceedling_path, f)}
-      end.each do |f|
-        directory f[:src], f[:dst]
+      if options[:as_gem]
+        copy_file File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml')
+        copy_file File.join('assets', 'rakefile_as_gem.rb'), File.join(name, 'rakefile.rb')
+      else
+        copy_file File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml')
+        copy_file File.join('assets', 'rakefile_with_guts.rb'), File.join(name, 'rakefile.rb')
       end
 
-      sub_components = [
-        {:src => 'vendor/c_exception/lib/',     :dst => 'vendor/c_exception/lib'},
-        {:src => 'vendor/c_exception/release/', :dst => 'vendor/c_exception/release'},
-        {:src => 'vendor/cmock/config/',        :dst => 'vendor/cmock/config'},
-        {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
-        {:src => 'vendor/cmock/release/',       :dst => 'vendor/cmock/release'},
-        {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
-        {:src => 'vendor/constructor/lib/',     :dst => 'vendor/constructor/lib'},
-        {:src => 'vendor/deep_merge/lib/',      :dst => 'vendor/deep_merge/lib'},
-        {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
-        {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
-        {:src => 'vendor/unity/release/',       :dst => 'vendor/unity/release'},
-        {:src => 'vendor/unity/src/',           :dst => 'vendor/unity/src'},
-      ]
-
-      sub_components.each do |c|
-        directory c[:src], File.join(ceedling_path, c[:dst])
+      unless silent
+        puts "\n"
+        puts "Project '#{name}' created!"
+        puts " - Tool documentation is located in vendor/ceedling/docs" if (not options[:nodocs]) and (not options[:as_gem])
+        puts " - Execute 'rake -T' to view available test & build tasks"
+        puts ''
       end
     end
 
-    if options[:as_gem]
-      copy_file File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml')
-      copy_file File.join('assets', 'rakefile_as_gem.rb'), File.join(name, 'rakefile.rb')
-    else
-      copy_file File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml')
-      copy_file File.join('assets', 'rakefile_with_guts.rb'), File.join(name, 'rakefile.rb')
+    desc "examples", "list available example projects"
+    def examples()
+      puts "Available sample projects:"
+      FileUtils.cd(File.join(here, "examples")) do
+        Dir["*"].each {|proj| puts "  #{proj}"}
+      end
     end
 
-    unless silent
+    desc "example PROJ_NAME [DEST]", "new specified example project (in DEST, if specified)"
+    def example(proj_name, dest=nil)
+      if dest.nil? then dest = proj_name end
+
+      invoke :new, [dest, true]
+
+      dest_src      = File.join(dest,'src')
+      dest_test     = File.join(dest,'test')
+      dest_rakefile = File.join(dest,'rakefile.rb')
+      dest_project  = File.join(dest,'project.yml')
+
+      directory "examples/#{proj_name}/src",         dest_src
+      directory "examples/#{proj_name}/test",        dest_test
+      remove_file dest_rakefile
+      remove_file dest_project
+      copy_file "examples/#{proj_name}/rakefile.rb", dest_rakefile
+      copy_file "examples/#{proj_name}/project.yml", dest_project
+
       puts "\n"
-      puts "Project '#{name}' created!"
-      puts " - Tool documentation is located in vendor/ceedling/docs" if (not options[:nodocs]) and (not options[:as_gem])
+      puts "Example project '#{proj_name}' created!"
+      puts " - Tool documentation is located in vendor/ceedling/docs"
       puts " - Execute 'rake -T' to view available test & build tasks"
       puts ''
     end
   end
 
-  desc "examples", "list available example projects"
-  def examples()
-    puts "Available sample projects:"
-    FileUtils.cd(File.join(here, "examples")) do
-      Dir["*"].each {|proj| puts "  #{proj}"}
+  if (ARGV[0] =~ /^\-T$/)
+    puts "\n(No Project Detected, Therefore Showing Options to Create Projects)"
+    CeedlingTasks.tasks.each_pair do |k,v|
+      puts v.usage.ljust(25,' ') + v.description
+    end
+    puts "\n"
+  else
+    CeedlingTasks.source_root here
+    CeedlingTasks.start
+  end
+
+#===================================== We Have A Project Already ================================================
+else
+
+  require 'pty'
+  require 'yaml'
+  require 'rbconfig'
+
+  #determine platform
+  platform = begin
+    case(RbConfig::CONFIG['host_os'])
+      when /mswin|mingw|cygwin/i
+        :mswin
+      when /darwin/
+        :osx
+      else
+        :linux
+    end
+  rescue
+    :linux
+  end
+
+  #create our default meta-runner option set
+  options = {
+    :pretend_we_are_gtest => false,
+    :args => "",
+    :pretest => nil,
+    :outfile => nil,
+    :add_path => [],
+    :path_connector => (platform == :mswin) ? ";" : ":",
+  }
+
+  #guess that we need a special script file first if it exists
+  if (platform == :mswin)
+    options[:pretest] = File.exists?("#{ platform.to_s }_setup.bat") ? "#{ platform.to_s }_setup.bat" : nil
+  else
+    options[:pretest] = File.exists?("#{ platform.to_s }_setup.sh") ? "source #{ platform.to_s }_setup.sh" : nil
+  end
+
+  #merge in project settings if they can be found here
+  yaml_options = YAML.load_file('project.yml')
+  options[:pretend_we_are_gtest] = (yaml_options[:plugins][:enabled].include? :stdout_gtestlike_tests_report)
+  options[:add_path] = yaml_options[:paths][:tools] || []
+
+  #sort through command line options
+  options[:args]
+  ARGV.each do |v|
+    case(v)
+      when /--gtest/
+        options[:pretend_we_are_gtest] = true
+      else
+        options[:args] += v + " "
     end
   end
 
-  desc "example PROJ_NAME [DEST]", "new specified example project (in DEST, if specified)"
-  def example(proj_name, dest=nil)
-    if dest.nil? then dest = proj_name end
-
-    invoke :new, [dest, true]
-
-    dest_src      = File.join(dest,'src')
-    dest_test     = File.join(dest,'test')
-    dest_rakefile = File.join(dest,'rakefile.rb')
-    dest_project  = File.join(dest,'project.yml')
-
-    directory "examples/#{proj_name}/src",         dest_src
-    directory "examples/#{proj_name}/test",        dest_test
-    remove_file dest_rakefile
-    remove_file dest_project
-    copy_file "examples/#{proj_name}/rakefile.rb", dest_rakefile
-    copy_file "examples/#{proj_name}/project.yml", dest_project
-
-    puts "\n"
-    puts "Example project '#{proj_name}' created!"
-    puts " - Tool documentation is located in vendor/ceedling/docs"
-    puts " - Execute 'rake -T' to view available test & build tasks"
-    puts ''
+  #add to the path
+  if (options[:add_path] && !options[:add_path].empty?)
+    path = ENV["PATH"]
+    options[:add_path].each do |p|
+      f = File.expand_path(File.dirname(__FILE__),p)
+      path = (f + options[:path_connector] + path) unless path.include? f
+    end
+    ENV["PATH"] = path
   end
-end
 
-CeedlingTasks.source_root here
-CeedlingTasks.start
+  #run rake and capture all the output
+  results = ""
+  okay_to_print = !(options[:pretend_we_are_gtest])
+  begin
+    options[:cmd] = if (options[:pretest].nil? || options[:pretest].empty?)
+      "rake #{options[:args]}"
+    else
+      "#{options[:pretest]} && rake #{options[:args]}"
+    end
+    PTY.spawn(options[:cmd]) do |stdout, stdin, pid|
+      begin
+        stdout.each do |line|
+          okay_to_print = true if ((options[:pretend_we_are_gtest]) && (line.match(/\[\=+\]/)))
+          line.gsub!(/(?<!\w)rake(?!\w)/,'ceedling') if (options[:args].strip == "-T")
+          puts(line) if okay_to_print
+        end
+      rescue Errno::EIO
+      end
+    end
+  rescue Exception => e
+    results += e.inspect #unless (e == PTY::ChildExited)
+  end
+
+  #File.open("debug.txt",'w'){|f| f << ARGV.inspect << "\n\n" << options.inspect << "\n\n" << results }
+
+  #dump the results back out stdout unless otherwise specified
+  if (options[:outfile].nil?)
+    puts results
+  else
+    File.open(options[:outfile],'w') {|f| f << results }
+  end
+
+#===================================================================================================================
+end
