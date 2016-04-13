@@ -64,7 +64,7 @@ describe "Ceedling" do
     end
 
     it "should list out all the examples" do
-      @output.lines.delete_if {|line| line ~= /Welcome|Available/} #remove header lines
+      @output.lines.delete_if {|line| line =~ /Welcome|Available/} #remove header lines
       expect(@output).to match(/blinky/)
       expect(@output).to match(/temp_sensor/)
       expect(@output.lines.to_a.length).to eq 2
