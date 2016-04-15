@@ -188,6 +188,12 @@ else
   options[:args]
   ARGV.each do |v|
     case(v)
+      when /^(?:new|examples?)$/
+        puts "\nOops. You called ceedling with argument '#{v}'.\n" +
+             "      This is an operation that will create a new project... \n" +
+             "      but it looks like you're already in a project. If you really \n" +
+             "      want to do this, try moving to an empty folder.\n\n"
+        abort
       when /--gtest/
         options[:pretend_we_are_gtest] = true
       else
