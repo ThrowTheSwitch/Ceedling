@@ -13,10 +13,21 @@ Documentation and license info exists [in the repo in docs/](docs/CeedlingPacket
 Getting Started (Developers)
 ============================
 
+First make sure Ruby is installed on your system (if it's not already). Then, from a command prompt:
+
+    > gem install ceedling
+
+(Alternate Installation for Those Planning to Be Ceedling Developers)
+======================================================================
+
     > git clone --recursive https://github.com/throwtheswitch/ceedling.git
     > cd ceedling
     > bundle install # Ensures you have all RubyGems needed
     > bundle execute rake # Run all CMock library tests
+
+If bundler isn't installed on your system or you run into problems, you might have to install it:
+
+    > sudo gem install bundler
 
 Using Ceedling inside of a project
 ==================================
