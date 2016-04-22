@@ -196,6 +196,8 @@ else
         abort
       when /--gtest/
         options[:pretend_we_are_gtest] = true
+      when /--debug/
+        options[:outfile] = "debug.txt"
       else
         options[:args] += v + " "
     end
@@ -211,8 +213,13 @@ else
     ENV["PATH"] = path
   end
 
+  if (options[:outfile])
+    f = File.open(options[:outfile],'w')
+    f << ARGV.inspect << "\n\n"
+    f << options.inspect << "\n\n"
+  end
+
   #run rake and capture all the output
-  results = ""
   okay_to_print = !(options[:pretend_we_are_gtest])
   begin
     options[:cmd] = if (options[:pretest].nil? || options[:pretest].empty?)
@@ -226,22 +233,17 @@ else
           okay_to_print = true if ((options[:pretend_we_are_gtest]) && (line.match(/\[\=+\]/)))
           line.gsub!(/(?<!\w)rake(?!\w)/,'ceedling') if (options[:args].strip == "-T")
           puts(line) if okay_to_print
+          f.puts(line) if (okay_to_print && options[:outfile])
         end
       rescue Errno::EIO
       end
     end
   rescue Exception => e
-    results += e.inspect #unless (e == PTY::ChildExited)
+    STDERR.puts inspect unless (e == PTY::ChildExited)
   end
 
-  #File.open("debug.txt",'w'){|f| f << ARGV.inspect << "\n\n" << options.inspect << "\n\n" << results }
-
-  #dump the results back out stdout unless otherwise specified
-  if (options[:outfile].nil?)
-    puts results
-  else
-    File.open(options[:outfile],'w') {|f| f << results }
-  end
+  f.close if options[:outfile]
+  true
 
 #===================================================================================================================
 end
