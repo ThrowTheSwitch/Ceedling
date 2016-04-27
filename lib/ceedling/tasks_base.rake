@@ -69,11 +69,15 @@ end
 if (not ENVIRONMENT.empty?)
 desc "List all configured environment variables."
 task :environment do
+  env_list = []
   ENVIRONMENT.each do |env|
     env.each_key do |key|
       name = key.to_s.upcase
-      puts " - #{name}: \"#{env[key]}\""
+	  env_list.push(" - #{name}: \"#{env[key]}\"")      
     end
+  end
+  env_list.sort.each do |env_line|
+	puts env_line
   end
 end
 end
