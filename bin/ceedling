@@ -40,19 +40,16 @@ unless (File.exists?("project.yml"))
 
           in_doc_path = lambda {|f| File.join(doc_path, f)}
 
-          doc_files = [
-                        'docs/CeedlingPacket.pdf',
-                        'vendor/c_exception/docs/CExceptionSummary.pdf',
-                        'vendor/cmock/docs/CMock Summary.pdf',
-                        'vendor/unity/docs/UnityAssertionsCheatSheetSuitableforPrintingandPossiblyFraming.pdf',
-                        'vendor/unity/docs/UnityAssertionsReference.pdf',
-                        'vendor/unity/docs/UnityConfigurationGuide.pdf',
-                        'vendor/unity/docs/GettingStartedGuide.pdf',
-                        'vendor/unity/docs/UnityHelperScriptsGuide.pdf',
+          doc_locations = [
+                        'docs/*.pdf',
+                        'vendor/c_exception/docs/*.pdf',
+                        'vendor/cmock/docs/*.pdf',
+                        'vendor/unity/docs/*.pdf',
                       ]
-
-          doc_files.each do |f|
-            copy_file f, in_doc_path.call(File.basename(f))
+          doc_locations.each do |location|
+            Dir[location].each do |f|
+              copy_file f, in_doc_path.call(File.basename(f))
+            end
           end
         end
 
