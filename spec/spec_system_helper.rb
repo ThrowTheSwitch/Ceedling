@@ -151,7 +151,7 @@ module CeedlingTestCases
   def contains_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        expect(Dir["vendor/ceedling/docs/*.pdf"].length).to >= 4
+        expect(Dir["vendor/ceedling/docs/*.pdf"].length).to be >= 4
       end
     end
   end
