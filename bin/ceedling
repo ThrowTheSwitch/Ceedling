@@ -47,9 +47,7 @@ unless (File.exists?("project.yml"))
                         'vendor/unity/docs/*.pdf',
                       ]
           doc_locations.each do |location|
-            puts "LOCATIONS: " + doc_locations.inspect
             Dir[location].each do |f|
-              puts "  FILE: " + f.inspect
               copy_file f, in_doc_path.call(File.basename(f))
             end
           end
