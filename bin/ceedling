@@ -44,11 +44,7 @@ unless (File.exists?("project.yml"))
                         'docs/CeedlingPacket.pdf',
                         'vendor/c_exception/docs/CExceptionSummary.pdf',
                         'vendor/cmock/docs/CMock Summary.pdf',
-                        'vendor/unity/docs/UnityAssertionsCheatSheetSuitableforPrintingandPossiblyFraming.pdf',
-                        'vendor/unity/docs/UnityAssertionsReference.pdf',
-                        'vendor/unity/docs/UnityConfigurationGuide.pdf',
-                        'vendor/unity/docs/GettingStartedGuide.pdf',
-                        'vendor/unity/docs/UnityHelperScriptsGuide.pdf',
+                        'vendor/unity/docs/Unity Summary.pdf',
                       ]
 
           doc_files.each do |f|
