@@ -6,7 +6,6 @@ class TestInvokerHelper
   def clean_results(results, options)
     @file_wrapper.rm_f( results[:fail] )
     @file_wrapper.rm_f( results[:pass] ) if (options[:force_run])
-    @file_wrapper.rm_f( results[:test] ) if (options[:force_run])
   end
 
   def process_deep_dependencies(files)
@@ -16,14 +15,14 @@ class TestInvokerHelper
     @task_invoker.invoke_test_dependencies_files( dependencies_list )
     yield( dependencies_list ) if block_given?
   end
-
+  
   def extract_sources(test)
     sources  = []
     includes = @test_includes_extractor.lookup_includes_list(test)
-
+    
     includes.each { |include| sources << @file_finder.find_compilation_input_file(include, :ignore) }
-
+    
     return sources.compact
   end
-
+  
 end
