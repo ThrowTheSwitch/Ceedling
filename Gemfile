@@ -10,5 +10,5 @@ gem "diy"
 gem "rr"
 gem "thor"
 
-gem "pty",    :platforms => [ :ruby ]
+#gem "pty",    :platforms => [ :ruby ] #automatically included on *nix platforms
 gem "popen4", :platforms => [ :mswin ]
