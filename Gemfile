@@ -9,3 +9,6 @@ gem "constructor"
 gem "diy"
 gem "rr"
 gem "thor"
+
+gem "pty",    :platforms => [ :ruby ]
+gem "popen4", :platforms => [ :mswin ]
