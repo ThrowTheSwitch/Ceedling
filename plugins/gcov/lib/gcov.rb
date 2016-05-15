@@ -83,11 +83,6 @@ class Gcov < Plugin
     }
 
     @ceedling[:plugin_reportinator].run_test_results_report(hash)
-
-    # coverage results
-    # command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT_COVSRC)
-    # shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
-    # report_coverage_results_all(shell_result[:output])
   end
 
   private ###################################
