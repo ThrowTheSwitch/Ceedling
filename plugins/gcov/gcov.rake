@@ -20,6 +20,7 @@ rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
   if (File.basename(object.source) =~ /^(#{PROJECT_TEST_FILE_PREFIX}|#{CMOCK_MOCK_PREFIX}|#{GCOV_IGNORE_SOURCES.join('|')})/i)
     @ceedling[:generator].generate_object_file(
       TOOLS_GCOV_COMPILER,
+      OPERATION_COMPILE_SYM,
       GCOV_SYM,
       object.source,
       object.name,

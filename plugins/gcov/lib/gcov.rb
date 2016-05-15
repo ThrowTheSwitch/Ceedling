@@ -37,6 +37,7 @@ class Gcov < Plugin
     compile_command =
       @ceedling[:tool_executor].build_command_line(
         TOOLS_GCOV_COMPILER,
+        @ceedling[:flaginator].flag_down( OPERATION_COMPILE_SYM, GCOV_SYM, source),
         source,
         object,
         @ceedling[:file_path_utils].form_test_build_list_filepath( object ) )
@@ -109,7 +110,7 @@ class Gcov < Plugin
 
     coverage_sources.each do |source|
       basename         = File.basename(source)
-      command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, basename)
+      command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, [], [basename])
       shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
       coverage_results = shell_results[:output]
 
