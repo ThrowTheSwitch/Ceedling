@@ -69,11 +69,7 @@ class Gcov < Plugin
       message
     end
 
-    if (@ceedling[:task_invoker].invoked?(/^#{GCOV_TASK_ROOT}(all|delta)/))
-      report_coverage_results_summary(@ceedling[:test_invoker].sources)
-    else
-      report_per_file_coverage_results(@ceedling[:test_invoker].sources)
-    end
+    report_per_file_coverage_results(@ceedling[:test_invoker].sources)
   end
 
   def summary
@@ -95,10 +91,6 @@ class Gcov < Plugin
   end
 
   private ###################################
-
-  def report_coverage_results_summary(sources)
-
-  end
 
   def report_per_file_coverage_results(sources)
     banner = @ceedling[:plugin_reportinator].generate_banner "#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY"
