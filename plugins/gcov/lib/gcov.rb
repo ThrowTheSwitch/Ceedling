@@ -29,7 +29,8 @@ class Gcov < Plugin
       :collection_defines_test_and_vendor => COLLECTION_DEFINES_TEST_AND_VENDOR + ['CODE_COVERAGE']
       }
 
-    @coverage_template_all = @ceedling[:file_wrapper].read( File.join( PLUGINS_GCOV_PATH, 'template.erb') )
+    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
+    @coverage_template_all = @ceedling[:file_wrapper].read( File.join( @plugin_root, 'assets/template.erb') )
   end
 
   def generate_coverage_object_file(source, object)
