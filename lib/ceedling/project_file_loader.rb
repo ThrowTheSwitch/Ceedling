@@ -1,5 +1,5 @@
 require 'ceedling/constants'
-require 'json'
+
 
 class ProjectFileLoader
 
@@ -81,8 +81,6 @@ class ProjectFileLoader
 
     config_hash = project_hash.merge(extra_hash).merge(user_hash)
 
-#    puts JSON.pretty_generate(config_hash)
-    
     return config_hash
   end
       
