@@ -1,23 +1,34 @@
 require 'ceedling/constants'
-
+require 'json'
 
 class ProjectFileLoader
 
-  attr_reader :main_file, :user_file
+  attr_reader :main_file, :extra_file, :user_file
 
   constructor :yaml_wrapper, :stream_wrapper, :system_wrapper, :file_wrapper
 
   def setup
     @main_file = nil
+    @extra_file = nil
     @user_file = nil
     
     @main_project_filepath = ''
+    @extra_project_filepath = ''
     @user_project_filepath = ''
   end
 
 
   def find_project_files
-    # first go hunting for optional user project file by looking for environment variable and then default location on disk
+    # first go hunting for optional extra project file by looking for environment variable and then default location on disk
+    extra_filepath = @system_wrapper.env_get('CEEDLING_EXTRA_PROJECT_FILE')
+    
+    if ( not extra_filepath.nil? and @file_wrapper.exist?(extra_filepath) )
+      @extra_project_filepath = extra_filepath
+    elsif (@file_wrapper.exist?(DEFAULT_CEEDLING_EXTRA_PROJECT_FILE))
+      @extra_project_filepath = DEFAULT_CEEDLING_EXTRA_PROJECT_FILE
+    end
+    
+    # next go hunting for optional user project file by looking for environment variable and then default location on disk
     user_filepath = @system_wrapper.env_get('CEEDLING_USER_PROJECT_FILE')
     
     if ( not user_filepath.nil? and @file_wrapper.exist?(user_filepath) )
@@ -42,21 +53,35 @@ class ProjectFileLoader
     end
     
     @main_file = File.basename( @main_project_filepath )
+    @extra_file = File.basename( @extra_project_filepath ) if ( not @extra_project_filepath.empty? )
     @user_file = File.basename( @user_project_filepath ) if ( not @user_project_filepath.empty? )
   end
 
 
   def load_project_config
     config_hash = {}
-    
-    # if there's no user project file, then just provide hash from project file
-    if (@user_project_filepath.empty?)
-      config_hash = @yaml_wrapper.load(@main_project_filepath)
-    # if there is a user project file, load it too and merge it on top of the project file,
-    # superseding anything that's common between them
-    else
-      config_hash = (@yaml_wrapper.load(@main_project_filepath)).merge(@yaml_wrapper.load(@user_project_filepath))
+    project_hast = {}
+    extra_hash = {}
+    user_hash = {}
+
+    # load project hash from project file if existing
+    if ( not @main_project_filepath.empty? )
+      project_hash = @yaml_wrapper.load(@main_project_filepath)
     end
+
+    # load extra hash from extra file if existing
+    if ( not @extra_project_filepath.empty? )
+      extra_hash = @yaml_wrapper.load(@extra_project_filepath)
+    end
+
+    # load user hash from user file if existing
+    if ( not @user_project_filepath.empty? )
+      user_hash = @yaml_wrapper.load(@user_project_filepath)
+    end
+
+    config_hash = project_hash.merge(extra_hash).merge(user_hash)
+
+#    puts JSON.pretty_generate(config_hash)
     
     return config_hash
   end

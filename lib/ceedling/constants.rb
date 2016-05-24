@@ -58,6 +58,7 @@ CMOCK_H_FILE    = 'cmock.h'
 
 
 DEFAULT_CEEDLING_MAIN_PROJECT_FILE = 'project.yml' unless defined?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE) # main project file
+DEFAULT_CEEDLING_EXTRA_PROJECT_FILE = 'extra.yml' unless defined?(DEFAULT_CEEDLING_EXTRA_PROJECT_FILE) # extra config file
 DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    unless defined?(DEFAULT_CEEDLING_USER_PROJECT_FILE) # supplemental user config file
 
 INPUT_CONFIGURATION_CACHE_FILE     = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
