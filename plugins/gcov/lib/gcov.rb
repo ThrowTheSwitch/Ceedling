@@ -19,8 +19,8 @@ class Gcov < Plugin
   attr_reader :config
 
   def setup
-    @result_list = []  
-  
+    @result_list = []
+
     @config = {
       :project_test_build_output_path     => GCOV_BUILD_OUTPUT_PATH,
       :project_test_results_path          => GCOV_RESULTS_PATH,
@@ -28,14 +28,16 @@ class Gcov < Plugin
       :defines_test                       => DEFINES_TEST + ['CODE_COVERAGE'],
       :collection_defines_test_and_vendor => COLLECTION_DEFINES_TEST_AND_VENDOR + ['CODE_COVERAGE']
       }
-    
-    @coverage_template_all = @ceedling[:file_wrapper].read( File.join( PLUGINS_GCOV_PATH, 'template.erb') )
+
+    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
+    @coverage_template_all = @ceedling[:file_wrapper].read( File.join( @plugin_root, 'assets/template.erb') )
   end
 
   def generate_coverage_object_file(source, object)
-    compile_command = 
+    compile_command =
       @ceedling[:tool_executor].build_command_line(
         TOOLS_GCOV_COMPILER,
+        @ceedling[:flaginator].flag_down( OPERATION_COMPILE_SYM, GCOV_SYM, source),
         source,
         object,
         @ceedling[:file_path_utils].form_test_build_list_filepath( object ) )
@@ -45,12 +47,12 @@ class Gcov < Plugin
 
   def post_test_fixture_execute(arg_hash)
     result_file = arg_hash[:result_file]
-  
+
     if ((result_file =~ /#{GCOV_RESULTS_PATH}/) and (not @result_list.include?(result_file)))
       @result_list << arg_hash[:result_file]
     end
   end
-    
+
   def post_build
     return if (not @ceedling[:task_invoker].invoked?(/^#{GCOV_TASK_ROOT}/))
 
@@ -60,18 +62,14 @@ class Gcov < Plugin
       :header => GCOV_ROOT_NAME.upcase,
       :results => results
     }
-    
+
     @ceedling[:plugin_reportinator].run_test_results_report(hash) do
       message = ''
       message = 'Unit test failures.' if (results[:counts][:failed] > 0)
       message
     end
-    
-    if (@ceedling[:task_invoker].invoked?(/^#{GCOV_TASK_ROOT}(all|delta)/))
-      report_coverage_results_summary(@ceedling[:test_invoker].sources)
-    else
-      report_per_file_coverage_results(@ceedling[:test_invoker].sources)
-    end
+
+    report_per_file_coverage_results(@ceedling[:test_invoker].sources)
   end
 
   def summary
@@ -85,18 +83,9 @@ class Gcov < Plugin
     }
 
     @ceedling[:plugin_reportinator].run_test_results_report(hash)
-    
-    # coverage results
-    # command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT_COVSRC)
-    # shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
-    # report_coverage_results_all(shell_result[:output])
   end
 
   private ###################################
-
-  def report_coverage_results_summary(sources)
-
-  end
 
   def report_per_file_coverage_results(sources)
     banner = @ceedling[:plugin_reportinator].generate_banner "#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY"
@@ -108,7 +97,7 @@ class Gcov < Plugin
 
     coverage_sources.each do |source|
       basename         = File.basename(source)
-      command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, basename)
+      command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, [], [basename])
       shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
       coverage_results = shell_results[:output]
 
