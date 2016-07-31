@@ -151,3 +151,14 @@ namespace REFRESH_SYM do
 end
 end
 
+namespace UTILS_SYM do
+  
+  desc "Create gcov code coverage html report"
+  task GCOV_SYM do
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, nil)
+    puts 'Creating html report of gcov results...'
+    @ceedling[:tool_executor].exec(command[:line], command[:options])
+  end
+  
+end
+
