@@ -30,5 +30,14 @@
       - -b
       - -o "$": GCOV_BUILD_OUTPUT_PATH
       - "\"${1}\""
-
+  :gcov_post_report:
+    :executable: gcovr
+    :optional: TRUE
+    :arguments:
+        - -p
+        - -b
+        - -e '^vendor.*|^build.*|^test.*|^lib.*'
+        - --html
+        - -r .
+        - -o GcovCoverageResults.html
 ...
