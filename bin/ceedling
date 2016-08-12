@@ -181,7 +181,11 @@ else
       end
 
     rescue
-      raise "Could Not Find PTY or POPEN4 gem. Install one or both like 'gem install pty'"
+
+      #if neither of these libraries were available, we can just shell out to the command and collect results
+      def spawn_command(cmd, &block)
+        block.call( `#{cmd}` )
+      end
     end
 
   end
