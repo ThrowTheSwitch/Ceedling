@@ -9,6 +9,7 @@ gem "constructor"
 gem "diy"
 gem "rr"
 gem "thor"
+gem "curses"
 
 #gem "pty",    :platforms => [ :ruby ] #automatically included on *nix platforms
 gem "popen4", :platforms => [ :mswin ]
