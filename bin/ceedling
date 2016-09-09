@@ -269,7 +269,6 @@ else
   end
 
   #run rake and capture all the output
-  okay_to_print = !(options[:pretend_we_are_gtest])
   options[:cmd] = if (options[:pretest].nil? || options[:pretest].empty?)
     "rake #{options[:args]}"
   else
@@ -277,8 +276,7 @@ else
   end
   spawn_command(options[:cmd]) do |stdout|
     stdout.each do |line|
-      okay_to_print = true if ((options[:pretend_we_are_gtest]) && (line.match(/\[\=+\]/)))
-      if (okay_to_print)
+      if (!options[:pretend_we_are_gtest] || (line.match(/^\[.*\]/)) || (line.match(/\d+ FAILED TESTS/)))
         f.puts(line) if (options[:outfile])
         if (options[:args].strip == "-T")
           line.gsub!(/(?<!\w)rake(?!\w)/,'ceedling')
