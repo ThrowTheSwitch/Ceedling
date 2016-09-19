@@ -79,6 +79,11 @@ class Configurator
   end
   
   
+  def populate_unity_defaults(config)
+      unity = config[:unity] || {}
+      @unity_runner_config = unity.merge(config[:test_runner] || {})
+  end
+
   def populate_cmock_defaults(config)
     # cmock has its own internal defaults handling, but we need to set these specific values
     # so they're present for the build environment to access;
@@ -106,13 +111,12 @@ class Configurator
       cmock[:includes].uniq!
     end
 
-    @runner_config = cmock.merge(config[:test_runner] || {})
     @cmock_builder.manufacture(cmock)
   end
   
   
   def get_runner_config
-    @runner_config
+    @unity_runner_config
   end
 
 
