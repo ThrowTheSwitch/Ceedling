@@ -185,7 +185,7 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         `bundle exec ruby -S rake module:create[ponies] 2>&1`
         output = `bundle exec ruby -S rake test:all 2>&1`
-        expect(output).to match(/No Tests Executed\s+1/)
+        expect(output).to match(/No tests executed/i)
       end
     end
   end
