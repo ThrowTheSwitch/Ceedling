@@ -164,7 +164,7 @@ else
       end
     end
 
-  rescue
+  rescue LoadError
 
     begin
 
@@ -180,7 +180,7 @@ else
         end
       end
 
-    rescue
+    rescue LoadError
 
       #if neither of these libraries were available, we can just shell out to the command and collect results
       def spawn_command(cmd, &block)
