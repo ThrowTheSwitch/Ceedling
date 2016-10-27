@@ -10,13 +10,13 @@ class ConfiguratorPlugins
     @script_plugins = []
   end
 
-  
+
   def add_load_paths(config)
     plugin_paths = {}
-    
+
     config[:plugins][:load_paths].each do |root|
       @system_wrapper.add_load_path( root ) if ( not @file_wrapper.directory_listing( File.join( root, '*.rb' ) ).empty? )
-    
+
       config[:plugins][:enabled].each do |plugin|
         path = File.join(root, plugin, "lib")
 
@@ -26,15 +26,15 @@ class ConfiguratorPlugins
         end
       end
     end
-    
+
     return plugin_paths
   end
-  
-  
+
+
   # gather up and return .rake filepaths that exist on-disk
   def find_rake_plugins(config)
     plugins_with_path = []
-    
+
     config[:plugins][:load_paths].each do |root|
       config[:plugins][:enabled].each do |plugin|
         rake_plugin_path = File.join(root, plugin, "#{plugin}.rake")
@@ -44,7 +44,7 @@ class ConfiguratorPlugins
         end
       end
     end
-    
+
     return plugins_with_path
   end
 
@@ -56,21 +56,21 @@ class ConfiguratorPlugins
         script_plugin_path = File.join(root, plugin, "lib", "#{plugin}.rb")
 
 
-        if @file_wrapper.exist?(script_plugin_path) or @file_wrapper.exist?(old_script_plugin_path)
-          @script_plugins << plugin 
+        if @file_wrapper.exist?(script_plugin_path)
+          @script_plugins << plugin
         end
 
       end
     end
-    
-    return @script_plugins 
+
+    return @script_plugins
   end
-  
-  
+
+
   # gather up and return configuration .yml filepaths that exist on-disk
   def find_config_plugins(config)
     plugins_with_path = []
-    
+
     config[:plugins][:load_paths].each do |root|
       config[:plugins][:enabled].each do |plugin|
         config_plugin_path = File.join(root, plugin, "config", "#{plugin}.yml")
@@ -81,15 +81,15 @@ class ConfiguratorPlugins
         end
       end
     end
-    
-    return plugins_with_path    
+
+    return plugins_with_path
   end
 
-  
+
   # gather up and return default .yml filepaths that exist on-disk
   def find_plugin_defaults(config)
     defaults_with_path = []
-    
+
     config[:plugins][:load_paths].each do |root|
       config[:plugins][:enabled].each do |plugin|
         default_path = File.join(root, plugin, 'config', 'defaults.yml')
@@ -100,7 +100,7 @@ class ConfiguratorPlugins
       end
     end
 
-    return defaults_with_path    
+    return defaults_with_path
   end
-  
+
 end
