@@ -2,14 +2,14 @@
 module Ceedling
   module Version
     # @private
-    GEM = "0.21.0"
+    GEM = "0.22.0"
     # @private
     CEEDLING = GEM
     # @private
-    CEXCEPTION = "1.3.17"
+    CEXCEPTION = "1.3.1"
     # @private
-    CMOCK = "2.4.2"
+    CMOCK = "2.4.3"
     # @private
-    UNITY = "2.3.2"
+    UNITY = "2.4.0"
   end
 end
