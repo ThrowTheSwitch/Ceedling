@@ -190,12 +190,17 @@ else
 
   end
 
-  require 'curses'
   require 'yaml'
   require 'rbconfig'
 
-  Curses.init_screen()
-  cols = Curses.cols
+  #determine the width of the screen
+  cols = 80
+  begin
+    require 'curses'
+    Curses.init_screen()
+    cols = Curses.cols
+  rescue LoadError
+  end
 
   #determine platform
   platform = begin
