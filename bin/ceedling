@@ -184,7 +184,7 @@ else
 
       #if neither of these libraries were available, we can just shell out to the command and collect results
       def spawn_command(cmd, &block)
-        block.call( `#{cmd}` )
+        block.call( StringIO.new(`#{cmd}`) )
       end
     end
 
