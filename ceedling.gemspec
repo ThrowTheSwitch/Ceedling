@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency "thor", ">= 0.14.5"
   s.add_dependency "rake", ">= 0.8.7"
-  s.add_dependency "curses", ">= 1.0.0"
+  # s.add_dependency "curses", ">= 1.0.0"
 
   # Files needed from submodules
   s.files         = []
