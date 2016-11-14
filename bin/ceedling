@@ -132,6 +132,15 @@ unless (File.exists?("project.yml"))
       puts " - Execute 'rake -T' to view available test & build tasks"
       puts ''
     end
+
+    desc "version", "return the version of the tools installed"
+    def version()
+      require 'ceedling/version.rb'
+      puts "  Ceedling::   #{Ceedling::Version::CEEDLING}"
+      puts "  CMock::      #{Ceedling::Version::CMOCK}"
+      puts "  Unity::      #{Ceedling::Version::UNITY}"
+      puts "  CException:: #{Ceedling::Version::CEXCEPTION}"
+    end
   end
 
   if (ARGV[0] =~ /^\-T$/)

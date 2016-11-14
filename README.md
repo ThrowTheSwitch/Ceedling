@@ -29,107 +29,38 @@ If bundler isn't installed on your system or you run into problems, you might ha
 
     > sudo gem install bundler
 
-Using Ceedling inside of a project
-==================================
+Pulling Ceedling inside a Project
+=================================
 
 Ceedling can deploy all of its guts into a folder. This allows it
 to be used without having to worry about external dependencies.
+You don't have to worry about Ceedling changing for this particular
+project just because you updated your gems.
 
-    ceedling new [your new project name]
+    ceedling new YourNewProjectName
 
-Using Ceedling outside of a project as a gem
-============================================
+This will install all of Unity, CMock, and Ceedling into a new folder
+named YourNewProjectName. It will also create a simple directory structure
+for you with src and test folders. SCORE! It's also creates a simple
+rakefile and project.yml file that you can tweak to your own needs.
 
-Ceedling can also be used as a gem. The following Rakefile is the
-bare minimum required in order to use Ceedling this way:
+It'll also include documentation for all of these tools, unless you
+specify --nodocs at when you issue the command above... then it skips
+that step for you.
 
-    require 'ceedling'
-    Ceedling.load_project
+Using Ceedling From A Ruby Gem
+==============================
 
-If you want to load a Ceedling project YAML file other than the default `project.yml` (i.e. `./my_config.yml`), you can do:
+Ceedling can also be used as a gem. By installing it this way, you
+can automatically update to the latest version of Ceedling, Unity,
+and CMock just by running an update on your gems. Use this if you
+are only running one project OR if you feel you want to keep all
+your projects up to date.
 
-    Ceedling.load_project(config: './my_config.yml')
+    ceedling new YourNewProjectName --as_gem
 
-Additionally, a project.yml is required. Here is one to get you
-started:
+This creates a new folder named YourNewProjectName. Inside it will be your
+shiny new project file, rakefile, and a couple of src and test directories
+to get you started. You can then tweak all of those things to your heart's
+content.
 
-    ---
-    :project:
-      :use_exceptions: FALSE
-      :use_test_preprocessor: TRUE
-      :use_deep_dependencies: TRUE
-      :build_root: build
-    #  :release_build: TRUE
-      :test_file_prefix: test_
-
-    #:release_build:
-    #  :output: MyApp.out
-    #  :use_assembly: FALSE
-
-    :environment:
-
-    :extension:
-      :executable: .out
-
-    :paths:
-      :test:
-        - +:test/**
-        - -:test/support
-      :source:
-        - src/**
-      :support:
-        - test/support
-
-    :defines:
-      # in order to add common defines:
-      #  1) remove the trailing [] from the :common: section
-      #  2) add entries to the :common: section (e.g. :test: has TEST defined)
-      :commmon: &common_defines []
-      :test:
-        - *common_defines
-        - TEST
-      :test_preprocess:
-        - *common_defines
-        - TEST
-
-    :cmock:
-      :when_no_prototypes: :warn
-      :enforce_strict_ordering: TRUE
-      :plugins:
-        - :ignore
-      :treat_as:
-        uint8:    HEX8
-        uint16:   HEX16
-        uint32:   UINT32
-        int8:     INT8
-        bool:     UINT8
-
-    #:tools:
-    # Ceedling defaults to using gcc for compiling, linking, etc.
-    # As [:tools] is blank, gcc will be used (so long as it's in your system path)
-    # See documentation to configure a given toolchain for use
-
-    :plugins:
-      :load_paths:
-        # This is required to use builtin ceedling plugins
-        - "#{Ceedling.load_path}"
-        # Uncomment this and create the directory in order to use your own
-        # custom ceedling plugins
-        # - ceedling_plugins
-      :enabled:
-        # These plugins ship with Ceedling.
-        - stdout_pretty_tests_report
-        # - stdout_ide_tests_report # IDE parseable output
-        # - teamcity_tests_report # TeamCity CI output (only enabled in TeamCity builds)
-        - module_generator # Adds tasks for creating code module files
-    ...
-
-Finally, you'll need to create something like the following directory structure. This one matches the project.yml
-defined above:
-
-    ./test
-    ./test/support
-    ./src
-    ./project.yml
-    ./Rakefile
-    ./build
