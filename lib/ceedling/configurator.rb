@@ -9,14 +9,14 @@ class Configurator
 
   attr_reader :project_config_hash, :script_plugins, :rake_plugins
   attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
-  
+
   constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
     @project_logging   = false
     @project_debug     = false
     @project_verbosity = Verbosity::NORMAL
     @sanity_checks     = TestResultsSanityChecks::NORMAL
   end
-  
+
   def setup
     # special copy of cmock config to provide to cmock for construction
     @cmock_config_hash = {}
@@ -25,23 +25,23 @@ class Configurator
     # in eval() statements in build() have something of proper scope and persistence to reference
     @project_config_hash = {}
     @project_config_hash_backup = {}
-    
+
     @script_plugins = []
     @rake_plugins   = []
   end
-  
-  
+
+
   def replace_flattened_config(config)
     @project_config_hash.merge!(config)
     @configurator_setup.build_constants_and_accessors(@project_config_hash, binding())
   end
 
-  
+
   def store_config
     @project_config_hash_backup = @project_config_hash.clone
   end
-  
-  
+
+
   def restore_config
     @project_config_hash = @project_config_hash_backup
     @configurator_setup.build_constants_and_accessors(@project_config_hash, binding())
@@ -72,13 +72,13 @@ class Configurator
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST )
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_PREPROCESSORS ) if (config[:project][:use_test_preprocessor])
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_DEPENDENCIES )  if (config[:project][:use_deep_dependencies])
-    
+
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE )              if (config[:project][:release_build])
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_ASSEMBLER )    if (config[:project][:release_build] and config[:release_build][:use_assembly])
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_DEPENDENCIES ) if (config[:project][:release_build] and config[:project][:use_deep_dependencies])
   end
-  
-  
+
+
   def populate_unity_defaults(config)
       unity = config[:unity] || {}
       @runner_config = unity.merge(@runner_config || config[:test_runner] || {})
@@ -92,10 +92,10 @@ class Configurator
 
     # yes, we're duplicating the default mock_prefix in cmock, but it's because we need CMOCK_MOCK_PREFIX always available in Ceedling's environment
     cmock[:mock_prefix] = 'Mock' if (cmock[:mock_prefix].nil?)
-    
+
     # just because strict ordering is the way to go
     cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
-    
+
     cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
     cmock[:verbosity] = @project_verbosity                                                  if (cmock[:verbosity].nil?)
 
@@ -105,7 +105,7 @@ class Configurator
     cmock[:plugins].uniq!
 
     cmock[:unity_helper] = false                     if (cmock[:unity_helper].nil?)
-    
+
     if (cmock[:unity_helper])
       cmock[:includes] << File.basename(cmock[:unity_helper])
       cmock[:includes].uniq!
@@ -115,8 +115,8 @@ class Configurator
 
     @cmock_builder.manufacture(cmock)
   end
-  
-  
+
+
   def get_runner_config
     @runner_config
   end
@@ -128,7 +128,7 @@ class Configurator
     config[:tools].each_key do |name|
       tool = config[:tools][name]
 
-      # populate name if not given      
+      # populate name if not given
       tool[:name] = name.to_s if (tool[:name].nil?)
 
       # handle inline ruby string substitution in executable
@@ -146,8 +146,8 @@ class Configurator
       tool[:optional] = false if (tool[:optional].nil?)
     end
   end
-  
-  
+
+
   def tools_supplement_arguments(config)
     tools_name_prefix = 'tools_'
     config[:tools].each_key do |name|
@@ -171,49 +171,49 @@ class Configurator
       path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
       FilePathUtils::standardize(path)
     end
-    
+
     paths_hash = @configurator_plugins.add_load_paths(config)
-  
+
     @rake_plugins   = @configurator_plugins.find_rake_plugins(config)
     @script_plugins = @configurator_plugins.find_script_plugins(config)
     config_plugins  = @configurator_plugins.find_config_plugins(config)
     plugin_defaults = @configurator_plugins.find_plugin_defaults(config)
-    
+
     config_plugins.each do |plugin|
       config.deep_merge( @yaml_wrapper.load(plugin) )
     end
-    
+
     plugin_defaults.each do |defaults|
       @configurator_builder.populate_defaults( config, @yaml_wrapper.load(defaults) )
     end
-    
+
     # special plugin setting for results printing
     config[:plugins][:display_raw_test_results] = true if (config[:plugins][:display_raw_test_results].nil?)
-    
+
     paths_hash.each_pair { |name, path| config[:plugins][name] = path }
   end
 
-  
+
   def eval_environment_variables(config)
     config[:environment].each do |hash|
       key   = hash.keys[0]
       value = hash[key]
       items = []
-            
+
       interstitial = ((key == :path) ? File::PATH_SEPARATOR : '')
       items = ((value.class == Array) ? hash[key] : [value])
-      
+
       items.each { |item| item.replace( @system_wrapper.module_eval( item ) ) if (item =~ RUBY_STRING_REPLACEMENT_PATTERN) }
       hash[key] = items.join( interstitial )
-      
+
       @system_wrapper.env_set( key.to_s.upcase, hash[key] )
     end
   end
 
-  
+
   def eval_paths(config)
     # [:plugins]:[load_paths] already handled
-    
+
     paths = [ # individual paths that don't follow convention processed below
       config[:project][:build_root],
       config[:release_build][:artifacts]]
@@ -223,16 +223,16 @@ class Configurator
     config[:paths].each_pair { |collection, paths| eval_path_list( paths ) }
 
     config[:files].each_pair { |collection, files| eval_path_list( files ) }
-    
+
     # all other paths at secondary hash key level processed by convention:
     # ex. [:toplevel][:foo_path] & [:toplevel][:bar_paths] are evaluated
-    config.each_pair { |parent, child| eval_path_list( collect_path_list( child ) ) }    
+    config.each_pair { |parent, child| eval_path_list( collect_path_list( child ) ) }
   end
-  
-  
+
+
   def standardize_paths(config)
     # [:plugins]:[load_paths] already handled
-    
+
     paths = [ # individual paths that don't follow convention processed below
       config[:project][:build_root],
       config[:release_build][:artifacts]] # cmock path in case it was explicitly set in config
@@ -247,45 +247,45 @@ class Configurator
 
     config[:files].each_pair { |collection, files| files.each{ |path| FilePathUtils::standardize( path ) } }
 
-    config[:tools].each_pair { |tool, config| FilePathUtils::standardize( config[:executable] ) }
-    
+    config[:tools].each_pair { |tool, config| FilePathUtils::standardize( config[:executable] ) if (config.include? :executable) }
+
     # all other paths at secondary hash key level processed by convention:
     # ex. [:toplevel][:foo_path] & [:toplevel][:bar_paths] are standardized
     config.each_pair do |parent, child|
       collect_path_list( child ).each { |path| FilePathUtils::standardize( path ) }
-    end    
+    end
   end
 
 
   def validate(config)
     # collect felonies and go straight to jail
     raise if (not @configurator_setup.validate_required_sections( config ))
-    
+
     # collect all misdemeanors, everybody on probation
     blotter = []
     blotter << @configurator_setup.validate_required_section_values( config )
     blotter << @configurator_setup.validate_paths( config )
     blotter << @configurator_setup.validate_tools( config )
     blotter << @configurator_setup.validate_plugins( config )
-    
+
     raise if (blotter.include?( false ))
   end
-    
-  
+
+
   # create constants and accessors (attached to this object) from given hash
   def build(config, *keys)
     # create flattened & expanded configuration hash
     built_config = @configurator_setup.build_project_config( config, @configurator_builder.flattenify( config ) )
-    
+
     @project_config_hash = built_config.clone
     store_config()
 
     @configurator_setup.build_constants_and_accessors(built_config, binding())
-    
+
     # top-level keys disappear when we flatten, so create global constants & accessors to any specified keys
     keys.each do |key|
       hash = { key => config[key] }
-      @configurator_setup.build_constants_and_accessors(hash, binding())      
+      @configurator_setup.build_constants_and_accessors(hash, binding())
     end
   end
 
@@ -297,30 +297,30 @@ class Configurator
 
     # flatten our addition hash
     config_more_flattened = @configurator_builder.flattenify( config_more )
-    
+
     # merge our flattened hash with built hash from previous build
     @project_config_hash.deep_merge!( config_more_flattened )
     store_config()
 
     # create more constants and accessors
     @configurator_setup.build_constants_and_accessors(config_more_flattened, binding())
-    
+
     # recreate constants & update accessors with new merged, base values
     config_more.keys.each do |key|
       hash = { key => config_base[key] }
       @configurator_setup.build_constants_and_accessors(hash, binding())
     end
   end
-    
-  
+
+
   def insert_rake_plugins(plugins)
     plugins.each do |plugin|
       @project_config_hash[:project_rakefile_component_files] << plugin
     end
   end
-  
+
   ### private ###
-  
+
   private
 
   def collect_path_list( container )
@@ -328,12 +328,12 @@ class Configurator
     container.each_key { |key| paths << container[key] if (key.to_s =~ /_path(s)?$/) } if (container.class == Hash)
     return paths.flatten
   end
-  
+
   def eval_path_list( paths )
     paths.flatten.each do |path|
       path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
     end
   end
-  
-  
+
+
 end
