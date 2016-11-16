@@ -124,7 +124,7 @@ source file (plus two C header files) and from the nature of its
 implementation - Unity will build in any C toolchain and is configurable
 for even the very minimalist of processors.
 
-[Unity]: http://unity.sourceforge.net/
+[Unity]: http://github.com/ThrowTheSwitch/Unity
 [test]: http://en.wikipedia.org/wiki/Unit_testing
 
 [CMock] is a tool written in Ruby able to generate entire
@@ -132,7 +132,7 @@ for even the very minimalist of processors.
 functions are invaluable in [interaction-based unit testing][ut].
 CMock's generated C code uses Unity.
 
-[CMock]: http://cmock.sourceforge.net/
+[CMock]: http://github.com/ThrowTheSwitch/CMock
 [mock]: http://en.wikipedia.org/wiki/Mock_object
 [ut]: http://martinfowler.com/articles/mocksArentStubs.html
 
@@ -142,7 +142,7 @@ CMock's generated C code uses Unity.
 cleaner and preferable alternative to managing and passing error codes
 up your return call trace.
 
-[CException]: http://cexception.sourceforge.net/
+[CException]: http://github.com/ThrowTheSwitch/CException
 [exn]: http://en.wikipedia.org/wiki/Exception_handling
 [setjmp]: http://en.wikipedia.org/wiki/Setjmp.h
 
@@ -164,71 +164,19 @@ As a [Ruby gem](http://docs.rubygems.org/read/chapter/1):
 
 1. [Download and install Ruby](http://www.ruby-lang.org/en/downloads/)
 
-2. Use Ruby's command line gem package manager to install Rake:
-   `gem install rake`
-
-3. Use Ruby's command line gem package manager to install Ceedling:
+2. Use Ruby's command line gem package manager to install Ceedling:
    `gem install ceedling` {text:line-break} (Unity, CMock,
    and CException come along with Ceedling for free)
 
-4. Execute Ceedling at command line to create example project
+3. Execute Ceedling at command line to create example project
    or an empty Ceedling project in your filesystem (executing
    `ceedling help` first is, well, helpful).
 
 Gem install notes:
 
-1. Steps 1-3 are a one time affair for your local environment.
-   When steps 1-3 are completed once, only step 4 is needed for
+1. Steps 1-2 are a one time affair for your local environment.
+   When steps 1-2 are completed once, only step 3 is needed for
    each new project.
-
-
-
-Alternatively, from scratch:
-
-1. [Download and install Ruby](http://www.ruby-lang.org/en/downloads/)
-
-2. Use Ruby's command line gem package manager to install Rake:
-   `gem install rake`
-
-3. Grab the Ceedling package (from sourceforge as download
-   or from svn) and place in your filesystem {text:line-break}
-   (it already contains Unity, CMock, and CException)
-
-4. Create an empty build directory for your project {text:line-break}
-   (Ceedling will fill out the directory structure below the
-   build root when executed)
-
-5. Create a simple Rakefile (`rakefile.rb`) that contains
-   a load call to Ceedling on your filesystem and a default task
-   (tasks available to tie to `default` are listed in the next
-   section):
-
-    ```ruby
-        load '<path>/ceedling/lib/rakefile.rb'
-        # ex. run all tests & build release artifact
-        task :default => ['test:all', :release]
-            # namespaced tasks must be quoted
-            # top-level tasks are Ruby symbols denoted by a leading ':'`
-    ```
-
-6. Create your project YAML file (more on this later in this document).
-   `project.yml` is the default file name Ceedling recognizes
-   in the working directory from which Rake is run (Rake is the
-   tool we actually use to take advantage of what Ceedling provides).
-
-
-From scratch install notes:
-
-1. Steps 1-3 are a one time affair for your local environment.
-   When steps 1-3 are completed once, only steps 4-6 are needed
-   for each new project.
-
-2. See the sample starter project for a working setup. When steps
-   1-3 are complete and assuming you have gcc in your path (Ceedling's
-   default toolchain), you will only need to edit the path within
-   the sample Rakefile (see step 5 above) to yield a working,
-   albeit simple, project. The default task need not be defined,
-   but it's not a bad idea to do so.
 
 
 
