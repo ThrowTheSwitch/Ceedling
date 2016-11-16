@@ -244,23 +244,29 @@ else
 
   #merge in project settings if they can be found here
   yaml_options = YAML.load_file('project.yml')
-  options[:pretend_we_are_gtest] = (yaml_options[:plugins][:enabled].include? :stdout_gtestlike_tests_report)
-  options[:add_path] = yaml_options[:paths][:tools] || []
+  options[:pretend_we_are_gtest] = (yaml_options[:plugins][:enabled].include? :stdout_gtestlike_tests_report) if (yaml_options[:plugins] && yaml_options[:plugins][:enabled])
+  if (yaml_options[:paths])
+    options[:add_path] = yaml_options[:paths][:tools] || []
+  else
+    options[:add_path] = []
+  end
 
   #sort through command line options
   options[:args]
   ARGV.each do |v|
     case(v)
-      when /^(?:new|examples?)$/
+      when /^(?:new|examples?|templates?)$/
         puts "\nOops. You called ceedling with argument '#{v}'.\n" +
              "      This is an operation that will create a new project... \n" +
              "      but it looks like you're already in a project. If you really \n" +
              "      want to do this, try moving to an empty folder.\n\n"
         abort
-      when /--gtest/
+      when /^--gtest/
         options[:pretend_we_are_gtest] = true
-      when /--debug/
+      when /^--debug/
         options[:outfile] = "debug.txt"
+      when /^help$/
+        options[:args] += "-T "
       else
         options[:args] += v + " "
     end

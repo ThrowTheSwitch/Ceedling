@@ -2,7 +2,7 @@
 module Ceedling
   module Version
     # @private
-    GEM = "0.22.0"
+    GEM = "0.24.0"
     # @private
     CEEDLING = GEM
     # @private
