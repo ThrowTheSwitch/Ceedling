@@ -73,6 +73,6 @@ END {
     # tell all our plugins the build is done and process results
 	  @ceedling[:plugin_manager].post_build
 	  @ceedling[:plugin_manager].print_plugin_failures
-	  exit(1) if (@ceedling[:plugin_manager].plugins_failed?)
+	  #exit(1) if (@ceedling[:plugin_manager].plugins_failed?) #do NOT call this. It will keep caller from reporting failures
 	end
 }
