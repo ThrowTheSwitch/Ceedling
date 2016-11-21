@@ -168,11 +168,11 @@ module CeedlingTestCases
   def can_test_projects
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("example_file.h"), 'src'
-        FileUtils.cp test_asset_path("example_file.c"), 'src'
-        FileUtils.cp test_asset_path("test_example_file.c"), 'test'
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
 
-        output = `ceedling test:all`
+        output = `bundle exec ruby -S ceedling test:all`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+1/)
@@ -184,12 +184,12 @@ module CeedlingTestCases
   def can_use_the_module_plugin
     @c.with_context do
       Dir.chdir @proj_name do
-        output = `ceedling module:create[ponies]`
+        output = `bundle exec ruby -S ceedling module:create[ponies]`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Generate Complete/i)
-        output = `ceedling test:all`
+        output = `bundle exec ruby -S ceedling test:all`
         expect($?.exitstatus).to match(0)
-        expect(output).to match(/No tests executed/)
+        expect(output).to match(/Need to Implement ponies/)
       end
     end
   end
