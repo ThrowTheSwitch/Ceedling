@@ -81,7 +81,7 @@ describe "Ceedling" do
       it "should be testable" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = `bundle exec ruby -S rake test:all`
+            @output = `bundle exec ruby -S ceedling test:all`
             expect(@output).to match(/TESTED:\s+47/)
             expect(@output).to match(/PASSED:\s+47/)
           end
@@ -104,7 +104,7 @@ describe "Ceedling" do
     #   it "should be testable" do
     #     @c.with_context do
     #       Dir.chdir "blinky" do
-    #         @output = `bundle exec ruby -S rake test:all`
+    #         @output = `bundle exec ruby -S ceedling test:all`
     #         expect(@output).to match(/TESTED:\s+7/)
     #         expect(@output).to match(/PASSED:\s+7/)
     #       end
