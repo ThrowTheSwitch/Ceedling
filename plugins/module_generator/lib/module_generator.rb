@@ -26,6 +26,8 @@ class ModuleGenerator < Plugin
       :path_inc => MODULE_GENERATOR_SOURCE_ROOT.gsub('\\', '/').sub(/^\//, '').sub(/\/$/, ''),
       :path_tst => MODULE_GENERATOR_TEST_ROOT.gsub('\\', '/').sub(/^\//, '').sub(/\/$/, ''),
       :pattern => optz[:pattern],
+      :test_prefix => PROJECT_TEST_FILE_PREFIX,
+      :mock_prefix => CMOCK_MOCK_PREFIX,
     }
   end
 
