@@ -173,6 +173,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file.c"), 'test'
 
         output = `bundle exec ruby -S ceedling test:all`
+        puts `gem list`
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+1/)
         expect(output).to match(/IGNORED:\s+0/)
