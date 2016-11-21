@@ -95,7 +95,7 @@ class Generator
       shell_result = @tool_executor.exec( command[:line], command[:options] )
     rescue ShellExecutionException => ex
       shell_result = ex.shell_result
-      raise ''
+      raise ex
     ensure
       arg_hash[:shell_result] = shell_result
       @plugin_manager.post_compile_execute(arg_hash)

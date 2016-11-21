@@ -12,7 +12,7 @@ class SystemWrapper
   def windows?
     return SystemWrapper.windows?
   end
-  
+
   def module_eval(string)
     return Object.module_eval("\"" + string + "\"")
   end
@@ -32,7 +32,7 @@ class SystemWrapper
   def env_set(name, value)
     ENV[name] = value
   end
-  
+
   def env_get(name)
     return ENV[name]
   end
@@ -42,35 +42,42 @@ class SystemWrapper
   end
 
   def shell_backticks(command)
+    retval = `#{command}`.freeze
+    $exit_code = ($?.exitstatus).freeze
+    $stdout.flush
+    $stderr.flush
     return {
-      :output    => `#{command}`.freeze,
-      :exit_code => ($?.exitstatus).freeze
+      :output    => retval.freeze,
+      :exit_code => $exit_code.freeze
     }
   end
 
   def shell_system(command)
     system( command )
+    $exit_code = ($?.exitstatus).freeze
+    $stdout.flush
+    $stderr.flush
     return {
-      :output    => ''.freeze,
-      :exit_code => ($?.exitstatus).freeze
+      :output    => "".freeze,
+      :exit_code => $exit_code.freeze
     }
   end
-  
+
   def add_load_path(path)
     $LOAD_PATH.unshift(path)
   end
-  
+
   def require_file(path)
     require(path)
   end
 
   def ruby_success
-    return ($!.nil? || $!.is_a?(SystemExit) && $!.success?)
+    return ($exit_code == 0) && ($!.nil? || $!.is_a?(SystemExit) && $!.success?)
   end
 
   def constants_include?(item)
     # forcing to strings provides consistency across Ruby versions
     return Object.constants.map{|constant| constant.to_s}.include?(item.to_s)
   end
-  
+
 end

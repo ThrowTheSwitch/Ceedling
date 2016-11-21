@@ -193,7 +193,12 @@ else
 
       #if neither of these libraries were available, we can just shell out to the command and collect results
       def spawn_command(cmd, &block)
-        block.call( StringIO.new(`#{cmd}`) )
+        results = `#{cmd}`
+        if ($?.exitstatus != 0)
+          block.call( StringIO.new("ERROR: Aborted with Exit Code #{$?.exitstatus.to_s}") )
+        else
+          block.call( StringIO.new(results) )
+        end
       end
     end
 
