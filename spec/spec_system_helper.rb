@@ -172,8 +172,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src'
         FileUtils.cp test_asset_path("test_example_file.c"), 'test'
 
-        output = `bundle exec ruby -S rake test:all 2>&1`
-        sleep(3.0)
+        output = `bundle exec ruby -S ceedling test:all`
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+1/)
         expect(output).to match(/IGNORED:\s+0/)
@@ -184,9 +183,10 @@ module CeedlingTestCases
   def can_use_the_module_plugin
     @c.with_context do
       Dir.chdir @proj_name do
-        `bundle exec ruby -S rake module:create[ponies] 2>&1`
-        output = `bundle exec ruby -S rake test:all 2>&1`
+        output = `bundle exec ruby -S ceedling module:create[ponies]`
         expect(output).to match(/Generate Complete/i)
+        output = `bundle exec ruby -S ceedling test:all`
+        expect(output).to match(/No tests executed/)
       end
     end
   end
