@@ -63,9 +63,9 @@ class ToolExecutor
 
     # depending on background exec option, we shell out differently
     if (options[:background_exec] != BackgroundExec::NONE)
-      shell_result = @system_wrapper.shell_system( command_line )
+      shell_result = @system_wrapper.shell_system( command_line, options[:boom] )
     else
-      shell_result = @system_wrapper.shell_backticks( command_line )
+      shell_result = @system_wrapper.shell_backticks( command_line, options[:boom] )
     end
 
     #scrub the string for illegal output

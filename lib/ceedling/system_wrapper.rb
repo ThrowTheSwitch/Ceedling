@@ -41,21 +41,21 @@ class SystemWrapper
     return Time.now.asctime
   end
 
-  def shell_backticks(command)
+  def shell_backticks(command, boom = true)
     retval = `#{command}`.freeze
-    $exit_code = ($?.exitstatus).freeze
+    $exit_code = ($?.exitstatus).freeze if boom
     return {
       :output    => retval.freeze,
-      :exit_code => $exit_code.freeze
+      :exit_code => ($?.exitstatus).freeze
     }
   end
 
-  def shell_system(command)
+  def shell_system(command, boom = true)
     system( command )
-    $exit_code = ($?.exitstatus).freeze
+    $exit_code = ($?.exitstatus).freeze if boom
     return {
       :output    => "".freeze,
-      :exit_code => $exit_code.freeze
+      :exit_code => ($?.exitstatus).freeze
     }
   end
 
