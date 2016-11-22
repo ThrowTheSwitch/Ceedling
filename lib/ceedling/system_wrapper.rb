@@ -44,8 +44,6 @@ class SystemWrapper
   def shell_backticks(command)
     retval = `#{command}`.freeze
     $exit_code = ($?.exitstatus).freeze
-    $stdout.flush
-    $stderr.flush
     return {
       :output    => retval.freeze,
       :exit_code => $exit_code.freeze
@@ -55,8 +53,6 @@ class SystemWrapper
   def shell_system(command)
     system( command )
     $exit_code = ($?.exitstatus).freeze
-    $stdout.flush
-    $stderr.flush
     return {
       :output    => "".freeze,
       :exit_code => $exit_code.freeze
