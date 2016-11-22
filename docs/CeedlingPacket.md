@@ -322,6 +322,15 @@ Ceedling (more on this later).
   Sometimes you just need to assemble a single file doggonit. Example:
   ceedling release:assemble:foo.s
 
+* `ceedling module:create[Filename]`:
+
+  It's often helpful to create a file automatically. What's better than
+  that? Creating a source file, a header file, and a corresponding test
+  file all in one step!
+
+  There are also patterns which can be specified to automatically generate
+  a bunch of files. Try `ceedling module:create[Poodles,mch]` for example!
+
 * `ceedling logging <tasks...>`:
 
   Enable logging to <build path>/logs. Must come before test and release

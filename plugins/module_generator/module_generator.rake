@@ -5,7 +5,7 @@ namespace :module do
   task :create, :module_path do |t, args|
     files = [args[:module_path]] + (args.extras || [])
     optz = {}
-    ["dh", "dih", "mch", "mvp"].each do |pat|
+    ["dh", "dih", "mch", "mvp", "src", "test"].each do |pat|
       p = files.delete(pat)
       optz[:pattern] = p unless p.nil?
     end
@@ -16,7 +16,7 @@ namespace :module do
   task :destroy, :module_path do |t, args|
     files = [args[:module_path]] + (args.extras || [])
     optz = { :destroy => true }
-    ["dh", "dih", "mch", "mvp"].each do |pat|
+    ["dh", "dih", "mch", "mvp", "src", "test"].each do |pat|
       p = files.delete(pat)
       optz[:pattern] = p unless p.nil?
     end
