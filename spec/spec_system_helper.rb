@@ -174,9 +174,10 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:all`
         expect($?.exitstatus).to match(0)
-        expect(output).to match(/TESTED:\s+2/)
-        expect(output).to match(/PASSED:\s+1/)
-        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
       end
     end
   end
