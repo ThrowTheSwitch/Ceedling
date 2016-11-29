@@ -25,6 +25,8 @@ describe "Ceedling" do
     it { can_create_projects }
     it { contains_a_vendor_directory }
     it { contains_documentation }
+    it { can_fetch_non_project_help }
+    it { can_fetch_project_help }
     it { can_test_projects }
     it { can_use_the_module_plugin }
   end
@@ -39,6 +41,31 @@ describe "Ceedling" do
     it { can_create_projects }
     it { contains_a_vendor_directory }
     it { does_not_contain_documentation }
+    it { can_fetch_non_project_help }
+    it { can_fetch_project_help }
+    it { can_test_projects }
+    it { can_use_the_module_plugin }
+  end
+
+  describe "ugrade a project's `vendor` directory" do
+    before do
+      @c.with_context do
+        `bundle exec ruby -S ceedling new --nodocs #{@proj_name} 2>&1`
+      end
+    end
+
+    it { can_create_projects }
+    it { contains_a_vendor_directory }
+    it { does_not_contain_documentation }
+    it { can_fetch_non_project_help }
+    it { can_fetch_project_help }
+    it { can_test_projects }
+    it { can_use_the_module_plugin }
+
+    it { can_upgrade_projects }
+    it { contains_a_vendor_directory }
+    it { can_fetch_non_project_help }
+    it { can_fetch_project_help }
     it { can_test_projects }
     it { can_use_the_module_plugin }
   end
@@ -52,6 +79,8 @@ describe "Ceedling" do
 
     it { can_create_projects }
     it { does_not_contain_a_vendor_directory }
+    it { can_fetch_non_project_help }
+    it { can_fetch_project_help }
     it { can_test_projects }
     it { can_use_the_module_plugin }
   end

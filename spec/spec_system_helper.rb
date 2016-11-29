@@ -132,6 +132,21 @@ module CeedlingTestCases
     end
   end
 
+  def can_upgrade_projects
+    @c.with_context do
+      output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
+      expect($?.exitstatus).to match(0)
+      expect(output).to match(/upgraded!/i)
+      Dir.chdir @proj_name do
+        expect(File.exists?("project.yml")).to eq true
+        expect(File.exists?("rakefile.rb")).to eq true
+        expect(File.exists?("src")).to eq true
+        expect(File.exists?("test")).to eq true
+        expect(Dir["vendor/ceedling/docs/*.pdf"].length).to be >= 4
+      end
+    end
+  end
+
   def contains_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do
@@ -178,6 +193,37 @@ module CeedlingTestCases
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
         expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  def can_fetch_non_project_help
+    @c.with_context do
+      #notice we don't change directory into the project
+        output = `bundle exec ruby -S ceedling help`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/ceedling example/i)
+        expect(output).to match(/ceedling new/i)
+        expect(output).to match(/ceedling upgrade/i)
+        expect(output).to match(/ceedling version/i)
+    end
+  end
+
+  def can_fetch_project_help
+    @c.with_context do
+      Dir.chdir @proj_name do
+        output = `bundle exec ruby -S ceedling help`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/ceedling clean/i)
+        expect(output).to match(/ceedling clobber/i)
+        expect(output).to match(/ceedling logging/i)
+        expect(output).to match(/ceedling module:create/i)
+        expect(output).to match(/ceedling module:destroy/i)
+        expect(output).to match(/ceedling summary/i)
+        expect(output).to match(/ceedling test:\*/i)
+        expect(output).to match(/ceedling test:all/i)
+        expect(output).to match(/ceedling test:delta/i)
+        expect(output).to match(/ceedling version/i)
       end
     end
   end

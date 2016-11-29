@@ -21,82 +21,94 @@ unless (File.exists?("project.yml"))
     method_option :nodocs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
     method_option :as_gem, :type => :boolean, :default => false, :desc => "Create the scaffold using Ceedling as a gem instead of filling in the vendor directory. Implies --no-docs."
     def new(name, silent = false)
-      ceedling_path     = File.join(name, 'vendor', 'ceedling')
-      source_path       = File.join(name, 'src')
-      test_path         = File.join(name, 'test')
-      test_support_path = File.join(name, 'test/support')
-      build_path        = File.join(name, 'build')
+      copy_assets_and_create_structure(name, silent, false, options[:nodocs], options[:as_gem])
+    end
 
-      [source_path, test_path, test_support_path, build_path].each do |d|
-        FileUtils.mkdir_p d
-      end
+    desc "upgrade PROJECT_NAME", "upgrade ceedling for a project (not req'd if gem used)"
+    method_option :nodocs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
+    def upgrade(name, silent = false)
+      copy_assets_and_create_structure(name, silent, true, options[:nodocs])
+    end
 
-      unless options[:as_gem]
-        FileUtils.mkdir_p ceedling_path
+    no_commands do
+      def copy_assets_and_create_structure(name, silent=false, force=false, no_docs=false, as_gem=false)
+        ceedling_path     = File.join(name, 'vendor', 'ceedling')
+        source_path       = File.join(name, 'src')
+        test_path         = File.join(name, 'test')
+        test_support_path = File.join(name, 'test/support')
+        build_path        = File.join(name, 'build')
 
-        unless options[:nodocs]
-          doc_path = File.join(ceedling_path, 'docs')
-          FileUtils.mkdir_p doc_path
+        [source_path, test_path, test_support_path, build_path].each do |d|
+          FileUtils.mkdir_p d
+        end
 
-          in_doc_path = lambda {|f| File.join(doc_path, f)}
+        unless as_gem
+          FileUtils.mkdir_p ceedling_path
 
-          doc_files = [
-                        'docs/CeedlingPacket.pdf',
-                        'vendor/c_exception/docs/CExceptionSummary.pdf',
-                        'vendor/cmock/docs/CMock Summary.pdf',
-                        'vendor/unity/docs/UnityAssertionsCheatSheetSuitableforPrintingandPossiblyFraming.pdf',
-                        'vendor/unity/docs/UnityAssertionsReference.pdf',
-                        'vendor/unity/docs/UnityConfigurationGuide.pdf',
-                        'vendor/unity/docs/UnityGettingStartedGuide.pdf',
-                        'vendor/unity/docs/UnityHelperScriptsGuide.pdf',
-                      ]
+          unless no_docs
+            doc_path = File.join(ceedling_path, 'docs')
+            FileUtils.mkdir_p doc_path
 
-          doc_files.each do |f|
-            copy_file f, in_doc_path.call(File.basename(f))
+            in_doc_path = lambda {|f| File.join(doc_path, f)}
+
+            doc_files = [
+                          'docs/CeedlingPacket.pdf',
+                          'vendor/c_exception/docs/CExceptionSummary.pdf',
+                          'vendor/cmock/docs/CMock Summary.pdf',
+                          'vendor/unity/docs/UnityAssertionsCheatSheetSuitableforPrintingandPossiblyFraming.pdf',
+                          'vendor/unity/docs/UnityAssertionsReference.pdf',
+                          'vendor/unity/docs/UnityConfigurationGuide.pdf',
+                          'vendor/unity/docs/UnityGettingStartedGuide.pdf',
+                          'vendor/unity/docs/UnityHelperScriptsGuide.pdf',
+                        ]
+
+            doc_files.each do |f|
+              copy_file(f, in_doc_path.call(File.basename(f)), :force => force)
+            end
+          end
+
+          folders = %w{plugins lib}
+          folders.map do |f|
+            {:src => f, :dst => File.join(ceedling_path, f)}
+          end.each do |f|
+            directory(f[:src], f[:dst], :force => force)
+          end
+
+          sub_components = [
+            {:src => 'vendor/c_exception/lib/',     :dst => 'vendor/c_exception/lib'},
+            {:src => 'vendor/c_exception/release/', :dst => 'vendor/c_exception/release'},
+            {:src => 'vendor/cmock/config/',        :dst => 'vendor/cmock/config'},
+            {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
+            {:src => 'vendor/cmock/release/',       :dst => 'vendor/cmock/release'},
+            {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
+            {:src => 'vendor/constructor/lib/',     :dst => 'vendor/constructor/lib'},
+            {:src => 'vendor/deep_merge/lib/',      :dst => 'vendor/deep_merge/lib'},
+            {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
+            {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
+            {:src => 'vendor/unity/release/',       :dst => 'vendor/unity/release'},
+            {:src => 'vendor/unity/src/',           :dst => 'vendor/unity/src'},
+          ]
+
+          sub_components.each do |c|
+            directory(c[:src], File.join(ceedling_path, c[:dst]), :force => force)
           end
         end
 
-        folders = %w{plugins lib}
-        folders.map do |f|
-          {:src => f, :dst => File.join(ceedling_path, f)}
-        end.each do |f|
-          directory f[:src], f[:dst]
+        if as_gem
+          copy_file(File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml'), :force => force)
+          copy_file(File.join('assets', 'rakefile_as_gem.rb'), File.join(name, 'rakefile.rb'), :force => force)
+        else
+          copy_file(File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml'), :force => force)
+          copy_file(File.join('assets', 'rakefile_with_guts.rb'), File.join(name, 'rakefile.rb'), :force => force)
         end
 
-        sub_components = [
-          {:src => 'vendor/c_exception/lib/',     :dst => 'vendor/c_exception/lib'},
-          {:src => 'vendor/c_exception/release/', :dst => 'vendor/c_exception/release'},
-          {:src => 'vendor/cmock/config/',        :dst => 'vendor/cmock/config'},
-          {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
-          {:src => 'vendor/cmock/release/',       :dst => 'vendor/cmock/release'},
-          {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
-          {:src => 'vendor/constructor/lib/',     :dst => 'vendor/constructor/lib'},
-          {:src => 'vendor/deep_merge/lib/',      :dst => 'vendor/deep_merge/lib'},
-          {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
-          {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
-          {:src => 'vendor/unity/release/',       :dst => 'vendor/unity/release'},
-          {:src => 'vendor/unity/src/',           :dst => 'vendor/unity/src'},
-        ]
-
-        sub_components.each do |c|
-          directory c[:src], File.join(ceedling_path, c[:dst])
+        unless silent
+          puts "\n"
+          puts "Project '#{name}' #{force ? "upgraded" : "created"}!"
+          puts " - Tool documentation is located in vendor/ceedling/docs" if (not no_docs) and (not as_gem)
+          puts " - Execute 'ceedling help' to view available test & build tasks"
+          puts ''
         end
-      end
-
-      if options[:as_gem]
-        copy_file File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml')
-        copy_file File.join('assets', 'rakefile_as_gem.rb'), File.join(name, 'rakefile.rb')
-      else
-        copy_file File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml')
-        copy_file File.join('assets', 'rakefile_with_guts.rb'), File.join(name, 'rakefile.rb')
-      end
-
-      unless silent
-        puts "\n"
-        puts "Project '#{name}' created!"
-        puts " - Tool documentation is located in vendor/ceedling/docs" if (not options[:nodocs]) and (not options[:as_gem])
-        puts " - Execute 'rake -T' to view available test & build tasks"
-        puts ''
       end
     end
 
