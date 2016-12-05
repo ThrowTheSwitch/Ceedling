@@ -7,6 +7,7 @@ class Loginator
   def setup_log_filepath
     config_files = []
     config_files << @project_file_loader.main_file
+    config_files << @project_file_loader.extra_file
     config_files << @project_file_loader.user_file
     config_files.concat( @project_config_manager.options_files )
     config_files.compact!
