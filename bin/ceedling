@@ -4,7 +4,16 @@
 require 'rubygems'
 require 'fileutils'
 
-unless (File.exists?("project.yml"))
+# Check for the main project file (either the one defined in the ENV or the default)
+main_filepath = ENV['CEEDLING_MAIN_PROJECT_FILE']
+project_found = (!main_filepath.nil? && File.exists?(main_filepath))
+if (!project_found)
+  main_filepath = "project.yml"
+  project_found = File.exists?(main_filepath)
+end
+rakefile_found = (File.exists? "rakefile.rb")
+
+unless (project_found && rakefile_found)
 #===================================== We Do Not Have A Project ================================================
 
   puts "Welcome to Ceedling!"
@@ -260,7 +269,7 @@ else
   end
 
   #merge in project settings if they can be found here
-  yaml_options = YAML.load_file('project.yml')
+  yaml_options = YAML.load_file(main_filepath)
   options[:pretend_we_are_gtest] = (yaml_options[:plugins][:enabled].include? :stdout_gtestlike_tests_report) if (yaml_options[:plugins] && yaml_options[:plugins][:enabled])
   if (yaml_options[:paths])
     options[:add_path] = yaml_options[:paths][:tools] || []
@@ -284,6 +293,8 @@ else
         options[:outfile] = "debug.txt"
       when /^help$/
         options[:args] += "-T "
+      when /^project:(\w+)/
+        ENV['CEEDLING_USER_PROJECT_FILE'] = "#{$1}.yml"
       else
         options[:args] += v + " "
     end
