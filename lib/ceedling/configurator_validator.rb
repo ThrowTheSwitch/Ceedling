@@ -78,9 +78,18 @@ class ConfiguratorValidator
     return true if (filepath =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
     
     if (not @file_wrapper.exist?(filepath))
-      # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
-      @stream_wrapper.stderr_puts("ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk.") 
-      return false
+
+      # See if we can deal with it internally.
+      if GENERATED_DIR_PATH.include?(filepath)      
+        # we already made this directory before let's make it again.
+        FileUtils.mkdir_p File.join(File.dirname(__FILE__), filepath)
+        @stream_wrapper.stderr_puts("WARNING: Generated filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk. Recreating") 
+ 
+      else
+        # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
+        @stream_wrapper.stderr_puts("ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk.")
+        return false
+      end
     end      
 
     return true
