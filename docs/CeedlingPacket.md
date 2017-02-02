@@ -165,8 +165,8 @@ As a [Ruby gem](http://docs.rubygems.org/read/chapter/1):
 1. [Download and install Ruby](http://www.ruby-lang.org/en/downloads/)
 
 2. Use Ruby's command line gem package manager to install Ceedling:
-   `gem install ceedling` {text:line-break} (Unity, CMock,
-   and CException come along with Ceedling for free)
+   `gem install ceedling`  
+   (Unity, CMock, and CException come along with Ceedling for free)
 
 3. Execute Ceedling at command line to create example project
    or an empty Ceedling project in your filesystem (executing
@@ -375,7 +375,7 @@ That is, they must each be specified at the command line each time
 they are needed. For instance, Ceedling's verbosity command
 only affects output at the time it's run.
 
-{text:soft-page-break} Individual test and release file tasks
+Individual test and release file tasks
 are not listed in `-T` output. Because so many files may be present
 it's unwieldy to list them all.
 
@@ -972,11 +972,12 @@ Notes on path grammar within the [:paths] section:
   entry in the [:tools] section
 
 * Wherever multiple path lists are combined for use Ceedling prioritizes
-  path groups as follows: {text:line-break} test paths, support paths,
-  source paths, include paths. This can be useful, for instance, in
-  certain testing scenarios where we desire Ceedling or the compiler to
-  find a stand-in header file before the actual source header file of
-  the same name.
+  path groups as follows:  
+  test paths, support paths, source paths, include paths.  
+  
+  This can be useful, for instance, in certain testing scenarios where 
+  we desire Ceedling or the compiler to find a stand-in header file before 
+  the actual source header file of the same name.
 
 * Paths:
 
@@ -1552,14 +1553,14 @@ A Ceedling tool has a handful of configurable elements:
    form a name from the tool's YAML entry name)
 
 4. [:stderr_redirect] - Control of capturing $stderr messages
-   {:none, :auto, :win, :unix, :tcsh}. {text:line-break}
+   {:none, :auto, :win, :unix, :tcsh}.  
    Defaults to :none if unspecified; create a custom entry by
    specifying a simple string instead of any of the available
    symbols.
 
 5. [:background_exec] - Control execution as background process
-   {:none, :auto, :win, :unix}. {text:line-break} Defaults
-   to :none if unspecified.
+   {:none, :auto, :win, :unix}.  
+   Defaults to :none if unspecified.
 
 
 Tool Element Runtime Substitution
@@ -1637,9 +1638,9 @@ Example [:tools] YAML blurbs
      :executable: compiler              #exists in system search path
      :name: 'acme test compiler'
      :arguments:
-        - -I"$”: COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE               #expands to -I search paths
-        - -I"$”: COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR   #expands to -I search paths
-        - -D$: COLLECTION_TEST_DEFINES  #expands to all -D defined symbols
+        - -I"$": COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE               #expands to -I search paths
+        - -I"$": COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR   #expands to -I search paths
+        - -D$: COLLECTION_DEFINES_TEST_AND_VENDOR  #expands to all -D defined symbols
         - --network-license             #simple command line argument
         - -optimize-level 4             #simple command line argument
         - "#{`args.exe -m acme.prj`}"   #in-line ruby sub to shell out & build string of arguments
@@ -1673,7 +1674,8 @@ Resulting command line constructions from preceding example [:tools] YAML blurbs
 
 [notes: (1.) "arg-foo arg-bar arg-baz" is a fabricated example
 string collected from $stdout as a result of shell execution
-of args.exe {text:line-break} (2.) the -c and -o arguments are
+of args.exe 
+(2.) the -c and -o arguments are
 fabricated examples simulating a single compilation step for
 a test; ${1} & ${2} are single files]
 
@@ -1698,9 +1700,8 @@ Notes:
   builds
 
 * "COLLECTION_" indicates that Ceedling did some work to assemble
-  the list. For instance, expanding path globs, {text:soft-page-break}
-  combining multiple path globs into a convenient summation,
-  etc.
+  the list. For instance, expanding path globs, combining multiple 
+  path globs into a convenient summation, etc.
 
 * At present, $stderr redirection is primarily used to capture
   errors from test fixtures so that they can be displayed at the
@@ -1776,11 +1777,11 @@ Notes:
   only useful for advanced features not yet documented.
 
 * Wherever multiple path lists are combined for use Ceedling prioritizes
-  path groups as follows: {text:line-break} test paths, support paths,
-  source paths, include paths. This can be useful, for instance, in
-  certain testing scenarios where we desire Ceedling or the compiler to
-  find a stand-in header file before the actual source header file of
-  the same name.
+  path groups as follows: test paths, support paths, source paths, include 
+  paths.  
+  This can be useful, for instance, in certain testing scenarios 
+  where we desire Ceedling or the compiler to find a stand-in header file 
+  before the actual source header file of the same name.
 
 
 **plugins**: Ceedling extensions
