@@ -64,7 +64,8 @@ class ConfiguratorBuilder
   def populate_defaults(config, defaults)
     defaults.keys.sort.each do |section|
       defaults[section].keys.sort.each do |entry|
-        config[section][entry] = defaults[section][entry].deep_clone if (config[section].nil? or config[section][entry].nil?)
+        config[section] = {} if config[section].nil?
+        config[section][entry] = defaults[section][entry].deep_clone if (config[section][entry].nil?)
       end
     end
   end
