@@ -92,6 +92,7 @@ namespace :options do
       # @ceedling[:setupinator].reset_defaults( @ceedling[:setupinator].config_hash )
       hash = @ceedling[:project_config_manager].merge_options( @ceedling[:setupinator].config_hash, option_path )
       @ceedling[:setupinator].do_setup( hash )
+      load(File.join(CEEDLING_LIB, 'ceedling', 'rules_release.rake'))
     end
   end
 
