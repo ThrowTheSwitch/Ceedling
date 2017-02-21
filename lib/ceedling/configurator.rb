@@ -180,7 +180,7 @@ class Configurator
     plugin_defaults = @configurator_plugins.find_plugin_defaults(config)
 
     config_plugins.each do |plugin|
-      config.deep_merge( @yaml_wrapper.load(plugin) )
+      config.deep_merge!( @yaml_wrapper.load(plugin) )
     end
 
     plugin_defaults.each do |defaults|
