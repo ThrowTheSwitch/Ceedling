@@ -194,6 +194,16 @@ class Configurator
   end
 
 
+  def find_and_merge_includes(config)
+    if config[:include]
+      until config[:include].empty?
+        config.deep_merge!(@yaml_wrapper.load(config[:include].shift))
+      end
+    end
+    config.delete(:include)
+  end
+
+
   def eval_environment_variables(config)
     config[:environment].each do |hash|
       key   = hash.keys[0]
@@ -337,3 +347,4 @@ class Configurator
 
 
 end
+
