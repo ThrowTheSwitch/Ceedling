@@ -13,8 +13,8 @@ install:
   - sudo apt-get install -qq gcc-avr binutils-avr avr-libc
   - gem update bundler
   - bundle install
-  - mkdir examples/blinky/vendor && cd examples/blinky/vendor && ln -s ../../.. ./ceedling && cd .. && rake test:all && cd ../..
-  - mkdir examples/temp_sensor/vendor && cd examples/temp_sensor/vendor && ln -s ../../.. ./ceedling && cd .. && rake test:all && cd ../..
 
 script:
   - bundle exec rake ci
+  - mkdir examples/blinky/vendor && cd examples/blinky/vendor && ln -s ../../.. ./ceedling && cd .. && rake test:all && cd ../..
+  - mkdir examples/temp_sensor/vendor && cd examples/temp_sensor/vendor && ln -s ../../.. ./ceedling && cd .. && rake test:all && cd ../..
