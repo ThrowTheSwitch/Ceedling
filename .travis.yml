@@ -1,12 +1,20 @@
-language: ruby
+sudo: required
+language: ruby c
 rvm:
   - "1.9.3"
   - "2.0.0"
   - "2.1.8"
   - "2.2.4"
   - "2.3.0"
+
+before_install:
+  - sudo apt-get update -qq
 install:
+  - sudo apt-get install -qq gcc-avr binutils-avr avr-libc
   - gem update bundler
   - bundle install
+
 script:
   - bundle exec rake ci
+  - mkdir examples/blinky/vendor && cd examples/blinky/vendor && ln -s ../../.. ./ceedling && cd .. && rake test:all && cd ../..
+  - mkdir examples/temp_sensor/vendor && cd examples/temp_sensor/vendor && ln -s ../../.. ./ceedling && cd .. && rake test:all && cd ../..
