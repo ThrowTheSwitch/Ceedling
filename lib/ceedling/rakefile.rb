@@ -67,12 +67,12 @@ END {
     @ceedling[:file_wrapper].rm_f( @ceedling[:file_wrapper].directory_listing( File.join(@ceedling[:configurator].project_temp_path, '*') ))
   end
 
-	# only perform these final steps if we got here without runtime exceptions or errors
-	if (@ceedling[:system_wrapper].ruby_success)
+  # only perform these final steps if we got here without runtime exceptions or errors
+  if (@ceedling[:system_wrapper].ruby_success)
 
     # tell all our plugins the build is done and process results
-	  @ceedling[:plugin_manager].post_build
-	  @ceedling[:plugin_manager].print_plugin_failures
-	  #exit(1) if (@ceedling[:plugin_manager].plugins_failed?) #do NOT call this. It will keep caller from reporting failures
-	end
+    @ceedling[:plugin_manager].post_build
+    @ceedling[:plugin_manager].print_plugin_failures
+    exit(1) if (@ceedling[:plugin_manager].plugins_failed? && !@ceedling[:setupinator].config_hash[:graceful_fail]) 
+  end
 }
