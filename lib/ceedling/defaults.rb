@@ -33,6 +33,8 @@ DEFAULT_TEST_LINKER_TOOL = {
   :arguments => [
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze,
+    "".freeze,
+    "${4}".freeze
     ].freeze
   }
 
@@ -273,6 +275,13 @@ DEFAULT_CEEDLING_CONFIG = {
     ],
 
     :defines => {
+      :test => [],
+      :test_preprocess => [],
+      :release => [],
+      :release_preprocess => [],
+    },
+
+    :libraries => {
       :test => [],
       :test_preprocess => [],
       :release => [],

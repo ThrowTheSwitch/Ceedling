@@ -165,7 +165,7 @@ As a [Ruby gem](http://docs.rubygems.org/read/chapter/1):
 1. [Download and install Ruby](http://www.ruby-lang.org/en/downloads/)
 
 2. Use Ruby's command line gem package manager to install Ceedling:
-   `gem install ceedling`  
+   `gem install ceedling`
    (Unity, CMock, and CException come along with Ceedling for free)
 
 3. Execute Ceedling at command line to create example project
@@ -972,11 +972,11 @@ Notes on path grammar within the [:paths] section:
   entry in the [:tools] section
 
 * Wherever multiple path lists are combined for use Ceedling prioritizes
-  path groups as follows:  
-  test paths, support paths, source paths, include paths.  
-  
-  This can be useful, for instance, in certain testing scenarios where 
-  we desire Ceedling or the compiler to find a stand-in header file before 
+  path groups as follows:
+  test paths, support paths, source paths, include paths.
+
+  This can be useful, for instance, in certain testing scenarios where
+  we desire Ceedling or the compiler to find a stand-in header file before
   the actual source header file of the same name.
 
 * Paths:
@@ -1271,6 +1271,43 @@ Example [:defines] YAML blurb
     - FEATURE_X=ON
 ```
 
+
+**libraries**: command line defines used in test and release compilation by configured tools
+
+Ceedling allows you to pull in specific libraries for the purpose of release and test builds.
+It has a few levels of support for this. Start by adding a :libraries main section in your
+configuration. In this section, you can optionally have the following subsections:
+
+* `test`:
+
+  Library files that should be injected into your tests when linking occurs.
+  These can be specified as either relative or absolute paths. These files MUST
+  exist when the test attempts to build.
+
+* `source`:
+
+  Library files that should be injected into your release when linking occurs. These
+  can be specified as either relative or absolute paths. These files MUST exist when
+  the release attempts to build UNLESS you are using the subprojects plugin. In that
+  case, it will attempt to build that library for you as a dynamic dependency.
+
+* `system`:
+
+  These libraries are assumed to be in the tool path somewhere and shouldn't need to be
+  specified. The libraries added here will be injected into releases and tests.
+
+* `flag`:
+
+  This is the method of adding an argument for each library. For example, gcc really likes
+  it when you specify “-l${1}”
+
+Notes:
+
+* If you've specified your own link step, you are going to want to add ${4} to your argument
+list in the place where library files should be added to the command call. For gcc, this is
+often the very end. Other tools may vary.
+
+
 **flags**: configure per-file compilation and linking flags
 
 Ceedling tools (see later [:tools] section) are used to configure
@@ -1553,13 +1590,13 @@ A Ceedling tool has a handful of configurable elements:
    form a name from the tool's YAML entry name)
 
 4. [:stderr_redirect] - Control of capturing $stderr messages
-   {:none, :auto, :win, :unix, :tcsh}.  
+   {:none, :auto, :win, :unix, :tcsh}.
    Defaults to :none if unspecified; create a custom entry by
    specifying a simple string instead of any of the available
    symbols.
 
 5. [:background_exec] - Control execution as background process
-   {:none, :auto, :win, :unix}.  
+   {:none, :auto, :win, :unix}.
    Defaults to :none if unspecified.
 
 
@@ -1674,7 +1711,7 @@ Resulting command line constructions from preceding example [:tools] YAML blurbs
 
 [notes: (1.) "arg-foo arg-bar arg-baz" is a fabricated example
 string collected from $stdout as a result of shell execution
-of args.exe 
+of args.exe
 (2.) the -c and -o arguments are
 fabricated examples simulating a single compilation step for
 a test; ${1} & ${2} are single files]
@@ -1700,7 +1737,7 @@ Notes:
   builds
 
 * "COLLECTION_" indicates that Ceedling did some work to assemble
-  the list. For instance, expanding path globs, combining multiple 
+  the list. For instance, expanding path globs, combining multiple
   path globs into a convenient summation, etc.
 
 * At present, $stderr redirection is primarily used to capture
@@ -1777,10 +1814,10 @@ Notes:
   only useful for advanced features not yet documented.
 
 * Wherever multiple path lists are combined for use Ceedling prioritizes
-  path groups as follows: test paths, support paths, source paths, include 
-  paths.  
-  This can be useful, for instance, in certain testing scenarios 
-  where we desire Ceedling or the compiler to find a stand-in header file 
+  path groups as follows: test paths, support paths, source paths, include
+  paths.
+  This can be useful, for instance, in certain testing scenarios
+  where we desire Ceedling or the compiler to find a stand-in header file
   before the actual source header file of the same name.
 
 

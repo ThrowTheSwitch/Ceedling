@@ -25,12 +25,17 @@ end
 
 
 rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
+
+  lib_args = ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])
+  lib_args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) } if (defined? LIBRARIES_FLAG)
+
   @ceedling[:generator].generate_executable_file(
     TOOLS_TEST_LINKER,
     TEST_SYM,
     bin_file.prerequisites,
     bin_file.name,
-    @ceedling[:file_path_utils].form_test_build_map_filepath( bin_file.name ) )
+    @ceedling[:file_path_utils].form_test_build_map_filepath( bin_file.name ),
+    lib_args )
 end
 
 
