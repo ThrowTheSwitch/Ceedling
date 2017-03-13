@@ -29,7 +29,7 @@ class FileWrapper
   end
 
   def directory_listing(glob)
-    return Dir.glob(glob)
+    return Dir.glob(glob, File::FNM_PATHNAME)
   end
 
   def rm_f(filepath, options={})
@@ -39,7 +39,7 @@ class FileWrapper
   def rm_r(filepath, options={})
     FileUtils.rm_r(filepath, options={})
   end
-  
+
   def cp(source, destination, options={})
     FileUtils.cp(source, destination, options)
   end
@@ -47,7 +47,7 @@ class FileWrapper
   def compare(from, to)
     return FileUtils.compare_file(from, to)
   end
-  
+
   def open(filepath, flags)
     File.open(filepath, flags) do |file|
       yield(file)
@@ -65,7 +65,7 @@ class FileWrapper
   def write(filepath, contents, flags='w')
     File.open(filepath, flags) do |file|
       file.write(contents)
-    end    
+    end
   end
 
   def readlines(filepath)
