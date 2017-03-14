@@ -1,7 +1,10 @@
 #include "unity.h"
 #include "Types.h"
-#include "TemperatureCalculator.h"
 #include <math.h>
+
+TEST_FILE("TemperatureCalculator.c")
+
+extern float TemperatureCalculator_Calculate(uint16_t val);
 
 void setUp(void)
 {

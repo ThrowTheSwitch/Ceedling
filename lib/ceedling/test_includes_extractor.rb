@@ -3,7 +3,6 @@ class TestIncludesExtractor
 
   constructor :configurator, :yaml_wrapper, :file_wrapper
 
-
   def setup
     @includes  = {}
     @mocks     = {}
@@ -26,16 +25,16 @@ class TestIncludesExtractor
     return [] if @mocks[file_key].nil?
     return @mocks[file_key]
   end
-  
+
   # includes with file extension
   def lookup_includes_list(file)
     file_key = form_file_key(file)
     return [] if (@includes[file_key]).nil?
     return @includes[file_key]
   end
-  
+
   private #################################
-  
+
   def form_file_key(filepath)
     return File.basename(filepath).to_sym
   end
@@ -43,21 +42,26 @@ class TestIncludesExtractor
   def extract_from_file(file)
     includes = []
     header_extension = @configurator.extension_header
-    
+
     contents = @file_wrapper.read(file)
 
     # remove line comments
     contents = contents.gsub(/\/\/.*$/, '')
     # remove block comments
     contents = contents.gsub(/\/\*.*?\*\//m, '')
-    
+
     contents.split("\n").each do |line|
       # look for include statement
       scan_results = line.scan(/#include\s+\"\s*(.+#{'\\'+header_extension})\s*\"/)
-      
+
+      includes << scan_results[0][0] if (scan_results.size > 0)
+
+      # look for TEST_FILE statement
+      scan_results = line.scan(/TEST_FILE\(\s*\"\s*(.+\.\w+)\s*\"\s*\)/)
+
       includes << scan_results[0][0] if (scan_results.size > 0)
     end
-    
+
     return includes.uniq
   end
 
@@ -66,16 +70,16 @@ class TestIncludesExtractor
     header_extension = @configurator.extension_header
     file_key         = form_file_key(file)
     @mocks[file_key] = []
-      
+
     # add includes to lookup hash
     @includes[file_key] = includes
-      
-    includes.each do |include_file|          
+
+    includes.each do |include_file|
       # check if include is a mock
       scan_results = include_file.scan(/(#{mock_prefix}.+)#{'\\'+header_extension}/)
       # add mock to lookup hash
       @mocks[file_key] << scan_results[0][0] if (scan_results.size > 0)
     end
   end
-  
+
 end

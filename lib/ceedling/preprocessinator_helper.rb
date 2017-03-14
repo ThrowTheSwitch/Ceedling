@@ -1,7 +1,7 @@
 
 
 class PreprocessinatorHelper
-  
+
   constructor :configurator, :test_includes_extractor, :task_invoker, :file_finder, :file_path_utils
 
 
@@ -11,8 +11,8 @@ class PreprocessinatorHelper
       preprocess_includes_proc.call( @file_finder.find_test_from_file_path(preprocessed_includes_list) )
       @test_includes_extractor.parse_includes_list(preprocessed_includes_list)
     else
-      @test_includes_extractor.parse_test_file(test)      
-    end  
+      @test_includes_extractor.parse_test_file(test)
+    end
   end
 
   def assemble_mocks_list(test)
@@ -29,10 +29,10 @@ class PreprocessinatorHelper
 
   def preprocess_test_file(test, preprocess_file_proc)
     return if (!@configurator.project_use_test_preprocessor)
-    
+
     preprocess_file_proc.call(test)
   end
-  
+
   private ############################
 
   def preprocess_files_smartly(file_list, preprocess_file_proc)

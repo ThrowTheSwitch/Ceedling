@@ -43,6 +43,7 @@ describe PreprocessinatorIncludesHandler do
       contents_double = double('contents-double')
       expect(@file_wrapper).to receive(:read).with('some_source_file.c').and_return(contents_double)
       expect(contents_double).to receive(:gsub!).with(/^\s*#include\s+[\"<]\s*(\S+)\s*[\">]/, "#include \"\\1\"\n#include \"@@@@\\1\"")
+      expect(contents_double).to receive(:gsub!).with(/^\s*TEST_FILE\(\s*\"\s*(\S+)\s*\"\s*\)/, "#include \"\\1\"\n#include \"@@@@\\1\"")
       expect(@file_wrapper).to receive(:write).with('_some_source_file.c', contents_double)
       expect(@configurator).to receive(:tools_test_includes_preprocessor).and_return('cpp')
       command_double = double('command-double')
@@ -64,6 +65,7 @@ describe PreprocessinatorIncludesHandler do
       # create test state/variables
       # mocks/stubs/expected calls
       expect(@configurator).to receive(:extension_header).and_return('.h')
+      expect(@configurator).to receive(:extension_source).and_return('.c')
       # execute method
       results = subject.extract_shallow_includes(%q{
         _test_DUMMY.o: Build/temp/_test_DUMMY.c \
@@ -77,13 +79,15 @@ describe PreprocessinatorIncludesHandler do
       # validate results
       expect(results).to eq ['some_header1.h',
                          'some_lib/some_header2.h',
-                         'some_other_lib/some_header2.h']
+                         'some_other_lib/some_header2.h',
+                         'Build/temp/_test_DUMMY.c']
     end
 
   it 'should return the list of direct dependencies for the given test file' do
       # create test state/variables
       # mocks/stubs/expected calls
       expect(@configurator).to receive(:extension_header).and_return('.h')
+      expect(@configurator).to receive(:extension_source).and_return('.c')
       # execute method
       results = subject.extract_shallow_includes(%q{
         _test_DUMMY.o: Build/temp/_test_DUMMY.c \
@@ -97,13 +101,15 @@ describe PreprocessinatorIncludesHandler do
       # validate results
       expect(results).to eq ['some_header1.h',
                          'some_lib/some_header2.h',
-                         'some_other_lib/some_header2.h']
+                         'some_other_lib/some_header2.h',
+                         'Build/temp/_test_DUMMY.c']
     end
 
     it 'should correctly handle path separators' do
       # create test state/variables
       # mocks/stubs/expected calls
       expect(@configurator).to receive(:extension_header).and_return('.h')
+      expect(@configurator).to receive(:extension_source).and_return('.c')
       # execute method
       results = subject.extract_shallow_includes(%q{
         _test_DUMMY.o: Build/temp/_test_DUMMY.c \
@@ -120,13 +126,15 @@ describe PreprocessinatorIncludesHandler do
       expect(results).to eq ['some_header1.h',
                          'some_lib/some_header2.h',
                          'some_lib1/some_lib/some_header2.h',
-                         'some_other_lib/some_header2.h']
+                         'some_other_lib/some_header2.h',
+                         'Build/temp/_test_DUMMY.c']
     end
 
     it 'exclude annotated headers with no matching "real" header' do
       # create test state/variables
       # mocks/stubs/expected calls
       expect(@configurator).to receive(:extension_header).and_return('.h')
+      expect(@configurator).to receive(:extension_source).and_return('.c')
       # execute method
       results = subject.extract_shallow_includes(%q{
         _test_DUMMY.o: Build/temp/_test_DUMMY.c \
@@ -135,13 +143,14 @@ describe PreprocessinatorIncludesHandler do
           @@@@some_lib/some_header2.h
       })
       # validate results
-      expect(results).to eq ['some_header1.h']
+      expect(results).to eq ['some_header1.h', 'Build/temp/_test_DUMMY.c']
     end
 
     it 'should correctly filter secondary dependencies' do
       # create test state/variables
       # mocks/stubs/expected calls
       expect(@configurator).to receive(:extension_header).and_return('.h')
+      expect(@configurator).to receive(:extension_source).and_return('.c')
       # execute method
       results = subject.extract_shallow_includes(%q{
         _test_DUMMY.o: Build/temp/_test_DUMMY.c \
@@ -158,7 +167,8 @@ describe PreprocessinatorIncludesHandler do
       # validate results
       expect(results).to eq ['some_header1.h',
                          'some_lib/some_header2.h',
-                         'some_other_lib/some_header2.h']
+                         'some_other_lib/some_header2.h',
+                         'Build/temp/_test_DUMMY.c']
     end
   end
 

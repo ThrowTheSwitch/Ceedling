@@ -31,6 +31,7 @@ class PreprocessinatorIncludesHandler
     # are included directly by the test file.
     contents = @file_wrapper.read(filepath)
     contents.gsub!( /^\s*#include\s+[\"<]\s*(\S+)\s*[\">]/, "#include \"\\1\"\n#include \"@@@@\\1\"" )
+    contents.gsub!( /^\s*TEST_FILE\(\s*\"\s*(\S+)\s*\"\s*\)/, "#include \"\\1\"\n#include \"@@@@\\1\"")
     @file_wrapper.write( temp_filepath, contents )
 
     # extract the make-style dependency rule telling the preprocessor to
@@ -63,7 +64,7 @@ class PreprocessinatorIncludesHandler
     # Find which of our annotated headers are "real" dependencies. This is
     # intended to weed out dependencies that have been removed due to build
     # options defined in the project yaml and/or in the headers themselves.
-    annotated_headers.find_all do |annotated_header|
+    list = annotated_headers.find_all do |annotated_header|
       # find the index of the "real" include that matches the annotated one.
       idx = real_headers.find_index do |real_header|
         real_header =~ /^(.*\/)?#{Regexp.escape(annotated_header)}$/
@@ -74,6 +75,14 @@ class PreprocessinatorIncludesHandler
       # found/deleted
       idx ? real_headers.delete_at(idx) : nil
     end.compact
+
+    # Extract direct dependencies that were also added
+    src_ext = @configurator.extension_source
+    sdependencies = make_rule.split.find_all {|path| path.end_with?(src_ext) }.uniq
+    sdependencies.map! {|hdr| hdr.gsub('\\','/') }
+    list += sdependencies
+
+    list
   end
 
   def write_shallow_includes_list(filepath, list)
