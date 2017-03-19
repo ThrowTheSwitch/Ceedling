@@ -194,15 +194,15 @@ class Configurator
   end
 
 
-  def find_and_merge_includes(config)
-    if config[:include]
-      until config[:include].empty?
-        path = config[:include].shift
+  def merge_imports(config)
+    if config[:import]
+      until config[:import].empty?
+        path = config[:import].shift
         path = @system_wrapper.module_eval(path) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
         config.deep_merge!(@yaml_wrapper.load(path))
       end
     end
-    config.delete(:include)
+    config.delete(:import)
   end
 
 
