@@ -18,8 +18,7 @@ class ProjectConfigManager
 
   def merge_options(config_hash, option_filepath)
     @options_files << File.basename( option_filepath )
-    config_hash.deep_merge( @yaml_wrapper.load( option_filepath ) )
-    return config_hash
+    config_hash.deep_merge!( @yaml_wrapper.load( option_filepath ) )
   end 
   
 

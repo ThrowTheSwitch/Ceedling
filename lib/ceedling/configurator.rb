@@ -180,7 +180,7 @@ class Configurator
     plugin_defaults = @configurator_plugins.find_plugin_defaults(config)
 
     config_plugins.each do |plugin|
-      config.deep_merge( @yaml_wrapper.load(plugin) )
+      config.deep_merge!( @yaml_wrapper.load(plugin) )
     end
 
     plugin_defaults.each do |defaults|
@@ -191,6 +191,18 @@ class Configurator
     config[:plugins][:display_raw_test_results] = true if (config[:plugins][:display_raw_test_results].nil?)
 
     paths_hash.each_pair { |name, path| config[:plugins][name] = path }
+  end
+
+
+  def merge_imports(config)
+    if config[:import]
+      until config[:import].empty?
+        path = config[:import].shift
+        path = @system_wrapper.module_eval(path) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+        config.deep_merge!(@yaml_wrapper.load(path))
+      end
+    end
+    config.delete(:import)
   end
 
 
@@ -337,3 +349,4 @@ class Configurator
 
 
 end
+
