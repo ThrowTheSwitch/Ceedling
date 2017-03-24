@@ -57,6 +57,9 @@
     int8:     INT8
     bool:     UINT8
 
+:gcov:
+    :html_report_type: basic
+
 #:tools:
 # Ceedling defaults to using gcc for compiling, linking, etc.
 # As [:tools] is blank, gcc will be used (so long as it's in your system path)

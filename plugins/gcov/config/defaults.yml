@@ -49,5 +49,17 @@
         - -e '^vendor.*|^build.*|^test.*|^lib.*'
         - --html
         - -r .
-        - -o  '${GCOV_ARTIFACTS_PATH}/GcovCoverageResults.html'
+        - -o  "$": GCOV_ARTIFACTS_FILE
+  :gcov_post_report_advanced:
+    :executable: gcovr
+    :optional: TRUE
+    :arguments:
+        - -p
+        - -b
+        - -e '^vendor.*|^build.*|^test.*|^lib.*'
+        - --html-details
+        - -r .
+        - -o  "$": GCOV_ARTIFACTS_FILE
+
+
 ...

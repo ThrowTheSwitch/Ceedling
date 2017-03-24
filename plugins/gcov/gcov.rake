@@ -153,8 +153,21 @@ end
 namespace UTILS_SYM do
   desc 'Create gcov code coverage html report'
   task GCOV_SYM do
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [])
-    puts 'Creating html report of gcov results...'
-    @ceedling[:tool_executor].exec(command[:line], command[:options])
+
+    if !File.directory? GCOV_ARTIFACTS_PATH
+      Dir.mkdir GCOV_ARTIFACTS_PATH
+    end
+
+    if @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'basic'
+      puts 'Creating a basic html report of gcov results...'
+      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [])
+      @ceedling[:tool_executor].exec(command[:line], command[:options])
+    elsif @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'advanced'
+      puts 'Creating an indepth html report of gcov results...'
+      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_ADVANCED, [])
+      @ceedling[:tool_executor].exec(command[:line], command[:options])
+    else
+      puts 'define \n:gcov:\n\t:html_report_type:\n to basic or advanced to use this feature.'
+    end
   end
 end
