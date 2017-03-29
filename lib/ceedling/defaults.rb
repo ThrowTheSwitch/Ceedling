@@ -279,6 +279,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :test_preprocess => [],
       :release => [],
       :release_preprocess => [],
+      :use_test_definition => false,
     },
 
     :libraries => {

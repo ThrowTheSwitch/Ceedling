@@ -23,6 +23,37 @@ class TestInvoker
     @mocks   = []
   end
   
+  def get_test_definition_str(test)
+    return "-D" + File.basename(test, File.extname(test)).upcase.sub(/@.*$/, "")
+  end
+
+  def get_tools_compilers
+    tools_compilers = Hash.new
+    tools_compilers["for unit test"] = TOOLS_TEST_COMPILER if defined? TOOLS_TEST_COMPILER
+    tools_compilers["for gcov"]      = TOOLS_GCOV_COMPILER if defined? TOOLS_GCOV_COMPILER
+    return tools_compilers
+  end
+
+  def add_test_definition(test)
+    test_definition_str = get_test_definition_str(test)
+    get_tools_compilers.each do |tools_compiler_key, tools_compiler_value|
+      tools_compiler_value[:arguments].push("-D#{File.basename(test, ".*").strip.upcase.sub(/@.*$/, "")}")
+      @streaminator.stdout_puts("Add the definition value in the build option #{tools_compiler_value[:arguments][-1]} #{tools_compiler_key}", Verbosity::OBNOXIOUS)
+    end
+  end
+
+  def delete_test_definition(test)
+    test_definition_str = get_test_definition_str(test)
+    get_tools_compilers.each do |tools_compiler_key, tools_compiler_value|
+      num_options = tools_compiler_value[:arguments].size
+      @streaminator.stdout_puts("Delete the definition value in the build option #{tools_compiler_value[:arguments][-1]} #{tools_compiler_key}", Verbosity::OBNOXIOUS)
+      tools_compiler_value[:arguments].delete_if{|i| i == test_definition_str}
+      if num_options > tools_compiler_value[:arguments].size + 1
+        @streaminator.stderr_puts("WARNING: duplicated test definition.")
+      end
+    end
+  end
+
   def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true})
   
     @tests = tests
@@ -47,6 +78,11 @@ class TestInvoker
         results_pass = @file_path_utils.form_pass_results_filepath( test )
         results_fail = @file_path_utils.form_fail_results_filepath( test )
         
+        # add the definition value in the build option for the unit test
+        if @configurator.defines_use_test_definition
+          add_test_definition(test)
+        end
+
         # clean results files so we have a missing file with which to kick off rake's dependency rules
         @test_invoker_helper.clean_results( {:pass => results_pass, :fail => results_fail}, options )
 
@@ -69,6 +105,10 @@ class TestInvoker
       rescue => e
         @build_invoker_utils.process_exception( e, context )
       ensure
+        # delete the definition value in the build option for the unit test
+        if @configurator.defines_use_test_definition
+          delete_test_definition(test)
+        end
         @plugin_manager.post_test( test )
       end
       
