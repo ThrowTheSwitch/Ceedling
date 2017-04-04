@@ -23,7 +23,7 @@ class FilePathUtils
   def self.standardize(path)
     path.strip!
     path.gsub!(/\\/, '/')
-    path.gsub!(/^((\+|-):)?\.\//, '')
+    path.gsub!(/^((\+|-):)?/, '')
     path.chomp!('/')
     return path
   end
