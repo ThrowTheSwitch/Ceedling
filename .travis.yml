@@ -10,7 +10,8 @@ rvm:
   - "2.3.0"
 
 before_install:
-  - sudo apt-get update -qq
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then rvm install 2.1 && rvm use 2.1 && ruby -v; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update -qq && sudo apt-get install --assume-yes --quiet gcc-multilib; fi
   
 install:
   - sudo apt-get install -qq gcc-avr binutils-avr avr-libc
