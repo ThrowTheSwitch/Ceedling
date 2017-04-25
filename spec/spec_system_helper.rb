@@ -142,7 +142,8 @@ module CeedlingTestCases
         expect(File.exists?("rakefile.rb")).to eq true
         expect(File.exists?("src")).to eq true
         expect(File.exists?("test")).to eq true
-        expect(Dir["vendor/ceedling/docs/*.pdf"].length).to be >= 4
+        all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
+        expect(all_docs).to be >= 4
       end
     end
   end
@@ -166,7 +167,8 @@ module CeedlingTestCases
   def contains_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        expect(Dir["vendor/ceedling/docs/*.pdf"].length).to be >= 4
+        all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
+        expect(all_docs).to be >= 4
       end
     end
   end
