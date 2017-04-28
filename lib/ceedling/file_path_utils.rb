@@ -19,11 +19,10 @@ class FilePathUtils
 
   ######### class methods ##########
 
-  # standardize path to use '/' path separator & begin with './' & have no trailing path separator
+  # standardize path to use '/' path separator & have no trailing path separator
   def self.standardize(path)
     path.strip!
     path.gsub!(/\\/, '/')
-    path.gsub!(/^((\+|-):)?/, '')
     path.chomp!('/')
     return path
   end
