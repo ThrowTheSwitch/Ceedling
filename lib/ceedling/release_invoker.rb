@@ -64,7 +64,7 @@ class ReleaseInvoker
   end
 
   def sort_objects_and_libraries(both)
-    extension = "\\" + (EXTENSION_SUBPROJECTS || ".LIBRARY")
+    extension = "\\" + ((defined? EXTENSION_SUBPROJECTS) ? EXTENSION_SUBPROJECTS : ".LIBRARY")
     sorted_objects = both.group_by {|v| v.match(/.+#{extension}$/) ? :libraries : :objects }
     libraries = sorted_objects[:libraries] || []
     objects   = sorted_objects[:objects]   || []
