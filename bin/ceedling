@@ -91,7 +91,6 @@ unless (project_found && rakefile_found)
             {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
             {:src => 'vendor/cmock/release/',       :dst => 'vendor/cmock/release'},
             {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
-            {:src => 'vendor/constructor/lib/',     :dst => 'vendor/constructor/lib'},
             {:src => 'vendor/deep_merge/lib/',      :dst => 'vendor/deep_merge/lib'},
             {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
             {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
