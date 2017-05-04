@@ -52,7 +52,7 @@ class Dependinator
     # if input configuration or ceedling changes, make sure these guys get rebuilt
     mocks_list.each do |mock_filepath|
       @rake_wrapper[mock_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed)
-      @rake_wrapper[mock_filepath].enhance( [@configurator.cmock_unity_helper] )                  if (@configurator.cmock_unity_helper)
+      @rake_wrapper[mock_filepath].enhance( @configurator.cmock_unity_helper )                    if (@configurator.cmock_unity_helper)
     end
   end
 

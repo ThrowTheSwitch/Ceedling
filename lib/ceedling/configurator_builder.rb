@@ -392,10 +392,12 @@ class ConfiguratorBuilder
 
     # if we're using mocks & a unity helper is defined & that unity helper includes a source file component (not only a header of macros),
     # then link in the unity_helper object file too
-    if ( in_hash[:project_use_mocks] and
-         in_hash[:cmock_unity_helper] and
-         @file_wrapper.exist?(in_hash[:cmock_unity_helper].ext(in_hash[:extension_source])) )
-      objects << File.basename(in_hash[:cmock_unity_helper])
+    if ( in_hash[:project_use_mocks] and in_hash[:cmock_unity_helper] )
+      in_hash[:cmock_unity_helper].each do |helper|
+        if @file_wrapper.exist?(helper.ext(in_hash[:extension_source]))
+          objects << File.basename(helper)
+        end
+      end
     end
 
     # no build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
