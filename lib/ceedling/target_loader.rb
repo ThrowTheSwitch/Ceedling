@@ -13,10 +13,10 @@ module TargetLoader
 
     targets = config[:targets]
     unless targets[:targets_directory]
-      raise NoDirectory("No targets directory specified.")
+      raise NoDirectory.new("No targets directory specified.")
     end
     unless targets[:default_target]
-      raise NoDefault("No default target specified.")
+      raise NoDefault.new("No default target specified.")
     end
 
     target_path = lambda {|name| File.join(targets[:targets_directory], name + ".yml")}
