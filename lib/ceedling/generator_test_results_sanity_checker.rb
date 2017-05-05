@@ -11,8 +11,9 @@ class GeneratorTestResultsSanityChecker
   
     # do no sanity checking if it's disabled
     return if (@configurator.sanity_checks == TestResultsSanityChecks::NONE)
-  
-    ceedling_ignores_count   = results[:ignores].size
+    raise "results nil or empty" if results.nil? || results.empty?
+
+    ceedling_ignores_count   = results[:ignores].size 
     ceedling_failures_count  = results[:failures].size
     ceedling_tests_summation = (ceedling_ignores_count + ceedling_failures_count + results[:successes].size)
 
@@ -45,7 +46,7 @@ class GeneratorTestResultsSanityChecker
 
   private
   
- def sanity_check_warning(file, message)
+  def sanity_check_warning(file, message)
     unless defined?(CEEDLING_IGNORE_SANITY_CHECK)
       notice = "\n" + 
                "ERROR: Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable)}' finds that #{message}\n" +
