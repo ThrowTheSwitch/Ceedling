@@ -1,0 +1,13 @@
+---
+:source:
+  :path: some/place
+  :file: test_example.c
+:successes: []
+:failures: []
+:ignores: []
+:counts:
+  :total: 0
+  :passed: 0
+  :failed: 0
+  :ignored: 0
+:stdout: []

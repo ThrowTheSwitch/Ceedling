@@ -1,0 +1,19 @@
+---
+:source:
+  :path: some/place
+  :file: test_example.c
+:successes:
+- :test: test_one
+  :line: 257
+  :message: ''
+- 
+:failures: []
+:ignores: []
+:counts:
+  :total: 2
+  :passed: 2
+  :failed: 0
+  :ignored: 0
+:stdout:
+- Verbose output one
+- test_example.c:269:test_tVerbous output two
