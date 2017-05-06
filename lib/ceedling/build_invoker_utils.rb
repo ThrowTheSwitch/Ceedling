@@ -1,10 +1,22 @@
 require 'ceedling/constants'
 
-
+##
+# Utilities for raiser and reporting errors during building.
 class BuildInvokerUtils
 
   constructor :configurator, :streaminator
-  
+ 
+  ##
+  # Processes exceptions and tries to display a useful message for the user.
+  #
+  # ==== Attriboops...utes
+  #
+  # * _exception_:  The exception given by a rescue statement.
+  # * _context_:    A symbol representing where in the build the exception
+  # occurs. 
+  # * _test_build_: A bool to signify if the exception occurred while building
+  # from test or source.
+  #
   def process_exception(exception, context, test_build=true)
     if (exception.message =~ /Don't know how to build task '(.+)'/i)
       error_header  = "ERROR: Rake could not find file referenced in source"
