@@ -311,7 +311,8 @@ DEFAULT_CEEDLING_CONFIG = {
 
     :cmock => {
       :vendor_path => CEEDLING_VENDOR,
-      :defines => []
+      :defines => [],
+      :includes => []
     },
 
     :cexception => {
