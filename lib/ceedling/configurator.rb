@@ -328,6 +328,7 @@ class Configurator
 
   def insert_rake_plugins(plugins)
     plugins.each do |plugin|
+      # TODO needs a duplicate guard
       @project_config_hash[:project_rakefile_component_files] << plugin
     end
   end

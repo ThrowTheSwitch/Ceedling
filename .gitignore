@@ -1,7 +1,10 @@
 .*.swp
 .swp
 Gemfile.lock
+
 tags
+*.taghl
+
 ceedling.sublime-project
 ceedling.sublime-workspace
 ceedling-*.gem
