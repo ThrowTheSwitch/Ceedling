@@ -1,7 +1,15 @@
 .*.swp
 .swp
 Gemfile.lock
+
 tags
+*.taghl
+
+examples/blinky/build/
+examples/blinky/vendor/
+examples/temp_sensor/vendor/
+examples/temp_sensor/build/
+
 ceedling.sublime-project
 ceedling.sublime-workspace
 ceedling-*.gem

@@ -1,10 +1,10 @@
 sudo: required
 language: ruby c
 
-os: 
+os:
   - osx
   - linux
-  
+
 rvm:
   - "2.0.0"
   - "2.3.0"
@@ -12,12 +12,12 @@ rvm:
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then rvm install 2.1 && rvm use 2.1 && ruby -v; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update -qq && sudo apt-get install --assume-yes --quiet gcc-multilib && sudo apt-get install -qq gcc-avr binutils-avr avr-libc; fi
-  
+
 install:
   - gem update bundler
   - bundle install
 
 script:
   - bundle exec rake ci
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then mkdir examples/blinky/vendor && cd examples/blinky/vendor && ln -s ../../.. ./ceedling && cd .. && rake test:all && cd ../..; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then mkdir examples/temp_sensor/vendor && cd examples/temp_sensor/vendor && ln -s ../../.. ./ceedling && cd .. && rake test:all && cd ../..; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then mkdir examples/blinky/vendor && cd examples/blinky/vendor && ln -s ../../.. ./ceedling && cd .. && rake module:create[someNewModule] module:destroy[someNewModule] test:all && cd ../..; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then mkdir examples/temp_sensor/vendor && cd examples/temp_sensor/vendor && ln -s ../../.. ./ceedling && cd .. && rake module:create[someNewModule] module:destroy[someNewModule] test:all && cd ../..; fi

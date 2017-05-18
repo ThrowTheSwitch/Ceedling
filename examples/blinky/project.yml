@@ -14,7 +14,7 @@
 #You'll have to specify these
 :environment:
   - :mcu: atmega328p
-  - :f_cpu: 16000000UL 
+  - :f_cpu: 16000000UL
   - :serial_port: COM8  #change this to the serial port you are using!!!
   - :objcopy: avr-objcopy
   # Uncomment these lines if you are using windows and don't have these tools in your path

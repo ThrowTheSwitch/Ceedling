@@ -344,7 +344,7 @@ DEFAULT_CEEDLING_CONFIG = {
     :release_dependencies_generator => { :arguments => [] },
 
     :plugins => {
-      :load_paths => CEEDLING_PLUGINS,
+      :load_paths => [], #XXX this is injected twice as of now so removed til better handling is found CEEDLING_PLUGINS,
       :enabled => [],
     }
   }.freeze
