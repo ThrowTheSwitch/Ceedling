@@ -183,6 +183,8 @@ DEFAULT_RELEASE_LINKER_TOOL = {
   :arguments => [
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze,
+    "".freeze,
+    "${4}".freeze
     ].freeze
   }
 
