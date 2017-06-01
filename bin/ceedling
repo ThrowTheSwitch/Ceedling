@@ -27,20 +27,31 @@ unless (project_found && rakefile_found)
     include Thor::Actions
 
     desc "new PROJECT_NAME", "create a new ceedling project"
-    method_option :nodocs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
+    method_option :no_docs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
+    method_option :nodocs, :type => :boolean, :default => false
     method_option :as_gem, :type => :boolean, :default => false, :desc => "Create the scaffold using Ceedling as a gem instead of filling in the vendor directory. Implies --no-docs."
+    method_option :no_configs, :type => :boolean, :default => false, :desc => "Don't install starter configuration files."
+    method_option :noconfigs, :type => :boolean, :default => false
     def new(name, silent = false)
-      copy_assets_and_create_structure(name, silent, false, options[:nodocs], options[:as_gem])
+      copy_assets_and_create_structure(name, silent, false, options)
     end
 
     desc "upgrade PROJECT_NAME", "upgrade ceedling for a project (not req'd if gem used)"
-    method_option :nodocs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
+    method_option :no_docs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
+    method_option :nodocs, :type => :boolean, :default => false
+    method_option :no_configs, :type => :boolean, :default => true, :desc => "Don't install starter configuration files."
+    method_option :noconfigs, :type => :boolean, :default => false
     def upgrade(name, silent = false)
-      copy_assets_and_create_structure(name, silent, true, options[:nodocs])
+      copy_assets_and_create_structure(name, silent, true, options)
     end
 
     no_commands do
-      def copy_assets_and_create_structure(name, silent=false, force=false, no_docs=false, as_gem=false)
+      def copy_assets_and_create_structure(name, silent=false, force=false, options = {})
+
+        no_docs    = options[:no_docs]    || options[:nodocs]    || false
+        no_configs = options[:no_configs] || options[:noconfigs] || false
+        as_gem     = options[:as_gem]     || options[:asgem]     || false
+
         ceedling_path     = File.join(name, 'vendor', 'ceedling')
         source_path       = File.join(name, 'src')
         test_path         = File.join(name, 'test')
@@ -103,12 +114,14 @@ unless (project_found && rakefile_found)
           end
         end
 
-        if as_gem
-          copy_file(File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml'), :force => force)
-          copy_file(File.join('assets', 'rakefile_as_gem.rb'), File.join(name, 'rakefile.rb'), :force => force)
-        else
-          copy_file(File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml'), :force => force)
-          copy_file(File.join('assets', 'rakefile_with_guts.rb'), File.join(name, 'rakefile.rb'), :force => force)
+        unless (no_configs)
+          if as_gem
+            copy_file(File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml'), :force => force)
+            copy_file(File.join('assets', 'rakefile_as_gem.rb'), File.join(name, 'rakefile.rb'), :force => force)
+          else
+            copy_file(File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml'), :force => force)
+            copy_file(File.join('assets', 'rakefile_with_guts.rb'), File.join(name, 'rakefile.rb'), :force => force)
+          end
         end
 
         unless silent
@@ -190,7 +203,10 @@ else
           end
         end
       rescue Exception => e
-        STDERR.puts e.inspect unless (e == PTY::ChildExited)
+        unless (e == PTY::ChildExited)
+          STDERR.puts e.inspect
+          exit(-1) unless options[:graceful_fail]
+        end
       end
     end
 
@@ -217,6 +233,7 @@ else
         results = `#{cmd}`
         if ($?.exitstatus != 0)
           block.call( StringIO.new("ERROR: Aborted with Exit Code #{$?.exitstatus.to_s}") )
+          exit($?.exitstatus) unless options[:graceful_fail]
         else
           block.call( StringIO.new(results) )
         end
@@ -259,6 +276,7 @@ else
     :outfile => nil,
     :add_path => [],
     :path_connector => (platform == :mswin) ? ";" : ":",
+    :graceful_fail => false,
   }
 
   #guess that we need a special script file first if it exists
@@ -276,6 +294,7 @@ else
   else
     options[:add_path] = []
   end
+  options[:graceful_fail] = yaml_options[:graceful_fail] if yaml_options[:graceful_fail]
 
   #sort through command line options
   options[:args]
