@@ -11,7 +11,7 @@ void tearDown(void) {} // every test file requires this function;
 void test_AppMain_should_call_configure(void)
 {
     /* Ensure known test state */
-    BlinkTaskReady=0;
+    BlinkTaskReady=1;
     /* Setup expected call chain */
     Configure_Expect();
     /* Call function under test */
