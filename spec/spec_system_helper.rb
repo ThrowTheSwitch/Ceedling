@@ -182,15 +182,15 @@ module CeedlingTestCases
     end
   end
 
-  def can_test_projects
+  def can_test_projects_with_success
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
         output = `bundle exec ruby -S ceedling test:all`
-        expect($?.exitstatus).to match(0)
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
@@ -198,6 +198,40 @@ module CeedlingTestCases
       end
     end
   end
+
+  def can_test_projects_with_fail
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:all`
+        expect($?.exitstatus).to match(1) # Since a test fails, we return error here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  def can_test_projects_with_compile_error
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_boom.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:all`
+        expect($?.exitstatus).to match(1) # Since a test explodes, we return error here
+        expect(output).to match(/ERROR: Shell command failed/)
+        expect(output).to match(/> And exited with status:\s+/)
+        expect(output).to match(/rake aborted!/)
+      end
+    end
+  end
+
 
   def can_fetch_non_project_help
     @c.with_context do
@@ -239,7 +273,40 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling test:all`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Need to Implement ponies/)
+        output = `bundle exec ruby -S ceedling module:destroy[ponies]`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Destroy Complete/i)
       end
     end
   end
+
+  def handles_creating_the_same_module_twice_using_the_module_plugin
+    @c.with_context do
+      Dir.chdir @proj_name do
+        output = `bundle exec ruby -S ceedling module:create[unicorns]`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Generate Complete/i)
+
+        output = `bundle exec ruby -S ceedling module:create[unicorns]`
+        expect($?.exitstatus).to match(1)
+        expect(output).to match(/rake aborted!/i)
+        expect(output).to match(/ERROR: File unicorns already exists\. Exiting\./)
+      end
+    end
+  end
+
+  def handles_destroying_a_module_that_does_not_exist_using_the_module_plugin
+    @c.with_context do
+      Dir.chdir @proj_name do
+        output = `bundle exec ruby -S ceedling module:destroy[unknown]`
+        expect($?.exitstatus).to match(0)
+
+        expect(output).to match(/File src\/unknown\.c does not exist so cannot be removed\./)
+        expect(output).to match(/File src\/unknown\.h does not exist so cannot be removed\./)
+        expect(output).to match(/File test\/test_unknown\.c does not exist so cannot be removed\./)
+        expect(output).to match(/Destroy Complete/)
+      end
+    end
+  end
+
 end

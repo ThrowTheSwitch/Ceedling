@@ -27,8 +27,12 @@ describe "Ceedling" do
     it { contains_documentation }
     it { can_fetch_non_project_help }
     it { can_fetch_project_help }
-    it { can_test_projects }
+    it { can_test_projects_with_success }
+    it { can_test_projects_with_fail }
+    it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
   end
 
   describe "deployed in a project's `vendor` directory without docs." do
@@ -43,8 +47,12 @@ describe "Ceedling" do
     it { does_not_contain_documentation }
     it { can_fetch_non_project_help }
     it { can_fetch_project_help }
-    it { can_test_projects }
+    it { can_test_projects_with_success }
+    it { can_test_projects_with_fail }
+    it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
   end
 
   describe "ugrade a project's `vendor` directory" do
@@ -59,15 +67,23 @@ describe "Ceedling" do
     it { does_not_contain_documentation }
     it { can_fetch_non_project_help }
     it { can_fetch_project_help }
-    it { can_test_projects }
+    it { can_test_projects_with_success }
+    it { can_test_projects_with_fail }
+    it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
 
     it { can_upgrade_projects }
     it { contains_a_vendor_directory }
     it { can_fetch_non_project_help }
     it { can_fetch_project_help }
-    it { can_test_projects }
+    it { can_test_projects_with_success }
+    it { can_test_projects_with_fail }
+    it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
   end
 
   describe "deployed as a gem" do
@@ -81,8 +97,12 @@ describe "Ceedling" do
     it { does_not_contain_a_vendor_directory }
     it { can_fetch_non_project_help }
     it { can_fetch_project_help }
-    it { can_test_projects }
+    it { can_test_projects_with_success }
+    it { can_test_projects_with_fail }
+    it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
   end
 
   describe "command: `ceedling examples`" do

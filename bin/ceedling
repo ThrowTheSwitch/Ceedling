@@ -198,8 +198,11 @@ else
       begin
         PTY.spawn(cmd) do |stdout, stdin, pid|
           begin
+            yield stdout, stdin, pid
             block.call(stdout)
           rescue Errno::EIO
+          ensure
+            Process.wait pid
           end
         end
       rescue Exception => e
@@ -359,7 +362,12 @@ else
   end
 
   f.close if options[:outfile]
-  true
 
-#===================================================================================================================
+  
+  #===================================================================================================================
 end
+
+# This is a quick way to report the exit status since rake already returns
+# the correct result. If we ever chain commands together this will need to be
+# changed.
+exit($?.exitstatus) unless $?.nil?
