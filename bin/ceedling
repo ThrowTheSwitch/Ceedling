@@ -190,72 +190,8 @@ unless (project_found && rakefile_found)
 
 #===================================== We Have A Project Already ================================================
 else
-  begin
-    require 'pty'
-
-    #if available, we use PTY because it will live-stream our data instead of buffering it all up
-    def spawn_command(cmd, &block)
-      begin
-        PTY.spawn(cmd) do |stdout, stdin, pid|
-          begin
-            yield stdout, stdin, pid
-            block.call(stdout)
-          rescue Errno::EIO
-          ensure
-            Process.wait pid
-          end
-        end
-      rescue Exception => e
-        unless (e == PTY::ChildExited)
-          STDERR.puts e.inspect
-          exit(-1) unless options[:graceful_fail]
-        end
-      end
-    end
-
-  rescue LoadError
-
-    begin
-
-      require 'popen4'
-
-      #if pty wasn't available, we'll use POPEN instead
-      def spawn_command(cmd, &block)
-        POpen4.popen4(cmd) do |stdout, stderr, stdin|
-          begin
-            block.call(stdout)
-          rescue Errno::EIO
-          end
-        end
-      end
-
-    rescue LoadError
-
-      #if neither of these libraries were available, we can just shell out to the command and collect results
-      def spawn_command(cmd, &block)
-        results = `#{cmd}`
-        if ($?.exitstatus != 0)
-          block.call( StringIO.new("ERROR: Aborted with Exit Code #{$?.exitstatus.to_s}") )
-          exit($?.exitstatus) unless options[:graceful_fail]
-        else
-          block.call( StringIO.new(results) )
-        end
-      end
-    end
-
-  end
-
   require 'yaml'
   require 'rbconfig'
-
-  #determine the width of the screen
-  cols = 80
-  begin
-    require 'curses'
-    Curses.init_screen()
-    cols = Curses.cols
-  rescue LoadError
-  end
 
   #determine platform
   platform = begin
@@ -273,13 +209,14 @@ else
 
   #create our default meta-runner option set
   options = {
-    :pretend_we_are_gtest => false,
     :args => "",
     :pretest => nil,
-    :outfile => nil,
     :add_path => [],
     :path_connector => (platform == :mswin) ? ";" : ":",
     :graceful_fail => false,
+    :which_ceedling => (Dir.exists?("vendor/ceedling/") ? "vendor/ceedling" : 'gem'),
+    :default_tasks => [ 'test:all' ],
+    :list_tasks => false
   }
 
   #guess that we need a special script file first if it exists
@@ -291,13 +228,14 @@ else
 
   #merge in project settings if they can be found here
   yaml_options = YAML.load_file(main_filepath)
-  options[:pretend_we_are_gtest] = (yaml_options[:plugins][:enabled].include? :stdout_gtestlike_tests_report) if (yaml_options[:plugins] && yaml_options[:plugins][:enabled])
   if (yaml_options[:paths])
     options[:add_path] = yaml_options[:paths][:tools] || []
   else
     options[:add_path] = []
   end
-  options[:graceful_fail] = yaml_options[:graceful_fail] if yaml_options[:graceful_fail]
+  options[:graceful_fail]  = yaml_options[:graceful_fail] if yaml_options[:graceful_fail]
+  options[:which_ceedling] = yaml_options[:project][:which_ceedling] if (yaml_options[:project] && yaml_options[:project][:which_ceedling])
+  options[:default_tasks]  = yaml_options[:default_tasks] if yaml_options[:default_tasks]
 
   #sort through command line options
   options[:args]
@@ -309,12 +247,8 @@ else
              "      but it looks like you're already in a project. If you really \n" +
              "      want to do this, try moving to an empty folder.\n\n"
         abort
-      when /^--gtest/
-        options[:pretend_we_are_gtest] = true
-      when /^--debug/
-        options[:outfile] = "debug.txt"
       when /^help$/
-        options[:args] += "-T "
+        options[:list_tasks] = true
       when /^project:(\w+)/
         ENV['CEEDLING_USER_PROJECT_FILE'] = "#{$1}.yml"
       else
@@ -332,42 +266,32 @@ else
     ENV["PATH"] = path
   end
 
-  if (options[:outfile])
-    f = File.open(options[:outfile],'w')
-    f << ARGV.inspect << "\n\n"
-    f << options.inspect << "\n\n"
-  end
-
-  #run rake and capture all the output
-  options[:cmd] = if (options[:pretest].nil? || options[:pretest].empty?)
-    "rake #{options[:args]}"
+  # Load Ceedling (either through the rakefile OR directly)
+  if (File.exists?("rakefile.rb"))
+    load 'rakefile.rb'
   else
-    "#{options[:pretest]} && rake #{options[:args]}"
-  end
-  spawn_command(options[:cmd]) do |stdout|
-    stdout.each do |line|
-      if (!options[:pretend_we_are_gtest] || (line.match(/^\[.*\]/)) || (line.match(/\d+ FAILED TESTS/)))
-        f.puts(line) if (options[:outfile])
-        if (options[:args].strip == "-T")
-          line.gsub!(/(?<!\w)rake(?!\w)/,'ceedling')
-          if (line.length > cols)
-            endings = line.match(/[\r\n]+/)[0]
-            line.gsub!(endings,'')
-            line = line.slice(0, cols-3) + '...' + endings
-          end
-        end
-        puts(line)
-      end
+    if (options[:which_ceedling] == 'gem')
+      require 'ceedling'
+    else
+      load "#{options[:which_ceedling]}/lib/ceedling/rakefile.rb"
     end
   end
 
-  f.close if options[:outfile]
+  if options[:list_tasks]
+    # Display helpful task list when requested. This required us to dig into Rake internals a bit
+    Rake.application.define_singleton_method(:name=) {|n| @name = n}
+    Rake.application.name = 'ceedling'
+    Rake.application.options.show_tasks = :tasks
+    Rake.application.options.show_all_tasks = true
+    Rake.application.options.show_task_pattern = /^(?!.*build).*$/
+    Rake.application.display_tasks_and_comments()
+  else
+    task :default => options[:default_tasks]
 
-  
-  #===================================================================================================================
+    # Run our Tasks!
+    Rake.application.collect_command_line_tasks(ARGV)
+    Rake.application.top_level
+  end
+  true
+#===================================================================================================================
 end
-
-# This is a quick way to report the exit status since rake already returns
-# the correct result. If we ever chain commands together this will need to be
-# changed.
-exit($?.exitstatus) unless $?.nil?
