@@ -203,7 +203,6 @@ else
 
   #create our default meta-runner option set
   options = {
-    :args => "",
     :pretest => nil,
     :add_path => [],
     :path_connector => (platform == :mswin) ? ";" : ":",
@@ -232,7 +231,6 @@ else
   options[:default_tasks]  = yaml_options[:default_tasks] if yaml_options[:default_tasks]
 
   #sort through command line options
-  options[:args]
   ARGV.each do |v|
     case(v)
       when /^(?:new|examples?|templates?)$/
@@ -246,7 +244,7 @@ else
       when /^project:(\w+)/
         ENV['CEEDLING_USER_PROJECT_FILE'] = "#{$1}.yml"
       else
-        options[:args] += v + " "
+        #nothing
     end
   end
 
