@@ -12,6 +12,9 @@
   :build_root: build
 #  :release_build: TRUE
   :test_file_prefix: test_
+  :which_ceedling: gem
+  :default_tasks:
+    - test:all
 
 #:release_build:
 #  :output: MyApp.out

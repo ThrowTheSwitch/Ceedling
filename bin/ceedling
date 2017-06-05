@@ -116,10 +116,8 @@ unless (project_found)
         unless (no_configs)
           if as_gem
             copy_file(File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml'), :force => force)
-            copy_file(File.join('assets', 'rakefile_as_gem.rb'), File.join(name, 'rakefile.rb'), :force => force)
           else
             copy_file(File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml'), :force => force)
-            copy_file(File.join('assets', 'rakefile_with_guts.rb'), File.join(name, 'rakefile.rb'), :force => force)
           end
         end
 
@@ -149,20 +147,17 @@ unless (project_found)
 
       dest_src      = File.join(dest,'src')
       dest_test     = File.join(dest,'test')
-      dest_rakefile = File.join(dest,'rakefile.rb')
       dest_project  = File.join(dest,'project.yml')
 
       directory "examples/#{proj_name}/src",         dest_src
       directory "examples/#{proj_name}/test",        dest_test
-      remove_file dest_rakefile
       remove_file dest_project
-      copy_file "examples/#{proj_name}/rakefile.rb", dest_rakefile
       copy_file "examples/#{proj_name}/project.yml", dest_project
 
       puts "\n"
       puts "Example project '#{proj_name}' created!"
       puts " - Tool documentation is located in vendor/ceedling/docs"
-      puts " - Execute 'rake -T' to view available test & build tasks"
+      puts " - Execute 'ceedling help' to view available test & build tasks"
       puts ''
     end
 
@@ -213,7 +208,7 @@ else
     :add_path => [],
     :path_connector => (platform == :mswin) ? ";" : ":",
     :graceful_fail => false,
-    :which_ceedling => (Dir.exists?("vendor/ceedling/") ? "vendor/ceedling" : 'gem'),
+    :which_ceedling => (Dir.exists?("vendor/ceedling") ? "vendor/ceedling" : 'gem'),
     :default_tasks => [ 'test:all' ],
     :list_tasks => false
   }
@@ -272,24 +267,27 @@ else
     if (options[:which_ceedling] == 'gem')
       require 'ceedling'
     else
-      load "#{options[:which_ceedling]}/lib/ceedling/rakefile.rb"
+      load "#{options[:which_ceedling]}/lib/ceedling.rb"
     end
+    Ceedling.load_project
   end
 
-  if options[:list_tasks]
-    # Display helpful task list when requested. This required us to dig into Rake internals a bit
-    Rake.application.define_singleton_method(:name=) {|n| @name = n}
-    Rake.application.name = 'ceedling'
-    Rake.application.options.show_tasks = :tasks
-    Rake.application.options.show_all_tasks = true
-    Rake.application.options.show_task_pattern = /^(?!.*build).*$/
-    Rake.application.display_tasks_and_comments()
-  else
-    task :default => options[:default_tasks]
+  Rake.application.standard_exception_handling do
+    if options[:list_tasks]
+      # Display helpful task list when requested. This required us to dig into Rake internals a bit
+      Rake.application.define_singleton_method(:name=) {|n| @name = n}
+      Rake.application.name = 'ceedling'
+      Rake.application.options.show_tasks = :tasks
+      Rake.application.options.show_all_tasks = true
+      Rake.application.options.show_task_pattern = /^(?!.*build).*$/
+      Rake.application.display_tasks_and_comments()
+    else
+      task :default => options[:default_tasks]
 
-    # Run our Tasks!
-    Rake.application.collect_command_line_tasks(ARGV)
-    Rake.application.top_level
+      # Run our Tasks!
+      Rake.application.collect_command_line_tasks(ARGV)
+      Rake.application.top_level
+    end
   end
   true
 #===================================================================================================================

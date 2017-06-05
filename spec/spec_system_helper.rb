@@ -125,7 +125,6 @@ module CeedlingTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         expect(File.exists?("project.yml")).to eq true
-        expect(File.exists?("rakefile.rb")).to eq true
         expect(File.exists?("src")).to eq true
         expect(File.exists?("test")).to eq true
       end
@@ -139,7 +138,6 @@ module CeedlingTestCases
       expect(output).to match(/upgraded!/i)
       Dir.chdir @proj_name do
         expect(File.exists?("project.yml")).to eq true
-        expect(File.exists?("rakefile.rb")).to eq true
         expect(File.exists?("src")).to eq true
         expect(File.exists?("test")).to eq true
         all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
