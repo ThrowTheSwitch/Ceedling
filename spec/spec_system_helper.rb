@@ -225,9 +225,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:all`
         expect($?.exitstatus).to match(1) # Since a test explodes, we return error here
-        expect(output).to match(/ERROR: Shell command failed/)
-        expect(output).to match(/> And exited with status:\s+/)
-        expect(output).to match(/rake aborted!/)
+        expect(output).to match(/ERROR: Ceedling Failed/)
       end
     end
   end
@@ -289,8 +287,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling module:create[unicorns]`
         expect($?.exitstatus).to match(1)
-        expect(output).to match(/rake aborted!/i)
-        expect(output).to match(/ERROR: File unicorns already exists\. Exiting\./)
+        expect(output).to match(/ERROR: Ceedling Failed/)
       end
     end
   end

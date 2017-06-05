@@ -11,9 +11,8 @@ if (!project_found)
   main_filepath = "project.yml"
   project_found = File.exists?(main_filepath)
 end
-rakefile_found = (File.exists? "rakefile.rb")
 
-unless (project_found && rakefile_found)
+unless (project_found)
 #===================================== We Do Not Have A Project ================================================
 
   puts "Welcome to Ceedling!"

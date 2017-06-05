@@ -57,6 +57,9 @@ verbose(false)
 
 # end block always executed following rake run
 END {
+  $stdout.flush unless $stdout.nil?
+  $stderr.flush unless $stderr.nil?
+
   # cache our input configurations to use in comparison upon next execution
   @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash )    if (@ceedling[:task_invoker].test_invoked?)
   @ceedling[:cacheinator].cache_release_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].release_invoked?)
@@ -72,6 +75,8 @@ END {
     # tell all our plugins the build is done and process results
     @ceedling[:plugin_manager].post_build
     @ceedling[:plugin_manager].print_plugin_failures
-    exit(1) if (@ceedling[:plugin_manager].plugins_failed? && !@ceedling[:setupinator].config_hash[:graceful_fail]) 
+    exit(1) if (@ceedling[:plugin_manager].plugins_failed? && !@ceedling[:setupinator].config_hash[:graceful_fail])
+  else
+    puts "ERROR: Ceedling Failed"
   end
 }
