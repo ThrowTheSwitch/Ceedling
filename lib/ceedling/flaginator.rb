@@ -7,7 +7,7 @@ require 'ceedling/constants'
 # :flags:
 #   :release:
 #     :compile:
-#       :'test_.*'
+#       :'test_.+'
 #         - -pedantic   # add '-pedantic' to every test file
 #       :*:          # add '-foo' to compilation of all files not main.c
 #         - -foo
@@ -37,7 +37,7 @@ class Flaginator
     any, regex = partition(magic) { |k, v| (k == :'*') || (k == :'.*')  } # glob or regex wild card
     
     # 2. try regexes
-    find_res = regex.find { |k, v| file_name =~ /#{k.to_s}/ }
+    find_res = regex.find { |k, v| file_name =~ /^#{k.to_s}$/ }
     return find_res[1] if find_res
     
     # 3. try anything
