@@ -1338,7 +1338,7 @@ Notes:
 * File specifiers are case sensitive (must match original file
   name)
 
-* File specifiers do support regular expressions
+* File specifiers do support regular expressions if encased in quotes
 
 * '*' is a special (optional) file specifier to provide flags
   to all files not otherwise specified
