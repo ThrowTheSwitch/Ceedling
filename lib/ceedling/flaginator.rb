@@ -32,9 +32,9 @@ class Flaginator
    
     # 1. try literals
     literals, magic = partition(hash) { |k, v| k.to_s =~ /^\w+$/ }  
-    return literals[file_key] if (literals.include?(file_key)
+    return literals[file_key] if literals.include?(file_key)
     
-    any, regex = partition(magic) { |k, v| (k == :*) || (k == :.*)  } # glob or regex wild card
+    any, regex = partition(magic) { |k, v| (k == :'*') || (k == :'.*')  } # glob or regex wild card
     
     # 2. try regexes
     find_res = regex.find { |k, v| file_name =~ /#{k.to_s}/ }
