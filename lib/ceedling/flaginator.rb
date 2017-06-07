@@ -41,7 +41,7 @@ class Flaginator
     return find_res[1] if find_res
     
     # 3. try anything
-    find_res = any.find { |k, v| file_name =~ /#{k.to_s}/ }
+    find_res = any.find { |k, v| file_name =~ /.*/ }
     return find_res[1] if find_res
       
     # 4. well, we've tried
