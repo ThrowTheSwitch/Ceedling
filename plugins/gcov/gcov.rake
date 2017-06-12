@@ -159,15 +159,20 @@ namespace UTILS_SYM do
     end
 
     if @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'basic'
-      puts 'Creating a basic html report of gcov results...'
+      puts "Creating a basic html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
       command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [])
       @ceedling[:tool_executor].exec(command[:line], command[:options])
-    elsif @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'advanced'
-      puts 'Creating an indepth html report of gcov results...'
+    elsif @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'detailed'
+      puts "Creating a detailed html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
       command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_ADVANCED, [])
       @ceedling[:tool_executor].exec(command[:line], command[:options])
     else
-      puts 'define \n:gcov:\n\t:html_report_type:\n to basic or advanced to use this feature.'
+      puts "In your project.yml, define: \n\n:gcov:\n  :html_report_type:\n\n to basic or detailed to refine this feature."
+      puts "For now, just creating basic."
+      puts "Creating a basic html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
+      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [])
+      @ceedling[:tool_executor].exec(command[:line], command[:options])
     end
+    puts "Done."
   end
 end
