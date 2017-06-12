@@ -14,6 +14,9 @@ $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'deep_merge/lib') )
 
 require 'rake'
 
+#Let's make sure we remember the task descriptions in case we need them
+Rake::TaskManager.record_task_metadata = true
+
 require 'diy'
 require 'constructor'
 
