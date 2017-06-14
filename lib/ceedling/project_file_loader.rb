@@ -9,9 +9,11 @@ class ProjectFileLoader
 
   def setup
     @main_file = nil
+    @mixin_files = []
     @user_file = nil
 
     @main_project_filepath = ''
+    @mixin_project_filepaths = []
     @user_project_filepath = ''
   end
 
@@ -24,6 +26,16 @@ class ProjectFileLoader
       @user_project_filepath = user_filepath
     elsif (@file_wrapper.exist?(DEFAULT_CEEDLING_USER_PROJECT_FILE))
       @user_project_filepath = DEFAULT_CEEDLING_USER_PROJECT_FILE
+    end
+
+    # next check for mixin project files by looking for environment variable
+    mixin_filepaths = @system_wrapper.env_get('CEEDLING_MIXIN_PROJECT_FILES')
+    if ( not mixin_filepaths.nil? )
+      mixin_filepaths.split(File::PATH_SEPARATOR).each do |filepath|
+        if ( @file_wrapper.exist?(filepath) )
+          @mixin_project_filepaths.push(filepath)
+        end
+      end
     end
 
     # next check for main project file by looking for environment variable and then default location on disk;
@@ -42,6 +54,9 @@ class ProjectFileLoader
     end
 
     @main_file = File.basename( @main_project_filepath )
+    @mixin_project_filepaths.each do |filepath|
+      @mixin_files.push(File.basename( filepath ))
+    end
     @user_file = File.basename( @user_project_filepath ) if ( not @user_project_filepath.empty? )
   end
 
@@ -64,16 +79,18 @@ class ProjectFileLoader
   end
 
   def load_project_config
-    config_hash = {}
-    # if there's no user project file, then just provide hash from project file
-    if (@user_project_filepath.empty?)
-      config_hash = @yaml_wrapper.load(@main_project_filepath)
-    # if there is a user project file, load it too and merge it on top of the project file,
-    # superseding anything that's common between them
-    else
-      main_hash = @yaml_wrapper.load(@main_project_filepath)
+    config_hash = @yaml_wrapper.load(@main_project_filepath)
+
+    # if there are mixin project files, then use them
+    @mixin_project_filepaths.each do |filepath|
+      mixin = @yaml_wrapper.load(filepath)
+      config_hash = yaml_merger( config_hash, mixin )
+    end
+
+    # if there's a user project file, then use it
+    if ( not @user_project_filepath.empty? )
       user_hash = @yaml_wrapper.load(@user_project_filepath)
-      config_hash = yaml_merger( main_hash, user_hash )
+      config_hash = yaml_merger( config_hash, user_hash )
     end
 
     return config_hash
