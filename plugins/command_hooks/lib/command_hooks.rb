@@ -48,7 +48,8 @@ class CommandHooks < Plugin
 
   def run_hook_step(hook, name="")
     if (hook[:executable])
-      cmd = @ceedling[:tool_executor].build_command_line( hook, [], name )
+      args = ( (hook[:args].is_a? Array) ? hook[:args] : [] )
+      cmd = @ceedling[:tool_executor].build_command_line( hook, args, name )
       shell_result = @ceedling[:tool_executor].exec( cmd[:line], cmd[:options] )
     end
   end
