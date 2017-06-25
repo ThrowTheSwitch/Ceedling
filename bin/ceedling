@@ -276,7 +276,6 @@ else
       Rake.application.define_singleton_method(:name=) {|n| @name = n}
       Rake.application.name = 'ceedling'
       Rake.application.options.show_tasks = :tasks
-      Rake.application.options.show_all_tasks = true
       Rake.application.options.show_task_pattern = /^(?!.*build).*$/
       Rake.application.display_tasks_and_comments()
     else
