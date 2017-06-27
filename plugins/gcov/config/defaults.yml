@@ -36,7 +36,7 @@
     :arguments:
         - -p
         - -b
-        - -e '^vendor.*|^build.*|^test.*|^lib.*'
+        - -e "'^vendor.*|^build.*|^test.*|^lib.*'"
         - --html
         - -r .
         - -o GcovCoverageResults.html
@@ -46,7 +46,7 @@
     :arguments:
         - -p
         - -b
-        - -e '^vendor.*|^build.*|^test.*|^lib.*'
+        - -e "'^vendor.*|^build.*|^test.*|^lib.*'"
         - --html
         - -r .
         - -o  "$": GCOV_ARTIFACTS_FILE
@@ -56,7 +56,7 @@
     :arguments:
         - -p
         - -b
-        - -e '^vendor.*|^build.*|^test.*|^lib.*'
+        - -e "'^vendor.*|^build.*|^test.*|^lib.*'"
         - --html-details
         - -r .
         - -o  "$": GCOV_ARTIFACTS_FILE
