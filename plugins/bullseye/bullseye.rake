@@ -20,6 +20,7 @@ rule(/#{BULLSEYE_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
   if (File.basename(object.source) =~ /^(#{PROJECT_TEST_FILE_PREFIX}|#{CMOCK_MOCK_PREFIX}|#{BULLSEYE_IGNORE_SOURCES.join('|')})/i)
     @ceedling[:generator].generate_object_file(
       TOOLS_BULLSEYE_COMPILER,
+      OPERATION_COMPILE_SYM,
       BULLSEYE_SYM,
       object.source,
       object.name,
@@ -154,7 +155,7 @@ namespace UTILS_SYM do
   
   desc "Open Bullseye code coverage browser"
   task BULLSEYE_SYM do
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BROWSER)
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BROWSER, [])
     @ceedling[:tool_executor].exec(command[:line], command[:options])
   end
   
