@@ -60,7 +60,7 @@ class Bullseye < Plugin
       @result_list << arg_hash[:result_file]
     end
   end
-    
+
   def post_build
     return if (not @ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
 
@@ -106,7 +106,25 @@ class Bullseye < Plugin
     shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
     report_coverage_results_all(shell_result[:output])
   end
+  
+  def enableBullseye(enable)
+    if PLUGINS_BULLSEYE_LIB_PATH.empty? and BULLSEYE_AUTO_LICENSE
+      if (enable)
+        args = ['push', 'on']
+        @ceedling[:streaminator].stdout_puts("Enabling Bullseye")
+      else
+        args = ['pop']
+        @ceedling[:streaminator].stdout_puts("Reverting Bullseye to previous state")
+      end
 
+      args.each do |arg| 
+        command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BUILD_ENABLE_DISABLE, [], arg)
+        shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+      end
+
+    end
+  end
+  
   private ###################################
 
   def report_coverage_results_all(coverage)
@@ -170,4 +188,5 @@ end
 END {
   # cache our input configurations to use in comparison upon next execution
   @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
+  @ceedling[BULLSEYE_SYM].enableBullseye(false)
 }
