@@ -187,6 +187,8 @@ end
 # end blocks always executed following rake run
 END {
   # cache our input configurations to use in comparison upon next execution
-  @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
-  @ceedling[BULLSEYE_SYM].enableBullseye(false)
+  if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
+    @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash ) 
+    @ceedling[BULLSEYE_SYM].enableBullseye(false)
+  end
 }
