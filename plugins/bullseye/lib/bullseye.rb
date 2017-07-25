@@ -108,7 +108,7 @@ class Bullseye < Plugin
   end
   
   def enableBullseye(enable)
-    if PLUGINS_BULLSEYE_LIB_PATH.empty? and BULLSEYE_AUTO_LICENSE
+    if BULLSEYE_AUTO_LICENSE
       if (enable)
         args = ['push', 'on']
         @ceedling[:streaminator].stdout_puts("Enabling Bullseye")
