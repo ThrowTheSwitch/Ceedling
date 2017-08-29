@@ -76,4 +76,8 @@ class FileWrapper
     return FileList.new(files)
   end
 
+  def mkdir(folder)
+    return FileUtils.mkdir_p(folder)
+  end
+
 end
