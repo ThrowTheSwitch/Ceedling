@@ -204,6 +204,7 @@ else
   #create our default meta-runner option set
   options = {
     :pretest => nil,
+    :args => [],
     :add_path => [],
     :path_connector => (platform == :mswin) ? ";" : ":",
     :graceful_fail => false,
@@ -244,7 +245,7 @@ else
       when /^project:(\w+)/
         ENV['CEEDLING_USER_PROJECT_FILE'] = "#{$1}.yml"
       else
-        #nothing
+        options[:args].push(v)
     end
   end
 
@@ -282,7 +283,7 @@ else
       task :default => options[:default_tasks]
 
       # Run our Tasks!
-      Rake.application.collect_command_line_tasks(ARGV)
+      Rake.application.collect_command_line_tasks(options[:args])
       Rake.application.top_level
     end
   end
