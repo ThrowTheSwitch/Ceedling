@@ -9,7 +9,11 @@ namespace :module do
       p = files.delete(pat)
       optz[:pattern] = p unless p.nil?
     end
-    files.each {|v| @ceedling[:module_generator].create(v, optz) }
+    files.each {
+      |v|
+      module_root_path, module_name = v.split(':', 2)
+      @ceedling[:module_generator].create(module_name, module_root_path, optz)
+    }
   end
 
   desc "Destroy module (source, header and test files)"
@@ -20,7 +24,11 @@ namespace :module do
       p = files.delete(pat)
       optz[:pattern] = p unless p.nil?
     end
-    files.each {|v| @ceedling[:module_generator].create(v, optz) }
+    files.each {
+      |v|
+      module_root_path, module_name = v.split(':', 2)
+      @ceedling[:module_generator].create(module_name, module_root_path, optz)
+    }
   end
 
 end
