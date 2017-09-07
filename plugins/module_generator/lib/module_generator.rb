@@ -20,7 +20,7 @@ class ModuleGenerator < Plugin
 
   private
 
-  def divine_options(optz={}, module_root_path={})
+  def divine_options(optz={}, module_root_path="")
     {
       :path_src     => File.join(module_root_path,
                                  ((defined? MODULE_GENERATOR_SOURCE_ROOT ) ?
