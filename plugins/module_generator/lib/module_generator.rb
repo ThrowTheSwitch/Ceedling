@@ -29,7 +29,7 @@ class ModuleGenerator < Plugin
       :path_inc     => File.join(module_root_path,
                                  ((defined? MODULE_GENERATOR_INC_ROOT ) ?
                                  MODULE_GENERATOR_INC_ROOT.gsub('\\', '/').sub(/^\//, '').sub(/\/$/, '')
-                                 (defined? MODULE_GENERATOR_SOURCE_ROOT ) ?
+                                 : (defined? MODULE_GENERATOR_SOURCE_ROOT ) ?
                                  MODULE_GENERATOR_SOURCE_ROOT.gsub('\\', '/').sub(/^\//, '').sub(/\/$/, '')
                                  : "src" )),
       :path_tst     => File.join(module_root_path,
