@@ -7,6 +7,8 @@ require 'ceedling/constants'
 # :flags:
 #   :release:
 #     :compile:
+#       :'test_.+'
+#         - -pedantic   # add '-pedantic' to every test file
 #       :*:          # add '-foo' to compilation of all files not main.c
 #         - -foo
 #       :main:       # add '-Wall' to compilation of main.c
@@ -17,16 +19,41 @@ require 'ceedling/constants'
 #         - --bar
 #         - --baz
 
+def partition(hash, &predicate)
+  hash.partition(&predicate).map(&:to_h)
+end
 
 class Flaginator
 
   constructor :configurator
 
+  def get_flag(hash, file_name)
+    file_key = file_name.to_sym
+   
+    # 1. try literals
+    literals, magic = partition(hash) { |k, v| k.to_s =~ /^\w+$/ }  
+    return literals[file_key] if literals.include?(file_key)
+    
+    any, regex = partition(magic) { |k, v| (k == :'*') || (k == :'.*')  } # glob or regex wild card
+    
+    # 2. try regexes
+    find_res = regex.find { |k, v| file_name =~ /^#{k.to_s}$/ }
+    return find_res[1] if find_res
+    
+    # 3. try anything
+    find_res = any.find { |k, v| file_name =~ /.*/ }
+    return find_res[1] if find_res
+      
+    # 4. well, we've tried
+    return []
+  end
+  
   def flag_down( operation, context, file )
     # create configurator accessor method
     accessor = ('flags_' + context.to_s).to_sym
 
     # create simple filename key from whatever filename provided
+    file_name = File.basename( file ).ext('')
     file_key = File.basename( file ).ext('').to_sym
 
     # if no entry in configuration for flags for this context, bail out
@@ -41,14 +68,7 @@ class Flaginator
     # redefine flags to sub hash associated with the operation
     flags = flags[operation]
 
-    # if our file is in the flags hash, extract the array of flags
-    if (flags.include?( file_key )) then return flags[file_key]
-    # if our file isn't in the flags hash, but there is default for all other files, extract array of flags
-    elsif (flags.include?( :* )) then return flags[:*]
-    end
-
-    # fall through: flags were specified but none applying to present file
-    return []
+    return get_flag(flags, file_name)
   end
 
 end

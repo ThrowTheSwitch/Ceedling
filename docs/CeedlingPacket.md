@@ -1338,6 +1338,8 @@ Notes:
 * File specifiers are case sensitive (must match original file
   name)
 
+* File specifiers do support regular expressions if encased in quotes
+
 * '*' is a special (optional) file specifier to provide flags
   to all files not otherwise specified
 
@@ -1352,6 +1354,8 @@ Example [:flags] YAML blurb
         - -Wall
       :fan:        # add '--O2' to compilation of fan.c
         - --O2
+      :'test_.+':   # add '-pedantic' to all test-files
+        - -pedantic
       :*:          # add '-foo' to compilation of all files not main.c or fan.c
         - -foo
   :test:
