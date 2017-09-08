@@ -21,7 +21,7 @@ end
 
 rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
-      @ceedling[:file_finder].find_compilation_input_file(task_name)
+      @ceedling[:file_finder].find_compilation_input_file(task_name, :error, true)
     end
   ]) do |object|
   @ceedling[:generator].generate_object_file(

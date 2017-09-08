@@ -316,6 +316,32 @@ class ConfiguratorBuilder
   end
 
 
+  def collect_release_existing_compilation_input(in_hash)
+    release_input = @file_wrapper.instantiate_file_list
+
+    paths =
+      in_hash[:collection_paths_source] +
+      in_hash[:collection_paths_include]
+
+    paths << File.join(in_hash[:cexception_vendor_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
+
+    paths.each do |path|
+      release_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
+      if File.exists?(path) and not File.directory?(path)
+        release_input.include( path )
+      else
+        release_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
+      end
+    end
+
+    @file_system_utils.revise_file_list( release_input, in_hash[:files_source] )
+    @file_system_utils.revise_file_list( release_input, in_hash[:files_include] )
+    # finding assembly files handled explicitly through other means
+
+    return {:collection_release_existing_compilation_input => release_input}
+  end
+
+
   def collect_all_existing_compilation_input(in_hash)
     all_input = @file_wrapper.instantiate_file_list
 
