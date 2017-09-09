@@ -1,6 +1,8 @@
 
 namespace :module do
 
+  module_root_path_separator = ':'
+
   desc "Generate module (source, header and test files)"
   task :create, :module_path do |t, args|
     files = [args[:module_path]] + (args.extras || [])
@@ -11,7 +13,7 @@ namespace :module do
     end
     files.each {
       |v|
-      module_root_path, module_name = v.split(':', 2)
+      module_root_path, module_name = v.split(module_root_path_separator, 2)
       @ceedling[:module_generator].create(module_name, module_root_path, optz)
     }
   end
@@ -26,7 +28,7 @@ namespace :module do
     end
     files.each {
       |v|
-      module_root_path, module_name = v.split(':', 2)
+      module_root_path, module_name = v.split(module_root_path_separator, 2)
       @ceedling[:module_generator].create(module_name, module_root_path, optz)
     }
   end
