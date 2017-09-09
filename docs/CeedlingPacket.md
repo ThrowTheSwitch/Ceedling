@@ -334,7 +334,7 @@ Ceedling (more on this later).
 
   The module generator has several options you can configure.
   F.e. Generating the source/header/test file in a subdirectory (by adding <Path> when calling module:create).
-  For more info, refer to the "Module Generator" section.
+  For more info, refer to the [Module Generator](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#module-generator) section.
 
 * `ceedling logging <tasks...>`:
 
@@ -1980,7 +1980,6 @@ By default, the module_generator will generate your files in lowercase.
 2. mydriver.h
 3. test_mydriver.c
 
-The module_generator will use lowercase names by default.
 You can configure the module_generator to use a differect naming mechanism through the project.yml:
 ```yaml
 :module_generator:
