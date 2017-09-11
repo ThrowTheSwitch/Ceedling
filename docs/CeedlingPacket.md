@@ -323,6 +323,7 @@ Ceedling (more on this later).
   ceedling release:assemble:foo.s
 
 * `ceedling module:create[Filename]`:
+* `ceedling module:create[<Path:>Filename]`:
 
   It's often helpful to create a file automatically. What's better than
   that? Creating a source file, a header file, and a corresponding test
@@ -330,6 +331,10 @@ Ceedling (more on this later).
 
   There are also patterns which can be specified to automatically generate
   a bunch of files. Try `ceedling module:create[Poodles,mch]` for example!
+
+  The module generator has several options you can configure.
+  F.e. Generating the source/header/test file in a subdirectory (by adding <Path> when calling module:create).
+  For more info, refer to the [Module Generator](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#module-generator) section.
 
 * `ceedling logging <tasks...>`:
 
@@ -1911,6 +1916,77 @@ Example [:plugins] YAML blurb
   root>/artifacts` directory (e.g. test/ for test tasks, `release/` for a
   release build, or even `bullseye/` for bullseye runs).
 
+Module Generator
+========================
+Ceedling includes a plugin called module_generator that will create a source, header and test file for you.
+There are several possibilities to configure this plugin through your project.yml to suit your project's needs.
+
+Directory Structure
+-------------------------------------------
+
+The default configuration for directory/project structure is:
+```yaml
+:module_generator:
+  :project_root: ./
+  :source_root: src/
+  :test_root: test/
+```
+You can change these variables in your project.yml file to comply with your project's directory structure.
+
+If you call `ceedling module:create`, it will create three files:
+1. A source file in the source_root
+2. A header file in the source_root
+3. A test file in the test_root
+
+If you want your header file to be in another location,
+you can specify the ':inc_root:" in your project.yml file:
+```yaml
+:module_generator:
+  :inc_root: inc/
+```
+The module_generator will then create the header file in your defined ':inc_root:'.
+By default, ':inc_root:' is not defined so the module_generator will use the source_root.
+
+Sometimes, your project can't be divided into a single src, inc, and test folder. You have several directories
+with sources/..., something like this for example:
+<project_root>
+ - myDriver
+   - src
+   - inc
+   - test
+ - myOtherDriver
+   - src
+   - inc
+   - test
+ - ...
+
+Don't worry, you don't have to manually create the source/header/test files.
+The module_generator can accept a path to create a source_root/inc_root/test_root folder with your files:
+`ceedling module:create[<module_root_path>:<module_name>]`
+
+F.e., applied to the above project structure:
+`ceedling module:create[myOtherDriver:driver]`
+This will make the module_generator run in the subdirectory 'myOtherDriver' and generate the module files
+for you in that directory. So, this command will generate the following files:
+1. A source file 'driver.c' in <project_root>/myOtherDriver/<source_root>
+2. A header file 'driver.h' in <project_root>/myOtherDriver/<source_root> (or <inc_root> if specified)
+3. A test file 'test_driver.c' in <project_root>/myOtherDriver/<test_root>
+
+Naming
+-------------------------------------------
+By default, the module_generator will generate your files in lowercase.
+`ceedling module:create[mydriver]` and `ceedling module:create[myDriver]`(note the uppercase) will generate the same files:
+1. mydriver.c
+2. mydriver.h
+3. test_mydriver.c
+
+You can configure the module_generator to use a differect naming mechanism through the project.yml:
+```yaml
+:module_generator:
+  :naming: "camel"
+```
+There are other possibilities as well (bumpy, camel, snake, caps).
+Refer to the unity module generator for more info (the unity module generator is used under the hood by module_generator).
 
 Advanced Topics (Coming)
 ========================
@@ -1945,4 +2021,3 @@ Creating Custom Plugins
 -----------------------
 
 Oh boy. This is going to take some explaining.
-
