@@ -57,6 +57,7 @@
         - -p
         - -b
         - -e "'^vendor.*|^build.*|^test.*|^lib.*'"
+        - --html
         - --html-details
         - -r .
         - -o  "$": GCOV_ARTIFACTS_FILE
