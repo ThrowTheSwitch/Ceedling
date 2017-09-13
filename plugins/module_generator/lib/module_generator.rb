@@ -21,6 +21,7 @@ class ModuleGenerator < Plugin
   private
 
   def divine_options(optz={})
+    unity_generator_options =
     {
       :path_src     => ((defined? MODULE_GENERATOR_SOURCE_ROOT ) ? MODULE_GENERATOR_SOURCE_ROOT.gsub('\\', '/').sub(/^\//, '').sub(/\/$/, '') : "src" ),
       :path_inc     => ((defined? MODULE_GENERATOR_INC_ROOT ) ?
@@ -37,6 +38,14 @@ class ModuleGenerator < Plugin
       :naming       => ((defined? MODULE_GENERATOR_NAMING      ) ? MODULE_GENERATOR_NAMING : nil ),
       :update_svn   => ((defined? MODULE_GENERATOR_UPDATE_SVN  ) ? MODULE_GENERATOR_UPDATE_SVN : false ),
     }
+
+    unless optz[:module_root_path].to_s.empty?
+      unity_generator_options[:path_src]  = File.join(optz[:module_root_path], unity_generator_options[:path_src])
+      unity_generator_options[:path_inc]  = File.join(optz[:module_root_path], unity_generator_options[:path_inc])
+      unity_generator_options[:path_tst]  = File.join(optz[:module_root_path], unity_generator_options[:path_tst])
+    end
+
+    return unity_generator_options
   end
 
 end
