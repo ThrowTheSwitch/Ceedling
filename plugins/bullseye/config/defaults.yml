@@ -1,5 +1,9 @@
 ---
 
+:bullseye:
+  :auto_license: TRUE
+:plugins:
+  :bullseye_lib_path: []
 :paths:
   :bullseye_toolchain_include: []
 

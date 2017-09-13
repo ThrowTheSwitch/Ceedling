@@ -41,10 +41,11 @@ class Bullseye < Plugin
     compile_command  = 
       @ceedling[:tool_executor].build_command_line(
         TOOLS_BULLSEYE_COMPILER,
+        @ceedling[:flaginator].flag_down( OPERATION_COMPILE_SYM, BULLSEYE_SYM, source ),
         source,
         object,
         @ceedling[:file_path_utils].form_test_build_list_filepath( object ) )
-    coverage_command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_INSTRUMENTATION, compile_command[:line] )
+    coverage_command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_INSTRUMENTATION, [], compile_command[:line] )
 
     shell_result     = @ceedling[:tool_executor].exec( coverage_command[:line], coverage_command[:options] )
     
@@ -59,7 +60,7 @@ class Bullseye < Plugin
       @result_list << arg_hash[:result_file]
     end
   end
-    
+
   def post_build
     return if (not @ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
 
@@ -79,7 +80,7 @@ class Bullseye < Plugin
     # coverage results
     return if (verify_coverage_file() == false)
     if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
-      command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC)
+      command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC, [])
       shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
       report_coverage_results_all(shell_result[:output])
     else
@@ -105,7 +106,25 @@ class Bullseye < Plugin
     shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
     report_coverage_results_all(shell_result[:output])
   end
+  
+  def enableBullseye(enable)
+    if BULLSEYE_AUTO_LICENSE
+      if (enable)
+        args = ['push', 'on']
+        @ceedling[:streaminator].stdout_puts("Enabling Bullseye")
+      else
+        args = ['pop']
+        @ceedling[:streaminator].stdout_puts("Reverting Bullseye to previous state")
+      end
 
+      args.each do |arg| 
+        command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BUILD_ENABLE_DISABLE, [], arg)
+        shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+      end
+
+    end
+  end
+  
   private ###################################
 
   def report_coverage_results_all(coverage)
@@ -137,7 +156,7 @@ class Bullseye < Plugin
     coverage_sources.delete_if {|item| item =~ /#{BULLSEYE_IGNORE_SOURCES.join('|')}#{EXTENSION_SOURCE}$/}
 
     coverage_sources.each do |source|
-      command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, source)
+      command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, [], source)
       shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
       coverage_results = shell_results[:output].deep_clone
       coverage_results.sub!(/.*\n.*\n/,'') # Remove the Bullseye tool banner
@@ -168,5 +187,8 @@ end
 # end blocks always executed following rake run
 END {
   # cache our input configurations to use in comparison upon next execution
-  @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
+  if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
+    @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash ) 
+    @ceedling[BULLSEYE_SYM].enableBullseye(false)
+  end
 }
