@@ -14,6 +14,32 @@ def convert_slashes(path)
   end
 end
 
+def _add_path_in_section(project_file_path, path, section)
+  project_file_contents = File.readlines(project_file_path)
+  paths_index = project_file_contents.index(":paths:\n")
+
+  if paths_index.nil?
+    # Something wrong with project.yml file, no paths?
+    return
+  end
+
+  section_index =  paths_index + project_file_contents[paths_index..-1].index("  :#{section}:\n")
+
+  project_file_contents.insert(section_index + 1, "    - " + path + "\n")
+
+  File.open(project_file_path, "w+") do |f|
+    f.puts(project_file_contents)
+  end
+end
+
+def add_source_path(path)
+  _add_path_in_section("project.yml", path, "source")
+end
+
+def add_test_path(path)
+  _add_path_in_section("project.yml", path, "test")
+end
+
 class GemDirLayout
   attr_reader :gem_dir_base_name
 
@@ -290,12 +316,13 @@ module CeedlingTestCases
         expect(File.exists?("myPonies/test/test_ponies.c")).to eq true
 
         # add module path to project file
+        add_test_path("myPonies/test")
+        add_source_path("myPonies/src")
 
         # See if ceedling finds the test in the subdir
-        # TODO: add 'myPonies' to test and source path, else ceedling can't find test
         output = `bundle exec ruby -S ceedling test:all`
         expect($?.exitstatus).to match(0)
-        # expect(output).to match(/Need to Implement ponies/)
+        expect(output).to match(/Need to Implement ponies/)
 
         # Module destruction
         output = `bundle exec ruby -S ceedling module:destroy[myPonies:ponies]`
