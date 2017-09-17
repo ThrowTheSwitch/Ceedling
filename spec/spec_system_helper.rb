@@ -272,6 +272,38 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling module:destroy[ponies]`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Destroy Complete/i)
+
+        self.can_use_the_module_plugin_path_extension
+      end
+    end
+  end
+
+  def can_use_the_module_plugin_path_extension
+    @c.with_context do
+      Dir.chdir @proj_name do
+        # Module creation
+        output = `bundle exec ruby -S ceedling module:create[myPonies:ponies]`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Generate Complete/i)
+        expect(File.exists?("myPonies/src/ponies.c")).to eq true
+        expect(File.exists?("myPonies/src/ponies.h")).to eq true
+        expect(File.exists?("myPonies/test/test_ponies.c")).to eq true
+
+        # add module path to project file
+
+        # See if ceedling finds the test in the subdir
+        # TODO: add 'myPonies' to test and source path, else ceedling can't find test
+        output = `bundle exec ruby -S ceedling test:all`
+        expect($?.exitstatus).to match(0)
+        # expect(output).to match(/Need to Implement ponies/)
+
+        # Module destruction
+        output = `bundle exec ruby -S ceedling module:destroy[myPonies:ponies]`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Destroy Complete/i)
+        expect(File.exists?("myPonies/src/ponies.c")).to eq false
+        expect(File.exists?("myPonies/src/ponies.h")).to eq false
+        expect(File.exists?("myPonies/test/test_ponies.c")).to eq false
       end
     end
   end
@@ -284,6 +316,22 @@ module CeedlingTestCases
         expect(output).to match(/Generate Complete/i)
 
         output = `bundle exec ruby -S ceedling module:create[unicorns]`
+        expect($?.exitstatus).to match(1)
+        expect(output).to match(/ERROR: Ceedling Failed/)
+
+        self.handles_creating_the_same_module_twice_using_the_module_plugin_path_extension
+      end
+    end
+  end
+
+  def handles_creating_the_same_module_twice_using_the_module_plugin
+    @c.with_context do
+      Dir.chdir @proj_name do
+        output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns]`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Generate Complete/i)
+
+        output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns]`
         expect($?.exitstatus).to match(1)
         expect(output).to match(/ERROR: Ceedling Failed/)
       end
@@ -299,6 +347,22 @@ module CeedlingTestCases
         expect(output).to match(/File src\/unknown\.c does not exist so cannot be removed\./)
         expect(output).to match(/File src\/unknown\.h does not exist so cannot be removed\./)
         expect(output).to match(/File test\/test_unknown\.c does not exist so cannot be removed\./)
+        expect(output).to match(/Destroy Complete/)
+
+        self.handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension
+      end
+    end
+  end
+
+  def handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension
+    @c.with_context do
+      Dir.chdir @proj_name do
+        output = `bundle exec ruby -S ceedling module:destroy[myUnknownModule:unknown]`
+        expect($?.exitstatus).to match(0)
+
+        expect(output).to match(/File myUnknownModule\/src\/unknown\.c does not exist so cannot be removed\./)
+        expect(output).to match(/File myUnknownModule\/src\/unknown\.h does not exist so cannot be removed\./)
+        expect(output).to match(/File myUnknownModule\/test\/test_unknown\.c does not exist so cannot be removed\./)
         expect(output).to match(/Destroy Complete/)
       end
     end
