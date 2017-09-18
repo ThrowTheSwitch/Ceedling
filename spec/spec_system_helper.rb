@@ -2,6 +2,12 @@ require 'fileutils'
 require 'tmpdir'
 require 'yaml'
 
+Modulegenerator = Struct.new(:project_root, :source_root, :inc_root, :test_root) do
+  def initialize(project_root: "./", source_root: "src/", inc_root: "src/", test_root: "test/")
+    super(project_root, source_root, inc_root, test_root)
+  end
+end
+
 def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', 'assets', asset_file_name)
 end
@@ -25,7 +31,7 @@ def _add_path_in_section(project_file_path, path, section)
 
   section_index =  paths_index + project_file_contents[paths_index..-1].index("  :#{section}:\n")
 
-  project_file_contents.insert(section_index + 1, "    - " + path + "\n")
+  project_file_contents.insert(section_index + 1, "    - #{path}\n")
 
   File.open(project_file_path, "w+") do |f|
     f.puts(project_file_contents)
@@ -38,6 +44,29 @@ end
 
 def add_test_path(path)
   _add_path_in_section("project.yml", path, "test")
+end
+
+def add_module_generator_section(project_file_path, mod_gen)
+  project_file_contents = File.readlines(project_file_path)
+  module_gen_index = project_file_contents.index(":module_generator:\n")
+
+  unless module_gen_index.nil?
+    # already a module_generator in project file, delete it
+    module_gen_end_index = project_file_contents[module_gen_index..-1].index("\n")
+    project_file_contents.slice[module_gen_index..module_gen_end_index]
+  end
+
+  project_file_contents.insert(-2, "\n")
+  project_file_contents.insert(-2, ":module_generator:\n")
+  project_file_contents.insert(-2, "  :project_root: #{mod_gen.project_root}\n")
+  project_file_contents.insert(-2, "  :source_root: #{mod_gen.source_root}\n")
+  project_file_contents.insert(-2, "  :inc_root: #{mod_gen.inc_root}\n")
+  project_file_contents.insert(-2, "  :test_root: #{mod_gen.test_root}\n")
+  project_file_contents.insert(-2, "\n")
+
+  File.open(project_file_path, "w+") do |f|
+    f.puts(project_file_contents)
+  end
 end
 
 class GemDirLayout
@@ -300,6 +329,7 @@ module CeedlingTestCases
         expect(output).to match(/Destroy Complete/i)
 
         self.can_use_the_module_plugin_path_extension
+        self.can_use_the_module_plugin_with_include_path
       end
     end
   end
@@ -334,6 +364,33 @@ module CeedlingTestCases
       end
     end
   end
+
+  def can_use_the_module_plugin_with_include_path
+    @c.with_context do
+      Dir.chdir @proj_name do
+        # add include path to module generator
+        mod_gen = Modulegenerator.new(inc_root: "inc/")
+        add_module_generator_section("project.yml", mod_gen)
+
+        # module creation
+        output = `bundle exec ruby -S ceedling module:create[myPonies:ponies]`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Generate Complete/i)
+        expect(File.exists?("myPonies/src/ponies.c")).to eq true
+        expect(File.exists?("myPonies/inc/ponies.h")).to eq true
+        expect(File.exists?("myPonies/test/test_ponies.c")).to eq true
+
+        # Module destruction
+        output = `bundle exec ruby -S ceedling module:destroy[myPonies:ponies]`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Destroy Complete/i)
+        expect(File.exists?("myPonies/src/ponies.c")).to eq false
+        expect(File.exists?("myPonies/inc/ponies.h")).to eq false
+        expect(File.exists?("myPonies/test/test_ponies.c")).to eq false
+      end
+    end
+  end
+
 
   def handles_creating_the_same_module_twice_using_the_module_plugin
     @c.with_context do
