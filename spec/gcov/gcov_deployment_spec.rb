@@ -44,7 +44,7 @@ describe "Ceedling" do
         it "should be testable" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling gcov:all`
+              @output = `bundle exec ruby -S ceedling gcov:all 2>&1`
               expect(@output).to match(/TESTED:\s+47/)
               expect(@output).to match(/PASSED:\s+47/)
 

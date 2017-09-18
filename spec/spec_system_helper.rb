@@ -131,6 +131,14 @@ module CeedlingTestCases
     end
   end
 
+  def has_an_ignore
+    @c.with_context do
+      Dir.chdir @proj_name do
+        expect(File.exists?(".gitignore")).to eq true
+      end
+    end
+  end
+
   def can_upgrade_projects
     @c.with_context do
       output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
@@ -187,7 +195,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = `bundle exec ruby -S ceedling test:all`
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -204,7 +212,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
 
-        output = `bundle exec ruby -S ceedling test:all`
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Since a test fails, we return error here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -221,7 +229,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_boom.c"), 'test/'
 
-        output = `bundle exec ruby -S ceedling test:all`
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Since a test explodes, we return error here
         expect(output).to match(/ERROR: Ceedling Failed/)
       end
@@ -283,7 +291,7 @@ module CeedlingTestCases
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Generate Complete/i)
 
-        output = `bundle exec ruby -S ceedling module:create[unicorns]`
+        output = `bundle exec ruby -S ceedling module:create[unicorns] 2>&1`
         expect($?.exitstatus).to match(1)
         expect(output).to match(/ERROR: Ceedling Failed/)
       end
