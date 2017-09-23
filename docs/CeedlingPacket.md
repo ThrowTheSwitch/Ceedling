@@ -1458,9 +1458,25 @@ by overriding the value in the Ceedling YAML configuration file.
   List of conditional compilation symbols used to configure Unity's
   features in its source and header files. See Unity documentation to
   understand available options. No symbols must be set unless the
-  defaults are inappropriate for your specific environment.
+  defaults are inappropriate for your specific environment. Most Unity 
+  defines can be easily configured through the YAML file.
 
   **Default**: [] (empty)
+
+Example [:unity] YAML blurbs
+```yaml
+:unity: #itty bitty processor & toolchain with limited test execution options
+  :defines:
+    - UNITY_INT_WIDTH=16           #16 bit processor without support for 32 bit instructions
+    - UNITY_EXCLUDE_FLOAT          #no floating point unit
+
+:unity: #great big gorilla processor that grunts and scratches
+  :defines:
+    - UNITY_SUPPORT_64                    #big memory, big counters, big registers
+    - UNITY_LINE_TYPE=\"unsigned int\"    #apparently we're using really long test files,
+    - UNITY_COUNTER_TYPE=\"unsigned int\" #and we've got a ton of test cases in those test files
+    - UNITY_FLOAT_TYPE=\"double\"         #you betcha
+```
 
 
 Notes on Unity configuration:
@@ -1481,29 +1497,34 @@ Notes on Unity configuration:
   routine that transmits a character via RS232 or USB. Once you have
   that routine, you can replace `putchar()` calls in Unity by overriding
   the function-like macro `UNITY_OUTPUT_CHAR`. Consult your toolchain
-  and shell documentation.
-
+  and shell documentation. Eventhough this can also be defined in the YAML file
+  most shell environments do not handle parentheses as command line arguments 
+  very well. To still be able to add this functionality all necessary 
+  options can be defined in the `unity_config.h`. Unity needs to be told to look for 
+  the `unity_config.h` in the YAML file, though. 
 
 Example [:unity] YAML blurbs
-
 ```yaml
-:unity: #itty bitty processor & toolchain with limited test execution options
+:unity:
   :defines:
-    - UNITY_INT_WIDTH=16           #16 bit processor without support for 32 bit instructions
-    - UNITY_EXCLUDE_FLOAT          #no floating point unit
-        #let's say environment & tools provide no way to run tests on desktop so we gotta go on target
-        #replace putchar() with write_usart() via command line specified macro (gcc style)
-        #note escaped quotes for our hypothetical shell that doesn't like parens in arguments
-        #transformed into -D"UNITY_OUTPUT_CHAR(a)=write_usart(a)" at command line by [:tools] entry
-    - "\"UNITY_OUTPUT_CHAR(a)=write_usart(a)\""
-
-:unity: #great big gorilla processor that grunts and scratches
-  :defines:
-    - UNITY_SUPPORT_64                    #big memory, big counters, big registers
-    - UNITY_LINE_TYPE=\"unsigned int\"    #apparently we're using really long test files,
-    - UNITY_COUNTER_TYPE=\"unsigned int\" #and we've got a ton of test cases in those test files
-    - UNITY_FLOAT_TYPE=\"double\"         #you betcha
+  	- UNITY_INCLUDE_CONFIG_H
 ```
+
+Example unity_config.h
+```
+#ifndef UNITY_CONFIG_H
+#define UNITY_CONFIG_H
+
+#include "uart_output.h" //Helper library for your custom environment
+
+#define UNITY_INT_WIDTH 16
+#define UNITY_OUTPUT_START() uart_init(F_CPU, BAUD) //Helperfunction to init UART
+#define UNITY_OUTPUT_CHAR(a) uart_putchar(a) //Helperfunction to forward char via UART
+#define UNITY_OUTPUT_COMPLETE() uart_complete() //Helperfunction to inform that test has ended
+
+#endif
+```
+
 
 **tools**: a means for representing command line tools for use under
 Ceedling's automation framework
