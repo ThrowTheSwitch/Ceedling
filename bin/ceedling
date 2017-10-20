@@ -12,6 +12,11 @@ if (!project_found)
   project_found = File.exists?(main_filepath)
 end
 
+def is_windows?
+  return ((RbConfig::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false) if defined?(RbConfig)
+  return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
+end
+
 unless (project_found)
 #===================================== We Do Not Have A Project ================================================
 
@@ -87,13 +92,20 @@ unless (project_found)
             end
           end
 
-          folders = %w{plugins lib}
+          folders = if as_gem
+            %w{plugins lib}
+          else
+            %w{plugins lib bin}
+          end
+
+          #copy full folders from ceedling gem into project
           folders.map do |f|
             {:src => f, :dst => File.join(ceedling_path, f)}
           end.each do |f|
             directory(f[:src], f[:dst], :force => force)
           end
 
+          #copy necessary subcomponents from ceedling gem into project
           sub_components = [
             {:src => 'vendor/c_exception/lib/',     :dst => 'vendor/c_exception/lib'},
             {:src => 'vendor/c_exception/release/', :dst => 'vendor/c_exception/release'},
@@ -118,6 +130,11 @@ unless (project_found)
             copy_file(File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml'), :force => force)
           else
             copy_file(File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml'), :force => force)
+            if is_windows?
+              copy_file(File.join('assets', 'ceedling.cmd'), File.join(name, 'ceedling.cmd'), :force => force)
+            else
+              copy_file(File.join('assets', 'ceedling'), File.join(name, 'ceedling'), :force => force)
+            end
           end
         end
 
