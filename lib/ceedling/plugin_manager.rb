@@ -9,10 +9,10 @@ class PluginManager
     @build_fail_registry = []
     @plugin_objects = [] # so we can preserve order
   end
-  
+
   def load_plugin_scripts(script_plugins, system_objects)
     environment = []
-    
+
     script_plugins.each do |plugin|
       # protect against instantiating object multiple times due to processing config multiple times (option files, etc)
 			next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
@@ -21,7 +21,7 @@ class PluginManager
         object = @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects, plugin )
         @plugin_objects << object
         environment += object.environment
-        
+
         # add plugins to hash of all system objects
         system_objects[plugin.downcase.to_sym] = object
       rescue
@@ -29,28 +29,28 @@ class PluginManager
         raise
       end
     end
-    
+
     yield( { :environment => environment } ) if (environment.size > 0)
   end
-  
+
   def plugins_failed?
     return (@build_fail_registry.size > 0)
   end
-  
+
   def print_plugin_failures
     if (@build_fail_registry.size > 0)
       report = @reportinator.generate_banner('BUILD FAILURE SUMMARY')
-      
+
       @build_fail_registry.each do |failure|
         report += "#{' - ' if (@build_fail_registry.size > 1)}#{failure}\n"
       end
-      
+
       report += "\n"
-      
+
       @streaminator.stderr_puts(report, Verbosity::ERRORS)
-    end    
+    end
   end
-  
+
   def register_build_failure(message)
     @build_fail_registry << message if (message and not message.empty?)
   end
@@ -81,14 +81,15 @@ class PluginManager
 
   def pre_release; execute_plugins(:pre_release); end
   def post_release; execute_plugins(:post_release); end
-  
+
   def pre_build; execute_plugins(:pre_build); end
   def post_build; execute_plugins(:post_build); end
-  
+  def post_error; execute_plugins(:post_error); end
+
   def summary; execute_plugins(:summary); end
-  
+
   private ####################################
-  
+
   def camelize(underscored_name)
     return underscored_name.gsub(/(_|^)([a-z0-9])/) {$2.upcase}
   end

@@ -23,6 +23,8 @@ class CommandHooks < Plugin
       :post_release              => ((defined? TOOLS_POST_RELEASE)              ? TOOLS_POST_RELEASE              : nil ),
       :pre_build                 => ((defined? TOOLS_PRE_BUILD)                 ? TOOLS_PRE_BUILD                 : nil ),
       :post_build                => ((defined? TOOLS_POST_BUILD)                ? TOOLS_POST_BUILD                : nil ),
+      :post_build                => ((defined? TOOLS_POST_BUILD)                ? TOOLS_POST_BUILD                : nil ),
+      :post_error                => ((defined? TOOLS_POST_ERROR)                ? TOOLS_POST_ERROR                : nil ),
     }
     @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
   end
@@ -43,6 +45,7 @@ class CommandHooks < Plugin
   def post_release;                        run_hook(:post_release                                      ); end
   def pre_build;                           run_hook(:pre_build                                         ); end
   def post_build;                          run_hook(:post_build                                        ); end
+  def post_error;                          run_hook(:post_error                                        ); end
 
   private
 
