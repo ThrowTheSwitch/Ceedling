@@ -1,5 +1,8 @@
 require 'rubygems'
 require 'rake' # for adding ext() method to string
+require 'thread'
+SEMAPHORE = Mutex.new
+
 
 class FileFinder
 
@@ -91,34 +94,37 @@ class FileFinder
     # We only collect files that already exist when we start up.
     # FileLists can produce undesired results for dynamically generated files depending on when they're accessed.
     # So collect mocks and runners separately and right now.
-    if (source_file =~ /#{@configurator.test_runner_file_suffix}/)
-      found_file = 
-        @file_finder_helper.find_file_in_collection(
-          source_file,
-          @file_wrapper.directory_listing( File.join(@configurator.project_test_runners_path, '*') ),
-          complain)
-          
-    elsif (@configurator.project_use_mocks and (source_file =~ /#{@configurator.cmock_mock_prefix}/))
-      found_file = 
-        @file_finder_helper.find_file_in_collection(
-          source_file,
-          @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '*') ),
-          complain)
 
-    elsif release
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          source_file,
-          @configurator.collection_release_existing_compilation_input,
-          complain)
-    else
-      found_file = 
-        @file_finder_helper.find_file_in_collection(
-          source_file,
-          @configurator.collection_all_existing_compilation_input,
-          complain)
-    end
+    SEMAPHORE.synchronize {
 
+      if (source_file =~ /#{@configurator.test_runner_file_suffix}/)
+        found_file = 
+          @file_finder_helper.find_file_in_collection(
+            source_file,
+            @file_wrapper.directory_listing( File.join(@configurator.project_test_runners_path, '*') ),
+            complain)
+            
+      elsif (@configurator.project_use_mocks and (source_file =~ /#{@configurator.cmock_mock_prefix}/))
+        found_file = 
+          @file_finder_helper.find_file_in_collection(
+            source_file,
+            @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '*') ),
+            complain)
+
+      elsif release
+        found_file =
+          @file_finder_helper.find_file_in_collection(
+            source_file,
+            @configurator.collection_release_existing_compilation_input,
+            complain)
+      else
+        found_file = 
+          @file_finder_helper.find_file_in_collection(
+            source_file,
+            @configurator.collection_all_existing_compilation_input,
+            complain)
+      end
+    }
     return found_file
   end
 
