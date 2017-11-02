@@ -35,6 +35,23 @@ describe "Ceedling" do
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
   end
 
+  describe "deployed in a project's `vendor` directory." do
+    before do
+      @c.with_context do
+        `bundle exec ruby -S ceedling new --with-ignore #{@proj_name} 2>&1`
+      end
+    end
+
+    it { can_create_projects }
+    it { has_an_ignore }
+    it { contains_a_vendor_directory }
+    it { contains_documentation }
+    it { can_test_projects_with_success }
+    it { can_use_the_module_plugin }
+  end
+
+
+
   describe "deployed in a project's `vendor` directory without docs." do
     before do
       @c.with_context do

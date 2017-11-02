@@ -34,6 +34,9 @@ unless (project_found)
     method_option :no_docs, :type => :boolean, :default => false, :desc => "No docs in vendor directory"
     method_option :nodocs, :type => :boolean, :default => false
     method_option :as_gem, :type => :boolean, :default => false, :desc => "Create the scaffold using Ceedling as a gem instead of filling in the vendor directory. Implies --no-docs."
+    method_option :asgem, :type => :boolean, :default => false
+    method_option :with_ignore, :type => :boolean, :default => false, :desc => "Create a gitignore file for ignoring ceedling generated files."
+    method_option :withignore, :type => :boolean, :default => false
     method_option :no_configs, :type => :boolean, :default => false, :desc => "Don't install starter configuration files."
     method_option :noconfigs, :type => :boolean, :default => false
     def new(name, silent = false)
@@ -52,9 +55,10 @@ unless (project_found)
     no_commands do
       def copy_assets_and_create_structure(name, silent=false, force=false, options = {})
 
-        no_docs    = options[:no_docs]    || options[:nodocs]    || false
-        no_configs = options[:no_configs] || options[:noconfigs] || false
-        as_gem     = options[:as_gem]     || options[:asgem]     || false
+        no_docs     = options[:no_docs]     || options[:nodocs]     || false
+        no_configs  = options[:no_configs]  || options[:noconfigs]  || false
+        as_gem      = options[:as_gem]      || options[:asgem]      || false
+        with_ignore = options[:with_ignore] || options[:withignore] || false
 
         ceedling_path     = File.join(name, 'vendor', 'ceedling')
         source_path       = File.join(name, 'src')
@@ -136,6 +140,10 @@ unless (project_found)
               copy_file(File.join('assets', 'ceedling'), File.join(name, 'ceedling'), :force => force)
             end
           end
+        end
+
+        if (with_ignore)
+          copy_file(File.join('assets', 'default_gitignore'), File.join(name, '.gitignore'), :force => force)
         end
 
         unless silent
