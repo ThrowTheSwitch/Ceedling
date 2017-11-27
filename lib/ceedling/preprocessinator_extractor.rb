@@ -16,13 +16,13 @@ class PreprocessinatorExtractor
 
     lines = []
     File.readlines(filepath).each do |line|
-      if found_file and not line.match(not_pragma)
+      if found_file and not line =~ not_pragma
         lines << line
       else
         found_file = false
       end
 
-      found_file = true if line.match(pattern)
+      found_file = true if line =~ pattern
     end
 
     return lines
