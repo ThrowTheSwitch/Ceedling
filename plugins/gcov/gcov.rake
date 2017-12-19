@@ -151,7 +151,7 @@ if PROJECT_USE_DEEP_DEPENDENCIES
 end
 
 namespace UTILS_SYM do
-  desc 'Create gcov code coverage html report'
+  desc 'Create gcov code coverage html report (must run ceedling gcov first)'
   task GCOV_SYM do
 
     if !File.directory? GCOV_ARTIFACTS_PATH
