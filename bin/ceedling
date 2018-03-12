@@ -64,9 +64,8 @@ unless (project_found)
         source_path       = File.join(name, 'src')
         test_path         = File.join(name, 'test')
         test_support_path = File.join(name, 'test/support')
-        build_path        = File.join(name, 'build')
 
-        [source_path, test_path, test_support_path, build_path].each do |d|
+        [source_path, test_path, test_support_path].each do |d|
           FileUtils.mkdir_p d
         end
 
