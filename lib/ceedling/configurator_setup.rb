@@ -76,7 +76,6 @@ class ConfiguratorSetup
   def validate_paths(config)
     validation = []
 
-    validation << @configurator_validator.validate_filepath(config, :project, :build_root)
     if config[:cmock][:unity_helper]
       config[:cmock][:unity_helper].each do |path|
         validation << @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper ) 
