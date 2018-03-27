@@ -155,7 +155,7 @@ namespace UTILS_SYM do
   task GCOV_SYM do
 
     if !File.directory? GCOV_ARTIFACTS_PATH
-      Dir.mkdir GCOV_ARTIFACTS_PATH
+      FileUtils.mkdir_p GCOV_ARTIFACTS_PATH
     end
 
     if @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'basic'
