@@ -165,7 +165,7 @@ class FilePathUtils
   end
 
   def form_test_build_objects_filelist(sources)
-    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{@configurator.project_test_build_output_path}/%n#{@configurator.extension_object}")
+    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{@configurator.project_test_build_output_c_path}/%n#{@configurator.extension_object}")
   end
 
   def form_preprocessed_mockable_headers_filelist(mocks)
