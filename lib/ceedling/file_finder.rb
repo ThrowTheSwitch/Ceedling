@@ -123,7 +123,7 @@ class FileFinder
             source_file,
             @configurator.collection_all_existing_compilation_input,
             complain)
-        found_file ||= find_assembly_file(file_path)
+        found_file ||= find_assembly_file(file_path, false)
       end
     }
     return found_file
@@ -136,9 +136,9 @@ class FileFinder
   end
 
 
-  def find_assembly_file(file_path)
+  def find_assembly_file(file_path, complain = :error)
     assembly_file = File.basename(file_path).ext(@configurator.extension_assembly)
-    return @file_finder_helper.find_file_in_collection(assembly_file, @configurator.collection_all_assembly, :error)
+    return @file_finder_helper.find_file_in_collection(assembly_file, @configurator.collection_all_assembly, complain)
   end
 
   def find_file_from_list(file_path, file_list, complain)
