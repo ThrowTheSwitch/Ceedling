@@ -272,7 +272,7 @@ class ConfiguratorBuilder
   def collect_assembly(in_hash)
     all_assembly = @file_wrapper.instantiate_file_list
 
-    return {:collection_all_assembly => all_assembly} if (not in_hash[:release_build_use_assembly])
+    return {:collection_all_assembly => all_assembly} if ((not in_hash[:release_build_use_assembly]) && (not in_hash[:test_build_use_assembly]))
 
     in_hash[:collection_paths_source].each do |path|
       all_assembly.include( File.join(path, "*#{in_hash[:extension_assembly]}") )
