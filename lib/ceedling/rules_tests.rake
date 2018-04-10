@@ -8,7 +8,7 @@ rule(/#{PROJECT_TEST_FILE_PREFIX}#{'.+'+TEST_RUNNER_FILE_SUFFIX}#{'\\'+EXTENSION
   @ceedling[:generator].generate_test_runner(TEST_SYM, runner.source, runner.name)
 end
 
-if (RELEASE_BUILD_USE_ASSEMBLY)
+if (TEST_BUILD_USE_ASSEMBLY)
 rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_ASM_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       @ceedling[:file_finder].find_assembly_file(task_name)
