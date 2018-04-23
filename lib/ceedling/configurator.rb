@@ -173,6 +173,9 @@ class Configurator
       FilePathUtils::standardize(path)
     end
 
+    config[:plugins][:load_paths] << FilePathUtils::standardize(Ceedling.load_path)
+    config[:plugins][:load_paths].uniq!
+
     paths_hash = @configurator_plugins.add_load_paths(config)
 
     @rake_plugins   = @configurator_plugins.find_rake_plugins(config, paths_hash)
