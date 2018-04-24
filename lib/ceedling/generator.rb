@@ -78,9 +78,9 @@ class Generator
     end
   end
 
-  def generate_object_file(tool, operation, context, source, object, list='')
+  def generate_object_file(tool, operation, context, source, object, list='', dependencies='')
     shell_result = {}
-    arg_hash = {:tool => tool, :operation => operation, :context => context, :source => source, :object => object, :list => list}
+    arg_hash = {:tool => tool, :operation => operation, :context => context, :source => source, :object => object, :list => list, :dependencies => dependencies}
     @plugin_manager.pre_compile_execute(arg_hash)
 
     @streaminator.stdout_puts("Compiling #{File.basename(arg_hash[:source])}...", Verbosity::NORMAL)
@@ -89,7 +89,8 @@ class Generator
                                          @flaginator.flag_down( operation, context, source ),
                                          arg_hash[:source],
                                          arg_hash[:object],
-                                         arg_hash[:list])
+                                         arg_hash[:list],
+                                         arg_hash[:dependencies])
 
     begin
       shell_result = @tool_executor.exec( command[:line], command[:options] )

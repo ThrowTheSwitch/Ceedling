@@ -20,7 +20,8 @@ rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     TEST_SYM,
     object.source,
     object.name,
-    @ceedling[:file_path_utils].form_test_build_list_filepath( object.name ) )
+    @ceedling[:file_path_utils].form_test_build_list_filepath( object.name ),
+    @ceedling[:file_path_utils].form_test_dependencies_filepath( object.name ) )
 end
 
 

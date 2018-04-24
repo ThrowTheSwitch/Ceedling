@@ -21,6 +21,8 @@ DEFAULT_TEST_COMPILER_TOOL = {
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     # gcc's list file output options are complex; no use of ${3} parameter in default config
+    "-MMD".freeze,
+    "-MF \"${4}\"".freeze,
     ].freeze
   }
 
@@ -158,6 +160,8 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     # gcc's list file output options are complex; no use of ${3} parameter in default config
+    "-MMD".freeze,
+    "-MF \"${4}\"".freeze,
     ].freeze
   }
 
@@ -242,6 +246,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :test_threads => 1,
       :use_test_preprocessor => false,
       :use_deep_dependencies => false,
+      :generate_deep_dependencies => true, # only applicable if use_deep_dependencies is true
       :test_file_prefix => 'test_',
       :options_paths => [],
       :release_build => false,

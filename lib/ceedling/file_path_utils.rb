@@ -116,6 +116,10 @@ class FilePathUtils
     return File.join( @configurator.project_test_build_cache_path, File.basename(filepath) )
   end
 
+  def form_test_dependencies_filepath(filepath)
+    return File.join( @configurator.project_test_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies) )
+  end
+
   def form_pass_results_filepath(filepath)
     return File.join( @configurator.project_test_results_path, File.basename(filepath).ext(@configurator.extension_testpass) )
   end
