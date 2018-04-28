@@ -363,6 +363,7 @@ class ConfiguratorBuilder
         all_input.include( path )
       else
         all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
+        all_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
       end
     end
 

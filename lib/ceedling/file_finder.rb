@@ -122,8 +122,8 @@ class FileFinder
           @file_finder_helper.find_file_in_collection(
             source_file,
             @configurator.collection_all_existing_compilation_input,
-            complain)
-        found_file ||= find_assembly_file(file_path, false)
+            :ignore)
+        found_file ||= find_assembly_file(file_path, false) if (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
       end
     }
     return found_file
