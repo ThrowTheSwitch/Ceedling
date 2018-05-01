@@ -118,11 +118,12 @@ class FileFinder
             @configurator.collection_release_existing_compilation_input,
             complain)
       else
+        temp_complain = (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY) ? :ignore : complain
         found_file =
           @file_finder_helper.find_file_in_collection(
             source_file,
             @configurator.collection_all_existing_compilation_input,
-            :ignore)
+            temp_complain)
         found_file ||= find_assembly_file(file_path, false) if (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
       end
     }

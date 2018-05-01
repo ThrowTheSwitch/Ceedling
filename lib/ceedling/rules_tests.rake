@@ -8,33 +8,27 @@ rule(/#{PROJECT_TEST_FILE_PREFIX}#{'.+'+TEST_RUNNER_FILE_SUFFIX}#{'\\'+EXTENSION
   @ceedling[:generator].generate_test_runner(TEST_SYM, runner.source, runner.name)
 end
 
-if (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
-rule(/#{PROJECT_TEST_BUILD_OUTPUT_ASM_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
-    proc do |task_name|
-      @ceedling[:file_finder].find_assembly_file(task_name)
-    end
-  ]) do |object|
-  @ceedling[:generator].generate_object_file(
-    TOOLS_TEST_ASSEMBLER,
-    OPERATION_ASSEMBLE_SYM,
-    TEST_SYM,
-    object.source,
-    object.name )
-end
-end
-
 rule(/#{PROJECT_TEST_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       @ceedling[:file_finder].find_compilation_input_file(task_name)
     end
   ]) do |object|
-  @ceedling[:generator].generate_object_file(
-    TOOLS_TEST_COMPILER,
-    OPERATION_COMPILE_SYM,
-    TEST_SYM,
-    object.source,
-    object.name,
-    @ceedling[:file_path_utils].form_test_build_list_filepath( object.name ) )
+  if (File.basename(object.source) =~ /#{EXTENSION_SOURCE}$/)
+    @ceedling[:generator].generate_object_file(
+      TOOLS_TEST_COMPILER,
+      OPERATION_COMPILE_SYM,
+      TEST_SYM,
+      object.source,
+      object.name,
+      @ceedling[:file_path_utils].form_test_build_list_filepath( object.name ) )
+  elsif (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
+    @ceedling[:generator].generate_object_file(
+      TOOLS_TEST_ASSEMBLER,
+      OPERATION_ASSEMBLE_SYM,
+      TEST_SYM,
+      object.source,
+      object.name )
+  end
 end
 
 
