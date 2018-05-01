@@ -10,6 +10,7 @@ class Gcov < Plugin
 
     @config = {
       project_test_build_output_path: GCOV_BUILD_OUTPUT_PATH,
+      project_test_build_output_c_path: GCOV_BUILD_OUTPUT_PATH,
       project_test_results_path: GCOV_RESULTS_PATH,
       project_test_dependencies_path: GCOV_DEPENDENCIES_PATH,
       defines_test: DEFINES_TEST + ['CODE_COVERAGE'],
