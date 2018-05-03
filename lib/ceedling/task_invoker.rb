@@ -56,17 +56,29 @@ class TaskInvoker
 
   def invoke_test_shallow_include_lists(files)
     @dependinator.enhance_shallow_include_lists_dependencies( files )
-    files.each { |file| @rake_wrapper[file].invoke }
+    par_map(PROJECT_COMPILE_THREADS, files) do |file|
+      @rake_wrapper[file].invoke
+    end
   end
 
   def invoke_test_preprocessed_files(files)
     @dependinator.enhance_preprocesed_file_dependencies( files )
-    files.each { |file| @rake_wrapper[file].invoke }
+    par_map(PROJECT_COMPILE_THREADS, files) do |file|
+      @rake_wrapper[file].invoke
+    end
   end
 
   def invoke_test_dependencies_files(files)
     @dependinator.enhance_dependencies_dependencies( files )
-    files.each { |file| @rake_wrapper[file].invoke }
+    par_map(PROJECT_COMPILE_THREADS, files) do |file|
+      @rake_wrapper[file].invoke
+    end
+  end
+
+  def invoke_test_objects(objects)
+    par_map(PROJECT_COMPILE_THREADS, objects) do |object|
+       @rake_wrapper[object].invoke
+    end
   end
 
   def invoke_test_results(result)
