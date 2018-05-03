@@ -12,7 +12,11 @@ class TestInvokerHelper
     return if (not @configurator.project_use_deep_dependencies)
 
     dependencies_list = @file_path_utils.form_test_dependencies_filelist( files )
-    @task_invoker.invoke_test_dependencies_files( dependencies_list )
+
+    if @configurator.project_generate_deep_dependencies
+      @task_invoker.invoke_test_dependencies_files( dependencies_list )
+    end
+
     yield( dependencies_list ) if block_given?
   end
   

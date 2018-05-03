@@ -807,6 +807,17 @@ project: global project settings
 
   **Default**: FALSE
 
+* `generate_deep_dependencies`:
+
+  When `use_deep_dependencies` is set to TRUE, Ceedling will run a separate
+  build step to generate the deep dependencies. If you are using gcc as your
+  primary compiler, or another compiler that can generate makefile rules as
+  a side effect of compilation, then you can set this to FALSE to avoid the
+  extra build step but still use the deep dependencies data when deciding
+  which source files to rebuild.
+
+  **Default**: TRUE
+
 * `test_file_prefix`:
 
   Ceedling collects test files by convention from within the test file
@@ -1544,14 +1555,14 @@ tools.
 * `test_compiler`:
 
   Compiler for test & source-under-test code
-  ${1}: input source ${2}: output object ${3}: optional output list ${4}: optional per-file flags
+  ${1}: input source ${2}: output object ${3}: optional output list ${4}: optional output dependencies file
 
   **Default**: gcc
 
 * `test_linker`:
 
   Linker to generate test fixture executables
-  ${1}: input objects ${2}: output binary ${3}: optional output map ${4}: optional per-binary flags
+  ${1}: input objects ${2}: output binary ${3}: optional output map ${4}: optional library list
 
   **Default**: gcc
 
@@ -1586,7 +1597,7 @@ tools.
 * `release_compiler`:
 
   Compiler for release source code
-  ${1}: input source ${2}: output object ${3}: optional output list ${4}: optional per-file flags
+  ${1}: input source ${2}: output object ${3}: optional output list ${4}: optional output dependencies file
 
   **Default**: gcc
 
@@ -1600,7 +1611,7 @@ tools.
 * `release_linker`:
 
   Linker for release source code
-  ${1}: input objects ${2}: output binary ${3}: optional output map ${4}: optional per-binary flags
+  ${1}: input objects ${2}: output binary ${3}: optional output map ${4}: optional library list
 
   **Default**: gcc
 

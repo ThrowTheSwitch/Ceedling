@@ -30,7 +30,8 @@ rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     RELEASE_SYM,
     object.source,
     object.name,
-    @ceedling[:file_path_utils].form_release_build_c_list_filepath( object.name ) )
+    @ceedling[:file_path_utils].form_release_build_c_list_filepath( object.name ),
+    @ceedling[:file_path_utils].form_release_dependencies_filepath( object.name ) )
 end
 
 

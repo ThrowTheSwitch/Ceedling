@@ -11,7 +11,11 @@ class Dependinator
 
 
   def load_release_object_deep_dependencies(dependencies_list)
-    dependencies_list.each { |dependencies_file| @rake_wrapper.load_dependencies( dependencies_file ) }
+    dependencies_list.each do |dependencies_file|
+      if File.exists?(dependencies_file)
+        @rake_wrapper.load_dependencies( dependencies_file )
+      end
+    end
   end
 
 
@@ -25,7 +29,11 @@ class Dependinator
 
   def load_test_object_deep_dependencies(files_list)
     dependencies_list = @file_path_utils.form_test_dependencies_filelist(files_list)
-    dependencies_list.each { |dependencies_file| @rake_wrapper.load_dependencies(dependencies_file) }
+    dependencies_list.each do |dependencies_file|
+      if File.exists?(dependencies_file)
+        @rake_wrapper.load_dependencies(dependencies_file)
+      end
+    end
   end
 
 
