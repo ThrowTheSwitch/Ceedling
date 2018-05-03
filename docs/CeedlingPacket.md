@@ -202,6 +202,11 @@ General notes:
    and Rakefiles, consult the [Rake tutorial, examples, and
    user guide](http://rubyrake.org/).
 
+4. When using Ceedling in Windows environments, a test file name may 
+   not include the sequences “patch” or “setup”. The Windows Installer 
+   Detection Technology (part of UAC), requires administrator 
+   privileges to execute file names with these strings.
+
 
 
 Now What? How Do I Make It GO?
