@@ -3,7 +3,6 @@ require 'rubygems'
 require 'rake' # for ext()
 require 'ceedling/constants'
 
-
 class PluginReportinatorHelper
   
   attr_writer :ceedling
@@ -31,7 +30,6 @@ class PluginReportinatorHelper
 
   def process_results(aggregate_results, results)
     return if (results.empty?)
-  
     aggregate_results[:successes]        << { :source => results[:source].clone, :collection => results[:successes].clone } if (results[:successes].size > 0)
     aggregate_results[:failures]         << { :source => results[:source].clone, :collection => results[:failures].clone  } if (results[:failures].size > 0)
     aggregate_results[:ignores]          << { :source => results[:source].clone, :collection => results[:ignores].clone   } if (results[:ignores].size > 0)
@@ -41,6 +39,7 @@ class PluginReportinatorHelper
     aggregate_results[:counts][:failed]  += results[:counts][:failed]
     aggregate_results[:counts][:ignored] += results[:counts][:ignored]
     aggregate_results[:counts][:stdout]  += results[:stdout].size
+    aggregate_results[:time] += results[:time]
   end
 
 
