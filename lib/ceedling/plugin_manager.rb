@@ -1,4 +1,3 @@
-require 'set'
 require 'ceedling/constants'
 
 class PluginManager

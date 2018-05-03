@@ -82,6 +82,11 @@ describe GeneratorTestResults do
       expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example.pass'))
     end
 
+    it 'handles a normal test output with time' do
+      @generate_test_results.process_and_write_results({:output => NORMAL_OUTPUT, :time => 0.01234}, TEST_OUT_FILE, 'some/place/test_example.c')
+      expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example_with_time.pass'))
+    end
+
     it 'handles a normal test output with ignores' do
       @generate_test_results.process_and_write_results({:output => IGNORE_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
       expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example_ignore.pass'))

@@ -17,3 +17,4 @@
 :stdout:
 - Verbose output one
 - test_example.c:269:test_tVerbous output two
+:time: 0.0

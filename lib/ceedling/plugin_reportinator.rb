@@ -68,7 +68,8 @@ class PluginReportinator
       :failures  => [],
       :ignores   => [],
       :stdout    => [],
-      :counts    => {:total => 0, :passed => 0, :failed => 0, :ignored  => 0, :stdout => 0}
+      :counts    => {:total => 0, :passed => 0, :failed => 0, :ignored  => 0, :stdout => 0},
+      :time      => 0.0
       }
   end
  

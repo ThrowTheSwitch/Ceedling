@@ -4,7 +4,7 @@ require 'ceedling/file_path_utils'
 
 #this should be defined already, but not always during system specs
 CEEDLING_VENDOR = File.expand_path(File.dirname(__FILE__) + '/../../vendor') unless defined? CEEDLING_VENDOR
-CEEDLING_PLUGINS = [File.expand_path(File.dirname(__FILE__) + '/../../plugins')] unless defined? CEEDLING_PLUGINS
+CEEDLING_PLUGINS = [] unless defined? CEEDLING_PLUGINS
 
 DEFAULT_TEST_COMPILER_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
@@ -352,7 +352,7 @@ DEFAULT_CEEDLING_CONFIG = {
     :release_dependencies_generator => { :arguments => [] },
 
     :plugins => {
-      :load_paths => [], #XXX this is injected twice as of now so removed til better handling is found CEEDLING_PLUGINS,
+      :load_paths => CEEDLING_PLUGINS,
       :enabled => [],
     }
   }.freeze

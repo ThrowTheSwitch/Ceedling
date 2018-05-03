@@ -89,12 +89,14 @@ class ConfiguratorBuilder
       [:project_build_tests_root,      project_build_tests_root,     true ],
       [:project_build_release_root,    project_build_release_root,   in_hash[:project_release_build] ],
 
-      [:project_test_artifacts_path,     File.join(project_build_artifacts_root, TESTS_BASE_PATH), true ],
-      [:project_test_runners_path,       File.join(project_build_tests_root, 'runners'),           true ],
-      [:project_test_results_path,       File.join(project_build_tests_root, 'results'),           true ],
-      [:project_test_build_output_path,  File.join(project_build_tests_root, 'out'),               true ],
-      [:project_test_build_cache_path,   File.join(project_build_tests_root, 'cache'),             true ],
-      [:project_test_dependencies_path,  File.join(project_build_tests_root, 'dependencies'),      true ],
+      [:project_test_artifacts_path,            File.join(project_build_artifacts_root, TESTS_BASE_PATH), true ],
+      [:project_test_runners_path,              File.join(project_build_tests_root, 'runners'),           true ],
+      [:project_test_results_path,              File.join(project_build_tests_root, 'results'),           true ],
+      [:project_test_build_output_path,         File.join(project_build_tests_root, 'out'),               true ],
+      [:project_test_build_output_asm_path,     File.join(project_build_tests_root, 'out', 'asm'),        true ],
+      [:project_test_build_output_c_path,       File.join(project_build_tests_root, 'out', 'c'),          true ],
+      [:project_test_build_cache_path,          File.join(project_build_tests_root, 'cache'),             true ],
+      [:project_test_dependencies_path,         File.join(project_build_tests_root, 'dependencies'),      true ],
 
       [:project_release_artifacts_path,         File.join(project_build_artifacts_root, RELEASE_BASE_PATH), in_hash[:project_release_build] ],
       [:project_release_build_cache_path,       File.join(project_build_release_root, 'cache'),             in_hash[:project_release_build] ],
@@ -270,7 +272,7 @@ class ConfiguratorBuilder
   def collect_assembly(in_hash)
     all_assembly = @file_wrapper.instantiate_file_list
 
-    return {:collection_all_assembly => all_assembly} if (not in_hash[:release_build_use_assembly])
+    return {:collection_all_assembly => all_assembly} if ((not in_hash[:release_build_use_assembly]) && (not in_hash[:test_build_use_assembly]))
 
     in_hash[:collection_paths_source].each do |path|
       all_assembly.include( File.join(path, "*#{in_hash[:extension_assembly]}") )
@@ -361,6 +363,7 @@ class ConfiguratorBuilder
         all_input.include( path )
       else
         all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
+        all_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
       end
     end
 

@@ -22,7 +22,7 @@ class TestInvoker
     @tests   = []
     @mocks   = []
   end
-  
+
   def get_test_definition_str(test)
     return "-D" + File.basename(test, File.extname(test)).upcase.sub(/@.*$/, "")
   end
@@ -55,11 +55,11 @@ class TestInvoker
   end
 
   def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true})
-  
+
     @tests = tests
 
     @project_config_manager.process_test_config_change
-  
+
     @tests.each do |test|
       # announce beginning of test run
       header = "Test '#{File.basename(test)}'"
@@ -67,7 +67,23 @@ class TestInvoker
 
       begin
         @plugin_manager.pre_test( test )
-        
+        test_name ="#{File.basename(test)}".chomp('.c')
+        def_test_key="defines_#{test_name}"
+
+        # Re-define the project out path and pre-processor defines.
+        if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
+          @project_config_manager.test_config_changed
+          defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
+          printf " ************** Specific test definitions for #{test_name} !!! \n"
+          tst_defs_cfg = @configurator.project_config_hash[def_test_key.to_sym]
+
+          orig_path = @configurator.project_test_build_output_path
+          @configurator.project_config_hash[:project_test_build_output_path] = File.join(@configurator.project_test_build_output_path, test_name)
+          @file_wrapper.mkdir(@configurator.project_test_build_output_path)
+          COLLECTION_DEFINES_TEST_AND_VENDOR.replace(tst_defs_cfg)
+          # printf " *  new defines = #{COLLECTION_DEFINES_TEST_AND_VENDOR}\n"
+        end
+
         # collect up test fixture pieces & parts
         runner       = @file_path_utils.form_runner_filepath_from_test( test )
         mock_list    = @preprocessinator.preprocess_test_and_invoke_test_mocks( test )
@@ -77,7 +93,7 @@ class TestInvoker
         objects      = @file_path_utils.form_test_build_objects_filelist( [runner] + core + extras )
         results_pass = @file_path_utils.form_pass_results_filepath( test )
         results_fail = @file_path_utils.form_fail_results_filepath( test )
-        
+
         # add the definition value in the build option for the unit test
         if @configurator.defines_use_test_definition
           add_test_definition(test)
@@ -87,7 +103,7 @@ class TestInvoker
         @test_invoker_helper.clean_results( {:pass => results_pass, :fail => results_fail}, options )
 
         # load up auxiliary dependencies so deep changes cause rebuilding appropriately
-        @test_invoker_helper.process_deep_dependencies( core ) do |dependencies_list| 
+        @test_invoker_helper.process_deep_dependencies( core ) do |dependencies_list|
           @dependinator.load_test_object_deep_dependencies( dependencies_list )
         end
 
@@ -100,8 +116,11 @@ class TestInvoker
         # associate object files with executable
         @dependinator.setup_test_executable_dependencies( test, objects )
 
+        # build test objects
+        @task_invoker.invoke_test_objects( objects )
+
         # 3, 2, 1... launch
-        @task_invoker.invoke_test_results( results_pass )        
+        @task_invoker.invoke_test_results( results_pass )
       rescue => e
         @build_invoker_utils.process_exception( e, context )
       ensure
@@ -110,8 +129,16 @@ class TestInvoker
           delete_test_definition(test)
         end
         @plugin_manager.post_test( test )
+        # restore the project test defines
+        if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
+          # @configurator.project_config_hash[:defines_test] =
+          COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
+          # printf " ---- Restored defines at #{defs_bkp}"
+          @configurator.project_config_hash[:project_test_build_output_path] = orig_path
+          printf " ************** Restored defines and build path\n"
+        end
       end
-      
+
       # store away what's been processed
       @mocks.concat( mock_list )
       @sources.concat( sources )
@@ -119,18 +146,18 @@ class TestInvoker
 
     # post-process collected mock list
     @mocks.uniq!
-    
+
     # post-process collected sources list
     @sources.uniq!
   end
 
 
   def refresh_deep_dependencies
-    @file_wrapper.rm_f( 
-      @file_wrapper.directory_listing( 
+    @file_wrapper.rm_f(
+      @file_wrapper.directory_listing(
         File.join( @configurator.project_test_dependencies_path, '*' + @configurator.extension_dependencies ) ) )
 
-    @test_invoker_helper.process_deep_dependencies( 
+    @test_invoker_helper.process_deep_dependencies(
       @configurator.collection_all_tests + @configurator.collection_all_source )
   end
 

@@ -137,11 +137,15 @@ class FilePathUtils
   end
 
   def form_runner_object_filepath_from_test(filepath)
-    return (form_test_build_object_filepath(filepath)).sub(/(#{@configurator.extension_object})$/, "#{@configurator.test_runner_file_suffix}\\1")
+    return (form_test_build_c_object_filepath(filepath)).sub(/(#{@configurator.extension_object})$/, "#{@configurator.test_runner_file_suffix}\\1")
   end
 
-  def form_test_build_object_filepath(filepath)
-    return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_object) )
+  def form_test_build_c_object_filepath(filepath)
+    return File.join( @configurator.project_test_build_output_c_path, File.basename(filepath).ext(@configurator.extension_object) )
+  end
+
+  def form_test_build_asm_object_filepath(filepath)
+    return File.join( @configurator.project_test_build_output_asm_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
   def form_test_executable_filepath(filepath)
@@ -165,7 +169,7 @@ class FilePathUtils
   end
 
   def form_test_build_objects_filelist(sources)
-    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{@configurator.project_test_build_output_path}/%n#{@configurator.extension_object}")
+    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{@configurator.project_test_build_output_c_path}/%n#{@configurator.extension_object}")
   end
 
   def form_preprocessed_mockable_headers_filelist(mocks)
