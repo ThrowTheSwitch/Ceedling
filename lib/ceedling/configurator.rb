@@ -173,12 +173,15 @@ class Configurator
       FilePathUtils::standardize(path)
     end
 
+    config[:plugins][:load_paths] << FilePathUtils::standardize(Ceedling.load_path)
+    config[:plugins][:load_paths].uniq!
+
     paths_hash = @configurator_plugins.add_load_paths(config)
 
-    @rake_plugins   = @configurator_plugins.find_rake_plugins(config)
-    @script_plugins = @configurator_plugins.find_script_plugins(config)
-    config_plugins  = @configurator_plugins.find_config_plugins(config)
-    plugin_defaults = @configurator_plugins.find_plugin_defaults(config)
+    @rake_plugins   = @configurator_plugins.find_rake_plugins(config, paths_hash)
+    @script_plugins = @configurator_plugins.find_script_plugins(config, paths_hash)
+    config_plugins  = @configurator_plugins.find_config_plugins(config, paths_hash)
+    plugin_defaults = @configurator_plugins.find_plugin_defaults(config, paths_hash)
 
     config_plugins.each do |plugin|
       config.deep_merge!( @yaml_wrapper.load(plugin) )
@@ -328,7 +331,6 @@ class Configurator
 
   def insert_rake_plugins(plugins)
     plugins.each do |plugin|
-      # TODO needs a duplicate guard
       @project_config_hash[:project_rakefile_component_files] << plugin
     end
   end
