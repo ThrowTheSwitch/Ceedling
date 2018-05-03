@@ -100,6 +100,9 @@ class TestInvoker
         # associate object files with executable
         @dependinator.setup_test_executable_dependencies( test, objects )
 
+        # build test objects
+        @task_invoker.invoke_test_objects( objects )
+
         # 3, 2, 1... launch
         @task_invoker.invoke_test_results( results_pass )        
       rescue => e
