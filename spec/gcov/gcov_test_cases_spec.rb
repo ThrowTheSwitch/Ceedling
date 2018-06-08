@@ -33,7 +33,7 @@ module GcovTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
 
-        output = `bundle exec ruby -S ceedling gcov:all`
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         expect($?.exitstatus).to match(1) # Since a test fails, we return error here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -51,7 +51,7 @@ module GcovTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_boom.c"), 'test/'
 
-        output = `bundle exec ruby -S ceedling test:all`
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Since a test explodes, we return error here
         expect(output).to match(/ERROR: Ceedling Failed/)
       end

@@ -31,8 +31,11 @@ describe "Ceedling" do
     it { can_test_projects_with_fail }
     it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { can_use_the_module_plugin_path_extension }
+    it { can_use_the_module_plugin_with_include_path }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
   describe "deployed in a project's `vendor` directory." do
@@ -68,8 +71,11 @@ describe "Ceedling" do
     it { can_test_projects_with_fail }
     it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { can_use_the_module_plugin_path_extension }
+    it { can_use_the_module_plugin_with_include_path }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
   describe "ugrade a project's `vendor` directory" do
@@ -88,8 +94,11 @@ describe "Ceedling" do
     it { can_test_projects_with_fail }
     it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { can_use_the_module_plugin_path_extension }
+    it { can_use_the_module_plugin_with_include_path }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
 
     it { can_upgrade_projects }
     it { contains_a_vendor_directory }
@@ -99,8 +108,11 @@ describe "Ceedling" do
     it { can_test_projects_with_fail }
     it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { can_use_the_module_plugin_path_extension }
+    it { can_use_the_module_plugin_with_include_path }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
   describe "deployed as a gem" do
@@ -118,8 +130,11 @@ describe "Ceedling" do
     it { can_test_projects_with_fail }
     it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
+    it { can_use_the_module_plugin_path_extension }
+    it { can_use_the_module_plugin_with_include_path }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
+    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
   describe "command: `ceedling examples`" do
