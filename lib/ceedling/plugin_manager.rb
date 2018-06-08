@@ -14,7 +14,7 @@ class PluginManager
 
     script_plugins.each do |plugin|
       # protect against instantiating object multiple times due to processing config multiple times (option files, etc)
-			next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
+      next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
       begin
         @system_wrapper.require_file( "#{plugin}.rb" )
         object = @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects, plugin )
@@ -96,7 +96,7 @@ class PluginManager
   def execute_plugins(method, *args)
     @plugin_objects.each do |plugin|
       begin
-        plugin.send(method, *args)
+        plugin.send(method, *args) if plugin.respond_to?(method)
       rescue
         puts "Exception raised in plugin: #{plugin.name}, in method #{method}"
         raise
