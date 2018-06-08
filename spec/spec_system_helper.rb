@@ -423,7 +423,7 @@ module CeedlingTestCases
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Generate Complete/i)
 
-        output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns]`
+        output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns] 2>&1`
         expect($?.exitstatus).to match(1)
         expect(output).to match(/ERROR: Ceedling Failed/)
       end
