@@ -30,6 +30,7 @@ describe "Ceedling" do
     it { can_test_projects_with_success }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_compile_error }
+    it { uses_raw_output_report_plugin }
     it { can_use_the_module_plugin }
     it { can_use_the_module_plugin_path_extension }
     it { can_use_the_module_plugin_with_include_path }
