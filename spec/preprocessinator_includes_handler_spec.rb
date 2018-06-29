@@ -42,6 +42,7 @@ describe PreprocessinatorIncludesHandler do
       expect(@file_path_utils).to receive(:form_temp_path).with('some_source_file.c','_').and_return('_some_source_file.c')
       contents_double = double('contents-double')
       expect(@file_wrapper).to receive(:read).with('some_source_file.c').and_return(contents_double)
+      expect(contents_double).to receive(:valid_encoding?).and_return(true)
       expect(contents_double).to receive(:gsub!).with(/^\s*#include\s+[\"<]\s*(\S+)\s*[\">]/, "#include \"\\1\"\n#include \"@@@@\\1\"")
       expect(contents_double).to receive(:gsub!).with(/^\s*TEST_FILE\(\s*\"\s*(\S+)\s*\"\s*\)/, "#include \"\\1\"\n#include \"@@@@\\1\"")
       expect(@file_wrapper).to receive(:write).with('_some_source_file.c', contents_double)
