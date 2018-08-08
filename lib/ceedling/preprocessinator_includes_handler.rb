@@ -30,6 +30,11 @@ class PreprocessinatorIncludesHandler
     # that winds through the code). The decorated filenames indicate files that
     # are included directly by the test file.
     contents = @file_wrapper.read(filepath)
+
+    if !contents.valid_encoding?
+      contents = contents.encode("UTF-16be", :invalid=>:replace, :replace=>"?").encode('UTF-8')
+    end
+
     contents.gsub!( /^\s*#include\s+[\"<]\s*(\S+)\s*[\">]/, "#include \"\\1\"\n#include \"@@@@\\1\"" )
     contents.gsub!( /^\s*TEST_FILE\(\s*\"\s*(\S+)\s*\"\s*\)/, "#include \"\\1\"\n#include \"@@@@\\1\"")
     @file_wrapper.write( temp_filepath, contents )
