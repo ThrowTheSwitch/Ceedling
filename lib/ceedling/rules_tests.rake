@@ -35,8 +35,7 @@ end
 
 rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
 
-  lib_args = ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])
-  lib_args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) } if (defined? LIBRARIES_FLAG)
+  lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
 
   @ceedling[:generator].generate_executable_file(
     TOOLS_TEST_LINKER,
