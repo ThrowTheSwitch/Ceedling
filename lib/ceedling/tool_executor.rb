@@ -18,6 +18,8 @@ class ToolExecutor
   end
 
   # build up a command line from yaml provided config
+
+  # @param extra_params is an array of parameters to append to executable
   def build_command_line(tool_config, extra_params, *args)
     @tool_name  = tool_config[:name]
     @executable = tool_config[:executable]
@@ -50,7 +52,6 @@ class ToolExecutor
     options[:boom] = true if (options[:boom].nil?)
     options[:stderr_redirect] = StdErrRedirect::NONE if (options[:stderr_redirect].nil?)
     options[:background_exec] = BackgroundExec::NONE if (options[:background_exec].nil?)
-
     # build command line
     command_line = [
       @tool_executor_helper.background_exec_cmdline_prepend( options ),
@@ -59,6 +60,8 @@ class ToolExecutor
       @tool_executor_helper.stderr_redirect_cmdline_append( options ),
       @tool_executor_helper.background_exec_cmdline_append( options ),
       ].flatten.compact.join(' ')
+
+    @streaminator.stderr_puts("Verbose: #{__method__.to_s}(): #{command_line}", Verbosity::DEBUG)
 
     shell_result = {}
 
