@@ -64,6 +64,8 @@ class Configurator
   end
 
 
+  # The default values defined in defaults.rb (eg. DEFAULT_TOOLS_TEST) are populated
+  # into @param config
   def populate_defaults(config)
     new_config = DEFAULT_CEEDLING_CONFIG.deep_clone
     new_config.deep_merge!(config)

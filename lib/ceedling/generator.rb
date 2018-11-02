@@ -92,6 +92,8 @@ class Generator
                                          arg_hash[:list],
                                          arg_hash[:dependencies])
 
+    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
+
     begin
       shell_result = @tool_executor.exec( command[:line], command[:options] )
     rescue ShellExecutionException => ex
@@ -124,6 +126,7 @@ class Generator
                                          arg_hash[:map],
                                          arg_hash[:libraries]
                                        )
+    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     begin
       shell_result = @tool_executor.exec( command[:line], command[:options] )
@@ -157,6 +160,7 @@ class Generator
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results
     command = @tool_executor.build_command_line(arg_hash[:tool], [], arg_hash[:executable])
+    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
     shell_result[:exit_code] = 0 #Don't Let The Failure Count Make Us Believe Things Aren't Working

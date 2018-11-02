@@ -54,6 +54,19 @@ class TestInvoker
     end
   end
 
+  # Convert libraries configuration form YAML configuration
+  # into a string that can be given to the compiler.
+  def convert_libraries_to_arguments()
+    if @configurator.project_config_hash.has_key?(:libraries_test)
+      lib_args = @configurator.project_config_hash[:libraries_test]
+      lib_args.flatten!
+      lib_flag = @configurator.project_config_hash[:libraries_flag]
+      lib_args.map! {|v| lib_flag.gsub(/\$\{1\}/, v) } if (defined? lib_flag)
+      return lib_args
+    end
+  end
+
+
   def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true})
 
     @tests = tests
