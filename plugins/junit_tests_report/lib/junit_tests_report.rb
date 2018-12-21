@@ -98,6 +98,7 @@ class JunitTestsReport < Plugin
   end
 
   def write_test( test, stream )
+    test[:test].gsub!('"', '&quot;')
     case test[:result]
     when :success
       stream.puts('    <testcase name="%<test>s" />' % test)
