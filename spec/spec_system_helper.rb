@@ -182,6 +182,8 @@ module CeedlingTestCases
         expect(File.exists?("project.yml")).to eq true
         expect(File.exists?("src")).to eq true
         expect(File.exists?("test")).to eq true
+        expect(File.exists?("test/support")).to eq true
+        expect(File.exists?("test/support/.gitkeep")).to eq true
       end
     end
   end
