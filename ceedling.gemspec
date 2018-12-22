@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.licenses    = ['MIT']
 
   s.add_dependency "thor", ">= 0.14.5"
-  s.add_dependency "rake", ">= 0.8.7"
+  s.add_dependency "rake", ">= 12.2.1"
   s.add_runtime_dependency "constructor", ">= 1.0.4"
 
   # Files needed from submodules
