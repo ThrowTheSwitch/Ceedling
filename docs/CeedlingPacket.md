@@ -178,7 +178,19 @@ Gem install notes:
    When steps 1-2 are completed once, only step 3 is needed for
    each new project.
 
+Getting Started after Ceedling is installed:
 
+1. Once Ceedling is installed, you'll want to start to integrate it with new
+   and old projects alike. If you wanted to start to work on a new project
+   named `foo`, Ceedling can create the skeleton of the project using `ceedling
+   new foo`. Likewise if you already have a project named `bar` and you want to
+   integrate Ceedling into it, you would run `ceedling new bar` and Ceedling
+   will create any files and directories it needs to run.
+
+2. Now that you have Ceedling integrated with a project, you can start using it.
+   A good starting point to get use to Ceedling either in a new project or an
+   existing project is creating a new module to get use to Ceedling by issuing
+   the command `ceedling module:create[unicorn]`.
 
 General notes:
 
@@ -207,8 +219,6 @@ General notes:
    Detection Technology (part of UAC), requires administrator 
    privileges to execute file names with these strings.
 
-
-
 Now What? How Do I Make It GO?
 ------------------------------
 
@@ -223,7 +233,6 @@ you with named tasks that coordinate the file generation and
 build steps needed to accomplish something useful. You can also
 add your own independent Rake tasks or create plugins to extend
 Ceedling (more on this later).
-
 
 * `ceedling [no arguments]`:
 
@@ -294,7 +303,7 @@ Ceedling (more on this later).
 * `ceedling test:*`:
 
   Execute the named test file or the named source file that has an
-  accompanying test. No path. Examples: ceedling test:foo.c or ceed
+  accompanying test. No path. Examples: ceedling test:foo.c or ceedling
   test:test_foo.c
 
 * `ceedling test:pattern[*]`:
@@ -681,7 +690,6 @@ for this. A few highlights from that reference page:
 * Repeated nodes are initially denoted by an ampersand ( & ) and
   thereafter referenced with an asterisk ( * )
 
-
 Notes on what follows:
 
 * Each of the following sections represent top-level entries
@@ -717,7 +725,6 @@ Notes on what follows:
   application + bootloader or multiple libraries) are beyond
   Ceedling's release build ability.
 
-
 Conventions / features of Ceedling-specific YAML:
 
 * Any second tier setting keys anywhere in YAML whose names end
@@ -726,7 +733,6 @@ Conventions / features of Ceedling-specific YAML:
   separators (i.e. "/") and to take advantage of inline Ruby
   string expansion (see [:environment] setting below for further
   explanation of string expansion).
-
 
 **Let's Be Careful Out There:** Ceedling performs validation
 on the values you set in your configuration file (this assumes
@@ -743,7 +749,6 @@ or value and simply use the properly spelled default maintained
 internally - thus leading to unexpected behavior without warning.
 
 project: global project settings
-
 
 * `build_root`:
 
@@ -1016,7 +1021,6 @@ Notes on path grammar within the [:paths] section:
 
   6. can act to subtract from a glob included in the path list (more
      on this in the examples)
-
 
 [Globs](http://ruby.about.com/od/beginningruby/a/dir2.htm)
 as used by Ceedling are wildcards for specifying directories
