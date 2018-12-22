@@ -11,6 +11,7 @@
       - -I"$": COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE
       - -D$: COLLECTION_DEFINES_TEST_AND_VENDOR
       - -DGCOV_COMPILER
+      - -DCODE_COVERAGE
       - -c "${1}"
       - -o "${2}"
   :gcov_linker:
