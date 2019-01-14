@@ -19,7 +19,11 @@ class XmlTestsReport < Plugin
     @results_list.each_key do |context|
       results = @ceedling[:plugin_reportinator].assemble_test_results(@results_list[context])
 
-      file_path = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, 'report.xml')
+      artifact_filename = @ceedling[:configurator].project_config_hash[:xml_tests_report_artifact_filename]
+
+      artifact_filename = artifact_filename || 'report.xml'
+
+      file_path = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, artifact_filename)
 
       @ceedling[:file_wrapper].open(file_path, 'w') do |f|
         @test_counter = 1
