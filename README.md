@@ -41,8 +41,8 @@ project just because you updated your gems.
 
 This will install all of Unity, CMock, and Ceedling into a new folder
 named YourNewProjectName. It will also create a simple directory structure
-for you with src and test folders. SCORE! It's also creates a simple
-rakefile and project.yml file that you can tweak to your own needs.
+for you with src and test folders. SCORE! It also creates a sample
+project.yml file that you can tweak to your own needs.
 
 It'll also include documentation for all of these tools, unless you
 specify --nodocs at when you issue the command above... then it skips
@@ -60,7 +60,7 @@ your projects up to date.
     ceedling new YourNewProjectName --as_gem
 
 This creates a new folder named YourNewProjectName. Inside it will be your
-shiny new project file, rakefile, and a couple of src and test directories
+shiny new project file and a couple of src and test directories
 to get you started. You can then tweak all of those things to your heart's
 content.
 
