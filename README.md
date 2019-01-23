@@ -1,4 +1,4 @@
-Ceedling - Build/test system for C based on Ruby/Rake
+Ceedling - Build/Test System for C Based on Ruby/Rake
 =====================================================
 
 [![Ceedling Build Status](https://api.travis-ci.org/ThrowTheSwitch/Ceedling.png?branch=master)](https://travis-ci.org/ThrowTheSwitch/Ceedling)
@@ -10,8 +10,8 @@ Usage Documentation
 
 Documentation and license info exists [in the repo in docs/](docs/CeedlingPacket.md)
 
-Getting Started (Developers)
-============================
+Getting Started
+===============
 
 First make sure Ruby is installed on your system (if it's not already). Then, from a command prompt:
 
@@ -29,8 +29,8 @@ If bundler isn't installed on your system or you run into problems, you might ha
 
     > sudo gem install bundler
 
-Pulling Ceedling inside a Project
-=================================
+Putting Ceedling Inside a New Project
+=====================================
 
 Ceedling can deploy all of its guts into a folder. This allows it
 to be used without having to worry about external dependencies.
@@ -48,7 +48,7 @@ It'll also include documentation for all of these tools, unless you
 specify --nodocs at when you issue the command above... then it skips
 that step for you.
 
-Using Ceedling From A Ruby Gem
+Using Ceedling from a Ruby Gem
 ==============================
 
 Ceedling can also be used as a gem. By installing it this way, you
