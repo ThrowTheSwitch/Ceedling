@@ -42,11 +42,16 @@ project just because you updated your gems.
 This will install all of Unity, CMock, and Ceedling into a new folder
 named `YourNewProjectName`. It will also create a simple directory structure
 for you with `src` and `test` folders. SCORE! It also creates a sample
-`project.yml` file that you can tweak to your own needs.
+`project.yml` file that you can tweak to your own needs. 
 
 It'll also include documentation for all of these tools, unless you
 specify `--nodocs` at when you issue the command above... then it skips
 that step for you.
+
+Previous versions of Ceedling generated and depended on a `rakefile`, but that is no longer the case.
+Today, configuration is done with the `project.yml` file and the `ceedling`
+command is used to execute tests. Some old tutorials may still reference using `rake` commands, but
+the `ceedling` command should be used now, instead. For example, `ceedling test:all` will execute all tests. 
 
 Using Ceedling from a Ruby Gem
 ==============================
