@@ -1,4 +1,4 @@
-Ceedling - Build/test system for C based on Ruby/Rake
+Ceedling - Build/Test System for C Based on Ruby/Rake
 =====================================================
 
 [![Ceedling Build Status](https://api.travis-ci.org/ThrowTheSwitch/Ceedling.png?branch=master)](https://travis-ci.org/ThrowTheSwitch/Ceedling)
@@ -10,8 +10,8 @@ Usage Documentation
 
 Documentation and license info exists [in the repo in docs/](docs/CeedlingPacket.md)
 
-Getting Started (Developers)
-============================
+Getting Started
+===============
 
 First make sure Ruby is installed on your system (if it's not already). Then, from a command prompt:
 
@@ -29,8 +29,8 @@ If bundler isn't installed on your system or you run into problems, you might ha
 
     > sudo gem install bundler
 
-Pulling Ceedling inside a Project
-=================================
+Putting Ceedling Inside a New Project
+=====================================
 
 Ceedling can deploy all of its guts into a folder. This allows it
 to be used without having to worry about external dependencies.
@@ -40,15 +40,20 @@ project just because you updated your gems.
     ceedling new YourNewProjectName
 
 This will install all of Unity, CMock, and Ceedling into a new folder
-named YourNewProjectName. It will also create a simple directory structure
-for you with src and test folders. SCORE! It's also creates a simple
-rakefile and project.yml file that you can tweak to your own needs.
+named `YourNewProjectName`. It will also create a simple directory structure
+for you with `src` and `test` folders. SCORE! It also creates a sample
+`project.yml` file that you can tweak to your own needs. 
 
 It'll also include documentation for all of these tools, unless you
-specify --nodocs at when you issue the command above... then it skips
+specify `--nodocs` at when you issue the command above... then it skips
 that step for you.
 
-Using Ceedling From A Ruby Gem
+Previous versions of Ceedling generated and depended on a `rakefile`, but that is no longer the case.
+Today, configuration is done with the `project.yml` file and the `ceedling`
+command is used to execute tests. Some old tutorials may still reference using `rake` commands, but
+the `ceedling` command should be used now, instead. For example, `ceedling test:all` will execute all tests. 
+
+Using Ceedling from a Ruby Gem
 ==============================
 
 Ceedling can also be used as a gem. By installing it this way, you
@@ -59,8 +64,8 @@ your projects up to date.
 
     ceedling new YourNewProjectName --as_gem
 
-This creates a new folder named YourNewProjectName. Inside it will be your
-shiny new project file, rakefile, and a couple of src and test directories
+This creates a new folder named `YourNewProjectName`. Inside it will be your
+shiny new `project.yml` file and a couple of `src` and `test` directories
 to get you started. You can then tweak all of those things to your heart's
 content.
 
