@@ -62,6 +62,15 @@
         - --html-details
         - -r .
         - -o  "$": GCOV_ARTIFACTS_FILE
-
+  :gcov_post_report_xml:
+    :executable: gcovr
+    :optional: TRUE
+    :arguments:
+        - -p
+        - -b
+        - -e "${1}"
+        - --xml
+        - -r .
+        - -o  "$": GCOV_ARTIFACTS_FILE_XML
 
 ...

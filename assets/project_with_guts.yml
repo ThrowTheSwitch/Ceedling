@@ -61,7 +61,9 @@
     bool:     UINT8
 
 :gcov:
-    :html_report_type: basic
+    :html_report: true # Enables the output of an HTML report for utils:gcov
+    :html_report_type: basic  # Options are 'basic' or 'detailed'.
+    :xml_report: false # Enables the output of an XML report for utils:gcov
 
 #:tools:
 # Ceedling defaults to using gcc for compiling, linking, etc.
