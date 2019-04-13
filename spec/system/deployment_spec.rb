@@ -18,7 +18,7 @@ describe "Ceedling" do
   describe "deployed in a project's `vendor` directory." do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new #{@proj_name} 2>&1`
+        `bundle exec ruby -S ceedling new --local --docs #{@proj_name} 2>&1`
       end
     end
 
@@ -39,10 +39,10 @@ describe "Ceedling" do
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
-  describe "deployed in a project's `vendor` directory." do
+  describe "deployed as gem with gitignore." do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --with-ignore #{@proj_name} 2>&1`
+        `bundle exec ruby -S ceedling new --gitignore #{@proj_name} 2>&1`
       end
     end
 
@@ -59,7 +59,7 @@ describe "Ceedling" do
   describe "deployed in a project's `vendor` directory without docs." do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --nodocs #{@proj_name} 2>&1`
+        `bundle exec ruby -S ceedling new --local #{@proj_name} 2>&1`
       end
     end
 
@@ -82,7 +82,7 @@ describe "Ceedling" do
   describe "ugrade a project's `vendor` directory" do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --nodocs #{@proj_name} 2>&1`
+        `bundle exec ruby -S ceedling new --local #{@proj_name} 2>&1`
       end
     end
 
@@ -119,7 +119,7 @@ describe "Ceedling" do
   describe "deployed as a gem" do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --as-gem #{@proj_name} 2>&1`
+        `bundle exec ruby -S ceedling new #{@proj_name} 2>&1`
       end
     end
 
