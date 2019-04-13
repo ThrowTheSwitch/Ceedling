@@ -142,7 +142,7 @@ unless (project_found)
         end
 
         # We're copying in a configuration file if we haven't said not to
-        unless (no_configs)
+        if (use_configs)
           if use_gem
             copy_file(File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml'), :force => force)
           else
