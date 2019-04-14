@@ -182,7 +182,7 @@ unless (project_found)
     def example(proj_name, dest=nil)
       if dest.nil? then dest = proj_name end
 
-      invoke :new, [dest, true]
+      copy_assets_and_create_structure(dest, true, false, {:local=>true, :docs=>true})
 
       dest_src      = File.join(dest,'src')
       dest_test     = File.join(dest,'test')

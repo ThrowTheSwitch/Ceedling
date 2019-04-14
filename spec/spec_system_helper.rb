@@ -196,7 +196,7 @@ module CeedlingTestCases
 
   def can_upgrade_projects
     @c.with_context do
-      output = `bundle exec ruby -S ceedling upgrade --local #{@proj_name} 2>&1`
+      output = `bundle exec ruby -S ceedling upgrade --local --docs #{@proj_name} 2>&1`
       expect($?.exitstatus).to match(0)
       expect(output).to match(/upgraded!/i)
       Dir.chdir @proj_name do
