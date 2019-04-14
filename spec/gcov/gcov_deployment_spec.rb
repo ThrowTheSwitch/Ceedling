@@ -20,7 +20,7 @@ describe "Ceedling" do
     describe "basic operations" do
       before do
         @c.with_context do
-          `bundle exec ruby -S ceedling new #{@proj_name} 2>&1`
+          `bundle exec ruby -S ceedling new --local #{@proj_name} 2>&1`
         end
       end
 

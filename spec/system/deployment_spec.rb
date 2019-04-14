@@ -39,10 +39,10 @@ describe "Ceedling" do
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
-  describe "deployed as gem with gitignore." do
+  describe "deployed in a project's `vendor` directory with gitignore." do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --gitignore #{@proj_name} 2>&1`
+        `bundle exec ruby -S ceedling new --local --docs --gitignore #{@proj_name} 2>&1`
       end
     end
 

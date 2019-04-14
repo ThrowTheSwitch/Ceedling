@@ -156,7 +156,7 @@ unless (project_found)
         end
 
         # Copy the gitignore file if requested
-        if (gitignore)
+        if (use_ignore)
           copy_file(File.join('assets', 'default_gitignore'), File.join(name, '.gitignore'), :force => force)
         end
 
