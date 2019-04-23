@@ -29,43 +29,71 @@ If bundler isn't installed on your system or you run into problems, you might ha
 
     > sudo gem install bundler
 
-Putting Ceedling Inside a New Project
-=====================================
+Creating A Project
+==================
 
-Ceedling can deploy all of its guts into a folder. This allows it
-to be used without having to worry about external dependencies.
-You don't have to worry about Ceedling changing for this particular
-project just because you updated your gems.
+Creating a project with Ceedling is easy. Simply tell ceedling the
+name of the project, and it will create a subdirectory called that
+name and fill it with a default directory structure and configuration.
 
     ceedling new YourNewProjectName
 
-This will install all of Unity, CMock, and Ceedling into a new folder
-named `YourNewProjectName`. It will also create a simple directory structure
-for you with `src` and `test` folders. SCORE! It also creates a sample
-`project.yml` file that you can tweak to your own needs. 
+You can add files to your src and test directories and they will
+instantly become part of your test build. Need a different structure?
+You can start to tweak the `project.yml` file immediately with your new
+path or tool requirements.
 
-It'll also include documentation for all of these tools, unless you
-specify `--nodocs` at when you issue the command above... then it skips
-that step for you.
+You can upgrade to the latest version of Ceedling at any time,
+automatically gaining access to the packaged Unity and CMock that
+come with it.
 
-Previous versions of Ceedling generated and depended on a `rakefile`, but that is no longer the case.
-Today, configuration is done with the `project.yml` file and the `ceedling`
-command is used to execute tests. Some old tutorials may still reference using `rake` commands, but
-the `ceedling` command should be used now, instead. For example, `ceedling test:all` will execute all tests. 
+    gem update ceedling
 
-Using Ceedling from a Ruby Gem
+Documentation
+=============
+
+Are you just getting started with Ceedling? Maybe you'd like your
+project to be installed with some of its handy documentation? No problem!
+You can do this when you create a new project.
+
+    ceedling new --docs MyAwesomeProject
+
+Bonding Your Tools And Project
 ==============================
 
-Ceedling can also be used as a gem. By installing it this way, you
-can automatically update to the latest version of Ceedling, Unity,
-and CMock just by running an update on your gems. Use this if you
-are only running one project OR if you feel you want to keep all
-your projects up to date.
+Ceedling can deploy all of its guts into the project as well. This
+allows it to be used without having to worry about external dependencies.
+You don't have to worry about Ceedling changing for this particular
+project just because you updated your gems... no need to worry about
+changes in Unity or CMock breaking your build in the future. If you'd like
+to use Ceedling this way, tell it you want a local copy when you create
+your project:
 
-    ceedling new YourNewProjectName --as_gem
+    ceedling new --local YourNewProjectName
 
-This creates a new folder named `YourNewProjectName`. Inside it will be your
-shiny new `project.yml` file and a couple of `src` and `test` directories
-to get you started. You can then tweak all of those things to your heart's
-content.
+This will install all of Unity, CMock, and Ceedling into a new folder
+named `vendor` inside your project `YourNewProjectName`. It will still create
+the simple directory structure for you with `src` and `test` folders.
 
+SCORE!
+
+If you want to force a locally installed version of Ceedling to upgrade
+to match your latest gem later, it's easy! Just issue the following command:
+
+    ceedling upgrade --local YourNewProjectName
+
+Just like the `new` command, it's called from the parent directory of your
+project.
+
+Are you afraid of losing all your local changes when this happens? You can keep
+Ceedling from updating your project file by issuing `no_configs`.
+
+    ceedling upgrade --local --no_configs TheProject
+
+Git Integration
+===============
+
+Are you using Git? You might want to automatically have Ceedling create a
+`gitignore` file for you by adding `--gitignore` to your `new` call.
+
+*HAPPY TESTING!*
