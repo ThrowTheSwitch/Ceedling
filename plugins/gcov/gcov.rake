@@ -160,21 +160,47 @@ namespace UTILS_SYM do
 
     filter = @ceedling[:configurator].project_config_hash[:gcov_html_report_filter] || GCOV_FILTER_EXPR
 
-    if @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'basic'
-      puts "Creating a basic html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
-      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [], filter)
-      @ceedling[:tool_executor].exec(command[:line], command[:options])
-    elsif @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'detailed'
-      puts "Creating a detailed html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
-      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_ADVANCED, [], filter)
-      @ceedling[:tool_executor].exec(command[:line], command[:options])
+    if @ceedling[:configurator].project_config_hash[:gcov_html_report].nil?
+      puts "In your project.yml, define: \n\n:gcov:\n  :html_report:\n\n to true or false to refine this feature."
+      puts "For now, assumimg you want an html report generated."
+      html_enabled = true
     else
-      puts "In your project.yml, define: \n\n:gcov:\n  :html_report_type:\n\n to basic or detailed to refine this feature."
-      puts "For now, just creating basic."
-      puts "Creating a basic html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
-      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [], filter)
+      html_enabled = @ceedling[:configurator].project_config_hash[:gcov_html_report]
+    end
+
+    if @ceedling[:configurator].project_config_hash[:gcov_xml_report].nil?
+      puts "In your project.yml, define: \n\n:gcov:\n  :xml_report:\n\n to true or false to refine this feature."
+      puts "For now, assumimg you want an xml report generated."
+      xml_enabled = true
+    else
+      xml_enabled = @ceedling[:configurator].project_config_hash[:gcov_xml_report]
+    end
+
+    if html_enabled
+      if @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'basic'
+        puts "Creating a basic html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
+        command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [], filter)
+        @ceedling[:tool_executor].exec(command[:line], command[:options])
+      elsif @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'detailed'
+        puts "Creating a detailed html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
+        command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_ADVANCED, [], filter)
+        @ceedling[:tool_executor].exec(command[:line], command[:options])
+
+      else
+        puts "In your project.yml, define: \n\n:gcov:\n  :html_report_type:\n\n to basic or detailed to refine this feature."
+        puts "For now, just creating basic."
+        puts "Creating a basic html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
+        command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [], filter)
+        @ceedling[:tool_executor].exec(command[:line], command[:options])
+      end
+    end
+
+    if xml_enabled
+      puts "Creating an xml report of gcov results in #{GCOV_ARTIFACTS_FILE_XML}..."
+      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_XML, [], filter)
       @ceedling[:tool_executor].exec(command[:line], command[:options])
     end
+
     puts "Done."
   end
 end
