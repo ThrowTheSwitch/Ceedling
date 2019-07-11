@@ -14,6 +14,8 @@
       - -DCODE_COVERAGE
       - -c "${1}"
       - -o "${2}"
+      - -MMD
+      - -MF "${4}"
   :gcov_linker:
     :executable: gcc
     :arguments:
@@ -21,6 +23,7 @@
       - -ftest-coverage
       - ${1}
       - -o ${2}
+      - "${4}"
   :gcov_fixture:
     :executable: ${1}
   :gcov_report:

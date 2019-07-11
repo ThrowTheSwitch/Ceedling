@@ -23,7 +23,8 @@ rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
       GCOV_SYM,
       object.source,
       object.name,
-      @ceedling[:file_path_utils].form_test_build_list_filepath(object.name)
+      @ceedling[:file_path_utils].form_test_build_list_filepath(object.name),
+      @ceedling[:file_path_utils].form_test_dependencies_filepath(object.name)
     )
   else
     @ceedling[GCOV_SYM].generate_coverage_object_file(object.source, object.name)
@@ -31,12 +32,14 @@ rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
 end
 
 rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_EXECUTABLE}$/) do |bin_file|
+  lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
   @ceedling[:generator].generate_executable_file(
     TOOLS_GCOV_LINKER,
     GCOV_SYM,
     bin_file.prerequisites,
     bin_file.name,
-    @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name)
+    @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name),
+    lib_args
   )
 end
 
