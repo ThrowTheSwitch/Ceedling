@@ -95,6 +95,12 @@ class Gcov < Plugin
         @ceedling[:streaminator].stdout_puts(report + "\n\n")
       end
     end
+
+    COLLECTION_ALL_SOURCE.each do |source|
+      unless coverage_sources.include?(source)
+        @ceedling[:streaminator].stdout_puts("Could not find coverage results for " + source + "\n")
+      end
+    end
   end
 end
 
