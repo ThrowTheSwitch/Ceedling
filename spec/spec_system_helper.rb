@@ -417,6 +417,31 @@ module CeedlingTestCases
     end
   end
 
+  def can_use_the_module_plugin_with_non_default_paths
+    @c.with_context do
+      Dir.chdir @proj_name do
+        # add paths to module generator
+        mod_gen = Modulegenerator.new({source_root: "foo/", inc_root: "bar/", test_root: "barz/"})
+        add_module_generator_section("project.yml", mod_gen)
+
+        # module creation
+        output = `bundle exec ruby -S ceedling module:create[ponies]`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Generate Complete/i)
+        expect(File.exists?("foo/ponies.c")).to eq true
+        expect(File.exists?("bar/ponies.h")).to eq true
+        expect(File.exists?("barz/test_ponies.c")).to eq true
+
+        # Module destruction
+        output = `bundle exec ruby -S ceedling module:destroy[ponies]`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Destroy Complete/i)
+        expect(File.exists?("foo/ponies.c")).to eq false
+        expect(File.exists?("bar/ponies.h")).to eq false
+        expect(File.exists?("barz/test_ponies.c")).to eq false
+      end
+    end
+  end
 
   def handles_creating_the_same_module_twice_using_the_module_plugin
     @c.with_context do
