@@ -29,6 +29,14 @@ If bundler isn't installed on your system or you run into problems, you might ha
 
     > sudo gem install bundler
 
+If you run into trouble running bundler and get messages like this `can't find gem
+bundler (>= 0.a) with executable bundle (Gem::GemNotFoundException)`, you may
+need to install a different version of bundler. For this please reference the
+version in the Gemfile.lock. An example based on the current Gemfile.lock is as
+followed:
+
+    > sudo gem install bundler -v 1.16.2
+
 Creating A Project
 ==================
 
