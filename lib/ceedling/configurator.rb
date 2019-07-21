@@ -349,6 +349,10 @@ class Configurator
   end
 
   def eval_path_list( paths )
+    if paths.kind_of?(Array)
+      paths = Array.new(paths)
+    end
+
     paths.flatten.each do |path|
       path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
     end
