@@ -115,11 +115,14 @@ unless (project_found)
           FileUtils.mkdir_p ceedling_path
 
           #copy full folders from ceedling gem into project
-          %w{plugins lib}.map do |f|
+          %w{plugins lib bin}.map do |f|
             {:src => f, :dst => File.join(ceedling_path, f)}
           end.each do |f|
             directory(f[:src], f[:dst], :force => force)
           end
+          
+          # mark ceedling as an executable
+          File.chmod(0755, File.join(ceedling_path, 'bin', 'ceedling')) unless is_windows?
 
           #copy necessary subcomponents from ceedling gem into project
           sub_components = [
@@ -151,6 +154,7 @@ unless (project_found)
               copy_file(File.join('assets', 'ceedling.cmd'), File.join(name, 'ceedling.cmd'), :force => force)
             else
               copy_file(File.join('assets', 'ceedling'), File.join(name, 'ceedling'), :force => force)
+              File.chmod(0755, File.join(name, 'ceedling'))
             end
           end
         end
