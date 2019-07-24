@@ -1,7 +1,7 @@
 require 'ceedling/constants'
 
 task :test => [:directories] do
-  @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS)
+  Rake.application['test:all'].invoke
 end
 
 namespace TEST_SYM do
