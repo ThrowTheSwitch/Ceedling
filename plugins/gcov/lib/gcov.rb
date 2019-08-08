@@ -22,13 +22,15 @@ class Gcov < Plugin
   end
 
   def generate_coverage_object_file(source, object)
+    lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
     compile_command =
       @ceedling[:tool_executor].build_command_line(
         TOOLS_GCOV_COMPILER,
         @ceedling[:flaginator].flag_down(OPERATION_COMPILE_SYM, GCOV_SYM, source),
         source,
         object,
-        @ceedling[:file_path_utils].form_test_build_list_filepath(object)
+        @ceedling[:file_path_utils].form_test_build_list_filepath(object),
+        lib_args
       )
     @ceedling[:streaminator].stdout_puts("Compiling #{File.basename(source)} with coverage...")
     @ceedling[:tool_executor].exec(compile_command[:line], compile_command[:options])
