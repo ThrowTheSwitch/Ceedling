@@ -15,3 +15,6 @@ ceedling.sublime-workspace
 ceedling-*.gem
 .DS_Store
 .ruby-version
+
+/.idea
+/.vscode
