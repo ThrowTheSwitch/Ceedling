@@ -14,6 +14,6 @@ GCOV_ARTIFACTS_FILE_XML    = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageResults
 
 GCOV_IGNORE_SOURCES    = %w(unity cmock cexception).freeze
 
-GCOV_FILTER_EXPR       = '^vendor.*|^build.*|^test.*|^lib.*'
+GCOV_FILTER_EXPR       = '.*[Cc]eedling.vendor.*|^vendor.*|^build.*|^test.*|^lib.*'
 
 
