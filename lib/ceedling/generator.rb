@@ -19,7 +19,7 @@ class Generator
 
 
   def generate_shallow_includes_list(context, file)
-    @preprocessinator.preprocess_shallow_includes(file)
+    @preprocessinator.preprocess_includes(file)
   end
 
   def generate_preprocessed_file(context, file)
