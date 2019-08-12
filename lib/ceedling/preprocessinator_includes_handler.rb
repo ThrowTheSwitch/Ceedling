@@ -65,7 +65,7 @@ class PreprocessinatorIncludesHandler
     mock_headers = []
     if ignore_list.length > 0
       mock_headers, processed_ignore_list = ignore_list.partition {|hdr| hdr =~ /^mock_/ }
-      stripped_mocked_list = mock_headers.map { |hdr| hdr.delete_prefix("mock_") }
+      stripped_mocked_list = mock_headers.map { |hdr| hdr.sub("mock_", "") }
       processed_ignore_list += stripped_mocked_list
       dependencies -= processed_ignore_list
       new_dependencies = dependencies.select do |d|
@@ -107,7 +107,7 @@ class PreprocessinatorIncludesHandler
     if @configurator.project_config_hash.has_key?(:project_auto_link_deep_dependencies) && @configurator.project_config_hash[:project_auto_link_deep_dependencies]
       # Find corresponding source files from removed header files (if they exist):
       removed_headers.find_all do |removed_header|
-        source_file = removed_header.delete_suffix(hdr_ext) + src_ext
+        source_file = removed_header.chomp(hdr_ext) + src_ext
         if File.exist?(source_file)
           other_make_rule = self.form_shallow_dependencies_rule(source_file)
           other_deps, ignore_list = self.extract_includes(other_make_rule, ignore_list + removed_headers + real_headers + mock_headers)
