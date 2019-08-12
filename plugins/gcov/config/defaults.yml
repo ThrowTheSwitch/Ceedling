@@ -21,6 +21,7 @@
       - -ftest-coverage
       - ${1}
       - -o ${2}
+      - ${3}
   :gcov_fixture:
     :executable: ${1}
   :gcov_report:
