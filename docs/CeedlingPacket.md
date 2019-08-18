@@ -13,8 +13,8 @@ tool is tedious and requires considerable glue code to pull together
 the necessary tools and libraries. Ceedling allows you to generate
 an entire test and build environment for a C project from a single
 YAML configuration file. Ceedling is written in Ruby and works
-with the Rake build tool plus other goodness like Unity and CMock
-- the unit testing and mocking frameworks for C. Ceedling and
+with the Rake build tool plus other goodness like Unity and CMock —
+the unit testing and mocking frameworks for C. Ceedling and
 its complementary tools can support the tiniest of embedded
 processors, the beefiest 64 bit power houses available, and
 everything in between.
