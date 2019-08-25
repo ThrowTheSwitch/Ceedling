@@ -174,6 +174,7 @@ task_invoker:
     - dependinator
     - rake_utils
     - rake_wrapper
+    - project_config_manager
 
 flaginator:
   compose:

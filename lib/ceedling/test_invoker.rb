@@ -157,6 +157,8 @@ class TestInvoker
       # store away what's been processed
       @mocks.concat( mock_list )
       @sources.concat( sources )
+
+      @task_invoker.first_run = false
     end
 
     # post-process collected mock list
