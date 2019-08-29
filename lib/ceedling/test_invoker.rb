@@ -81,7 +81,7 @@ class TestInvoker
       begin
         @plugin_manager.pre_test( test )
         test_name ="#{File.basename(test)}".chomp('.c')
-        def_test_key="defines_#{test_name}"
+        def_test_key="defines_#{test_name.downcase}"
 
         # Re-define the project out path and pre-processor defines.
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
