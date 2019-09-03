@@ -76,7 +76,7 @@ class ToolExecutor
     shell_result[:time] = time
 
     #scrub the string for illegal output
-    shell_result[:output].scrub! unless (!("".respond_to? :scrub!) || (shell_result[:output].nil?))
+    shell_result[:output] = shell_result[:output].scrub unless (!("".respond_to? :scrub) || (shell_result[:output].nil?))
 
     @tool_executor_helper.print_happy_results( command_line, shell_result, options[:boom] )
     @tool_executor_helper.print_error_results( command_line, shell_result, options[:boom] )
