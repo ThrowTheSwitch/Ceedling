@@ -95,7 +95,14 @@ class JunitTestsReport < Plugin
 
     unless suite[:stdout].empty?
       stream.puts('    <system-out>')
-      suite[:stdout].each{|line| stream.puts line }
+      suite[:stdout].each do |line|
+        line.gsub!(/&/, '&amp;')
+        line.gsub!(/</, '&lt;')
+        line.gsub!(/>/, '&gt;')
+        line.gsub!(/"/, '&quot;')
+        line.gsub!(/'/, '&apos;')
+        stream.puts(line)
+      end
       stream.puts('    </system-out>')
     end
 
