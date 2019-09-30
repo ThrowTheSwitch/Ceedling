@@ -41,7 +41,9 @@ project_file_loader:
 project_config_manager:
   compose:
     - cacheinator
+    - configurator
     - yaml_wrapper
+    - file_wrapper
 
 cacheinator:
   compose:
