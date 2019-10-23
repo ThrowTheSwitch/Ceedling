@@ -19,9 +19,9 @@ module Ceedling
 
       # Actually look up the versions
       a = [0,0,0]
-      File.readlines(path) do |line|
+      File.readlines(filename) do |line|
         ["VERSION_MAJOR", "VERSION_MINOR", "VERSION_BUILD"].each_with_index do |field, i|
-          m = line.match(/#{name}_#{field}\s+(.+)/)
+          m = line.match(/#{name}_#{field}\s+(\d+)/)
           a[i] = m[1] unless (m.nil?)
         end
       end
