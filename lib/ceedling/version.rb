@@ -1,27 +1,36 @@
+
 # @private
 module Ceedling
   module Version
+    # Check for local or global version of vendor directory in order to look up versions
+    { 
+      "CEXCEPTION" => File.join("vendor","c_exception","lib","CException.h"),
+      "CMOCK"      => File.join("vendor","cmock","src","cmock.h"),
+      "UNITY"      => File.join("vendor","unity","src","unity.h"),
+    }.each_pair do |name, path|
+      filename = if (File.exist?(File.join("..","..",path)))
+        File.join("..","..",path)
+      elsif (File.exist?(File.join(File.dirname(__FILE__),"..","..",path)))
+        File.join(File.dirname(__FILE__),"..","..",path)
+      else
+        eval "#{name} = 'unknown'"
+        continue
+      end
 
-    def version_grabber(filename, prefix)
+      # Actually look up the versions
       a = [0,0,0]
-      File.readlines(filename) do |line|
+      File.readlines(path) do |line|
         ["VERSION_MAJOR", "VERSION_MINOR", "VERSION_BUILD"].each_with_index do |field, i|
-          m = line.match(/#{prefix}_#{field}\s+(\d+)/)
+          m = line.match(/#{name}_#{field}\s+(.+)/)
           a[i] = m[1] unless (m.nil?)
         end
       end
-      a.join(".")
+
+      # Make a constant from each, so that we can use it elsewhere
+      eval "#{name} = '#{a.join(".")}'"
     end
 
-    # @private
     GEM = "0.29.0"
-    # @private
     CEEDLING = GEM
-    # @private
-    CEXCEPTION = version_grabber(File.join(CEXCEPTION_LIB_PATH,CEXCEPTION_H_FILE), "CEXCEPTION")
-    # @private
-    CMOCK = version_grabber( File.join(CMOCK_LIB_PATH,CMOCK_H_FILE), "CMOCK")
-    # @private
-    UNITY = version_grabber( File.join(UNITY_LIB_PATH,UNITY_H_FILE), "UNITY")
   end
 end
