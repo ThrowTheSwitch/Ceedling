@@ -292,6 +292,10 @@ Ceedling (more on this later).
 
   Run all unit tests (rebuilding anything that's changed along the way).
 
+* `ceedling test:build_only`:
+
+  Build all unit tests, object files and executable but not run them.
+
 * `ceedling test:delta`:
 
   Run only those unit tests for which the source or test files have

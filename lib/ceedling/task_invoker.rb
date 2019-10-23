@@ -81,6 +81,10 @@ class TaskInvoker
     end
   end
 
+  def invoke_test_executable(file)
+    @rake_wrapper[file].invoke
+  end
+
   def invoke_test_results(result)
     @dependinator.enhance_results_dependencies( result )
     @rake_wrapper[result].invoke
