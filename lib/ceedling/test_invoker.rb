@@ -107,6 +107,8 @@ class TestInvoker
         results_pass = @file_path_utils.form_pass_results_filepath( test )
         results_fail = @file_path_utils.form_fail_results_filepath( test )
 
+        @project_config_manager.process_test_defines_change(sources)
+
         # add the definition value in the build option for the unit test
         if @configurator.defines_use_test_definition
           add_test_definition(test)
@@ -155,6 +157,8 @@ class TestInvoker
       # store away what's been processed
       @mocks.concat( mock_list )
       @sources.concat( sources )
+
+      @task_invoker.first_run = false
     end
 
     # post-process collected mock list
