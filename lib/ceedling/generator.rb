@@ -19,6 +19,7 @@ class Generator
 
 
   def generate_shallow_includes_list(context, file)
+    @streaminator.stdout_puts("Generating include list for #{File.basename(file)}...", Verbosity::NORMAL)
     @preprocessinator.preprocess_shallow_includes(file)
   end
 
