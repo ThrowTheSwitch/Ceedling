@@ -78,7 +78,7 @@ class ToolExecutor
     #scrub the string for illegal output
     unless shell_result[:output].nil?
       shell_result[:output] = shell_result[:output].scrub if "".respond_to?(:scrub)
-      shell_result[:output].gsub!(/\\033\[\d\dm/,'')
+      shell_result[:output].gsub!(/\033\[\d\dm/,'')
     end
 
     @tool_executor_helper.print_happy_results( command_line, shell_result, options[:boom] )
