@@ -15,9 +15,6 @@ class GeneratorTestResults
     results[:source][:file] = File.basename(test_file)
     results[:time] = unity_shell_result[:time] unless unity_shell_result[:time].nil?
 
-    # strip out color escape codes from results
-    unity_shell_result[:output].map!{|line| line.gsub!(/\\033\[\d\dm/,'')}
-
     # process test statistics
     if (unity_shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN)
       results[:counts][:total] = $1.to_i
