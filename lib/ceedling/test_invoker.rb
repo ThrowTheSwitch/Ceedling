@@ -83,15 +83,11 @@ class TestInvoker
         test_name ="#{File.basename(test)}".chomp('.c')
         def_test_key="defines_#{test_name.downcase}"
 
-        # Re-define the project out path and pre-processor defines.
+        # redefine the project preprocessor definitions
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
           defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
           printf " ************** Specific test definitions for #{test_name} !!! \n"
           tst_defs_cfg = @configurator.project_config_hash[def_test_key.to_sym]
-
-          orig_path = @configurator.project_test_build_output_path
-          @configurator.project_config_hash[:project_test_build_output_path] = File.join(@configurator.project_test_build_output_path, test_name)
-          @file_wrapper.mkdir(@configurator.project_test_build_output_path)
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(tst_defs_cfg)
         end
 
@@ -145,8 +141,7 @@ class TestInvoker
         # restore the project test defines
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
-          @configurator.project_config_hash[:project_test_build_output_path] = orig_path
-          printf " ************** Restored defines and build path\n"
+          printf " ************** Restored defines\n"
         end
       end
 
