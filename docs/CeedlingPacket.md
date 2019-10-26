@@ -524,7 +524,7 @@ void setUp(void) {}    // every test file requires this function;
                        // setUp() is called by the generated runner before each test case function
 
 void tearDown(void) {} // every test file requires this function;
-                       // tearDown() is called by the generated runner before each test case function
+                       // tearDown() is called by the generated runner after each test case function
 
 // a test case function
 void test_Foo_Function1_should_Call_Bar_AndGrill(void)
