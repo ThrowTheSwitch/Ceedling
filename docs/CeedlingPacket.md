@@ -1294,6 +1294,11 @@ Example [:extension] YAML blurb
 
   **Default**: [] (empty)
 
+* `use_test_definition`:
+
+  When this option is used the `-D<test_name>` flag is added to the build option of your test file.
+
+  **Default**: FALSE
 
 Example [:defines] YAML blurb
 
