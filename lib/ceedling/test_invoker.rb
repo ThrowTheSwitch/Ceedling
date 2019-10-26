@@ -85,7 +85,6 @@ class TestInvoker
 
         # Re-define the project out path and pre-processor defines.
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
-          @project_config_manager.test_config_changed
           defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
           printf " ************** Specific test definitions for #{test_name} !!! \n"
           tst_defs_cfg = @configurator.project_config_hash[def_test_key.to_sym]
@@ -94,7 +93,6 @@ class TestInvoker
           @configurator.project_config_hash[:project_test_build_output_path] = File.join(@configurator.project_test_build_output_path, test_name)
           @file_wrapper.mkdir(@configurator.project_test_build_output_path)
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(tst_defs_cfg)
-          # printf " *  new defines = #{COLLECTION_DEFINES_TEST_AND_VENDOR}\n"
         end
 
         # collect up test fixture pieces & parts
@@ -146,9 +144,7 @@ class TestInvoker
         @plugin_manager.post_test( test )
         # restore the project test defines
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
-          # @configurator.project_config_hash[:defines_test] =
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
-          # printf " ---- Restored defines at #{defs_bkp}"
           @configurator.project_config_hash[:project_test_build_output_path] = orig_path
           printf " ************** Restored defines and build path\n"
         end
