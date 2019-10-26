@@ -1267,6 +1267,18 @@ Example [:extension] YAML blurb
 
   **Default**: [] (empty)
 
+* `<test_name>`:
+
+  Add preprocessor definitions for specified `<test_name>`. For example:
+```yaml
+  :defines:
+    :test_foo_config:
+      - FOO_SPECIFIC_FEATURE
+```
+  `ceedling test:foo_config` will now have `FOO_SPECIFIC_FEATURE` defined, none of the other tests will.
+
+  **Default**: [] (empty)
+
 * `release`:
 
   Defines needed for the release build binary artifact.
