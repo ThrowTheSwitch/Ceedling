@@ -86,7 +86,7 @@ class TestInvoker
         # redefine the project preprocessor definitions
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
           defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
-          printf " ************** Specific test definitions for #{test_name} !!! \n"
+          @streaminator.stdout_puts("******* Specific test definitions for #{test_name} *******\n", Verbosity::NORMAL)
           tst_defs_cfg = @configurator.project_config_hash[def_test_key.to_sym]
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(tst_defs_cfg)
         end
@@ -138,10 +138,10 @@ class TestInvoker
           delete_test_definition(test)
         end
         @plugin_manager.post_test( test )
-        # restore the project test defines
+        # restore the project test definitons
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
-          printf " ************** Restored defines\n"
+          @streaminator.stdout_puts("******* Restored test definitions *******\n", Verbosity::NORMAL)
         end
       end
 
