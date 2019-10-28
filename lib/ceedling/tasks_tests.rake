@@ -25,6 +25,11 @@ namespace TEST_SYM do
     @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, TEST_SYM, {:force_run => false})
   end
 
+  desc "Just build tests without running."
+  task :build_only => [:directories] do
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, TEST_SYM, {:build_only => true})
+  end
+
   desc "Run tests by matching regular expression pattern."
   task :pattern, [:regex] => [:directories] do |t, args|
     matches = []
