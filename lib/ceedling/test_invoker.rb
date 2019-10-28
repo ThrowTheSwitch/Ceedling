@@ -67,7 +67,7 @@ class TestInvoker
   end
 
 
-  def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true})
+  def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true, :build_only => false})
 
     @tests = tests
 
@@ -134,8 +134,15 @@ class TestInvoker
         # build test objects
         @task_invoker.invoke_test_objects( objects )
 
-        # 3, 2, 1... launch
-        @task_invoker.invoke_test_results( results_pass )
+        # if the option build_only has been specified, build only the executable
+        # but don't run the test
+        if (options[:build_only])
+          executable = @file_path_utils.form_test_executable_filepath( test )
+          @task_invoker.invoke_test_executable( executable )
+        else
+          # 3, 2, 1... launch
+          @task_invoker.invoke_test_results( results_pass )
+        end
       rescue => e
         @build_invoker_utils.process_exception( e, context )
       ensure

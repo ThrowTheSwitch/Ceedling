@@ -92,6 +92,10 @@ class TaskInvoker
     end
   end
 
+  def invoke_test_executable(file)
+    @rake_wrapper[file].invoke
+  end
+
   def invoke_test_results(result)
     @dependinator.enhance_results_dependencies( result )
     @rake_wrapper[result].reenable if @first_run == false && @project_config_manager.test_defines_changed
