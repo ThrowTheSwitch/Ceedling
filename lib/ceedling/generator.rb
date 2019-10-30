@@ -19,6 +19,7 @@ class Generator
 
 
   def generate_shallow_includes_list(context, file)
+    @streaminator.stdout_puts("Generating include list for #{File.basename(file)}...", Verbosity::NORMAL)
     @preprocessinator.preprocess_shallow_includes(file)
   end
 
@@ -163,7 +164,9 @@ class Generator
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
-    shell_result[:exit_code] = 0 #Don't Let The Failure Count Make Us Believe Things Aren't Working
+
+    #Don't Let The Failure Count Make Us Believe Things Aren't Working
+    shell_result[:exit_code] = 0
     @generator_helper.test_results_error_handler(executable, shell_result)
 
     processed = @generator_test_results.process_and_write_results( shell_result,

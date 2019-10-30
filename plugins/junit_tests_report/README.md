@@ -26,6 +26,10 @@ Optionally configure the output / artifact filename in your project.yml with
 the `artifact_filename` configuration option. The default filename is
 `report.xml`.
 
+You can also configure the path that this artifact is stored. This can be done
+by setting `path`. The default is that it will be placed in a subfolder under
+the `build` directory.
+
 ``` YAML
 :junit_tests_report:
   :artifact_filename: report_junit.xml

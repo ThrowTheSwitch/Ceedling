@@ -123,22 +123,19 @@ unless (project_found)
           end.each do |f|
             directory(f[:src], f[:dst], :force => force)
           end
-          
+
           # mark ceedling as an executable
           File.chmod(0755, File.join(ceedling_path, 'bin', 'ceedling')) unless is_windows?
 
           #copy necessary subcomponents from ceedling gem into project
           sub_components = [
             {:src => 'vendor/c_exception/lib/',     :dst => 'vendor/c_exception/lib'},
-            {:src => 'vendor/c_exception/release/', :dst => 'vendor/c_exception/release'},
             {:src => 'vendor/cmock/config/',        :dst => 'vendor/cmock/config'},
             {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
-            {:src => 'vendor/cmock/release/',       :dst => 'vendor/cmock/release'},
             {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
             {:src => 'vendor/deep_merge/lib/',      :dst => 'vendor/deep_merge/lib'},
             {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
             {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
-            {:src => 'vendor/unity/release/',       :dst => 'vendor/unity/release'},
             {:src => 'vendor/unity/src/',           :dst => 'vendor/unity/src'},
           ]
 

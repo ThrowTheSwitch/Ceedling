@@ -23,12 +23,9 @@ Gem::Specification.new do |s|
   s.files        += Dir['vendor/**/docs/**/*.pdf', 'docs/**/*.pdf', 'vendor/**/docs/**/*.md', 'docs/**/*.md']
   s.files        += Dir['vendor/cmock/lib/**/*.rb']
   s.files        += Dir['vendor/cmock/config/**/*.rb']
-  s.files        += Dir['vendor/cmock/release/**/*.info']
   s.files        += Dir['vendor/cmock/src/**/*.[ch]']
   s.files        += Dir['vendor/c_exception/lib/**/*.[ch]']
-  s.files        += Dir['vendor/c_exception/release/**/*.info']
   s.files        += Dir['vendor/unity/auto/**/*.rb']
-  s.files        += Dir['vendor/unity/release/**/*.info']
   s.files        += Dir['vendor/unity/src/**/*.[ch]']
 
   s.files      += Dir['**/*']

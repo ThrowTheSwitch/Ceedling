@@ -47,6 +47,7 @@
   :test:
     - *common_defines
     - TEST
+    - UNITY_OUTPUT_COLOR #this is just here to make sure it gets removed by ceedling
   :test_preprocess:
     - *common_defines
     - TEST
