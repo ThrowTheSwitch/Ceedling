@@ -2050,6 +2050,40 @@ You can configure the module_generator to use a differect naming mechanism throu
 There are other possibilities as well (bumpy, camel, snake, caps).
 Refer to the unity module generator for more info (the unity module generator is used under the hood by module_generator).
 
+
+Boilerplate header
+-------------------------------------------
+There are two ways of adding a boilerplate header comment to your generated files:
+* With a defined string in the project.yml file:
+
+```yaml
+:module_generator:
+  :boilerplates:
+    :src: '/* This is Boilerplate code. */'
+```
+
+Using the command **ceedling module:create[foo]** it creates the source module as follows:
+
+```c
+/* This is Boilerplate code. */
+#include "foo.h"
+```
+
+It would be the same for **:tst:** and **:inc:** adding its respective options.
+
+* Defining an external file with boileplate code:
+
+```yml
+:module_generator:
+  :boilerplate_files:
+    :src: '<template_folder>\src_boilerplate.txt'
+    :inc: '<template_folder>\inc_boilerplate.txt'
+    :tst: '<template_folder>\tst_boilerplate.txt'
+```
+
+For whatever file names in whichever folder you desire.
+
+
 Advanced Topics (Coming)
 ========================
 
