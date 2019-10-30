@@ -2071,7 +2071,7 @@ Using the command **ceedling module:create[foo]** it creates the source module a
 
 It would be the same for **:tst:** and **:inc:** adding its respective options.
 
-* Defining an external file with boileplate code.
+* Defining an external file with boileplate code:
 
 ```yml
 :module_generator:
