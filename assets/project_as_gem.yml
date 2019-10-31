@@ -16,6 +16,9 @@
   :default_tasks:
     - test:all
 
+#:test_build:
+#  :use_assembly: TRUE
+
 #:release_build:
 #  :output: MyApp.out
 #  :use_assembly: FALSE
