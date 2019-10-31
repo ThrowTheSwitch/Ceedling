@@ -56,6 +56,36 @@ coverage, use the following config.
   :html_report_type: detailed
 ```
 
+There are a number of options to control which files are considered part of
+the coverage report. Most often, we only care about coverage on our source code, and not
+on tests or automatically generated mocks, runners, etc. However, there are times 
+where this isn't true... or there are times where we've moved ceedling's directory 
+structure so that the project file isn't at the root of the project anymore. In these
+cases, you may need to tweak the following:
+
+```
+:gcov:
+  :report_root: "."
+  :report_exclude: "^build|^vendor|^test|^support"
+  :report_include: "^src"
+```
+
+One important note about html_report_root: gcovr will only take a single root folder, unlike 
+Ceedling's ability to take as many as you like. So you will need to choose a folder which is 
+a superset of ALL the folders you want, and then use the include or exclude options to set up
+patterns of files to pay attention to or ignore. It's not ideal, but it works.
+
+Finally, there are a number of settings which can be specified in order to adjust the
+default behaviors of gcov:
+
+```
+:gcov:
+  :html_medium_threshold: 75
+  :html_high_threshold: 90
+  :fail_under_line: 30
+  :fail_under_branch: 30
+```
+
 These HTML and XML reports will be found in `build/artifacts/gcov`.
 
 ## Example Usage

@@ -63,10 +63,15 @@
     int8:     INT8
     bool:     UINT8
 
+# Add -gcov to the plugins list to make sure of the gcov plugin
+# You will need to have gcov and gcovr both installed to make it work.
+# For more information on these options, see docs in plugins/gcov
 :gcov:
-    :html_report: true # Enables the output of an HTML report for utils:gcov
-    :html_report_type: basic  # Options are 'basic' or 'detailed'.
-    :xml_report: false # Enables the output of an XML report for utils:gcov
+    :html_report: TRUE
+    :html_report_type: detailed
+    :html_medium_threshold: 75
+    :html_high_threshold: 90
+    :xml_report: FALSE
 
 #:tools:
 # Ceedling defaults to using gcc for compiling, linking, etc.

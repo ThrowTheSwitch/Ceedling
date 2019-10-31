@@ -14,7 +14,7 @@ class Gcov < Plugin
       project_test_results_path: GCOV_RESULTS_PATH,
       project_test_dependencies_path: GCOV_DEPENDENCIES_PATH,
       defines_test: DEFINES_TEST + ['CODE_COVERAGE'],
-      gcov_html_report_filter: GCOV_FILTER_EXPR
+      gcov_html_report_filter: GCOV_FILTER_EXCLUDE
     }
 
     @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
