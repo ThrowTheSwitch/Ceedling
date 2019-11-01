@@ -285,7 +285,7 @@ Ceedling (more on this later).
   Load and merge configuration settings into the main project
   configuration. Each task is named after a *.yml file found in the
   configured options directory. See documentation for the configuration
-  setting [:project][:options_path] and for options files in advanced
+  setting [:project][:options_paths] and for options files in advanced
   topics.
 
 * `ceedling test:all`:
