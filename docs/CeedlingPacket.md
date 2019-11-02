@@ -1414,6 +1414,21 @@ Example [:flags] YAML blurb
         - --baz
 ```
 
+**import**: allow to load other config files
+
+In some cases it is nice to have config files (project.yml, options files) which can
+load other config files, for commonly re-used definitions (target processor,
+common code modules, etc).
+These can be recursively nested, the included files can include other files.
+
+Example [:import] YAML blurb
+
+```yaml
+:import:
+  - path/to/config.yml
+  - path/to/another/config.yml
+```
+
 Ceedling sets values for a subset of CMock settings. All CMock
 options are available to be set, but only those options set by
 Ceedling in an automated fashion are documented below. See CMock
