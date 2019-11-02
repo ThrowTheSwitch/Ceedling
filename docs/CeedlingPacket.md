@@ -259,7 +259,7 @@ Ceedling (more on this later).
 * `ceedling environment`:
 
   List all configured environment variable names and string values. This
-  task is helpful in verifying the evaluatio of any Ruby expressions in
+  task is helpful in verifying the evaluation of any Ruby expressions in
   the [:environment] section of your config file.`: Note: Ceedling may
   set some convenience environment variables by default.
 
@@ -1876,7 +1876,7 @@ Notes:
 * `COLLECTION_DEFINES_RELEASE_AND_VENDOR`:
 
   All symbols specified in [:defines][:release] plus symbols defined by
-[:cexception][:defines] if exceptions are ena bled
+[:cexception][:defines] if exceptions are enabled
 
 
 Notes:
