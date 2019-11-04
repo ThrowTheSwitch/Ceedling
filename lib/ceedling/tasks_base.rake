@@ -4,28 +4,10 @@ require 'ceedling/version'
 
 desc "Display build environment version info."
 task :version do
-  puts "  Ceedling:: #{Ceedling::Version::CEEDLING}"
-
-  [
-      ['CException', File.join( CEEDLING_VENDOR, CEXCEPTION_ROOT_PATH)],
-      ['     CMock', File.join( CEEDLING_VENDOR, CMOCK_ROOT_PATH)],
-      ['     Unity', File.join( CEEDLING_VENDOR, UNITY_ROOT_PATH)],
-  ].each do |tool|
-    name      = tool[0]
-    base_path = tool[1]
-
-    version_string = begin
-      @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip
-    rescue
-      "UNKNOWN"
-    end
-    build_string = begin
-      @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'build.info') ).strip
-    rescue
-      "UNKNOWN"
-    end
-    puts "#{name}:: #{version_string.empty? ? '#.#.' : (version_string + '.')}#{build_string.empty? ? '?' : build_string}"
-  end
+  puts "   Ceedling:: #{Ceedling::Version::CEEDLING}"
+  puts "      Unity:: #{Ceedling::Version::UNITY}"
+  puts "      CMock:: #{Ceedling::Version::CMOCK}"
+  puts " CException:: #{Ceedling::Version::CEXCEPTION}"
 end
 
 desc "Set verbose output (silent:[#{Verbosity::SILENT}] - obnoxious:[#{Verbosity::OBNOXIOUS}])."

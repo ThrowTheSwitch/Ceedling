@@ -207,9 +207,9 @@ unless (project_found)
     desc "version", "return the version of the tools installed"
     def version()
       require 'ceedling/version.rb'
-      puts "  Ceedling::   #{Ceedling::Version::CEEDLING}"
-      puts "  CMock::      #{Ceedling::Version::CMOCK}"
-      puts "  Unity::      #{Ceedling::Version::UNITY}"
+      puts "    Ceedling:: #{Ceedling::Version::CEEDLING}"
+      puts "       CMock:: #{Ceedling::Version::CMOCK}"
+      puts "       Unity:: #{Ceedling::Version::UNITY}"
       puts "  CException:: #{Ceedling::Version::CEXCEPTION}"
     end
   end
