@@ -156,7 +156,7 @@ end
 namespace UTILS_SYM do
   def gcov_args_builder(opts)
     args = ""
-    args += "-r \"#{opts[:gcov_report_root] || '.'}\" " 
+    args += "-r \"#{opts[:gcov_report_root] || '.'}\" "
     args += "-f \"#{opts[:gcov_report_include]}\" " unless opts[:gcov_report_include].nil?
     args += "-e \"#{opts[:gcov_report_exclude] || GCOV_FILTER_EXCLUDE}\" "
     [ :gcov_fail_under_line, :gcov_fail_under_branch, :gcov_html_medium_threshold, :gcov_html_high_threshold].each do |opt|
@@ -165,7 +165,7 @@ namespace UTILS_SYM do
     return args
   end
 
-  desc 'Create gcov code coverage html report (must run ceedling gcov first)'
+  desc 'Create gcov code coverage html/xml report (must run ceedling gcov first).'
   task GCOV_SYM do
 
     if !File.directory? GCOV_ARTIFACTS_PATH
@@ -211,7 +211,7 @@ namespace UTILS_SYM do
 
     if xml_enabled
       puts "Creating an xml report of gcov results in #{GCOV_ARTIFACTS_FILE_XML}..."
-      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_XML, [], filter)
+      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_XML, [], args)
       @ceedling[:tool_executor].exec(command[:line], command[:options])
     end
 
