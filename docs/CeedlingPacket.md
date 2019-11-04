@@ -259,7 +259,7 @@ Ceedling (more on this later).
 * `ceedling environment`:
 
   List all configured environment variable names and string values. This
-  task is helpful in verifying the evaluatio of any Ruby expressions in
+  task is helpful in verifying the evaluation of any Ruby expressions in
   the [:environment] section of your config file.`: Note: Ceedling may
   set some convenience environment variables by default.
 
@@ -1414,6 +1414,21 @@ Example [:flags] YAML blurb
         - --baz
 ```
 
+**import**: allow to load other config files
+
+In some cases it is nice to have config files (project.yml, options files) which can
+load other config files, for commonly re-used definitions (target processor,
+common code modules, etc).
+These can be recursively nested, the included files can include other files.
+
+Example [:import] YAML blurb
+
+```yaml
+:import:
+  - path/to/config.yml
+  - path/to/another/config.yml
+```
+
 Ceedling sets values for a subset of CMock settings. All CMock
 options are available to be set, but only those options set by
 Ceedling in an automated fashion are documented below. See CMock
@@ -1876,7 +1891,7 @@ Notes:
 * `COLLECTION_DEFINES_RELEASE_AND_VENDOR`:
 
   All symbols specified in [:defines][:release] plus symbols defined by
-[:cexception][:defines] if exceptions are ena bled
+[:cexception][:defines] if exceptions are enabled
 
 
 Notes:
