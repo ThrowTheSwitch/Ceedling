@@ -7,9 +7,11 @@
 - :test: test_one
   :line: 257
   :message: ''
+  :unity_test_time: 0
 - :test: test_two
   :line: 269
   :message: ''
+  :unity_test_time: 0
 :ignores: []
 :counts:
   :total: 2

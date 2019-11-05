@@ -109,11 +109,12 @@ class JunitTestsReport < Plugin
 
   def write_test( test, stream )
     test[:test].gsub!('"', '&quot;')
+    pp test
     case test[:result]
     when :success
-      stream.puts('    <testcase name="%<test>s" />' % test)
+      stream.puts('    <testcase name="%<test>s" time="%<unity_test_time>f"/>' % test)
     when :failed
-      stream.puts('    <testcase name="%<test>s">' % test)
+      stream.puts('    <testcase name="%<test>s" time="%<unity_test_time>f">' % test)
       if test[:message].empty?
         stream.puts('      <failure />')
       else
@@ -121,7 +122,7 @@ class JunitTestsReport < Plugin
       end
       stream.puts('    </testcase>')
     when :ignored
-      stream.puts('    <testcase name="%<test>s">' % test)
+      stream.puts('    <testcase name="%<test>s" time="%<unity_test_time>f">' % test)
       stream.puts('      <skipped />')
       stream.puts('    </testcase>')
     end
