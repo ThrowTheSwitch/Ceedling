@@ -2,17 +2,30 @@
 # @private
 module Ceedling
   module Version
-    { "UNITY" => File.join("vendor","unity","src","unity.h"),
-      "CMOCK" => File.join("vendor","cmock","src","cmock.h"),
-      "CEXCEPTION" => File.join("vendor","c_exception","lib","CException.h") 
+    { "UNITY" => File.join("unity","src","unity.h"),
+      "CMOCK" => File.join("cmock","src","cmock.h"),
+      "CEXCEPTION" => File.join("c_exception","lib","CException.h") 
     }.each_pair do |name, path|
       # Check for local or global version of vendor directory in order to look up versions
-      path1 = File.expand_path( File.join("..","..",path) )
-      path2 = File.expand_path( File.join(File.dirname(__FILE__),"..","..",path) )
+      path1 = File.expand_path( File.join("..","..","vendor",path) )
+      path2 = File.expand_path( File.join(File.dirname(__FILE__),"..","..","vendor",path) )
       filename = if (File.exists?(path1))
         path1
       elsif (File.exists?(path2))
         path2
+      elsif exists?(CEEDLING_VENDOR)
+        path3 = File.expand_path( File.join(CEEDLING_VENDOR,path) )
+        if (File.exists?(path3))
+          path3
+        else
+          basepath = File.join( CEEDLING_VENDOR, path.split(/\\\//)[0], 'release')
+          begin
+            [ @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip, 
+              @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'build.info') ).strip ].join('.')
+          rescue
+            "unknown"
+          end
+        end
       else
         module_eval("#{name} = 'unknown'")
         continue
