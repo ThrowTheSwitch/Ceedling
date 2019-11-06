@@ -80,7 +80,7 @@ namespace :options do
   end
 
   # This is to give nice errors when typing options
-  rule /.*/ do |t, args|
+  rule /^options:.*/ do |t, args|
     filename = t.to_s.split(':')[-1] + '.yml'
     filelist = COLLECTION_PROJECT_OPTIONS.map{|s| File.basename(s) }
     @ceedling[:file_finder].find_file_from_list(filename, filelist, :error)
