@@ -85,11 +85,8 @@
 :libraries:
   :placement: :end
   :flag: "${1}"  # or "-L ${1}" for example
-  :common: &common_libraries []
-  :test:
-    - *common_libraries
-  :release:
-    - *common_libraries
+  :test: []
+  :release: []
 
 :plugins:
   :load_paths:

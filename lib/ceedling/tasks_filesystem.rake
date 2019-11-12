@@ -45,6 +45,8 @@ task(:clobber => [:clean]) do
   @ceedling[:streaminator].stdout_puts("\nClobbering all generated files...\n(For large projects, this task may take a long time to complete)\n\n")
   begin
     CLOBBER.each { |fn| REMOVE_FILE_PROC.call(fn) }
+    @ceedling[:rake_wrapper][:directories].invoke
+    @ceedling[:dependinator].touch_force_rebuild_files
   rescue
   end
 end

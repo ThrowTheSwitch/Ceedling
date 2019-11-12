@@ -287,6 +287,8 @@ else
         options[:list_tasks] = true
       when /^-T$/
         options[:list_tasks] = true
+      when /^--tasks$/
+        options[:list_tasks] = true
       when /^project:(\w+)/
         ENV['CEEDLING_USER_PROJECT_FILE'] = "#{$1}.yml"
       else

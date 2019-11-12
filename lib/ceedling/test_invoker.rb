@@ -129,7 +129,7 @@ class TestInvoker
         @dependinator.enhance_test_build_object_dependencies( objects )
 
         # associate object files with executable
-        @dependinator.setup_test_executable_dependencies( test, objects )
+        @dependinator.enhance_test_executable_dependencies( test, objects )
 
         # build test objects
         @task_invoker.invoke_test_objects( objects )
