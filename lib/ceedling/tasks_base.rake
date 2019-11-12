@@ -47,6 +47,12 @@ task :sanity_checks, :level do |t, args|
   @ceedling[:configurator].sanity_checks = check_level
 end
 
+# non advertised catch for calling upgrade in the wrong place
+task :upgrade do
+  puts "WARNING: You're currently IN your project directory. Take a step out and try"
+  puts "again if you'd like to perform an upgrade."
+end
+
 # list expanded environment variables
 if (not ENVIRONMENT.empty?)
 desc "List all configured environment variables."
