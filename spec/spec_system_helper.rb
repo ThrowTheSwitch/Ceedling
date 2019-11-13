@@ -228,7 +228,6 @@ module CeedlingTestCases
         expect(File.exists?("src")).to eq true
         expect(File.exists?("test")).to eq true
         all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
-        expect(all_docs).to be >= 4
       end
     end
   end

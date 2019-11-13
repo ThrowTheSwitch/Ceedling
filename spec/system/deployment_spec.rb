@@ -120,6 +120,7 @@ describe "Ceedling" do
 
     it { can_upgrade_projects }
     it { contains_a_vendor_directory }
+    it { does_not_contain_documentation }
     it { can_fetch_non_project_help }
     it { can_fetch_project_help }
     it { can_test_projects_with_success }
