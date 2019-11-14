@@ -155,66 +155,120 @@ end
 
 namespace UTILS_SYM do
   def gcov_args_builder(opts)
+    # Determine the Cobertura XML report file name.
+    artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
+    if !opts[:gcov_cobertura_artifact_filename].nil?
+        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_cobertura_artifact_filename])
+    elsif !opts[:gcov_xml_artifact_filename].nil?
+        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_xml_artifact_filename])
+    end
+
+    # Determine the SonarQube XML report file name.
+    artifacts_file_sonarqube = GCOV_ARTIFACTS_FILE_SONARQUBE
+    if !opts[:gcov_sonarqube_artifact_filename].nil?
+        artifacts_file_sonarqube = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_sonarqube_artifact_filename])
+    end
+
+    # Determine the JSON report file name.
+    artifacts_file_json = GCOV_ARTIFACTS_FILE_JSON
+    if !opts[:gcov_json_artifact_filename].nil?
+        artifacts_file_json = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_json_artifact_filename])
+    end
+
+    artifacts_file_html = GCOV_ARTIFACTS_FILE_HTML
+    if !opts[:gcov_html_artifact_filename].nil?
+      artifacts_file_html = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_html_artifact_filename])
+    end
+
+    cobertura_xml_enabled = (!(opts[:gcov_xml_report].nil?) && opts[:gcov_xml_report]) || (!(opts[:gcov_cobertura_report].nil?) && opts[:gcov_cobertura_report])
+    sonarqube_enabled = !(opts[:gcov_sonarqube_report].nil?) && opts[:gcov_sonarqube_report]
+    json_enabled = !(opts[:gcov_json_report].nil?) && opts[:gcov_json_report]
+    html_enabled = opts[:gcov_html_report].nil? || opts[:gcov_html_report] # Default to enabled.
+
     args = ""
-    args += "-r \"#{opts[:gcov_report_root] || '.'}\" "
-    args += "-f \"#{opts[:gcov_report_include]}\" " unless opts[:gcov_report_include].nil?
-    args += "-e \"#{opts[:gcov_report_exclude] || GCOV_FILTER_EXCLUDE}\" "
-    [ :gcov_fail_under_line, :gcov_fail_under_branch, :gcov_html_medium_threshold, :gcov_html_high_threshold].each do |opt|
+    args += "--root \"#{opts[:gcov_report_root] || '.'}\" "
+    args += "--filter \"#{opts[:gcov_report_include]}\" " unless opts[:gcov_report_include].nil?
+    args += "--exclude \"#{opts[:gcov_report_exclude] || GCOV_FILTER_EXCLUDE}\" "
+    args += "--gcov-filter \"#{opts[:gcov_gcov_filter]}\" " unless opts[:gcov_gcov_filter].nil?
+    args += "--gcov-exclude \"#{opts[:gcov_gcov_exclude]}\" " unless opts[:gcov_gcov_exclude].nil?
+    args += "--exclude-directories \"#{opts[:gcov_exclude_directories]}\" " unless opts[:gcov_exclude_directories].nil?
+    args += "--branches " if opts[:gcov_branches].nil? || opts[:gcov_branches] # Default to enabled.
+    args += "--sort-uncovered " if !(opts[:gcov_sort_uncovered].nil?) && opts[:gcov_sort_uncovered]
+    args += "--sort-percentage " if ((opts[:gcov_sort_percentage].nil?) || opts[:gcov_sort_percentage]) # Default to enabled.
+    args += "--print-summary " if !(opts[:gcov_print_summary].nil?) && opts[:gcov_print_summary]
+    args += "--gcov-executable \"#{opts[:gcov_gcov_executable]}\"" unless opts[:gcov_gcov_executable].nil?
+    args += "--exclude-unreachable-branches " if !(opts[:gcov_exclude_unreachable_branches].nil?) && opts[:gcov_exclude_unreachable_branches]
+    args += "--exclude-throw-branches " if !(opts[:gcov_exclude_throw_branches].nil?) && opts[:gcov_exclude_throw_branches]
+    args += "--ignore-parse-errors " if !(opts[:gcov_ignore_parse_errors].nil?) && opts[:gcov_ignore_parse_errors]
+    args += "--keep " if !(opts[:gcov_keep].nil?) && opts[:gcov_keep]
+    args += "--delete " if !(opts[:gcov_delete].nil?) && opts[:gcov_delete]
+    args += "-j #{opts[:gcov_parallel]} " if !(opts[:gcov_parallel].nil?) && (opts[:gcov_parallel].is_a? Integer)
+    [:gcov_fail_under_line, :gcov_fail_under_branch].each do |opt|
       args += "--#{opt.to_s.gsub('_','-').sub(/:?gcov-/,'')} #{opts[opt]} " unless opts[opt].nil?
     end
+
+    if cobertura_xml_enabled
+      args += "--xml \"#{artifacts_file_cobertura}\" "
+      args += "--xml-pretty " if !(opts[:gcov_xml_pretty].nil?) && opts[:gcov_xml_pretty] || (!(opts[:gcov_cobertura_pretty].nil?) && opts[:gcov_cobertura_pretty])
+    end
+
+    if sonarqube_enabled
+      args += "--sonarqube \"#{artifacts_file_sonarqube}\" "
+    end
+
+    if json_enabled
+      # Note: In gcovr 4.2, the JSON report is output only if the --output option is specified.
+      # Maybe we can remove --output in the future.
+      args += "--json --output \"#{artifacts_file_json}\" "
+      args += "--json-pretty " if !(opts[:gcov_json_pretty].nil?) && opts[:gcov_json_pretty]
+    end
+
+    if html_enabled
+      args += "--html-details " if !(opts[:gcov_html_report_type].nil?) && (opts[:gcov_html_report_type] == 'detailed')
+      args += "--html-title \"#{opts[:gcov_html_title]}\" " unless opts[:gcov_html_title].nil?
+      args += "--html-absolute-paths " if !(opts[:gcov_html_absolute_paths].nil?) && opts[:gcov_html_absolute_paths]
+      args += "--html-encoding \"#{opts[:gcov_html_encoding]}\" " unless opts[:gcov_html_encoding].nil?
+      [:gcov_html_medium_threshold, :gcov_html_high_threshold].each do |opt|
+        args += "--#{opt.to_s.gsub('_','-').sub(/:?gcov-/,'')} #{opts[opt]} " unless opts[opt].nil?
+      end
+      args += "--html \"#{artifacts_file_html}\" "
+    end
+
     return args
   end
 
-  desc 'Create gcov code coverage html/xml report (must run ceedling gcov first).'
+  desc "Create gcov code coverage html/xml/json report(s). (Note: Must run 'ceedling gcov' first)."
   task GCOV_SYM do
+
+    opts = @ceedling[:configurator].project_config_hash
+    args = gcov_args_builder(opts)
+
+    if opts[:gcov_html_report].nil?
+      puts "In your project.yml, define: \n\n:gcov:\n  :html_report:\n\n to true or false to refine this feature."
+      puts "For now, assumimg you want an html report generated."
+      html_enabled = true
+    else
+      html_enabled = opts[:gcov_html_report]
+    end
+
+    if opts[:gcov_xml_report].nil? && opts[:gcov_cobertura_report].nil?
+      puts "In your project.yml, define: \n\n:gcov:\n  :xml_report:\n\n to true or false to refine this feature."
+      puts "For now, assumimg you do not want a Cobertura xml report generated."
+      cobertura_xml_enabled = false
+    elsif !(opts[:gcov_xml_report].nil?)
+      cobertura_xml_enabled = opts[:gcov_xml_report]
+    else
+      cobertura_xml_enabled = opts[:gcov_cobertura_report]
+    end
 
     if !File.directory? GCOV_ARTIFACTS_PATH
       FileUtils.mkdir_p GCOV_ARTIFACTS_PATH
     end
 
-    args = gcov_args_builder(@ceedling[:configurator].project_config_hash)
-
-    if @ceedling[:configurator].project_config_hash[:gcov_html_report].nil?
-      puts "In your project.yml, define: \n\n:gcov:\n  :html_report:\n\n to true or false to refine this feature."
-      puts "For now, assumimg you want an html report generated."
-      html_enabled = true
-    else
-      html_enabled = @ceedling[:configurator].project_config_hash[:gcov_html_report]
-    end
-
-    if @ceedling[:configurator].project_config_hash[:gcov_xml_report].nil?
-      puts "In your project.yml, define: \n\n:gcov:\n  :xml_report:\n\n to true or false to refine this feature."
-      puts "For now, assumimg you do not want an xml report generated."
-      xml_enabled = false
-    else
-      xml_enabled = @ceedling[:configurator].project_config_hash[:gcov_xml_report]
-    end
-
-    if html_enabled
-      if @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'basic'
-        puts "Creating a basic html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
-        command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [], args)
-        @ceedling[:tool_executor].exec(command[:line], command[:options])
-      elsif @ceedling[:configurator].project_config_hash[:gcov_html_report_type] == 'detailed'
-        puts "Creating a detailed html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
-        command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_ADVANCED, [], args)
-        @ceedling[:tool_executor].exec(command[:line], command[:options])
-
-      else
-        puts "In your project.yml, define: \n\n:gcov:\n  :html_report_type:\n\n to basic or detailed to refine this feature."
-        puts "For now, just creating basic."
-        puts "Creating a basic html report of gcov results in #{GCOV_ARTIFACTS_FILE}..."
-        command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_BASIC, [], args)
-        @ceedling[:tool_executor].exec(command[:line], command[:options])
-      end
-    end
-
-    if xml_enabled
-      puts "Creating an xml report of gcov results in #{GCOV_ARTIFACTS_FILE_XML}..."
-      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT_XML, [], args)
-      @ceedling[:tool_executor].exec(command[:line], command[:options])
-    end
-
+    print "Creating gcov results report(s) in '#{GCOV_ARTIFACTS_PATH}'... "
+    STDOUT.flush
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args)
+    @ceedling[:tool_executor].exec(command[:line], command[:options])
     puts "Done."
   end
 end
