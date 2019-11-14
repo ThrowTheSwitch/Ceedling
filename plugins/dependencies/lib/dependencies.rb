@@ -103,12 +103,51 @@ class Dependencies < Plugin
   def build_if_required(lib_path)
     blob = @dependencies[lib_path]
     raise "Could not find dependency '#{lib_path}'" if blob.nil?
+
+    # We don't clean anything unless we know how to fetch a new copy
+    if (blob[:fetch].nil? || blob[:fetch][:method].nil? || (blob[:fetch][:method] == :none))
+      @ceedling[:streaminator].stdout_puts("Nothing to build for dependency #{blob[:name]}", Verbosity::NORMAL)
+      return
+    end
+
+    # If we ARE supposed to build something, we need instructions
     raise "Could not find build steps for dependency '#{blob[:name]}'" if (blob[:build].nil? || blob[:build].empty?)
 
+    # Perform the build
     @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
     blob[:build].each do |step|
       @ceedling[:tool_executor].exec( step )
     end
+  end
+
+  def clean_if_required(lib_path)
+    blob = @dependencies[lib_path]
+    raise "Could not find dependency '#{lib_path}'" if blob.nil?
+
+    # We don't clean anything unless we know how to fetch a new copy
+    if (blob[:fetch].nil? || blob[:fetch][:method].nil? || (blob[:fetch][:method] == :none))
+      @ceedling[:streaminator].stdout_puts("Nothing to clean for dependency #{blob[:name]}", Verbosity::NORMAL)
+      return
+    end
+
+    # Perform the actual Cleaning
+    @ceedling[:streaminator].stdout_puts("Cleaning dependency #{blob[:name]}...", Verbosity::NORMAL)
+    FileUtils.rm_rf( get_working_path(blob) ) if File.directory?( get_working_path(blob) )
+  end
+
+  def deploy_if_required(lib_path)
+    blob = @dependencies[lib_path]
+    raise "Could not find dependency '#{lib_path}'" if blob.nil?
+
+    # We don't need to deploy anything if there isn't anything to deploy
+    if (blob[:artifacts].nil? || blob[:artifacts][:dynamic_libraries].nil?  || blob[:artifacts][:dynamic_libraries].empty?)
+      @ceedling[:streaminator].stdout_puts("Nothing to deploy for dependency #{blob[:name]}", Verbosity::NORMAL)
+      return
+    end
+
+    # Perform the actual Deploying
+    @ceedling[:streaminator].stdout_puts("Deploying dependency #{blob[:name]}...", Verbosity::NORMAL)
+    FileUtils.cp( lib_path, File.dirname(PROJECT_RELEASE_BUILD_TARGET) )
   end
 
   def add_headers()

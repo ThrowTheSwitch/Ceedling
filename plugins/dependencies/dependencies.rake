@@ -1,6 +1,9 @@
 
 DEPENDENCIES_LIBRARIES.each do |deplib|
 
+  # Look up the name of this dependency library
+  deplib_name = @ceedling[DEPENDENCIES_SYM].get_name(deplib)
+
   # Make sure the required working directory exists
   # (don't worry about the subdirectories. That's the job of the dep's build tool)
   deplib_working_path = @ceedling[DEPENDENCIES_SYM].get_working_path(deplib)
@@ -24,22 +27,33 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
     end
   end
 
-  # Finally, add the static libraries to our RELEASE build dependency list
-  task RELEASE_SYM => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) 
-
+  # Give ourselves a way to trigger individual dependencies
   namespace DEPENDENCIES_SYM do
+    namespace :deploy do
+      # Add task to directly just build this dependency
+      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)) do |t,args|
+        @ceedling[DEPENDENCIES_SYM].deploy_if_required(deplib_name)
+      end
+    end
+
     namespace :make do
       # Add task to directly just build this dependency
-      task @ceedling[DEPENDENCIES_SYM].get_name(deplib) => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib)
+      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib))
     end
 
     namespace :clean do
       # Add task to directly clobber this dependency
-      task @ceedling[DEPENDENCIES_SYM].get_name(deplib) do
-        raise "TODO: dependency tool can't clean dependencies yet"
+      task(deplib_name) do 
+        @ceedling[DEPENDENCIES_SYM].clean_if_required(deplib_name)
       end
     end
   end
+
+  # Finally, add the static libraries to our RELEASE build dependency list
+  task RELEASE_SYM => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) 
+
+  # Also add the dynamic libraries to our RELEASE build dependency list so that they will be copied automatically
+  task RELEASE_SYM => @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
 end
 
 # Add any artifact:include folders to our release & test includes paths so linking and mocking work.
@@ -47,6 +61,9 @@ end
 
 # Add tasks for building or cleaning ALL depencies
 namespace DEPENDENCIES_SYM do
+  desc "Deploy missing dependencies."
+  task :deploy => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:deploy:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+
   desc "Build any missing dependencies."
   task :make => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:make:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
   
@@ -68,7 +85,3 @@ namespace :files do
     puts "file count: #{deps.size}"
   end
 end
-
-# Add task to copy dynamic libraries to the release folder when finished
-#TODO master task depends on all individual dlls in release dir. 
-#individual dlls in release depend on dlls in artifact dir. task is just a copy. bam. done
