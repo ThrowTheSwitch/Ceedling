@@ -47,6 +47,12 @@ task :sanity_checks, :level do |t, args|
   @ceedling[:configurator].sanity_checks = check_level
 end
 
+# non advertised catch for calling upgrade in the wrong place
+task :upgrade do
+  puts "WARNING: You're currently IN your project directory. Take a step out and try"
+  puts "again if you'd like to perform an upgrade."
+end
+
 # list expanded environment variables
 if (not ENVIRONMENT.empty?)
 desc "List all configured environment variables."
@@ -70,7 +76,7 @@ namespace :options do
     option = File.basename(option_path, '.yml')
 
     desc "Merge #{option} project options."
-    task option.downcase.to_sym do
+    task option.to_sym do
       hash = @ceedling[:project_config_manager].merge_options( @ceedling[:setupinator].config_hash, option_path )
       @ceedling[:setupinator].do_setup( hash )
       if @ceedling[:configurator].project_release_build
@@ -79,6 +85,12 @@ namespace :options do
     end
   end
 
+  # This is to give nice errors when typing options
+  rule /^options:.*/ do |t, args|
+    filename = t.to_s.split(':')[-1] + '.yml'
+    filelist = COLLECTION_PROJECT_OPTIONS.map{|s| File.basename(s) }
+    @ceedling[:file_finder].find_file_from_list(filename, filelist, :error)
+  end
 end
 
 

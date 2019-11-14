@@ -49,16 +49,16 @@ unless (project_found)
     end
 
     desc "upgrade PROJECT_NAME", "upgrade ceedling for a project (not req'd if gem used)"
-    method_option :docs, :type => :boolean, :default => false, :desc => "Add docs in project vendor directory"
-    method_option :local, :type => :boolean, :default => false, :desc => "Create a copy of Ceedling in the project vendor directory"
-    method_option :no_configs, :type => :boolean, :default => false, :desc => "Don't install starter configuration files"
-    method_option :noconfigs, :type => :boolean, :default => false
-
-    #deprecated:
-    method_option :no_docs, :type => :boolean, :default => false
-    method_option :nodocs, :type => :boolean, :default => false
     def upgrade(name, silent = false)
-      copy_assets_and_create_structure(name, silent, true, options || {:upgrade => true})
+      as_local = true
+      begin
+        require "yaml"
+        as_local = (YAML.load_file(File.join(name, "project.yml"))[:project][:which_ceedling] != 'gem')
+      rescue
+        raise "ERROR: Could not find valid project file '#{yaml_path}'"
+      end
+      found_docs = File.exists?( File.join(name, "docs", "CeedlingPacket.md") )
+      copy_assets_and_create_structure(name, silent, true, {:upgrade => true, :no_configs => true, :local => as_local, :docs => found_docs})
     end
 
     no_commands do
@@ -286,6 +286,8 @@ else
       when /^help$/
         options[:list_tasks] = true
       when /^-T$/
+        options[:list_tasks] = true
+      when /^--tasks$/
         options[:list_tasks] = true
       when /^project:(\w+)/
         ENV['CEEDLING_USER_PROJECT_FILE'] = "#{$1}.yml"

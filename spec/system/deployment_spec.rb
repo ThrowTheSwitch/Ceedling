@@ -30,6 +30,7 @@ describe "Ceedling" do
     it { can_test_projects_with_success }
     it { can_test_projects_with_success_test_alias }
     it { can_test_projects_with_success_default }
+    it { can_test_projects_with_unity_exec_time }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
@@ -76,6 +77,7 @@ describe "Ceedling" do
     it { can_test_projects_with_success }
     it { can_test_projects_with_success_test_alias }
     it { can_test_projects_with_success_default }
+    it { can_test_projects_with_unity_exec_time }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
@@ -103,6 +105,7 @@ describe "Ceedling" do
     it { can_test_projects_with_success }
     it { can_test_projects_with_success_test_alias }
     it { can_test_projects_with_success_default }
+    it { can_test_projects_with_unity_exec_time }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
@@ -117,11 +120,13 @@ describe "Ceedling" do
 
     it { can_upgrade_projects }
     it { contains_a_vendor_directory }
+    it { does_not_contain_documentation }
     it { can_fetch_non_project_help }
     it { can_fetch_project_help }
     it { can_test_projects_with_success }
     it { can_test_projects_with_success_test_alias }
     it { can_test_projects_with_success_default }
+    it { can_test_projects_with_unity_exec_time }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
@@ -149,6 +154,7 @@ describe "Ceedling" do
     it { can_test_projects_with_success }
     it { can_test_projects_with_success_test_alias }
     it { can_test_projects_with_success_default }
+    it { can_test_projects_with_unity_exec_time }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }

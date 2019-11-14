@@ -91,8 +91,8 @@ class Dependinator
   end
 
 
-  def setup_test_executable_dependencies(test, objects)
-    @rake_wrapper.create_file_task( @file_path_utils.form_test_executable_filepath(test), objects )
+  def enhance_test_executable_dependencies(test, objects)
+    @rake_wrapper[ @file_path_utils.form_test_executable_filepath(test) ].enhance( objects )
   end
 
 end

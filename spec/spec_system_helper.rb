@@ -38,12 +38,34 @@ def _add_path_in_section(project_file_path, path, section)
   end
 end
 
+def _add_define_in_section(project_file_path, define, section)
+  project_file_contents = File.readlines(project_file_path)
+  defines_index = project_file_contents.index(":defines:\n")
+
+  if defines_index.nil?
+    # Something wrong with project.yml file, no defines?
+    return
+  end
+
+  section_index =  defines_index + project_file_contents[defines_index..-1].index("  :#{section}:\n")
+
+  project_file_contents.insert(section_index + 1, "    - #{define}\n")
+
+  File.open(project_file_path, "w+") do |f|
+    f.puts(project_file_contents)
+  end
+end
+
 def add_source_path(path)
   _add_path_in_section("project.yml", path, "source")
 end
 
 def add_test_path(path)
   _add_path_in_section("project.yml", path, "test")
+end
+
+def add_test_define(define)
+  _add_define_in_section("project.yml", define, "test")
 end
 
 def add_module_generator_section(project_file_path, mod_gen)
@@ -198,7 +220,7 @@ module CeedlingTestCases
 
   def can_upgrade_projects
     @c.with_context do
-      output = `bundle exec ruby -S ceedling upgrade --local --docs #{@proj_name} 2>&1`
+      output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
       expect($?.exitstatus).to match(0)
       expect(output).to match(/upgraded!/i)
       Dir.chdir @proj_name do
@@ -206,7 +228,6 @@ module CeedlingTestCases
         expect(File.exists?("src")).to eq true
         expect(File.exists?("test")).to eq true
         all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
-        expect(all_docs).to be >= 4
       end
     end
   end
@@ -296,6 +317,24 @@ module CeedlingTestCases
     end
   end
 
+  def can_test_projects_with_unity_exec_time
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        add_test_define("UNITY_INCLUDE_EXEC_TIME")
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
   def can_test_projects_with_fail
     @c.with_context do
       Dir.chdir @proj_name do
@@ -312,6 +351,7 @@ module CeedlingTestCases
       end
     end
   end
+
   def can_test_projects_with_fail_alias
     @c.with_context do
       Dir.chdir @proj_name do
