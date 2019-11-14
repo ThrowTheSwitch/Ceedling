@@ -11,22 +11,18 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib).each do |libpath|
     file libpath do |filetask|
       path = filetask.name
-      
+
       # We double-check that it doesn't already exist, because this process sometimes
       # produces multiple files, but they may have already been flagged as invoked
       unless (File.exists?(path))
-        # First, fetch if required 
-        @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
 
-        # Next, go through our build steps
+        # Set Environment Variables, Fetch, and Build
+        @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
+        @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
         @ceedling[DEPENDENCIES_SYM].build_if_required(path)
       end
     end
   end
-
-  # Add any artifact include folders to our release & test includes paths so that 
-  # linking and mocking work properly.
-  #TODO NEED TO ADD TO INCLUDES SEARCH PATH
 
   # Finally, add the static libraries to our RELEASE build dependency list
   task RELEASE_SYM => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) 
@@ -40,11 +36,14 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
     namespace :clean do
       # Add task to directly clobber this dependency
       task @ceedling[DEPENDENCIES_SYM].get_name(deplib) do
-        raise "TODO: dependency tool can't clean dependcies yet"
+        raise "TODO: dependency tool can't clean dependencies yet"
       end
     end
   end
 end
+
+# Add any artifact:include folders to our release & test includes paths so linking and mocking work.
+@ceedling[DEPENDENCIES_SYM].add_headers()
 
 # Add tasks for building or cleaning ALL depencies
 namespace DEPENDENCIES_SYM do
@@ -71,4 +70,5 @@ namespace :files do
 end
 
 # Add task to copy dynamic libraries to the release folder when finished
-#TODO
+#TODO master task depends on all individual dlls in release dir. 
+#individual dlls in release depend on dlls in artifact dir. task is just a copy. bam. done

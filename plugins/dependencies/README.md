@@ -38,8 +38,9 @@ something like this:
       :fetch:
         :method: :zip
         :source: \\shared_drive\third_party_libs\wolfssl\wolfssl-4.2.0.zip
+      :environment:
+        CFLAGS: -DWOLFSSL_DTLS_ALLOW_FUTURE
       :build:
-        - export CFGLAGS=-DWOLFSSL_DTLS_ALLOW_FUTURE
         - "autoreconf -i"
         - "./configure --enable-tls13 --enable-singlethreaded"
         - make
