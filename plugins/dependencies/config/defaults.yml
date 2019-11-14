@@ -1,0 +1,23 @@
+---
+:dependencies:
+  :libraries: []
+    # - :name: WolfSSL
+    #   :working_path: third_party/wolfssl 
+    #   :fetch:
+    #     :method: :zip
+    #     :source: \\shared_drive\third_party_libs\wolfssl\wolfssl-4.2.0.zip
+    #   :build:
+    #     - export CFGLAGS=-DWOLFSSL_DTLS_ALLOW_FUTURE
+    #     - "autoreconf -i"
+    #     - "./configure --enable-tls13 --enable-singlethreaded"
+    #     - make
+    #     - make install
+    #   :artifacts:
+    #     :static_libraries:
+    #       - lib/wolfssl.a
+    #     :dynamic_libraries:
+    #       - lib/wolfssl.so
+    #     :includes:
+    #       - include/
+
+...
