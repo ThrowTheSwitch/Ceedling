@@ -108,8 +108,12 @@ class JunitTestsReport < Plugin
   end
 
   def write_test( test, stream )
-    test[:test].gsub!('"', '&quot;')
-    pp test
+    test[:test].gsub!(/&/, '&amp;')
+    test[:test].gsub!(/</, '&lt;')
+    test[:test].gsub!(/>/, '&gt;')
+    test[:test].gsub!(/"/, '&quot;')
+    test[:test].gsub!(/'/, '&apos;')
+
     case test[:result]
     when :success
       stream.puts('    <testcase name="%<test>s" time="%<unity_test_time>f"/>' % test)
