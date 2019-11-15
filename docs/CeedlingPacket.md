@@ -271,7 +271,7 @@ Ceedling (more on this later).
   specified in the [:paths] section of your config file.
 
 * `ceedling files:assembly`
-* `ceedling files:header`
+* `ceedling files:include`
 * `ceedling files:source`
 * `ceedling files:test`
 

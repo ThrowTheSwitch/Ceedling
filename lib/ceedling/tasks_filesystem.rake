@@ -67,13 +67,13 @@ end
 
 # list paths discovered at load time
 namespace :paths do
-
-  paths = @ceedling[:setupinator].config_hash[:paths]
-  paths.each_key do |section|
-    name = section.to_s.downcase
+  standard_paths = ['test','source','include']
+  paths = @ceedling[:setupinator].config_hash[:paths].keys.map{|n| n.to_s.downcase}
+  paths = (paths + standard_paths).uniq
+  paths.each do |name|
     path_list = Object.const_get("COLLECTION_PATHS_#{name.upcase}")
 
-    if (path_list.size != 0)
+    if (path_list.size != 0) || (standard_paths.include?(name))
       desc "List all collected #{name} paths."
       task(name.to_sym) { puts "#{name} paths:"; path_list.sort.each {|path| puts " - #{path}" } }
     end
@@ -88,7 +88,7 @@ namespace :files do
   categories = [
     ['test',   COLLECTION_ALL_TESTS],
     ['source', COLLECTION_ALL_SOURCE],
-    ['header', COLLECTION_ALL_HEADERS]
+    ['include', COLLECTION_ALL_HEADERS]
     ]
 
   using_assembly = (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY) ||

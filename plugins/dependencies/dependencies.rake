@@ -11,7 +11,8 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   task :directories => [ deplib_working_path ]
 
   # Add a rule for building the actual libraries from dependency list
-  @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib).each do |libpath|
+  ( @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
+    @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib) ).each do |libpath|
     file libpath do |filetask|
       path = filetask.name
 
@@ -50,9 +51,9 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   end
 
   # Finally, add the static libraries to our RELEASE build dependency list
-  task RELEASE_SYM => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) 
+  task PROJECT_RELEASE_BUILD_TARGET => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) 
 
-  # Also add the dynamic libraries to our RELEASE build dependency list so that they will be copied automatically
+  # Add the dynamic libraries to our RELEASE task dependency list so that they will be copied automatically
   task RELEASE_SYM => @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
 end
 

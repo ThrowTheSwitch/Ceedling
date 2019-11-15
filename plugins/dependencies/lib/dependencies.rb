@@ -18,6 +18,9 @@ class Dependencies < Plugin
       get_static_libraries_for_dependency(deplib).each do |key|
         @dependencies[key] = @dependencies[ deplib[:name] ]
       end
+      get_dynamic_libraries_for_dependency(deplib).each do |key|
+        @dependencies[key] = @dependencies[ deplib[:name] ]
+      end
       @dynamic_libraries += get_dynamic_libraries_for_dependency(deplib)
     end
   end
@@ -105,13 +108,10 @@ class Dependencies < Plugin
     raise "Could not find dependency '#{lib_path}'" if blob.nil?
 
     # We don't clean anything unless we know how to fetch a new copy
-    if (blob[:fetch].nil? || blob[:fetch][:method].nil? || (blob[:fetch][:method] == :none))
+    if (blob[:build].nil? || blob[:build].empty?)
       @ceedling[:streaminator].stdout_puts("Nothing to build for dependency #{blob[:name]}", Verbosity::NORMAL)
       return
     end
-
-    # If we ARE supposed to build something, we need instructions
-    raise "Could not find build steps for dependency '#{blob[:name]}'" if (blob[:build].nil? || blob[:build].empty?)
 
     # Perform the build
     @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
