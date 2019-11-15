@@ -39,7 +39,7 @@ something like this:
         :method: :zip
         :source: \\shared_drive\third_party_libs\wolfssl\wolfssl-4.2.0.zip
       :environment:
-        CFLAGS: -DWOLFSSL_DTLS_ALLOW_FUTURE
+        - CFLAGS+=-DWOLFSSL_DTLS_ALLOW_FUTURE
       :build:
         - "autoreconf -i"
         - "./configure --enable-tls13 --enable-singlethreaded"
@@ -73,7 +73,7 @@ call the name of the field whatever you wish.
 Working Folder
 --------------
 
-The `:working_path` item allows us to specify where the dependencies are stored. 
+The `:working_path` field allows us to specify where the dependencies are stored. 
 By default, each dependency will be built in `dependencies\dep_name` where `dep_name`
 is the name specified in `:name` above (with special characters removed). It's best,
 though, if you specify exactly where you want your libraries to live.
@@ -82,14 +82,148 @@ If the dependency is directly included in your project, this is where Ceedling
 should look for it. If you're doing one of the methods of fetching from another source,
 then this is where Ceedling will be placing the fetched code.
 
+All artifact paths are considered relative to this location.
+
 Fetching Dependencies
 ---------------------
 
+The `:dependencies` plugin supports the ability to automatically fetch your dependencies
+for you... using some common methods of fetching source. This section contains only a
+couple of fields:
+
+- `:method` -- This is the method that this dependency is fetched.
+  - `:none` -- This tells Ceedling that the code is already included in the project.
+  - `:zip` -- This tells Ceedling that we want to unpack a zip file to our working path.
+  - `:git` -- This tells Ceedling that we want to clone a git repo to our working path.
+- `:source` -- This is the path or url to fetch code when using the zip or git method.
+- `:revision` -- This is the specific tag or hash that you wish to retrieve.
+
+
+Environment Variables
+---------------------
+
+Many build systems support customization through environment variables. By specifying 
+an array of environment variables, Ceedling will customize the shell environment before 
+calling the build process. 
+
+Environment variables may be specified in three ways. Let's look at one of each:
+
+```
+  :environment:
+    - ARCHITECTURE=ARM9
+    - CFLAGS+=" -DADD_AWESOMENESS"
+    - CFLAGS-="-DWASTE"
+```
+
+In the first example, you see the most straightforward method. The environment variable 
+`ARCHITECTURE` is set to the value `ARM9`. That's it. Simple.
+
+The next two options modify an existing symbol. In the first one, we use `+=`, which tells 
+Ceedling to add the define `ADD_AWESOMENESS` to the environment variable `CFLAGS`. The second
+tells Ceedling to remove the define `WASTE` from the same environment variable. 
+
+There are a couple of things to note here. 
+
+First, when adding to a variable, Ceedling has no way of knowing
+what delimiter you are expecting. In this example you can see we manually added some whitespace.
+If we had been modifying `PATH` instead, we might have had to use a `:` on a unux or `;` on 
+Windows.
+
+Second, removing an argument will have no effect on the argument if that argument isn't found
+precisely. It's case sensitive and the entire string must match. If symbol doesn't already exist, 
+it WILL after executing this command... however it will be assigned to nothing.
 
 Building Dependencies
 ---------------------
 
+The heart of the `:dependencies` plugin is the ability for you, the developer, to specify the
+build process for each of your dependencies. You will need to have any required tools installed
+before using this feature. 
+
+The steps are specified as an array of strings. Ceedling will execute those steps in the order
+specified, moving from step to step unless an error is encountered. By the end of the process, 
+the artifacts should have been created by your process... otherwise an error will be produced.
 
 Artifacts
 ---------
 
+These are the outputs of the build process. There are there types of artifacts. Any dependency
+may have none or some of these. Calling out these files tells Ceedling that they are important.
+Your dependency's build process may produce many other files... but these are the files that 
+Ceedling understands it needs to act on.
+
+### `static_libraries` 
+
+Specifying one or more static libraries will tell Ceedling where it should find static libraries
+output by your build process. These libraries are automatically added to the list of dependencies
+and will be linked with the rest of your code to produce the final release. 
+
+If any of these libraries don't exist, Ceedling will trigger your build process in order for it 
+to produce them. 
+
+### `dynamic_libraries` 
+
+Specifying one or more dynamic libraries will tell Ceedling where it should find dynamic libraries
+output by your build process. These libraries are automatically copied to the same folder as your
+final release binary. 
+
+If any of these libraries don't exist, Ceedling will trigger your build process in order for it 
+to produce them. 
+
+### `includes` 
+
+Often when libraries are built, the same process will output a collection of includes so that 
+your release code knows how to interact with that library. It's the public API for that library.
+By specifying the directories that will contain these includes (don't specify the files themselves,
+Ceedling only needs the directories), Ceedling is able to automatically add these to its internal
+include list. This allows these files to be used while building your release code, as well we making
+them mockable during unit testing. 
+
+Tasks
+-----
+
+Once configured correctly, the `:dependencies` plugin should integrate seamlessly into your 
+workflow and you shouldn't have to think about it. In the real world, that doesn't always happen.
+Here are a number of tasks that are added or modified by this plugin.
+
+### `ceedling dependencies:clean`
+
+This can be issued in order to completely remove the dependency from its working directory. On the
+next build, it will be refetched and rebuilt from scratch. This can also apply to a particular
+dependency. For example, by specifying `dependencies:clean:DepName`.
+
+### `ceedling dependencies:make`
+
+This will force the dependencies to all build. This should happen automatically when a release 
+has been triggered... but if you're just getting your dependency configured at this moment, you
+may want to just use this feature instead. A single dependency can also be built by specifying its
+name, like `dependencies:make:MyTunaBoat`.  
+
+### `ceedling dependencies:deploy`
+
+This will force any dynamic libraries produced by your dependencies to be copied to your release
+build directory... just in case you clobbered them.
+
+### `paths:include`
+
+Maybe you want to verify that all the include paths are correct. If you query Ceedling with this 
+request, it will list all the header file paths that it's found, including those produced by 
+dependencies.
+
+### `files:include`
+
+Maybe you want to take that query further and actually get a list of ALL the header files
+Ceedling has found, including those belonging to your dependencies.
+
+Testing
+=======
+
+Hopefully all your dependencies are fully tested... but we can't always depend on that.
+In the event that they are tested with Ceedling, you'll probably want to consider using 
+the `:subprojects` plugin instead of this one. The purpose of this plugin is to pull in
+third party code for release... and to provide a mockable interface for Ceedling to use
+during its tests of other modules.
+
+If that's what you're after... you've found the right plugin!
+
+Happy Testing!
