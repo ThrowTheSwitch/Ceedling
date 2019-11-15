@@ -154,37 +154,8 @@ if PROJECT_USE_DEEP_DEPENDENCIES
 end
 
 namespace UTILS_SYM do
-  def gcov_args_builder(opts)
-    # Determine the Cobertura XML report file name.
-    artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
-    if !opts[:gcov_cobertura_artifact_filename].nil?
-        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_cobertura_artifact_filename])
-    elsif !opts[:gcov_xml_artifact_filename].nil?
-        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_xml_artifact_filename])
-    end
-
-    # Determine the SonarQube XML report file name.
-    artifacts_file_sonarqube = GCOV_ARTIFACTS_FILE_SONARQUBE
-    if !opts[:gcov_sonarqube_artifact_filename].nil?
-        artifacts_file_sonarqube = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_sonarqube_artifact_filename])
-    end
-
-    # Determine the JSON report file name.
-    artifacts_file_json = GCOV_ARTIFACTS_FILE_JSON
-    if !opts[:gcov_json_artifact_filename].nil?
-        artifacts_file_json = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_json_artifact_filename])
-    end
-
-    artifacts_file_html = GCOV_ARTIFACTS_FILE_HTML
-    if !opts[:gcov_html_artifact_filename].nil?
-      artifacts_file_html = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_html_artifact_filename])
-    end
-
-    cobertura_xml_enabled = (!(opts[:gcov_xml_report].nil?) && opts[:gcov_xml_report]) || (!(opts[:gcov_cobertura_report].nil?) && opts[:gcov_cobertura_report])
-    sonarqube_enabled = !(opts[:gcov_sonarqube_report].nil?) && opts[:gcov_sonarqube_report]
-    json_enabled = !(opts[:gcov_json_report].nil?) && opts[:gcov_json_report]
-    html_enabled = opts[:gcov_html_report].nil? || opts[:gcov_html_report] # Default to enabled.
-
+  # Build the gcovr report generation common arguments.
+  def gcovr_args_builder_common(opts)
     args = ""
     args += "--root \"#{opts[:gcov_report_root] || '.'}\" "
     args += "--filter \"#{opts[:gcov_report_include]}\" " unless opts[:gcov_report_include].nil?
@@ -203,72 +174,194 @@ namespace UTILS_SYM do
     args += "--keep " if !(opts[:gcov_keep].nil?) && opts[:gcov_keep]
     args += "--delete " if !(opts[:gcov_delete].nil?) && opts[:gcov_delete]
     args += "-j #{opts[:gcov_parallel]} " if !(opts[:gcov_parallel].nil?) && (opts[:gcov_parallel].is_a? Integer)
+
     [:gcov_fail_under_line, :gcov_fail_under_branch].each do |opt|
       args += "--#{opt.to_s.gsub('_','-').sub(/:?gcov-/,'')} #{opts[opt]} " unless opts[opt].nil?
     end
 
-    if cobertura_xml_enabled
-      args += "--xml \"#{artifacts_file_cobertura}\" "
-      args += "--xml-pretty " if !(opts[:gcov_xml_pretty].nil?) && opts[:gcov_xml_pretty] || (!(opts[:gcov_cobertura_pretty].nil?) && opts[:gcov_cobertura_pretty])
+    return args
+  end
+
+  # Build the gcovr Cobertura XML report generation arguments.
+  def gcovr_args_builder_cobertura(opts, use_output_option)
+    args = ""
+
+    if opts[:gcov_xml_report].nil? && opts[:gcov_cobertura_report].nil?
+      puts "In your project.yml, define: \n\n:gcov:\n  :xml_report:\n\n to true or false to refine this feature."
+      puts "For now, assumimg you do not want a Cobertura xml report generated."
     end
 
+    # Determine if the Cobertura XML report is enabeld. Default to disabled.
+    cobertura_xml_enabled = (!(opts[:gcov_xml_report].nil?) && opts[:gcov_xml_report]) || (!(opts[:gcov_cobertura_report].nil?) && opts[:gcov_cobertura_report])
+
+    if cobertura_xml_enabled
+      # Determine the Cobertura XML report file name.
+      artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
+      if !opts[:gcov_cobertura_artifact_filename].nil?
+        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_cobertura_artifact_filename])
+      elsif !opts[:gcov_xml_artifact_filename].nil?
+        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_xml_artifact_filename])
+      end
+
+      args += "--xml-pretty " if !(opts[:gcov_xml_pretty].nil?) && opts[:gcov_xml_pretty] || (!(opts[:gcov_cobertura_pretty].nil?) && opts[:gcov_cobertura_pretty])
+
+      output_option = ""
+      if use_output_option
+        output_option = "--output "
+      end
+
+      args += "--xml #{output_option} \"#{artifacts_file_cobertura}\" "
+
+    end
+
+    return args
+  end
+
+  # Build the gcovr SonarQube report generation arguments.
+  def gcovr_args_builder_sonarqube(opts)
+    args = ""
+
+    # Determine if the SonarQube XML report is enabeld. Default to disabled.
+    sonarqube_enabled = !(opts[:gcov_sonarqube_report].nil?) && opts[:gcov_sonarqube_report]
+
     if sonarqube_enabled
+      # Determine the SonarQube XML report file name.
+      artifacts_file_sonarqube = GCOV_ARTIFACTS_FILE_SONARQUBE
+      if !opts[:gcov_sonarqube_artifact_filename].nil?
+        artifacts_file_sonarqube = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_sonarqube_artifact_filename])
+      end
+
       args += "--sonarqube \"#{artifacts_file_sonarqube}\" "
     end
 
+    return args
+  end
+
+  # Build the gcovr JSON report generation arguments.
+  def gcovr_args_builder_json(opts)
+    args = ""
+
+    # Determine if the JSON report is enabeld. Default to disabled.
+    json_enabled = !(opts[:gcov_json_report].nil?) && opts[:gcov_json_report]
+
     if json_enabled
+      # Determine the JSON report file name.
+      artifacts_file_json = GCOV_ARTIFACTS_FILE_JSON
+      if !opts[:gcov_json_artifact_filename].nil?
+        artifacts_file_json = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_json_artifact_filename])
+      end
+
       # Note: In gcovr 4.2, the JSON report is output only if the --output option is specified.
       # Maybe we can remove --output in the future.
       args += "--json --output \"#{artifacts_file_json}\" "
       args += "--json-pretty " if !(opts[:gcov_json_pretty].nil?) && opts[:gcov_json_pretty]
     end
 
+    return args
+  end
+
+  # Build the gcovr HTML report generation arguments.
+  def gcovr_args_builder_html(opts, use_output_option)
+    args = ""
+
+    if opts[:gcov_html_report].nil?
+      puts "In your project.yml, define: \n\n:gcov:\n  :html_report:\n\n to true or false to refine this feature."
+      puts "For now, assumimg you want an html report generated."
+    end
+
+    # Determine if the HTML report is enabeld. Default to enabled.
+    html_enabled = opts[:gcov_html_report].nil? || opts[:gcov_html_report]
+
     if html_enabled
+      # Determine the HTML report file name.
+      artifacts_file_html = GCOV_ARTIFACTS_FILE_HTML
+      if !opts[:gcov_html_artifact_filename].nil?
+        artifacts_file_html = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_html_artifact_filename])
+      end
+
       args += "--html-details " if !(opts[:gcov_html_report_type].nil?) && (opts[:gcov_html_report_type] == 'detailed')
       args += "--html-title \"#{opts[:gcov_html_title]}\" " unless opts[:gcov_html_title].nil?
       args += "--html-absolute-paths " if !(opts[:gcov_html_absolute_paths].nil?) && opts[:gcov_html_absolute_paths]
       args += "--html-encoding \"#{opts[:gcov_html_encoding]}\" " unless opts[:gcov_html_encoding].nil?
+
       [:gcov_html_medium_threshold, :gcov_html_high_threshold].each do |opt|
         args += "--#{opt.to_s.gsub('_','-').sub(/:?gcov-/,'')} #{opts[opt]} " unless opts[opt].nil?
       end
-      args += "--html \"#{artifacts_file_html}\" "
+
+      output_option = ""
+      if use_output_option
+        output_option = "--output "
+      end
+
+      args += "--html #{output_option} \"#{artifacts_file_html}\" "
     end
 
     return args
   end
 
+  # Get the gcovr version number components.
+  # Returns [major, minor].
+  def get_gcovr_version(gcovr_executable)
+    gcovr_version_number_major = 0
+    gcovr_version_number_minor = 0
+    gcovr_version_info = %x|#{gcovr_executable} --version|
+    version_number_match_data = gcovr_version_info.match(/gcovr ([0-9]+)\.([0-9]+)/)
+
+    if !version_number_match_data.nil? && !version_number_match_data[1].nil? && !version_number_match_data[2].nil?
+        gcovr_version_number_major = version_number_match_data[1].to_i
+        gcovr_version_number_minor = version_number_match_data[2].to_i
+    end
+
+    return gcovr_version_number_major, gcovr_version_number_minor
+  end
+
+
   desc "Create gcov code coverage html/xml/json report(s). (Note: Must run 'ceedling gcov' first)."
   task GCOV_SYM do
-
+    # Get the gcov options from project.yml.
     opts = @ceedling[:configurator].project_config_hash
-    args = gcov_args_builder(opts)
 
-    if opts[:gcov_html_report].nil?
-      puts "In your project.yml, define: \n\n:gcov:\n  :html_report:\n\n to true or false to refine this feature."
-      puts "For now, assumimg you want an html report generated."
-      html_enabled = true
-    else
-      html_enabled = opts[:gcov_html_report]
-    end
-
-    if opts[:gcov_xml_report].nil? && opts[:gcov_cobertura_report].nil?
-      puts "In your project.yml, define: \n\n:gcov:\n  :xml_report:\n\n to true or false to refine this feature."
-      puts "For now, assumimg you do not want a Cobertura xml report generated."
-      cobertura_xml_enabled = false
-    elsif !(opts[:gcov_xml_report].nil?)
-      cobertura_xml_enabled = opts[:gcov_xml_report]
-    else
-      cobertura_xml_enabled = opts[:gcov_cobertura_report]
-    end
-
+    # Create the artifacts output directory.
     if !File.directory? GCOV_ARTIFACTS_PATH
       FileUtils.mkdir_p GCOV_ARTIFACTS_PATH
     end
 
     print "Creating gcov results report(s) in '#{GCOV_ARTIFACTS_PATH}'... "
     STDOUT.flush
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args)
-    @ceedling[:tool_executor].exec(command[:line], command[:options])
+
+    # Get the gcovr version number.
+    gcovr_version_info = get_gcovr_version("#{opts[:gcov_gcov_executable] || "gcovr"}")
+
+    # Build the common gcovr arguments.
+    args = gcovr_args_builder_common(opts)
+
+    if (gcovr_version_info[0] >= 4) && (gcovr_version_info[1] >= 2)
+      # gcovr version 4.2 and later supports generating multiple reports with a single call.
+      args += gcovr_args_builder_cobertura(opts, false)
+      args += gcovr_args_builder_sonarqube(opts)
+      args += gcovr_args_builder_json(opts)
+      args += gcovr_args_builder_html(opts, false) # As of gcovr version 4.2, the HTML arguments must appear last.
+
+      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args)
+      @ceedling[:tool_executor].exec(command[:line], command[:options])
+    else
+      # gcovr version 4.1 and earlier supports HTML and Cobertura XML reports. It does not support SonarQube and JSON reports.
+      args_cobertura = gcovr_args_builder_cobertura(opts, true)
+      args_html = gcovr_args_builder_html(opts, true)
+
+      if args_html.length > 0
+          # Generate the HTML report.
+          command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args + args_html)
+          @ceedling[:tool_executor].exec(command[:line], command[:options])
+      end
+
+      if args_cobertura.length > 0
+          # Generate the Cobertura XML report.
+          command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args + args_cobertura)
+          @ceedling[:tool_executor].exec(command[:line], command[:options])
+      end
+    end
+
     puts "Done."
   end
 end
