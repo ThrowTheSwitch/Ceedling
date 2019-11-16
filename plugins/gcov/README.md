@@ -7,14 +7,14 @@ Plugin for integrating GNU GCov code coverage tool into Ceedling projects.
 Currently only designed for the gcov command (like LCOV for example). In the
 future we could configure this to work with other code coverage tools.
 
-This plugin currently uses `gcovr` to generate HTML and/or XML reports as a
+This plugin currently uses [`gcovr`](https://www.gcovr.com/) to generate HTML and/or XML reports as a
 utility. The normal gcov plugin _must_ be run first for this report to generate.
 
 ## Installation
 
 Gcovr can be installed via pip like so:
 
-```
+```sh
 pip install gcovr
 ```
 
@@ -23,79 +23,204 @@ pip install gcovr
 The gcov plugin supports configuration options via your `project.yml` provided
 by Ceedling.
 
-Generation of HTML reports may be enabled or disabled with the following
-config. Set to `true` to enable or set to `false` to disable.
+All generated reports will be found in `build/artifacts/gcov`.
 
-```
+### HTML Reports
+
+Generation of HTML reports may be enabled, disabled or modified
+with the following configuration items.
+
+```yaml
 :gcov:
-  :html_report: true
+  # Set to 'true' to enable HTML reports or set to 'false' to disable.
+  # Defaults to enabled. (gcovr --html)
+  :html_report: [true|false]
+
+  # HTML report filename.
+  :html_artifact_filename: <output>
+
+  # Gcovr supports generating two types of HTML reports. Use 'basic' to create
+  # an HTML report with only the overall file information. Use 'detailed' to create
+  # an HTML report with line by line coverage of each source file.
+  # Defaults to 'basic'. Set to 'detailed' for (gcovr --html-details).
+  :html_report_type: [basic|detailed]
+
+  # Use 'title' as title for the HTML report.
+  # Default is 'Head'. (gcovr --html-title)
+  :html_title: <title>
+
+  # If the coverage is below MEDIUM, the value is marked as low coverage in the HTML report.
+  # MEDIUM has to be lower than or equal to value of html_high_threshold.
+  # If MEDIUM is equal to value of html_high_threshold the report has only high and low coverage.
+  # Default is 75.0. (gcovr --html-medium-threshold)
+  :html_medium_threshold: 75
+
+  # If the coverage is below HIGH, the value is marked as medium coverage in the HTML report.
+  # HIGH has to be greater than or equal to value of html_medium_threshold.
+  # If HIGH is equal to value of html_medium_threshold the report has only high and low coverage.
+  # Default is 90.0. (gcovr -html-high-threshold)
+  :html_high_threshold: 90
+
+  # Set to 'true' to use absolute paths to link the 'detailed' reports.
+  # Defaults to relative links. (gcovr --html-absolute-paths)
+  :html_absolute_paths: [true|false]
+
+  # Override the declared HTML report encoding. Defaults to UTF-8. (gcovr --html-encoding)
+  :html_encoding: <html_encoding>
 ```
 
-Generation of XML reports may be enabled or disabled with the following
-config. Set to `true` to enable or set to `false` to disable.
+### Cobertura XML Reports
 
-```
+Generation of Cobertura XML reports may be enabled, disabled or modified
+with the following configuration items.
+
+```yaml
 :gcov:
-  :xml_report: true
+  # Set to 'true' to enable Cobertura XML reports or set to 'false' to disable.
+  # Defaults to disabled. (gcovr --xml)
+  :xml_report: [true|false]
+
+  # Set to 'true' to pretty-print the Cobertura XML report, otherwise set to 'false'.
+  # Defaults to disabled. (gcovr --xml-pretty)
+  :xml_pretty: [true|false]
+
+  # Cobertura XML report filename.
+  :xml_artifact_filename: <output>
 ```
 
-There are two types of gcovr HTML reports that can be configured in your
-`project.yml`. To create a basic HTML report, with only the overall file
-information, use the following config.
+### SonarQube XML Reports
 
-```
+Generation of SonarQube XML reports may be enabled, disabled or modified
+with the following configuration items.
+
+```yaml
 :gcov:
-  :html_report_type: basic
+  # Set to 'true' to enable SonarQube XML reports or set to 'false' to disable.
+  # Defaults to disabled. (gcovr --sonarqube)
+  :sonarqube_report: [true|false]
+
+  # SonarQube XML report filename.
+  :sonarqube_artifact_filename: <output>
 ```
 
-To create a detailed HTML report, with line by line breakdown of the
-coverage, use the following config.
+### JSON Reports
 
-```
+Generation of JSON reports may be enabled, disabled or modified
+with the following configuration items.
+
+```yaml
 :gcov:
-  :html_report_type: detailed
+  # Set to 'true' to enable JSON reports or set to 'false' to disable.
+  # Defaults to disabled. (gcovr --json)
+  :json_report: [true|false]
+
+  # Set to 'true' to pretty-print the JSON report, otherwise set 'false'.
+  # Defaults to disabled. (gcovr --json-pretty)
+  :json_pretty: [true|false]
+
+  # JSON report filename.
+  :json_artifact_filename: <output>
 ```
+
+### Common Report Options
 
 There are a number of options to control which files are considered part of
 the coverage report. Most often, we only care about coverage on our source code, and not
-on tests or automatically generated mocks, runners, etc. However, there are times 
-where this isn't true... or there are times where we've moved ceedling's directory 
+on tests or automatically generated mocks, runners, etc. However, there are times
+where this isn't true... or there are times where we've moved ceedling's directory
 structure so that the project file isn't at the root of the project anymore. In these
-cases, you may need to tweak the following:
+cases, you may need to tweak `report_include`, `report_exclude`, and `exclude_directories`.
 
-```
-:gcov:
-  :report_root: "."
-  :report_exclude: "^build|^vendor|^test|^support"
-  :report_include: "^src"
-```
-
-One important note about html_report_root: gcovr will only take a single root folder, unlike 
-Ceedling's ability to take as many as you like. So you will need to choose a folder which is 
+One important note about `report_root`: gcovr will take only a single root folder, unlike
+Ceedling's ability to take as many as you like. So you will need to choose a folder which is
 a superset of ALL the folders you want, and then use the include or exclude options to set up
 patterns of files to pay attention to or ignore. It's not ideal, but it works.
 
-Finally, there are a number of settings which can be specified in order to adjust the
+Finally, there are a number of settings which can be specified to adjust the
 default behaviors of gcov:
 
-```
+```yaml
 :gcov:
-  :html_medium_threshold: 75
-  :html_high_threshold: 90
-  :fail_under_line: 30
-  :fail_under_branch: 30
-```
+  # The root directory of your source files. Defaults to ".", the current directory.
+  # File names are reported relative to this root. The report_root is the default report_include.
+  :report_root: "."
 
-These HTML and XML reports will be found in `build/artifacts/gcov`.
+  # Exit with a status of 2 if the total line coverage is less than MIN.
+  # Can be ORed with exit status of 'fail_under_branch' option. (gcovr --fail-under-line)
+  :fail_under_line: 30
+
+  # Exit with a status of 4 if the total branch coverage is less than MIN.
+  # Can be ORed with exit status of 'fail_under_line' option. (gcovr --fail-under-branch)
+  :fail_under_branch: 30
+
+  # Report the branch coverage instead of the line coverage. For text report only. (gcovr --branches).
+  :branches: [true|false]
+
+  # Sort entries by increasing number of uncovered lines.
+  # For text and HTML report. (gcovr --sort-uncovered)
+  :sort_uncovered: [true|false]
+
+  # Sort entries by increasing percentage of uncovered lines.
+  # For text and HTML report. (gcovr --sort-percentage)
+  :sort_percentage: [true|false]
+
+  # Print a small report to stdout with line & branch percentage coverage.
+  # This is in addition to other reports. (gcovr --print-summary).
+  :print_summary: [true|false]
+
+  # Keep only source files that match this filter. (gcovr --filter).
+  :report_include: "^src"
+
+  # Exclude source files that match this filter. (gcovr --exclude).
+  :report_exclude: "^build|^vendor|^test|^support"
+
+  # Keep only gcov data files that match this filter. (gcovr --gcov-filter).
+  :gcov_filter: <gcov_filter>
+
+  # Exclude gcov data files that match this filter. (gcovr --gcov-exclude).
+  :gcov_exclude: <gcov_exclude>
+
+  # Exclude directories that match this regex while searching
+  # raw coverage files. (gcovr --exclude-directories).
+  :exclude_directories: <exclude_dirs>
+
+  # Use a particular gcov executable. (gcovr --gcov-executable).
+  :gcov_executable: <gcov_cmd>
+
+  # Exclude branch coverage from lines without useful
+  # source code. (gcovr --exclude-unreachable-branches).
+  :exclude_unreachable_branches: [true|false]
+
+  # For branch coverage, exclude branches that the compiler
+  # generates for exception handling. (gcovr --exclude-throw-branches).
+  :exclude_throw_branches: [true|false]
+
+  # Skip lines with parse errors in GCOV files instead of
+  # exiting with an error. (gcovr --gcov-ignore-parse-errors).
+  :ignore_parse_errors: [true|false]
+
+  # Keep gcov files after processing. (gcovr --keep).
+  :keep: [true|false]
+
+  # Delete gcda files after processing. (gcovr --delete).
+  :delete: [true|false]
+
+  # Set the number of threads to use in parallel. (gcovr -j).
+  :num_parallel_threads: <num_threads>
+```
 
 ## Example Usage
 
-```
+```sh
 ceedling gcov:all utils:gcov
 ```
 
 ## To-Do list
 
 - Generate overall report (combined statistics from all files with coverage)
-- Generate coverage output files
-- Easier option override for better customisation 
+
+## Citations
+
+Most of the comment text which describes the options was taken from the
+[Gcovr User Guide](https://www.gcovr.com/en/stable/guide.html). The text
+is repeated here to provide the most accurate option functionality.

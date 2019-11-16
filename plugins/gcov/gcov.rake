@@ -173,7 +173,7 @@ namespace UTILS_SYM do
     args += "--ignore-parse-errors " if !(opts[:gcov_ignore_parse_errors].nil?) && opts[:gcov_ignore_parse_errors]
     args += "--keep " if !(opts[:gcov_keep].nil?) && opts[:gcov_keep]
     args += "--delete " if !(opts[:gcov_delete].nil?) && opts[:gcov_delete]
-    args += "-j #{opts[:gcov_parallel]} " if !(opts[:gcov_parallel].nil?) && (opts[:gcov_parallel].is_a? Integer)
+    args += "-j #{opts[:num_parallel_threads]} " if !(opts[:num_parallel_threads].nil?) && (opts[:num_parallel_threads].is_a? Integer)
 
     [:gcov_fail_under_line, :gcov_fail_under_branch].each do |opt|
       args += "--#{opt.to_s.gsub('_','-').sub(/:?gcov-/,'')} #{opts[opt]} " unless opts[opt].nil?
@@ -286,12 +286,12 @@ namespace UTILS_SYM do
     return args
   end
 
-  # Get the gcovr version number components.
+  # Get the gcovr version number as components.
   # Returns [major, minor].
-  def get_gcovr_version(gcovr_executable)
+  def get_gcovr_version()
     gcovr_version_number_major = 0
     gcovr_version_number_minor = 0
-    gcovr_version_info = %x|#{gcovr_executable} --version|
+    gcovr_version_info = %x|gcovr --version|
     version_number_match_data = gcovr_version_info.match(/gcovr ([0-9]+)\.([0-9]+)/)
 
     if !version_number_match_data.nil? && !version_number_match_data[1].nil? && !version_number_match_data[2].nil?
@@ -314,7 +314,7 @@ namespace UTILS_SYM do
     end
 
     # Get the gcovr version number.
-    gcovr_version_info = get_gcovr_version("#{opts[:gcov_gcov_executable] || "gcovr"}")
+    gcovr_version_info = get_gcovr_version()
 
     # Build the common gcovr arguments.
     args = gcovr_args_builder_common(opts)
