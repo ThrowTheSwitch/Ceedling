@@ -145,6 +145,10 @@ default behaviors of gcov:
   # File names are reported relative to this root. The report_root is the default report_include.
   :report_root: "."
 
+  # Load the specified configuration file.
+  # Defaults to gcovr.cfg in the report_root directory. (gcovr --config)
+  :config_file: <config_file>
+
   # Exit with a status of 2 if the total line coverage is less than MIN.
   # Can be ORed with exit status of 'fail_under_branch' option. (gcovr --fail-under-line)
   :fail_under_line: 30

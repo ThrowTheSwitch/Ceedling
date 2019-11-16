@@ -158,6 +158,7 @@ namespace UTILS_SYM do
   def gcovr_args_builder_common(opts)
     args = ""
     args += "--root \"#{opts[:gcov_report_root] || '.'}\" "
+    args += "--config \"#{opts[:gcov_config_file]}\" " unless opts[:gcov_config_file].nil?
     args += "--filter \"#{opts[:gcov_report_include]}\" " unless opts[:gcov_report_include].nil?
     args += "--exclude \"#{opts[:gcov_report_exclude] || GCOV_FILTER_EXCLUDE}\" "
     args += "--gcov-filter \"#{opts[:gcov_gcov_filter]}\" " unless opts[:gcov_gcov_filter].nil?
