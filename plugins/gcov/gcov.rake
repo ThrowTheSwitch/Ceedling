@@ -174,7 +174,7 @@ namespace UTILS_SYM do
     args += "--ignore-parse-errors " if !(opts[:gcov_ignore_parse_errors].nil?) && opts[:gcov_ignore_parse_errors]
     args += "--keep " if !(opts[:gcov_keep].nil?) && opts[:gcov_keep]
     args += "--delete " if !(opts[:gcov_delete].nil?) && opts[:gcov_delete]
-    args += "-j #{opts[:num_parallel_threads]} " if !(opts[:num_parallel_threads].nil?) && (opts[:num_parallel_threads].is_a? Integer)
+    args += "-j #{opts[:gcov_num_parallel_threads]} " if !(opts[:gcov_num_parallel_threads].nil?) && (opts[:gcov_num_parallel_threads].is_a? Integer)
 
     [:gcov_fail_under_line, :gcov_fail_under_branch].each do |opt|
       args += "--#{opt.to_s.gsub('_','-').sub(/:?gcov-/,'')} #{opts[opt]} " unless opts[opt].nil?
