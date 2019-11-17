@@ -168,15 +168,16 @@ namespace UTILS_SYM do
     args += "--sort-uncovered " if !(opts[:gcov_sort_uncovered].nil?) && opts[:gcov_sort_uncovered]
     args += "--sort-percentage " if ((opts[:gcov_sort_percentage].nil?) || opts[:gcov_sort_percentage]) # Defaults to enabled.
     args += "--print-summary " if !(opts[:gcov_print_summary].nil?) && opts[:gcov_print_summary]
-    args += "--gcov-executable \"#{opts[:gcov_gcov_executable]}\"" unless opts[:gcov_gcov_executable].nil?
+    args += "--gcov-executable \"#{opts[:gcov_gcov_executable]}\" " unless opts[:gcov_gcov_executable].nil?
     args += "--exclude-unreachable-branches " if !(opts[:gcov_exclude_unreachable_branches].nil?) && opts[:gcov_exclude_unreachable_branches]
     args += "--exclude-throw-branches " if !(opts[:gcov_exclude_throw_branches].nil?) && opts[:gcov_exclude_throw_branches]
-    args += "--ignore-parse-errors " if !(opts[:gcov_ignore_parse_errors].nil?) && opts[:gcov_ignore_parse_errors]
+    args += "--use-gcov-files " if !(opts[:gcov_use_gcov_files].nil?) && opts[:gcov_use_gcov_files]
+    args += "--gcov-ignore-parse-errors " if !(opts[:gcov_gcov_ignore_parse_errors].nil?) && opts[:gcov_gcov_ignore_parse_errors]
     args += "--keep " if !(opts[:gcov_keep].nil?) && opts[:gcov_keep]
     args += "--delete " if !(opts[:gcov_delete].nil?) && opts[:gcov_delete]
     args += "-j #{opts[:gcov_num_parallel_threads]} " if !(opts[:gcov_num_parallel_threads].nil?) && (opts[:gcov_num_parallel_threads].is_a? Integer)
 
-    [:gcov_fail_under_line, :gcov_fail_under_branch].each do |opt|
+    [:gcov_fail_under_line, :gcov_fail_under_branch, :gcov_source_encoding, :gcov_object_directory].each do |opt|
       args += "--#{opt.to_s.gsub('_','-').sub(/:?gcov-/,'')} #{opts[opt]} " unless opts[opt].nil?
     end
 
@@ -198,9 +199,9 @@ namespace UTILS_SYM do
     if cobertura_xml_enabled
       # Determine the Cobertura XML report file name.
       artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
-      if !opts[:gcov_cobertura_artifact_filename].nil?
+      if !(opts[:gcov_cobertura_artifact_filename].nil?)
         artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_cobertura_artifact_filename])
-      elsif !opts[:gcov_xml_artifact_filename].nil?
+      elsif !(opts[:gcov_xml_artifact_filename].nil?)
         artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_xml_artifact_filename])
       end
 
@@ -221,7 +222,7 @@ namespace UTILS_SYM do
     if sonarqube_enabled
       # Determine the SonarQube XML report file name.
       artifacts_file_sonarqube = GCOV_ARTIFACTS_FILE_SONARQUBE
-      if !opts[:gcov_sonarqube_artifact_filename].nil?
+      if !(opts[:gcov_sonarqube_artifact_filename].nil?)
         artifacts_file_sonarqube = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_sonarqube_artifact_filename])
       end
 
@@ -241,7 +242,7 @@ namespace UTILS_SYM do
     if json_enabled
       # Determine the JSON report file name.
       artifacts_file_json = GCOV_ARTIFACTS_FILE_JSON
-      if !opts[:gcov_json_artifact_filename].nil?
+      if !(opts[:gcov_json_artifact_filename].nil?)
         artifacts_file_json = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_json_artifact_filename])
       end
 
@@ -267,7 +268,7 @@ namespace UTILS_SYM do
     if html_enabled
       # Determine the HTML report file name.
       artifacts_file_html = GCOV_ARTIFACTS_FILE_HTML
-      if !opts[:gcov_html_artifact_filename].nil?
+      if !(opts[:gcov_html_artifact_filename].nil?)
         artifacts_file_html = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_html_artifact_filename])
       end
 
@@ -295,7 +296,7 @@ namespace UTILS_SYM do
     gcovr_version_info = %x|gcovr --version|
     version_number_match_data = gcovr_version_info.match(/gcovr ([0-9]+)\.([0-9]+)/)
 
-    if !version_number_match_data.nil? && !version_number_match_data[1].nil? && !version_number_match_data[2].nil?
+    if !(version_number_match_data.nil?) && !(version_number_match_data[1].nil?) && !(version_number_match_data[2].nil?)
         gcovr_version_number_major = version_number_match_data[1].to_i
         gcovr_version_number_minor = version_number_match_data[2].to_i
     end

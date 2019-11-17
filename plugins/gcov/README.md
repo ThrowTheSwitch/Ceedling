@@ -157,6 +157,10 @@ default behaviors of gcov:
   # Can be ORed with exit status of 'fail_under_line' option. (gcovr --fail-under-branch)
   :fail_under_branch: 30
 
+  # Select the source file encoding.
+  # Defaults to the system default encoding (UTF-8). (gcovr --source-encoding)
+  :source_encoding: <source_encoding>
+
   # Report the branch coverage instead of the line coverage. For text report only. (gcovr --branches).
   :branches: [true|false]
 
@@ -199,9 +203,15 @@ default behaviors of gcov:
   # generates for exception handling. (gcovr --exclude-throw-branches).
   :exclude_throw_branches: [true|false]
 
+  # Use existing gcov files for analysis. Default: False. (gcovr --use-gcov-files)
+  :use_gcov_files: [true|false]
+
   # Skip lines with parse errors in GCOV files instead of
   # exiting with an error. (gcovr --gcov-ignore-parse-errors).
-  :ignore_parse_errors: [true|false]
+  :gcov_ignore_parse_errors: [true|false]
+
+  # Override normal working directory detection. (gcovr --object-directory)
+  :object_directory: <objdir>
 
   # Keep gcov files after processing. (gcovr --keep).
   :keep: [true|false]
