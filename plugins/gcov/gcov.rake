@@ -184,6 +184,7 @@ namespace UTILS_SYM do
     return args
   end
 
+
   # Build the gcovr Cobertura XML report generation arguments.
   def gcovr_args_builder_cobertura(opts, use_output_option=false)
     args = ""
@@ -212,6 +213,7 @@ namespace UTILS_SYM do
     return args
   end
 
+
   # Build the gcovr SonarQube report generation arguments.
   def gcovr_args_builder_sonarqube(opts, use_output_option=false)
     args = ""
@@ -231,6 +233,7 @@ namespace UTILS_SYM do
 
     return args
   end
+
 
   # Build the gcovr JSON report generation arguments.
   def gcovr_args_builder_json(opts, use_output_option=false)
@@ -252,6 +255,7 @@ namespace UTILS_SYM do
 
     return args
   end
+
 
   # Build the gcovr HTML report generation arguments.
   def gcovr_args_builder_html(opts, use_output_option=false)
@@ -293,6 +297,28 @@ namespace UTILS_SYM do
     return args
   end
 
+
+  # Generate a text report.
+  def generate_text_report(opts, args_common)
+    args_text = ""
+    message_text = "Creating a gcov text report"
+
+    if !(opts[:gcov_text_artifact_filename].nil?)
+      artifacts_file_txt = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_text_artifact_filename])
+      args_text += "--output \"#{artifacts_file_txt}\" "
+      message_text = message_text + " in '#{GCOV_ARTIFACTS_PATH}'... "
+    else
+      message_text += "... "
+    end
+
+    print message_text
+    STDOUT.flush
+
+    # Generate the text report.
+    run_gcovr(args_common + args_text)
+  end
+
+
   # Get the gcovr version number as components.
   # Returns [major, minor].
   def get_gcovr_version()
@@ -310,6 +336,24 @@ namespace UTILS_SYM do
   end
 
 
+  # Output the shell result to the console.
+  def print_shell_result(shell_result)
+    puts "Done in %.3f seconds." % shell_result[:time]
+
+    if !(shell_result.nil?) && !(shell_result[:output].nil?) && (shell_result[:output].length > 0)
+      puts shell_result[:output]
+    end
+  end
+
+
+  # Run gcovr with the given arguments.
+  def run_gcovr(args)
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args)
+    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+    print_shell_result(shell_result)
+  end
+
+
   desc "Create gcov code coverage html/xml/json report(s). (Note: Must run 'ceedling gcov' first)."
   task GCOV_SYM do
     # Get the gcov options from project.yml.
@@ -324,13 +368,14 @@ namespace UTILS_SYM do
     gcovr_version_info = get_gcovr_version()
 
     # Build the common gcovr arguments.
-    args = gcovr_args_builder_common(opts)
+    args_common = gcovr_args_builder_common(opts)
 
     if (gcovr_version_info[0] >= 4) && (gcovr_version_info[1] >= 2)
       # gcovr version 4.2 and later supports generating multiple reports with a single call.
+      args = args_common
       args += gcovr_args_builder_cobertura(opts, false)
       args += gcovr_args_builder_sonarqube(opts, false)
-      # Note: In gcovr 4.2, the JSON report is output only if the --output option is specified.
+      # Note: In gcovr 4.2, the JSON report is output only when the --output option is specified.
       # Hopefully we can remove --output after a future gcovr release.
       args += gcovr_args_builder_json(opts, true)
       # As of gcovr version 4.2, the --html argument must appear last.
@@ -340,9 +385,7 @@ namespace UTILS_SYM do
       STDOUT.flush
 
       # Generate the report(s).
-      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args)
-      @ceedling[:tool_executor].exec(command[:line], command[:options])
-      puts "Done."
+      run_gcovr(args)
     else
       # gcovr version 4.1 and earlier supports HTML and Cobertura XML reports.
       # It does not support SonarQube and JSON reports.
@@ -355,9 +398,7 @@ namespace UTILS_SYM do
         STDOUT.flush
 
         # Generate the HTML report.
-        command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args + args_html)
-        @ceedling[:tool_executor].exec(command[:line], command[:options])
-        puts "Done."
+        run_gcovr(args_common + args_html)
       end
 
       if args_cobertura.length > 0
@@ -365,10 +406,14 @@ namespace UTILS_SYM do
         STDOUT.flush
 
         # Generate the Cobertura XML report.
-        command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args + args_cobertura)
-        @ceedling[:tool_executor].exec(command[:line], command[:options])
-        puts "Done."
+        run_gcovr(args_common + args_cobertura)
       end
     end
+
+    # Determine the text report is enabled. Defaults to disabled.
+    if !(opts[:gcov_text_report].nil?) && opts[:gcov_text_report]
+      generate_text_report(opts, args_common)
+    end
+
   end
 end

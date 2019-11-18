@@ -27,7 +27,7 @@ All generated reports will be found in `build/artifacts/gcov`.
 
 ### HTML Reports
 
-Generation of HTML reports may be enabled, disabled or modified
+Generation of HTML reports may be enabled, disabled, or modified
 with the following configuration items.
 
 ```yaml
@@ -71,7 +71,7 @@ with the following configuration items.
 
 ### Cobertura XML Reports
 
-Generation of Cobertura XML reports may be enabled, disabled or modified
+Generation of Cobertura XML reports may be enabled, disabled, or modified
 with the following configuration items.
 
 ```yaml
@@ -90,7 +90,7 @@ with the following configuration items.
 
 ### SonarQube XML Reports
 
-Generation of SonarQube XML reports may be enabled, disabled or modified
+Generation of SonarQube XML reports may be enabled, disabled, or modified
 with the following configuration items.
 
 ```yaml
@@ -105,7 +105,7 @@ with the following configuration items.
 
 ### JSON Reports
 
-Generation of JSON reports may be enabled, disabled or modified
+Generation of JSON reports may be enabled, disabled, or modified
 with the following configuration items.
 
 ```yaml
@@ -120,6 +120,23 @@ with the following configuration items.
 
   # JSON report filename.
   :json_artifact_filename: <output>
+```
+
+### Text Reports
+
+Generation of text reports may be enabled, disabled, or modified
+with the following configuration items. Text reports may be printed to
+the console or output to a file.
+
+```yaml
+:gcov:
+  # Set to 'true' to enable text reports or set to 'false' to disable.
+  # Defaults to disabled.
+  :text_report: [true|false]
+
+  # Text report filename.
+  # The text report is printed to the console when no filename is provided.
+  :text_artifact_filename: <output>
 ```
 
 ### Common Report Options
