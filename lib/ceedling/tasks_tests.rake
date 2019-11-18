@@ -8,7 +8,7 @@ namespace TEST_SYM do
 
   desc "Run all unit tests (also just 'test' works)."
   task :all => [:directories] do
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, TEST_SYM, {:force_run => false})
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS)
   end
 
   desc "Run single test ([*] real test or source file name, no path)."
