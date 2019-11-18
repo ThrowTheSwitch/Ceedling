@@ -84,7 +84,7 @@ class Gcov < Plugin
 
     coverage_sources = sources.clone
     coverage_sources.delete_if { |item| item =~ /#{CMOCK_MOCK_PREFIX}.+#{EXTENSION_SOURCE}$/ }
-    coverage_sources.delete_if { |item| item =~ /#{GCOV_IGNORE_SOURCES.join('|')}#{EXTENSION_SOURCE}$/ }
+    coverage_sources.delete_if { |item| item =~ /#{GCOV_IGNORE_SOURCES.map{|source| '\b' + source.ext(EXTENSION_SOURCE) + '\b'}.join('|')}$/ }
 
     coverage_sources.each do |source|
       basename         = File.basename(source)

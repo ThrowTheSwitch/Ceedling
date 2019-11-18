@@ -12,7 +12,7 @@ GCOV_ARTIFACTS_PATH    = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, GCOV_ROOT_NAME)
 GCOV_ARTIFACTS_FILE    = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageResults.html")
 GCOV_ARTIFACTS_FILE_XML    = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageResults.xml")
 
-GCOV_IGNORE_SOURCES    = %w(unity cmock cexception).freeze
+GCOV_IGNORE_SOURCES    = %w(unity UnityHelper cmock cexception).freeze
 
 GCOV_FILTER_EXCLUDE    = '^vendor.*|^build.*|^test.*|^lib.*'
 
