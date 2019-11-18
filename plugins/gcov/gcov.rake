@@ -262,6 +262,11 @@ namespace UTILS_SYM do
       puts "For now, assumimg you want an HTML report generated."
     end
 
+    if opts[:gcov_html_report_type].nil?
+      puts "In your project.yml, define the following to 'basic' or 'detailed' to refine this feature.\n\n:gcov:\n  :html_report_type: [basic|detailed]\n\n"
+      puts "For now, just creating basic."
+    end
+
     # Determine if the HTML report is enabled. Defaults to enabled.
     html_enabled = opts[:gcov_html_report].nil? || opts[:gcov_html_report]
 
