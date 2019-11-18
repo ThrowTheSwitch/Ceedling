@@ -46,20 +46,34 @@ class Dependencies < Plugin
     return deplib[:name].gsub(/\W*/,'')
   end
 
-  def get_working_path(deplib)
-    return deplib[:working_path] || File.join('dependencies', get_name(deplib))
+  def get_source_path(deplib)
+    return deplib[:source_path] || File.join('dependencies', get_name(deplib))
+  end
+
+  def get_build_path(deplib)
+    return deplib[:build_path] || deplib[:source_path] || File.join('dependencies', get_name(deplib))
+  end
+
+  def get_artifact_path(deplib)
+    return deplib[:artifact_path] || deplib[:source_path] || File.join('dependencies', get_name(deplib))
+  end
+
+  def get_working_paths(deplib)
+    paths = [deplib[:source_path], deplib[:build_path], deplib[:artifact_paths]].compact.uniq 
+    paths = [ File.join('dependencies', get_name(deplib)) ] if (paths.empty?)
+    return paths
   end
 
   def get_static_libraries_for_dependency(deplib)
-    (deplib[:artifacts][:static_libraries] || []).map {|path| File.join(get_working_path(deplib), path)}
+    (deplib[:artifacts][:static_libraries] || []).map {|path| File.join(get_artifact_path(deplib), path)}
   end
 
   def get_dynamic_libraries_for_dependency(deplib)
-    (deplib[:artifacts][:dynamic_libraries] || []).map {|path| File.join(get_working_path(deplib), path)}
+    (deplib[:artifacts][:dynamic_libraries] || []).map {|path| File.join(get_artifact_path(deplib), path)}
   end
 
   def get_include_directories_for_dependency(deplib)
-    (deplib[:artifacts][:includes] || []).map {|path| File.join(get_working_path(deplib), path)}
+    (deplib[:artifacts][:includes] || []).map {|path| File.join(get_artifact_path(deplib), path)}
   end
 
   def set_env_if_required(lib_path)
@@ -115,8 +129,10 @@ class Dependencies < Plugin
 
     # Perform the build
     @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
-    blob[:build].each do |step|
-      @ceedling[:tool_executor].exec( step )
+    Dir.chdir(get_build_path()) do
+      blob[:build].each do |step|
+        @ceedling[:tool_executor].exec( step )
+      end
     end
   end
 
@@ -132,7 +148,9 @@ class Dependencies < Plugin
 
     # Perform the actual Cleaning
     @ceedling[:streaminator].stdout_puts("Cleaning dependency #{blob[:name]}...", Verbosity::NORMAL)
-    FileUtils.rm_rf( get_working_path(blob) ) if File.directory?( get_working_path(blob) )
+    get_working_paths(blob).each do |path|
+      FileUtils.rm_rf(path) if File.directory?(path)
+    end
   end
 
   def deploy_if_required(lib_path)

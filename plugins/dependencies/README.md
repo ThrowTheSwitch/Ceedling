@@ -34,7 +34,9 @@ something like this:
 :dependencies:  
   :libraries:
     - :name: WolfSSL
-      :working_path: third_party/wolfssl 
+      :source_path:   third_party/wolfssl/source 
+      :build_path:    third_party/wolfssl/build 
+      :artifact_path: third_party/wolfssl/install 
       :fetch:
         :method: :zip
         :source: \\shared_drive\third_party_libs\wolfssl\wolfssl-4.2.0.zip
@@ -70,19 +72,25 @@ it easier for us to see the name of each dependency with starting dash.
 The name field is only used to print progress while we're running Ceedling. You may
 call the name of the field whatever you wish.
 
-Working Folder
---------------
+Working Folders
+---------------
 
-The `:working_path` field allows us to specify where the dependencies are stored. 
-By default, each dependency will be built in `dependencies\dep_name` where `dep_name`
+The `:source_path` field allows us to specify where the source code for each of our 
+dependencies is stored. If fetching the dependency from elsewhere, it will be fetched
+to this location. All commands to build this dependency will be executed from 
+this location (override this by specifying a `:build_path`). Finally, the output
+artifacts will be referenced to this location (override this by specifying a `:artifact_path`)
+
+If unspecified, the `:source_path` will be `dependencies\dep_name` where `dep_name`
 is the name specified in `:name` above (with special characters removed). It's best,
-though, if you specify exactly where you want your libraries to live.
+though, if you specify exactly where you want your dependencies to live.
 
-If the dependency is directly included in your project, this is where Ceedling 
-should look for it. If you're doing one of the methods of fetching from another source,
-then this is where Ceedling will be placing the fetched code.
+If the dependency is directly included in your project (you've specified `:none` as the
+`:method` for fetching), then `:source_path` should be where your Ceedling can find the
+source for your dependency in you repo. 
 
-All artifact paths are considered relative to this location.
+All artifacts are relative to the `:artifact_path` (which defaults to be the same as 
+`:source_path`)
 
 Fetching Dependencies
 ---------------------
@@ -93,8 +101,8 @@ couple of fields:
 
 - `:method` -- This is the method that this dependency is fetched.
   - `:none` -- This tells Ceedling that the code is already included in the project.
-  - `:zip` -- This tells Ceedling that we want to unpack a zip file to our working path.
-  - `:git` -- This tells Ceedling that we want to clone a git repo to our working path.
+  - `:zip` -- This tells Ceedling that we want to unpack a zip file to our source path.
+  - `:git` -- This tells Ceedling that we want to clone a git repo to our source path.
 - `:source` -- This is the path or url to fetch code when using the zip or git method.
 - `:revision` -- This is the specific tag or hash that you wish to retrieve.
 
@@ -188,7 +196,7 @@ Here are a number of tasks that are added or modified by this plugin.
 
 ### `ceedling dependencies:clean`
 
-This can be issued in order to completely remove the dependency from its working directory. On the
+This can be issued in order to completely remove the dependency from its source path. On the
 next build, it will be refetched and rebuilt from scratch. This can also apply to a particular
 dependency. For example, by specifying `dependencies:clean:DepName`.
 

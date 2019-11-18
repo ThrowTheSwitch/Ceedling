@@ -4,11 +4,11 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   # Look up the name of this dependency library
   deplib_name = @ceedling[DEPENDENCIES_SYM].get_name(deplib)
 
-  # Make sure the required working directory exists
+  # Make sure the required working directories exists
   # (don't worry about the subdirectories. That's the job of the dep's build tool)
-  deplib_working_path = @ceedling[DEPENDENCIES_SYM].get_working_path(deplib)
-  directory(deplib_working_path)
-  task :directories => [ deplib_working_path ]
+  paths = @ceedling[DEPENDENCIES_SYM].get_working_paths(deplib)
+  paths.each {|path| directory(path) }
+  task :directories => paths
 
   # Add a rule for building the actual libraries from dependency list
   ( @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
