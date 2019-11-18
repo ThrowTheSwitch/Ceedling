@@ -82,9 +82,8 @@ module GcovTestCases
 
         output = `bundle exec ruby -S ceedling gcov:all`
         output = `bundle exec ruby -S ceedling utils:gcov`
-        expect(output).to match(/Creating a detailed html report of gcov results in build\/artifacts\/gcov\/GcovCoverageResults\.html\.\.\./)
+        expect(output).to match(/Creating a gcov HTML report in 'build\/artifacts\/gcov\.\.\.' Done\./)
         expect(File.exists?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
-
       end
     end
   end
