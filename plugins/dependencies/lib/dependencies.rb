@@ -73,7 +73,8 @@ class Dependencies < Plugin
   end
 
   def get_include_directories_for_dependency(deplib)
-    (deplib[:artifacts][:includes] || []).map {|path| File.join(get_artifact_path(deplib), path)}
+    paths = (deplib[:artifacts][:includes] || []).map {|path| File.join(get_artifact_path(deplib), path)}
+    @ceedling[:file_system_utils].collect_paths(paths)
   end
 
   def set_env_if_required(lib_path)
@@ -129,7 +130,7 @@ class Dependencies < Plugin
 
     # Perform the build
     @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
-    Dir.chdir(get_build_path()) do
+    Dir.chdir(get_build_path(blob)) do
       blob[:build].each do |step|
         @ceedling[:tool_executor].exec( step )
       end
@@ -177,6 +178,7 @@ class Dependencies < Plugin
         cfg[:collection_paths_source_and_include] << header
         cfg[:collection_paths_test_support_source_include] << header
         cfg[:collection_paths_test_support_source_include_vendor] << header
+        cfg[:collection_paths_release_toolchain_include] << header
         Dir[ File.join(header, "*#{EXTENSION_HEADER}") ].each do |f|
           cfg[:collection_all_headers] << f
         end
