@@ -324,8 +324,10 @@ namespace UTILS_SYM do
   def get_gcovr_version()
     gcovr_version_number_major = 0
     gcovr_version_number_minor = 0
-    gcovr_version_info = %x|gcovr --version|
-    version_number_match_data = gcovr_version_info.match(/gcovr ([0-9]+)\.([0-9]+)/)
+
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], "--version")
+    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+    version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)
 
     if !(version_number_match_data.nil?) && !(version_number_match_data[1].nil?) && !(version_number_match_data[2].nil?)
         gcovr_version_number_major = version_number_match_data[1].to_i
@@ -410,7 +412,7 @@ namespace UTILS_SYM do
       end
     end
 
-    # Determine the text report is enabled. Defaults to disabled.
+    # Determine if the text report is enabled. Defaults to disabled.
     if !(opts[:gcov_text_report].nil?) && opts[:gcov_text_report]
       generate_text_report(opts, args_common)
     end
