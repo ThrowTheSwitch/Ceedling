@@ -7,12 +7,13 @@ Plugin for integrating GNU GCov code coverage tool into Ceedling projects.
 Currently only designed for the gcov command (like LCOV for example). In the
 future we could configure this to work with other code coverage tools.
 
-This plugin currently uses [`gcovr`](https://www.gcovr.com/) to generate HTML and/or XML reports as a
-utility. The normal gcov plugin _must_ be run first for this report to generate.
+This plugin currently uses [`gcovr`](https://www.gcovr.com/) as a utility to
+generate HTML, XML, JSON, or Text reports. The normal gcov plugin _must_ be run
+first for these reports to generate.
 
 ## Installation
 
-Gcovr can be installed via pip like so:
+gcovr can be installed via pip like so:
 
 ```sh
 pip install gcovr
@@ -158,7 +159,7 @@ a superset of ALL the folders you want, and then use the include or exclude opti
 patterns of files to pay attention to or ignore. It's not ideal, but it works.
 
 Finally, there are a number of settings which can be specified to adjust the
-default behaviors of gcov:
+default behaviors of gcovr:
 
 ```yaml
 :gcov:

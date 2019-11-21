@@ -199,9 +199,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
-    cobertura_xml_enabled = opts[:gcov_xml_report] || (is_utility_enabled(opts, UTILITY_NAME_GCOVR) && is_report_type_enabled(opts, REPORT_TYPE_COBERTURA))
-
-    if cobertura_xml_enabled
+    if opts[:gcov_xml_report] || is_report_type_enabled(opts, REPORT_TYPE_COBERTURA)
       # Determine the Cobertura XML report file name.
       artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
       if !(opts[:gcov_cobertura_artifact_filename].nil?)
@@ -223,7 +221,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr SonarQube XML report is enabled. Defaults to disabled.
-    if is_utility_enabled(opts, UTILITY_NAME_GCOVR) && is_report_type_enabled(opts, REPORT_TYPE_SONARQUBE)
+    if is_report_type_enabled(opts, REPORT_TYPE_SONARQUBE)
       # Determine the SonarQube XML report file name.
       artifacts_file_sonarqube = GCOV_ARTIFACTS_FILE_SONARQUBE
       if !(opts[:gcov_sonarqube_artifact_filename].nil?)
@@ -242,7 +240,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr JSON report is enabled. Defaults to disabled.
-    if is_utility_enabled(opts, UTILITY_NAME_GCOVR) && is_report_type_enabled(opts, REPORT_TYPE_JSON)
+    if is_report_type_enabled(opts, REPORT_TYPE_JSON)
       # Determine the JSON report file name.
       artifacts_file_json = GCOV_ARTIFACTS_FILE_JSON
       if !(opts[:gcov_json_artifact_filename].nil?)
@@ -262,8 +260,10 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr HTML report is enabled. Defaults to enabled.
-    html_enabled = ((opts[:gcov_html_report].nil? && opts[:gcov_report_types].nil?) || opts[:gcov_html_report]) ||
-        (is_utility_enabled(opts, UTILITY_NAME_GCOVR) && (is_report_type_enabled(opts, REPORT_TYPE_HTML_BASIC) || is_report_type_enabled(opts, REPORT_TYPE_HTML_DETAILED)))
+    html_enabled = (opts[:gcov_html_report].nil? && opts[:gcov_report_types].nil?) ||
+                   opts[:gcov_html_report] ||
+                   is_report_type_enabled(opts, REPORT_TYPE_HTML_BASIC) ||
+                   is_report_type_enabled(opts, REPORT_TYPE_HTML_DETAILED)
 
     if html_enabled
       # Determine the HTML report file name.
@@ -312,7 +312,7 @@ namespace UTILS_SYM do
   end
 
 
-  # Returns true if the given utility is enabled, otherwise returns false.
+  # Returns true is the given utility is enabled, otherwise returns false.
   def is_utility_enabled(opts, utility_name)
     return !(opts.nil?) && !(opts[:gcov_utilities].nil?) && (opts[:gcov_utilities].map(&:upcase).include? utility_name.upcase)
   end
@@ -409,8 +409,8 @@ namespace UTILS_SYM do
       end
     end
 
-    # Determine if the text report is enabled. Defaults to disabled.
-    if is_utility_enabled(opts, UTILITY_NAME_GCOVR) && is_report_type_enabled(opts, REPORT_TYPE_TEXT)
+    # Determine if the gcovr text report is enabled. Defaults to disabled.
+    if is_report_type_enabled(opts, REPORT_TYPE_TEXT)
       make_gcovr_text_report(opts, args_common)
     end
   end
@@ -428,14 +428,14 @@ namespace UTILS_SYM do
 
     # Remove unsupported reporting utilities.
     if !(opts[:gcov_utilities].nil?)
-      opts[:gcov_utilities].reject! { |item| !([UTILITY_NAME_GCOVR].include? item) }
+      opts[:gcov_utilities].reject! { |item| !([UTILITY_NAME_GCOVR].map(&:upcase).include? item.upcase) }
     end
 
     # Default to gcovr when no reporting utilities are specified.
     if opts[:gcov_utilities].nil? || opts[:gcov_utilities].empty?
       opts[:gcov_utilities] = [UTILITY_NAME_GCOVR]
     end
-    
+
     # Default to HTML basic report when no report types are defined.
     if opts[:gcov_report_types].nil? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
       opts[:gcov_report_types] = [REPORT_TYPE_HTML_BASIC]
