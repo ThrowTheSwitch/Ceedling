@@ -23,17 +23,35 @@ pip install gcovr
 The gcov plugin supports configuration options via your `project.yml` provided
 by Ceedling.
 
-All generated reports will be found in `build/artifacts/gcov`.
+### Report Types
 
-### HTML Reports
+Various report types are available and may be enabled with the following
+configuration item. See the specific report type sections in this README
+for additional options and information. All generated reports will be found in `build/artifacts/gcov`.
 
-Generation of HTML reports may be enabled, disabled, or modified
-with the following configuration items.
+```yaml
+:gcov:
+  # Specify the reports to generate.
+  # When both GcovrHtmlBasic and GcovrHtmlDetailed are specified, only GcovrHtmlDetailed will be created.
+  # Defaults to GcovrHtmlBasic.
+  :report_types:
+    - GcovrHtmlBasic    # Make a gcovr HTML summary report. (gcovr --html)
+    - GcovrHtmlDetailed # Make a gcovr HTML report with line by line coverage of each source file. (gcovr --html-details)
+    - GcovrText         # Make a gcovr Text report, which may be output to the console or a file.
+    - Cobertura         # Make a Cobertura XML report. (gcovr --xml)
+    - SonarQube         # Make a SonarQube XML report. (gcovr --sonarqube)
+    - JSON              # Make a JSON report. (gcovr --json)
+```
+
+### Gcovr HTML Reports
+
+Generation of Gcovr HTML reports may be modified with the following configuration items.
 
 ```yaml
 :gcov:
   # Set to 'true' to enable HTML reports or set to 'false' to disable.
   # Defaults to enabled. (gcovr --html)
+  # Deprecated - Use report_types.
   :html_report: [true|false]
 
   # HTML report filename.
@@ -71,49 +89,41 @@ with the following configuration items.
 
 ### Cobertura XML Reports
 
-Generation of Cobertura XML reports may be enabled, disabled, or modified
-with the following configuration items.
+Generation of Cobertura XML reports may be modified with the following configuration items.
 
 ```yaml
 :gcov:
   # Set to 'true' to enable Cobertura XML reports or set to 'false' to disable.
   # Defaults to disabled. (gcovr --xml)
+  # Deprecated - Use report_types.
   :xml_report: [true|false]
 
   # Set to 'true' to pretty-print the Cobertura XML report, otherwise set to 'false'.
   # Defaults to disabled. (gcovr --xml-pretty)
   :xml_pretty: [true|false]
+  :cobertura_pretty: [true|false]
 
   # Cobertura XML report filename.
   :xml_artifact_filename: <output>
+  :cobertura_artifact_filename: <output>
 ```
 
 ### SonarQube XML Reports
 
-Generation of SonarQube XML reports may be enabled, disabled, or modified
-with the following configuration items.
+Generation of SonarQube XML reports may be modified with the following configuration items.
 
 ```yaml
 :gcov:
-  # Set to 'true' to enable SonarQube XML reports or set to 'false' to disable.
-  # Defaults to disabled. (gcovr --sonarqube)
-  :sonarqube_report: [true|false]
-
   # SonarQube XML report filename.
   :sonarqube_artifact_filename: <output>
 ```
 
 ### JSON Reports
 
-Generation of JSON reports may be enabled, disabled, or modified
-with the following configuration items.
+Generation of JSON reports may be modified with the following configuration items.
 
 ```yaml
 :gcov:
-  # Set to 'true' to enable JSON reports or set to 'false' to disable.
-  # Defaults to disabled. (gcovr --json)
-  :json_report: [true|false]
-
   # Set to 'true' to pretty-print the JSON report, otherwise set 'false'.
   # Defaults to disabled. (gcovr --json-pretty)
   :json_pretty: [true|false]
@@ -124,16 +134,11 @@ with the following configuration items.
 
 ### Text Reports
 
-Generation of text reports may be enabled, disabled, or modified
-with the following configuration items. Text reports may be printed to
-the console or output to a file.
+Generation of text reports may be modified with the following configuration items.
+Text reports may be printed to the console or output to a file.
 
 ```yaml
 :gcov:
-  # Set to 'true' to enable text reports or set to 'false' to disable.
-  # Defaults to disabled.
-  :text_report: [true|false]
-
   # Text report filename.
   # The text report is printed to the console when no filename is provided.
   :text_artifact_filename: <output>
@@ -197,7 +202,7 @@ default behaviors of gcov:
   :report_include: "^src"
 
   # Exclude source files that match this filter. (gcovr --exclude).
-  :report_exclude: "^build|^vendor|^test|^support"
+  :report_exclude: "^vendor.*|^build.*|^test.*|^lib.*"
 
   # Keep only gcov data files that match this filter. (gcovr --gcov-filter).
   :gcov_filter: <gcov_filter>
