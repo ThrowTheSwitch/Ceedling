@@ -104,17 +104,34 @@ class Dependencies < Plugin
     return if (blob[:fetch].nil?)
     return if (blob[:fetch][:method].nil?)
 
-    case blob[:fetch][:method]
-    when :none
-      return
-    when :zip
-      @ceedling[:streaminator].stdout_puts("Fetching dependency #{blob[:name]}...", Verbosity::NORMAL)
-      raise "TODO: Zip support not yet implemented in dependency plugin"
-    when :git 
-      @ceedling[:streaminator].stdout_puts("Fetching dependency #{blob[:name]}...", Verbosity::NORMAL)
-      raise "TODO: Git support not yet implemented in dependency plugin"
-    else
-      raise "Unknown fetch method '#{blob[:fetch][:method].to_s}' for dependency '#{blob[:name]}'"
+    steps = case blob[:fetch][:method]
+            when :none
+              return
+            when :zip
+              [ "gzip -d #{blob[:fetch][:source]}" ]
+            when :git 
+              branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
+              branch = ("-b " + branch) unless branch.empty?
+              retval = [ "git clone #{branch} --depth 1 #{blob[:fetch][:source]} ." ]
+              retval << "git checkout #{blob[:fetch][:hash]}" unless blob[:fetch][:hash].nil?
+              retval
+            when :svn 
+              revision = blob[:fetch][:revision] || ''
+              revision = ("--revision " + branch) unless branch.empty?
+              retval = [ "svn checkout #{revision} #{blob[:fetch][:source]} ." ]
+              retval
+            when :custom
+              blob[:fetch][:executable]
+            else
+              raise "Unknown fetch method '#{blob[:fetch][:method].to_s}' for dependency '#{blob[:name]}'"
+            end
+
+    # Perform the actual fetching
+    @ceedling[:streaminator].stdout_puts("Fetching dependency #{blob[:name]}...", Verbosity::NORMAL)
+    Dir.chdir(get_source_path(blob)) do
+      steps.each do |step|
+        @ceedling[:tool_executor].exec( step )
+      end
     end
   end
 

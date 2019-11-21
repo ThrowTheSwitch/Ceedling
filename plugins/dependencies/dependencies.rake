@@ -48,6 +48,13 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
         @ceedling[DEPENDENCIES_SYM].clean_if_required(deplib_name)
       end
     end
+
+    namespace :fetch do
+      # Add task to directly clobber this dependency
+      task(deplib_name) do 
+        @ceedling[DEPENDENCIES_SYM].fetch_if_required(deplib_name)
+      end
+    end
   end
 
   # Finally, add the static libraries to our RELEASE build dependency list
@@ -70,6 +77,9 @@ namespace DEPENDENCIES_SYM do
   
   desc "Clean all dependencies."
   task :clean => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:clean:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  
+  desc "Fetch all dependencies."
+  task :fetch => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:fetch:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 end
 
 namespace :files do

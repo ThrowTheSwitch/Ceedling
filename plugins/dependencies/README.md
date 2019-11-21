@@ -53,7 +53,7 @@ something like this:
         :dynamic_libraries:
           - lib/wolfssl.so
         :includes:
-          - include/
+          - include/**
 ```
 
 Let's take a deeper look at each of these features.
@@ -103,8 +103,12 @@ couple of fields:
   - `:none` -- This tells Ceedling that the code is already included in the project.
   - `:zip` -- This tells Ceedling that we want to unpack a zip file to our source path.
   - `:git` -- This tells Ceedling that we want to clone a git repo to our source path.
+  - `:svn` -- This tells Ceedling that we want to checkout a subversion repo to our source path.
+  - `:custom` -- This tells Ceedling that we want to use a custom command or commands to fetch the code.
 - `:source` -- This is the path or url to fetch code when using the zip or git method.
-- `:revision` -- This is the specific tag or hash that you wish to retrieve.
+- `:tag`/`:branch` -- This is the specific tag or branch that you wish to retrieve (git only. optional).
+- `:hash` -- This is the specific SHA1 hash you want to fetch (git only. optional). 
+- `:revision` -- This is the specific revision you want to fetch (svn only. optional).
 
 
 Environment Variables
@@ -119,8 +123,8 @@ Environment variables may be specified in three ways. Let's look at one of each:
 ```
   :environment:
     - ARCHITECTURE=ARM9
-    - CFLAGS+=" -DADD_AWESOMENESS"
-    - CFLAGS-="-DWASTE"
+    - CFLAGS+=-DADD_AWESOMENESS
+    - CFLAGS-=-DWASTE
 ```
 
 In the first example, you see the most straightforward method. The environment variable 
@@ -199,6 +203,12 @@ Here are a number of tasks that are added or modified by this plugin.
 This can be issued in order to completely remove the dependency from its source path. On the
 next build, it will be refetched and rebuilt from scratch. This can also apply to a particular
 dependency. For example, by specifying `dependencies:clean:DepName`.
+
+### `ceedling dependencies:fetch`
+
+This can be issued in order to fetch each dependency from its origin. This will have no effect on
+dependencies that don't have fetch instructions specified. This can also apply to a particular
+dependency. For example, by specifying `dependencies:fetch:DepName`.
 
 ### `ceedling dependencies:make`
 

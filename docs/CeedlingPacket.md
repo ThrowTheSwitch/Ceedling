@@ -1340,7 +1340,9 @@ configuration. In this section, you can optionally have the following subsection
 * `system`:
 
   These libraries are assumed to be in the tool path somewhere and shouldn't need to be
-  specified. The libraries added here will be injected into releases and tests.
+  specified. The libraries added here will be injected into releases and tests. For example
+  if you specify `-lm` you can include the math library. The `-l` portion is only necessary
+  if the `:flag` prefix below doesn't specify it already for you other libraries.
 
 * `flag`:
 
