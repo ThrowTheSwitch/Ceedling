@@ -154,6 +154,15 @@ if PROJECT_USE_DEEP_DEPENDENCIES
 end
 
 namespace UTILS_SYM do
+  UTILITY_NAME_GCOVR = "gcovr"
+
+  REPORT_TYPE_HTML_BASIC = "HtmlBasic"
+  REPORT_TYPE_HTML_DETAILED = "HtmlDetailed"
+  REPORT_TYPE_TEXT = "Text"
+  REPORT_TYPE_COBERTURA = "Cobertura"
+  REPORT_TYPE_SONARQUBE = "SonarQube"
+  REPORT_TYPE_JSON = "JSON"
+
   # Build the gcovr report generation common arguments.
   def gcovr_args_builder_common(opts)
     args = ""
@@ -190,7 +199,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
-    cobertura_xml_enabled = opts[:gcov_xml_report] || is_report_type_enabled(opts, "Cobertura")
+    cobertura_xml_enabled = opts[:gcov_xml_report] || (is_utility_enabled(opts, UTILITY_NAME_GCOVR) && is_report_type_enabled(opts, REPORT_TYPE_COBERTURA))
 
     if cobertura_xml_enabled
       # Determine the Cobertura XML report file name.
@@ -213,8 +222,8 @@ namespace UTILS_SYM do
   def gcovr_args_builder_sonarqube(opts, use_output_option=false)
     args = ""
 
-    # Determine if the SonarQube XML report is enabled. Defaults to disabled.
-    if is_report_type_enabled(opts, "SonarQube")
+    # Determine if the gcovr SonarQube XML report is enabled. Defaults to disabled.
+    if is_utility_enabled(opts, UTILITY_NAME_GCOVR) && is_report_type_enabled(opts, REPORT_TYPE_SONARQUBE)
       # Determine the SonarQube XML report file name.
       artifacts_file_sonarqube = GCOV_ARTIFACTS_FILE_SONARQUBE
       if !(opts[:gcov_sonarqube_artifact_filename].nil?)
@@ -232,8 +241,8 @@ namespace UTILS_SYM do
   def gcovr_args_builder_json(opts, use_output_option=false)
     args = ""
 
-    # Determine if the JSON report is enabled. Defaults to disabled.
-    if is_report_type_enabled(opts, "JSON")
+    # Determine if the gcovr JSON report is enabled. Defaults to disabled.
+    if is_utility_enabled(opts, UTILITY_NAME_GCOVR) && is_report_type_enabled(opts, REPORT_TYPE_JSON)
       # Determine the JSON report file name.
       artifacts_file_json = GCOV_ARTIFACTS_FILE_JSON
       if !(opts[:gcov_json_artifact_filename].nil?)
@@ -253,10 +262,8 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr HTML report is enabled. Defaults to enabled.
-    html_enabled = (opts[:gcov_html_report].nil? && opts[:gcov_report_types].nil?) ||
-                   opts[:gcov_html_report] ||
-                   is_report_type_enabled(opts, "GcovrHtml") ||
-                   is_report_type_enabled(opts, "GcovrHtmlDetailed")
+    html_enabled = ((opts[:gcov_html_report].nil? && opts[:gcov_report_types].nil?) || opts[:gcov_html_report]) ||
+        (is_utility_enabled(opts, UTILITY_NAME_GCOVR) && (is_report_type_enabled(opts, REPORT_TYPE_HTML_BASIC) || is_report_type_enabled(opts, REPORT_TYPE_HTML_DETAILED)))
 
     if html_enabled
       # Determine the HTML report file name.
@@ -265,7 +272,9 @@ namespace UTILS_SYM do
         artifacts_file_html = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_html_artifact_filename])
       end
 
-      args += "--html-details " if (!(opts[:gcov_html_report_type].nil?) && (opts[:gcov_html_report_type] == 'detailed')) || is_report_type_enabled(opts, "GcovrHtmlDetailed")
+      is_html_report_type_detailed = (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
+
+      args += "--html-details " if is_html_report_type_detailed || is_report_type_enabled(opts, REPORT_TYPE_HTML_DETAILED)
       args += "--html-title \"#{opts[:gcov_html_title]}\" " unless opts[:gcov_html_title].nil?
       args += "--html-absolute-paths " if !(opts[:gcov_html_absolute_paths].nil?) && opts[:gcov_html_absolute_paths]
       args += "--html-encoding \"#{opts[:gcov_html_encoding]}\" " unless opts[:gcov_html_encoding].nil?
@@ -282,8 +291,8 @@ namespace UTILS_SYM do
   end
 
 
-  # Generate a text report.
-  def generate_text_report(opts, args_common)
+  # Generate a gcovr text report.
+  def make_gcovr_text_report(opts, args_common)
     args_text = ""
     message_text = "Creating a gcov text report"
 
@@ -303,9 +312,15 @@ namespace UTILS_SYM do
   end
 
 
+  # Returns true if the given utility is enabled, otherwise returns false.
+  def is_utility_enabled(opts, utility_name)
+    return !(opts.nil?) && !(opts[:gcov_utilities].nil?) && (opts[:gcov_utilities].map(&:upcase).include? utility_name.upcase)
+  end
+
+
   # Returns true if the given report type is enabled, otherwise returns false.
   def is_report_type_enabled(opts, report_type)
-    return !(opts.nil?) && !(opts[:gcov_report_types].nil?) && (opts[:gcov_report_types].include? report_type)
+    return !(opts.nil?) && !(opts[:gcov_report_types].nil?) && (opts[:gcov_report_types].map(&:upcase).include? report_type.upcase)
   end
 
 
@@ -346,31 +361,8 @@ namespace UTILS_SYM do
   end
 
 
-  desc "Create gcov code coverage html/xml/json report(s). (Note: Must run 'ceedling gcov' first)."
-  task GCOV_SYM do
-    # Get the gcov options from project.yml.
-    opts = @ceedling[:configurator].project_config_hash
-
-    # Create the artifacts output directory.
-    if !File.directory? GCOV_ARTIFACTS_PATH
-      FileUtils.mkdir_p GCOV_ARTIFACTS_PATH
-    end
-
-    if opts[:gcov_report_types].nil?
-      puts "In your project.yml, define the following to specify which reports to generate."
-      puts "For now, creating a GcovrHtmlBasic report."
-      puts ""
-      puts ":gcov:"
-      puts "  :report_types:"
-      puts "    - GcovrHtmlBasic"
-      puts "    - GcovrHtmlDetailed"
-      puts "    - GcovrText"
-      puts "    - Cobertura"
-      puts "    - SonarQube"
-      puts "    - JSON"
-      puts ""
-    end
-
+  # Generate the gcovr report(s) specified in the options.
+  def make_gcovr_reports(opts)
     # Get the gcovr version number.
     gcovr_version_info = get_gcovr_version()
 
@@ -417,9 +409,54 @@ namespace UTILS_SYM do
       end
     end
 
-    # Determine if the gcovr text report is enabled. Defaults to disabled.
-    if is_report_type_enabled(opts, "GcovrText")
-      generate_text_report(opts, args_common)
+    # Determine if the text report is enabled. Defaults to disabled.
+    if is_utility_enabled(opts, UTILITY_NAME_GCOVR) && is_report_type_enabled(opts, REPORT_TYPE_TEXT)
+      make_gcovr_text_report(opts, args_common)
+    end
+  end
+
+
+  desc "Create gcov code coverage html/xml/json/text report(s). (Note: Must run 'ceedling gcov' first)."
+  task GCOV_SYM do
+    # Get the gcov options from project.yml.
+    opts = @ceedling[:configurator].project_config_hash
+
+    # Create the artifacts output directory.
+    if !File.directory? GCOV_ARTIFACTS_PATH
+      FileUtils.mkdir_p GCOV_ARTIFACTS_PATH
+    end
+
+    # Remove unsupported reporting utilities.
+    if !(opts[:gcov_utilities].nil?)
+      opts[:gcov_utilities].reject! { |item| !([UTILITY_NAME_GCOVR].include? item) }
+    end
+
+    # Default to gcovr when no reporting utilities are specified.
+    if opts[:gcov_utilities].nil? || opts[:gcov_utilities].empty?
+      opts[:gcov_utilities] = [UTILITY_NAME_GCOVR]
+    end
+    
+    # Default to HTML basic report when no report types are defined.
+    if opts[:gcov_report_types].nil? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
+      opts[:gcov_report_types] = [REPORT_TYPE_HTML_BASIC]
+
+      puts "In your project.yml, define one or more of the"
+      puts "following to specify which reports to generate."
+      puts "For now, creating only an #{REPORT_TYPE_HTML_BASIC} report."
+      puts ""
+      puts ":gcov:"
+      puts "  :report_types:"
+      puts "    - #{REPORT_TYPE_HTML_BASIC}"
+      puts "    - #{REPORT_TYPE_HTML_DETAILED}"
+      puts "    - #{REPORT_TYPE_TEXT}"
+      puts "    - #{REPORT_TYPE_COBERTURA}"
+      puts "    - #{REPORT_TYPE_SONARQUBE}"
+      puts "    - #{REPORT_TYPE_JSON}"
+      puts ""
+    end
+
+    if is_utility_enabled(opts, UTILITY_NAME_GCOVR)
+      make_gcovr_reports(opts)
     end
 
   end

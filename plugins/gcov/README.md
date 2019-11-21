@@ -32,15 +32,14 @@ for additional options and information. All generated reports will be found in `
 ```yaml
 :gcov:
   # Specify the reports to generate.
-  # When both GcovrHtmlBasic and GcovrHtmlDetailed are specified, only GcovrHtmlDetailed will be created.
-  # Defaults to GcovrHtmlBasic.
+  # Defaults to HtmlBasic.
   :report_types:
-    - GcovrHtmlBasic    # Make a gcovr HTML summary report. (gcovr --html)
-    - GcovrHtmlDetailed # Make a gcovr HTML report with line by line coverage of each source file. (gcovr --html-details)
-    - GcovrText         # Make a gcovr Text report, which may be output to the console or a file.
-    - Cobertura         # Make a Cobertura XML report. (gcovr --xml)
-    - SonarQube         # Make a SonarQube XML report. (gcovr --sonarqube)
-    - JSON              # Make a JSON report. (gcovr --json)
+    - HtmlBasic     # Make an HTML summary report. (gcovr --html)
+    - HtmlDetailed  # Make an HTML report with line by line coverage of each source file. (gcovr --html-details)
+    - Text          # Make a Text report, which may be output to the console or a file.
+    - Cobertura     # Make a Cobertura XML report. (gcovr --xml)
+    - SonarQube     # Make a SonarQube XML report. (gcovr --sonarqube)
+    - JSON          # Make a JSON report. (gcovr --json)
 ```
 
 ### Gcovr HTML Reports
