@@ -199,7 +199,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
-    if opts[:gcov_xml_report] || is_report_type_enabled(opts, REPORT_TYPE_COBERTURA)
+    if opts[:gcov_xml_report] || is_report_enabled(opts, REPORT_TYPE_COBERTURA)
       # Determine the Cobertura XML report file name.
       artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
       if !(opts[:gcov_cobertura_artifact_filename].nil?)
@@ -221,7 +221,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr SonarQube XML report is enabled. Defaults to disabled.
-    if is_report_type_enabled(opts, REPORT_TYPE_SONARQUBE)
+    if is_report_enabled(opts, REPORT_TYPE_SONARQUBE)
       # Determine the SonarQube XML report file name.
       artifacts_file_sonarqube = GCOV_ARTIFACTS_FILE_SONARQUBE
       if !(opts[:gcov_sonarqube_artifact_filename].nil?)
@@ -240,7 +240,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr JSON report is enabled. Defaults to disabled.
-    if is_report_type_enabled(opts, REPORT_TYPE_JSON)
+    if is_report_enabled(opts, REPORT_TYPE_JSON)
       # Determine the JSON report file name.
       artifacts_file_json = GCOV_ARTIFACTS_FILE_JSON
       if !(opts[:gcov_json_artifact_filename].nil?)
@@ -260,10 +260,10 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr HTML report is enabled. Defaults to enabled.
-    html_enabled = (opts[:gcov_html_report].nil? && opts[:gcov_report_types].nil?) ||
+    html_enabled = (opts[:gcov_html_report].nil? && opts[:gcov_reports].nil?) ||
                    opts[:gcov_html_report] ||
-                   is_report_type_enabled(opts, REPORT_TYPE_HTML_BASIC) ||
-                   is_report_type_enabled(opts, REPORT_TYPE_HTML_DETAILED)
+                   is_report_enabled(opts, REPORT_TYPE_HTML_BASIC) ||
+                   is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED)
 
     if html_enabled
       # Determine the HTML report file name.
@@ -274,7 +274,7 @@ namespace UTILS_SYM do
 
       is_html_report_type_detailed = (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
 
-      args += "--html-details " if is_html_report_type_detailed || is_report_type_enabled(opts, REPORT_TYPE_HTML_DETAILED)
+      args += "--html-details " if is_html_report_type_detailed || is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED)
       args += "--html-title \"#{opts[:gcov_html_title]}\" " unless opts[:gcov_html_title].nil?
       args += "--html-absolute-paths " if !(opts[:gcov_html_absolute_paths].nil?) && opts[:gcov_html_absolute_paths]
       args += "--html-encoding \"#{opts[:gcov_html_encoding]}\" " unless opts[:gcov_html_encoding].nil?
@@ -319,8 +319,8 @@ namespace UTILS_SYM do
 
 
   # Returns true if the given report type is enabled, otherwise returns false.
-  def is_report_type_enabled(opts, report_type)
-    return !(opts.nil?) && !(opts[:gcov_report_types].nil?) && (opts[:gcov_report_types].map(&:upcase).include? report_type.upcase)
+  def is_report_enabled(opts, report_type)
+    return !(opts.nil?) && !(opts[:gcov_reports].nil?) && (opts[:gcov_reports].map(&:upcase).include? report_type.upcase)
   end
 
 
@@ -410,7 +410,7 @@ namespace UTILS_SYM do
     end
 
     # Determine if the gcovr text report is enabled. Defaults to disabled.
-    if is_report_type_enabled(opts, REPORT_TYPE_TEXT)
+    if is_report_enabled(opts, REPORT_TYPE_TEXT)
       make_gcovr_text_report(opts, args_common)
     end
   end
@@ -437,15 +437,15 @@ namespace UTILS_SYM do
     end
 
     # Default to HTML basic report when no report types are defined.
-    if opts[:gcov_report_types].nil? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
-      opts[:gcov_report_types] = [REPORT_TYPE_HTML_BASIC]
+    if opts[:gcov_reports].nil? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
+      opts[:gcov_reports] = [REPORT_TYPE_HTML_BASIC]
 
       puts "In your project.yml, define one or more of the"
       puts "following to specify which reports to generate."
       puts "For now, creating only an #{REPORT_TYPE_HTML_BASIC} report."
       puts ""
       puts ":gcov:"
-      puts "  :report_types:"
+      puts "  :reports:"
       puts "    - #{REPORT_TYPE_HTML_BASIC}"
       puts "    - #{REPORT_TYPE_HTML_DETAILED}"
       puts "    - #{REPORT_TYPE_TEXT}"
