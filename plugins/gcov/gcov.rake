@@ -163,31 +163,42 @@ namespace UTILS_SYM do
   REPORT_TYPE_SONARQUBE = "SonarQube"
   REPORT_TYPE_JSON = "JSON"
 
+  GCOVR_SETTING_PREFIX = "gcov_gcovr"
+
+
+  # Get the gcovr options from the global options.
+  def get_gcovr_opts(opts)
+    return opts[GCOVR_SETTING_PREFIX.to_sym]
+  end
+
+
   # Build the gcovr report generation common arguments.
   def gcovr_args_builder_common(opts)
-    args = ""
-    args += "--root \"#{opts[:gcov_report_root] || '.'}\" "
-    args += "--config \"#{opts[:gcov_config_file]}\" " unless opts[:gcov_config_file].nil?
-    args += "--filter \"#{opts[:gcov_report_include]}\" " unless opts[:gcov_report_include].nil?
-    args += "--exclude \"#{opts[:gcov_report_exclude] || GCOV_FILTER_EXCLUDE}\" "
-    args += "--gcov-filter \"#{opts[:gcov_gcov_filter]}\" " unless opts[:gcov_gcov_filter].nil?
-    args += "--gcov-exclude \"#{opts[:gcov_gcov_exclude]}\" " unless opts[:gcov_gcov_exclude].nil?
-    args += "--exclude-directories \"#{opts[:gcov_exclude_directories]}\" " unless opts[:gcov_exclude_directories].nil?
-    args += "--branches " if opts[:gcov_branches].nil? || opts[:gcov_branches] # Defaults to enabled.
-    args += "--sort-uncovered " if opts[:gcov_sort_uncovered]
-    args += "--sort-percentage " if opts[:gcov_sort_percentage].nil? || opts[:gcov_sort_percentage] # Defaults to enabled.
-    args += "--print-summary " if opts[:gcov_print_summary]
-    args += "--gcov-executable \"#{opts[:gcov_gcov_executable]}\" " unless opts[:gcov_gcov_executable].nil?
-    args += "--exclude-unreachable-branches " if opts[:gcov_exclude_unreachable_branches]
-    args += "--exclude-throw-branches " if opts[:gcov_exclude_throw_branches]
-    args += "--use-gcov-files " if opts[:gcov_use_gcov_files]
-    args += "--gcov-ignore-parse-errors " if opts[:gcov_gcov_ignore_parse_errors]
-    args += "--keep " if opts[:gcov_keep]
-    args += "--delete " if opts[:gcov_delete]
-    args += "-j #{opts[:gcov_num_parallel_threads]} " if !(opts[:gcov_num_parallel_threads].nil?) && (opts[:gcov_num_parallel_threads].is_a? Integer)
+    gcovr_opts = get_gcovr_opts(opts)
 
-    [:gcov_fail_under_line, :gcov_fail_under_branch, :gcov_source_encoding, :gcov_object_directory].each do |opt|
-      args += "--#{opt.to_s.gsub('_','-').sub(/:?gcov-/,'')} #{opts[opt]} " unless opts[opt].nil?
+    args = ""
+    args += "--root \"#{gcovr_opts[:report_root] || '.'}\" "
+    args += "--config \"#{gcovr_opts[:config_file]}\" " unless gcovr_opts[:config_file].nil?
+    args += "--filter \"#{gcovr_opts[:report_include]}\" " unless gcovr_opts[:report_include].nil?
+    args += "--exclude \"#{gcovr_opts[:report_exclude] || GCOV_FILTER_EXCLUDE}\" "
+    args += "--gcov-filter \"#{gcovr_opts[:gcov_filter]}\" " unless gcovr_opts[:gcov_filter].nil?
+    args += "--gcov-exclude \"#{gcovr_opts[:gcov_exclude]}\" " unless gcovr_opts[:gcov_exclude].nil?
+    args += "--exclude-directories \"#{gcovr_opts[:exclude_directories]}\" " unless gcovr_opts[:exclude_directories].nil?
+    args += "--branches " if gcovr_opts[:branches].nil? || gcovr_opts[:branches] # Defaults to enabled.
+    args += "--sort-uncovered " if gcovr_opts[:sort_uncovered]
+    args += "--sort-percentage " if gcovr_opts[:sort_percentage].nil? || gcovr_opts[:sort_percentage] # Defaults to enabled.
+    args += "--print-summary " if gcovr_opts[:print_summary]
+    args += "--gcov-executable \"#{gcovr_opts[:gcov_executable]}\" " unless gcovr_opts[:gcov_executable].nil?
+    args += "--exclude-unreachable-branches " if gcovr_opts[:exclude_unreachable_branches]
+    args += "--exclude-throw-branches " if gcovr_opts[:exclude_throw_branches]
+    args += "--use-gcov-files " if gcovr_opts[:use_gcov_files]
+    args += "--gcov-ignore-parse-errors " if gcovr_opts[:gcov_ignore_parse_errors]
+    args += "--keep " if gcovr_opts[:keep]
+    args += "--delete " if gcovr_opts[:delete]
+    args += "-j #{gcovr_opts[:num_parallel_threads]} " if !(gcovr_opts[:num_parallel_threads].nil?) && (gcovr_opts[:num_parallel_threads].is_a? Integer)
+
+    [:fail_under_line, :fail_under_branch, :source_encoding, :object_directory].each do |opt|
+      args += "--#{opt.to_s.gsub('_','-')} #{gcovr_opts[opt]} " unless gcovr_opts[opt].nil?
     end
 
     return args
@@ -196,19 +207,20 @@ namespace UTILS_SYM do
 
   # Build the gcovr Cobertura XML report generation arguments.
   def gcovr_args_builder_cobertura(opts, use_output_option=false)
+    gcovr_opts = get_gcovr_opts(opts)
     args = ""
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
-    if opts[:gcov_xml_report] || is_report_enabled(opts, REPORT_TYPE_COBERTURA)
+    if gcovr_opts[:xml_report] || is_report_enabled(opts, REPORT_TYPE_COBERTURA)
       # Determine the Cobertura XML report file name.
       artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
-      if !(opts[:gcov_cobertura_artifact_filename].nil?)
-        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_cobertura_artifact_filename])
-      elsif !(opts[:gcov_xml_artifact_filename].nil?)
-        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_xml_artifact_filename])
+      if !(gcovr_opts[:cobertura_artifact_filename].nil?)
+        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:cobertura_artifact_filename])
+      elsif !(gcovr_opts[:xml_artifact_filename].nil?)
+        artifacts_file_cobertura = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:xml_artifact_filename])
       end
 
-      args += "--xml-pretty " if opts[:gcov_xml_pretty] || opts[:gcov_cobertura_pretty]
+      args += "--xml-pretty " if gcovr_opts[:xml_pretty] || gcovr_opts[:cobertura_pretty]
       args += "--xml #{use_output_option ? "--output " : ""} \"#{artifacts_file_cobertura}\" "
     end
 
@@ -218,14 +230,15 @@ namespace UTILS_SYM do
 
   # Build the gcovr SonarQube report generation arguments.
   def gcovr_args_builder_sonarqube(opts, use_output_option=false)
+    gcovr_opts = get_gcovr_opts(opts)
     args = ""
 
     # Determine if the gcovr SonarQube XML report is enabled. Defaults to disabled.
     if is_report_enabled(opts, REPORT_TYPE_SONARQUBE)
       # Determine the SonarQube XML report file name.
       artifacts_file_sonarqube = GCOV_ARTIFACTS_FILE_SONARQUBE
-      if !(opts[:gcov_sonarqube_artifact_filename].nil?)
-        artifacts_file_sonarqube = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_sonarqube_artifact_filename])
+      if !(gcovr_opts[:sonarqube_artifact_filename].nil?)
+        artifacts_file_sonarqube = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:sonarqube_artifact_filename])
       end
 
       args += "--sonarqube #{use_output_option ? "--output " : ""} \"#{artifacts_file_sonarqube}\" "
@@ -237,17 +250,18 @@ namespace UTILS_SYM do
 
   # Build the gcovr JSON report generation arguments.
   def gcovr_args_builder_json(opts, use_output_option=false)
+    gcovr_opts = get_gcovr_opts(opts)
     args = ""
 
     # Determine if the gcovr JSON report is enabled. Defaults to disabled.
     if is_report_enabled(opts, REPORT_TYPE_JSON)
       # Determine the JSON report file name.
       artifacts_file_json = GCOV_ARTIFACTS_FILE_JSON
-      if !(opts[:gcov_json_artifact_filename].nil?)
-        artifacts_file_json = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_json_artifact_filename])
+      if !(gcovr_opts[:json_artifact_filename].nil?)
+        artifacts_file_json = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:json_artifact_filename])
       end
 
-      args += "--json-pretty " if opts[:gcov_json_pretty]
+      args += "--json-pretty " if gcovr_opts[:json_pretty]
       args += "--json #{use_output_option ? "--output " : ""} \"#{artifacts_file_json}\" "
     end
 
@@ -257,30 +271,31 @@ namespace UTILS_SYM do
 
   # Build the gcovr HTML report generation arguments.
   def gcovr_args_builder_html(opts, use_output_option=false)
+    gcovr_opts = get_gcovr_opts(opts)
     args = ""
 
     # Determine if the gcovr HTML report is enabled. Defaults to enabled.
-    html_enabled = (opts[:gcov_html_report].nil? && opts[:gcov_reports].nil?) ||
-                   opts[:gcov_html_report] ||
+    html_enabled = (gcovr_opts[:html_report].nil? && opts[:gcov_reports].nil?) ||
+                   gcovr_opts[:html_report] ||
                    is_report_enabled(opts, REPORT_TYPE_HTML_BASIC) ||
                    is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED)
 
     if html_enabled
       # Determine the HTML report file name.
       artifacts_file_html = GCOV_ARTIFACTS_FILE_HTML
-      if !(opts[:gcov_html_artifact_filename].nil?)
-        artifacts_file_html = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_html_artifact_filename])
+      if !(gcovr_opts[:html_artifact_filename].nil?)
+        artifacts_file_html = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:html_artifact_filename])
       end
 
-      is_html_report_type_detailed = (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
+      is_html_report_type_detailed = (gcovr_opts[:html_report_type].is_a? String) && (gcovr_opts[:html_report_type].casecmp("detailed") == 0)
 
       args += "--html-details " if is_html_report_type_detailed || is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED)
-      args += "--html-title \"#{opts[:gcov_html_title]}\" " unless opts[:gcov_html_title].nil?
-      args += "--html-absolute-paths " if !(opts[:gcov_html_absolute_paths].nil?) && opts[:gcov_html_absolute_paths]
-      args += "--html-encoding \"#{opts[:gcov_html_encoding]}\" " unless opts[:gcov_html_encoding].nil?
+      args += "--html-title \"#{gcovr_opts[:html_title]}\" " unless gcovr_opts[:html_title].nil?
+      args += "--html-absolute-paths " if !(gcovr_opts[:html_absolute_paths].nil?) && gcovr_opts[:html_absolute_paths]
+      args += "--html-encoding \"#{gcovr_opts[:html_encoding]}\" " unless gcovr_opts[:html_encoding].nil?
 
-      [:gcov_html_medium_threshold, :gcov_html_high_threshold].each do |opt|
-        args += "--#{opt.to_s.gsub('_','-').sub(/:?gcov-/,'')} #{opts[opt]} " unless opts[opt].nil?
+      [:html_medium_threshold, :html_high_threshold].each do |opt|
+        args += "--#{opt.to_s.gsub('_','-')} #{gcovr_opts[opt]} " unless gcovr_opts[opt].nil?
       end
 
       # The following option must be appended last for gcovr version <= 4.2 to properly work.
@@ -293,11 +308,12 @@ namespace UTILS_SYM do
 
   # Generate a gcovr text report.
   def make_gcovr_text_report(opts, args_common)
+    gcovr_opts = get_gcovr_opts(opts)
     args_text = ""
     message_text = "Creating a gcov text report"
 
-    if !(opts[:gcov_text_artifact_filename].nil?)
-      artifacts_file_txt = File.join(GCOV_ARTIFACTS_PATH, opts[:gcov_text_artifact_filename])
+    if !(gcovr_opts[:text_artifact_filename].nil?)
+      artifacts_file_txt = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:text_artifact_filename])
       args_text += "--output \"#{artifacts_file_txt}\" "
       message_text = message_text + " in '#{GCOV_ARTIFACTS_PATH}'... "
     else
@@ -420,6 +436,7 @@ namespace UTILS_SYM do
   task GCOV_SYM do
     # Get the gcov options from project.yml.
     opts = @ceedling[:configurator].project_config_hash
+    gcovr_opts = get_gcovr_opts(opts)
 
     # Create the artifacts output directory.
     if !File.directory? GCOV_ARTIFACTS_PATH
@@ -437,7 +454,7 @@ namespace UTILS_SYM do
     end
 
     # Default to HTML basic report when no report types are defined.
-    if opts[:gcov_reports].nil? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
+    if opts[:gcov_reports].nil? && gcovr_opts[:html_report_type].nil? && gcovr_opts[:xml_report].nil?
       opts[:gcov_reports] = [REPORT_TYPE_HTML_BASIC]
 
       puts "In your project.yml, define one or more of the"
