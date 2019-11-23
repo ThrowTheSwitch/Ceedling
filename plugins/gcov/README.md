@@ -54,37 +54,40 @@ Generation of Gcovr HTML reports may be modified with the following configuratio
   # Deprecated - Use report_types.
   :html_report: [true|false]
 
-  # HTML report filename.
-  :html_artifact_filename: <output>
-
   # Gcovr supports generating two types of HTML reports. Use 'basic' to create
   # an HTML report with only the overall file information. Use 'detailed' to create
   # an HTML report with line by line coverage of each source file.
   # Defaults to 'basic'. Set to 'detailed' for (gcovr --html-details).
+  # Deprecated - Use report_types.
   :html_report_type: [basic|detailed]
 
-  # Use 'title' as title for the HTML report.
-  # Default is 'Head'. (gcovr --html-title)
-  :html_title: <title>
 
-  # If the coverage is below MEDIUM, the value is marked as low coverage in the HTML report.
-  # MEDIUM has to be lower than or equal to value of html_high_threshold.
-  # If MEDIUM is equal to value of html_high_threshold the report has only high and low coverage.
-  # Default is 75.0. (gcovr --html-medium-threshold)
-  :html_medium_threshold: 75
+  :gcovr:
+    # HTML report filename.
+    :html_artifact_filename: <output>
 
-  # If the coverage is below HIGH, the value is marked as medium coverage in the HTML report.
-  # HIGH has to be greater than or equal to value of html_medium_threshold.
-  # If HIGH is equal to value of html_medium_threshold the report has only high and low coverage.
-  # Default is 90.0. (gcovr -html-high-threshold)
-  :html_high_threshold: 90
+    # Use 'title' as title for the HTML report.
+    # Default is 'Head'. (gcovr --html-title)
+    :html_title: <title>
 
-  # Set to 'true' to use absolute paths to link the 'detailed' reports.
-  # Defaults to relative links. (gcovr --html-absolute-paths)
-  :html_absolute_paths: [true|false]
+    # If the coverage is below MEDIUM, the value is marked as low coverage in the HTML report.
+    # MEDIUM has to be lower than or equal to value of html_high_threshold.
+    # If MEDIUM is equal to value of html_high_threshold the report has only high and low coverage.
+    # Default is 75.0. (gcovr --html-medium-threshold)
+    :html_medium_threshold: 75
 
-  # Override the declared HTML report encoding. Defaults to UTF-8. (gcovr --html-encoding)
-  :html_encoding: <html_encoding>
+    # If the coverage is below HIGH, the value is marked as medium coverage in the HTML report.
+    # HIGH has to be greater than or equal to value of html_medium_threshold.
+    # If HIGH is equal to value of html_medium_threshold the report has only high and low coverage.
+    # Default is 90.0. (gcovr -html-high-threshold)
+    :html_high_threshold: 90
+
+    # Set to 'true' to use absolute paths to link the 'detailed' reports.
+    # Defaults to relative links. (gcovr --html-absolute-paths)
+    :html_absolute_paths: [true|false]
+
+    # Override the declared HTML report encoding. Defaults to UTF-8. (gcovr --html-encoding)
+    :html_encoding: <html_encoding>
 ```
 
 ### Cobertura XML Reports
@@ -98,14 +101,16 @@ Generation of Cobertura XML reports may be modified with the following configura
   # Deprecated - Use report_types.
   :xml_report: [true|false]
 
-  # Set to 'true' to pretty-print the Cobertura XML report, otherwise set to 'false'.
-  # Defaults to disabled. (gcovr --xml-pretty)
-  :xml_pretty: [true|false]
-  :cobertura_pretty: [true|false]
 
-  # Cobertura XML report filename.
-  :xml_artifact_filename: <output>
-  :cobertura_artifact_filename: <output>
+  :gcovr:
+    # Set to 'true' to pretty-print the Cobertura XML report, otherwise set to 'false'.
+    # Defaults to disabled. (gcovr --xml-pretty)
+    :xml_pretty: [true|false]
+    :cobertura_pretty: [true|false]
+
+    # Cobertura XML report filename.
+    :xml_artifact_filename: <output>
+    :cobertura_artifact_filename: <output>
 ```
 
 ### SonarQube XML Reports
@@ -114,8 +119,9 @@ Generation of SonarQube XML reports may be modified with the following configura
 
 ```yaml
 :gcov:
-  # SonarQube XML report filename.
-  :sonarqube_artifact_filename: <output>
+  :gcovr:
+    # SonarQube XML report filename.
+    :sonarqube_artifact_filename: <output>
 ```
 
 ### JSON Reports
@@ -124,12 +130,13 @@ Generation of JSON reports may be modified with the following configuration item
 
 ```yaml
 :gcov:
-  # Set to 'true' to pretty-print the JSON report, otherwise set 'false'.
-  # Defaults to disabled. (gcovr --json-pretty)
-  :json_pretty: [true|false]
+  :gcovr:
+    # Set to 'true' to pretty-print the JSON report, otherwise set 'false'.
+    # Defaults to disabled. (gcovr --json-pretty)
+    :json_pretty: [true|false]
 
-  # JSON report filename.
-  :json_artifact_filename: <output>
+    # JSON report filename.
+    :json_artifact_filename: <output>
 ```
 
 ### Text Reports
@@ -139,9 +146,10 @@ Text reports may be printed to the console or output to a file.
 
 ```yaml
 :gcov:
-  # Text report filename.
-  # The text report is printed to the console when no filename is provided.
-  :text_artifact_filename: <output>
+  :gcovr:
+    # Text report filename.
+    # The text report is printed to the console when no filename is provided.
+    :text_artifact_filename: <output>
 ```
 
 ### Common Report Options
@@ -163,86 +171,87 @@ default behaviors of gcovr:
 
 ```yaml
 :gcov:
-  # The root directory of your source files. Defaults to ".", the current directory.
-  # File names are reported relative to this root. The report_root is the default report_include.
-  :report_root: "."
+  :gcovr:
+    # The root directory of your source files. Defaults to ".", the current directory.
+    # File names are reported relative to this root. The report_root is the default report_include.
+    :report_root: "."
 
-  # Load the specified configuration file.
-  # Defaults to gcovr.cfg in the report_root directory. (gcovr --config)
-  :config_file: <config_file>
+    # Load the specified configuration file.
+    # Defaults to gcovr.cfg in the report_root directory. (gcovr --config)
+    :config_file: <config_file>
 
-  # Exit with a status of 2 if the total line coverage is less than MIN.
-  # Can be ORed with exit status of 'fail_under_branch' option. (gcovr --fail-under-line)
-  :fail_under_line: 30
+    # Exit with a status of 2 if the total line coverage is less than MIN.
+    # Can be ORed with exit status of 'fail_under_branch' option. (gcovr --fail-under-line)
+    :fail_under_line: 30
 
-  # Exit with a status of 4 if the total branch coverage is less than MIN.
-  # Can be ORed with exit status of 'fail_under_line' option. (gcovr --fail-under-branch)
-  :fail_under_branch: 30
+    # Exit with a status of 4 if the total branch coverage is less than MIN.
+    # Can be ORed with exit status of 'fail_under_line' option. (gcovr --fail-under-branch)
+    :fail_under_branch: 30
 
-  # Select the source file encoding.
-  # Defaults to the system default encoding (UTF-8). (gcovr --source-encoding)
-  :source_encoding: <source_encoding>
+    # Select the source file encoding.
+    # Defaults to the system default encoding (UTF-8). (gcovr --source-encoding)
+    :source_encoding: <source_encoding>
 
-  # Report the branch coverage instead of the line coverage. For text report only. (gcovr --branches).
-  :branches: [true|false]
+    # Report the branch coverage instead of the line coverage. For text report only. (gcovr --branches).
+    :branches: [true|false]
 
-  # Sort entries by increasing number of uncovered lines.
-  # For text and HTML report. (gcovr --sort-uncovered)
-  :sort_uncovered: [true|false]
+    # Sort entries by increasing number of uncovered lines.
+    # For text and HTML report. (gcovr --sort-uncovered)
+    :sort_uncovered: [true|false]
 
-  # Sort entries by increasing percentage of uncovered lines.
-  # For text and HTML report. (gcovr --sort-percentage)
-  :sort_percentage: [true|false]
+    # Sort entries by increasing percentage of uncovered lines.
+    # For text and HTML report. (gcovr --sort-percentage)
+    :sort_percentage: [true|false]
 
-  # Print a small report to stdout with line & branch percentage coverage.
-  # This is in addition to other reports. (gcovr --print-summary).
-  :print_summary: [true|false]
+    # Print a small report to stdout with line & branch percentage coverage.
+    # This is in addition to other reports. (gcovr --print-summary).
+    :print_summary: [true|false]
 
-  # Keep only source files that match this filter. (gcovr --filter).
-  :report_include: "^src"
+    # Keep only source files that match this filter. (gcovr --filter).
+    :report_include: "^src"
 
-  # Exclude source files that match this filter. (gcovr --exclude).
-  :report_exclude: "^vendor.*|^build.*|^test.*|^lib.*"
+    # Exclude source files that match this filter. (gcovr --exclude).
+    :report_exclude: "^vendor.*|^build.*|^test.*|^lib.*"
 
-  # Keep only gcov data files that match this filter. (gcovr --gcov-filter).
-  :gcov_filter: <gcov_filter>
+    # Keep only gcov data files that match this filter. (gcovr --gcov-filter).
+    :gcov_filter: <gcov_filter>
 
-  # Exclude gcov data files that match this filter. (gcovr --gcov-exclude).
-  :gcov_exclude: <gcov_exclude>
+    # Exclude gcov data files that match this filter. (gcovr --gcov-exclude).
+    :gcov_exclude: <gcov_exclude>
 
-  # Exclude directories that match this regex while searching
-  # raw coverage files. (gcovr --exclude-directories).
-  :exclude_directories: <exclude_dirs>
+    # Exclude directories that match this regex while searching
+    # raw coverage files. (gcovr --exclude-directories).
+    :exclude_directories: <exclude_dirs>
 
-  # Use a particular gcov executable. (gcovr --gcov-executable).
-  :gcov_executable: <gcov_cmd>
+    # Use a particular gcov executable. (gcovr --gcov-executable).
+    :gcov_executable: <gcov_cmd>
 
-  # Exclude branch coverage from lines without useful
-  # source code. (gcovr --exclude-unreachable-branches).
-  :exclude_unreachable_branches: [true|false]
+    # Exclude branch coverage from lines without useful
+    # source code. (gcovr --exclude-unreachable-branches).
+    :exclude_unreachable_branches: [true|false]
 
-  # For branch coverage, exclude branches that the compiler
-  # generates for exception handling. (gcovr --exclude-throw-branches).
-  :exclude_throw_branches: [true|false]
+    # For branch coverage, exclude branches that the compiler
+    # generates for exception handling. (gcovr --exclude-throw-branches).
+    :exclude_throw_branches: [true|false]
 
-  # Use existing gcov files for analysis. Default: False. (gcovr --use-gcov-files)
-  :use_gcov_files: [true|false]
+    # Use existing gcov files for analysis. Default: False. (gcovr --use-gcov-files)
+    :use_gcov_files: [true|false]
 
-  # Skip lines with parse errors in GCOV files instead of
-  # exiting with an error. (gcovr --gcov-ignore-parse-errors).
-  :gcov_ignore_parse_errors: [true|false]
+    # Skip lines with parse errors in GCOV files instead of
+    # exiting with an error. (gcovr --gcov-ignore-parse-errors).
+    :gcov_ignore_parse_errors: [true|false]
 
-  # Override normal working directory detection. (gcovr --object-directory)
-  :object_directory: <objdir>
+    # Override normal working directory detection. (gcovr --object-directory)
+    :object_directory: <objdir>
 
-  # Keep gcov files after processing. (gcovr --keep).
-  :keep: [true|false]
+    # Keep gcov files after processing. (gcovr --keep).
+    :keep: [true|false]
 
-  # Delete gcda files after processing. (gcovr --delete).
-  :delete: [true|false]
+    # Delete gcda files after processing. (gcovr --delete).
+    :delete: [true|false]
 
-  # Set the number of threads to use in parallel. (gcovr -j).
-  :num_parallel_threads: <num_threads>
+    # Set the number of threads to use in parallel. (gcovr -j).
+    :num_parallel_threads: <num_threads>
 ```
 
 ## Example Usage
