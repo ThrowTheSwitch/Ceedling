@@ -166,9 +166,9 @@ namespace UTILS_SYM do
   GCOVR_SETTING_PREFIX = "gcov_gcovr"
 
 
-  # Get the gcovr options from the global options.
+  # Get the gcovr options from the project options.
   def get_gcovr_opts(opts)
-    return opts[GCOVR_SETTING_PREFIX.to_sym]
+    return opts[GCOVR_SETTING_PREFIX.to_sym] || {}
   end
 
 
@@ -211,7 +211,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
-    if gcovr_opts[:xml_report] || is_report_enabled(opts, REPORT_TYPE_COBERTURA)
+    if opts[:gcov_xml_report] || is_report_enabled(opts, REPORT_TYPE_COBERTURA)
       # Determine the Cobertura XML report file name.
       artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
       if !(gcovr_opts[:cobertura_artifact_filename].nil?)
@@ -275,8 +275,8 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr HTML report is enabled. Defaults to enabled.
-    html_enabled = (gcovr_opts[:html_report].nil? && opts[:gcov_reports].nil?) ||
-                   gcovr_opts[:html_report] ||
+    html_enabled = (opts[:gcov_html_report].nil? && opts[:gcov_reports].nil?) ||
+                   opts[:gcov_html_report] ||
                    is_report_enabled(opts, REPORT_TYPE_HTML_BASIC) ||
                    is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED)
 
@@ -287,7 +287,7 @@ namespace UTILS_SYM do
         artifacts_file_html = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:html_artifact_filename])
       end
 
-      is_html_report_type_detailed = (gcovr_opts[:html_report_type].is_a? String) && (gcovr_opts[:html_report_type].casecmp("detailed") == 0)
+      is_html_report_type_detailed = (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
 
       args += "--html-details " if is_html_report_type_detailed || is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED)
       args += "--html-title \"#{gcovr_opts[:html_title]}\" " unless gcovr_opts[:html_title].nil?
@@ -315,7 +315,7 @@ namespace UTILS_SYM do
     if !(gcovr_opts[:text_artifact_filename].nil?)
       artifacts_file_txt = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:text_artifact_filename])
       args_text += "--output \"#{artifacts_file_txt}\" "
-      message_text = message_text + " in '#{GCOV_ARTIFACTS_PATH}'... "
+      message_text += " in '#{GCOV_ARTIFACTS_PATH}'... "
     else
       message_text += "... "
     end
@@ -436,7 +436,6 @@ namespace UTILS_SYM do
   task GCOV_SYM do
     # Get the gcov options from project.yml.
     opts = @ceedling[:configurator].project_config_hash
-    gcovr_opts = get_gcovr_opts(opts)
 
     # Create the artifacts output directory.
     if !File.directory? GCOV_ARTIFACTS_PATH
@@ -454,7 +453,7 @@ namespace UTILS_SYM do
     end
 
     # Default to HTML basic report when no report types are defined.
-    if opts[:gcov_reports].nil? && gcovr_opts[:html_report_type].nil? && gcovr_opts[:xml_report].nil?
+    if opts[:gcov_reports].nil? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
       opts[:gcov_reports] = [REPORT_TYPE_HTML_BASIC]
 
       puts "In your project.yml, define one or more of the"

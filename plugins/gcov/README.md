@@ -24,17 +24,17 @@ pip install gcovr
 The gcov plugin supports configuration options via your `project.yml` provided
 by Ceedling.
 
-### Report Types
+### Reports
 
-Various report types are available and may be enabled with the following
-configuration item. See the specific report type sections in this README
+Various reports are available and may be enabled with the following
+configuration item. See the specific report sections in this README
 for additional options and information. All generated reports will be found in `build/artifacts/gcov`.
 
 ```yaml
 :gcov:
-  # Specify the reports to generate.
+  # Specify one or more reports to generate.
   # Defaults to HtmlBasic.
-  :report_types:
+  :reports:
     - HtmlBasic     # Make an HTML summary report. (gcovr --html)
     - HtmlDetailed  # Make an HTML report with line by line coverage of each source file. (gcovr --html-details)
     - Text          # Make a Text report, which may be output to the console or a file.
@@ -51,14 +51,14 @@ Generation of Gcovr HTML reports may be modified with the following configuratio
 :gcov:
   # Set to 'true' to enable HTML reports or set to 'false' to disable.
   # Defaults to enabled. (gcovr --html)
-  # Deprecated - Use report_types.
+  # Deprecated - See the :reports: configuration option.
   :html_report: [true|false]
 
   # Gcovr supports generating two types of HTML reports. Use 'basic' to create
   # an HTML report with only the overall file information. Use 'detailed' to create
   # an HTML report with line by line coverage of each source file.
   # Defaults to 'basic'. Set to 'detailed' for (gcovr --html-details).
-  # Deprecated - Use report_types.
+  # Deprecated - See the :reports: configuration option.
   :html_report_type: [basic|detailed]
 
 
@@ -98,7 +98,7 @@ Generation of Cobertura XML reports may be modified with the following configura
 :gcov:
   # Set to 'true' to enable Cobertura XML reports or set to 'false' to disable.
   # Defaults to disabled. (gcovr --xml)
-  # Deprecated - Use report_types.
+  # Deprecated - See the :reports: configuration option.
   :xml_report: [true|false]
 
 
