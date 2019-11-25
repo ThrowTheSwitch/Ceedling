@@ -107,7 +107,7 @@ class TestInvoker
         results_pass = @file_path_utils.form_pass_results_filepath( test )
         results_fail = @file_path_utils.form_fail_results_filepath( test )
 
-        @project_config_manager.process_test_defines_change(sources)
+        @project_config_manager.process_test_defines_change(@project_config_manager.filter_internal_sources(sources))
 
         # add the definition value in the build option for the unit test
         if @configurator.defines_use_test_definition
