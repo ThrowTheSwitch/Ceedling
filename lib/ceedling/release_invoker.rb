@@ -76,8 +76,6 @@ class ReleaseInvoker
     sorted_objects = both.group_by {|v| v.match(/.+#{extension}$/) ? :libraries : :objects }
     libraries = sorted_objects[:libraries] || []
     objects   = sorted_objects[:objects]   || []
-    puts "OBJECTS: #{objects.inspect}"
-    puts "LIBRARIES: #{libraries.inspect}"
     return objects, libraries
   end
 end

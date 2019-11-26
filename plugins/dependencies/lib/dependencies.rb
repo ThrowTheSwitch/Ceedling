@@ -103,6 +103,7 @@ class Dependencies < Plugin
     raise "Could not find dependency '#{lib_path}'" if blob.nil?
     return if (blob[:fetch].nil?)
     return if (blob[:fetch][:method].nil?)
+    return if (directory(blob[:source_path]))
 
     steps = case blob[:fetch][:method]
             when :none
