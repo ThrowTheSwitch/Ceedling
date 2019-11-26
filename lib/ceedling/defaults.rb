@@ -303,6 +303,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :source => '.c',
       :assembly => '.s',
       :object => '.o',
+      :libraries => '.a',
       :executable => ( SystemWrapper.windows? ? EXTENSION_WIN_EXE : EXTENSION_NONWIN_EXE ),
       :map => '.map',
       :list => '.lst',
