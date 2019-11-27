@@ -101,6 +101,7 @@ class Generator
       shell_result = ex.shell_result
       raise ex
     ensure
+      arg_hash[:shell_command] = command[:line]
       arg_hash[:shell_result] = shell_result
       @plugin_manager.post_compile_execute(arg_hash)
     end
