@@ -14,6 +14,4 @@ GCOV_ARTIFACTS_FILE_COBERTURA   = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageCo
 GCOV_ARTIFACTS_FILE_SONARQUBE   = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageSonarQube.xml")
 GCOV_ARTIFACTS_FILE_JSON        = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverage.json")
 
-GCOV_IGNORE_SOURCES             = %w(unity UnityHelper cmock cexception).freeze
-
 GCOV_FILTER_EXCLUDE             = '^vendor.*|^build.*|^test.*|^lib.*'

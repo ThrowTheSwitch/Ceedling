@@ -82,10 +82,7 @@ class Gcov < Plugin
     banner = @ceedling[:plugin_reportinator].generate_banner "#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY"
     @ceedling[:streaminator].stdout_puts "\n" + banner
 
-    coverage_sources = sources.clone
-    coverage_sources.delete_if { |item| item =~ /#{CMOCK_MOCK_PREFIX}.+#{EXTENSION_SOURCE}$/ }
-    coverage_sources.delete_if { |item| item =~ /#{GCOV_IGNORE_SOURCES.map{|source| '\b' + source.ext(EXTENSION_SOURCE) + '\b'}.join('|')}$/ }
-
+    coverage_sources = @ceedling[:project_config_manager].filter_internal_sources(sources)
     coverage_sources.each do |source|
       basename         = File.basename(source)
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, [], [basename])
