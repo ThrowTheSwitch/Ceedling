@@ -36,38 +36,5 @@
     :executable: gcovr
     :optional: TRUE
     :arguments:
-        - -p
-        - -b
         - ${1}
-        - --html
-        - -o GcovCoverageResults.html
-  :gcov_post_report_basic:
-    :executable: gcovr
-    :optional: TRUE
-    :arguments:
-        - -p
-        - -b
-        - ${1}
-        - --html
-        - -o  "$": GCOV_ARTIFACTS_FILE
-  :gcov_post_report_advanced:
-    :executable: gcovr
-    :optional: TRUE
-    :arguments:
-        - -p
-        - -b
-        - ${1}
-        - --html
-        - --html-details
-        - -o  "$": GCOV_ARTIFACTS_FILE
-  :gcov_post_report_xml:
-    :executable: gcovr
-    :optional: TRUE
-    :arguments:
-        - -p
-        - -b
-        - ${1}
-        - --xml
-        - -o  "$": GCOV_ARTIFACTS_FILE_XML
-
 ...
