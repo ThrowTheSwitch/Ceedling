@@ -214,9 +214,9 @@ General notes:
    and Rakefiles, consult the [Rake tutorial, examples, and
    user guide](http://rubyrake.org/).
 
-4. When using Ceedling in Windows environments, a test file name may 
-   not include the sequences “patch” or “setup”. The Windows Installer 
-   Detection Technology (part of UAC), requires administrator 
+4. When using Ceedling in Windows environments, a test file name may
+   not include the sequences “patch” or “setup”. The Windows Installer
+   Detection Technology (part of UAC), requires administrator
    privileges to execute file names with these strings.
 
 Now What? How Do I Make It GO?
@@ -1416,11 +1416,12 @@ Example [:flags] YAML blurb
         - --baz
 ```
 
-**import**: allow to load other config files
+**import**: Load additional config files
 
 In some cases it is nice to have config files (project.yml, options files) which can
 load other config files, for commonly re-used definitions (target processor,
 common code modules, etc).
+
 These can be recursively nested, the included files can include other files.
 
 Example [:import] YAML blurb
@@ -1476,6 +1477,9 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
   provides CMock, simply add [:cmock][:plugins] to your configuration
   and specify your desired additional plugins.
 
+  Each of the plugins have their own additional documentation.
+
+
 * `includes`:
 
   If [:cmock][:unity_helper] set, pre-populated with unity_helper file
@@ -1516,7 +1520,7 @@ by overriding the value in the Ceedling YAML configuration file.
   List of conditional compilation symbols used to configure Unity's
   features in its source and header files. See Unity documentation to
   understand available options. No symbols must be set unless the
-  defaults are inappropriate for your specific environment. Most Unity 
+  defaults are inappropriate for your specific environment. Most Unity
   defines can be easily configured through the YAML file.
 
   **Default**: [] (empty)
@@ -1556,10 +1560,10 @@ Notes on Unity configuration:
   that routine, you can replace `putchar()` calls in Unity by overriding
   the function-like macro `UNITY_OUTPUT_CHAR`. Consult your toolchain
   and shell documentation. Eventhough this can also be defined in the YAML file
-  most shell environments do not handle parentheses as command line arguments 
-  very well. To still be able to add this functionality all necessary 
-  options can be defined in the `unity_config.h`. Unity needs to be told to look for 
-  the `unity_config.h` in the YAML file, though. 
+  most shell environments do not handle parentheses as command line arguments
+  very well. To still be able to add this functionality all necessary
+  options can be defined in the `unity_config.h`. Unity needs to be told to look for
+  the `unity_config.h` in the YAML file, though.
 
 Example [:unity] YAML blurbs
 ```yaml
