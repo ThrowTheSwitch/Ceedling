@@ -104,7 +104,7 @@ unless (project_found)
 
           # Copy documentation from plugins
           Dir['plugins/**/README.md'].each do |plugin_path|
-            copy_file(plugin_path, in_doc_path.call(File.split(/\\|\//)[-2]+"_README.md"). :force => force)
+            copy_file(plugin_path, in_doc_path.call(File.split(/\\|\//)[-2]+"_README.md"), :force => force)
           end
         end
 
