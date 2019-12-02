@@ -91,20 +91,28 @@ unless (project_found)
 
         # If documentation requested, create a place to dump them and do so
         if use_docs
-          doc_path = File.join(ceedling_path, 'docs')
+          doc_path = use_gem ? File.join(name, 'docs') : File.join(ceedling_path, 'docs')
           FileUtils.mkdir_p doc_path
 
           in_doc_path = lambda {|f| File.join(doc_path, f)}
 
-          # Copy documentation from main projects
-          doc_files = Dir['docs/*.md'] + Dir['vendor/unity/docs/*.md'] + Dir['vendor/cmock/docs/*.md'] + Dir['vendor/c_exception/docs/*.md']
-          doc_files.each do |f|
-            copy_file(f, in_doc_path.call(File.basename(f)), :force => force)
+          # Add documentation from main projects to list
+          doc_files = {}
+          ['docs','vendor/unity/docs','vendor/cmock/docs','vendor/cexception/docs'].each do |p|
+            Dir[ File.join(here, p, '*.md') ].each do |f|
+              doc_files[ File.basename(f) ] = f unless(doc_files.include? f)
+            end
           end
 
-          # Copy documentation from plugins
-          Dir['plugins/**/README.md'].each do |plugin_path|
-            copy_file(plugin_path, in_doc_path.call(File.split(/\\|\//)[-2]+"_README.md"), :force => force)
+          # Add documentation from plugins to list
+          Dir[ File.join(here, 'plugins/**/README.md') ].each do |plugin_path|
+            k = "plugin_" + plugin_path.split(/\\|\//)[-2] + ".md"
+            doc_files[ k ] = plugin_path
+          end
+
+          # Copy all documentation
+          doc_files.each_pair do |k, v|
+            copy_file(v, in_doc_path.call(k), :force => force)
           end
         end
 
