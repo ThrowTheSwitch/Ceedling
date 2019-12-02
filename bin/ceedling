@@ -96,20 +96,15 @@ unless (project_found)
 
           in_doc_path = lambda {|f| File.join(doc_path, f)}
 
-          doc_files = [
-                        'docs/CeedlingPacket.md',
-                        'vendor/c_exception/docs/CException.md',
-                        'vendor/cmock/docs/CMock_Summary.md',
-                        'vendor/unity/docs/UnityAssertionsCheatSheetSuitableforPrintingandPossiblyFraming.pdf',
-                        'vendor/unity/docs/UnityAssertionsReference.md',
-                        'vendor/unity/docs/UnityConfigurationGuide.md',
-                        'vendor/unity/docs/UnityGettingStartedGuide.md',
-                        'vendor/unity/docs/UnityHelperScriptsGuide.md',
-                        'vendor/unity/docs/ThrowTheSwitchCodingStandard.md',
-                      ]
-
+          # Copy documentation from main projects
+          doc_files = Dir['docs/*.md'] + Dir['vendor/unity/docs/*.md'] + Dir['vendor/cmock/docs/*.md'] + Dir['vendor/c_exception/docs/*.md']
           doc_files.each do |f|
             copy_file(f, in_doc_path.call(File.basename(f)), :force => force)
+          end
+
+          # Copy documentation from plugins
+          Dir['plugins/**/README.md'].each do |plugin_path|
+            copy_file(plugin_path, in_doc_path.call(File.split(/\\|\//)[-2]+"_README.md"). :force => force)
           end
         end
 
