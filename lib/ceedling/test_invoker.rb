@@ -67,7 +67,7 @@ class TestInvoker
 
         # redefine the project out path and preprocessor defines
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
-          printf " ************** Specific test definitions for #{test_name} !!! \n"
+          @streaminator.stdout_puts("Updating test definitions for #{test_name}", Verbosity::NORMAL)
           orig_path = @configurator.project_test_build_output_path
           @configurator.project_config_hash[:project_test_build_output_path] = File.join(@configurator.project_test_build_output_path, test_name)
           @file_wrapper.mkdir(@configurator.project_test_build_output_path)
@@ -123,7 +123,7 @@ class TestInvoker
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
           if @configurator.project_config_hash.has_key?(def_test_key.to_sym) 
             @configurator.project_config_hash[:project_test_build_output_path] = orig_path
-            printf " ************** Restored defines and build path\n"
+            @streaminator.stdout_puts("Restored defines and build path to standard", Verbosity::NORMAL)
           end
         end
       end
