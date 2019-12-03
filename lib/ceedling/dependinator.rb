@@ -86,8 +86,7 @@ class Dependinator
 
 
   def enhance_results_dependencies(result_filepath)
-    @rake_wrapper[result_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if (@project_config_manager.test_config_changed ||
-      @project_config_manager.test_defines_changed)
+    @rake_wrapper[result_filepath].enhance( [@configurator.project_test_force_rebuild_filepath] ) if @project_config_manager.test_config_changed
   end
 
 

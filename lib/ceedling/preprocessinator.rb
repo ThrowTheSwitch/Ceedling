@@ -3,7 +3,7 @@ class Preprocessinator
 
   attr_reader :preprocess_file_proc
   
-  constructor :preprocessinator_helper, :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_path_utils, :yaml_wrapper
+  constructor :preprocessinator_helper, :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_path_utils, :yaml_wrapper, :project_config_manager
 
 
   def setup
@@ -17,6 +17,8 @@ class Preprocessinator
     @preprocessinator_helper.preprocess_includes(test, @preprocess_includes_proc)
 
     mocks_list = @preprocessinator_helper.assemble_mocks_list(test)
+
+    @project_config_manager.process_test_defines_change(mocks_list)
 
     @preprocessinator_helper.preprocess_mockable_headers(mocks_list, @preprocess_file_proc)
 
