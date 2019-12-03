@@ -13,6 +13,7 @@
 #  :release_build: TRUE
   :test_file_prefix: test_
   :which_ceedling: gem
+  :ceedling_version: '?'
   :default_tasks:
     - test:all
 
