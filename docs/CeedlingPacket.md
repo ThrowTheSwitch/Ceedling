@@ -1300,7 +1300,7 @@ Example [:extension] YAML blurb
 
 * `use_test_definition`:
 
-  When this option is used the `-D<test_name>` flag is added to the build option of your test file.
+  When this option is used the `-D<test_name>` flag is added to the build option.
 
   **Default**: FALSE
 
