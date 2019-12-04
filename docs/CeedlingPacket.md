@@ -271,7 +271,7 @@ Ceedling (more on this later).
   specified in the [:paths] section of your config file.
 
 * `ceedling files:assembly`
-* `ceedling files:header`
+* `ceedling files:include`
 * `ceedling files:source`
 * `ceedling files:test`
 
@@ -1340,7 +1340,9 @@ configuration. In this section, you can optionally have the following subsection
 * `system`:
 
   These libraries are assumed to be in the tool path somewhere and shouldn't need to be
-  specified. The libraries added here will be injected into releases and tests.
+  specified. The libraries added here will be injected into releases and tests. For example
+  if you specify `-lm` you can include the math library. The `-l` portion is only necessary
+  if the `:flag` prefix below doesn't specify it already for you other libraries.
 
 * `flag`:
 
@@ -1688,6 +1690,10 @@ A Ceedling tool has a handful of configurable elements:
 5. [:background_exec] - Control execution as background process
    {:none, :auto, :win, :unix}.
    Defaults to :none if unspecified.
+
+6. [:optional] - By default a tool is required for operation, which
+   means tests will be aborted if the tool is not present. However, 
+   you can set this to `TRUE` if it's not needed for testing.
 
 
 Tool Element Runtime Substitution

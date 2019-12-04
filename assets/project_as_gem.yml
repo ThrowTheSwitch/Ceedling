@@ -86,6 +86,7 @@
 :libraries:
   :placement: :end
   :flag: "${1}"  # or "-L ${1}" for example
+  :system: []    # for example, you might list -lm to grab the math library 
   :test: []
   :release: []
 
