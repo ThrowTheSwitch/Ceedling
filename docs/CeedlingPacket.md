@@ -1691,6 +1691,10 @@ A Ceedling tool has a handful of configurable elements:
    {:none, :auto, :win, :unix}.
    Defaults to :none if unspecified.
 
+6. [:optional] - By default a tool is required for operation, which
+   means tests will be aborted if the tool is not present. However, 
+   you can set this to `TRUE` if it's not needed for testing.
+
 
 Tool Element Runtime Substitution
 ---------------------------------
