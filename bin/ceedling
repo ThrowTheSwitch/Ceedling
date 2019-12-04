@@ -90,6 +90,7 @@ unless (project_found)
         FileUtils.touch(File.join(test_support_path, '.gitkeep'))
 
         # If documentation requested, create a place to dump them and do so
+        doc_path = ""
         if use_docs
           doc_path = use_gem ? File.join(name, 'docs') : File.join(ceedling_path, 'docs')
           FileUtils.mkdir_p doc_path
@@ -99,7 +100,7 @@ unless (project_found)
           # Add documentation from main projects to list
           doc_files = {}
           ['docs','vendor/unity/docs','vendor/cmock/docs','vendor/cexception/docs'].each do |p|
-            Dir[ File.join(here, p, '*.md') ].each do |f|
+            Dir[ File.expand_path(File.join(here, p, '*.md')) ].each do |f|
               doc_files[ File.basename(f) ] = f unless(doc_files.include? f)
             end
           end
@@ -107,7 +108,7 @@ unless (project_found)
           # Add documentation from plugins to list
           Dir[ File.join(here, 'plugins/**/README.md') ].each do |plugin_path|
             k = "plugin_" + plugin_path.split(/\\|\//)[-2] + ".md"
-            doc_files[ k ] = plugin_path
+            doc_files[ k ] = File.expand_path(plugin_path)
           end
 
           # Copy all documentation
@@ -149,16 +150,24 @@ unless (project_found)
 
         # We're copying in a configuration file if we haven't said not to
         if (use_configs)
-          if use_gem
-            copy_file(File.join('assets', 'project_as_gem.yml'), File.join(name, 'project.yml'), :force => force)
+          dst_yaml = File.join(name, 'project.yml')
+          src_yaml = if use_gem
+            File.join(here, 'assets', 'project_as_gem.yml')
           else
-            copy_file(File.join('assets', 'project_with_guts.yml'), File.join(name, 'project.yml'), :force => force)
             if is_windows?
               copy_file(File.join('assets', 'ceedling.cmd'), File.join(name, 'ceedling.cmd'), :force => force)
             else
               copy_file(File.join('assets', 'ceedling'), File.join(name, 'ceedling'), :force => force)
               File.chmod(0755, File.join(name, 'ceedling'))
             end
+            File.join(here, 'assets', 'project_with_guts.yml')
+          end
+
+          # Perform the actual clone of the config file, while updating the version
+          File.open(dst_yaml,'w') do |dst|
+            require 'ceedling/version.rb'
+            dst << File.read(src_yaml).gsub(":ceedling_version: '?'",":ceedling_version: #{Ceedling::Version::CEEDLING}")
+            puts "      create  #{dst_yaml}"
           end
         end
 
@@ -170,8 +179,8 @@ unless (project_found)
         unless silent
           puts "\n"
           puts "Project '#{name}' #{force ? "upgraded" : "created"}!"
-          puts " - Tool documentation is located in vendor/ceedling/docs" if use_docs
-          puts " - Execute 'ceedling help' to view available test & build tasks"
+          puts " - Tool documentation is located in #{doc_path}" if use_docs
+          puts " - Execute 'ceedling help' from #{name} to view available test & build tasks"
           puts ''
         end
       end
