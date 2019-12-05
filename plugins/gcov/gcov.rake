@@ -563,7 +563,7 @@ namespace UTILS_SYM do
 
       # Generate .gcov files by running gcov on gcov notes files (*.gcno).
       for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
-        # Avoid running gcovr on the mock, test, and unity gcov notes files to save time.
+        # Avoid running gcov on the mock, test, and unity gcov notes files to save time.
         match_data = gcno_filepath.match(/(\/|\\)(mock_.*|test_.*|unity|cmock)\.gcno/)
         if match_data.nil? || (match_data[1].nil? && match_data[1].nil?)
           run_gcov("-b -c -j -r -x \"#{gcno_filepath}\"")[:time]
