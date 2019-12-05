@@ -8,6 +8,7 @@ GCOV_BUILD_OUTPUT_PATH          = File.join(GCOV_BUILD_PATH, "out")
 GCOV_RESULTS_PATH               = File.join(GCOV_BUILD_PATH, "results")
 GCOV_DEPENDENCIES_PATH          = File.join(GCOV_BUILD_PATH, "dependencies")
 GCOV_ARTIFACTS_PATH             = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, GCOV_ROOT_NAME)
+GCOV_REPORT_GENERATOR_PATH      = File.join(GCOV_ARTIFACTS_PATH, "ReportGenerator")
 
 GCOV_ARTIFACTS_FILE_HTML        = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageResults.html")
 GCOV_ARTIFACTS_FILE_COBERTURA   = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageCobertura.xml")

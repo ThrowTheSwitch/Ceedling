@@ -1,3 +1,5 @@
+require 'benchmark'
+
 directory(GCOV_BUILD_OUTPUT_PATH)
 directory(GCOV_RESULTS_PATH)
 directory(GCOV_ARTIFACTS_PATH)
@@ -154,21 +156,69 @@ if PROJECT_USE_DEEP_DEPENDENCIES
 end
 
 namespace UTILS_SYM do
+  # Report Creation Utilities
   UTILITY_NAME_GCOVR = "gcovr"
+  UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
+  UTILITY_NAMES = [UTILITY_NAME_GCOVR, UTILITY_NAME_REPORT_GENERATOR]
 
+  # Report Types
   REPORT_TYPE_HTML_BASIC = "HtmlBasic"
   REPORT_TYPE_HTML_DETAILED = "HtmlDetailed"
+  REPORT_TYPE_HTML_CHART = "HtmlChart"
+  REPORT_TYPE_HTML_INLINE = "HtmlInline"
+  REPORT_TYPE_HTML_INLINE_AZURE = "HtmlInlineAzure"
+  REPORT_TYPE_HTML_INLINE_AZURE_DARK = "HtmlInlineAzureDark"
+  REPORT_TYPE_MHTML = "MHtml"
   REPORT_TYPE_TEXT = "Text"
   REPORT_TYPE_COBERTURA = "Cobertura"
   REPORT_TYPE_SONARQUBE = "SonarQube"
   REPORT_TYPE_JSON = "JSON"
+  REPORT_TYPE_BADGES = "Badges"
+  REPORT_TYPE_CSV_SUMMARY = "CsvSummary"
+  REPORT_TYPE_LATEX = "Latex"
+  REPORT_TYPE_LATEX_SUMMARY = "LatexSummary"
+  REPORT_TYPE_PNG_CHART = "PngChart"
+  REPORT_TYPE_TEAM_CITY_SUMMARY = "TeamCitySummary"
+  REPORT_TYPE_LCOV = "lcov"
+  REPORT_TYPE_XML = "Xml"
+  REPORT_TYPE_XML_SUMMARY = "XmlSummary"
 
   GCOVR_SETTING_PREFIX = "gcov_gcovr"
+  REPORT_GENERATOR_SETTING_PREFIX = "gcov_report_generator"
+
+  # A dictionary of report types defined in this plugin to Report Generator report types.
+  REPORT_TYPE_TO_REPORT_GENERATOR_REPORT_NAME = {
+    REPORT_TYPE_HTML_BASIC.upcase => "HtmlSummary",
+    REPORT_TYPE_HTML_DETAILED.upcase => "Html",
+    REPORT_TYPE_HTML_CHART.upcase => "HtmlChart",
+    REPORT_TYPE_HTML_INLINE.upcase => "HtmlInline",
+    REPORT_TYPE_HTML_INLINE_AZURE.upcase => "HtmlInline_AzurePipelines",
+    REPORT_TYPE_HTML_INLINE_AZURE_DARK.upcase => "HtmlInline_AzurePipelines_Dark",
+    REPORT_TYPE_MHTML.upcase => "MHtml",
+    REPORT_TYPE_TEXT.upcase => "TextSummary",
+    REPORT_TYPE_COBERTURA.upcase => "Cobertura",
+    REPORT_TYPE_SONARQUBE.upcase => "SonarQube",
+    REPORT_TYPE_BADGES.upcase => "Badges",
+    REPORT_TYPE_CSV_SUMMARY.upcase => "CsvSummary",
+    REPORT_TYPE_LATEX.upcase => "Latex",
+    REPORT_TYPE_LATEX_SUMMARY.upcase => "LatexSummary",
+    REPORT_TYPE_PNG_CHART.upcase => "PngChart",
+    REPORT_TYPE_TEAM_CITY_SUMMARY.upcase => "TeamCitySummary",
+    REPORT_TYPE_LCOV.upcase => "lcov",
+    REPORT_TYPE_XML.upcase => "Xml",
+    REPORT_TYPE_XML_SUMMARY.upcase => "XmlSummary",
+  }
 
 
   # Get the gcovr options from the project options.
   def get_gcovr_opts(opts)
     return opts[GCOVR_SETTING_PREFIX.to_sym] || {}
+  end
+
+
+  # Get the Report Generator options from the project options.
+  def get_report_generator_opts(opts)
+    return opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym] || {}
   end
 
 
@@ -211,7 +261,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
-    if opts[:gcov_xml_report] || is_report_enabled(opts, REPORT_TYPE_COBERTURA)
+    if is_report_enabled(opts, REPORT_TYPE_COBERTURA)
       # Determine the Cobertura XML report file name.
       artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
       if !(gcovr_opts[:cobertura_artifact_filename].nil?)
@@ -275,8 +325,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr HTML report is enabled. Defaults to enabled.
-    html_enabled = (opts[:gcov_html_report].nil? && opts[:gcov_reports].nil?) ||
-                   opts[:gcov_html_report] ||
+    html_enabled = (opts[:gcov_html_report].nil? && opts[:gcov_reports].empty?) ||
                    is_report_enabled(opts, REPORT_TYPE_HTML_BASIC) ||
                    is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED)
 
@@ -346,7 +395,7 @@ namespace UTILS_SYM do
     gcovr_version_number_major = 0
     gcovr_version_number_minor = 0
 
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], "--version")
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_POST_REPORT, [], "--version")
     shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
     version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)
 
@@ -361,17 +410,19 @@ namespace UTILS_SYM do
 
   # Output the shell result to the console.
   def print_shell_result(shell_result)
-    puts "Done in %.3f seconds." % shell_result[:time]
+    if !(shell_result.nil?)
+      puts "Done in %.3f seconds." % shell_result[:time]
 
-    if !(shell_result.nil?) && !(shell_result[:output].nil?) && (shell_result[:output].length > 0)
-      puts shell_result[:output]
+      if !(shell_result[:output].nil?) && (shell_result[:output].length > 0)
+        puts shell_result[:output]
+      end
     end
   end
 
 
   # Run gcovr with the given arguments.
   def run_gcovr(args)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_POST_REPORT, [], args)
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_POST_REPORT, [], args)
     shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
     print_shell_result(shell_result)
   end
@@ -432,6 +483,116 @@ namespace UTILS_SYM do
   end
 
 
+  # Build the Report Generator arguments.
+  def report_generator_args_builder(opts)
+    rg_opts = get_report_generator_opts(opts)
+
+    args = ""
+    args += "\"-reports:*.gcov\" "
+    args += "\"-targetdir:\"#{GCOV_REPORT_GENERATOR_PATH}\"\" "
+
+    # Build the report types argument.
+    if !(opts.nil?) && !(opts[:gcov_reports].nil?) && !(opts[:gcov_reports].empty?)
+      args += "\"-reporttypes:"
+
+      for report_type in opts[:gcov_reports]
+        rg_report_type = REPORT_TYPE_TO_REPORT_GENERATOR_REPORT_NAME[report_type.upcase]
+        if !(rg_report_type.nil?)
+          args += rg_report_type + ";"
+        end
+      end
+
+      # Removing trailing ';' after the last report type.
+      args = args.chomp(";")
+
+      # Append a space seperator after the report type.
+      args += "\" "
+    end
+
+    # Build the source directories argument.
+    args += "\"-sourcedirs:.;"
+    if !(opts[:collection_paths_source].nil?)
+      for src_path in opts[:collection_paths_source]
+        args += src_path + ";"
+      end
+    end
+    args = args.chomp(";")
+    args += "\" "
+
+    args += "\"-historydir:#{rg_opts[:history_directory]}\" " unless rg_opts[:history_directory].nil?
+    args += "\"-plugins:#{rg_opts[:plugins]}\" " unless rg_opts[:plugins].nil?
+    args += "\"-assemblyfilters:#{rg_opts[:assembly_filters]}\" " unless rg_opts[:assembly_filters].nil?
+    args += "\"-classfilters:#{rg_opts[:class_filters]}\" " unless rg_opts[:class_filters].nil?
+    filefilters_default = "-" + GCOV_FILTER_EXCLUDE.gsub("^", "./").gsub(".*", "*").gsub("|", ";-")
+    filefilters_default += ";-" + GCOV_FILTER_EXCLUDE.gsub("^", ".\\").gsub(".*", "*").gsub("|", ";-")
+    args += "\"-filefilters:#{rg_opts[:file_filters] || filefilters_default}\" "
+    args += "\"-verbosity:#{rg_opts[:verbosity] || "Warning"}\" "
+    args += "\"-tag:#{rg_opts[:tag]}\" " unless rg_opts[:tag].nil?
+
+    return args
+  end
+
+
+  # Run gcov with the given arguments.
+  def run_gcov(args)
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOV_POST_REPORT, [], args)
+    return @ceedling[:tool_executor].exec(command[:line], command[:options])
+  end
+
+
+  # Run Report Generator with the given arguments.
+  def run_report_generator(args)
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT_GENERATOR_POST_REPORT, [], args)
+    return @ceedling[:tool_executor].exec(command[:line], command[:options])
+  end
+
+
+  # Generate the Report Generator report(s) specified in the options.
+  def make_report_generator_reports(opts)
+    shell_result = nil
+    total_time = Benchmark.realtime do
+      rg_opts = get_report_generator_opts(opts)
+
+      print "Creating gcov results report(s) with Report Generator in '#{GCOV_REPORT_GENERATOR_PATH}'... "
+      STDOUT.flush
+
+      # Cleanup any existing .gcov files to avoid reporting old coverage results.
+      for gcov_file in Dir.glob("*.gcov")
+        File.delete(gcov_file)
+      end
+
+      # Generate .gcov files by running gcov on gcov notes files (*.gcno).
+      for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
+        # Avoid running gcovr on the mock, test, and unity gcov notes files to save time.
+        match_data = gcno_filepath.match(/(\/|\\)(mock_.*|test_.*|unity|cmock)\.gcno/)
+        if match_data.nil? || (match_data[1].nil? && match_data[1].nil?)
+          run_gcov("-b -c -j -r -x \"#{gcno_filepath}\"")[:time]
+        end
+      end
+
+      if Dir.glob("*.gcov").length > 0
+        # Build the command line arguments.
+        args = report_generator_args_builder(opts)
+
+        # Generate the report(s).
+        shell_result = run_report_generator(args)
+      else
+        puts "\nWarning: No matching .gcno coverage files found."
+      end
+
+      # Cleanup .gcov files.
+      for gcov_file in Dir.glob("*.gcov")
+        File.delete(gcov_file)
+      end
+    end
+
+    if shell_result
+      shell_result[:time] = total_time
+      print_shell_result(shell_result)
+    end
+  end
+
+
   desc "Create gcov code coverage html/xml/json/text report(s). (Note: Must run 'ceedling gcov' first)."
   task GCOV_SYM do
     # Get the gcov options from project.yml.
@@ -444,7 +605,7 @@ namespace UTILS_SYM do
 
     # Remove unsupported reporting utilities.
     if !(opts[:gcov_utilities].nil?)
-      opts[:gcov_utilities].reject! { |item| !([UTILITY_NAME_GCOVR].map(&:upcase).include? item.upcase) }
+      opts[:gcov_utilities].reject! { |item| !(UTILITY_NAMES.map(&:upcase).include? item.upcase) }
     end
 
     # Default to gcovr when no reporting utilities are specified.
@@ -452,8 +613,27 @@ namespace UTILS_SYM do
       opts[:gcov_utilities] = [UTILITY_NAME_GCOVR]
     end
 
+    if opts[:gcov_reports].nil?
+      opts[:gcov_reports] = []
+    end
+
+    # Support deprecated :html_report: and ":html_report_type: basic" options.
+    if !is_report_enabled(opts, REPORT_TYPE_HTML_BASIC) && (opts[:gcov_html_report] || (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("basic") == 0))
+      opts[:gcov_reports].push(REPORT_TYPE_HTML_BASIC)
+    end
+
+    # Support deprecated ":html_report_type: detailed" option.
+    if !is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED) && (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
+      opts[:gcov_reports].push(REPORT_TYPE_HTML_DETAILED)
+    end
+
+    # Support deprecated :xml_report: option.
+    if opts[:gcov_xml_report]
+      opts[:gcov_reports].push(REPORT_TYPE_COBERTURA)
+    end
+
     # Default to HTML basic report when no report types are defined.
-    if opts[:gcov_reports].nil? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
+    if opts[:gcov_reports].empty? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
       opts[:gcov_reports] = [REPORT_TYPE_HTML_BASIC]
 
       puts "In your project.yml, define one or more of the"
@@ -473,6 +653,10 @@ namespace UTILS_SYM do
 
     if is_utility_enabled(opts, UTILITY_NAME_GCOVR)
       make_gcovr_reports(opts)
+    end
+
+    if is_utility_enabled(opts, UTILITY_NAME_REPORT_GENERATOR)
+      make_report_generator_reports(opts)
     end
 
   end
