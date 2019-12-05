@@ -566,7 +566,7 @@ namespace UTILS_SYM do
         # Avoid running gcov on the mock, test, and unity gcov notes files to save time.
         match_data = gcno_filepath.match(/(\/|\\)(mock_.*|test_.*|unity|cmock)\.gcno/)
         if match_data.nil? || (match_data[1].nil? && match_data[1].nil?)
-          run_gcov("-b -c -j -r -x \"#{gcno_filepath}\"")[:time]
+          run_gcov("-b -c -j -r -x \"#{gcno_filepath}\"")
         end
       end
 
