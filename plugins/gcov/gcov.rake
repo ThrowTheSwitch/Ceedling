@@ -523,9 +523,7 @@ namespace UTILS_SYM do
     args += "\"-plugins:#{rg_opts[:plugins]}\" " unless rg_opts[:plugins].nil?
     args += "\"-assemblyfilters:#{rg_opts[:assembly_filters]}\" " unless rg_opts[:assembly_filters].nil?
     args += "\"-classfilters:#{rg_opts[:class_filters]}\" " unless rg_opts[:class_filters].nil?
-    filefilters_default = "-" + GCOV_FILTER_EXCLUDE.gsub("^", "./").gsub(".*", "*").gsub("|", ";-")
-    filefilters_default += ";-" + GCOV_FILTER_EXCLUDE.gsub("^", ".\\").gsub(".*", "*").gsub("|", ";-")
-    args += "\"-filefilters:#{rg_opts[:file_filters] || filefilters_default}\" "
+    args += "\"-filefilters:#{rg_opts[:file_filters] || GCOV_REPORT_GENERATOR_FILE_FILTERS}\" "
     args += "\"-verbosity:#{rg_opts[:verbosity] || "Warning"}\" "
     args += "\"-tag:#{rg_opts[:tag]}\" " unless rg_opts[:tag].nil?
 
@@ -561,10 +559,12 @@ namespace UTILS_SYM do
         File.delete(gcov_file)
       end
 
+      # Avoid running gcov on the mock, test, and unity gcov notes files to save time.
+      gcno_exclude_regex = /(\/|\\)(#{opts[:cmock_mock_prefix]}.*|#{opts[:project_test_file_prefix]}.*|unity|cmock)\.gcno/
+
       # Generate .gcov files by running gcov on gcov notes files (*.gcno).
       for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
-        # Avoid running gcov on the mock, test, and unity gcov notes files to save time.
-        match_data = gcno_filepath.match(/(\/|\\)(mock_.*|test_.*|unity|cmock)\.gcno/)
+        match_data = gcno_filepath.match(gcno_exclude_regex)
         if match_data.nil? || (match_data[1].nil? && match_data[1].nil?)
           run_gcov("-b -c -j -r -x \"#{gcno_filepath}\"")
         end
