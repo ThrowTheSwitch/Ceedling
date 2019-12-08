@@ -20,3 +20,27 @@ GCOV_FILTER_EXCLUDE             = '^vendor.*|^build.*|^test.*|^lib.*'
 
 # Report Generator supports text with wildcard characters.
 GCOV_REPORT_GENERATOR_FILE_FILTERS = '-./vendor/*;-./build/*;-./test/*;-./lib/*;-.\vendor\*;-.\build\*;-.\test\*;-.\lib\*'
+
+# Report Types
+class ReportTypes
+  HTML_BASIC = "HtmlBasic"
+  HTML_DETAILED = "HtmlDetailed"
+  HTML_CHART = "HtmlChart"
+  HTML_INLINE = "HtmlInline"
+  HTML_INLINE_AZURE = "HtmlInlineAzure"
+  HTML_INLINE_AZURE_DARK = "HtmlInlineAzureDark"
+  MHTML = "MHtml"
+  TEXT = "Text"
+  COBERTURA = "Cobertura"
+  SONARQUBE = "SonarQube"
+  JSON = "JSON"
+  BADGES = "Badges"
+  CSV_SUMMARY = "CsvSummary"
+  LATEX = "Latex"
+  LATEX_SUMMARY = "LatexSummary"
+  PNG_CHART = "PngChart"
+  TEAM_CITY_SUMMARY = "TeamCitySummary"
+  LCOV = "lcov"
+  XML = "Xml"
+  XML_SUMMARY = "XmlSummary"
+end

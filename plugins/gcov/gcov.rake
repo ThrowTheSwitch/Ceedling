@@ -161,52 +161,30 @@ namespace UTILS_SYM do
   UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
   UTILITY_NAMES = [UTILITY_NAME_GCOVR, UTILITY_NAME_REPORT_GENERATOR]
 
-  # Report Types
-  REPORT_TYPE_HTML_BASIC = "HtmlBasic"
-  REPORT_TYPE_HTML_DETAILED = "HtmlDetailed"
-  REPORT_TYPE_HTML_CHART = "HtmlChart"
-  REPORT_TYPE_HTML_INLINE = "HtmlInline"
-  REPORT_TYPE_HTML_INLINE_AZURE = "HtmlInlineAzure"
-  REPORT_TYPE_HTML_INLINE_AZURE_DARK = "HtmlInlineAzureDark"
-  REPORT_TYPE_MHTML = "MHtml"
-  REPORT_TYPE_TEXT = "Text"
-  REPORT_TYPE_COBERTURA = "Cobertura"
-  REPORT_TYPE_SONARQUBE = "SonarQube"
-  REPORT_TYPE_JSON = "JSON"
-  REPORT_TYPE_BADGES = "Badges"
-  REPORT_TYPE_CSV_SUMMARY = "CsvSummary"
-  REPORT_TYPE_LATEX = "Latex"
-  REPORT_TYPE_LATEX_SUMMARY = "LatexSummary"
-  REPORT_TYPE_PNG_CHART = "PngChart"
-  REPORT_TYPE_TEAM_CITY_SUMMARY = "TeamCitySummary"
-  REPORT_TYPE_LCOV = "lcov"
-  REPORT_TYPE_XML = "Xml"
-  REPORT_TYPE_XML_SUMMARY = "XmlSummary"
-
   GCOVR_SETTING_PREFIX = "gcov_gcovr"
   REPORT_GENERATOR_SETTING_PREFIX = "gcov_report_generator"
 
   # A dictionary of report types defined in this plugin to Report Generator report types.
   REPORT_TYPE_TO_REPORT_GENERATOR_REPORT_NAME = {
-    REPORT_TYPE_HTML_BASIC.upcase => "HtmlSummary",
-    REPORT_TYPE_HTML_DETAILED.upcase => "Html",
-    REPORT_TYPE_HTML_CHART.upcase => "HtmlChart",
-    REPORT_TYPE_HTML_INLINE.upcase => "HtmlInline",
-    REPORT_TYPE_HTML_INLINE_AZURE.upcase => "HtmlInline_AzurePipelines",
-    REPORT_TYPE_HTML_INLINE_AZURE_DARK.upcase => "HtmlInline_AzurePipelines_Dark",
-    REPORT_TYPE_MHTML.upcase => "MHtml",
-    REPORT_TYPE_TEXT.upcase => "TextSummary",
-    REPORT_TYPE_COBERTURA.upcase => "Cobertura",
-    REPORT_TYPE_SONARQUBE.upcase => "SonarQube",
-    REPORT_TYPE_BADGES.upcase => "Badges",
-    REPORT_TYPE_CSV_SUMMARY.upcase => "CsvSummary",
-    REPORT_TYPE_LATEX.upcase => "Latex",
-    REPORT_TYPE_LATEX_SUMMARY.upcase => "LatexSummary",
-    REPORT_TYPE_PNG_CHART.upcase => "PngChart",
-    REPORT_TYPE_TEAM_CITY_SUMMARY.upcase => "TeamCitySummary",
-    REPORT_TYPE_LCOV.upcase => "lcov",
-    REPORT_TYPE_XML.upcase => "Xml",
-    REPORT_TYPE_XML_SUMMARY.upcase => "XmlSummary",
+    ReportTypes::HTML_BASIC.upcase => "HtmlSummary",
+    ReportTypes::HTML_DETAILED.upcase => "Html",
+    ReportTypes::HTML_CHART.upcase => "HtmlChart",
+    ReportTypes::HTML_INLINE.upcase => "HtmlInline",
+    ReportTypes::HTML_INLINE_AZURE.upcase => "HtmlInline_AzurePipelines",
+    ReportTypes::HTML_INLINE_AZURE_DARK.upcase => "HtmlInline_AzurePipelines_Dark",
+    ReportTypes::MHTML.upcase => "MHtml",
+    ReportTypes::TEXT.upcase => "TextSummary",
+    ReportTypes::COBERTURA.upcase => "Cobertura",
+    ReportTypes::SONARQUBE.upcase => "SonarQube",
+    ReportTypes::BADGES.upcase => "Badges",
+    ReportTypes::CSV_SUMMARY.upcase => "CsvSummary",
+    ReportTypes::LATEX.upcase => "Latex",
+    ReportTypes::LATEX_SUMMARY.upcase => "LatexSummary",
+    ReportTypes::PNG_CHART.upcase => "PngChart",
+    ReportTypes::TEAM_CITY_SUMMARY.upcase => "TeamCitySummary",
+    ReportTypes::LCOV.upcase => "lcov",
+    ReportTypes::XML.upcase => "Xml",
+    ReportTypes::XML_SUMMARY.upcase => "XmlSummary",
   }
 
 
@@ -261,7 +239,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
-    if is_report_enabled(opts, REPORT_TYPE_COBERTURA)
+    if is_report_enabled(opts, ReportTypes::COBERTURA)
       # Determine the Cobertura XML report file name.
       artifacts_file_cobertura = GCOV_ARTIFACTS_FILE_COBERTURA
       if !(gcovr_opts[:cobertura_artifact_filename].nil?)
@@ -284,7 +262,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr SonarQube XML report is enabled. Defaults to disabled.
-    if is_report_enabled(opts, REPORT_TYPE_SONARQUBE)
+    if is_report_enabled(opts, ReportTypes::SONARQUBE)
       # Determine the SonarQube XML report file name.
       artifacts_file_sonarqube = GCOV_ARTIFACTS_FILE_SONARQUBE
       if !(gcovr_opts[:sonarqube_artifact_filename].nil?)
@@ -304,7 +282,7 @@ namespace UTILS_SYM do
     args = ""
 
     # Determine if the gcovr JSON report is enabled. Defaults to disabled.
-    if is_report_enabled(opts, REPORT_TYPE_JSON)
+    if is_report_enabled(opts, ReportTypes::JSON)
       # Determine the JSON report file name.
       artifacts_file_json = GCOV_ARTIFACTS_FILE_JSON
       if !(gcovr_opts[:json_artifact_filename].nil?)
@@ -326,8 +304,8 @@ namespace UTILS_SYM do
 
     # Determine if the gcovr HTML report is enabled. Defaults to enabled.
     html_enabled = (opts[:gcov_html_report].nil? && opts[:gcov_reports].empty?) ||
-                   is_report_enabled(opts, REPORT_TYPE_HTML_BASIC) ||
-                   is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED)
+                   is_report_enabled(opts, ReportTypes::HTML_BASIC) ||
+                   is_report_enabled(opts, ReportTypes::HTML_DETAILED)
 
     if html_enabled
       # Determine the HTML report file name.
@@ -338,7 +316,7 @@ namespace UTILS_SYM do
 
       is_html_report_type_detailed = (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
 
-      args += "--html-details " if is_html_report_type_detailed || is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED)
+      args += "--html-details " if is_html_report_type_detailed || is_report_enabled(opts, ReportTypes::HTML_DETAILED)
       args += "--html-title \"#{gcovr_opts[:html_title]}\" " unless gcovr_opts[:html_title].nil?
       args += "--html-absolute-paths " if !(gcovr_opts[:html_absolute_paths].nil?) && gcovr_opts[:html_absolute_paths]
       args += "--html-encoding \"#{gcovr_opts[:html_encoding]}\" " unless gcovr_opts[:html_encoding].nil?
@@ -477,7 +455,7 @@ namespace UTILS_SYM do
     end
 
     # Determine if the gcovr text report is enabled. Defaults to disabled.
-    if is_report_enabled(opts, REPORT_TYPE_TEXT)
+    if is_report_enabled(opts, ReportTypes::TEXT)
       make_gcovr_text_report(opts, args_common)
     end
   end
@@ -618,36 +596,36 @@ namespace UTILS_SYM do
     end
 
     # Support deprecated :html_report: and ":html_report_type: basic" options.
-    if !is_report_enabled(opts, REPORT_TYPE_HTML_BASIC) && (opts[:gcov_html_report] || (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("basic") == 0))
-      opts[:gcov_reports].push(REPORT_TYPE_HTML_BASIC)
+    if !is_report_enabled(opts, ReportTypes::HTML_BASIC) && (opts[:gcov_html_report] || (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("basic") == 0))
+      opts[:gcov_reports].push(ReportTypes::HTML_BASIC)
     end
 
     # Support deprecated ":html_report_type: detailed" option.
-    if !is_report_enabled(opts, REPORT_TYPE_HTML_DETAILED) && (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
-      opts[:gcov_reports].push(REPORT_TYPE_HTML_DETAILED)
+    if !is_report_enabled(opts, ReportTypes::HTML_DETAILED) && (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
+      opts[:gcov_reports].push(ReportTypes::HTML_DETAILED)
     end
 
     # Support deprecated :xml_report: option.
     if opts[:gcov_xml_report]
-      opts[:gcov_reports].push(REPORT_TYPE_COBERTURA)
+      opts[:gcov_reports].push(ReportTypes::COBERTURA)
     end
 
     # Default to HTML basic report when no report types are defined.
     if opts[:gcov_reports].empty? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
-      opts[:gcov_reports] = [REPORT_TYPE_HTML_BASIC]
+      opts[:gcov_reports] = [ReportTypes::HTML_BASIC]
 
       puts "In your project.yml, define one or more of the"
       puts "following to specify which reports to generate."
-      puts "For now, creating only an #{REPORT_TYPE_HTML_BASIC} report."
+      puts "For now, creating only an #{ReportTypes::HTML_BASIC} report."
       puts ""
       puts ":gcov:"
       puts "  :reports:"
-      puts "    - #{REPORT_TYPE_HTML_BASIC}"
-      puts "    - #{REPORT_TYPE_HTML_DETAILED}"
-      puts "    - #{REPORT_TYPE_TEXT}"
-      puts "    - #{REPORT_TYPE_COBERTURA}"
-      puts "    - #{REPORT_TYPE_SONARQUBE}"
-      puts "    - #{REPORT_TYPE_JSON}"
+      puts "    - #{ReportTypes::HTML_BASIC}"
+      puts "    - #{ReportTypes::HTML_DETAILED}"
+      puts "    - #{ReportTypes::TEXT}"
+      puts "    - #{ReportTypes::COBERTURA}"
+      puts "    - #{ReportTypes::SONARQUBE}"
+      puts "    - #{ReportTypes::JSON}"
       puts ""
     end
 
