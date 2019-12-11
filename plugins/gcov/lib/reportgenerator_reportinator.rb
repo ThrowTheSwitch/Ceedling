@@ -1,4 +1,3 @@
-
 class ReportGeneratorReportinator
 
   def initialize(system_objects)
@@ -19,8 +18,8 @@ class ReportGeneratorReportinator
       File.delete(gcov_file)
     end
 
-    # Avoid running gcov on the mock, test, and unity gcov notes files to save time.
-    gcno_exclude_regex = /(\/|\\)(#{opts[:cmock_mock_prefix]}.*|#{opts[:project_test_file_prefix]}.*|unity|cmock)\.gcno/
+    # Avoid running gcov on the mock, test, unity, and cexception gcov notes files to save time.
+    gcno_exclude_regex = /(\/|\\)(#{opts[:cmock_mock_prefix]}.*|#{opts[:project_test_file_prefix]}.*|#{VENDORS_FILES.join('|')})\.gcno/
 
     # Generate .gcov files by running gcov on gcov notes files (*.gcno).
     for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
@@ -105,9 +104,7 @@ class ReportGeneratorReportinator
     # Build the source directories argument.
     args += "\"-sourcedirs:.;"
     if !(opts[:collection_paths_source].nil?)
-      for src_path in opts[:collection_paths_source]
-        args += src_path + ";"
-      end
+      args += opts[:collection_paths_source].join(';')
     end
     args = args.chomp(";")
     args += "\" "
@@ -116,7 +113,8 @@ class ReportGeneratorReportinator
     args += "\"-plugins:#{rg_opts[:plugins]}\" " unless rg_opts[:plugins].nil?
     args += "\"-assemblyfilters:#{rg_opts[:assembly_filters]}\" " unless rg_opts[:assembly_filters].nil?
     args += "\"-classfilters:#{rg_opts[:class_filters]}\" " unless rg_opts[:class_filters].nil?
-    args += "\"-filefilters:#{rg_opts[:file_filters] || GCOV_REPORT_GENERATOR_FILE_FILTERS}\" "
+    file_filters = rg_opts[:file_filters] || @ceedling[:tool_executor_helper].osify_path_separators(GCOV_REPORT_GENERATOR_FILE_FILTERS)
+    args += "\"-filefilters:#{file_filters}\" "
     args += "\"-verbosity:#{rg_opts[:verbosity] || "Warning"}\" "
     args += "\"-tag:#{rg_opts[:tag]}\" " unless rg_opts[:tag].nil?
 
