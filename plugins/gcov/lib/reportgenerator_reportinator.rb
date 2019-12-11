@@ -25,7 +25,7 @@ class ReportGeneratorReportinator
     for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
       match_data = gcno_filepath.match(gcno_exclude_regex)
       if match_data.nil? || (match_data[1].nil? && match_data[1].nil?)
-        run_gcov("-b -c -j -r -x \"#{gcno_filepath}\"")
+        run_gcov("-b -c -r -x \"#{gcno_filepath}\"")
       end
     end
 
