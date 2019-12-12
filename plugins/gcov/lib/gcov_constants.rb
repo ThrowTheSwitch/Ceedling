@@ -1,3 +1,4 @@
+
 GCOV_ROOT_NAME                  = 'gcov'.freeze
 GCOV_TASK_ROOT                  = GCOV_ROOT_NAME + ':'
 GCOV_SYM                        = GCOV_ROOT_NAME.to_sym
