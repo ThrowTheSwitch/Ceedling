@@ -1,50 +1,59 @@
+require 'benchmark'
+require 'reportinator_helper'
+
 class ReportGeneratorReportinator
 
   def initialize(system_objects)
     @ceedling = system_objects
+    @reportinator_helper = ReportinatorHelper.new
   end
 
 
   # Generate the Report Generator report(s) specified in the options.
   def make_reports(opts)
     shell_result = nil
-    rg_opts = get_opts(opts)
+    total_time = Benchmark.realtime do
+      rg_opts = get_opts(opts)
 
-    print "Creating gcov results report(s) with Report Generator in '#{GCOV_REPORT_GENERATOR_PATH}'... "
-    STDOUT.flush
+      print "Creating gcov results report(s) with Report Generator in '#{GCOV_REPORT_GENERATOR_PATH}'... "
+      STDOUT.flush
 
-    # Cleanup any existing .gcov files to avoid reporting old coverage results.
-    for gcov_file in Dir.glob("*.gcov")
-      File.delete(gcov_file)
-    end
+      # Cleanup any existing .gcov files to avoid reporting old coverage results.
+      for gcov_file in Dir.glob("*.gcov")
+        File.delete(gcov_file)
+      end
 
-    # Avoid running gcov on the mock, test, unity, and cexception gcov notes files to save time.
-    gcno_exclude_regex = /(\/|\\)(#{opts[:cmock_mock_prefix]}.*|#{opts[:project_test_file_prefix]}.*|#{VENDORS_FILES.join('|')})\.gcno/
+      # Avoid running gcov on the mock, test, unity, and cexception gcov notes files to save time.
+      gcno_exclude_regex = /(\/|\\)(#{opts[:cmock_mock_prefix]}.*|#{opts[:project_test_file_prefix]}.*|#{VENDORS_FILES.join('|')})\.gcno/
 
-    # Generate .gcov files by running gcov on gcov notes files (*.gcno).
-    for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
-      match_data = gcno_filepath.match(gcno_exclude_regex)
-      if match_data.nil? || (match_data[1].nil? && match_data[1].nil?)
-        run_gcov("-b -c -r -x \"#{gcno_filepath}\"")
+      # Generate .gcov files by running gcov on gcov notes files (*.gcno).
+      for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
+        match_data = gcno_filepath.match(gcno_exclude_regex)
+        if match_data.nil? || (match_data[1].nil? && match_data[1].nil?)
+          run_gcov("-b -c -r -x \"#{gcno_filepath}\"")
+        end
+      end
+
+      if Dir.glob("*.gcov").length > 0
+        # Build the command line arguments.
+        args = args_builder(opts)
+
+        # Generate the report(s).
+        shell_result = run(args)
+      else
+        puts "\nWarning: No matching .gcno coverage files found."
+      end
+
+      # Cleanup .gcov files.
+      for gcov_file in Dir.glob("*.gcov")
+        File.delete(gcov_file)
       end
     end
 
-    if Dir.glob("*.gcov").length > 0
-      # Build the command line arguments.
-      args = args_builder(opts)
-
-      # Generate the report(s).
-      shell_result = run(args)
-    else
-      puts "\nWarning: No matching .gcno coverage files found."
+    if shell_result
+      shell_result[:time] = total_time
+      @reportinator_helper.print_shell_result(shell_result)
     end
-
-    # Cleanup .gcov files.
-    for gcov_file in Dir.glob("*.gcov")
-      File.delete(gcov_file)
-    end
-
-    return shell_result
   end
 
 

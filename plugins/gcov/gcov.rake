@@ -1,4 +1,3 @@
-require 'benchmark'
 require 'reportgenerator_reportinator'
 require 'gcovr_reportinator'
 
@@ -169,18 +168,6 @@ namespace UTILS_SYM do
   end
 
 
-  # Output the shell result to the console.
-  def print_shell_result(shell_result)
-    if !(shell_result.nil?)
-      puts "Done in %.3f seconds." % shell_result[:time]
-
-      if !(shell_result[:output].nil?) && (shell_result[:output].length > 0)
-        puts shell_result[:output]
-      end
-    end
-  end
-
-
   desc "Create gcov code coverage html/xml/json/text report(s). (Note: Must run 'ceedling gcov' first)."
   task GCOV_SYM do
     # Get the gcov options from project.yml.
@@ -209,26 +196,12 @@ namespace UTILS_SYM do
     gcovr_reportinator.support_deprecated_options(opts)
 
     if is_utility_enabled(opts, UTILITY_NAME_GCOVR)
-      shell_result = nil
-      total_time = Benchmark.realtime do
-        shell_result = gcovr_reportinator.make_reports(opts)
-      end
-      if shell_result
-        shell_result[:time] = total_time
-        print_shell_result(shell_result)
-      end
+      gcovr_reportinator.make_reports(opts)
     end
 
     if is_utility_enabled(opts, UTILITY_NAME_REPORT_GENERATOR)
-      shell_result = nil
-      total_time = Benchmark.realtime do
-        reportgenerator_reportinator = ReportGeneratorReportinator.new(@ceedling)
-        shell_result = reportgenerator_reportinator.make_reports(opts)
-      end
-      if shell_result
-        shell_result[:time] = total_time
-        print_shell_result(shell_result)
-      end
+      reportgenerator_reportinator = ReportGeneratorReportinator.new(@ceedling)
+      reportgenerator_reportinator.make_reports(opts)
     end
 
   end

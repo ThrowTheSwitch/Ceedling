@@ -1,14 +1,15 @@
+require 'reportinator_helper'
 
 class GcovrReportinator
 
   def initialize(system_objects)
     @ceedling = system_objects
+    @reportinator_helper = ReportinatorHelper.new
   end
 
 
   # Generate the gcovr report(s) specified in the options.
   def make_reports(opts)
-    shell_result = nil
     # Get the gcovr version number.
     gcovr_version_info = get_gcovr_version()
 
@@ -30,7 +31,7 @@ class GcovrReportinator
       STDOUT.flush
 
       # Generate the report(s).
-      shell_result = run(args)
+      run(args)
     else
       # gcovr version 4.1 and earlier supports HTML and Cobertura XML reports.
       # It does not support SonarQube and JSON reports.
@@ -43,7 +44,7 @@ class GcovrReportinator
         STDOUT.flush
 
         # Generate the HTML report.
-        shell_result = run(args_common + args_html)
+        run(args_common + args_html)
       end
 
       if args_cobertura.length > 0
@@ -51,16 +52,14 @@ class GcovrReportinator
         STDOUT.flush
 
         # Generate the Cobertura XML report.
-        shell_result = run(args_common + args_cobertura)
+        run(args_common + args_cobertura)
       end
     end
 
     # Determine if the gcovr text report is enabled. Defaults to disabled.
     if is_report_enabled(opts, ReportTypes::TEXT)
-      shell_result = make_text_report(opts, args_common)
+      make_text_report(opts, args_common)
     end
-
-    return shell_result
   end
 
 
@@ -269,7 +268,8 @@ class GcovrReportinator
   # Run gcovr with the given arguments.
   def run(args)
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_POST_REPORT, [], args)
-    return @ceedling[:tool_executor].exec(command[:line], command[:options])
+    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+    @reportinator_helper.print_shell_result(shell_result)
   end
 
 
