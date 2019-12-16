@@ -20,7 +20,7 @@ GCOV_FILTER_EXCLUDE_PATHS       = ['vendor', 'build', 'test', 'lib']
 # gcovr supports regular expressions.
 GCOV_FILTER_EXCLUDE = GCOV_FILTER_EXCLUDE_PATHS.map{|path| '^'.concat(*path).concat('.*')}.join('|')
 
-# Report Generator supports text with wildcard characters.
+# ReportGenerator supports text with wildcard characters.
 GCOV_REPORT_GENERATOR_FILE_FILTERS = GCOV_FILTER_EXCLUDE_PATHS.map{|path| File.join('-.', *path, '*')}.join(';')
 
 # Report Types

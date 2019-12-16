@@ -10,13 +10,13 @@ class ReportGeneratorReportinator
   end
 
 
-  # Generate the Report Generator report(s) specified in the options.
+  # Generate the ReportGenerator report(s) specified in the options.
   def make_reports(opts)
     shell_result = nil
     total_time = Benchmark.realtime do
       rg_opts = get_opts(opts)
 
-      print "Creating gcov results report(s) with Report Generator in '#{GCOV_REPORT_GENERATOR_PATH}'... "
+      print "Creating gcov results report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_PATH}'... "
       STDOUT.flush
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.
@@ -60,7 +60,7 @@ class ReportGeneratorReportinator
 
   private
 
-  # A dictionary of report types defined in this plugin to Report Generator report types.
+  # A dictionary of report types defined in this plugin to ReportGenerator report types.
   REPORT_TYPE_TO_REPORT_GENERATOR_REPORT_NAME = {
     ReportTypes::HTML_BASIC.upcase => "HtmlSummary",
     ReportTypes::HTML_DETAILED.upcase => "Html",
@@ -85,7 +85,7 @@ class ReportGeneratorReportinator
 
   REPORT_GENERATOR_SETTING_PREFIX = "gcov_report_generator"
 
-  # Build the Report Generator arguments.
+  # Build the ReportGenerator arguments.
   def args_builder(opts)
     rg_opts = get_opts(opts)
 
@@ -132,13 +132,13 @@ class ReportGeneratorReportinator
   end
 
 
-  # Get the Report Generator options from the project options.
+  # Get the ReportGenerator options from the project options.
   def get_opts(opts)
     return opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym] || {}
   end
 
 
-  # Run Report Generator with the given arguments.
+  # Run ReportGenerator with the given arguments.
   def run(args)
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT_GENERATOR_POST_REPORT, [], args)
     return @ceedling[:tool_executor].exec(command[:line], command[:options])

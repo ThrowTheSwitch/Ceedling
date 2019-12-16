@@ -8,7 +8,7 @@ Currently only designed for the gcov command (like LCOV for example). In the
 future we could configure this to work with other code coverage tools.
 
 This plugin currently uses [gcovr](https://www.gcovr.com/) and / or
-[Report Generator](https://danielpalme.github.io/ReportGenerator/)
+[ReportGenerator](https://danielpalme.github.io/ReportGenerator/)
 as utilities to generate HTML, XML, JSON, or Text reports. The normal gcov
 plugin _must_ be run first for these reports to generate.
 
@@ -20,13 +20,13 @@ gcovr can be installed via pip like so:
 pip install gcovr
 ```
 
-Report Generator can be installed via .NET Core like so:
+ReportGenerator can be installed via .NET Core like so:
 
 ```sh
 dotnet tool install -g dotnet-reportgenerator-globaltool
 ```
 
-It is not required to install both `gcovr` and `Report Generator`. Either utility
+It is not required to install both `gcovr` and `ReportGenerator`. Either utility
 may be installed to create reports.
 
 ## Configuration
@@ -36,13 +36,13 @@ by Ceedling.
 
 ### Utilities
 
-Gcovr and / or Report Generator may be enabled to create coverage reports.
+Gcovr and / or ReportGenerator may be enabled to create coverage reports.
 
 ```yaml
 :gcov:
   :utilities:
     - gcovr           # Use gcovr to create the specified reports (default).
-    - ReportGenerator # Use Report Generator to create the specified reports.
+    - ReportGenerator # Use ReportGenerator to create the specified reports.
 ```
 
 ### Reports
@@ -57,23 +57,23 @@ for additional options and information. All generated reports will be found in `
   # Defaults to HtmlBasic.
   :reports:
     # Make an HTML summary report.
-    # Supported utilities: gcovr, Report Generator
+    # Supported utilities: gcovr, ReportGenerator
     - HtmlBasic
 
     # Make an HTML report with line by line coverage of each source file.
-    # Supported utilities: gcovr, Report Generator
+    # Supported utilities: gcovr, ReportGenerator
     - HtmlDetailed
 
-    # Make a Text report, which may be output to the console with gcovr or a file in both gcovr and Report Generator.
-    # Supported utilities: gcovr, Report Generator
+    # Make a Text report, which may be output to the console with gcovr or a file in both gcovr and ReportGenerator.
+    # Supported utilities: gcovr, ReportGenerator
     - Text
 
     # Make a Cobertura XML report.
-    # Supported utilities: gcovr, Report Generator
+    # Supported utilities: gcovr, ReportGenerator
     - Cobertura
 
     # Make a SonarQube XML report.
-    # Supported utilities: gcovr, Report Generator
+    # Supported utilities: gcovr, ReportGenerator
     - SonarQube
 
     # Make a JSON report.
@@ -81,59 +81,59 @@ for additional options and information. All generated reports will be found in `
     - JSON
 
     # Make a detailed HTML report with CSS and JavaScript included in every HTML page. Useful for build servers.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - HtmlInline
 
     # Make a detailed HTML report with a light theme and CSS and JavaScript included in every HTML page for Azure DevOps.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - HtmlInlineAzure
 
     # Make a detailed HTML report with a dark theme and CSS and JavaScript included in every HTML page for Azure DevOps.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - HtmlInlineAzureDark
 
     # Make a single HTML file containing a chart with historic coverage information.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - HtmlChart
 
     # Make a detailed HTML report in a single file.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - MHtml
 
     # Make SVG and PNG files that show line and / or branch coverage information.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - Badges
 
     # Make a single CSV file containing coverage information per file.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - CsvSummary
 
     # Make a single TEX file containing a summary for all files and detailed reports for each files.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - Latex
 
     # Make a single TEX file containing a summary for all files.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - LatexSummary
 
     # Make a single PNG file containing a chart with historic coverage information.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - PngChart
 
     # Command line output interpreted by TeamCity.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - TeamCitySummary
 
     # Make a text file in lcov format.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - lcov
 
     # Make a XML file containing a summary for all classes and detailed reports for each class.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - Xml
 
     # Make a single XML file containing a summary for all files.
-    # Supported utilities: Report Generator
+    # Supported utilities: ReportGenerator
     - XmlSummary
 ```
 
@@ -348,9 +348,9 @@ default behaviors of gcovr:
     :num_parallel_threads: <num_threads>
 ```
 
-### Report Generator Configuration
+### ReportGenerator Configuration
 
-The Report Generator utility may be configured with the following configuration items.
+The ReportGenerator utility may be configured with the following configuration items.
 All generated reports may be found in `build/artifacts/gcov/ReportGenerator`.
 
 ```yaml
@@ -400,5 +400,5 @@ ceedling gcov:all utils:gcov
 
 Most of the comment text which describes the options was taken from the
 [Gcovr User Guide](https://www.gcovr.com/en/stable/guide.html) and the
-[Report Generator Wiki](https://github.com/danielpalme/ReportGenerator/wiki).
+[ReportGenerator Wiki](https://github.com/danielpalme/ReportGenerator/wiki).
 The text is repeated here to provide the most accurate option functionality.
