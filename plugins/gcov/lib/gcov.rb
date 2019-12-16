@@ -1,4 +1,3 @@
-
 require 'ceedling/plugin'
 require 'ceedling/constants'
 require 'gcov_constants'

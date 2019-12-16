@@ -1,4 +1,3 @@
-
 require 'reportgenerator_reportinator'
 require 'gcovr_reportinator'
 

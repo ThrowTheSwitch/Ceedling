@@ -1,4 +1,3 @@
-
 require 'reportinator_helper'
 
 class GcovrReportinator
