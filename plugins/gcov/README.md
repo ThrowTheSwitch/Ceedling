@@ -57,11 +57,11 @@ for additional options and information. All generated reports will be found in `
   # Defaults to HtmlBasic.
   :reports:
     # Make an HTML summary report.
-    # Supported utilities: gcovr (--html), Report Generator
+    # Supported utilities: gcovr, Report Generator
     - HtmlBasic
 
     # Make an HTML report with line by line coverage of each source file.
-    # Supported utilities: gcovr (--html-details), Report Generator
+    # Supported utilities: gcovr, Report Generator
     - HtmlDetailed
 
     # Make a Text report, which may be output to the console with gcovr or a file in both gcovr and Report Generator.
@@ -69,15 +69,15 @@ for additional options and information. All generated reports will be found in `
     - Text
 
     # Make a Cobertura XML report.
-    # Supported utilities: gcovr (--xml), Report Generator
+    # Supported utilities: gcovr, Report Generator
     - Cobertura
 
     # Make a SonarQube XML report.
-    # Supported utilities: gcovr (--sonarqube), Report Generator
+    # Supported utilities: gcovr, Report Generator
     - SonarQube
 
     # Make a JSON report.
-    # Supported utilities: gcovr (--json)
+    # Supported utilities: gcovr
     - JSON
 
     # Make a detailed HTML report with CSS and JavaScript included in every HTML page. Useful for build servers.
