@@ -63,8 +63,9 @@
 :tools_gcov_linker:
   :arguments:
     - -lm
-#:gcov:
-#  :html_report_type: basic
+# :gcov:
+#   :reports:
+#     - HtmlBasic
 
 :plugins:
   :load_paths:
