@@ -28,7 +28,7 @@ PLATFORMS
   x64-mingw32
 
 DEPENDENCIES
-  bundler (>= 1.3.5)
+  bundler (>= 2.0.0)
   constructor
   diy
   rake (>= 12.2.1)
