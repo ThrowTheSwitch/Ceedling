@@ -6,6 +6,8 @@ matrix:
     - os: linux
       dist: trusty
       rvm: "2.3"
+      before_install:
+        - gem install bundler
     - os: linux
       dist: trusty
       rvm: "2.4"
