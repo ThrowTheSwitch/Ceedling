@@ -43,6 +43,25 @@ for additional options and information. All generated reports will be found in `
     - JSON          # Make a JSON report. (gcovr --json)
 ```
 
+```
+:gcov:
+  :abort_on_uncovered: true
+```
+
+When scanning the code coverage, if any files are found that do not have
+associated coverage data, the command will abort with an error message.
+
+```
+:gcov:
+  :uncovered_ignore_list:
+    - src/foo_file.c
+    - src/bar_file.c
+```
+
+When using the ``abort_on_uncovered`` option, the files in this list will not
+trigger a failure.
+
+
 ### Gcovr HTML Reports
 
 Generation of Gcovr HTML reports may be modified with the following configuration items.

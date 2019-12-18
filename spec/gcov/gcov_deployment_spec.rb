@@ -26,6 +26,8 @@ describe "Ceedling" do
 
       it { can_test_projects_with_gcov_with_success }
       it { can_test_projects_with_gcov_with_fail }
+      it { can_test_projects_with_gcov_with_fail_because_of_uncovered_files }
+      it { can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list }
       it { can_test_projects_with_gcov_with_compile_error }
       it { can_fetch_project_help_for_gcov }
       it { can_create_html_report }
