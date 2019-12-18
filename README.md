@@ -23,7 +23,7 @@ First make sure Ruby is installed on your system (if it's not already). Then, fr
     > git clone --recursive https://github.com/throwtheswitch/ceedling.git
     > cd ceedling
     > bundle install # Ensures you have all RubyGems needed
-    > bundle exec rake # Run all CMock library tests
+    > bundle exec rake # Run all Ceedling library tests
 
 If bundler isn't installed on your system or you run into problems, you might have to install it:
 
