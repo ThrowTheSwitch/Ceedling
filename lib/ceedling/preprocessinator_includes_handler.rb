@@ -103,9 +103,7 @@ class PreprocessinatorIncludesHandler
     dependencies = make_rule.split.find_all {|path| path.end_with?(src_ext)}.uniq
     dependencies.map! {|src| src.gsub('\\','/') }
     dep_src = File.basename(make_rule.split[0].gsub(':', '')).ext(src_ext)
-    dep = dependencies.find {|src| !src.match(/(.*\/)?#{Regexp.escape(dep_src)}/).nil? }
-    list << dep
-    dependencies.delete(dep)
+    dependencies.delete(dependencies.find {|src| !src.match(/(.*\/)?#{Regexp.escape(dep_src)}/).nil? })
 
     # Extract the source dependencies from the make rule
     full_path_source_dependencies = extract_full_path_dependencies(dependencies)

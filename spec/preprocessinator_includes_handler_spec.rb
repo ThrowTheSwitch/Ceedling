@@ -88,7 +88,7 @@ describe PreprocessinatorIncludesHandler do
       results = subject.extract_includes_helper("/dummy_file_1.c", [], [])
       # validate results
       expect(results).to eq [
-        ['source/some_header1.h', 'source/some_lib/some_header2.h', 'source/some_other_lib/some_header2.h', 'Build/temp/_test_DUMMY.c', 'source/DUMMY.c'],
+        ['source/some_header1.h', 'source/some_lib/some_header2.h', 'source/some_other_lib/some_header2.h', 'source/DUMMY.c'],
         []
       ]
     end
@@ -122,8 +122,7 @@ describe PreprocessinatorIncludesHandler do
         ['source/some_header1.h',
           'source/some_lib/some_header2.h',
           'source/some_lib1/some_lib/some_header2.h',
-          'source/some_other_lib/some_header2.h',
-          'Build/temp/_test_DUMMY.c'],
+          'source/some_other_lib/some_header2.h'],
         []
       ]
     end
@@ -149,7 +148,7 @@ describe PreprocessinatorIncludesHandler do
       results = subject.extract_includes_helper("/dummy_file_3.c", [], [])
       # validate results
       expect(results).to eq [
-        ['source/some_header1.h', 'Build/temp/_test_DUMMY.c'],
+        ['source/some_header1.h'],
         []
       ]
     end
@@ -183,8 +182,7 @@ describe PreprocessinatorIncludesHandler do
       expect(results).to eq [
         ['source/some_header1.h',
           'source/some_lib/some_header2.h',
-          'source/some_other_lib/some_header2.h',
-          'Build/temp/_test_DUMMY.c'],
+          'source/some_other_lib/some_header2.h'],
         []
       ]
     end
