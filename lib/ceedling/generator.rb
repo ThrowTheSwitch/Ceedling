@@ -65,13 +65,14 @@ class Generator
     test_cases  = @generator_test_runner.find_test_cases( @file_finder.find_test_from_runner_path(runner_filepath) )
     mock_list   = @test_includes_extractor.lookup_raw_mock_list(arg_hash[:test_file])
 
-    @streaminator.stdout_puts("Generating runner for #{module_name}...", Verbosity::NORMAL)
+    testfile_includes = generate_runner_headers(
+      @test_includes_extractor.lookup_includes_list(arg_hash[:test_file]), mock_list)
 
-    test_file_includes = [] # Empty list for now, since apparently unused
+    @streaminator.stdout_puts("Generating runner for #{module_name}...", Verbosity::NORMAL)
 
     # build runner file
     begin
-      @generator_test_runner.generate(module_name, runner_filepath, test_cases, mock_list, test_file_includes)
+      @generator_test_runner.generate(module_name, runner_filepath, test_cases, mock_list, testfile_includes)
     rescue
       raise
     ensure
@@ -183,4 +184,17 @@ class Generator
     @plugin_manager.post_test_fixture_execute(arg_hash)
   end
 
+  private
+
+  def generate_runner_headers(includes, mocks_to_exclude)
+    runner_includes = includes.clone
+    # exclude other files than headers due to linking problems
+    runner_includes.delete_if {|inc| File.extname(inc) != EXTENSION_HEADER}
+    # remove vendor files because they are added by Unity Generator Runner
+    runner_includes.delete_if {|inc| inc =~ /#{VENDORS_FILES.map{|file| '\b' + file.ext(EXTENSION_HEADER) + '\b'}.join('|')}$/}
+    # mock files are delivered to Unity Generator Runner separately
+    runner_includes.delete_if {|inc| inc =~ /#{mocks_to_exclude.map{|mock| mock}.join('|')}/} unless mocks_to_exclude.empty?
+    # create absolute paths, because paths are relative to root directory which is different to generated runner's directory
+    runner_includes.map!{|inc| File.expand_path(inc)}
+  end
 end
