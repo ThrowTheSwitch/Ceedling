@@ -426,7 +426,7 @@ Directory Structure, Filenames & Extensions
 
 Much of Ceedling's functionality is driven by collecting files
 matching certain patterns inside the paths it's configured
-to search. See the documentation for the [:extensions] section
+to search. See the documentation for the [:extension] section
 of your configuration file (found later in this document) to
 configure the file extensions Ceedling uses to match and collect
 files. Test file naming is covered later in this section.
@@ -893,7 +893,7 @@ that you execute on target hardware).
 
   The name of your release build binary artifact to be found in <build
   path>/artifacts/release. Ceedling sets the default artifact file
-  extension to that as is explicitly specified in the [:extensions]
+  extension to that as is explicitly specified in the [:extension]
   section or as is system specific otherwise.
 
   **Default**: `project.exe` or `project.out`
