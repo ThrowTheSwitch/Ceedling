@@ -1,4 +1,4 @@
-[All code is copyright © 2010-2012 Ceedling Project
+[All code is copyright © 2010-2020 Ceedling Project
 by Mike Karlesky, Mark VanderVoord, and Greg Williams.
 
 This Documentation Is Released Under a
@@ -466,7 +466,7 @@ linking of all source files Ceedling finds in the specified source
 directories. At present only source files with a single (configurable)
 extension are recognized. That is, *.c and *.cc files will not
 both be recognized - only one or the other. See the configuration
-options and defaults in the documentation for the [:extensions]
+options and defaults in the documentation for the [:extension]
 sections of your configuration file (found later in this document).
 
 Test Files & Executable Test Fixtures
@@ -477,7 +477,7 @@ source file(s) into a single, monolithic test fixture executable.
 Test files are recognized by a naming convention: a (configurable)
 prefix such as "`test_`" in the file name with the same file extension
 as used by your C source files. See the configuration options
-and defaults in the documentation for the [:project] and [:extensions]
+and defaults in the documentation for the [:project] and [:extension]
 sections of your configuration file (found later in this document).
 Depending on your configuration options, Ceedling can recognize
 a variety of test file naming patterns in your test search paths.
