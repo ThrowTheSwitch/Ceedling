@@ -84,7 +84,7 @@ class TestInvoker
         sources      = @test_invoker_helper.extract_sources( test )
         extras       = @configurator.collection_test_fixture_extra_link_objects
         core         = [test] + mock_list + sources
-        objects      = @file_path_utils.form_test_build_objects_filelist( [runner] + core + extras )
+        objects      = @file_path_utils.form_test_build_objects_filelist( [runner] + core + extras ).uniq
         results_pass = @file_path_utils.form_pass_results_filepath( test )
         results_fail = @file_path_utils.form_fail_results_filepath( test )
 
