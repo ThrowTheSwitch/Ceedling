@@ -42,7 +42,7 @@ class Dependencies < Plugin
   end
 
   def get_name(deplib)
-    raise "Each dependency must have a name!" if deplib[:name].nil? 
+    raise "Each dependency must have a name!" if deplib[:name].nil?
     return deplib[:name].gsub(/\W*/,'')
   end
 
@@ -59,7 +59,7 @@ class Dependencies < Plugin
   end
 
   def get_working_paths(deplib)
-    paths = [deplib[:source_path], deplib[:build_path], deplib[:artifact_paths]].compact.uniq 
+    paths = [deplib[:source_path], deplib[:build_path], deplib[:artifact_paths]].compact.uniq
     paths = [ File.join('dependencies', get_name(deplib)) ] if (paths.empty?)
     return paths
   end
@@ -110,13 +110,13 @@ class Dependencies < Plugin
               return
             when :zip
               [ "gzip -d #{blob[:fetch][:source]}" ]
-            when :git 
+            when :git
               branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
               branch = ("-b " + branch) unless branch.empty?
               retval = [ "git clone #{branch} --depth 1 #{blob[:fetch][:source]} ." ]
               retval << "git checkout #{blob[:fetch][:hash]}" unless blob[:fetch][:hash].nil?
               retval
-            when :svn 
+            when :svn
               revision = blob[:fetch][:revision] || ''
               revision = ("--revision " + branch) unless branch.empty?
               retval = [ "svn checkout #{revision} #{blob[:fetch][:source]} ." ]

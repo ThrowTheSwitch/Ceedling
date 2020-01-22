@@ -48,16 +48,18 @@ end
 
 rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
   objects, libraries = @ceedling[:release_invoker].sort_objects_and_libraries(bin_file.prerequisites)
-  tool     = TOOLS_RELEASE_LINKER.clone
-  lib_args = @ceedling[:release_invoker].convert_libraries_to_arguments(libraries)
-  map_file = @ceedling[:configurator].project_release_build_map
+  tool      = TOOLS_RELEASE_LINKER.clone
+  lib_args  = @ceedling[:release_invoker].convert_libraries_to_arguments(libraries)
+  lib_paths = (exists? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []) : []
+  map_file  = @ceedling[:configurator].project_release_build_map
   @ceedling[:generator].generate_executable_file(
     tool,
     RELEASE_SYM,
     objects,
     bin_file.name,
     map_file,
-    lib_args )
+    lib_args,
+    lib_paths )
   @ceedling[:release_invoker].artifactinate( bin_file.name, map_file, @ceedling[:configurator].release_build_artifacts )
 end
 

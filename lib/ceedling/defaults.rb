@@ -36,7 +36,8 @@ DEFAULT_TEST_LINKER_TOOL = {
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
-    "${4}".freeze
+    "${4}".freeze,
+    "${5}".freeze
     ].freeze
   }
 
@@ -188,7 +189,8 @@ DEFAULT_RELEASE_LINKER_TOOL = {
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
-    "${4}".freeze
+    "${4}".freeze,
+    "${5}".freeze
     ].freeze
   }
 

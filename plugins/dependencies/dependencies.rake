@@ -39,29 +39,38 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
 
     namespace :make do
       # Add task to directly just build this dependency
-      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib))
+      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
+                          @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib) +
+                          @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib)
+          )
     end
 
     namespace :clean do
       # Add task to directly clobber this dependency
-      task(deplib_name) do 
+      task(deplib_name) do
         @ceedling[DEPENDENCIES_SYM].clean_if_required(deplib_name)
       end
     end
 
     namespace :fetch do
       # Add task to directly clobber this dependency
-      task(deplib_name) do 
+      task(deplib_name) do
         @ceedling[DEPENDENCIES_SYM].fetch_if_required(deplib_name)
       end
     end
   end
 
   # Finally, add the static libraries to our RELEASE build dependency list
-  task PROJECT_RELEASE_BUILD_TARGET => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) 
+  task PROJECT_RELEASE_BUILD_TARGET => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
+                                       @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib)
 
   # Add the dynamic libraries to our RELEASE task dependency list so that they will be copied automatically
-  task RELEASE_SYM => @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
+  #task RELEASE_SYM => @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
+  dynamic_libs = @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
+  task PROJECT_RELEASE_BUILD_TARGET => dynamic_libs
+  PATH_LIBRARIES ||= []
+  dynamic_libs.each {|lib| PATHS_LIBRARIES += File.path(lib) }
+  PATH_LIBRARIES.uniq!
 end
 
 # Add any artifact:include folders to our release & test includes paths so linking and mocking work.
@@ -74,10 +83,10 @@ namespace DEPENDENCIES_SYM do
 
   desc "Build any missing dependencies."
   task :make => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:make:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
-  
+
   desc "Clean all dependencies."
   task :clean => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:clean:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
-  
+
   desc "Fetch all dependencies."
   task :fetch => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:fetch:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 end
