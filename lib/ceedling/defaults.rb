@@ -292,8 +292,8 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :libraries => {
-      :flag: => '-l${1}',
-      :path_flag: => '-L ${1}',
+      :flag => '-l${1}',
+      :path_flag => '-L ${1}',
       :test => [],
       :test_preprocess => [],
       :release => [],
