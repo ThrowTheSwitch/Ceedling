@@ -63,6 +63,14 @@ class ReleaseInvoker
     return args
   end
 
+  def get_library_paths_to_arguments()
+    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []) : []
+    if (defined? LIBRARIES_PATH_FLAG)
+      paths.map! {|v| LIBRARIES_PATH_FLAG.gsub(/\$\{1\}/, v) }
+    end
+    return paths
+  end
+
   def sort_objects_and_libraries(both)
     extension = if ((defined? EXTENSION_SUBPROJECTS) && (defined? EXTENSION_LIBRARIES))
       "(?:\\#{EXTENSION_SUBPROJECTS})|(?:\\#{EXTENSION_LIBRARIES}))"

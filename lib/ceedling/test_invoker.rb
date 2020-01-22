@@ -36,6 +36,13 @@ class TestInvoker
     end
   end
 
+  def get_library_paths_to_arguments()
+    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []) : []
+    if (defined? LIBRARIES_PATH_FLAG)
+      paths.map! {|v| LIBRARIES_PATH_FLAG.gsub(/\$\{1\}/, v) }
+    end
+    return paths
+  end
 
   def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true, :build_only => false})
 
@@ -121,7 +128,7 @@ class TestInvoker
         # restore the project test defines
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym) || @configurator.defines_use_test_definition
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
-          if @configurator.project_config_hash.has_key?(def_test_key.to_sym) 
+          if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
             @configurator.project_config_hash[:project_test_build_output_path] = orig_path
             @streaminator.stdout_puts("Restored defines and build path to standard", Verbosity::NORMAL)
           end

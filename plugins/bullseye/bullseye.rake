@@ -33,7 +33,7 @@ end
 
 rule(/#{BULLSEYE_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
   lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
-  lib_paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []) : []
+  lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
   @ceedling[:generator].generate_executable_file(
     TOOLS_BULLSEYE_LINKER,
     BULLSEYE_SYM,

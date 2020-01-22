@@ -195,7 +195,7 @@ Getting Started after Ceedling is installed:
 General notes:
 
 1. Certain advanced features of Ceedling rely on gcc and cpp
-   as preprocessing tools. In most *nix systems, these tools
+   as preprocessing tools. In most linux systems, these tools
    are already available. For Windows environments, we recommend
    the [mingw project](http://www.mingw.org/) (Minimalist
    GNU for Windows). This represents an optional, additional
@@ -260,8 +260,8 @@ Ceedling (more on this later).
 
   List all configured environment variable names and string values. This
   task is helpful in verifying the evaluation of any Ruby expressions in
-  the [:environment] section of your config file.`: Note: Ceedling may
-  set some convenience environment variables by default.
+  the [:environment] section of your config file. *: Note: Ceedling may
+  set some convenience environment variables by default.*
 
 * `ceedling paths:*`:
 
@@ -273,6 +273,7 @@ Ceedling (more on this later).
 * `ceedling files:assembly`
 * `ceedling files:include`
 * `ceedling files:source`
+* `ceedling files:support`
 * `ceedling files:test`
 
   List all files and file counts collected from the relevant search
@@ -283,7 +284,7 @@ Ceedling (more on this later).
 * `ceedling options:*`:
 
   Load and merge configuration settings into the main project
-  configuration. Each task is named after a *.yml file found in the
+  configuration. Each task is named after a `*.yml` file found in the
   configured options directory. See documentation for the configuration
   setting [:project][:options_paths] and for options files in advanced
   topics.
@@ -464,7 +465,7 @@ Source Files & Binary Release Artifacts
 Your binary release artifact results from the compilation and
 linking of all source files Ceedling finds in the specified source
 directories. At present only source files with a single (configurable)
-extension are recognized. That is, *.c and *.cc files will not
+extension are recognized. That is, `*.c` and `*.cc` files will not
 both be recognized - only one or the other. See the configuration
 options and defaults in the documentation for the [:extension]
 sections of your configuration file (found later in this document).
@@ -555,7 +556,7 @@ this runner file will contain `main()` and call both of the example
 test case functions.
 
 The final test executable will be `test_foo.exe` (for Windows
-machines or `test_foo.out` for *nix systems - depending on default
+machines or `test_foo.out` for linux systems - depending on default
 or configured file extensions). Based on the #include list above,
 the test executable will be the output of the linker having processed
 `unity.o`, `foo.o`, `mock_bar.o`, `mock_baz.o`, `test_foo.o`,
@@ -715,7 +716,7 @@ Notes on what follows:
   line and column number pointing into the project file.
 
 * Certain advanced features rely on gcc and cpp as preprocessing
-  tools. In most *nix systems, these tools are already available.
+  tools. In most linux systems, these tools are already available.
   For Windows environments, we recommend the [mingw project](http://www.mingw.org/)
   (Minimalist GNU for Windows).
 
@@ -854,7 +855,7 @@ project: global project settings
   control - must come before the test or release task they are meant to
   modify.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `release_build`:
 
@@ -921,7 +922,7 @@ that you execute on target hardware).
   string replacement is available in the artifacts paths (see discussion
   in the [:environment] section).
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 Example `[:release_build]` YAML blurb
 
@@ -941,14 +942,14 @@ Example `[:release_build]` YAML blurb
   All C files containing unit test code. Note: this is one of the
   handful of configuration values that must be set.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `source`:
 
   All C files containing release code (code to be tested). Note: this is
   one of the handful of configuration values that must be set.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `support`:
 
@@ -959,7 +960,7 @@ Example `[:release_build]` YAML blurb
   To provide finer grained control over mock function substitution or
   limiting the size of the generated mocks.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `include`:
 
@@ -968,7 +969,7 @@ Example `[:release_build]` YAML blurb
     search path; it's merely to provide options or to support any
     peculiar source tree organization.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `test_toolchain_include`:
 
@@ -980,13 +981,13 @@ Example `[:release_build]` YAML blurb
   convenient way to control the system include path should you rely on
   the default gcc tools.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `release_toolchain_include`:
 
   Same as preceding albeit related to the release toolchain.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `<custom>`
 
@@ -1098,31 +1099,37 @@ from or add individual files to those collections.
 
   Modify the collection of unit test C files.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `source`:
 
   Modify the collection of all source files used in unit test builds and release builds.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `assembly`:
 
   Modify the (optional) collection of assembly files used in release builds.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `include`:
 
   Modify the collection of all source header files used in unit test builds (e.g. for mocking) and release builds.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `support`:
 
   Modify the collection of supporting C files available to unit tests builds.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
+
+* `libraries`:
+
+  Add a collection of library paths to be included when linking.
+
+  **Default**: `[]` (empty)
 
 
 Note: All path grammar documented in [:paths] section applies
@@ -1169,7 +1176,7 @@ Special case: PATH handling
 
 In the specific case of specifying an environment key named _path_,
 an array of string values will be concatenated with the appropriate
-platform-specific path separation character (e.g. ':' on *nix,
+platform-specific path separation character (e.g. ':' on linux,
 ';' on Windows). All other instances of environment keys assigned
 YAML arrays use simple concatenation.
 
@@ -1219,7 +1226,7 @@ Example [:environment] YAML blurb
 
   Binary executable to be loaded and executed upon target hardware
 
-  **Default**: .exe or .out (Win or *nix)
+  **Default**: .exe or .out (Win or linux)
 
 * `testpass`:
 
@@ -1259,7 +1266,7 @@ Example [:extension] YAML blurb
   afforded by Ceedling and its complementary tools leaves certain
   symbols unset when source files are compiled in isolation
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `test_preprocess`:
 
@@ -1269,7 +1276,7 @@ Example [:extension] YAML blurb
   properly preprocess files to extract function signatures for mocking
   and extract deep dependencies for incremental builds.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `<test_name>`:
 
@@ -1281,13 +1288,13 @@ Example [:extension] YAML blurb
 ```
   `ceedling test:foo_config` will now have `FOO_SPECIFIC_FEATURE` defined, none of the other tests will.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `release`:
 
   Defines needed for the release build binary artifact.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `release_preprocess`:
 
@@ -1296,7 +1303,7 @@ Example [:extension] YAML blurb
   properly preprocess files for incremental release builds due to deep
   dependencies.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `use_test_definition`:
 
@@ -1330,7 +1337,7 @@ configuration. In this section, you can optionally have the following subsection
   These can be specified as either relative or absolute paths. These files MUST
   exist when the test attempts to build.
 
-* `source`:
+* `release`:
 
   Library files that should be injected into your release when linking occurs. These
   can be specified as either relative or absolute paths. These files MUST exist when
@@ -1348,6 +1355,11 @@ configuration. In this section, you can optionally have the following subsection
 
   This is the method of adding an argument for each library. For example, gcc really likes
   it when you specify “-l${1}”
+
+* `path_flag`:
+
+  This is the method of adding an path argument for each library path. For example, gcc really
+  likes it when you specify “-L \"${1}\"”
 
 Notes:
 
@@ -1388,7 +1400,7 @@ Notes:
 
 * File specifiers do support regular expressions if encased in quotes
 
-* '*' is a special (optional) file specifier to provide flags
+* '`*`' is a special (optional) file specifier to provide flags
   to all files not otherwise specified
 
 
@@ -1461,7 +1473,7 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
   compile CMock C code; contents of [:defines] are ignored by CMock's
   Ruby code when instantiated.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `verbosity`:
 
@@ -1510,7 +1522,7 @@ by overriding the value in the Ceedling YAML configuration file.
   to understand available options. No symbols must be set unless the
   defaults are inappropriate for your specific environment.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 
 **unity**: configure symbols used to modify Unity's compiled features
@@ -1523,7 +1535,7 @@ by overriding the value in the Ceedling YAML configuration file.
   defaults are inappropriate for your specific environment. Most Unity
   defines can be easily configured through the YAML file.
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 Example [:unity] YAML blurbs
 ```yaml
@@ -1952,7 +1964,7 @@ Notes:
 
   Base paths to search for plugin subdirectories or extra ruby functionalit
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 * `enabled`:
 
@@ -1960,7 +1972,7 @@ Notes:
   subdirectory that contains it (and the name of certain files within
   that subdirectory)
 
-  **Default**: [] (empty)
+  **Default**: `[]` (empty)
 
 
 Plugins can provide a variety of added functionality to Ceedling. In
