@@ -54,7 +54,7 @@
 
 :libraries:
   :system:
-    - -lm
+    - m
 
 :plugins:
   :load_paths:
