@@ -27,13 +27,11 @@ class TestInvoker
   # Convert libraries configuration form YAML configuration
   # into a string that can be given to the compiler.
   def convert_libraries_to_arguments()
-    if @configurator.project_config_hash.has_key?(:libraries_test)
-      lib_args = @configurator.project_config_hash[:libraries_test].clone
-      lib_args.flatten!
-      lib_flag = @configurator.project_config_hash[:libraries_flag]
-      lib_args.map! {|v| lib_flag.gsub(/\$\{1\}/, v) } if (defined? lib_flag)
-      return lib_args
+    args = (@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])
+    if (defined? LIBRARIES_FLAG)
+      args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) }
     end
+    return args
   end
 
   def get_library_paths_to_arguments()

@@ -53,7 +53,7 @@
     bool:     UINT8
 
 :libraries:
-  :test:
+  :system:
     - m
 
 :plugins:

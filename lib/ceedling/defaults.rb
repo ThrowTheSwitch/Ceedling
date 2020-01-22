@@ -34,10 +34,10 @@ DEFAULT_TEST_LINKER_TOOL = {
   :optional => false.freeze,
   :arguments => [
     "\"${1}\"".freeze,
+    "${5}".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
-    "${4}".freeze,
-    "${5}".freeze
+    "${4}".freeze
     ].freeze
   }
 
@@ -187,10 +187,10 @@ DEFAULT_RELEASE_LINKER_TOOL = {
   :optional => false.freeze,
   :arguments => [
     "\"${1}\"".freeze,
+    "${5}".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
-    "${4}".freeze,
-    "${5}".freeze
+    "${4}".freeze
     ].freeze
   }
 
