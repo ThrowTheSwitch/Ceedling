@@ -50,7 +50,7 @@ rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
   objects, libraries = @ceedling[:release_invoker].sort_objects_and_libraries(bin_file.prerequisites)
   tool      = TOOLS_RELEASE_LINKER.clone
   lib_args  = @ceedling[:release_invoker].convert_libraries_to_arguments(libraries)
-  lib_paths = (exists? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []) : []
+  lib_paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []) : []
   map_file  = @ceedling[:configurator].project_release_build_map
   @ceedling[:generator].generate_executable_file(
     tool,
