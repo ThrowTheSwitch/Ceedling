@@ -1592,7 +1592,7 @@ Example unity_config.h
 Ceedling's automation framework
 
 Ceedling requires a variety of tools to work its magic. By default,
-the GNU toolchain (gcc, cpp, as) are configured and ready for
+the GNU toolchain (`gcc`, `cpp`, `as`) are configured and ready for
 use with no additions to the project configuration YAML file.
 However, as most work will require a project-specific toolchain,
 Ceedling provides a generic means for specifying / overriding
@@ -1601,81 +1601,110 @@ tools.
 * `test_compiler`:
 
   Compiler for test & source-under-test code
-  ${1}: input source ${2}: output object ${3}: optional output list ${4}: optional output dependencies file
 
-  **Default**: gcc
+   - `${1}`: input source
+   - `${2}`: output object
+   - `${3}`: optional output list
+   - `${4}`: optional output dependencies file
+
+  **Default**: `gcc`
 
 * `test_linker`:
 
   Linker to generate test fixture executables
-  ${1}: input objects ${2}: output binary ${3}: optional output map ${4}: optional library list
 
-  **Default**: gcc
+   - `${1}`: input objects
+   - `${2}`: output binary
+   - `${3}`: optional output map
+   - `${4}`: optional library list
+   - `${5}`: optional library path list
+
+  **Default**: `gcc`
 
 * `test_fixture`:
 
   Executable test fixture
-  ${1}: simulator as executable with ${1} as input binary file argument or native test executable
 
-  **Default**: ${1}
+   - `${1}`: simulator as executable with`${1}` as input binary file argument or native test executable
+
+  **Default**: `${1}`
 
 * `test_includes_preprocessor`:
 
   Extractor of #include statements
-  ${1}: input source file
 
-  **Default**: cpp
+   - `${1}`: input source file
+
+  **Default**: `cpp`
 
 * `test_file_preprocessor`:
 
   Preprocessor of test files (macros, conditional compilation statements)
-  ${1}: input source file ${2}: preprocessed output source file
 
-  **Default**: gcc
+   - `${1}`: input source file
+   - `${2}`: preprocessed output source file
+
+  **Default**: `gcc`
 
 * `test_dependencies_generator`:
 
   Discovers deep dependencies of source & test (for incremental builds)
-  ${1}: input source file ${2}: compiled object filepath ${3}: output dependencies file
 
-  **Default**: gcc
+   - `${1}`: input source file
+   - `${2}`: compiled object filepath
+   - `${3}`: output dependencies file
+
+  **Default**: `gcc`
 
 * `release_compiler`:
 
   Compiler for release source code
-  ${1}: input source ${2}: output object ${3}: optional output list ${4}: optional output dependencies file
 
-  **Default**: gcc
+   - `${1}`: input source
+   - `${2}`: output object
+   - `${3}`: optional output list
+   - `${4}`: optional output dependencies file
+
+  **Default**: `gcc`
 
 * `release_assembler`:
 
   Assembler for release assembly code
-  ${1}: input assembly source file ${2}: output object file
 
-  **Default**: as
+   - `${1}`: input assembly source file
+   - `${2}`: output object file
+
+  **Default**: `as`
 
 * `release_linker`:
 
   Linker for release source code
-  ${1}: input objects ${2}: output binary ${3}: optional output map ${4}: optional library list
 
-  **Default**: gcc
+   - `${1}`: input objects
+   - `${2}`: output binary
+   - `${3}`: optional output map
+   - `${4}`: optional library list
+   - `${5}`: optional library path list
+
+  **Default**: `gcc`
 
 * `release_dependencies_generator`:
 
   Discovers deep dependencies of source files (for incremental builds)
-  ${1}: input source file ${2}: compiled object filepath ${3}: output dependencies file
 
-  **Default**: gcc
+   - `${1}`: input source file
+   - `${2}`: compiled object filepath
+   - `${3}`: output dependencies file
+
+  **Default**: `gcc`
 
 
 A Ceedling tool has a handful of configurable elements:
 
-1. [:executable] (required) - Command line executable having
-   the form of:
+1. [:executable] - Command line executable (required)
 
-2. [:arguments] (required) - List of command line arguments
-   and substitutions
+2. [:arguments] - List of command line arguments
+   and substitutions (required)
 
 3. [:name] - Simple name (e.g. "nickname") of tool beyond its
    executable name (if not explicitly set then Ceedling will
@@ -1692,7 +1721,7 @@ A Ceedling tool has a handful of configurable elements:
    Defaults to :none if unspecified.
 
 6. [:optional] - By default a tool is required for operation, which
-   means tests will be aborted if the tool is not present. However, 
+   means tests will be aborted if the tool is not present. However,
    you can set this to `TRUE` if it's not needed for testing.
 
 
