@@ -73,11 +73,20 @@ class ReleaseInvoker
 
   def sort_objects_and_libraries(both)
     extension = if ((defined? EXTENSION_SUBPROJECTS) && (defined? EXTENSION_LIBRARIES))
-      "(?:\\#{EXTENSION_SUBPROJECTS})|(?:\\#{EXTENSION_LIBRARIES}))"
+      extension_libraries = if (EXTENSION_LIBRARIES.class == Array)
+                              EXTENSION_LIBRARIES.join(")|(?:\\")
+                            else
+                              EXTENSION_LIBRARIES
+                            end
+      "(?:\\#{EXTENSION_SUBPROJECTS})|(?:\\#{extension_libraries})"
     elsif (defined? EXTENSION_SUBPROJECTS)
       "\\#{EXTENSION_SUBPROJECTS}"
     elsif (defined? EXTENSION_LIBRARIES)
-      "\\#{EXTENSION_LIBRARIES}"
+      if (EXTENSION_LIBRARIES.class == Array)
+        "(?:\\#{EXTENSION_LIBRARIES.join(")|(?:\\")})"
+      else
+        "\\#{EXTENSION_LIBRARIES}"
+      end
     else
       "\\.LIBRARY"
     end

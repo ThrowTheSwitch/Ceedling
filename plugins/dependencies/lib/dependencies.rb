@@ -72,6 +72,10 @@ class Dependencies < Plugin
     (deplib[:artifacts][:dynamic_libraries] || []).map {|path| File.join(get_artifact_path(deplib), path)}
   end
 
+  def get_source_files_for_dependency(deplib)
+    (deplib[:artifacts][:source] || []).map {|path| File.join(get_artifact_path(deplib), path)}
+  end
+
   def get_include_directories_for_dependency(deplib)
     paths = (deplib[:artifacts][:includes] || []).map {|path| File.join(get_artifact_path(deplib), path)}
     @ceedling[:file_system_utils].collect_paths(paths)
@@ -187,7 +191,7 @@ class Dependencies < Plugin
     FileUtils.cp( lib_path, File.dirname(PROJECT_RELEASE_BUILD_TARGET) )
   end
 
-  def add_headers()
+  def add_headers_and_sources()
     # Search for header file paths and files to add to our collections
     DEPENDENCIES_LIBRARIES.each do |deplib|
       get_include_directories_for_dependency(deplib).each do |header|
@@ -199,6 +203,17 @@ class Dependencies < Plugin
         cfg[:collection_paths_release_toolchain_include] << header
         Dir[ File.join(header, "*#{EXTENSION_HEADER}") ].each do |f|
           cfg[:collection_all_headers] << f
+        end
+      end
+
+      get_source_files_for_dependency(deplib).each do |source|
+        cfg = @ceedling[:configurator].project_config_hash
+        cfg[:collection_paths_source_and_include] << source
+        cfg[:collection_paths_test_support_source_include] << source
+        cfg[:collection_paths_test_support_source_include_vendor] << source
+        cfg[:collection_paths_release_toolchain_include] << source
+        Dir[ File.join(source, "*#{EXTENSION_SOURCE}") ].each do |f|
+          cfg[:collection_all_source] << f
         end
       end
     end

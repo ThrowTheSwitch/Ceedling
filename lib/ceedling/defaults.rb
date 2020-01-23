@@ -265,6 +265,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :source => [], # must be populated by user
       :support => [],
       :include => [],
+      :libraries => [],
       :test_toolchain_include => [],
       :release_toolchain_include => [],
     },
@@ -307,7 +308,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :source => '.c',
       :assembly => '.s',
       :object => '.o',
-      :libraries => '.a',
+      :libraries => ['.a','.so'],
       :executable => ( SystemWrapper.windows? ? EXTENSION_WIN_EXE : EXTENSION_NONWIN_EXE ),
       :map => '.map',
       :list => '.lst',

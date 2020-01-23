@@ -11,8 +11,11 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   task :directories => paths
 
   # Add a rule for building the actual libraries from dependency list
-  ( @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
-    @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib) ).each do |libpath|
+  all_deps = @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
+             @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib) +
+             @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) +
+             @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
+  all_deps.each do |libpath|
     file libpath do |filetask|
       path = filetask.name
 
@@ -39,10 +42,7 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
 
     namespace :make do
       # Add task to directly just build this dependency
-      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
-                          @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib) +
-                          @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib)
-          )
+      task(deplib_name => all_deps)
     end
 
     namespace :clean do
@@ -60,21 +60,32 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
     end
   end
 
+  # Add source files to our list of things to build during release
+  source_files = @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
+  task PROJECT_RELEASE_BUILD_TARGET => source_files
+
   # Finally, add the static libraries to our RELEASE build dependency list
-  task PROJECT_RELEASE_BUILD_TARGET => @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
-                                       @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib)
+  static_libs = @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib)
+  task RELEASE_SYM => static_libs
 
   # Add the dynamic libraries to our RELEASE task dependency list so that they will be copied automatically
-  #task RELEASE_SYM => @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
   dynamic_libs = @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
-  task PROJECT_RELEASE_BUILD_TARGET => dynamic_libs
-  PATH_LIBRARIES ||= []
-  dynamic_libs.each {|lib| PATHS_LIBRARIES += File.path(lib) }
-  PATH_LIBRARIES.uniq!
+  task RELEASE_SYM => dynamic_libs
+
+  # Paths to Libraries need to be Added to the Lib Path List
+  all_libs = static_libs + dynamic_libs
+  PATHS_LIBRARIES ||= []
+  all_libs.each {|lib| PATHS_LIBRARIES << File.dirname(lib) }
+  PATHS_LIBRARIES.uniq!
+
+  # Libraries Need to be Added to the Library List
+  LIBRARIES_SYSTEM ||= []
+  all_libs.each {|lib| LIBRARIES_SYSTEM << File.basename(lib,'.*').sub(/^lib/,'') }
+  LIBRARIES_SYSTEM.uniq!
 end
 
-# Add any artifact:include folders to our release & test includes paths so linking and mocking work.
-@ceedling[DEPENDENCIES_SYM].add_headers()
+# Add any artifact:include or :source folders to our release & test includes paths so linking and mocking work.
+@ceedling[DEPENDENCIES_SYM].add_headers_and_sources()
 
 # Add tasks for building or cleaning ALL depencies
 namespace DEPENDENCIES_SYM do
