@@ -14,13 +14,16 @@ class Dependencies < Plugin
     @dependencies = {}
     @dynamic_libraries = []
     DEPENDENCIES_LIBRARIES.each do |deplib|
+
       @dependencies[ deplib[:name] ] = deplib.clone
-      get_static_libraries_for_dependency(deplib).each do |key|
+      all_deps = get_static_libraries_for_dependency(deplib) +
+                 get_dynamic_libraries_for_dependency(deplib) +
+                 get_include_directories_for_dependency(deplib) +
+                 get_source_files_for_dependency(deplib)
+      all_deps.each do |key|
         @dependencies[key] = @dependencies[ deplib[:name] ]
       end
-      get_dynamic_libraries_for_dependency(deplib).each do |key|
-        @dependencies[key] = @dependencies[ deplib[:name] ]
-      end
+
       @dynamic_libraries += get_dynamic_libraries_for_dependency(deplib)
     end
   end

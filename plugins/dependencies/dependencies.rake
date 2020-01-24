@@ -10,12 +10,15 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   paths.each {|path| directory(path) }
   task :directories => paths
 
-  # Add a rule for building the actual libraries from dependency list
   all_deps = @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
              @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib) +
              @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) +
              @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
-  all_deps.each do |libpath|
+
+  # Add a rule for building the actual libraries from dependency list
+  (@ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
+   @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
+  ).each do |libpath|
     file libpath do |filetask|
       path = filetask.name
 
@@ -28,6 +31,20 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
         @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
         @ceedling[DEPENDENCIES_SYM].build_if_required(path)
       end
+    end
+  end
+
+  # Add a rule for building the source and includes from dependency list
+  (@ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) +
+   @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
+  ).each do |libpath|
+    task libpath do |filetask|
+      path = filetask.name
+
+      # Set Environment Variables, Fetch, and Build
+      @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
+      @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
+      @ceedling[DEPENDENCIES_SYM].build_if_required(path)
     end
   end
 
@@ -71,6 +88,10 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   # Add the dynamic libraries to our RELEASE task dependency list so that they will be copied automatically
   dynamic_libs = @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
   task RELEASE_SYM => dynamic_libs
+
+  # Add the include dirs / files to our list of dependencies for release
+  headers = @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib)
+  task RELEASE_SYM => headers
 
   # Paths to Libraries need to be Added to the Lib Path List
   all_libs = static_libs + dynamic_libs
