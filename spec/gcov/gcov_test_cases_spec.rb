@@ -43,6 +43,44 @@ module GcovTestCases
     end
   end
 
+  def can_test_projects_with_gcov_with_fail_because_of_uncovered_files
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("project_with_guts_gcov_abortonuncovered.yml"), "project.yml"
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("uncovered_example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        expect($?.exitstatus).to match(255) # Since a test fails, we return error here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  def can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("project_with_guts_gcov_abortonuncovered.yml"), "project.yml"
+        FileUtils.cp test_asset_path("example_file.h"), "src/"
+        FileUtils.cp test_asset_path("example_file.c"), "src/"
+        FileUtils.cp test_asset_path("uncovered_example_file.c"), "src/foo_file.c" # "src/foo_file.c" is in the ignore uncovered list
+        FileUtils.cp test_asset_path("test_example_file_success.c"), "test/"
+
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
   def can_test_projects_with_gcov_with_compile_error
     @c.with_context do
       Dir.chdir @proj_name do
