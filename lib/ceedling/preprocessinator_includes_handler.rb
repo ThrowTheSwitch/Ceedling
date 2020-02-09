@@ -120,10 +120,12 @@ class PreprocessinatorIncludesHandler
     end.compact
 
     # Extract direct dependencies that were also added
-    src_ext = @configurator.extension_source
-    sdependencies = make_rule.split.find_all {|path| path.end_with?(src_ext) }.uniq
-    sdependencies.map! {|hdr| hdr.gsub('\\','/') }
-    list += sdependencies
+    # HP_MOD: Start
+    # src_ext = @configurator.extension_source
+    # sdependencies = make_rule.split.find_all {|path| path.end_with?(src_ext) }.uniq
+    # sdependencies.map! {|hdr| hdr.gsub('\\','/') }
+    # list += sdependencies
+    # HP_MOD: End
 
     to_process = []
 
