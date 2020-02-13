@@ -56,7 +56,7 @@ class ReleaseInvoker
   end
 
   def convert_libraries_to_arguments(libraries)
-    args = (libraries || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])
+    args = ((libraries || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
     if (defined? LIBRARIES_FLAG)
       args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) }
     end
@@ -64,7 +64,7 @@ class ReleaseInvoker
   end
 
   def get_library_paths_to_arguments()
-    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []) : []
+    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []).clone : []
     if (defined? LIBRARIES_PATH_FLAG)
       paths.map! {|v| LIBRARIES_PATH_FLAG.gsub(/\$\{1\}/, v) }
     end

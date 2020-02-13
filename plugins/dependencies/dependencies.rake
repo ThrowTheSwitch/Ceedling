@@ -41,10 +41,13 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
     task libpath do |filetask|
       path = filetask.name
 
-      # Set Environment Variables, Fetch, and Build
-      @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
-      @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
-      @ceedling[DEPENDENCIES_SYM].build_if_required(path)
+      unless (File.file?(path) || File.directory?(path))
+
+        # Set Environment Variables, Fetch, and Build
+        @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
+        @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
+        @ceedling[DEPENDENCIES_SYM].build_if_required(path)
+      end
     end
   end
 
@@ -98,11 +101,13 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   PATHS_LIBRARIES ||= []
   all_libs.each {|lib| PATHS_LIBRARIES << File.dirname(lib) }
   PATHS_LIBRARIES.uniq!
+  PATHS_LIBRARIES.reject!{|s| s.empty?}
 
   # Libraries Need to be Added to the Library List
   LIBRARIES_SYSTEM ||= []
   all_libs.each {|lib| LIBRARIES_SYSTEM << File.basename(lib,'.*').sub(/^lib/,'') }
   LIBRARIES_SYSTEM.uniq!
+  LIBRARIES_SYSTEM.reject!{|s| s.empty?}
 end
 
 # Add any artifact:include or :source folders to our release & test includes paths so linking and mocking work.
