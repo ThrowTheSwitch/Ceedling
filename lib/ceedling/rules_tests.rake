@@ -34,16 +34,16 @@ end
 
 
 rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
-
   lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
-
+  lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
   @ceedling[:generator].generate_executable_file(
     TOOLS_TEST_LINKER,
     TEST_SYM,
     bin_file.prerequisites,
     bin_file.name,
     @ceedling[:file_path_utils].form_test_build_map_filepath( bin_file.name ),
-    lib_args )
+    lib_args,
+    lib_paths )
 end
 
 

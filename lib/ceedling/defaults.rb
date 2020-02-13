@@ -34,6 +34,7 @@ DEFAULT_TEST_LINKER_TOOL = {
   :optional => false.freeze,
   :arguments => [
     "\"${1}\"".freeze,
+    "${5}".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
     "${4}".freeze
@@ -186,6 +187,7 @@ DEFAULT_RELEASE_LINKER_TOOL = {
   :optional => false.freeze,
   :arguments => [
     "\"${1}\"".freeze,
+    "${5}".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
     "${4}".freeze
@@ -263,6 +265,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :source => [], # must be populated by user
       :support => [],
       :include => [],
+      :libraries => [],
       :test_toolchain_include => [],
       :release_toolchain_include => [],
     },
@@ -290,6 +293,8 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :libraries => {
+      :flag => '-l${1}',
+      :path_flag => '-L ${1}',
       :test => [],
       :test_preprocess => [],
       :release => [],
@@ -303,7 +308,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :source => '.c',
       :assembly => '.s',
       :object => '.o',
-      :libraries => '.a',
+      :libraries => ['.a','.so'],
       :executable => ( SystemWrapper.windows? ? EXTENSION_WIN_EXE : EXTENSION_NONWIN_EXE ),
       :map => '.map',
       :list => '.lst',
