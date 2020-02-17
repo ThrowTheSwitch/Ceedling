@@ -12,6 +12,9 @@ class Preprocessinator
     @preprocess_file_proc     = Proc.new { |filepath| self.preprocess_file(filepath) }
   end
 
+  def preprocess_shallow_source_includes(test)
+    @preprocessinator_helper.preprocess_source_includes(test)
+  end
 
   def preprocess_test_and_invoke_test_mocks(test)
     @preprocessinator_helper.preprocess_includes(test, @preprocess_includes_proc)
