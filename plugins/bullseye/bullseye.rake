@@ -32,12 +32,16 @@ rule(/#{BULLSEYE_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
 end
 
 rule(/#{BULLSEYE_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
+  lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
+  lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
   @ceedling[:generator].generate_executable_file(
     TOOLS_BULLSEYE_LINKER,
     BULLSEYE_SYM,
     bin_file.prerequisites,
     bin_file.name,
-    @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name)
+    @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name),
+    lib_args,
+    lib_paths
   )
 end
 
@@ -81,18 +85,18 @@ namespace BULLSEYE_SYM do
     message = "\nOops! '#{BULLSEYE_ROOT_NAME}:*' isn't a real task. " +
               "Use a real test or source file name (no path) in place of the wildcard.\n" +
               "Example: rake #{BULLSEYE_ROOT_NAME}:foo.c\n\n"
-  
+
     @ceedling[:streaminator].stdout_puts( message )
   end
-  
+
   desc 'Run tests by matching regular expression pattern.'
   task :pattern, [:regex] => [:directories] do |_t, args|
     matches = []
-    
+
     COLLECTION_ALL_TESTS.each do |test|
       matches << test if test =~ /#{args.regex}/
     end
-  
+
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
       @ceedling[BULLSEYE_SYM].enableBullseye(true)
@@ -106,11 +110,11 @@ namespace BULLSEYE_SYM do
   desc 'Run tests whose test path contains [dir] or [dir] substring.'
   task :path, [:dir] => [:directories] do |_t, args|
     matches = []
-    
+
     COLLECTION_ALL_TESTS.each do |test|
       matches << test if File.dirname(test).include?(args.dir.tr('\\', '/'))
     end
-  
+
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
       @ceedling[BULLSEYE_SYM].enableBullseye(true)
@@ -128,7 +132,7 @@ namespace BULLSEYE_SYM do
     @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, BULLSEYE_SYM, {:force_run => false})
     @ceedling[:configurator].restore_config
   end
-  
+
   # use a rule to increase efficiency for large projects
   # bullseye test tasks by regex
   rule(/^#{BULLSEYE_TASK_ROOT}\S+$/ => [
@@ -159,11 +163,11 @@ end
 end
 
 namespace UTILS_SYM do
-  
+
   desc "Open Bullseye code coverage browser"
   task BULLSEYE_SYM do
     command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BROWSER, [])
     @ceedling[:tool_executor].exec(command[:line], command[:options])
   end
-  
+
 end

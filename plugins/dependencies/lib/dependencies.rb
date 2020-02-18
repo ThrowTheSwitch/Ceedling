@@ -14,13 +14,16 @@ class Dependencies < Plugin
     @dependencies = {}
     @dynamic_libraries = []
     DEPENDENCIES_LIBRARIES.each do |deplib|
+
       @dependencies[ deplib[:name] ] = deplib.clone
-      get_static_libraries_for_dependency(deplib).each do |key|
+      all_deps = get_static_libraries_for_dependency(deplib) +
+                 get_dynamic_libraries_for_dependency(deplib) +
+                 get_include_directories_for_dependency(deplib) +
+                 get_source_files_for_dependency(deplib)
+      all_deps.each do |key|
         @dependencies[key] = @dependencies[ deplib[:name] ]
       end
-      get_dynamic_libraries_for_dependency(deplib).each do |key|
-        @dependencies[key] = @dependencies[ deplib[:name] ]
-      end
+
       @dynamic_libraries += get_dynamic_libraries_for_dependency(deplib)
     end
   end
@@ -42,7 +45,7 @@ class Dependencies < Plugin
   end
 
   def get_name(deplib)
-    raise "Each dependency must have a name!" if deplib[:name].nil? 
+    raise "Each dependency must have a name!" if deplib[:name].nil?
     return deplib[:name].gsub(/\W*/,'')
   end
 
@@ -59,7 +62,7 @@ class Dependencies < Plugin
   end
 
   def get_working_paths(deplib)
-    paths = [deplib[:source_path], deplib[:build_path], deplib[:artifact_paths]].compact.uniq 
+    paths = [deplib[:source_path], deplib[:build_path], deplib[:artifact_paths]].compact.uniq
     paths = [ File.join('dependencies', get_name(deplib)) ] if (paths.empty?)
     return paths
   end
@@ -70,6 +73,10 @@ class Dependencies < Plugin
 
   def get_dynamic_libraries_for_dependency(deplib)
     (deplib[:artifacts][:dynamic_libraries] || []).map {|path| File.join(get_artifact_path(deplib), path)}
+  end
+
+  def get_source_files_for_dependency(deplib)
+    (deplib[:artifacts][:source] || []).map {|path| File.join(get_artifact_path(deplib), path)}
   end
 
   def get_include_directories_for_dependency(deplib)
@@ -110,13 +117,13 @@ class Dependencies < Plugin
               return
             when :zip
               [ "gzip -d #{blob[:fetch][:source]}" ]
-            when :git 
+            when :git
               branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
               branch = ("-b " + branch) unless branch.empty?
               retval = [ "git clone #{branch} --depth 1 #{blob[:fetch][:source]} ." ]
               retval << "git checkout #{blob[:fetch][:hash]}" unless blob[:fetch][:hash].nil?
               retval
-            when :svn 
+            when :svn
               revision = blob[:fetch][:revision] || ''
               revision = ("--revision " + branch) unless branch.empty?
               retval = [ "svn checkout #{revision} #{blob[:fetch][:source]} ." ]
@@ -187,7 +194,7 @@ class Dependencies < Plugin
     FileUtils.cp( lib_path, File.dirname(PROJECT_RELEASE_BUILD_TARGET) )
   end
 
-  def add_headers()
+  def add_headers_and_sources()
     # Search for header file paths and files to add to our collections
     DEPENDENCIES_LIBRARIES.each do |deplib|
       get_include_directories_for_dependency(deplib).each do |header|
@@ -199,6 +206,17 @@ class Dependencies < Plugin
         cfg[:collection_paths_release_toolchain_include] << header
         Dir[ File.join(header, "*#{EXTENSION_HEADER}") ].each do |f|
           cfg[:collection_all_headers] << f
+        end
+      end
+
+      get_source_files_for_dependency(deplib).each do |source|
+        cfg = @ceedling[:configurator].project_config_hash
+        cfg[:collection_paths_source_and_include] << source
+        cfg[:collection_paths_test_support_source_include] << source
+        cfg[:collection_paths_test_support_source_include_vendor] << source
+        cfg[:collection_paths_release_toolchain_include] << source
+        Dir[ File.join(source, "*#{EXTENSION_SOURCE}") ].each do |f|
+          cfg[:collection_all_source] << f
         end
       end
     end

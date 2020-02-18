@@ -12,17 +12,10 @@
   :build_root: build
 #  :release_build: TRUE
   :test_file_prefix: test_
-  :which_ceedling: gem
+  :which_ceedling: vendor/ceedling
   :ceedling_version: '?'
   :default_tasks:
     - test:all
-
-#:test_build:
-#  :use_assembly: TRUE
-
-#:release_build:
-#  :output: MyApp.out
-#  :use_assembly: FALSE
 
 :environment:
 
@@ -37,7 +30,6 @@
     - src/**
   :support:
     - test/support
-  :libraries: []
 
 :defines:
   # in order to add common defines:
@@ -70,10 +62,10 @@
 # For more information on these options, see docs in plugins/gcov
 :gcov:
   :reports:
-    - HtmlDetailed
-  :gcovr:
-    :html_medium_threshold: 75
-    :html_high_threshold: 90
+    - HtmlDetailed  # Make an HTML report with line by line coverage of each source file. (gcovr --html-details)
+  :abort_on_uncovered: true
+  :uncovered_ignore_list:
+    - src/foo_file.c
 
 #:tools:
 # Ceedling defaults to using gcc for compiling, linking, etc.
@@ -86,16 +78,16 @@
 # tests or releases. These options are MERGED with the options in supplemental yaml files.
 :libraries:
   :placement: :end
-  :flag: "-l${1}"
-  :path_flag: "-L ${1}"
-  :system: []    # for example, you might list 'm' to grab the math library
+  :flag: "${1}"  # or "-L ${1}" for example
+  :system: []    # for example, you might list -lm to grab the math library
   :test: []
   :release: []
 
 :plugins:
   :load_paths:
-    - "#{Ceedling.load_path}"
+    - vendor/ceedling/plugins
   :enabled:
     - stdout_pretty_tests_report
     - module_generator
+    - gcov
 ...

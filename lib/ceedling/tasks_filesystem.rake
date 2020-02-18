@@ -86,10 +86,11 @@ end
 namespace :files do
 
   categories = [
-    ['test',   COLLECTION_ALL_TESTS],
-    ['source', COLLECTION_ALL_SOURCE],
-    ['include', COLLECTION_ALL_HEADERS]
-    ]
+    ['test',    COLLECTION_ALL_TESTS],
+    ['source',  COLLECTION_ALL_SOURCE],
+    ['include', COLLECTION_ALL_HEADERS],
+    ['support', COLLECTION_ALL_SUPPORT]
+  ]
 
   using_assembly = (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY) ||
                    (defined?(RELEASE_BUILD_USE_ASSEMBLY) && RELEASE_BUILD_USE_ASSEMBLY)

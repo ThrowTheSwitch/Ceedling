@@ -346,6 +346,14 @@ default behaviors of gcovr:
 
     # Set the number of threads to use in parallel. (gcovr -j).
     :num_parallel_threads: <num_threads>
+
+  # When scanning the code coverage, if any files are found that do not have
+  # associated coverage data, the command will abort with an error message.
+  :abort_on_uncovered: true
+
+  # When using the ``abort_on_uncovered`` option, the files in this list will not
+  # trigger a failure.
+  :uncovered_ignore_list: []
 ```
 
 ### ReportGenerator Configuration
