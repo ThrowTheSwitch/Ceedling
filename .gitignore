@@ -20,3 +20,4 @@ ceedling-*.gem
 /.idea
 /.vscode
 plugins/edk2/assets/autogen/__pycache__
+build
