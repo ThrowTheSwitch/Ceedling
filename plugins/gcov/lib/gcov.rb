@@ -95,7 +95,13 @@ class Gcov < Plugin
       end
     end
 
-    ignore_uncovered_list = @ceedling[:configurator].project_config_hash[:gcov_uncovered_ignore_list] || []
+    ignore_file_list = @ceedling[:configurator].project_config_hash[:gcov_uncovered_ignore_list] || []
+    ignore_uncovered_list = []
+    ignore_file_list.each do |source|
+      ignore_uncovered_list.push(Dir.glob(source).reject{|f| File.directory?(f)})
+    end
+    ignore_uncovered_list.flatten!
+
     found_uncovered = false
     COLLECTION_ALL_SOURCE.each do |source|
       unless coverage_sources.include?(source)
