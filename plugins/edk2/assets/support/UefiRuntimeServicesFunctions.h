@@ -1,3 +1,6 @@
+// © Copyright 2019-2020 HP Development Company, L.P.
+// SPDX-License-Identifier: MIT
+
 EFI_STATUS
 MockGetTime(
   OUT  EFI_TIME                    *Time,

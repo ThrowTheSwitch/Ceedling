@@ -1,4 +1,6 @@
-// #pragma once
+// © Copyright 2019-2020 HP Development Company, L.P.
+// SPDX-License-Identifier: MIT
+
 #include <mock_BaseCryptLib.h>
 #include <mock_BaseLib.h>
 #include <mock_BaseMemoryLib.h>

@@ -1,3 +1,6 @@
+# © Copyright 2019-2020 HP Development Company, L.P.
+# SPDX-License-Identifier: MIT
+
 import os
 import argparse
 from inf_parser import inf_parser

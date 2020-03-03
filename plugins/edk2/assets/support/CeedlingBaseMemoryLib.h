@@ -1,3 +1,6 @@
+// © Copyright 2019-2020 HP Development Company, L.P.
+// SPDX-License-Identifier: MIT
+
 #include <stdlib.h>
 #include <string.h>
 #include "mock_BaseMemoryLib.h"

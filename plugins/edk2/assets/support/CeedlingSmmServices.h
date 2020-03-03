@@ -1,3 +1,6 @@
+// © Copyright 2019-2020 HP Development Company, L.P.
+// SPDX-License-Identifier: MIT
+
 #include <PiSmm.h>
 #include <mock_UefiSmmSystemTableFunctions.h>
 
