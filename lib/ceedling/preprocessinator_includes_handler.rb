@@ -119,12 +119,6 @@ class PreprocessinatorIncludesHandler
       idx ? real_headers.delete_at(idx) : nil
     end.compact
 
-    # Extract direct dependencies that were also added
-    src_ext = @configurator.extension_source
-    sdependencies = make_rule.split.find_all {|path| path.end_with?(src_ext) }.uniq
-    sdependencies.map! {|hdr| hdr.gsub('\\','/') }
-    list += sdependencies
-
     to_process = []
 
     if @configurator.project_config_hash.has_key?(:project_auto_link_deep_dependencies) && @configurator.project_config_hash[:project_auto_link_deep_dependencies]

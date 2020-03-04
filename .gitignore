@@ -19,3 +19,5 @@ ceedling-*.gem
 .ruby-version
 /.idea
 /.vscode
+plugins/edk2/assets/autogen/__pycache__
+build
