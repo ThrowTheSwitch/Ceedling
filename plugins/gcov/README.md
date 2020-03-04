@@ -7,9 +7,10 @@ Plugin for integrating GNU GCov code coverage tool into Ceedling projects.
 Currently only designed for the gcov command (like LCOV for example). In the
 future we could configure this to work with other code coverage tools.
 
-This plugin currently uses [`gcovr`](https://www.gcovr.com/) as a utility to
-generate HTML, XML, JSON, or Text reports. The normal gcov plugin _must_ be run
-first for these reports to generate.
+This plugin currently uses [gcovr](https://www.gcovr.com/) and / or
+[ReportGenerator](https://danielpalme.github.io/ReportGenerator/)
+as utilities to generate HTML, XML, JSON, or Text reports. The normal gcov
+plugin _must_ be run first for these reports to generate.
 
 ## Installation
 
@@ -19,10 +20,30 @@ gcovr can be installed via pip like so:
 pip install gcovr
 ```
 
+ReportGenerator can be installed via .NET Core like so:
+
+```sh
+dotnet tool install -g dotnet-reportgenerator-globaltool
+```
+
+It is not required to install both `gcovr` and `ReportGenerator`. Either utility
+may be installed to create reports.
+
 ## Configuration
 
 The gcov plugin supports configuration options via your `project.yml` provided
 by Ceedling.
+
+### Utilities
+
+Gcovr and / or ReportGenerator may be enabled to create coverage reports.
+
+```yaml
+:gcov:
+  :utilities:
+    - gcovr           # Use gcovr to create the specified reports (default).
+    - ReportGenerator # Use ReportGenerator to create the specified reports.
+```
 
 ### Reports
 
@@ -35,12 +56,85 @@ for additional options and information. All generated reports will be found in `
   # Specify one or more reports to generate.
   # Defaults to HtmlBasic.
   :reports:
-    - HtmlBasic     # Make an HTML summary report. (gcovr --html)
-    - HtmlDetailed  # Make an HTML report with line by line coverage of each source file. (gcovr --html-details)
-    - Text          # Make a Text report, which may be output to the console or a file.
-    - Cobertura     # Make a Cobertura XML report. (gcovr --xml)
-    - SonarQube     # Make a SonarQube XML report. (gcovr --sonarqube)
-    - JSON          # Make a JSON report. (gcovr --json)
+    # Make an HTML summary report.
+    # Supported utilities: gcovr, ReportGenerator
+    - HtmlBasic
+
+    # Make an HTML report with line by line coverage of each source file.
+    # Supported utilities: gcovr, ReportGenerator
+    - HtmlDetailed
+
+    # Make a Text report, which may be output to the console with gcovr or a file in both gcovr and ReportGenerator.
+    # Supported utilities: gcovr, ReportGenerator
+    - Text
+
+    # Make a Cobertura XML report.
+    # Supported utilities: gcovr, ReportGenerator
+    - Cobertura
+
+    # Make a SonarQube XML report.
+    # Supported utilities: gcovr, ReportGenerator
+    - SonarQube
+
+    # Make a JSON report.
+    # Supported utilities: gcovr
+    - JSON
+
+    # Make a detailed HTML report with CSS and JavaScript included in every HTML page. Useful for build servers.
+    # Supported utilities: ReportGenerator
+    - HtmlInline
+
+    # Make a detailed HTML report with a light theme and CSS and JavaScript included in every HTML page for Azure DevOps.
+    # Supported utilities: ReportGenerator
+    - HtmlInlineAzure
+
+    # Make a detailed HTML report with a dark theme and CSS and JavaScript included in every HTML page for Azure DevOps.
+    # Supported utilities: ReportGenerator
+    - HtmlInlineAzureDark
+
+    # Make a single HTML file containing a chart with historic coverage information.
+    # Supported utilities: ReportGenerator
+    - HtmlChart
+
+    # Make a detailed HTML report in a single file.
+    # Supported utilities: ReportGenerator
+    - MHtml
+
+    # Make SVG and PNG files that show line and / or branch coverage information.
+    # Supported utilities: ReportGenerator
+    - Badges
+
+    # Make a single CSV file containing coverage information per file.
+    # Supported utilities: ReportGenerator
+    - CsvSummary
+
+    # Make a single TEX file containing a summary for all files and detailed reports for each files.
+    # Supported utilities: ReportGenerator
+    - Latex
+
+    # Make a single TEX file containing a summary for all files.
+    # Supported utilities: ReportGenerator
+    - LatexSummary
+
+    # Make a single PNG file containing a chart with historic coverage information.
+    # Supported utilities: ReportGenerator
+    - PngChart
+
+    # Command line output interpreted by TeamCity.
+    # Supported utilities: ReportGenerator
+    - TeamCitySummary
+
+    # Make a text file in lcov format.
+    # Supported utilities: ReportGenerator
+    - lcov
+
+    # Make a XML file containing a summary for all classes and detailed reports for each class.
+    # Supported utilities: ReportGenerator
+    - Xml
+
+    # Make a single XML file containing a summary for all files.
+    # Supported utilities: ReportGenerator
+    - XmlSummary
 ```
 
 ### Gcovr HTML Reports
@@ -262,6 +356,44 @@ default behaviors of gcovr:
   :uncovered_ignore_list: []
 ```
 
+### ReportGenerator Configuration
+
+The ReportGenerator utility may be configured with the following configuration items.
+All generated reports may be found in `build/artifacts/gcov/ReportGenerator`.
+
+```yaml
+:gcov:
+  :report_generator:
+    # Optional directory for storing persistent coverage information.
+    # Can be used in future reports to show coverage evolution.
+    :history_directory: <history_directory>
+
+    # Optional plugin files for custom reports or custom history storage (separated by semicolon).
+    :plugins: CustomReports.dll
+
+    # Optional list of assemblies that should be included or excluded in the report (separated by semicolon)..
+    # Exclusion filters take precedence over inclusion filters.
+    # Wildcards are allowed, but not regular expressions.
+    :assembly_filters: "+Included;-Excluded"
+
+    # Optional list of classes that should be included or excluded in the report (separated by semicolon)..
+    # Exclusion filters take precedence over inclusion filters.
+    # Wildcards are allowed, but not regular expressions.
+    :class_filters: "+Included;-Excluded"
+
+    # Optional list of files that should be included or excluded in the report (separated by semicolon)..
+    # Exclusion filters take precedence over inclusion filters.
+    # Wildcards are allowed, but not regular expressions.
+    :file_filters: "-./vendor/*;-./build/*;-./test/*;-./lib/*;+./src/*"
+
+    # The verbosity level of the log messages.
+    # Values: Verbose, Info, Warning, Error, Off
+    :verbosity: Warning
+
+    # Optional tag or build version.
+    :tag: <tag>
+```
+
 ## Example Usage
 
 ```sh
@@ -275,5 +407,6 @@ ceedling gcov:all utils:gcov
 ## Citations
 
 Most of the comment text which describes the options was taken from the
-[Gcovr User Guide](https://www.gcovr.com/en/stable/guide.html). The text
-is repeated here to provide the most accurate option functionality.
+[Gcovr User Guide](https://www.gcovr.com/en/stable/guide.html) and the
+[ReportGenerator Wiki](https://github.com/danielpalme/ReportGenerator/wiki).
+The text is repeated here to provide the most accurate option functionality.

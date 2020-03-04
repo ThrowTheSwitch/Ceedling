@@ -33,9 +33,19 @@
       - -b
       - -o "$": GCOV_BUILD_OUTPUT_PATH
       - "\"${1}\""
-  :gcov_post_report:
+  :gcov_gcov_post_report:
+    :executable: gcov
+    :optional: TRUE
+    :arguments:
+      - ${1}
+  :gcov_gcovr_post_report:
     :executable: gcovr
     :optional: TRUE
     :arguments:
-        - ${1}
+      - ${1}
+  :gcov_report_generator_post_report:
+    :executable: reportgenerator
+    :optional: TRUE
+    :arguments:
+      - ${1}
 ...
