@@ -86,11 +86,6 @@ class TestIncludesExtractor
       scan_results = line.scan(/#include\s+\"\s*(.+#{'\\'+source_extension})\s*\"/)
 
       source_includes << scan_results[0][0] if (scan_results.size > 0)
-
-      # look for TEST_FILE statement
-      scan_results = line.scan(/TEST_FILE\(\s*\"\s*(.+\.\w+)\s*\"\s*\)/)
-
-      source_includes << scan_results[0][0] if (scan_results.size > 0)
     end
 
     return source_includes.uniq
