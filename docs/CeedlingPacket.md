@@ -355,6 +355,16 @@ Ceedling (more on this later).
   F.e. Generating the source/header/test file in a subdirectory (by adding <Path> when calling module:create).
   For more info, refer to the [Module Generator](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#module-generator) section.
 
+* `ceedling module:stub[Filename]`:
+* `ceedling module:stub[<Path:>Filename]`:
+
+  So what happens if you've created your API in your header (maybe even using
+  TDD to do so?) and now you need to start to implement the corresponding C
+  module? Why not get a head start by using `ceedilng module:stub[headername]`
+  to automatically create a function skeleton for every function declared in
+  that header? Better yet, you can call this again whenever you add new functions
+  to that header to add just the new functions, leaving the old ones alone!
+
 * `ceedling logging <tasks...>`:
 
   Enable logging to <build path>/logs. Must come before test and release
