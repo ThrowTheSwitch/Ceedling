@@ -14,9 +14,9 @@ Gem::Specification.new do |s|
   s.description = %q{Ceedling provides a set of tools to deploy its guts in a folder or which can be required in a Rakefile}
   s.licenses    = ['MIT']
 
-  s.add_dependency "thor", ">= 0.14.5"
-  s.add_dependency "rake", ">= 12.2.1"
-  s.add_runtime_dependency "constructor", ">= 1.0.4"
+  s.add_dependency "thor", "~> 0.14", ">= 0.14.5"
+  s.add_dependency "rake", "~> 12.2", ">= 12.2.1"
+  s.add_runtime_dependency "constructor", "~> 1.0", ">= 1.0.4"
 
   # Files needed from submodules
   s.files         = []
