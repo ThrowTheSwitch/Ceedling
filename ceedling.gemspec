@@ -27,8 +27,10 @@ Gem::Specification.new do |s|
   s.files        += Dir['vendor/c_exception/lib/**/*.[ch]']
   s.files        += Dir['vendor/unity/auto/**/*.rb']
   s.files        += Dir['vendor/unity/src/**/*.[ch]']
+  s.files        += Dir['vendor/deep_merge/lib/*']
 
-  s.files      += Dir['**/*']
+  s.files      += Dir['assets/**/*', 'config/**/*', 'examples/**/*',
+                      'lib/**/*', 'plugins/**/*']
   s.test_files  = Dir['test/**/*', 'spec/**/*', 'features/**/*']
   s.executables = Dir['bin/**/*'].map{|f| File.basename(f)}
 
