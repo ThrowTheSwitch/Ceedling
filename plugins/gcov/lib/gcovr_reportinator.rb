@@ -130,7 +130,20 @@ class GcovrReportinator
     args += "-j #{gcovr_opts[:num_parallel_threads]} " if !(gcovr_opts[:num_parallel_threads].nil?) && (gcovr_opts[:num_parallel_threads].is_a? Integer)
 
     [:fail_under_line, :fail_under_branch, :source_encoding, :object_directory].each do |opt|
-      args += "--#{opt.to_s.gsub('_','-')} #{gcovr_opts[opt]} " unless gcovr_opts[opt].nil?
+      unless gcovr_opts[opt].nil?
+
+        value = gcovr_opts[opt]
+        if (opt == :fail_under_line) || (opt == :fail_under_branch)
+          if not value.is_a? Integer
+            puts "Option value #{opt} has to be an integer"
+            value = nil
+          elsif (value < 0) || (value > 100)
+            puts "Option value #{opt} has to be a percentage from 0 to 100"
+            value = nil
+          end
+        end
+        args += "--#{opt.to_s.gsub('_','-')} #{value} " unless value.nil?
+      end
     end
 
     return args
@@ -267,9 +280,16 @@ class GcovrReportinator
 
   # Run gcovr with the given arguments.
   def run(args)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_POST_REPORT, [], args)
-    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
-    @reportinator_helper.print_shell_result(shell_result)
+    begin
+      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_POST_REPORT, [], args)
+      shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+      @reportinator_helper.print_shell_result(shell_result)
+    rescue
+      # handle any unforeseen issues with called tool
+      exitcode = $?.exitstatus
+      show_gcovr_message(exitcode)
+      exit(exitcode)
+    end
   end
 
 
@@ -289,6 +309,17 @@ class GcovrReportinator
     end
 
     return version_number_major, version_number_minor
+  end
+
+
+  # Show a more human-friendly message on gcovr return code
+  def show_gcovr_message(exitcode)
+    if ((exitcode & 2) == 2)
+      puts "The line coverage is less than the minimum"
+    end
+    if ((exitcode & 4) == 4)
+      puts "The branch coverage is less than the minimum"
+    end
   end
 
 
