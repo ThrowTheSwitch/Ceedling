@@ -3,12 +3,17 @@ language: ruby c
 
 matrix:
  include:
+    #- os: osx
+    #  compiler: clang
+    #  osx_image: xcode7.3
     - os: linux
       dist: trusty
       rvm: "2.4"
+      compiler: gcc
     - os: linux
       dist: xenial
-      rvm: "2.6"
+      rvm: "2.7"
+      compiler: clang
 
 before_install:
   - sudo pip install gcovr
