@@ -96,7 +96,7 @@ class TestIncludesExtractor
     header_extension = @configurator.extension_header
     file_key         = form_file_key(file)
     @mocks[file_key] = []
-    
+
     # add includes to lookup hash
     @includes[file_key] = includes
 
