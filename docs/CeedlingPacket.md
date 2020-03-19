@@ -399,6 +399,14 @@ Ceedling (more on this later).
   runners, mocks, preprocessor output. Clobber produces no output at the
   command line unless verbosity has been set to an appreciable level.
 
+* `ceedling options:export`:
+
+  This allows you to export a snapshot of your current tool configuration
+  as a yaml file. You can specify the name of the file in brackets `[blah.yml]`
+  or let it default to `tools.yml`. In either case, the produced file can be
+  used as the tool configuration for you project if desired, and modified as you
+  wish.
+
 To better understand Rake conventions, Rake execution, and
 Rakefiles, consult the [Rake tutorial, examples, and user guide][guide].
 
