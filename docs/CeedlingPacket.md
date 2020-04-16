@@ -1454,13 +1454,23 @@ common code modules, etc).
 
 These can be recursively nested, the included files can include other files.
 
-Example [:import] YAML blurb
+To import config files, either provide an array of files to import, or use hashes to set imports. The former is useful if you do not anticipate needing to replace a given file for different configurations (project: or options:). If you need to replace/remove imports based on different configuration files, use the hashed version. The two methods cannot be mixed in the same .yml.
+
+Example [:import] YAML blurb using array
 
 ```yaml
 :import:
   - path/to/config.yml
   - path/to/another/config.yml
 ```
+Example [:import] YAML blurb using hashes
+
+```yaml
+:import:
+  :configA: path/to/config.yml
+  :configB: path/to/another/config.yml
+```
+
 
 Ceedling sets values for a subset of CMock settings. All CMock
 options are available to be set, but only those options set by
