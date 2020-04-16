@@ -211,8 +211,10 @@ class Configurator
         end
       else
         config[:import].each_value do |path|
-          path = @system_wrapper.module_eval(path) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
-          config.deep_merge!(@yaml_wrapper.load(path))
+          if !path.nil?
+            path = @system_wrapper.module_eval(path) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+            config.deep_merge!(@yaml_wrapper.load(path))
+          end
         end
       end
     end
