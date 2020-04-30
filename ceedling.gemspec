@@ -21,6 +21,7 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
   s.licenses    = ['MIT']
 
   s.metadata = {
+    "homepage_uri"      => s.homepage,
     "bug_tracker_uri"   => "https://github.com/ThrowTheSwitch/Ceedling/issues",
     "documentation_uri" => "https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md",
     "mailing_list_uri"  => "https://groups.google.com/forum/#!categories/throwtheswitch/ceedling",
