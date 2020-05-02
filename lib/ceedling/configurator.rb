@@ -203,10 +203,19 @@ class Configurator
 
   def merge_imports(config)
     if config[:import]
-      until config[:import].empty?
-        path = config[:import].shift
-        path = @system_wrapper.module_eval(path) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
-        config.deep_merge!(@yaml_wrapper.load(path))
+      if config[:import].is_a? Array
+        until config[:import].empty?
+          path = config[:import].shift
+          path = @system_wrapper.module_eval(path) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+          config.deep_merge!(@yaml_wrapper.load(path))
+        end
+      else
+        config[:import].each_value do |path|
+          if !path.nil?
+            path = @system_wrapper.module_eval(path) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+            config.deep_merge!(@yaml_wrapper.load(path))
+          end
+        end
       end
     end
     config.delete(:import)
