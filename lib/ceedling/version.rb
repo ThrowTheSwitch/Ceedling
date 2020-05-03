@@ -44,7 +44,7 @@ module Ceedling
       eval("#{name} = '#{a.join(".")}'")
     end
 
-    GEM = "0.29.2"
+    GEM = "0.30.0"
     CEEDLING = GEM
   end
 end
