@@ -65,6 +65,7 @@ class PreprocessinatorIncludesHandler
     to_process = [filepath]
     ignore_list = []
     list = []
+    all_mocks = []
 
     include_paths = @configurator.project_config_hash[:collection_paths_include]
     include_paths = [] if include_paths.nil?
@@ -73,8 +74,7 @@ class PreprocessinatorIncludesHandler
     while to_process.length > 0
       target = to_process.shift()
       ignore_list << target
-      # puts "[HELL] Processing: \t\t#{target}"
-      new_deps, new_to_process = extract_includes_helper(target, include_paths, ignore_list)
+      new_deps, new_to_process, all_mocks = extract_includes_helper(target, include_paths, ignore_list, all_mocks)
       list += new_deps
       to_process += new_to_process
       if (!@configurator.project_config_hash.has_key?(:project_auto_link_deep_dependencies) or
@@ -89,7 +89,7 @@ class PreprocessinatorIncludesHandler
     return list
   end
 
-  def extract_includes_helper(filepath, include_paths, ignore_list)
+  def extract_includes_helper(filepath, include_paths, ignore_list, mocks)
     # Extract the dependencies from the make rule
     hdr_ext = @configurator.extension_header
     make_rule = self.form_shallow_dependencies_rule(filepath)
@@ -128,9 +128,10 @@ class PreprocessinatorIncludesHandler
     to_process = []
 
     if @configurator.project_config_hash.has_key?(:project_auto_link_deep_dependencies) && @configurator.project_config_hash[:project_auto_link_deep_dependencies]
+      mock_prefix = @configurator.project_config_hash[:cmock_mock_prefix]
       # Creating list of mocks
-      mocks = annotated_headers.find_all do |annotated_header|
-        File.basename(annotated_header) =~ /^#{@configurator.project_config_hash[:cmock_mock_prefix]}.*$/
+      mocks += annotated_headers.find_all do |annotated_header|
+        File.basename(annotated_header) =~ /^#{mock_prefix}.*$/
       end.compact
 
       # Creating list of headers that should be recursively pre-processed
@@ -138,16 +139,15 @@ class PreprocessinatorIncludesHandler
       headers_to_deep_link = annotated_headers.select do |annotated_header|
         !(mocks.include? annotated_header) and (annotated_header.match(/^(.*\/)?unity\.h$/).nil?)
       end
-      headers_to_deep_link.map! {|hdr| File.expand_path(hdr)}
+      headers_to_deep_link.map! {|hdr| File.expand_path(hdr) }
+      headers_to_deep_link.compact!
 
+      # ignore real file when both mock and real file exist
       mocks.each do |mock|
-        dirname = File.dirname(mock)
-        #basename = File.basename(mock).delete_prefix(@configurator.project_config_hash[:cmock_mock_prefix])
-        basename = File.basename(mock).sub(@configurator.project_config_hash[:cmock_mock_prefix], '')
-        if dirname != "."
-          ignore_list << File.join(dirname, basename)
-        else
-          ignore_list << basename
+        list.each do |filename|
+          if File.basename(filename) == File.basename(mock).sub(mock_prefix, '')
+            ignore_list << filename
+          end
         end
       end.compact
 
@@ -161,7 +161,6 @@ class PreprocessinatorIncludesHandler
             include_paths.none? {|include_path| hdr =~ /^#{include_path}\.*/})
           if File.exist?(hdr)
             to_process << hdr
-            #source_file = hdr.delete_suffix(hdr_ext) + src_ext
             source_file = hdr.chomp(hdr_ext) + src_ext
             if source_file != hdr and File.exist?(source_file)
               to_process << source_file
@@ -171,7 +170,7 @@ class PreprocessinatorIncludesHandler
       end
     end
 
-    return list, to_process
+    return list, to_process, mocks
 
   end
 
