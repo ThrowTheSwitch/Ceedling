@@ -79,14 +79,17 @@ describe PreprocessinatorIncludesHandler do
           source/some_lib/some_header2.h \
           source/some_other_lib/some_header2.h \
           @@@@some_header1.h \
-          @@@@some_lib/some_header2.h
+          @@@@some_lib/some_header2.h \
           @@@@some_other_lib/some_header2.h
       }})
       # execute method
       results = subject.extract_includes_helper("/dummy_file_1.c", [], [])
       # validate results
       expect(results).to eq [
-        ['source/some_header1.h', 'source/some_lib/some_header2.h', 'source/some_other_lib/some_header2.h', 'Build/temp/_test_DUMMY.c'],
+        ['source/some_header1.h',
+          'source/some_lib/some_header2.h',
+          'source/some_other_lib/some_header2.h',
+          'Build/temp/_test_DUMMY.c'],
         []
       ]
     end
@@ -109,8 +112,8 @@ describe PreprocessinatorIncludesHandler do
           source\some_lib1\some_lib\some_header2.h \
           source\some_other_lib\some_header2.h \
           @@@@some_header1.h \
-          @@@@some_lib/some_header2.h
-          @@@@some_lib1/some_lib/some_header2.h
+          @@@@some_lib/some_header2.h \
+          @@@@some_lib1/some_lib/some_header2.h \
           @@@@some_other_lib/some_header2.h
       }})
       # execute method
@@ -164,7 +167,6 @@ describe PreprocessinatorIncludesHandler do
       expect(@file_wrapper).to receive(:write)
       expect(@tool_executor).to receive(:build_command_line).and_return({:line => "", :options => ""})
       expect(@tool_executor).to receive(:exec).and_return({ :output => %q{
-        _test_DUMMY.o: Build/temp/_test_DUMMY.c \
         _test_DUMMY.o: Build/temp/_test_DUMMY.c \
           source\some_header1.h \
           source\some_lib\some_header2.h \
