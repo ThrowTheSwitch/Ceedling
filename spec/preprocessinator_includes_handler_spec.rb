@@ -83,14 +83,14 @@ describe PreprocessinatorIncludesHandler do
           @@@@some_other_lib/some_header2.h
       }})
       # execute method
-      results = subject.extract_includes_helper("/dummy_file_1.c", [], [])
+      results = subject.extract_includes_helper("/dummy_file_1.c", [], [], [])
       # validate results
       expect(results).to eq [
         ['source/some_header1.h',
           'source/some_lib/some_header2.h',
           'source/some_other_lib/some_header2.h',
           'Build/temp/_test_DUMMY.c'],
-        []
+        [], []
       ]
     end
 
@@ -117,7 +117,7 @@ describe PreprocessinatorIncludesHandler do
           @@@@some_other_lib/some_header2.h
       }})
       # execute method
-      results = subject.extract_includes_helper("/dummy_file_2.c", [], [])
+      results = subject.extract_includes_helper("/dummy_file_2.c", [], [], [])
       # validate results
       expect(results).to eq [
         ['source/some_header1.h',
@@ -125,7 +125,7 @@ describe PreprocessinatorIncludesHandler do
           'source/some_lib1/some_lib/some_header2.h',
           'source/some_other_lib/some_header2.h',
           'Build/temp/_test_DUMMY.c'],
-        []
+        [], []
       ]
     end
 
@@ -147,11 +147,11 @@ describe PreprocessinatorIncludesHandler do
           @@@@some_lib/some_header2.h
       }})
       # execute method
-      results = subject.extract_includes_helper("/dummy_file_3.c", [], [])
+      results = subject.extract_includes_helper("/dummy_file_3.c", [], [], [])
       # validate results
       expect(results).to eq [
         ['source/some_header1.h', 'Build/temp/_test_DUMMY.c'],
-        []
+        [], []
       ]
     end
 
@@ -179,14 +179,14 @@ describe PreprocessinatorIncludesHandler do
           @@@@some_other_lib/some_header2.h
       }})
       # execute method
-      results = subject.extract_includes_helper("/dummy_file_4.c", [], [])
+      results = subject.extract_includes_helper("/dummy_file_4.c", [], [], [])
       # validate results
       expect(results).to eq [
         ['source/some_header1.h',
           'source/some_lib/some_header2.h',
           'source/some_other_lib/some_header2.h',
           'Build/temp/_test_DUMMY.c'],
-        []
+        [], []
       ]
     end
   end
