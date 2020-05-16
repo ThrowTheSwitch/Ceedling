@@ -93,7 +93,10 @@ class PreprocessinatorIncludesHandler
     # Extract the dependencies from the make rule
     hdr_ext = @configurator.extension_header
     make_rule = self.form_shallow_dependencies_rule(filepath)
-    dependencies = make_rule.split.find_all {|path| path.end_with?(hdr_ext) }.uniq
+    target_file = make_rule.split[0].gsub(':', '').gsub('\\','/')
+    base = File.basename(target_file, File.extname(target_file))
+    make_rule_dependencies = make_rule.gsub(/.*#{Regexp.escape(base)}\S*/, '').gsub(/\\$/, '')
+    dependencies = make_rule_dependencies.split.find_all {|path| path.end_with?(hdr_ext) }.uniq
     dependencies.map! {|hdr| hdr.gsub('\\','/') }
 
     # Separate the real files form the annotated ones and remove the '@@@@'
@@ -121,7 +124,7 @@ class PreprocessinatorIncludesHandler
 
     # Extract direct dependencies that were also added
     src_ext = @configurator.extension_source
-    sdependencies = make_rule.split.find_all {|path| path.end_with?(src_ext) }.uniq
+    sdependencies = make_rule_dependencies.split.find_all {|path| path.end_with?(src_ext) }.uniq
     sdependencies.map! {|hdr| hdr.gsub('\\','/') }
     list += sdependencies
 
