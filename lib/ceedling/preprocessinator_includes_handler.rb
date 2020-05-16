@@ -91,56 +91,37 @@ class PreprocessinatorIncludesHandler
 
   def extract_includes_helper(filepath, include_paths, ignore_list, mocks)
     # Extract the dependencies from the make rule
-    hdr_ext = @configurator.extension_header
     make_rule = self.form_shallow_dependencies_rule(filepath)
     target_file = make_rule.split[0].gsub(':', '').gsub('\\','/')
     base = File.basename(target_file, File.extname(target_file))
     make_rule_dependencies = make_rule.gsub(/.*#{Regexp.escape(base)}\S*/, '').gsub(/\\$/, '')
-    dependencies = make_rule_dependencies.split.find_all {|path| path.end_with?(hdr_ext) }.uniq
-    dependencies.map! {|hdr| hdr.gsub('\\','/') }
+    
+    # Extract the headers dependencies from the make rule
+    hdr_ext = @configurator.extension_header
+    headers_dependencies = make_rule_dependencies.split.find_all {|path| path.end_with?(hdr_ext) }.uniq
+    headers_dependencies.map! {|hdr| hdr.gsub('\\','/') }
+    full_path_headers_dependencies = extract_full_path_dependencies(headers_dependencies)
 
-    # Separate the real files form the annotated ones and remove the '@@@@'
-    annotated_headers, real_headers = dependencies.partition {|hdr| hdr =~ /^@@@@/ }
-    annotated_headers.map! {|hdr| hdr.gsub('@@@@','') }
-    # Matching annotated_headers values against real_headers to ensure that
-    # annotated_headers contain full path entries (as returned by make rule)
-    annotated_headers.map! {|hdr| real_headers.find {|real_hdr| !real_hdr.match(/(.*\/)?#{Regexp.escape(hdr)}/).nil? } }
-    annotated_headers = annotated_headers.compact
-
-    # Find which of our annotated headers are "real" dependencies. This is
-    # intended to weed out dependencies that have been removed due to build
-    # options defined in the project yaml and/or in the headers themselves.
-    list = annotated_headers.find_all do |annotated_header|
-      # find the index of the "real" include that matches the annotated one.
-      idx = real_headers.find_index do |real_header|
-        real_header =~ /^(.*\/)?#{Regexp.escape(annotated_header)}$/
-      end
-      # If we found a real include, delete it from the array and return it,
-      # otherwise return nil. Since nil is falsy this has the effect of making
-      # find_all return only the annotated headers for which a real include was
-      # found/deleted
-      idx ? real_headers.delete_at(idx) : nil
-    end.compact
-
-    # Extract direct dependencies that were also added
+    # Extract the sources dependencies from the make rule
     src_ext = @configurator.extension_source
-    sdependencies = make_rule_dependencies.split.find_all {|path| path.end_with?(src_ext) }.uniq
-    sdependencies.map! {|hdr| hdr.gsub('\\','/') }
-    list += sdependencies
+    sources_dependencies = make_rule_dependencies.split.find_all {|path| path.end_with?(src_ext) }.uniq
+    sources_dependencies.map! {|src| src.gsub('\\','/') }
+    full_path_sources_dependencies = extract_full_path_dependencies(sources_dependencies)
 
+    list = full_path_headers_dependencies + full_path_sources_dependencies
     to_process = []
 
     if @configurator.project_config_hash.has_key?(:project_auto_link_deep_dependencies) && @configurator.project_config_hash[:project_auto_link_deep_dependencies]
       mock_prefix = @configurator.project_config_hash[:cmock_mock_prefix]
       # Creating list of mocks
-      mocks += annotated_headers.find_all do |annotated_header|
-        File.basename(annotated_header) =~ /^#{mock_prefix}.*$/
+      mocks += full_path_headers_dependencies.find_all do |header|
+        File.basename(header) =~ /^#{mock_prefix}.*$/
       end.compact
 
       # Creating list of headers that should be recursively pre-processed
       # Skipping mocks and unity.h
-      headers_to_deep_link = annotated_headers.select do |annotated_header|
-        !(mocks.include? annotated_header) and (annotated_header.match(/^(.*\/)?unity\.h$/).nil?)
+      headers_to_deep_link = full_path_headers_dependencies.select do |hdr|
+        !(mocks.include? hdr) and (hdr.match(/^(.*\/)?unity\.h$/).nil?)
       end
       headers_to_deep_link.map! {|hdr| File.expand_path(hdr) }
       headers_to_deep_link.compact!
@@ -179,5 +160,32 @@ class PreprocessinatorIncludesHandler
 
   def write_shallow_includes_list(filepath, list)
     @yaml_wrapper.dump(filepath, list)
+  end
+
+  private
+
+  def extract_full_path_dependencies(dependencies)
+    # Separate the real files form the annotated ones and remove the '@@@@'
+    annotated_files, real_files = dependencies.partition {|file| file =~ /^@@@@/}
+    annotated_files.map! {|file| file.gsub('@@@@','') }
+    # Matching annotated_files values against real_files to ensure that
+    # annotated_files contain full path entries (as returned by make rule)
+    annotated_files.map! {|file| real_files.find {|real| !real.match(/(.*\/)?#{Regexp.escape(file)}/).nil?}}
+    annotated_files = annotated_files.compact
+
+    # Find which of our annotated files are "real" dependencies. This is
+    # intended to weed out dependencies that have been removed due to build
+    # options defined in the project yaml and/or in the files themselves.
+    return annotated_files.find_all do |annotated_file|
+      # find the index of the "real" file that matches the annotated one.
+      idx = real_files.find_index do |real_file|
+        real_file =~ /^(.*\/)?#{Regexp.escape(annotated_file)}$/
+      end
+      # If we found a real file, delete it from the array and return it,
+      # otherwise return nil. Since nil is falsy this has the effect of making
+      # find_all return only the annotated filess for which a real file was
+      # found/deleted
+      idx ? real_files.delete_at(idx) : nil
+    end.compact
   end
 end
