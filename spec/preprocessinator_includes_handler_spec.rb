@@ -9,6 +9,7 @@ describe PreprocessinatorIncludesHandler do
     @file_path_utils = double('file_path_utils')
     @yaml_wrapper    = double('yaml_wrapper')
     @file_wrapper    = double('file_wrapper')
+    @file_finder     = double('file_finder')
   end
 
   subject do
@@ -19,6 +20,7 @@ describe PreprocessinatorIncludesHandler do
       :file_path_utils => @file_path_utils,
       :yaml_wrapper    => @yaml_wrapper,
       :file_wrapper    => @file_wrapper,
+      :file_finder     => @file_finder
     )
   end
 
@@ -188,6 +190,50 @@ describe PreprocessinatorIncludesHandler do
           'source/some_other_lib/some_header2.h'],
         [], []
       ]
+    end
+
+    it 'should correctly filter auto link deep dependencies with mocks' do
+      # create test state/variables
+      # mocks/stubs/expected calls
+      expect(@configurator).to receive(:project_config_hash).and_return(:collection_paths_include => [])
+      expect(@configurator).to receive(:extension_header).and_return('.h').exactly(3).times
+      expect(@configurator).to receive(:extension_source).and_return('.c').exactly(3).times
+      expect(@configurator).to receive(:tools_test_includes_preprocessor).exactly(3).times
+      expect(@file_wrapper).to receive(:read).and_return("").exactly(3).times
+      expect(@file_wrapper).to receive(:write).exactly(3).times
+      expect(@file_finder).to receive(:find_compilation_input_file).and_return("assets\example_file.c")
+      expect(@tool_executor).to receive(:build_command_line).and_return({:line => "", :options => ""}).exactly(3).times
+      expect(@configurator).to receive(:project_config_hash).and_return(:project_auto_link_deep_dependencies => true).exactly(2).times
+      expect(@configurator).to receive(:project_config_hash).and_return({:cmock_mock_prefix => 'mock_'})
+      expect(@configurator).to receive(:project_config_hash).and_return(:project_auto_link_deep_dependencies => true).exactly(4).times
+      expect(@configurator).to receive(:project_config_hash).and_return({:cmock_mock_prefix => 'mock_'})
+      expect(@configurator).to receive(:project_config_hash).and_return(:project_auto_link_deep_dependencies => true).exactly(4).times
+      expect(@configurator).to receive(:project_config_hash).and_return({:cmock_mock_prefix => 'mock_'})
+      expect(@configurator).to receive(:project_config_hash).and_return(:project_auto_link_deep_dependencies => true).exactly(2).times
+      expect(@file_path_utils).to receive(:form_temp_path).and_return("_test_DUMMY.c")
+      expect(@file_path_utils).to receive(:form_temp_path).and_return("assets\_example_file.h")
+      expect(@file_path_utils).to receive(:form_temp_path).and_return("assets\_example_file.c")
+      expect(@tool_executor).to receive(:exec).and_return({ :output => %q{
+        _test_DUMMY.o: build/temp/_test_DUMMY.c \
+          assets\example_file.h \
+          build\mocks\mock_dependency.h \
+          @@@@assets/example_file.h \
+          @@@@build/mocks/mock_dependency.h
+      }})
+      expect(@tool_executor).to receive(:exec).and_return({ :output => %q{
+        assets\_example_file.o: assets\_example_file.h
+      }})
+      expect(@tool_executor).to receive(:exec).and_return({ :output => %q{
+        assets\_example_file.o: assets\_example_file.c \
+          source\dependency.h \
+          @@@@source/dependency.h
+      }})
+      # execute method
+      results = subject.extract_includes("test_dummy.c")
+      # validate results
+      expect(results).to eq [
+        'assets/example_file.h',
+        'build/mocks/mock_dependency.h']
     end
   end
 
