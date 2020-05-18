@@ -166,6 +166,17 @@ describe "Ceedling" do
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
+  describe "deployed with auto link deep denendencies" do
+    before do
+      @c.with_context do
+        `bundle exec ruby -S ceedling new --local #{@proj_name} 2>&1`
+      end
+    end
+
+    it { can_create_projects }
+    it { can_test_projects_with_enabled_auto_link_deep_deependency_with_success }
+  end
+
   describe "command: `ceedling examples`" do
     before do
       @c.with_context do
