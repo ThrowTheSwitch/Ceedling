@@ -2,7 +2,7 @@
 
 class PreprocessinatorIncludesHandler
 
-  constructor :configurator, :tool_executor, :task_invoker, :file_path_utils, :yaml_wrapper, :file_wrapper
+  constructor :configurator, :tool_executor, :task_invoker, :file_path_utils, :yaml_wrapper, :file_wrapper, :file_finder
   @@makefile_cache = {}
 
   # shallow includes: only those headers a source file explicitly includes
@@ -145,10 +145,8 @@ class PreprocessinatorIncludesHandler
             include_paths.none? {|include_path| hdr =~ /^#{include_path}\.*/})
           if File.exist?(hdr)
             to_process << hdr
-            source_file = hdr.chomp(hdr_ext) + src_ext
-            if source_file != hdr and File.exist?(source_file)
-              to_process << source_file
-            end
+            src = @file_finder.find_compilation_input_file(hdr, :ignore)
+            to_process << src if src
           end
         end
       end
