@@ -119,9 +119,9 @@ class PreprocessinatorIncludesHandler
       end.compact
 
       # Creating list of headers that should be recursively pre-processed
-      # Skipping mocks and unity.h
+      # Skipping mocks and vendor headers
       headers_to_deep_link = full_path_headers_dependencies.select do |hdr|
-        !(mocks.include? hdr) and (hdr.match(/^(.*\/)?unity\.h$/).nil?)
+        !(mocks.include? hdr) and (hdr.match(/^(.*\/)(#{VENDORS_FILES.join('|')})\.h$/).nil?)
       end
       headers_to_deep_link.map! {|hdr| File.expand_path(hdr) }
       headers_to_deep_link.compact!
