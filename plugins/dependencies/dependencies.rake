@@ -142,3 +142,6 @@ namespace :files do
     puts "file count: #{deps.size}"
   end
 end
+
+# Make sure that we build dependencies before attempting to tackle any of the unit tests
+Rake::Task[:test_deps].enhance ['dependencies:make']

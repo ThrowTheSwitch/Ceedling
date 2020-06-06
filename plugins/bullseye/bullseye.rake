@@ -73,7 +73,7 @@ namespace BULLSEYE_SYM do
   task source_coverage: COLLECTION_ALL_SOURCE.pathmap("#{BULLSEYE_BUILD_OUTPUT_PATH}/%n#{@ceedling[:configurator].extension_object}")
 
   desc 'Run code coverage for all tests'
-  task all: [:directories] do
+  task all: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
     @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, BULLSEYE_SYM)
@@ -90,7 +90,7 @@ namespace BULLSEYE_SYM do
   end
 
   desc 'Run tests by matching regular expression pattern.'
-  task :pattern, [:regex] => [:directories] do |_t, args|
+  task :pattern, [:regex] => [:test_deps] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each do |test|
@@ -108,7 +108,7 @@ namespace BULLSEYE_SYM do
   end
 
   desc 'Run tests whose test path contains [dir] or [dir] substring.'
-  task :path, [:dir] => [:directories] do |_t, args|
+  task :path, [:dir] => [:test_deps] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each do |test|
@@ -126,7 +126,7 @@ namespace BULLSEYE_SYM do
   end
 
   desc 'Run code coverage for changed files'
-  task delta: [:directories] do
+  task delta: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
     @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, BULLSEYE_SYM, {:force_run => false})
@@ -142,7 +142,7 @@ namespace BULLSEYE_SYM do
         @ceedling[:file_finder].find_test_from_file_path(test)
       end
   ]) do |test|
-    @ceedling[:rake_wrapper][:directories].invoke
+    @ceedling[:rake_wrapper][:test_deps].invoke
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
     @ceedling[:test_invoker].setup_and_invoke([test.source], BULLSEYE_SYM)

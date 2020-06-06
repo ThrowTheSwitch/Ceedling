@@ -66,7 +66,7 @@ namespace TEST_SYM do
         @ceedling[:file_finder].find_test_from_file_path(test)
       end
   ]) do |test|
-    @ceedling[:rake_wrapper][:directories].invoke
+    @ceedling[:rake_wrapper][:test_deps].invoke
     @ceedling[:test_invoker].setup_and_invoke([test.source])
   end
 end
