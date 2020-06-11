@@ -56,6 +56,22 @@ def _add_define_in_section(project_file_path, define, section)
   end
 end
 
+def _add_option_in_project(project_file_path, option, value)
+  project_file_contents = File.readlines(project_file_path)
+  option_index = project_file_contents.index(":project:\n")
+
+  if option_index.nil?
+    # Something wrong with project.yml file, no paths?
+    return
+  end
+
+  project_file_contents.insert(option_index + 1, "  #{option}: #{value}\n")
+
+  File.open(project_file_path, "w+") do |f|
+    f.puts(project_file_contents)
+  end
+end
+
 def add_source_path(path)
   _add_path_in_section("project.yml", path, "source")
 end
@@ -66,6 +82,10 @@ end
 
 def add_test_define(define)
   _add_define_in_section("project.yml", define, "test")
+end
+
+def add_project_option(option, value)
+  _add_option_in_project("project.yml", option, value)
 end
 
 def add_module_generator_section(project_file_path, mod_gen)
@@ -325,6 +345,23 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
         add_test_define("UNITY_INCLUDE_EXEC_TIME")
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  def can_test_projects_with_enabled_auto_link_deep_deependency_with_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.copy_entry test_asset_path("auto_link_deep_dependencies/src/"), 'src/'
+        FileUtils.cp_r test_asset_path("auto_link_deep_dependencies/test/."), 'test/'
+        add_project_option("auto_link_deep_dependencies", "TRUE")
 
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here

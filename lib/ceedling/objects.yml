@@ -253,6 +253,7 @@ preprocessinator_includes_handler:
     - file_path_utils
     - yaml_wrapper
     - file_wrapper
+    - file_finder
 
 preprocessinator_file_handler:
   compose:
