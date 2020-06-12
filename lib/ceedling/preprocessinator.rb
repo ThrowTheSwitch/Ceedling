@@ -1,8 +1,6 @@
 
 class Preprocessinator
 
-  attr_reader :preprocess_file_proc
-  
   constructor :preprocessinator_helper, :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_path_utils, :yaml_wrapper, :project_config_manager
 
 
