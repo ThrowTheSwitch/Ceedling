@@ -61,11 +61,11 @@ def _add_option_in_project(project_file_path, option, value)
   option_index = project_file_contents.index(":project:\n")
 
   if option_index.nil?
-    # Something wrong with project.yml file, no paths?
+    # Something wrong with project.yml file, no project section?
     return
   end
 
-  project_file_contents.insert(option_index + 1, "  #{option}: #{value}\n")
+  project_file_contents.insert(option_index + 1, "  :#{option}: #{value}\n")
 
   File.open(project_file_path, "w+") do |f|
     f.puts(project_file_contents)
