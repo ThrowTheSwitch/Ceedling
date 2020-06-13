@@ -103,6 +103,26 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
     ].freeze
   }
 
+DEFAULT_TEST_FILE_PREPROCESSOR_DIRECTIVES_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
+  :name => 'default_test_file_preprocessor_directives'.freeze,
+  :stderr_redirect => StdErrRedirect::NONE.freeze,
+  :background_exec => BackgroundExec::NONE.freeze,
+  :optional => false.freeze,
+  :arguments => [
+    '-E'.freeze,
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
+    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
+    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
+    {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
+    "-DGNU_COMPILER".freeze,
+    '-fdirectives-only'.freeze,
+    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
+    "\"${1}\"".freeze,
+    "-o \"${2}\"".freeze
+    ].freeze
+  }
+
 # Disable the -MD flag for OSX LLVM Clang, since unsupported
 if RUBY_PLATFORM =~ /darwin/ && `gcc --version 2> /dev/null` =~ /Apple LLVM version .* \(clang/m # OSX w/LLVM Clang
   MD_FLAG = '' # Clang doesn't support the -MD flag
@@ -230,6 +250,7 @@ DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
     :test_includes_preprocessor => DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL,
     :test_file_preprocessor     => DEFAULT_TEST_FILE_PREPROCESSOR_TOOL,
+    :test_file_preprocessor_directives => DEFAULT_TEST_FILE_PREPROCESSOR_DIRECTIVES_TOOL,
     }
   }
 
@@ -270,6 +291,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :compile_threads => 1,
       :test_threads => 1,
       :use_test_preprocessor => false,
+      :use_preprocessor_directives => false,
       :use_deep_dependencies => false,
       :generate_deep_dependencies => true, # only applicable if use_deep_dependencies is true
       :test_file_prefix => 'test_',
@@ -374,6 +396,7 @@ DEFAULT_CEEDLING_CONFIG = {
     },
     :test_includes_preprocessor  => { :arguments => [] },
     :test_file_preprocessor      => { :arguments => [] },
+    :test_file_preprocessor_directives => { :arguments => [] },
     :test_dependencies_generator => { :arguments => [] },
     :release_compiler  => { :arguments => [] },
     :release_linker    => { :arguments => [] },

@@ -236,6 +236,7 @@ preprocessinator:
     - file_path_utils
     - yaml_wrapper
     - project_config_manager
+    - configurator
 
 preprocessinator_helper:
   compose:
