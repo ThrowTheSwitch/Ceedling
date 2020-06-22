@@ -818,6 +818,23 @@ project: global project settings
 
   **Default**: FALSE
 
+* `use_preprocessor_directives`:
+
+  After standard preprocessing when `use_test_preprocessor` is used
+  macros are fully expanded to C code. Some features, for example
+  TEST_CASE() or TEST_RANGE() from Unity require not-fully preprocessed
+  file to be detected by Ceedling. To do this gcc directives-only
+  option is used to expand only conditional compilation statements,
+  handle directives, but do not expand macros preprocessor and leave
+  the other content of file untouched.
+
+  With this option enabled, `use_test_preprocessor` must be also enabled
+  and gcc must exist in an accessible system search path. For other
+  compilers behavior can be changed by `test_file_preprocessor_directives`
+  compiler tool.
+
+  **Default**: FALSE
+
 * `use_deep_dependencies`:
 
   The base rules and tasks that Ceedling creates using Rake capture most
@@ -1680,9 +1697,18 @@ tools.
 * `test_file_preprocessor`:
 
   Preprocessor of test files (macros, conditional compilation statements)
-
    - `${1}`: input source file
    - `${2}`: preprocessed output source file
+
+  **Default**: `gcc`
+
+* `test_file_preprocessor_directives`:
+
+  Preprocessor of test files to expand only conditional compilation statements,
+  handle directives, but do not expand macros
+
+   - `${1}`: input source file
+   - `${2}`: not-fully preprocessed output source file
 
   **Default**: `gcc`
 
