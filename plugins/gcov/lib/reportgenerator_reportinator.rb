@@ -181,7 +181,7 @@ class ReportGeneratorReportinator
 
   # Run ReportGenerator with the given arguments.
   def run(args)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT_GENERATOR_POST_REPORT, [], args)
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORTGENERATOR_POST_REPORT, [], args)
     return @ceedling[:tool_executor].exec(command[:line], command[:options])
   end
 
