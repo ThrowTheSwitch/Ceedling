@@ -108,7 +108,7 @@ class FileFinder
         found_file =
           @file_finder_helper.find_file_in_collection(
             source_file,
-            @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '*') ),
+            @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '**/*.*') ),
             complain)
 
       elsif release
