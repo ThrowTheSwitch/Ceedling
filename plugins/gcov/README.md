@@ -392,6 +392,24 @@ All generated reports may be found in `build/artifacts/gcov/ReportGenerator`.
 
     # Optional tag or build version.
     :tag: <tag>
+
+    # Optional list of one or more regular expressions to exclude gcov notes files that match these filters.
+    :gcov_exclude:
+      - <exclude_regex1>
+      - <exclude_regex2>
+
+    # Optionally use a particular gcov executable. Defaults to gcov.
+    :gcov_executable: <gcov_cmd>
+
+    # Optionally set the number of threads to use in parallel. Defaults to 1.
+    :num_parallel_threads: <num_threads>
+
+    # Optional list of one or more command line arguments to pass to Report Generator.
+    # Useful for configuring Risk Hotspots and Other Settings.
+    # https://github.com/danielpalme/ReportGenerator/wiki/Settings
+    :custom_args:
+      - <custom_arg1>
+      - <custom_arg2>
 ```
 
 ## Example Usage
