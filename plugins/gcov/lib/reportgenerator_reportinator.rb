@@ -24,7 +24,7 @@ class ReportGeneratorReportinator
       end
 
       # Use a custom gcov executable, if specified.
-      TOOLS_GCOV_GCOV_POST_REPORT[:executable] = rg_opts[:gcov_executable] unless rg_opts[:gcov_executable].nil?
+      GCOV_TOOL_CONFIG[:executable] = "\"#{rg_opts[:gcov_executable]}\"" unless rg_opts[:gcov_executable].nil?
 
       # Avoid running gcov on the mock, test, unity, and cexception gcov notes files to save time.
       gcno_exclude_str = "#{opts[:cmock_mock_prefix]}.*"
@@ -111,6 +111,9 @@ class ReportGeneratorReportinator
 
   REPORT_GENERATOR_SETTING_PREFIX = "gcov_report_generator"
 
+  # Deep clone the gcov tool config, so we can modify it locally if specified via options.
+  GCOV_TOOL_CONFIG = Marshal.load(Marshal.dump(TOOLS_GCOV_GCOV_POST_REPORT))
+
   # Build the ReportGenerator arguments.
   def args_builder(opts)
     rg_opts = get_opts(opts)
@@ -185,7 +188,7 @@ class ReportGeneratorReportinator
 
   # Run gcov with the given arguments.
   def run_gcov(args)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOV_POST_REPORT, [], args)
+    command = @ceedling[:tool_executor].build_command_line(GCOV_TOOL_CONFIG, [], args)
     return @ceedling[:tool_executor].exec(command[:line], command[:options])
   end
 
