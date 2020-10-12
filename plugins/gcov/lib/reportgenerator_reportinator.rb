@@ -24,7 +24,7 @@ class ReportGeneratorReportinator
       end
 
       # Use a custom gcov executable, if specified.
-      GCOV_TOOL_CONFIG[:executable] = "\"#{rg_opts[:gcov_executable]}\"" unless rg_opts[:gcov_executable].nil?
+      GCOV_TOOL_CONFIG[:executable] = rg_opts[:gcov_executable] unless rg_opts[:gcov_executable].nil?
 
       # Avoid running gcov on the mock, test, unity, and cexception gcov notes files to save time.
       gcno_exclude_str = "#{opts[:cmock_mock_prefix]}.*"
