@@ -106,8 +106,8 @@ couple of fields:
   - `:svn` -- This tells Ceedling that we want to checkout a subversion repo to our source path.
   - `:custom` -- This tells Ceedling that we want to use a custom command or commands to fetch the code.
 - `:source` -- This is the path or url to fetch code when using the zip or git method.
-- `:tag`/`:branch` -- This is the specific tag or branch that you wish to retrieve (git only. optional, requires a deep clone).
-- `:hash` -- This is the specific SHA1 hash you want to fetch (git only. optional).
+- `:tag`/`:branch` -- This is the specific tag or branch that you wish to retrieve (git only. optional).
+- `:hash` -- This is the specific SHA1 hash you want to fetch (git only. optional, requires a deep clone).
 - `:revision` -- This is the specific revision you want to fetch (svn only. optional).
 - `:executable` -- This is a list of commands to execute when using the `:custom` method
 
