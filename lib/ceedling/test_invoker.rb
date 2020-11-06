@@ -27,15 +27,20 @@ class TestInvoker
   # Convert libraries configuration form YAML configuration
   # into a string that can be given to the compiler.
   def convert_libraries_to_arguments()
-    if @configurator.project_config_hash.has_key?(:libraries_test)
-      lib_args = @configurator.project_config_hash[:libraries_test].clone
-      lib_args.flatten!
-      lib_flag = @configurator.project_config_hash[:libraries_flag]
-      lib_args.map! {|v| lib_flag.gsub(/\$\{1\}/, v) } if (defined? lib_flag)
-      return lib_args
+    args = ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
+    if (defined? LIBRARIES_FLAG)
+      args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) }
     end
+    return args
   end
 
+  def get_library_paths_to_arguments()
+    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []).clone : []
+    if (defined? LIBRARIES_PATH_FLAG)
+      paths.map! {|v| LIBRARIES_PATH_FLAG.gsub(/\$\{1\}/, v) }
+    end
+    return paths
+  end
 
   def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true, :build_only => false})
 
@@ -79,9 +84,13 @@ class TestInvoker
         sources      = @test_invoker_helper.extract_sources( test )
         extras       = @configurator.collection_test_fixture_extra_link_objects
         core         = [test] + mock_list + sources
-        objects      = @file_path_utils.form_test_build_objects_filelist( [runner] + core + extras )
+        objects      = @file_path_utils.form_test_build_objects_filelist( [runner] + core + extras ).uniq
         results_pass = @file_path_utils.form_pass_results_filepath( test )
         results_fail = @file_path_utils.form_fail_results_filepath( test )
+
+        # identify all the objects shall not be linked and then remove them from objects list.
+        no_link_objects = @file_path_utils.form_test_build_objects_filelist(@preprocessinator.preprocess_shallow_source_includes( test ))
+        objects = objects.uniq - no_link_objects
 
         @project_config_manager.process_test_defines_change(@project_config_manager.filter_internal_sources(sources))
 
@@ -121,7 +130,7 @@ class TestInvoker
         # restore the project test defines
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym) || @configurator.defines_use_test_definition
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
-          if @configurator.project_config_hash.has_key?(def_test_key.to_sym) 
+          if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
             @configurator.project_config_hash[:project_test_build_output_path] = orig_path
             @streaminator.stdout_puts("Restored defines and build path to standard", Verbosity::NORMAL)
           end

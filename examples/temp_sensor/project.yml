@@ -52,19 +52,9 @@
     int8:     INT8
     bool:     UINT8
 
-#:tools:
-# Ceedling defaults to using gcc for compiling, linking, etc.
-# As [:tools] is blank, gcc will be used (so long as it's in your system path)
-# See documentation to configure a given toolchain for use
-
-:tools_test_linker:
-  :arguments:
-    - -lm
-:tools_gcov_linker:
-  :arguments:
-    - -lm
-#:gcov:
-#  :html_report_type: basic
+:libraries:
+  :system:
+    - m
 
 :plugins:
   :load_paths:

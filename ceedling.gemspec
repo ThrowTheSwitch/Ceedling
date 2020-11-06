@@ -7,13 +7,29 @@ Gem::Specification.new do |s|
   s.name        = "ceedling"
   s.version     = Ceedling::Version::GEM
   s.platform    = Gem::Platform::RUBY
-  s.authors     = ["Mike Karlesky, Mark VanderVoord", "Greg Williams", "Matt Fletcher"]
-  s.email       = ["michael@karlesky.net, mvandervoord@gmail.com, williams@atomicobject.com, fletcher@atomicobject.com"]
-  s.homepage    = "http://throwtheswitch.org/"
-  s.summary     = %q{Ceedling is a set of tools for the automation of builds and test running for C}
-  s.description = %q{Ceedling provides a set of tools to deploy its guts in a folder or which can be required in a Rakefile}
+  s.authors     = ["Mark VanderVoord", "Michael Karlesky", "Greg Williams"]
+  s.email       = ["mvandervoord@gmail.com", "michael@karlesky.net", "barney.williams@gmail.com"]
+  s.homepage    = "http://throwtheswitch.org/ceedling"
+  s.summary     = "Ceedling is a build automation tool for C unit test suites that packages up Unity, CMock, and Rake-based build management functionality"
+  s.description = <<-DESC
+Ceedling is a build automation tool that helps you create and run C unit test suites.
+
+Ceedling provides two core functions: [1] It packages up several tools including the C unit test framework Unity, the Ruby-based mock generation tool CMock, and a C exception library CException. [2] It extends Rake with functionality specific to generating, building, and executing C test suites.
+
+Ceedling projects are created with a YAML configuration file. A variety of conventions within the tool simplify generating mocks from C files and assembling suites of unit test functions.
+  DESC
   s.licenses    = ['MIT']
 
+  s.metadata = {
+    "homepage_uri"      => s.homepage,
+    "bug_tracker_uri"   => "https://github.com/ThrowTheSwitch/Ceedling/issues",
+    "documentation_uri" => "https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md",
+    "mailing_list_uri"  => "https://groups.google.com/forum/#!categories/throwtheswitch/ceedling",
+    "source_code_uri"   => "https://github.com/ThrowTheSwitch/Ceedling"
+  }
+  
+  s.required_ruby_version = ">= 2.4.0"
+  
   s.add_dependency "thor", ">= 0.14.5"
   s.add_dependency "rake", ">= 12.2.1"
   s.add_runtime_dependency "constructor", ">= 1.0.4"

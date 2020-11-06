@@ -250,8 +250,8 @@ class ConfiguratorBuilder
   def collect_test_support_source_include_vendor_paths(in_hash)
     return {
       :collection_paths_test_support_source_include_vendor =>
-        in_hash[:collection_paths_test_support_source_include] +
-        get_vendor_paths(in_hash)
+        get_vendor_paths(in_hash) +
+        in_hash[:collection_paths_test_support_source_include]
       }
   end
 

@@ -61,7 +61,7 @@ task :environment do
   ENVIRONMENT.each do |env|
     env.each_key do |key|
       name = key.to_s.upcase
-	  env_list.push(" - #{name}: \"#{env[key]}\"")      
+	  env_list.push(" - #{name}: \"#{env[key]}\"")
     end
   end
   env_list.sort.each do |env_line|
@@ -90,6 +90,17 @@ namespace :options do
     filename = t.to_s.split(':')[-1] + '.yml'
     filelist = COLLECTION_PROJECT_OPTIONS.map{|s| File.basename(s) }
     @ceedling[:file_finder].find_file_from_list(filename, filelist, :error)
+  end
+
+  # This will output the fully-merged tools options to their own project.yml file
+  desc "Export tools options to a new project file"
+  task :export, :filename do |t, args|
+    outfile = args.filename || 'tools.yml'
+    toolcfg = {}
+    @ceedling[:configurator].project_config_hash.each_pair do |k,v|
+      toolcfg[k] = v if (k.to_s[0..5] == 'tools_')
+    end
+    File.open(outfile,'w') {|f| f << toolcfg.to_yaml({:indentation => 2})}
   end
 end
 

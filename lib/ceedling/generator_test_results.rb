@@ -88,9 +88,9 @@ class GeneratorTestResults
     elements = (line.strip.split(':'))[1..-1]
 
     # find timestamp if available
-    if (elements[2] =~  / \((.*) ms\)/)
+    if (elements[-1] =~ / \((\d*(?:\.\d*)?) ms\)/)
       unity_test_time = $1.to_f / 1000
-      elements[2].sub!(/ \((.*) ms\)/, '') 
+      elements[-1].sub!(/ \((\d*(?:\.\d*)?) ms\)/, '')
     end
 
     return {:test => elements[1], :line => elements[0].to_i, :message => (elements[3..-1].join(':')).strip, :unity_test_time => unity_test_time}, stdout if elements.size >= 3

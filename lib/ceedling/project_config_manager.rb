@@ -46,7 +46,7 @@ class ProjectConfigManager
     @test_defines_changed = @cacheinator.diff_cached_test_defines?( files )
     if @test_defines_changed
       # update timestamp for rake task prerequisites
-      @file_wrapper.touch( @configurator.project_test_force_rebuild_filepath )
+      @file_wrapper.touch( @configurator.project_test_force_rebuild_filepath, :mtime => Time.now + 10 )
     end
   end
 end

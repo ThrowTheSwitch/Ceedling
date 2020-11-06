@@ -4,7 +4,7 @@ module Ceedling
   module Version
     { "UNITY" => File.join("unity","src","unity.h"),
       "CMOCK" => File.join("cmock","src","cmock.h"),
-      "CEXCEPTION" => File.join("c_exception","lib","CException.h") 
+      "CEXCEPTION" => File.join("c_exception","lib","CException.h")
     }.each_pair do |name, path|
       # Check for local or global version of vendor directory in order to look up versions
       path1 = File.expand_path( File.join("..","..","vendor",path) )
@@ -20,7 +20,7 @@ module Ceedling
         else
           basepath = File.join( CEEDLING_VENDOR, path.split(/\\\//)[0], 'release')
           begin
-            [ @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip, 
+            [ @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip,
               @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'build.info') ).strip ].join('.')
           rescue
             "unknown"
@@ -44,7 +44,7 @@ module Ceedling
       eval("#{name} = '#{a.join(".")}'")
     end
 
-    GEM = "0.29.1"
+    GEM = "0.30.0"
     CEEDLING = GEM
   end
 end

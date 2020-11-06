@@ -95,9 +95,32 @@ class Gcov < Plugin
       end
     end
 
+    ignore_file_list = @ceedling[:configurator].project_config_hash[:gcov_uncovered_ignore_list] || []
+    ignore_uncovered_list = []
+    ignore_file_list.each do |source|
+      ignore_uncovered_list.push(Dir.glob(source).reject{|f| File.directory?(f)})
+    end
+    ignore_uncovered_list.flatten!
+
+    found_uncovered = false
     COLLECTION_ALL_SOURCE.each do |source|
       unless coverage_sources.include?(source)
-        @ceedling[:streaminator].stdout_puts("Could not find coverage results for " + source + "\n")
+        v = Verbosity::DEBUG
+        msg = "Could not find coverage results for " + source
+        if ignore_uncovered_list.include?(source)
+          msg += " [IGNORED]"
+        else
+          found_uncovered = true
+          v = Verbosity::NORMAL
+        end
+        msg += "\n"
+        @ceedling[:streaminator].stdout_puts(msg, v)
+      end
+    end
+    if found_uncovered
+      if @ceedling[:configurator].project_config_hash[:gcov_abort_on_uncovered]
+        @ceedling[:streaminator].stderr_puts("There were files with no coverage results: aborting.\n")
+        exit(-1)
       end
     end
   end
