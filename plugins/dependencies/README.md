@@ -108,7 +108,7 @@ couple of fields:
 - `:source` -- This is the path or url to fetch code when using the zip or git method.
 - `:tag`/`:branch` -- This is the specific tag or branch that you wish to retrieve (git only. optional).
 - `:hash` -- This is the specific SHA1 hash you want to fetch (git only. optional).
-- `:revision` -- This is the specific revision you want to fetch (svn only. optional).
+- `:revision` -- This is the specific revision you want to fetch (svn only. optional, requires a deep clone).
 - `:executable` -- This is a list of commands to execute when using the `:custom` method
 
 
