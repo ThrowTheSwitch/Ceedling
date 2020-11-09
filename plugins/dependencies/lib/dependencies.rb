@@ -120,9 +120,15 @@ class Dependencies < Plugin
             when :git
               branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
               branch = ("-b " + branch) unless branch.empty?
-              retval = [ "git clone #{branch} --depth 1 #{blob[:fetch][:source]} ." ]
-              retval << "git checkout #{blob[:fetch][:hash]}" unless blob[:fetch][:hash].nil?
-              retval
+              if blob[:fetch][:hash].nil?
+                # Do a deep clone to ensure the commit we want is available
+                retval = [ "git clone #{branch} #{blob[:fetch][:source]} ." ]
+                # Checkout the specified commit
+                retval << "git checkout #{blob[:fetch][:hash]}"
+              else
+                # Do a thin clone
+                retval = [ "git clone #{branch} --depth 1 #{blob[:fetch][:source]} ." ]
+              end
             when :svn
               revision = blob[:fetch][:revision] || ''
               revision = ("--revision " + branch) unless branch.empty?
