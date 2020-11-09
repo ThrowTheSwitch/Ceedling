@@ -120,7 +120,7 @@ class Dependencies < Plugin
             when :git
               branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
               branch = ("-b " + branch) unless branch.empty?
-              if blob[:fetch][:hash].nil?
+              unless blob[:fetch][:hash].nil?
                 # Do a deep clone to ensure the commit we want is available
                 retval = [ "git clone #{branch} #{blob[:fetch][:source]} ." ]
                 # Checkout the specified commit
