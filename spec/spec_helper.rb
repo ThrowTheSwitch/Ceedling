@@ -8,7 +8,6 @@ end
 here = File.dirname(__FILE__)
 
 $: << File.join(here, '../lib')
-$: << File.join(here, '../vendor/deep_merge/lib')
 $: << File.join(here, '../vendor/cmock/lib')
 
 support_files = File.join(File.dirname(__FILE__), "support/**/*.rb")

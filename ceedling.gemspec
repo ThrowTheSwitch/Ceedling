@@ -32,6 +32,7 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
   
   s.add_dependency "thor", ">= 0.14.5"
   s.add_dependency "rake", ">= 12.2.1"
+  s.add_dependency "deep_merge", ">= 1.2.1"
   s.add_runtime_dependency "constructor", ">= 1.0.4"
 
   # Files needed from submodules

@@ -137,7 +137,6 @@ unless (project_found)
             {:src => 'vendor/cmock/config/',        :dst => 'vendor/cmock/config'},
             {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
             {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
-            {:src => 'vendor/deep_merge/lib/',      :dst => 'vendor/deep_merge/lib'},
             {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
             {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
             {:src => 'vendor/unity/src/',           :dst => 'vendor/unity/src'},

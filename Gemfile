@@ -8,6 +8,7 @@ gem "constructor"
 gem "diy"
 gem "rr"
 gem "thor"
+gem "deep_merge"
 
 #these will be used if present, but ignored otherwise
 #gem "curses"
