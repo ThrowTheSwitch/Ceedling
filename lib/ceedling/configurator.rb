@@ -232,7 +232,11 @@ class Configurator
       interstitial = ((key == :path) ? File::PATH_SEPARATOR : '')
       items = ((value.class == Array) ? hash[key] : [value])
 
-      items.each { |item| item.replace( @system_wrapper.module_eval( item ) ) if (item =~ RUBY_STRING_REPLACEMENT_PATTERN) }
+      items.each do |item|
+        if item.is_a? String and item =~ RUBY_STRING_REPLACEMENT_PATTERN
+          item.replace( @system_wrapper.module_eval( item ) )
+        end
+      end
       hash[key] = items.join( interstitial )
 
       @system_wrapper.env_set( key.to_s.upcase, hash[key] )
