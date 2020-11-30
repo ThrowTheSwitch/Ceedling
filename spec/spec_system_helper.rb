@@ -2,9 +2,17 @@ require 'fileutils'
 require 'tmpdir'
 require 'yaml'
 
-Modulegenerator = Struct.new(:project_root, :source_root, :inc_root, :test_root) do
-  def initialize(project_root: "./", source_root: "src/", inc_root: "src/", test_root: "test/")
-    super(project_root, source_root, inc_root, test_root)
+if Gem.ruby_version >= Gem::Version.new("2.5.0")
+  Modulegenerator = Struct.new(:project_root, :source_root, :inc_root, :test_root, keyword_init: true) do
+    def initialize(project_root: "./", source_root: "src/", inc_root: "src/", test_root: "test/")
+      super
+    end
+  end
+else
+  Modulegenerator = Struct.new(:project_root, :source_root, :inc_root, :test_root) do
+    def initialize(project_root: "./", source_root: "src/", inc_root: "src/", test_root: "test/")
+      super(project_root, source_root, inc_root, test_root)
+    end
   end
 end
 
@@ -606,7 +614,7 @@ module CeedlingTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         # add paths to module generator
-        mod_gen = Modulegenerator.new({source_root: "foo/", inc_root: "bar/", test_root: "barz/"})
+        mod_gen = Modulegenerator.new(source_root: "foo/", inc_root: "bar/", test_root: "barz/")
         add_module_generator_section("project.yml", mod_gen)
 
         # module creation
