@@ -121,7 +121,7 @@ class PreprocessinatorIncludesHandler
       # Creating list of headers that should be recursively pre-processed
       # Skipping mocks and vendor headers
       headers_to_deep_link = full_path_headers_dependencies.select do |hdr|
-        !(mocks.include? hdr) and (hdr.match(/^(.*\/)(#{VENDORS_FILES.join('|')})\.h$/).nil?)
+        !(mocks.include? hdr) and (hdr.match(/^(.*\/)(#{VENDORS_FILES.join('|')}) + #{Regexp.escape(hdr_ext)}$/).nil?)
       end
       headers_to_deep_link.map! {|hdr| File.expand_path(hdr) }
       headers_to_deep_link.compact!
@@ -168,7 +168,7 @@ class PreprocessinatorIncludesHandler
     annotated_files.map! {|file| file.gsub('@@@@','') }
     # Matching annotated_files values against real_files to ensure that
     # annotated_files contain full path entries (as returned by make rule)
-    annotated_files.map! {|file| real_files.find {|real| !real.match(/(.*\/)?#{Regexp.escape(file)}/).nil?}}
+    annotated_files.map! {|file| real_files.find {|real| !real.match(/^(.*\/)?#{Regexp.escape(file)}$/).nil?}}
     annotated_files = annotated_files.compact
 
     # Find which of our annotated files are "real" dependencies. This is
