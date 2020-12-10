@@ -77,10 +77,12 @@ describe PreprocessinatorIncludesHandler do
       expect(@tool_executor).to receive(:build_command_line).and_return({:line => "", :options => ""})
       expect(@tool_executor).to receive(:exec).and_return({ :output => %q{
         _test_DUMMY.o: Build/temp/_test_DUMMY.c \
+          source/new_some_header1.h \
           source/some_header1.h \
           source/some_lib/some_header2.h \
           source/some_other_lib/some_header2.h \
           source/DUMMY.c \
+          @@@@new_some_header1.h \
           @@@@some_header1.h \
           @@@@some_lib/some_header2.h \
           @@@@some_other_lib/some_header2.h \
@@ -90,7 +92,8 @@ describe PreprocessinatorIncludesHandler do
       results = subject.extract_includes_helper("/dummy_file_1.c", [], [], [])
       # validate results
       expect(results).to eq [
-        ['source/some_header1.h',
+        [ 'source/new_some_header1.h',
+          'source/some_header1.h',
           'source/some_lib/some_header2.h',
           'source/some_other_lib/some_header2.h',
           'source/DUMMY.c'],
