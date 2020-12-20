@@ -95,12 +95,15 @@ class Gcov < Plugin
       end
     end
 
-    ignore_file_list = @ceedling[:configurator].project_config_hash[:gcov_uncovered_ignore_list] || []
-    ignore_uncovered_list = []
-    ignore_file_list.each do |source|
-      ignore_uncovered_list.push(Dir.glob(source).reject{|f| File.directory?(f)})
+    ignore_path_list = @ceedling[:file_system_utils].collect_paths(@ceedling[:configurator].project_config_hash[:gcov_uncovered_ignore_list] || [])
+    ignore_uncovered_list = @ceedling[:file_wrapper].instantiate_file_list
+    ignore_path_list.each do |path|
+      if File.exists?(path) and not File.directory?(path)
+        ignore_uncovered_list.include(path)
+      else
+        ignore_uncovered_list.include(File.join(path, "*#{EXTENSION_SOURCE}"))
+      end
     end
-    ignore_uncovered_list.flatten!
 
     found_uncovered = false
     COLLECTION_ALL_SOURCE.each do |source|
