@@ -89,7 +89,8 @@ module GcovTestCases
   def can_test_projects_with_gcov_with_fail_because_of_uncovered_files
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("project_with_guts_gcov_abortonuncovered.yml"), "project.yml"
+        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+        add_gcov_option("abort_on_uncovered", "TRUE")
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("uncovered_example_file.c"), 'src/'
@@ -108,7 +109,9 @@ module GcovTestCases
   def can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("project_with_guts_gcov_abortonuncovered.yml"), "project.yml"
+        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+        add_gcov_option("abort_on_uncovered", "TRUE")
+        add_gcov_section("uncovered_ignore_list", ["src/foo_file.c"])
         FileUtils.cp test_asset_path("example_file.h"), "src/"
         FileUtils.cp test_asset_path("example_file.c"), "src/"
         FileUtils.cp test_asset_path("uncovered_example_file.c"), "src/foo_file.c" # "src/foo_file.c" is in the ignore uncovered list
