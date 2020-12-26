@@ -198,7 +198,7 @@ class SystemContext
 
     Dir.chdir @dir do
       with_constrained_env do
-        `bundle config set path '#{@gem.install_dir}'`
+        `bundle config set --local path '#{@gem.install_dir}'`
         `bundle install`
         checks = ["bundle exec ruby -S ceedling 2>&1"]
         checks.each do |c|
