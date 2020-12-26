@@ -63,6 +63,7 @@ class TestInvoker
           tst_defs_cfg = Array.new(defs_bkp)
           if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
             tst_defs_cfg.replace(@configurator.project_config_hash[def_test_key.to_sym])
+            tst_defs_cfg .concat(COLLECTION_DEFINES_VENDOR) if COLLECTION_DEFINES_VENDOR
           end
           if @configurator.defines_use_test_definition
             tst_defs_cfg << File.basename(test, ".*").strip.upcase.sub(/@.*$/, "")

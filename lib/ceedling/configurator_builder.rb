@@ -384,14 +384,26 @@ class ConfiguratorBuilder
   end
 
 
+  def get_vendor_defines(in_hash)
+    defines = in_hash[:unity_defines].clone
+    defines.concat(in_hash[:cmock_defines])      if (in_hash[:project_use_mocks])
+    defines.concat(in_hash[:cexception_defines]) if (in_hash[:project_use_exceptions])
+
+    return defines
+  end
+
+
+  def collect_vendor_defines(in_hash)
+    return {:collection_defines_vendor => get_vendor_defines(in_hash)}
+  end
+
+
   def collect_test_and_vendor_defines(in_hash)
-    test_defines = in_hash[:defines_test].clone
+    defines = in_hash[:defines_test].clone
+    vendor_defines = get_vendor_defines(in_hash)
+    defines.concat(vendor_defines) if vendor_defines
 
-    test_defines.concat(in_hash[:unity_defines])
-    test_defines.concat(in_hash[:cmock_defines])      if (in_hash[:project_use_mocks])
-    test_defines.concat(in_hash[:cexception_defines]) if (in_hash[:project_use_exceptions])
-
-    return {:collection_defines_test_and_vendor => test_defines}
+    return {:collection_defines_test_and_vendor => defines}
   end
 
 
