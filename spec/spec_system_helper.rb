@@ -38,6 +38,22 @@ def _add_path_in_section(project_file_path, path, section)
   end
 end
 
+def _create_subsection_in_defines_section(project_file_path, subsection)
+  project_file_contents = File.readlines(project_file_path)
+  section_index = project_file_contents.index(":defines:\n")
+
+  if section_index.nil?
+    # Something wrong with project.yml file, no defines?
+    return
+  end
+
+  project_file_contents.insert(section_index + 1, "  :#{subsection}:\n")
+
+  File.open(project_file_path, "w+") do |f|
+    f.puts(project_file_contents)
+  end
+end
+
 def _add_define_in_section(project_file_path, define, section)
   project_file_contents = File.readlines(project_file_path)
   defines_index = project_file_contents.index(":defines:\n")
@@ -99,6 +115,14 @@ end
 
 def add_test_define(define)
   _add_define_in_section("project.yml", define, "test")
+end
+
+def create_test_name_defines_section(test_name)
+  _create_subsection_in_defines_section("project.yml", test_name)
+end
+
+def add_test_name_define(test_name, define)
+  _add_define_in_section("project.yml", define, test_name)
 end
 
 def add_project_option(option, value)
@@ -400,6 +424,25 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
         add_project_option("use_preprocessor_directives", "TRUE")
         add_unity_option("use_param_tests", "TRUE")
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  def can_test_projects_with_test_name_replaced_defines_with_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.copy_entry test_asset_path("tests_with_defines/src/"), 'src/'
+        FileUtils.cp_r test_asset_path("tests_with_defines/test/."), 'test/'
+        add_test_define("STANDARD_CONFIG")
+        create_test_name_defines_section("test_adc_hardware_special")
+        add_test_name_define("test_adc_hardware_special", "SPECIFIC_CONFIG")
 
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
