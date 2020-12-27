@@ -274,6 +274,27 @@ module CeedlingTestCases
     end
   end
 
+  def can_test_projects_with_test_and_vendor_defines_with_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_unity_printf.c"), 'test/'
+        settings = { :unity => { :defines => [ "UNITY_INCLUDE_PRINT_FORMATTED" ] },
+                     :defines => { :test_example_file_unity_printf => [ "TEST" ] }
+                   }
+        add_project_settings("project.yml", settings)
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
   def can_test_projects_with_enabled_auto_link_deep_deependency_with_success
     @c.with_context do
       Dir.chdir @proj_name do
@@ -480,7 +501,7 @@ module CeedlingTestCases
         # add module path to project file
         settings = { :paths => { :test => [ "myPonies/test" ],
                                  :source => [ "myPonies/src" ]
-                              }
+                               }
                    }
         add_project_settings("project.yml", settings)
 
@@ -542,7 +563,7 @@ module CeedlingTestCases
                                             :inc_root => mod_gen.inc_root,
                                             :test_root => mod_gen.test_root
                                           }
-        }
+                   }
         add_project_settings("project.yml", settings)
 
         # module creation

@@ -32,6 +32,7 @@ describe "Ceedling" do
     it { can_test_projects_with_test_name_replaced_defines_with_success }
     it { can_test_projects_with_success_default }
     it { can_test_projects_with_unity_exec_time }
+    it { can_test_projects_with_test_and_vendor_defines_with_success }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
@@ -80,6 +81,7 @@ describe "Ceedling" do
     it { can_test_projects_with_test_name_replaced_defines_with_success }
     it { can_test_projects_with_success_default }
     it { can_test_projects_with_unity_exec_time }
+    it { can_test_projects_with_test_and_vendor_defines_with_success }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
@@ -108,6 +110,7 @@ describe "Ceedling" do
     it { can_test_projects_with_success_test_alias }
     it { can_test_projects_with_success_default }
     it { can_test_projects_with_unity_exec_time }
+    it { can_test_projects_with_test_and_vendor_defines_with_success }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
@@ -129,6 +132,7 @@ describe "Ceedling" do
     it { can_test_projects_with_success_test_alias }
     it { can_test_projects_with_success_default }
     it { can_test_projects_with_unity_exec_time }
+    it { can_test_projects_with_test_and_vendor_defines_with_success }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
@@ -158,6 +162,7 @@ describe "Ceedling" do
     it { can_test_projects_with_test_name_replaced_defines_with_success }
     it { can_test_projects_with_success_default }
     it { can_test_projects_with_unity_exec_time }
+    it { can_test_projects_with_test_and_vendor_defines_with_success }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_compile_error }
     it { can_use_the_module_plugin }
