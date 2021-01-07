@@ -21,8 +21,6 @@ class GcovrReportinator
       args = args_common
       args += args_builder_cobertura(opts, false)
       args += args_builder_sonarqube(opts, false)
-      # Note: In gcovr 4.2, the JSON report is output only when the --output option is specified.
-      # Hopefully we can remove --output after a future gcovr release.
       args += args_builder_json(opts, true)
       # As of gcovr version 4.2, the --html argument must appear last.
       args += args_builder_html(opts, false)
@@ -207,6 +205,8 @@ class GcovrReportinator
       end
 
       args += "--json-pretty " if gcovr_opts[:json_pretty]
+      # Note: In gcovr 4.2, the JSON report is output only when the --output option is specified.
+      # Hopefully we can remove --output after a future gcovr release.
       args += "--json #{use_output_option ? "--output " : ""} \"#{artifacts_file_json}\" "
     end
 

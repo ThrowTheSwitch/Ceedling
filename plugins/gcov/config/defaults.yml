@@ -37,6 +37,10 @@
     :executable: gcov
     :optional: TRUE
     :arguments:
+      - -b
+      - -c
+      - -r
+      - -x
       - ${1}
   :gcov_gcovr_post_report:
     :executable: gcovr
