@@ -353,6 +353,9 @@ default behaviors of gcovr:
 
   # When using the ``abort_on_uncovered`` option, the files in this list will not
   # trigger a failure.
+  # Ceedling globs described in the Ceedling packet ``Path`` section can be used
+  # when directories are placed on the list. Globs are limited to matching directories
+  # and not files.
   :uncovered_ignore_list: []
 ```
 
