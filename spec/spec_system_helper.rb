@@ -1,6 +1,7 @@
 require 'fileutils'
 require 'tmpdir'
-require 'yaml'
+require 'ceedling/yaml_wrapper'
+require 'spec_helper'
 
 if Gem.ruby_version >= Gem::Version.new("2.5.0")
   Modulegenerator = Struct.new(:project_root, :source_root, :inc_root, :test_root, keyword_init: true) do
@@ -28,116 +29,11 @@ def convert_slashes(path)
   end
 end
 
-def _add_path_in_section(project_file_path, path, section)
-  project_file_contents = File.readlines(project_file_path)
-  paths_index = project_file_contents.index(":paths:\n")
-
-  if paths_index.nil?
-    # Something wrong with project.yml file, no paths?
-    return
-  end
-
-  section_index =  paths_index + project_file_contents[paths_index..-1].index("  :#{section}:\n")
-
-  project_file_contents.insert(section_index + 1, "    - #{path}\n")
-
-  File.open(project_file_path, "w+") do |f|
-    f.puts(project_file_contents)
-  end
-end
-
-def _add_define_in_section(project_file_path, define, section)
-  project_file_contents = File.readlines(project_file_path)
-  defines_index = project_file_contents.index(":defines:\n")
-
-  if defines_index.nil?
-    # Something wrong with project.yml file, no defines?
-    return
-  end
-
-  section_index =  defines_index + project_file_contents[defines_index..-1].index("  :#{section}:\n")
-
-  project_file_contents.insert(section_index + 1, "    - #{define}\n")
-
-  File.open(project_file_path, "w+") do |f|
-    f.puts(project_file_contents)
-  end
-end
-
-def _add_option_in_project(project_file_path, option, value)
-  project_file_contents = File.readlines(project_file_path)
-  option_index = project_file_contents.index(":project:\n")
-
-  if option_index.nil?
-    # Something wrong with project.yml file, no project section?
-    return
-  end
-
-  project_file_contents.insert(option_index + 1, "  :#{option}: #{value}\n")
-
-  File.open(project_file_path, "w+") do |f|
-    f.puts(project_file_contents)
-  end
-end
-
-def _add_option_in_unity(project_file_path, option, value)
-  project_file_contents = File.readlines(project_file_path)
-  option_index = project_file_contents.index(":unity:\n")
-
-  if option_index.nil?
-    # Silently add before last '...' element
-    project_file_contents.insert(-2, ":unity:\n")
-    option_index = project_file_contents.index(":unity:\n")
-  end
-
-  project_file_contents.insert(option_index + 1, "  :#{option}: #{value}\n")
-
-  File.open(project_file_path, "w+") do |f|
-    f.puts(project_file_contents)
-  end
-end
-
-def add_source_path(path)
-  _add_path_in_section("project.yml", path, "source")
-end
-
-def add_test_path(path)
-  _add_path_in_section("project.yml", path, "test")
-end
-
-def add_test_define(define)
-  _add_define_in_section("project.yml", define, "test")
-end
-
-def add_project_option(option, value)
-  _add_option_in_project("project.yml", option, value)
-end
-
-def add_unity_option(option, value)
-  _add_option_in_unity("project.yml", option, value)
-end
-
-def add_module_generator_section(project_file_path, mod_gen)
-  project_file_contents = File.readlines(project_file_path)
-  module_gen_index = project_file_contents.index(":module_generator:\n")
-
-  unless module_gen_index.nil?
-    # already a module_generator in project file, delete it
-    module_gen_end_index = project_file_contents[module_gen_index..-1].index("\n")
-    project_file_contents.slice[module_gen_index..module_gen_end_index]
-  end
-
-  project_file_contents.insert(-2, "\n")
-  project_file_contents.insert(-2, ":module_generator:\n")
-  project_file_contents.insert(-2, "  :project_root: #{mod_gen.project_root}\n")
-  project_file_contents.insert(-2, "  :source_root: #{mod_gen.source_root}\n")
-  project_file_contents.insert(-2, "  :inc_root: #{mod_gen.inc_root}\n")
-  project_file_contents.insert(-2, "  :test_root: #{mod_gen.test_root}\n")
-  project_file_contents.insert(-2, "\n")
-
-  File.open(project_file_path, "w+") do |f|
-    f.puts(project_file_contents)
-  end
+def add_project_settings(project_file_path, settings)
+  yaml_wrapper = YamlWrapper.new
+  project_hash = yaml_wrapper.load(project_file_path)
+  project_hash.deep_merge(settings)
+  yaml_wrapper.dump(project_file_path, project_hash)
 end
 
 class GemDirLayout
@@ -182,7 +78,7 @@ class SystemContext
 
     Dir.chdir @dir do
       with_constrained_env do
-        `bundle config set path '#{@gem.install_dir}'`
+        `bundle config set --local path '#{@gem.install_dir}'`
         `bundle install`
         checks = ["bundle exec ruby -S ceedling 2>&1"]
         checks.each do |c|
@@ -373,7 +269,29 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
-        add_test_define("UNITY_INCLUDE_EXEC_TIME")
+        settings = { :unity => { :defines => [ "UNITY_INCLUDE_EXEC_TIME" ] } }
+        add_project_settings("project.yml", settings)
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  def can_test_projects_with_test_and_vendor_defines_with_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_unity_printf.c"), 'test/'
+        settings = { :unity => { :defines => [ "UNITY_INCLUDE_PRINT_FORMATTED" ] },
+                     :defines => { :test_example_file_unity_printf => [ "TEST" ] }
+                   }
+        add_project_settings("project.yml", settings)
 
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
@@ -390,7 +308,8 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         FileUtils.copy_entry test_asset_path("auto_link_deep_dependencies/src/"), 'src/'
         FileUtils.cp_r test_asset_path("auto_link_deep_dependencies/test/."), 'test/'
-        add_project_option("auto_link_deep_dependencies", "TRUE")
+        settings = { :project => { :auto_link_deep_dependencies => true } }
+        add_project_settings("project.yml", settings)
 
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
@@ -406,8 +325,31 @@ module CeedlingTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
-        add_project_option("use_preprocessor_directives", "TRUE")
-        add_unity_option("use_param_tests", "TRUE")
+        settings = { :project => { :use_preprocessor_directives => true },
+                     :unity => { :use_param_tests => true }
+                   }
+        add_project_settings("project.yml", settings)
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  def can_test_projects_with_test_name_replaced_defines_with_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.copy_entry test_asset_path("tests_with_defines/src/"), 'src/'
+        FileUtils.cp_r test_asset_path("tests_with_defines/test/."), 'test/'
+        settings = { :defines => { :test => [ "STANDARD_CONFIG" ],
+                                   :test_adc_hardware_special => [ "TEST", "SPECIFIC_CONFIG" ]
+                                 }
+                   }
+        add_project_settings("project.yml", settings)
 
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
@@ -565,8 +507,11 @@ module CeedlingTestCases
         expect(File.exists?("myPonies/test/test_ponies.c")).to eq true
 
         # add module path to project file
-        add_test_path("myPonies/test")
-        add_source_path("myPonies/src")
+        settings = { :paths => { :test => [ "myPonies/test" ],
+                                 :source => [ "myPonies/src" ]
+                               }
+                   }
+        add_project_settings("project.yml", settings)
 
         # See if ceedling finds the test in the subdir
         output = `bundle exec ruby -S ceedling test:all`
@@ -589,7 +534,13 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         # add include path to module generator
         mod_gen = Modulegenerator.new(inc_root: "inc/")
-        add_module_generator_section("project.yml", mod_gen)
+        settings = { :module_generator => { :project_root => mod_gen.project_root,
+                                            :source_root => mod_gen.source_root,
+                                            :inc_root => mod_gen.inc_root,
+                                            :test_root => mod_gen.test_root
+                                          }
+                   }
+        add_project_settings("project.yml", settings)
 
         # module creation
         output = `bundle exec ruby -S ceedling module:create[myPonies:ponies]`
@@ -614,8 +565,14 @@ module CeedlingTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         # add paths to module generator
-        mod_gen = Modulegenerator.new(source_root: "foo/", inc_root: "bar/", test_root: "barz/")
-        add_module_generator_section("project.yml", mod_gen)
+        mod_gen = Modulegenerator.new({source_root: "foo/", inc_root: "bar/", test_root: "barz/"})
+        settings = { :module_generator => { :project_root => mod_gen.project_root,
+                                            :source_root => mod_gen.source_root,
+                                            :inc_root => mod_gen.inc_root,
+                                            :test_root => mod_gen.test_root
+                                          }
+                   }
+        add_project_settings("project.yml", settings)
 
         # module creation
         output = `bundle exec ruby -S ceedling module:create[ponies]`

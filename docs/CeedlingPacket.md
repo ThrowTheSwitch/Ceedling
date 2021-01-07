@@ -1315,13 +1315,16 @@ Example [:extension] YAML blurb
 
 * `<test_name>`:
 
-  Add preprocessor definitions for specified `<test_name>`. For example:
+  Replace standard `test` definitions for specified `<test_name>`definitions. For example:
 ```yaml
   :defines:
+    :test:
+      - FOO_STANDARD_CONFIG
     :test_foo_config:
-      - FOO_SPECIFIC_FEATURE
+      - FOO_SPECIFIC_CONFIG
 ```
-  `ceedling test:foo_config` will now have `FOO_SPECIFIC_FEATURE` defined, none of the other tests will.
+  `ceedling test:foo_config` will now have `FOO_SPECIFIC_CONFIG` defined instead of
+  `FOO_STANDARD_CONFIG`. None of the other tests will have `FOO_SPECIFIC_SPECIFIC`.
 
   **Default**: `[]` (empty)
 
