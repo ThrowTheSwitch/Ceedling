@@ -25,8 +25,8 @@ class ProjectConfigManager
 
   def filter_internal_sources(sources)
     filtered_sources = sources.clone
-    filtered_sources.delete_if { |item| item =~ /#{CMOCK_MOCK_PREFIX}.+#{EXTENSION_SOURCE}$/ }
-    filtered_sources.delete_if { |item| item =~ /#{VENDORS_FILES.map{|source| '\b' + source.ext(EXTENSION_SOURCE) + '\b'}.join('|')}$/ }
+    filtered_sources.delete_if { |item| item =~ /#{CMOCK_MOCK_PREFIX}.+#{Regexp.escape(EXTENSION_SOURCE)}$/ }
+    filtered_sources.delete_if { |item| item =~ /#{VENDORS_FILES.map{|source| '\b' + Regexp.escape(source.ext(EXTENSION_SOURCE)) + '\b'}.join('|')}$/ }
     return filtered_sources
   end
 
