@@ -2228,7 +2228,31 @@ You've got options.
 Adding Handy Rake Tasks for Your Project (without Fancy Pants Custom Plugins)
 -----------------------------------------------------------------------------
 
-Simple as snot.
+Add a file `rakefile.rb` at the root of your project that loads Ceedling. This
+differs weather you are using the gem version or a local Ceedling version.
+
+Gem Version:
+```ruby
+require('Ceedling')
+Ceedling.load_project
+```
+
+Local Ceedling Version (assuming local ceedling is in `vendor/ceedling`):
+```ruby
+PROJECT_CEEDLING_ROOT = "vendor/ceedling"
+load "#{PROJECT_CEEDLING_ROOT}/lib/ceedling.rb"
+Ceedling.load_project
+```
+
+Now you simply add your rake task to the file e.g.:
+```ruby
+desc "Print hello world in sh" # Only tasks with description are listed by ceedling -T
+task :hello_world do
+  sh "echo Hello World!"
+end
+```
+
+The task can now be called with: `ceedling hello_world` 
 
 Working with Non-Desktop Testing Environments
 ---------------------------------------------
