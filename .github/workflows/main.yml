@@ -39,10 +39,14 @@ jobs:
         run: |
           sudo gem install rspec
           sudo gem install rubocop -v 0.57.2
-          sudo gem uninstall bundler
-          sudo gem update --system
-          sudo gem install bundler -v 1.17.3
-          bundle install
+          sudo gem install bundler
+          sudo gem install rake
+          sudo gem install require_all
+          sudo gem install constructor
+          sudo gem install diy
+          sudo gem install rr
+          sudo gem install thor
+          sudo gem install deep_merge
 
       # Run Tests
       - name: Run All Self Tests
