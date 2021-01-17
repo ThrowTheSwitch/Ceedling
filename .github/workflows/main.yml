@@ -43,6 +43,7 @@ jobs:
       - name: Setup Ruby Testing Tools
         run: |
           sudo gem install bundler
+          sudo gem update bundler
           sudo gem install rspec
           sudo gem install rubocop -v 0.57.2
           bundle install
