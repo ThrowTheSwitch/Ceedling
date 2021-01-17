@@ -14,7 +14,7 @@ jobs:
   # Job: Unit test suite
   unit-tests:
     name: "Unit Tests"
-    runs-on: ubuntu-xenial
+    runs-on: ubuntu-latest
     steps:
       # Install Binutils, Multilib, etc
       - name: Install C dev Tools
@@ -39,7 +39,7 @@ jobs:
         run: |
           sudo gem install rspec
           sudo gem install rubocop -v 0.57.2
-          sudo gem install bundler
+          sudo gem install bundler -v 1.17.3
           bundle install
 
       # Run Tests
