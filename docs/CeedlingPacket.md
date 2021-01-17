@@ -1,4 +1,4 @@
-[All code is copyright © 2010-2020 Ceedling Project
+[All code is copyright © 2010-2021 Ceedling Project
 by Mike Karlesky, Mark VanderVoord, and Greg Williams.
 
 This Documentation Is Released Under a

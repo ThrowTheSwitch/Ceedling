@@ -1,0 +1,73 @@
+---
+# Continuous Integration Workflow: Test case suite run + validation build check
+name: CI
+
+# Controls when the action will run.
+# Triggers the workflow on push or pull request events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  # Job: Unit test suite
+  unit-tests:
+    name: "Unit Tests"
+    runs-on: ubuntu-latest
+    steps:
+      # Install Binutils, Multilib, etc
+      - name: Install C dev Tools
+        run: |
+          sudo apt-get update -qq 
+          sudo apt-get install --assume-yes --quiet gcc-multilib
+          sudo apt-get install -qq gcc-avr binutils-avr avr-libc
+
+      # Checks out repository under $GITHUB_WORKSPACE
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v2
+        with: 
+          submodules: recursive
+
+      # Install GCovr
+      - name: Install GCovr
+        run: |
+          sudo pip install gcovr
+
+      # Install GCovr
+      - name: Install GCovr
+        run: |
+          sudo pip install gcovr
+
+      # Install Ruby Testing Tools
+      - name: Setup Ruby Testing Tools
+        run: |
+          sudo gem install bundler
+          sudo gem install rspec
+          sudo gem install rubocop -v 0.57.2
+          bundle install
+
+      # Run Tests
+      - name: Run All Self Tests
+        run: |
+          bundle exec rake ci
+
+      # Run Blinky
+      - name: Run Tests On Blinky Project
+        run: |
+          mkdir examples/blinky/vendor
+          cd examples/blinky/vendor
+          ln -s ../../.. ./ceedling
+          cd .. 
+          rake module:create[someNewModule] module:destroy[someNewModule] test:all
+          cd ../..
+
+      # Run Temp Sensor
+      - name: Run Tests On Temp Sensor Project
+        run: |
+          mkdir examples/temp_sensor/vendor
+          cd examples/temp_sensor/vendor
+          ln -s ../../.. ./ceedling 
+          cd .. 
+          rake module:create[someNewModule] module:destroy[someNewModule] test:all
+          cd ../..
