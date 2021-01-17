@@ -14,7 +14,7 @@ jobs:
   # Job: Unit test suite
   unit-tests:
     name: "Unit Tests"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-xenial
     steps:
       # Install Binutils, Multilib, etc
       - name: Install C dev Tools
@@ -23,29 +23,23 @@ jobs:
           sudo apt-get install --assume-yes --quiet gcc-multilib
           sudo apt-get install -qq gcc-avr binutils-avr avr-libc
 
+      # Install GCovr
+      - name: Install GCovr
+        run: |
+          sudo pip install gcovr
+
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
         uses: actions/checkout@v2
         with: 
           submodules: recursive
 
-      # Install GCovr
-      - name: Install GCovr
-        run: |
-          sudo pip install gcovr
-
-      # Install GCovr
-      - name: Install GCovr
-        run: |
-          sudo pip install gcovr
-
       # Install Ruby Testing Tools
       - name: Setup Ruby Testing Tools
         run: |
-          sudo gem install bundler
           sudo gem install rspec
           sudo gem install rubocop -v 0.57.2
-          sudo gem update --system
+          sudo gem install bundler
           bundle install
 
       # Run Tests
