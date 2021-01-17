@@ -39,6 +39,7 @@ jobs:
         run: |
           sudo gem install rspec
           sudo gem install rubocop -v 0.57.2
+          sudo gem uninstall bundler
           sudo gem install bundler -v 1.17.3
           bundle install
 
