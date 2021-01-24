@@ -10,6 +10,8 @@
   :build_root: build
   :release_build: TRUE
   :test_file_prefix: test_
+  :which_ceedling: gem
+  :ceedling_version: '?'
 
 #You'll have to specify these
 :environment:
@@ -92,7 +94,7 @@
 
 :plugins:
   :load_paths:
-    - vendor/ceedling/plugins
+    - "#{Ceedling.load_path}"
   :enabled:
     - stdout_pretty_tests_report
     - module_generator

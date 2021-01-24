@@ -1,4 +1,4 @@
-PROJECT_CEEDLING_ROOT = "vendor/ceedling"
+PROJECT_CEEDLING_ROOT = "#{Ceedling.load_path}/.."
 load "#{PROJECT_CEEDLING_ROOT}/lib/ceedling.rb"
 Ceedling.load_project
 
