@@ -45,7 +45,7 @@ jobs:
       # Set Environment Variable Options to Allow Brackets in Rake Calls
       - name: Configure Environment
         run: |
-          unsetopt nomatch
+          setopt NO_NOMATCH
 
       # Run Tests
       - name: Run All Self Tests
