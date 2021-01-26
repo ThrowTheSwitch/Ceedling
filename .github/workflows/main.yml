@@ -42,11 +42,6 @@ jobs:
           sudo gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)" 
           bundle install
 
-      # Set Environment Variable Options to Allow Brackets in Rake Calls
-      - name: Configure Environment
-        run: |
-          setopt NO_NOMATCH
-
       # Run Tests
       - name: Run All Self Tests
         run: |
