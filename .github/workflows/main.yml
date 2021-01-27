@@ -47,6 +47,12 @@ jobs:
         run: |
           bundle exec rake ci
 
+      # Build & Install Gem
+      #- name: Build and Install Gem
+      #  run: |
+      #    gem build ceedling.gemspec
+      #    sudo gem install --local ceedling-*.gem
+
       # Run Blinky
       - name: Run Tests On Blinky Project
         run: |
@@ -54,7 +60,7 @@ jobs:
           cd examples/blinky/vendor
           ln -s ../../.. ./ceedling
           cd .. 
-          rake module:create[someNewModule] module:destroy[someNewModule] test:all
+          bundle exec rake module:create[someNewModule] module:destroy[someNewModule] test:all
           cd ../..
 
       # Run Temp Sensor
@@ -64,5 +70,5 @@ jobs:
           cd examples/temp_sensor/vendor
           ln -s ../../.. ./ceedling 
           cd .. 
-          rake module:create[someNewModule] module:destroy[someNewModule] test:all
+          bundle exec rake module:create[someNewModule] module:destroy[someNewModule] test:all
           cd ../..
