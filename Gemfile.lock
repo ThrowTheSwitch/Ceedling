@@ -29,11 +29,11 @@ PLATFORMS
   x64-mingw32
 
 DEPENDENCIES
-  bundler (>= 1.3.5)
+  bundler
   constructor
   deep_merge
   diy
-  rake (>= 12.2.1)
+  rake
   require_all
   rr
   rspec (~> 3.8)

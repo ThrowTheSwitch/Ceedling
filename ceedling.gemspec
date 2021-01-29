@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.version     = Ceedling::Version::GEM
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Mark VanderVoord", "Michael Karlesky", "Greg Williams"]
-  s.email       = ["mvandervoord@gmail.com", "michael@karlesky.net", "barney.williams@gmail.com"]
+  s.email       = ["mark@vandervoord.net", "michael@karlesky.net", "barney.williams@gmail.com"]
   s.homepage    = "http://throwtheswitch.org/ceedling"
   s.summary     = "Ceedling is a build automation tool for C unit test suites that packages up Unity, CMock, and Rake-based build management functionality"
   s.description = <<-DESC
@@ -30,10 +30,10 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
   
   s.required_ruby_version = ">= 2.4.0"
   
-  s.add_dependency "thor", ">= 0.14.5"
-  s.add_dependency "rake", ">= 12.2.1"
-  s.add_dependency "deep_merge", ">= 1.2.1"
-  s.add_runtime_dependency "constructor", ">= 1.0.4"
+  s.add_dependency "thor", "~> 0.14"
+  s.add_dependency "rake", "~> 12"
+  s.add_dependency "deep_merge", "~> 1.2"
+  s.add_dependency "constructor", "~> 2"
 
   # Files needed from submodules
   s.files         = []

@@ -1,4 +1,4 @@
-[All code is copyright © 2010-2020 Ceedling Project
+[All code is copyright © 2010-2021 Ceedling Project
 by Mike Karlesky, Mark VanderVoord, and Greg Williams.
 
 This Documentation Is Released Under a
@@ -2229,7 +2229,7 @@ Adding Handy Rake Tasks for Your Project (without Fancy Pants Custom Plugins)
 -----------------------------------------------------------------------------
 
 Add a file `rakefile.rb` at the root of your project that loads Ceedling. This
-differs weather you are using the gem version or a local Ceedling version.
+differs whether you are using the gem version or a local Ceedling version.
 
 Gem Version:
 ```ruby

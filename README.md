@@ -1,9 +1,12 @@
-Ceedling - Build/Test System for C Based on Ruby/Rake
-=====================================================
-
-[![Ceedling Build Status](https://api.travis-ci.org/ThrowTheSwitch/Ceedling.png?branch=master)](https://travis-ci.org/ThrowTheSwitch/Ceedling)
-
-Ceedling is a build system for C projects that is something of an extension around Ruby’s Rake (make-ish) build system. Ceedling also makes TDD (Test-Driven Development) in C a breeze by integrating [CMock](https://github.com/throwtheswitch/cmock), [Unity](https://github.com/throwtheswitch/unity), and [CException](https://github.com/throwtheswitch/cexception) -- three other awesome open-source projects you can’t live without if you're creating awesomeness in the C language. Ceedling is also extensible with a handy plugin mechanism.
+Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
+========
+Ceedling is a build system for C projects that is something of an extension 
+around Ruby’s Rake (make-ish) build system. Ceedling also makes TDD (Test-Driven Development) 
+in C a breeze by integrating [CMock](https://github.com/throwtheswitch/cmock), 
+[Unity](https://github.com/throwtheswitch/unity), and 
+[CException](https://github.com/throwtheswitch/cexception) -- 
+three other awesome open-source projects you can’t live without if you're creating awesomeness 
+in the C language. Ceedling is also extensible with a handy plugin mechanism.
 
 Usage Documentation
 ===================
