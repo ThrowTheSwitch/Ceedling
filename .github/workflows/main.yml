@@ -54,21 +54,16 @@ jobs:
           sudo gem install --local ceedling-*.gem
 
       # Run Blinky
-      - name: Run Tests On Blinky Project
-        run: |
-          mkdir examples/blinky/vendor
-          cd examples/blinky/vendor
-          ln -s ../../.. ./ceedling
-          cd .. 
-          rake module:create[someNewModule] module:destroy[someNewModule] test:all
-          cd ../..
+      # Disabled because it's set up for avr-gcc
+      #- name: Run Tests On Blinky Project
+      #  run: |
+      #    cd examples/blinky
+      #    ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
+      #    cd ../..
 
       # Run Temp Sensor
       - name: Run Tests On Temp Sensor Project
         run: |
-          mkdir examples/temp_sensor/vendor
-          cd examples/temp_sensor/vendor
-          ln -s ../../.. ./ceedling 
-          cd .. 
-          rake module:create[someNewModule] module:destroy[someNewModule] test:all
+          cd examples/temp_sensor
+          ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
           cd ../..
