@@ -1,5 +1,4 @@
-PROJECT_CEEDLING_ROOT = "#{Ceedling.load_path}/.."
-load "#{PROJECT_CEEDLING_ROOT}/lib/ceedling.rb"
+load "ceedling.rb"
 Ceedling.load_project
 
 task :default => %w[ test:all release ]
