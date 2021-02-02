@@ -40,7 +40,7 @@
       - -b
       - -c
       - -r
-      - -x
+      - -t
       - ${1}
   :gcov_gcovr_post_report:
     :executable: gcovr
