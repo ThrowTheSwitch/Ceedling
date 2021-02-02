@@ -84,14 +84,39 @@ class Gcov < Plugin
 
     coverage_sources = @ceedling[:project_config_manager].filter_internal_sources(sources)
     coverage_sources.each do |source|
-      basename         = File.basename(source)
-      command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, [], [basename])
-      shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
-      coverage_results = shell_results[:output]
+      # Find all gcov notes files matching the source code file name.
+      for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "#{File.basename(source, File.extname(source))}.gcno"))
+        # Ensure a gcov data file is paired with the gcov notes file to avoid coverage errors on files without methods.
+        if File.file?(gcno_filepath.gsub(".gcno", ".gcda"))
+          # Deep clone the gcov report tool config, so we can modify it locally.
+          tool_config = Marshal.load(Marshal.dump(TOOLS_GCOV_REPORT))
 
-      if coverage_results.strip =~ /(File\s+'#{Regexp.escape(source)}'.+$)/m
-        report = Regexp.last_match(1).lines.to_a[1..-1].map { |line| basename + ' ' + line }.join('')
-        @ceedling[:streaminator].stdout_puts(report + "\n\n")
+          # Modify the gcov object path because it might be a subdirectory under the typical output path.
+          object_path_index = tool_config[:arguments].find_index { |each| each.include?("-o") || (each.is_a?(Hash) && (each.keys.any? { |k| k.include?("-o") } )) }
+          object_path = File.dirname(gcno_filepath)
+          object_command = "-o \"#{object_path}\""
+          if !object_path_index.nil? && object_path_index > 0
+            tool_config[:arguments][object_path_index] = object_command
+          else
+            tool_config[:arguments].insert(0, object_command)
+          end
+
+          basename         = File.basename(source)
+          command          = @ceedling[:tool_executor].build_command_line(tool_config, [], [basename])
+          shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
+          coverage_results = shell_results[:output]
+
+          if coverage_results.strip =~ /(File\s+'#{Regexp.escape(source)}'.+$)/m
+            # Display the test name to identify which tests perform the coverage percent
+            # when the objects are output to the test name subdirectory.
+            object_path_basename = File.basename(object_path)
+            if object_path_basename != File.basename(GCOV_BUILD_OUTPUT_PATH)
+              @ceedling[:streaminator].stdout_puts(object_path_basename)
+            end
+            report = Regexp.last_match(1).lines.to_a[1..-1].map { |line| basename + ' ' + line }.join('')
+            @ceedling[:streaminator].stdout_puts(report + "\n\n")
+          end
+        end
       end
     end
 

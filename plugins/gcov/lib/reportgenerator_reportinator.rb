@@ -1,4 +1,5 @@
 require 'benchmark'
+require 'digest'
 require 'reportinator_helper'
 
 class ReportGeneratorReportinator
@@ -48,31 +49,48 @@ class ReportGeneratorReportinator
         end
       end
 
-      gcno_exclude_regex = /(\/|\\)(#{gcno_exclude_str})\.gcno/
+      gcno_exclude_regex = /(#{gcno_exclude_str})\.gcno/
 
       # Generate .gcov files by running gcov on gcov notes files (*.gcno).
-      for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
-        match_data = gcno_filepath.match(gcno_exclude_regex)
-        if match_data.nil? || (match_data[1].nil? && match_data[1].nil?)
+      for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "*.gcno"))
+        match_data = File.basename(gcno_filepath).match(gcno_exclude_regex)
+        if match_data.nil? || match_data[1].nil?
           # Ensure there is a matching gcov data file.
           if File.file?(gcno_filepath.gsub(".gcno", ".gcda"))
-            run_gcov("\"#{gcno_filepath}\"")
+            gcov_result = run_gcov("\"#{gcno_filepath}\"")
+            if !gcov_result.nil? && !gcov_result[:output].nil? && !gcov_result[:exit_code].nil? && (gcov_result[:exit_code] == 0)
+              # Get the source code file path from the gcov output.
+              source_match_data = gcov_result[:output].match(/Source:(.*)\n/)
+              if !source_match_data.nil? && !source_match_data[1].nil?
+                source_filepath = source_match_data[1]
+                # Compute a digest of the gcov notes file path combined with the source file path.
+                digest = Digest::MD5.hexdigest(gcno_filepath + source_filepath)
+                # Create the gcov output filename by combining the source file
+                # basename with the digest. The resulting filename is unique and
+                # short for systems with file path name length limitations.
+                gcov_filename = File.basename(source_filepath) + "_#{digest}.gcov"
+                File.open(gcov_filename, "w") { |f| f.write(gcov_result[:output]) }
+              end
+            end
           end
         end
       end
 
-      if Dir.glob("*.gcov").length > 0
+      # Find all generated gcov files.
+      gcov_files = Dir.glob("*.gcov")
+
+      if gcov_files.length > 0
         # Build the command line arguments.
         args = args_builder(opts)
 
         # Generate the report(s).
         shell_result = run(args)
       else
-        puts "\nWarning: No matching .gcno coverage files found."
+        @ceedling[:streaminator].stdout_puts "\nWarning: No matching .gcno coverage files found."
       end
 
       # Cleanup .gcov files.
-      for gcov_file in Dir.glob("*.gcov")
+      for gcov_file in gcov_files
         File.delete(gcov_file)
       end
     end
@@ -120,13 +138,16 @@ class ReportGeneratorReportinator
     report_type_count = 0
 
     args = ""
+
+    # Build the reports argument.
     args += "\"-reports:*.gcov\" "
+
+    # Build the target directory argument.
     args += "\"-targetdir:\"#{GCOV_REPORT_GENERATOR_PATH}\"\" "
 
     # Build the report types argument.
     if !(opts.nil?) && !(opts[:gcov_reports].nil?) && !(opts[:gcov_reports].empty?)
       args += "\"-reporttypes:"
-
       for report_type in opts[:gcov_reports]
         rg_report_type = REPORT_TYPE_TO_REPORT_GENERATOR_REPORT_NAME[report_type.upcase]
         if !(rg_report_type.nil?)
@@ -134,20 +155,20 @@ class ReportGeneratorReportinator
           report_type_count = report_type_count + 1
         end
       end
-
       # Removing trailing ';' after the last report type.
       args = args.chomp(";")
-
-      # Append a space seperator after the report type.
+      # Append a space separator after the report type.
       args += "\" "
     end
 
     # Build the source directories argument.
     args += "\"-sourcedirs:.;"
     if !(opts[:collection_paths_source].nil?)
-      args += opts[:collection_paths_source].join(';')
+      args += opts[:collection_paths_source].join(";")
     end
+    # Removing trailing ';' after the last source directory.
     args = args.chomp(";")
+    # Append a space separator after the last source directory.
     args += "\" "
 
     args += "\"-historydir:#{rg_opts[:history_directory]}\" " unless rg_opts[:history_directory].nil?
