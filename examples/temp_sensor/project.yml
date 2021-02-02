@@ -12,6 +12,8 @@
   :build_root: build
   # :release_build: TRUE
   :test_file_prefix: Test
+  :which_ceedling: gem
+  :ceedling_version: '?'
 
 #:release_build:
 #  :output: TempSensor.out
@@ -58,7 +60,7 @@
 
 :plugins:
   :load_paths:
-    - vendor/ceedling/plugins
+    - "#{Ceedling.load_path}"
   :enabled:
     - stdout_pretty_tests_report
     - module_generator
