@@ -86,7 +86,7 @@ class TestInvoker
 
     # Determine Runners For All Tests
     @streaminator.stdout_puts("\nDetermining Requirements", Verbosity::NORMAL)
-    @streaminator.stdout_puts("------------------------", Verbosity::NORMAL)
+    @streaminator.stdout_puts("------------------------", Verbosity::NORMAL) if @configurator.project_use_test_preprocessor
     par_map(PROJECT_TEST_THREADS, @tests) do |test|
       testables[test][:runner] = @file_path_utils.form_runner_filepath_from_test( test )
 
@@ -103,7 +103,7 @@ class TestInvoker
 
     # Preprocess Test Files
     @streaminator.stdout_puts("\nPreprocess Test Files", Verbosity::NORMAL)
-    @streaminator.stdout_puts("---------------------", Verbosity::NORMAL)
+    #@streaminator.stdout_puts("---------------------", Verbosity::NORMAL) if @configurator.project_use_auxiliary_dependencies
     par_map(PROJECT_TEST_THREADS, @tests) do |test|   
       @preprocessinator.preprocess_remainder(test)     
     end
@@ -128,7 +128,10 @@ class TestInvoker
     # @project_config_manager.process_test_defines_change(@project_config_manager.filter_internal_sources(sources))
 
     # clean results files so we have a missing file with which to kick off rake's dependency rules
-    @streaminator.stdout_puts("\nTracking Dependencies", Verbosity::NORMAL)
+    if @configurator.project_use_deep_dependencies
+      @streaminator.stdout_puts("\nGenerating Dependencies", Verbosity::NORMAL)
+      @streaminator.stdout_puts("-----------------------", Verbosity::NORMAL)
+    end 
     par_map(PROJECT_TEST_THREADS, @tests) do |test|
       @test_invoker_helper.clean_results( {:pass => testables[test][:results_pass], :fail => testables[test][:results_fail]}, options )
 
@@ -145,7 +148,7 @@ class TestInvoker
     end
 
     # Update All Dependencies
-    @streaminator.stdout_puts("\nUpdating Dependencies", Verbosity::NORMAL)
+    @streaminator.stdout_puts("\nPreparing to Build", Verbosity::NORMAL)
     par_map(PROJECT_TEST_THREADS, @tests) do |test|
       # enhance object file dependencies to capture externalities influencing regeneration
       @dependinator.enhance_test_build_object_dependencies( testables[test][:objects] )

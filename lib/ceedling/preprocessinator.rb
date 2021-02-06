@@ -16,7 +16,6 @@ class Preprocessinator
     @preprocessinator_helper.preprocess_source_includes(test)
   end
 
-  #TODO NEW SHORT VERSIONS
   def preprocess_test_and_mockable_files(test)
     @preprocessinator_helper.preprocess_includes(test, @preprocess_includes_proc)
 
@@ -35,17 +34,6 @@ class Preprocessinator
     else
       @preprocessinator_helper.preprocess_test_file(test, @preprocess_test_file_proc)
     end
-  end
-
-  #TODO THESE REPLACE THIS GUY:
-  def preprocess_test_and_invoke_test_mocks(test)
-    mocks_list = preprocess_test_and_mockable_files(test)
-
-    @task_invoker.invoke_test_mocks(mocks_list)
-
-    preprocess_remainder()
-
-    return mocks_list
   end
 
   def preprocess_shallow_includes(filepath)
