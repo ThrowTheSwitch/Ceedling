@@ -52,27 +52,61 @@ class TestInvoker
 
     # Create Storage For Works In Progress
     testables = {}
+    mock_list = []
     @tests.each do |test|
       testables[test] = {}
     end
 
     # Collect Defines For Each Test
     # TODO
+    # par_map(PROJECT_TEST_THREADS, @tests) do |test|
+      #def_test_key="defines_#{test_name.downcase}"
+
+      # if @configurator.project_config_hash.has_key?(def_test_key.to_sym) || @configurator.defines_use_test_definition
+      #   defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
+      #   tst_defs_cfg = Array.new(defs_bkp)
+      #   if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
+      #     tst_defs_cfg.replace(@configurator.project_config_hash[def_test_key.to_sym])
+      #     tst_defs_cfg .concat(COLLECTION_DEFINES_VENDOR) if COLLECTION_DEFINES_VENDOR
+      #   end
+      #   if @configurator.defines_use_test_definition
+      #     tst_defs_cfg << File.basename(test, ".*").strip.upcase.sub(/@.*$/, "")
+      #   end
+      #   COLLECTION_DEFINES_TEST_AND_VENDOR.replace(tst_defs_cfg)
+      # end
+
+      # # redefine the project out path and preprocessor defines
+      # if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
+      #   @streaminator.stdout_puts("Updating test definitions for #{test_name}", Verbosity::NORMAL)
+      #   orig_path = @configurator.project_test_build_output_path
+      #   @configurator.project_config_hash[:project_test_build_output_path] = File.join(@configurator.project_test_build_output_path, test_name)
+      #   @file_wrapper.mkdir(@configurator.project_test_build_output_path)
+      # end
+    # end
 
     # Determine Runners For All Tests
-    @streaminator.stdout_puts("\nDetermining Runners to Be Generated", Verbosity::NORMAL)
+    @streaminator.stdout_puts("\nDetermining Requirements", Verbosity::NORMAL)
+    @streaminator.stdout_puts("------------------------", Verbosity::NORMAL)
     par_map(PROJECT_TEST_THREADS, @tests) do |test|
       testables[test][:runner] = @file_path_utils.form_runner_filepath_from_test( test )
-    end
 
-    # Determine Mocks For All Required Modules
-    @streaminator.stdout_puts("\nPreprocessing Files & Determining Mocks", Verbosity::NORMAL)
-    mock_list = []
-    par_map(PROJECT_TEST_THREADS, @tests) do |test|
       testables[test][:mock_list] = @preprocessinator.preprocess_test_and_mockable_files( test )
       mock_list += testables[test][:mock_list]
     end
     mock_list.uniq!
+    
+    # Build Mocks For All Tests
+    @streaminator.stdout_puts("\nGenerating Mocks", Verbosity::NORMAL)
+    @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
+    @task_invoker.invoke_test_mocks( mock_list )
+    @mocks.concat( mock_list )
+
+    # Preprocess Test Files
+    @streaminator.stdout_puts("\nPreprocess Test Files", Verbosity::NORMAL)
+    @streaminator.stdout_puts("---------------------", Verbosity::NORMAL)
+    par_map(PROJECT_TEST_THREADS, @tests) do |test|   
+      @preprocessinator.preprocess_remainder(test)     
+    end
 
     # Determine Objects Required For Each Test
     @streaminator.stdout_puts("\nDetermining Objects to Be Built", Verbosity::NORMAL)
@@ -97,10 +131,7 @@ class TestInvoker
     @streaminator.stdout_puts("\nTracking Dependencies", Verbosity::NORMAL)
     par_map(PROJECT_TEST_THREADS, @tests) do |test|
       @test_invoker_helper.clean_results( {:pass => testables[test][:results_pass], :fail => testables[test][:results_fail]}, options )
-    end
 
-    # load up auxiliary dependencies so deep changes cause rebuilding appropriately
-    par_map(PROJECT_TEST_THREADS, @tests) do |test|
       @test_invoker_helper.process_deep_dependencies( testables[test][:core] ) do |dependencies_list|
         @dependinator.load_test_object_deep_dependencies( dependencies_list )
       end
@@ -108,14 +139,10 @@ class TestInvoker
 
     # Build Runners For All Tests
     @streaminator.stdout_puts("\nGenerating Runners", Verbosity::NORMAL)
+    @streaminator.stdout_puts("------------------", Verbosity::NORMAL)
     par_map(PROJECT_TEST_THREADS, @tests) do |test|
       @task_invoker.invoke_test_runner( testables[test][:runner] )
     end
-
-    # Build Mocks For All Tests
-    @streaminator.stdout_puts("\nGenerating Mocks", Verbosity::NORMAL)
-    @task_invoker.invoke_test_mocks( mock_list )
-    @mocks.concat( mock_list )
 
     # Update All Dependencies
     @streaminator.stdout_puts("\nUpdating Dependencies", Verbosity::NORMAL)
@@ -129,12 +156,14 @@ class TestInvoker
 
     # Build All Test objects
     @streaminator.stdout_puts("\nBuilding Objects", Verbosity::NORMAL)
+    @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
     par_map(PROJECT_TEST_THREADS, @tests) do |test|
       @task_invoker.invoke_test_objects( testables[test][:objects] )
     end
 
     # Invoke Final Tests And/Or Executable Links
     @streaminator.stdout_puts("\nExecuting", Verbosity::NORMAL)
+    @streaminator.stdout_puts("---------", Verbosity::NORMAL)
     par_map(PROJECT_TEST_THREADS, @tests) do |test|
       begin
         @plugin_manager.pre_test( test )
@@ -163,31 +192,6 @@ class TestInvoker
         # end
       end
     end
-
-    ####################
-
-        #def_test_key="defines_#{test_name.downcase}"
-
-        # if @configurator.project_config_hash.has_key?(def_test_key.to_sym) || @configurator.defines_use_test_definition
-        #   defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
-        #   tst_defs_cfg = Array.new(defs_bkp)
-        #   if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
-        #     tst_defs_cfg.replace(@configurator.project_config_hash[def_test_key.to_sym])
-        #     tst_defs_cfg .concat(COLLECTION_DEFINES_VENDOR) if COLLECTION_DEFINES_VENDOR
-        #   end
-        #   if @configurator.defines_use_test_definition
-        #     tst_defs_cfg << File.basename(test, ".*").strip.upcase.sub(/@.*$/, "")
-        #   end
-        #   COLLECTION_DEFINES_TEST_AND_VENDOR.replace(tst_defs_cfg)
-        # end
-
-        # # redefine the project out path and preprocessor defines
-        # if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
-        #   @streaminator.stdout_puts("Updating test definitions for #{test_name}", Verbosity::NORMAL)
-        #   orig_path = @configurator.project_test_build_output_path
-        #   @configurator.project_config_hash[:project_test_build_output_path] = File.join(@configurator.project_test_build_output_path, test_name)
-        #   @file_wrapper.mkdir(@configurator.project_test_build_output_path)
-        # end
 
     # post-process collected mock list
     @mocks.uniq!

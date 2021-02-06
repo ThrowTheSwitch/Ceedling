@@ -26,32 +26,24 @@ class Preprocessinator
 
     @preprocessinator_helper.preprocess_mockable_headers(mocks_list, @preprocess_mock_file_proc)
 
+    return mocks_list
+  end
+
+  def preprocess_remainder(test)
     if (@configurator.project_use_preprocessor_directives)
       @preprocessinator_helper.preprocess_test_file(test, @preprocess_test_file_directives_proc)
     else
       @preprocessinator_helper.preprocess_test_file(test, @preprocess_test_file_proc)
     end
-
-    return mocks_list
   end
 
   #TODO THESE REPLACE THIS GUY:
   def preprocess_test_and_invoke_test_mocks(test)
-    @preprocessinator_helper.preprocess_includes(test, @preprocess_includes_proc)
-
-    mocks_list = @preprocessinator_helper.assemble_mocks_list(test)
-
-    @project_config_manager.process_test_defines_change(mocks_list)
-
-    @preprocessinator_helper.preprocess_mockable_headers(mocks_list, @preprocess_mock_file_proc)
+    mocks_list = preprocess_test_and_mockable_files(test)
 
     @task_invoker.invoke_test_mocks(mocks_list)
 
-    if (@configurator.project_use_preprocessor_directives)
-      @preprocessinator_helper.preprocess_test_file(test, @preprocess_test_file_directives_proc)
-    else
-      @preprocessinator_helper.preprocess_test_file(test, @preprocess_test_file_proc)
-    end
+    preprocess_remainder()
 
     return mocks_list
   end
