@@ -16,16 +16,16 @@ class Preprocessinator
     @preprocessinator_helper.preprocess_source_includes(test)
   end
 
-  def preprocess_test_and_mockable_files(test)
+  def preprocess_test_file(test)
     @preprocessinator_helper.preprocess_includes(test, @preprocess_includes_proc)
+  end
 
-    mocks_list = @preprocessinator_helper.assemble_mocks_list(test)
+  def fetch_mock_list_for_test_file(test)
+    return @preprocessinator_helper.assemble_mocks_list(test)
+  end
 
-    #TODO @project_config_manager.process_test_defines_change(mocks_list)
-
+  def preprocess_mockable_headers(mocks_list)
     @preprocessinator_helper.preprocess_mockable_headers(mocks_list, @preprocess_mock_file_proc)
-
-    return mocks_list
   end
 
   def preprocess_remainder(test)
