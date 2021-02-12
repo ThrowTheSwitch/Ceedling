@@ -136,6 +136,7 @@ class TestInvoker
 
     # Determine Objects Required For Each Test
     @streaminator.stdout_puts("\nDetermining Objects to Be Built", Verbosity::NORMAL)
+    core_testables = []
     par_map(PROJECT_TEST_THREADS, @tests) do |test|        
       # collect up test fixture pieces & parts
       testables[test][:sources]      = @test_invoker_helper.extract_sources( test )
@@ -148,7 +149,16 @@ class TestInvoker
       # identify all the objects shall not be linked and then remove them from objects list.
       testables[test][:no_link_objects] = @file_path_utils.form_test_build_objects_filelist(@preprocessinator.preprocess_shallow_source_includes( test ))
       testables[test][:objects] = testables[test][:objects].uniq - testables[test][:no_link_objects]
+
+      @lock.synchronize do
+        core_testables += testables[test][:core]
+      end
+
+      # remove results files for the tests we plan to run
+      @test_invoker_helper.clean_results( {:pass => testables[test][:results_pass], :fail => testables[test][:results_fail]}, options )
+
     end
+    core_testables.uniq! #TODO USE THIS INSTEAD
 
     # Handle Test Define Changes
     # @project_config_manager.process_test_defines_change(@project_config_manager.filter_internal_sources(sources))
@@ -158,11 +168,9 @@ class TestInvoker
       @streaminator.stdout_puts("\nGenerating Dependencies", Verbosity::NORMAL)
       @streaminator.stdout_puts("-----------------------", Verbosity::NORMAL)
     end 
-    par_map(PROJECT_TEST_THREADS, @tests) do |test|
-      @test_invoker_helper.clean_results( {:pass => testables[test][:results_pass], :fail => testables[test][:results_fail]}, options )
-
-      @test_invoker_helper.process_deep_dependencies( testables[test][:core] ) do |dependencies_list|
-        @dependinator.load_test_object_deep_dependencies( dependencies_list )
+    par_map(PROJECT_TEST_THREADS, core_testables) do |dependency|
+      @test_invoker_helper.process_deep_dependencies( dependency ) do |dep|
+        @dependinator.load_test_object_deep_dependencies( dep)
       end
     end
 
