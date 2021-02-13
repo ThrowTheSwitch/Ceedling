@@ -69,6 +69,7 @@ describe PreprocessinatorIncludesHandler do
       # mocks/stubs/expected calls
       expect(@configurator).to receive(:extension_header).and_return('.h')
       expect(@configurator).to receive(:extension_source).and_return('.c')
+      expect(@configurator).to receive(:project_config_hash).and_return( {:cmock_mock_prefix => 'mock_'})
       expect(@configurator).to receive(:tools_test_includes_preprocessor)
       expect(@configurator).to receive(:project_config_hash).and_return({ })
       expect(@file_path_utils).to receive(:form_temp_path).and_return("/_dummy_file.c")
@@ -106,6 +107,7 @@ describe PreprocessinatorIncludesHandler do
       # mocks/stubs/expected calls
       expect(@configurator).to receive(:extension_header).and_return('.h')
       expect(@configurator).to receive(:extension_source).and_return('.c')
+      expect(@configurator).to receive(:project_config_hash).and_return( {:cmock_mock_prefix => 'mock_'})
       expect(@configurator).to receive(:tools_test_includes_preprocessor)
       expect(@configurator).to receive(:project_config_hash).and_return({ })
       expect(@file_path_utils).to receive(:form_temp_path).and_return("/_dummy_file.c")
@@ -140,6 +142,7 @@ describe PreprocessinatorIncludesHandler do
       # mocks/stubs/expected calls
       expect(@configurator).to receive(:extension_header).and_return('.h')
       expect(@configurator).to receive(:extension_source).and_return('.c')
+      expect(@configurator).to receive(:project_config_hash).and_return( {:cmock_mock_prefix => 'mock_'})
       expect(@configurator).to receive(:tools_test_includes_preprocessor)
       expect(@configurator).to receive(:project_config_hash).and_return({ })
       expect(@file_path_utils).to receive(:form_temp_path).and_return("/_dummy_file.c")
@@ -166,6 +169,7 @@ describe PreprocessinatorIncludesHandler do
       # mocks/stubs/expected calls
       expect(@configurator).to receive(:extension_header).and_return('.h')
       expect(@configurator).to receive(:extension_source).and_return('.c')
+      expect(@configurator).to receive(:project_config_hash).and_return( {:cmock_mock_prefix => 'mock_'})
       expect(@configurator).to receive(:tools_test_includes_preprocessor)
       expect(@configurator).to receive(:project_config_hash).and_return({ })
       expect(@file_path_utils).to receive(:form_temp_path).and_return("/_dummy_file.c")
@@ -198,7 +202,9 @@ describe PreprocessinatorIncludesHandler do
     it 'should correctly filter auto link deep dependencies with mocks' do
       # create test state/variables
       # mocks/stubs/expected calls
-      expect(@configurator).to receive(:project_config_hash).and_return(:collection_paths_include => [])
+      expect(@configurator).to receive(:project_config_hash).and_return({:cmock_mock_prefix => 'mock_',
+        :project_auto_link_deep_dependencies => true,
+        :collection_paths_include => []}).at_least(:once)
       expect(@configurator).to receive(:extension_header).and_return('.h').exactly(3).times
       expect(@configurator).to receive(:extension_source).and_return('.c').exactly(3).times
       expect(@configurator).to receive(:tools_test_includes_preprocessor).exactly(3).times
@@ -206,13 +212,6 @@ describe PreprocessinatorIncludesHandler do
       expect(@file_wrapper).to receive(:write).exactly(3).times
       expect(@file_finder).to receive(:find_compilation_input_file).and_return("assets\example_file.c")
       expect(@tool_executor).to receive(:build_command_line).and_return({:line => "", :options => ""}).exactly(3).times
-      expect(@configurator).to receive(:project_config_hash).and_return(:project_auto_link_deep_dependencies => true).exactly(2).times
-      expect(@configurator).to receive(:project_config_hash).and_return({:cmock_mock_prefix => 'mock_'})
-      expect(@configurator).to receive(:project_config_hash).and_return(:project_auto_link_deep_dependencies => true).exactly(4).times
-      expect(@configurator).to receive(:project_config_hash).and_return({:cmock_mock_prefix => 'mock_'})
-      expect(@configurator).to receive(:project_config_hash).and_return(:project_auto_link_deep_dependencies => true).exactly(4).times
-      expect(@configurator).to receive(:project_config_hash).and_return({:cmock_mock_prefix => 'mock_'})
-      expect(@configurator).to receive(:project_config_hash).and_return(:project_auto_link_deep_dependencies => true).exactly(2).times
       expect(@file_path_utils).to receive(:form_temp_path).and_return("_test_DUMMY.c")
       expect(@file_path_utils).to receive(:form_temp_path).and_return("assets\_example_file.h")
       expect(@file_path_utils).to receive(:form_temp_path).and_return("assets\_example_file.c")
