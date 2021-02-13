@@ -199,6 +199,37 @@ describe PreprocessinatorIncludesHandler do
       ]
     end
 
+    it 'should return the list of direct dependencies for the given source file' do
+      # create test state/variables
+      # mocks/stubs/expected calls
+      expect(@configurator).to receive(:extension_header).and_return('.h')
+      expect(@configurator).to receive(:extension_source).and_return('.c')
+      expect(@configurator).to receive(:project_config_hash).and_return( {:cmock_mock_prefix => 'mock_'})
+      expect(@configurator).to receive(:tools_test_includes_preprocessor)
+      expect(@configurator).to receive(:project_config_hash).and_return({ })
+      expect(@file_path_utils).to receive(:form_temp_path).and_return("/_dummy_file.c")
+      expect(@file_wrapper).to receive(:read).and_return("")
+      expect(@file_wrapper).to receive(:write)
+      expect(@tool_executor).to receive(:build_command_line).and_return({:line => "", :options => ""})
+      expect(@tool_executor).to receive(:exec).and_return({ :output => %q{
+        _DUMMY.o: Build/temp/_DUMMY.c \
+          source/new_some_header1_DUMMY.h \
+          source/some_header1__DUMMY.h \
+          @@@@new_some_header1_DUMMY.h \
+          @@@@some_header1__DUMMY.h \
+      }})
+      # execute method
+      results = subject.extract_includes_helper("/dummy_file_5.c", [], [], [])
+      # validate results
+      expect(results).to eq [
+        [ 'source/new_some_header1_DUMMY.h',
+          'source/some_header1__DUMMY.h'],
+        [], []
+      ]
+    end
+  end
+
+  context 'extract_includes' do
     it 'should correctly filter auto link deep dependencies with mocks' do
       # create test state/variables
       # mocks/stubs/expected calls
