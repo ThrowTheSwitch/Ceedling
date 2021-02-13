@@ -77,8 +77,7 @@ class PreprocessinatorIncludesHandler
       new_deps, new_to_process, all_mocks = extract_includes_helper(target, include_paths, ignore_list, all_mocks)
       list += new_deps
       to_process += new_to_process
-      if (!@configurator.project_config_hash.has_key?(:project_auto_link_deep_dependencies) or
-          !@configurator.project_config_hash[:project_auto_link_deep_dependencies])
+      if !@configurator.project_config_hash[:project_auto_link_deep_dependencies]
         break
       else
         list = list.uniq()
@@ -111,7 +110,7 @@ class PreprocessinatorIncludesHandler
     list = full_path_headers_dependencies + full_path_sources_dependencies
     to_process = []
 
-    if @configurator.project_config_hash.has_key?(:project_auto_link_deep_dependencies) && @configurator.project_config_hash[:project_auto_link_deep_dependencies]
+    if @configurator.project_config_hash[:project_auto_link_deep_dependencies]
       mock_prefix = @configurator.project_config_hash[:cmock_mock_prefix]
       # Creating list of mocks
       mocks += full_path_headers_dependencies.find_all do |header|
