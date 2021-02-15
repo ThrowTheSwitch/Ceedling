@@ -92,12 +92,10 @@ class TestInvoker
     # end
 
     # Preprocess Test Files
-    if (@configurator.project_use_test_preprocessor)
-      @streaminator.stdout_puts("\nPreprocessing Test Files", Verbosity::NORMAL)
-      @streaminator.stdout_puts("------------------------", Verbosity::NORMAL)
-      par_map(PROJECT_TEST_THREADS, @tests) do |test|
-        testables[test][:mock_list] = @preprocessinator.preprocess_test_file( test )
-      end
+    @streaminator.stdout_puts("\nGetting Includes From Test Files", Verbosity::NORMAL)
+    @streaminator.stdout_puts("--------------------------------", Verbosity::NORMAL)
+    par_map(PROJECT_TEST_THREADS, @tests) do |test|
+      @preprocessinator.preprocess_test_file( test )
     end
 
     # Determine Runners & Mocks For All Tests
@@ -121,7 +119,7 @@ class TestInvoker
       end
     end
     
-    # Build Mocks For All Tests
+    # Generate Mocks For All Tests
     @streaminator.stdout_puts("\nGenerating Mocks", Verbosity::NORMAL)
     @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
     @task_invoker.invoke_test_mocks( mock_list )
@@ -137,6 +135,7 @@ class TestInvoker
     # Determine Objects Required For Each Test
     @streaminator.stdout_puts("\nDetermining Objects to Be Built", Verbosity::NORMAL)
     core_testables = []
+    object_list = []
     par_map(PROJECT_TEST_THREADS, @tests) do |test|        
       # collect up test fixture pieces & parts
       testables[test][:sources]      = @test_invoker_helper.extract_sources( test )
@@ -152,13 +151,15 @@ class TestInvoker
 
       @lock.synchronize do
         core_testables += testables[test][:core]
+        object_list += testables[test][:objects]
       end
 
       # remove results files for the tests we plan to run
       @test_invoker_helper.clean_results( {:pass => testables[test][:results_pass], :fail => testables[test][:results_fail]}, options )
 
     end
-    core_testables.uniq! #TODO USE THIS INSTEAD
+    core_testables.uniq!
+    object_list.uniq!
 
     # Handle Test Define Changes
     # @project_config_manager.process_test_defines_change(@project_config_manager.filter_internal_sources(sources))
@@ -194,9 +195,7 @@ class TestInvoker
     # Build All Test objects
     @streaminator.stdout_puts("\nBuilding Objects", Verbosity::NORMAL)
     @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
-    par_map(PROJECT_TEST_THREADS, @tests) do |test|
-      @task_invoker.invoke_test_objects( testables[test][:objects] )
-    end
+    @task_invoker.invoke_test_objects(object_list)
 
     # Invoke Final Tests And/Or Executable Links
     @streaminator.stdout_puts("\nExecuting", Verbosity::NORMAL)

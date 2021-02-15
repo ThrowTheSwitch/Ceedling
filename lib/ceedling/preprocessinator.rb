@@ -1,38 +1,50 @@
 
 class Preprocessinator
 
-  constructor :preprocessinator_helper, :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_path_utils, :yaml_wrapper, :project_config_manager, :configurator
+  constructor :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_finder, :file_path_utils, :yaml_wrapper, :project_config_manager, :configurator, :test_includes_extractor
 
 
   def setup
-    # fashion ourselves callbacks @preprocessinator_helper can use
-    @preprocess_includes_proc  = Proc.new { |filepath| self.preprocess_shallow_includes(filepath) }
-    @preprocess_mock_file_proc = Proc.new { |filepath| self.preprocess_file(filepath) }
-    @preprocess_test_file_directives_proc = Proc.new { |filepath| self.preprocess_file_directives(filepath) }
-    @preprocess_test_file_proc = Proc.new { |filepath| self.preprocess_file(filepath) }
   end
 
   def preprocess_shallow_source_includes(test)
-    @preprocessinator_helper.preprocess_source_includes(test)
+    @test_includes_extractor.parse_test_file_source_include(test)
   end
 
   def preprocess_test_file(test)
-    @preprocessinator_helper.preprocess_includes(test, @preprocess_includes_proc)
+    if (@configurator.project_use_test_preprocessor)
+      preprocessed_includes_list = @file_path_utils.form_preprocessed_includes_list_filepath(test)
+      preprocess_shallow_includes( @file_finder.find_test_from_file_path(preprocessed_includes_list) )
+      @test_includes_extractor.parse_includes_list(preprocessed_includes_list)
+    else
+      @test_includes_extractor.parse_test_file(test)
+    end
   end
 
   def fetch_mock_list_for_test_file(test)
-    return @preprocessinator_helper.assemble_mocks_list(test)
+    return @file_path_utils.form_mocks_source_filelist( @test_includes_extractor.lookup_raw_mock_list(test) )
   end
 
   def preprocess_mockable_headers(mocks_list)
-    @preprocessinator_helper.preprocess_mockable_headers(mocks_list, @preprocess_mock_file_proc)
+    if (@configurator.project_use_test_preprocessor)
+      full_mocks_list = @file_path_utils.form_preprocessed_mockable_headers_filelist(mocks_list)
+      if (@configurator.project_use_deep_dependencies)
+        @task_invoker.invoke_test_preprocessed_files(full_mocks_list)
+      else
+        full_mocks_list.each do |mock| 
+          preprocess_file(@file_finder.find_header_file(mock)) 
+        end
+      end
+    end
   end
 
   def preprocess_remainder(test)
-    if (@configurator.project_use_preprocessor_directives)
-      @preprocessinator_helper.preprocess_test_file(test, @preprocess_test_file_directives_proc)
-    else
-      @preprocessinator_helper.preprocess_test_file(test, @preprocess_test_file_proc)
+    if (@configurator.project_use_test_preprocessor)
+      if (@configurator.project_use_preprocessor_directives)
+        preprocess_file_directives(test)
+      else
+        preprocess_file(test)
+      end
     end
   end
 
@@ -45,7 +57,8 @@ class Preprocessinator
 
   def preprocess_file(filepath)
     @preprocessinator_includes_handler.invoke_shallow_includes_list(filepath)
-    @preprocessinator_file_handler.preprocess_file( filepath, @yaml_wrapper.load(@file_path_utils.form_preprocessed_includes_list_filepath(filepath)) )
+    includes = @yaml_wrapper.load(@file_path_utils.form_preprocessed_includes_list_filepath(filepath))
+    @preprocessinator_file_handler.preprocess_file( filepath, includes )
   end
 
   def preprocess_file_directives(filepath)
