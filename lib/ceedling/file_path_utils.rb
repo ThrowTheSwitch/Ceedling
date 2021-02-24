@@ -176,6 +176,11 @@ class FilePathUtils
 
   def form_folder_for_mock(mock)
     path = File.dirname(mock).sub(/^#{@configurator.cmock_mock_path}[\\\/]?/, '')
+    
+    # If we dont have a path then File.dirname() returns '.' however, we cannot return this because it would break
+    # dependency handling.
+    return '' if path == '.'
+
     if path != ''
       path = File.join(path, "")
     end
