@@ -15,6 +15,9 @@ jobs:
   unit-tests:
     name: "Unit Tests"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby: [2.5, 2.6, 2.7]
     steps:
       # Install Binutils, Multilib, etc
       - name: Install C dev Tools
@@ -34,12 +37,17 @@ jobs:
         with: 
           submodules: recursive
 
-      # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
+      # Setup Ruby Testing Tools to do tests on multiple ruby version
       - name: Setup Ruby Testing Tools
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+      # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
+      - name: Install Ruby Testing Tools
         run: |
-          sudo gem install rspec
-          sudo gem install rubocop -v 0.57.2
-          sudo gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)" 
+          gem install rspec
+          gem install rubocop -v 0.57.2
+          gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
           bundle install
 
       # Run Tests
@@ -51,7 +59,7 @@ jobs:
       - name: Build and Install Gem
         run: |
           gem build ceedling.gemspec
-          sudo gem install --local ceedling-*.gem
+          gem install --local ceedling-*.gem
 
       # Run Blinky
       # Disabled because it's set up for avr-gcc
