@@ -25,15 +25,12 @@ class Preprocessinator
     return @file_path_utils.form_mocks_source_filelist( @test_includes_extractor.lookup_raw_mock_list(test) )
   end
 
-  def preprocess_mockable_headers(mocks_list)
+  def preprocess_mockable_header(mockable_header)
     if (@configurator.project_use_test_preprocessor)
-      full_mocks_list = @file_path_utils.form_preprocessed_mockable_headers_filelist(mocks_list)
       if (@configurator.project_use_deep_dependencies)
-        @task_invoker.invoke_test_preprocessed_files(full_mocks_list)
+        @task_invoker.invoke_test_preprocessed_files([mockable_header])
       else
-        full_mocks_list.each do |mock| 
-          preprocess_file(@file_finder.find_header_file(mock)) 
-        end
+        preprocess_file(@file_finder.find_header_file(mockable_header)) 
       end
     end
   end
