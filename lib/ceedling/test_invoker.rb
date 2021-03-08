@@ -53,6 +53,7 @@ class TestInvoker
     # Create Storage For Works In Progress
     testables = {}
     mock_list = []
+    runner_list = []
     @tests.each do |test|
       testables[test] = {}
     end
@@ -108,9 +109,11 @@ class TestInvoker
         testables[test][:runner] = test_runner
         testables[test][:mock_list] = test_mock_list
         mock_list += testables[test][:mock_list]
+        runner_list << test_runner
       end
     end
     mock_list.uniq!
+    runner_list.uniq!
 
     # Preprocess Header Files
     if @configurator.project_use_test_preprocessor
@@ -121,11 +124,12 @@ class TestInvoker
         @preprocessinator.preprocess_mockable_header( mockable_header )
       end
     end
-    
+
     # Generate Mocks For All Tests
     @streaminator.stdout_puts("\nGenerating Mocks", Verbosity::NORMAL)
     @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
-    @task_invoker.invoke_test_mocks( mock_list )
+    @test_invoker_helper.generate_mocks_now(mock_list)
+    #@task_invoker.invoke_test_mocks( mock_list )
     @mocks.concat( mock_list )
 
     # Preprocess Test Files
@@ -189,9 +193,10 @@ class TestInvoker
     # Build Runners For All Tests
     @streaminator.stdout_puts("\nGenerating Runners", Verbosity::NORMAL)
     @streaminator.stdout_puts("------------------", Verbosity::NORMAL)
-    par_map(PROJECT_TEST_THREADS, @tests) do |test|
-      @task_invoker.invoke_test_runner( testables[test][:runner] )
-    end
+    @test_invoker_helper.generate_runners_now(runner_list)
+    #par_map(PROJECT_TEST_THREADS, @tests) do |test|
+    #  @task_invoker.invoke_test_runner( testables[test][:runner] )
+    #end
 
     # Update All Dependencies
     @streaminator.stdout_puts("\nPreparing to Build", Verbosity::NORMAL)
@@ -206,40 +211,34 @@ class TestInvoker
     # Build All Test objects
     @streaminator.stdout_puts("\nBuilding Objects", Verbosity::NORMAL)
     @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
-    @task_invoker.invoke_test_objects(object_list)
+    @test_invoker_helper.generate_objects_now(object_list)
+    #@task_invoker.invoke_test_objects(object_list)
 
-    # Invoke Final Tests And/Or Executable Links
-    @streaminator.stdout_puts("\nExecuting", Verbosity::NORMAL)
-    @streaminator.stdout_puts("---------", Verbosity::NORMAL)
-    par_map(PROJECT_TEST_THREADS, @tests) do |test|
-      begin
-        @plugin_manager.pre_test( test )
-        test_name ="#{File.basename(test)}".chomp('.c')
+    # Create Final Tests And/Or Executable Links
+    @streaminator.stdout_puts("\nBuilding Test Executables", Verbosity::NORMAL)
+    @streaminator.stdout_puts("-------------------------", Verbosity::NORMAL)
+    lib_args = convert_libraries_to_arguments()
+    lib_paths = get_library_paths_to_arguments()
+    @test_invoker_helper.generate_executables_now(@tests, testables, lib_args, lib_paths)
 
-        if (options[:build_only])
-          # If the option build_only has been specified, build the executable but do not run test
-          executable = @file_path_utils.form_test_executable_filepath( test )
-          @task_invoker.invoke_test_executable( executable )
-        else
-          # 3, 2, 1... Launch (build & execute test)
+    # Execute Final Tests
+    unless options[:build_only]
+      @streaminator.stdout_puts("\nExecuting", Verbosity::NORMAL)
+      @streaminator.stdout_puts("---------", Verbosity::NORMAL)
+      par_map(PROJECT_TEST_THREADS, @tests) do |test|
+        begin
+          @plugin_manager.pre_test( test )
+          test_name ="#{File.basename(test)}".chomp('.c')
           @task_invoker.invoke_test_results( testables[test][:results_pass] )
-        end
-      rescue => e
-        @build_invoker_utils.process_exception( e, context )
-      ensure
+        rescue => e
+          @build_invoker_utils.process_exception( e, context )
+        ensure
 
-        @lock.synchronize do
-          @sources.concat( testables[test][:sources] )
+          @lock.synchronize do
+            @sources.concat( testables[test][:sources] )
+          end
+          @plugin_manager.post_test( test )
         end
-        @plugin_manager.post_test( test )
-        # # restore the project test defines
-        # if @configurator.project_config_hash.has_key?(def_test_key.to_sym) || @configurator.defines_use_test_definition
-        #   COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
-        #   if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
-        #     @configurator.project_config_hash[:project_test_build_output_path] = orig_path
-        #     @streaminator.stdout_puts("Restored defines and build path to standard", Verbosity::NORMAL)
-        #   end
-        # end
       end
     end
 
@@ -257,7 +256,7 @@ class TestInvoker
         File.join( @configurator.project_test_dependencies_path, '*' + @configurator.extension_dependencies ) ) )
 
     @test_invoker_helper.process_deep_dependencies(
-      @configurator.collection_all_tests + @configurator.collection_all_source )
+      (@configurator.collection_all_tests + @configurator.collection_all_source).uniq )
   end
 
 end

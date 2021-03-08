@@ -238,6 +238,7 @@ preprocessinator:
     - project_config_manager
     - configurator
     - test_includes_extractor
+    - rake_wrapper
 
 preprocessinator_includes_handler:
   compose:
@@ -281,6 +282,8 @@ test_invoker_helper:
     - file_finder
     - file_path_utils
     - file_wrapper
+    - generator
+    - rake_wrapper
 
 release_invoker:
   compose:

@@ -1,7 +1,7 @@
 
 class Preprocessinator
 
-  constructor :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_finder, :file_path_utils, :yaml_wrapper, :project_config_manager, :configurator, :test_includes_extractor
+  constructor :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_finder, :file_path_utils, :yaml_wrapper, :project_config_manager, :configurator, :test_includes_extractor, :rake_wrapper
 
 
   def setup
@@ -53,8 +53,15 @@ class Preprocessinator
   end
 
   def preprocess_file(filepath)
-    @preprocessinator_includes_handler.invoke_shallow_includes_list(filepath)
-    includes = @yaml_wrapper.load(@file_path_utils.form_preprocessed_includes_list_filepath(filepath))
+    # Attempt to directly run shallow includes instead of TODO@preprocessinator_includes_handler.invoke_shallow_includes_list(filepath)
+    pre = @file_path_utils.form_preprocessed_includes_list_filepath(filepath)
+    if (@rake_wrapper[pre].needed?)
+      src = @file_finder.find_test_or_source_or_header_file(pre)
+      preprocess_shallow_includes(src) 
+    end
+
+    # Reload it and 
+    includes = @yaml_wrapper.load(pre)
     @preprocessinator_file_handler.preprocess_file( filepath, includes )
   end
 
