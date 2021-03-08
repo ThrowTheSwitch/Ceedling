@@ -72,8 +72,11 @@ by adding to the `:includes` array. For example:
 ```
 :module_generator:
   :includes:
-    - defs.h
-    - board.h
+    :tst:
+      - defs.h
+      - board.h
+    :src:
+      - board.h
 ```
 
 ### Boilerplates
