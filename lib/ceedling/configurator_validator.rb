@@ -25,6 +25,9 @@ class ConfiguratorValidator
 
   # walk into config hash. verify directory path(s) at given key depth
   def validate_path_list(config, *keys)
+    hash_error = retrieve_value_error_config(config, keys)
+    error_config = hash_error[:value]
+
     hash = retrieve_value(config, keys)
     list = hash[:value]
 
@@ -44,8 +47,12 @@ class ConfiguratorValidator
       
       if (not @file_wrapper.exist?(base_path))
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
-        @stream_wrapper.stderr_puts("ERROR: Config path #{format_key_sequence(keys, hash[:depth])}['#{base_path}'] does not exist on disk.") 
-        exist = false
+        if ("WARNING" == error_config)
+          @stream_wrapper.stderr_puts("WARNING: Config path #{format_key_sequence(keys, hash[:depth])}['#{base_path}'] does not exist on disk.") 
+        elsif ("ERROR" == error_config)
+          @stream_wrapper.stderr_puts("ERROR: Config path #{format_key_sequence(keys, hash[:depth])}['#{base_path}'] does not exist on disk.") 
+          exist = false
+        end
       end 
     end
     
@@ -182,6 +189,31 @@ class ConfiguratorValidator
     return {:value => value, :depth => depth}
   end
 
+  def retrieve_value_error_config(config, keys)
+    value = nil
+    depth = 0
+
+    if(config[:errors])
+      if(config[:errors][:not_found])
+        hash = config[:errors][:not_found]
+
+        # walk into hash & extract value at requested key sequence
+        keys.each do |symbol|
+          depth += 1
+          if (not hash[symbol].nil?)
+            hash  = hash[symbol]
+            value = hash
+          else
+            value = "ERROR"
+            break
+          end
+        end
+
+      end
+    end
+    
+    return {:value => value, :depth => depth}
+  end
 
   def format_key_sequence(keys, depth)
     walked_keys    = keys.slice(0, depth)
