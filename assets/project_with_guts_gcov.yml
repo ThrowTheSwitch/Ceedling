@@ -28,6 +28,20 @@
 
 :extension:
   :executable: .out
+  
+# Configuration for errors behaviors
+#   - :not_found: is associated to the behavior when a folder is not found.
+#     This configuration shall have the same indices from :paths: and is configured as follow:
+#       - ERROR: Error is logged and the build is stopped
+#       - WARNING: Warning is logged but build continues
+#       - HIDDEN: Nothing is logged
+#   note: Default value for categories not specified, is "ERROR"
+:errors:
+  :not_found:
+    :paths:
+      :test: ERROR
+      :source: ERROR
+      :support: ERROR
 
 :paths:
   :test:
