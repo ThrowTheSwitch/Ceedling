@@ -47,24 +47,24 @@ class TestInvokerHelper
     end
   end
 
-  def generate_objects_now(object_list)
+  def generate_objects_now(object_list, options)
     par_map(PROJECT_COMPILE_THREADS, object_list) do |object|
       if (@rake_wrapper[object].needed?)
         src = @file_finder.find_compilation_input_file(object)
         if (File.basename(src) =~ /#{EXTENSION_SOURCE}$/)
           @generator.generate_object_file(
-            TOOLS_TEST_COMPILER,
+            options[:test_compiler],
             OPERATION_COMPILE_SYM,
-            TEST_SYM,
+            options[:symbol],
             src,
             object,
             @file_path_utils.form_test_build_list_filepath( object ),
             @file_path_utils.form_test_dependencies_filepath( object ))
         elsif (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
           @generator.generate_object_file(
-            TOOLS_TEST_ASSEMBLER,
+            options[:test_assembler],
             OPERATION_ASSEMBLE_SYM,
-            TEST_SYM,
+            options[:symbol],
             src,
             object )
         end
@@ -72,19 +72,25 @@ class TestInvokerHelper
     end
   end
 
-  def generate_executables_now(executables, details, lib_args, lib_paths)
+  def generate_executables_now(executables, details, lib_args, lib_paths, options)
     par_map(PROJECT_COMPILE_THREADS, executables) do |executable|
-      if (@rake_wrapper[executable].needed?)
-        @generator.generate_executable_file(
-          TOOLS_TEST_LINKER,
-          TEST_SYM,
-          details[executable].objects,
-          executable,
-          @file_path_utils.form_test_build_map_filepath( executable ),
-          lib_args,
-          lib_paths )
-      end
+      @generator.generate_executable_file(
+        options[:test_linker],
+        options[:symbol],
+        details[executable][:objects].map{|v| "\"#{v}\""},
+        @file_path_utils.form_test_executable_filepath( executable ),
+        @file_path_utils.form_test_build_map_filepath( executable ),
+        lib_args,
+        lib_paths )
     end
+  end
+
+  def run_fixture_now(result, options)
+    @generator.generate_test_results(
+      options[:test_fixture], 
+      options[:symbol], 
+      @file_path_utils.form_test_executable_filepath(result), 
+      result)
   end
   
 end

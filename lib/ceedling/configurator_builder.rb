@@ -19,6 +19,10 @@ class ConfiguratorBuilder
       # create global constant
       Object.module_eval("#{formatted_key} = value")
     end
+
+    # TODO: This wants to go somewhere better
+    Object.module_eval("TOOLS_TEST_ASSEMBLER = {}") if (not config[:test_build_use_assembly]) && !defined?(TOOLS_TEST_ASSEMBLER)
+    Object.module_eval("TOOLS_RELEASE_ASSEMBLER = {}") if (not config[:release_build_use_assembly]) && !defined?(TOOLS_RELEASE_ASSEMBLER)
   end
 
 

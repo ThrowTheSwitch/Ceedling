@@ -211,7 +211,7 @@ class TestInvoker
     # Build All Test objects
     @streaminator.stdout_puts("\nBuilding Objects", Verbosity::NORMAL)
     @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
-    @test_invoker_helper.generate_objects_now(object_list)
+    @test_invoker_helper.generate_objects_now(object_list, options)
     #@task_invoker.invoke_test_objects(object_list)
 
     # Create Final Tests And/Or Executable Links
@@ -219,7 +219,7 @@ class TestInvoker
     @streaminator.stdout_puts("-------------------------", Verbosity::NORMAL)
     lib_args = convert_libraries_to_arguments()
     lib_paths = get_library_paths_to_arguments()
-    @test_invoker_helper.generate_executables_now(@tests, testables, lib_args, lib_paths)
+    @test_invoker_helper.generate_executables_now(@tests, testables, lib_args, lib_paths, options)
 
     # Execute Final Tests
     unless options[:build_only]
@@ -229,7 +229,7 @@ class TestInvoker
         begin
           @plugin_manager.pre_test( test )
           test_name ="#{File.basename(test)}".chomp('.c')
-          @task_invoker.invoke_test_results( testables[test][:results_pass] )
+          @test_invoker_helper.run_fixture_now( testables[test][:results_pass], options )
         rescue => e
           @build_invoker_utils.process_exception( e, context )
         ensure

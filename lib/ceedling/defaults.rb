@@ -39,7 +39,7 @@ DEFAULT_TEST_LINKER_TOOL = {
     ENV['CCLD'].nil? ? "" : ENV['CCLD'].split[1..-1],
     ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
     ENV['LDFLAGS'].nil? ? "" : ENV['LDFLAGS'].split,
-    "\"${1}\"".freeze,
+    "${1}".freeze,
     "${5}".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
