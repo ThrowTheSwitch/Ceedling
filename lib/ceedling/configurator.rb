@@ -372,7 +372,7 @@ class Configurator
 
     paths.flatten.each do |path|
       path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
-      temp.append(path.split(";"))
+      temp.append(path.split(File::PATH_SEPARATOR))
     end
 
     paths.replace(temp)
