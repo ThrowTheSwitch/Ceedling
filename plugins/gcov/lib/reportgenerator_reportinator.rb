@@ -162,12 +162,18 @@ class ReportGeneratorReportinator
     end
 
     # Build the source directories argument.
-    args += "\"-sourcedirs:.;"
-    if !(opts[:collection_paths_source].nil?)
-      args += opts[:collection_paths_source].join(";")
+    args += "\"-sourcedirs:."
+    if !(opts[:collection_paths_source].nil?) && !(opts[:collection_paths_source].empty?)
+      for source_path in opts[:collection_paths_source]
+        if File.file?(source_path)
+          # Append the file's directory path.
+          args += ";" + File.dirname(source_path)
+        else
+          # Append the directory path.
+          args += ";" + source_path
+        end
+      end
     end
-    # Removing trailing ';' after the last source directory.
-    args = args.chomp(";")
     # Append a space separator after the last source directory.
     args += "\" "
 
