@@ -164,7 +164,7 @@ unless (project_found)
 
           # Perform the actual clone of the config file, while updating the version
           File.open(dst_yaml,'w') do |dst|
-            require 'ceedling/version.rb'
+            require File.expand_path(File.join(File.dirname(__FILE__),"..","lib","ceedling","version.rb"))
             dst << File.read(src_yaml).gsub(":ceedling_version: '?'",":ceedling_version: #{Ceedling::Version::CEEDLING}")
             puts "      create  #{dst_yaml}"
           end
@@ -217,7 +217,7 @@ unless (project_found)
 
     desc "version", "return the version of the tools installed"
     def version()
-      require 'ceedling/version.rb'
+      require File.expand_path(File.join(File.dirname(__FILE__),"..","lib","ceedling","version.rb"))
       puts "    Ceedling:: #{Ceedling::Version::CEEDLING}"
       puts "       CMock:: #{Ceedling::Version::CMOCK}"
       puts "       Unity:: #{Ceedling::Version::UNITY}"

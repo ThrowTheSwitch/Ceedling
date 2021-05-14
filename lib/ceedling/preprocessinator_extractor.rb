@@ -16,6 +16,7 @@ class PreprocessinatorExtractor
 
     lines = []
     File.readlines(filepath).each do |line|
+      line.encode!('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
       if found_file and not line =~ not_pragma
         lines << line
       else
@@ -41,6 +42,7 @@ class PreprocessinatorExtractor
 
     lines = []
     File.readlines(filepath).each do |line|
+      line.encode!('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
       lines << line
 
       if line =~ pattern

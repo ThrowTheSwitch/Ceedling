@@ -72,8 +72,11 @@ by adding to the `:includes` array. For example:
 ```
 :module_generator:
   :includes:
-    - defs.h
-    - board.h
+    :tst:
+      - defs.h
+      - board.h
+    :src:
+      - board.h
 ```
 
 ### Boilerplates
@@ -90,6 +93,16 @@ put that corporate copyright notice (or maybe a copyleft notice, if that's your 
     ***************************/
 ```
 
+### Test Defines
+
+You can specify the "#ifdef TEST" at the top of the test files with a custom define.
+This example will put a "#ifdef CEEDLING_TEST" at the top of the test files.  
+
+```
+:module_generator:
+  :test_define: CEEDLING_TEST
+```
+
 ### Naming Convention
 
 Finally, you can force a particular naming convention. Even if someone calls the generator
@@ -102,4 +115,5 @@ Your options are as follows:
   - `:camel` - camelFilesAreSimilarButStartLow
   - `:snake` - snake_case_is_all_lower_and_uses_underscores
   - `:caps`  - CAPS_FEELS_LIKE_YOU_ARE_SCREAMING
+
 

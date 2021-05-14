@@ -157,7 +157,7 @@ class ReportGeneratorReportinator
       end
       # Removing trailing ';' after the last report type.
       args = args.chomp(";")
-      # Append a space separator after the report type.
+      # Append a closing double quote and a  space separator after the report type.
       args += "\" "
     end
 
@@ -174,7 +174,7 @@ class ReportGeneratorReportinator
         end
       end
     end
-    # Append a space separator after the last source directory.
+    # Append a closing double quote and a space separator after the last source directory.
     args += "\" "
 
     args += "\"-historydir:#{rg_opts[:history_directory]}\" " unless rg_opts[:history_directory].nil?
@@ -208,7 +208,7 @@ class ReportGeneratorReportinator
 
   # Run ReportGenerator with the given arguments.
   def run(args)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT_GENERATOR_POST_REPORT, [], args)
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORTGENERATOR_POST_REPORT, [], args)
     return @ceedling[:tool_executor].exec(command[:line], command[:options])
   end
 

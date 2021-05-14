@@ -184,15 +184,20 @@ class Configurator
     @rake_plugins   = @configurator_plugins.find_rake_plugins(config, paths_hash)
     @script_plugins = @configurator_plugins.find_script_plugins(config, paths_hash)
     config_plugins  = @configurator_plugins.find_config_plugins(config, paths_hash)
-    plugin_defaults = @configurator_plugins.find_plugin_defaults(config, paths_hash)
+    plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults(config, paths_hash)
+    plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults(config, paths_hash)
 
     config_plugins.each do |plugin|
       plugin_config = @yaml_wrapper.load(plugin)
       config.deep_merge(plugin_config)
     end
 
-    plugin_defaults.each do |defaults|
+    plugin_yml_defaults.each do |defaults|
       @configurator_builder.populate_defaults( config, @yaml_wrapper.load(defaults) )
+    end
+
+    plugin_hash_defaults.each do |defaults|
+      @configurator_builder.populate_defaults( config, defaults )
     end
 
     # special plugin setting for results printing
