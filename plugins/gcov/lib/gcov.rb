@@ -88,21 +88,9 @@ class Gcov < Plugin
       for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "#{File.basename(source, File.extname(source))}.gcno"))
         # Ensure a gcov data file is paired with the gcov notes file to avoid coverage errors on files without methods.
         if File.file?(gcno_filepath.gsub(".gcno", ".gcda"))
-          # Deep clone the gcov report tool config, so we can modify it locally.
-          tool_config = Marshal.load(Marshal.dump(TOOLS_GCOV_REPORT))
-
-          # Modify the gcov object path because it might be a subdirectory under the typical output path.
-          object_path_index = tool_config[:arguments].find_index { |each| each.include?("-o") || (each.is_a?(Hash) && (each.keys.any? { |k| k.include?("-o") } )) }
-          object_path = File.dirname(gcno_filepath)
-          object_command = "-o \"#{object_path}\""
-          if !object_path_index.nil? && object_path_index > 0
-            tool_config[:arguments][object_path_index] = object_command
-          else
-            tool_config[:arguments].insert(0, object_command)
-          end
-
+          object_path      = File.dirname(gcno_filepath)
           basename         = File.basename(source)
-          command          = @ceedling[:tool_executor].build_command_line(tool_config, [], [basename])
+          command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, [], object_path, basename)
           shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
           coverage_results = shell_results[:output]
 
