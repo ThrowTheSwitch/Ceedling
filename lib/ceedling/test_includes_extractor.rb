@@ -57,7 +57,7 @@ class TestIncludesExtractor
 
     contents.split("\n").each do |line|
       # look for include statement
-      scan_results = line.scan(/#include\s+\"\s*(.+#{'\\'+header_extension})\s*\"/)
+      scan_results = line.scan(/#\s*include\s+\"\s*(.+#{'\\'+header_extension})\s*\"/)
 
       includes << scan_results[0][0] if (scan_results.size > 0)
 
