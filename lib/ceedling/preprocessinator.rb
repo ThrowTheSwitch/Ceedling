@@ -21,8 +21,6 @@ class Preprocessinator
 
     mocks_list = @preprocessinator_helper.assemble_mocks_list(test)
 
-    @project_config_manager.process_test_defines_change(mocks_list)
-
     @preprocessinator_helper.preprocess_mockable_headers(mocks_list, @preprocess_mock_file_proc)
 
     @task_invoker.invoke_test_mocks(mocks_list)

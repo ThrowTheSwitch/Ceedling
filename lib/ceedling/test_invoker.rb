@@ -139,8 +139,6 @@ class TestInvoker
         no_link_objects = @file_path_utils.form_test_build_objects_filelist(@preprocessinator.preprocess_shallow_source_includes( test ))
         objects = objects.uniq - no_link_objects
 
-        @project_config_manager.process_test_defines_change(@project_config_manager.filter_internal_sources(sources))
-
         # clean results files so we have a missing file with which to kick off rake's dependency rules
         @test_invoker_helper.clean_results( {:pass => results_pass, :fail => results_fail}, options )
 
