@@ -279,6 +279,7 @@ test_invoker:
     - build_invoker_utils
     - file_path_utils
     - file_wrapper
+    - cmock_builder
 
 test_invoker_helper:
   compose:
