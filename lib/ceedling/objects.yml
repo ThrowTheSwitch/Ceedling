@@ -270,6 +270,7 @@ test_invoker:
   compose:
     - configurator
     - test_invoker_helper
+    - test_config_customizator
     - plugin_manager
     - streaminator
     - preprocessinator
@@ -279,7 +280,6 @@ test_invoker:
     - build_invoker_utils
     - file_path_utils
     - file_wrapper
-    - cmock_builder
 
 test_invoker_helper:
   compose:
@@ -289,6 +289,13 @@ test_invoker_helper:
     - file_finder
     - file_path_utils
     - file_wrapper
+
+test_config_customizator:
+  compose:
+    - configurator
+    - streaminator
+    - file_wrapper
+    - cmock_builder
 
 release_invoker:
   compose:

@@ -7,6 +7,7 @@ class TestInvoker
 
   constructor :configurator,
               :test_invoker_helper,
+              :test_config_customizator,
               :plugin_manager,
               :streaminator,
               :preprocessinator,
@@ -15,15 +16,12 @@ class TestInvoker
               :project_config_manager,
               :build_invoker_utils,
               :file_path_utils,
-              :file_wrapper,
-              :cmock_builder
+              :file_wrapper
 
   def setup
     @sources = []
     @tests   = []
     @mocks   = []
-    @standard_test_paths = {}
-    @standard_cmock = {}
   end
 
 
@@ -45,59 +43,11 @@ class TestInvoker
     return paths
   end
 
-  def backup_standard_test_paths
-    @standard_test_paths[:project_test_build_output_path] = @configurator.project_test_build_output_path
-    @standard_test_paths[:project_test_build_output_asm_path] = @configurator.project_test_build_output_asm_path
-    @standard_test_paths[:project_test_build_output_c_path] = @configurator.project_test_build_output_c_path
-    @standard_test_paths[:project_test_build_cache_path] = @configurator.project_test_build_cache_path
-    @standard_test_paths[:project_test_dependencies_path] = @configurator.project_test_dependencies_path
-    if @configurator.project_use_test_preprocessor
-      @standard_test_paths[:project_test_preprocess_includes_path] = @configurator.project_test_preprocess_includes_path
-      @standard_test_paths[:project_test_preprocess_files_path] = @configurator.project_test_preprocess_files_path
-    end
-
-    if @configurator.project_use_mocks
-      @standard_test_paths[:cmock_mock_path] = @configurator.cmock_mock_path
-      @standard_cmock[:cmock] = @cmock_builder.cmock
-      @standard_cmock[:tool_search_paths] = Array.new(COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR)
-    end
-  end
-
-  def set_standard_test_build_path
-    @standard_test_paths.each do |config, path|
-      @configurator.project_config_hash[config] = path
-    end
-
-    if @configurator.project_use_mocks
-      @cmock_builder.cmock = @standard_cmock[:cmock]
-      COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR.replace(@standard_cmock[:tool_search_paths])
-    end
-  end
-
-  def set_custom_test_build_path(test_name)
-    @standard_test_paths.each do |config, path|
-      @configurator.project_config_hash[config] = File.join(path, test_name)
-      @file_wrapper.mkdir(@configurator.project_config_hash[config])
-    end 
-
-    if @configurator.project_use_mocks
-      cmock_config = @cmock_builder.cmock_config.clone
-      cmock_config[:mock_path] = @configurator.project_config_hash[:cmock_mock_path]
-      # fff replace @cmock_bulder.cmock from CMock during setup
-      # we have to create new CMock of fff or other mock generator
-      mock_generator = @cmock_builder.clone_mock_generator(cmock_config)
-      @cmock_builder.cmock = mock_generator
-      COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR.map! do |path|
-        path == @standard_test_paths[:cmock_mock_path] ? @configurator.cmock_mock_path : path
-      end
-    end
-  end
-
   def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true, :build_only => false})
 
     @tests = tests
 
-    backup_standard_test_paths()
+    @test_config_customizator.backup_test_config
     @project_config_manager.process_test_config_change
 
     @tests.each do |test|
@@ -108,21 +58,9 @@ class TestInvoker
       begin
         @plugin_manager.pre_test( test )
         test_name ="#{File.basename(test)}".chomp('.c')
-        def_test_key="defines_#{test_name.downcase}"
 
-        if @configurator.project_config_hash.has_key?(def_test_key.to_sym) || @configurator.defines_use_test_definition
-          @streaminator.stdout_puts("Updating test definitions and build path for #{test_name}", Verbosity::NORMAL)
-          defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
-          tst_defs_cfg = Array.new(defs_bkp)
-          if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
-            tst_defs_cfg.replace(@configurator.project_config_hash[def_test_key.to_sym])
-            tst_defs_cfg .concat(COLLECTION_DEFINES_VENDOR) if COLLECTION_DEFINES_VENDOR
-          end
-          if @configurator.defines_use_test_definition
-            tst_defs_cfg << File.basename(test, ".*").strip.upcase.sub(/@.*$/, "")
-          end
-          COLLECTION_DEFINES_TEST_AND_VENDOR.replace(tst_defs_cfg)
-          set_custom_test_build_path(test_name)
+        if @test_config_customizator.is_customized_test(test_name)
+          @test_config_customizator.prepare_customized_test_config(test_name)
         end
 
         # collect up test fixture pieces & parts
@@ -172,11 +110,8 @@ class TestInvoker
         @build_invoker_utils.process_exception( e, context )
       ensure
         @plugin_manager.post_test( test )
-        # restore the project test defines
-        if @configurator.project_config_hash.has_key?(def_test_key.to_sym) || @configurator.defines_use_test_definition
-          COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
-          set_standard_test_build_path()
-          @streaminator.stdout_puts("Restored defines and build path to standard", Verbosity::NORMAL)
+        if @test_config_customizator.is_customized_test(test_name)
+          @test_config_customizator.restore_test_config
         end
       end
 
