@@ -426,6 +426,25 @@ module CeedlingTestCases
     end
   end
 
+  def can_test_projects_with_both_mock_and_real_header
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("example_file_call.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file_call.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_with_mock.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
   def uses_raw_output_report_plugin
     @c.with_context do
       Dir.chdir @proj_name do

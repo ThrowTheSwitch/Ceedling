@@ -13,7 +13,7 @@ module Ceedling
         path1
       elsif (File.exists?(path2))
         path2
-      elsif exists?(CEEDLING_VENDOR)
+      elsif File.exists?(CEEDLING_VENDOR)
         path3 = File.expand_path( File.join(CEEDLING_VENDOR,path) )
         if (File.exists?(path3))
           path3
@@ -23,7 +23,7 @@ module Ceedling
             [ @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip,
               @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'build.info') ).strip ].join('.')
           rescue
-            "unknown"
+            "#{name}"
           end
         end
       else
@@ -33,11 +33,15 @@ module Ceedling
 
       # Actually look up the versions
       a = [0,0,0]
-      File.readlines(filename).each do |line|
-        ["VERSION_MAJOR", "VERSION_MINOR", "VERSION_BUILD"].each_with_index do |field, i|
-          m = line.match(/#{name}_#{field}\s+(\d+)/)
-          a[i] = m[1] unless (m.nil?)
+      begin
+        File.readlines(filename).each do |line|
+          ["VERSION_MAJOR", "VERSION_MINOR", "VERSION_BUILD"].each_with_index do |field, i|
+            m = line.match(/#{name}_#{field}\s+(\d+)/)
+            a[i] = m[1] unless (m.nil?)
+          end
         end
+      rescue
+        abort("Can't collect data for vendor component: \"#{filename}\" . \nPlease check your setup.")
       end
 
       # splat it to return the final value
