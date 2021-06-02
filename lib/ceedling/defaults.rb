@@ -298,6 +298,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :test_file_prefix => 'test_',
       :options_paths => [],
       :release_build => false,
+      :use_backtrace_gdb_reporter => false,
     },
 
     :release_build => {
