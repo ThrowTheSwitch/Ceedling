@@ -16,7 +16,7 @@ class GcovrReportinator
     # Build the common gcovr arguments.
     args_common = args_builder_common(opts)
 
-    if (gcovr_version_info[0] >= 4) && (gcovr_version_info[1] >= 2)
+    if ((gcovr_version_info[0] == 4) && (gcovr_version_info[1] >= 2)) || (gcovr_version_info[0] > 4)
       # gcovr version 4.2 and later supports generating multiple reports with a single call.
       args = args_common
       args += args_builder_cobertura(opts, false)
