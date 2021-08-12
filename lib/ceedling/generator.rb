@@ -67,7 +67,8 @@ class Generator
 
     @streaminator.stdout_puts("Generating runner for #{module_name}...", Verbosity::NORMAL)
 
-    test_file_includes = [] # Empty list for now, since apparently unused
+    test_file_includes = @test_includes_extractor.lookup_includes_list(arg_hash[:test_file])
+    test_file_includes.delete_if { |inc| inc =~ /(unity|cmock|mock_)/ }
 
     # build runner file
     begin
