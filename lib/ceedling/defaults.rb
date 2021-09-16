@@ -294,6 +294,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :use_preprocessor_directives => false,
       :use_deep_dependencies => false,
       :generate_deep_dependencies => true, # only applicable if use_deep_dependencies is true
+      :auto_link_deep_dependencies => false,
       :test_file_prefix => 'test_',
       :options_paths => [],
       :release_build => false,
