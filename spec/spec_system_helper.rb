@@ -584,7 +584,7 @@ module CeedlingTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         # add paths to module generator
-        mod_gen = Modulegenerator.new({source_root: "foo/", inc_root: "bar/", test_root: "barz/"})
+        mod_gen = Modulegenerator.new(source_root: "foo/", inc_root: "bar/", test_root: "barz/")
         settings = { :module_generator => { :project_root => mod_gen.project_root,
                                             :source_root => mod_gen.source_root,
                                             :inc_root => mod_gen.inc_root,
