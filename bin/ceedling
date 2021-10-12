@@ -6,10 +6,10 @@ require 'fileutils'
 
 # Check for the main project file (either the one defined in the ENV or the default)
 main_filepath = ENV['CEEDLING_MAIN_PROJECT_FILE']
-project_found = (!main_filepath.nil? && File.exists?(main_filepath))
+project_found = (!main_filepath.nil? && File.exist?(main_filepath))
 if (!project_found)
   main_filepath = "project.yml"
-  project_found = File.exists?(main_filepath)
+  project_found = File.exist?(main_filepath)
 end
 
 def is_windows?
@@ -57,7 +57,7 @@ unless (project_found)
       rescue
         raise "ERROR: Could not find valid project file '#{yaml_path}'"
       end
-      found_docs = File.exists?( File.join(name, "docs", "CeedlingPacket.md") )
+      found_docs = File.exist?( File.join(name, "docs", "CeedlingPacket.md") )
       copy_assets_and_create_structure(name, silent, true, {:upgrade => true, :no_configs => true, :local => as_local, :docs => found_docs})
     end
 
@@ -262,16 +262,16 @@ else
     :add_path => [],
     :path_connector => (platform == :mswin) ? ";" : ":",
     :graceful_fail => false,
-    :which_ceedling => (Dir.exists?("vendor/ceedling") ? "vendor/ceedling" : 'gem'),
+    :which_ceedling => (Dir.exist?("vendor/ceedling") ? "vendor/ceedling" : 'gem'),
     :default_tasks => [ 'test:all' ],
     :list_tasks => false
   }
 
   #guess that we need a special script file first if it exists
   if (platform == :mswin)
-    options[:pretest] = File.exists?("#{ platform.to_s }_setup.bat") ? "#{ platform.to_s }_setup.bat" : nil
+    options[:pretest] = File.exist?("#{ platform.to_s }_setup.bat") ? "#{ platform.to_s }_setup.bat" : nil
   else
-    options[:pretest] = File.exists?("#{ platform.to_s }_setup.sh") ? "source #{ platform.to_s }_setup.sh" : nil
+    options[:pretest] = File.exist?("#{ platform.to_s }_setup.sh") ? "source #{ platform.to_s }_setup.sh" : nil
   end
 
   #merge in project settings if they can be found here
@@ -318,7 +318,7 @@ else
   end
 
   # Load Ceedling (either through the rakefile OR directly)
-  if (File.exists?("rakefile.rb"))
+  if (File.exist?("rakefile.rb"))
     load 'rakefile.rb'
   else
     if (options[:which_ceedling] == 'gem')

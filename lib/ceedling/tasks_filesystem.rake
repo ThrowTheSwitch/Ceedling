@@ -60,7 +60,7 @@ task :directories => PROJECT_BUILD_PATHS
 # when the force file doesn't exist, it probably means we clobbered or are on a fresh
 # install. In either case, stuff was deleted, so assume we want to rebuild it all
 file @ceedling[:configurator].project_test_force_rebuild_filepath do
-  unless File.exists?(@ceedling[:configurator].project_test_force_rebuild_filepath)
+  unless File.exist?(@ceedling[:configurator].project_test_force_rebuild_filepath)
     @ceedling[:dependinator].touch_force_rebuild_files
   end
 end
