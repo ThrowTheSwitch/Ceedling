@@ -66,7 +66,7 @@ describe GeneratorTestResults do
   end
 
   after(:each) do
-    if File.exists?(TEST_OUT_FILE)
+    if File.exist?(TEST_OUT_FILE)
       File.delete(TEST_OUT_FILE)
     end
   end
