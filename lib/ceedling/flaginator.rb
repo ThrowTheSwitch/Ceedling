@@ -37,7 +37,7 @@ class Flaginator
     any, regex = partition(magic) { |k, v| (k == :'*') || (k == :'.*')  } # glob or regex wild card
     
     # 2. try regexes
-    find_res = regex.find { |k, v| file_name =~ /^#{k.to_s}$/ }
+    find_res = regex.find { |k, v| file_name =~ /^#{k}$/ }
     return find_res[1] if find_res
     
     # 3. try anything

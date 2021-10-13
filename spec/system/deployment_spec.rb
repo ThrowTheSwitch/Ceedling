@@ -44,6 +44,7 @@ describe "Ceedling" do
     it { can_use_the_module_plugin_with_include_path }
     it { can_use_the_module_plugin_with_non_default_paths }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
@@ -121,6 +122,7 @@ describe "Ceedling" do
     it { can_use_the_module_plugin_with_include_path }
     it { can_use_the_module_plugin_with_non_default_paths }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
 
@@ -143,6 +145,7 @@ describe "Ceedling" do
     it { can_use_the_module_plugin_with_include_path }
     it { can_use_the_module_plugin_with_non_default_paths }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
@@ -171,6 +174,7 @@ describe "Ceedling" do
     it { can_use_the_module_plugin_with_include_path }
     it { can_use_the_module_plugin_with_non_default_paths }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end

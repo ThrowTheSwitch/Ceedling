@@ -19,7 +19,7 @@ describe BuildInvokerUtils do
     # these keep the actual test cleaner
     @exception_msg = 'Don\'t know how to build task \'xyz\''
     @basic_msg =  "ERROR: Rake could not find file referenced in source or test: 'xyz'. Possible stale dependency."
-    @deep_dep_msg = "Try fixing #include statements or adding missing file. Then run '#{REFRESH_TASK_ROOT}#{TEST_SYM.to_s}' task and try again."
+    @deep_dep_msg = "Try fixing #include statements or adding missing file. Then run '#{REFRESH_TASK_ROOT}#{TEST_SYM}' task and try again."
     @exception = RuntimeError.new(@exception_msg)
   end
   
