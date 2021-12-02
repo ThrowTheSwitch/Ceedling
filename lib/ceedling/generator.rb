@@ -18,6 +18,10 @@ class Generator
               :file_wrapper
 
 
+  def setup
+    @failed_test_count = 0
+  end
+
   def generate_shallow_includes_list(context, file)
     @streaminator.stdout_puts("Generating include list for #{File.basename(file)}...", Verbosity::NORMAL)
     @preprocessinator.preprocess_shallow_includes(file)
@@ -167,6 +171,7 @@ class Generator
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
+    @failed_test_count += shell_result[:exit_code]
 
     #Don't Let The Failure Count Make Us Believe Things Aren't Working
     shell_result[:exit_code] = 0
@@ -181,6 +186,10 @@ class Generator
     arg_hash[:shell_result] = shell_result # for raw output display if no plugins for formatted display
 
     @plugin_manager.post_test_fixture_execute(arg_hash)
+  end
+
+  def test_failures
+    @failed_test_count
   end
 
 end

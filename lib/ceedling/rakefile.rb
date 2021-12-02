@@ -78,6 +78,7 @@ END {
     @ceedling[:plugin_manager].post_build
     @ceedling[:plugin_manager].print_plugin_failures
     exit(1) if (@ceedling[:plugin_manager].plugins_failed? && !@ceedling[:setupinator].config_hash[:graceful_fail])
+    exit(@ceedling[:generator].test_failures)
   else
     puts "ERROR: Ceedling Failed"
     @ceedling[:plugin_manager].post_error
