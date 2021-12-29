@@ -298,7 +298,7 @@ class ConfiguratorBuilder
   def collect_source(in_hash)
     all_source = @file_wrapper.instantiate_file_list
     in_hash[:collection_paths_source].each do |path|
-      if File.exists?(path) and not File.directory?(path)
+      if File.exist?(path) and not File.directory?(path)
         all_source.include( path )
       else
         all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
@@ -340,7 +340,7 @@ class ConfiguratorBuilder
 
     paths.each do |path|
       release_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
-      if File.exists?(path) and not File.directory?(path)
+      if File.exist?(path) and not File.directory?(path)
         release_input.include( path )
       else
         release_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
@@ -370,7 +370,7 @@ class ConfiguratorBuilder
 
     paths.each do |path|
       all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
-      if File.exists?(path) and not File.directory?(path)
+      if File.exist?(path) and not File.directory?(path)
         all_input.include( path )
       else
         all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )

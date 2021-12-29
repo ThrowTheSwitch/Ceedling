@@ -27,7 +27,7 @@ module TargetLoader
                target_path.call(targets[:default_target])
              end
 
-    unless File.exists? target
+    unless File.exist? target
       raise NoSuchTarget.new("No such target: #{target}")
     end
 
