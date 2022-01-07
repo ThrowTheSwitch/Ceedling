@@ -1,9 +1,15 @@
 
-
 def par_map(n, things, &block)
+  if (things.length <= 1)
+    yield things.pop() if not things.empty?
+    return
+  end
+
   queue = Queue.new
   things.each { |thing| queue << thing }
-  threads = (1..n).collect do
+
+  num_threads = [n, things.length].min()
+  threads = (1..num_threads).collect do
     Thread.new do
       begin
         while true
