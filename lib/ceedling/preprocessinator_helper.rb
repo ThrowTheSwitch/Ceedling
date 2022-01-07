@@ -1,3 +1,4 @@
+require 'ceedling/par_map'
 
 
 class PreprocessinatorHelper
@@ -43,7 +44,12 @@ class PreprocessinatorHelper
     if (@configurator.project_use_deep_dependencies)
       @task_invoker.invoke_test_preprocessed_files(file_list)
     else
-      file_list.each { |file| preprocess_file_proc.call( yield(file) ) }
+      found_files = Array.new
+      file_list.each { |file| found_files << yield(file) }
+
+      par_map(PROJECT_COMPILE_THREADS, found_files) do |file|
+        preprocess_file_proc.call(file)
+      end
     end
   end
 
