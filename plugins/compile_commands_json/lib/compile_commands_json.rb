@@ -5,7 +5,7 @@ require 'json'
 class CompileCommandsJson < Plugin
   def setup
     @fullpath = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, "compile_commands.json")
-    @database = if (File.exist?(@fullpath))
+    @database = if (File.exist?(@fullpath) && File.size(@fullpath) > 0)
                   JSON.parse( File.read(@fullpath) )
                 else
                   []
