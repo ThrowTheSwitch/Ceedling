@@ -1448,20 +1448,20 @@ Example [:flags] YAML blurb
 :flags:
   :release:
     :compile:
-      :main:       # add '-Wall' to compilation of main.c
+      'main':       # add '-Wall' to compilation of main.c
         - -Wall
-      :fan:        # add '--O2' to compilation of fan.c
+      'fan':        # add '--O2' to compilation of fan.c
         - --O2
-      :'test_.+':   # add '-pedantic' to all test-files
+      'test_.+':   # add '-pedantic' to all test-files
         - -pedantic
-      :*:          # add '-foo' to compilation of all files not main.c or fan.c
+      '*':          # add '-foo' to compilation of all files not main.c or fan.c
         - -foo
   :test:
     :compile:
-      :main:       # add '--O1' to compilation of main.c as part of test builds including main.c
+      'main':       # add '--O1' to compilation of main.c as part of test builds including main.c
         - --O1
     :link:
-      :test_main:  # add '--bar --baz' to linking of test_main.exe
+      'test_main':  # add '--bar --baz' to linking of test_main.exe
         - --bar
         - --baz
 ```
