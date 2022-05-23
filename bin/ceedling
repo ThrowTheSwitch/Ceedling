@@ -53,7 +53,7 @@ unless (project_found)
       as_local = true
       begin
         require "yaml"
-        as_local = (YAML.load_file(File.join(name, "project.yml"))[:project][:which_ceedling] != 'gem')
+        as_local = (YAML.unsafe_load_file(File.join(name, "project.yml"))[:project][:which_ceedling] != 'gem')
       rescue
         raise "ERROR: Could not find valid project file '#{yaml_path}'"
       end
@@ -275,7 +275,7 @@ else
   end
 
   #merge in project settings if they can be found here
-  yaml_options = YAML.load_file(main_filepath)
+  yaml_options = YAML.unsafe_load_file(main_filepath)
   if (yaml_options[:paths])
     options[:add_path] = yaml_options[:paths][:tools] || []
   else
