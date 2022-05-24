@@ -102,7 +102,7 @@ class TestIncludesExtractor
 
     includes.each do |include_file|
       # check if include is a mock
-      scan_results = include_file.scan(/(#{mock_prefix}.+)#{'\\'+header_extension}/)
+      scan_results = include_file.scan(/(.*#{mock_prefix}.+)#{'\\'+header_extension}/)
       # add mock to lookup hash
       @mocks[file_key] << scan_results[0][0] if (scan_results.size > 0)
     end

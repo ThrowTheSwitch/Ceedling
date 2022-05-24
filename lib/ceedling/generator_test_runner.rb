@@ -52,7 +52,9 @@ class GeneratorTestRunner
     @test_runner_generator.generate( module_name,
                                      runner_filepath,
                                      test_cases,
-                                     mock_list.map{|f| File.basename(f,'.*')+header_extension},
+                                     mock_list.map{
+                                       |f| @file_path_utils.form_folder_for_mock(f) + File.basename(f,'.*') + header_extension
+                                     },
                                      test_file_includes.map{|f| File.basename(f,'.*')+header_extension})
   end
 end

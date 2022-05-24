@@ -316,7 +316,7 @@ class ConfiguratorBuilder
       in_hash[:collection_paths_include]
 
     paths.each do |path|
-      all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
+      all_headers.include( File.join(path, "**/*#{in_hash[:extension_header]}") )
     end
 
     @file_system_utils.revise_file_list( all_headers, in_hash[:files_include] )
@@ -458,7 +458,6 @@ class ConfiguratorBuilder
              :collection_test_fixture_extra_link_objects => objects
            }
   end
-
 
   private
 
