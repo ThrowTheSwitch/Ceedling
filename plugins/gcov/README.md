@@ -420,6 +420,23 @@ All generated reports may be found in `build/artifacts/gcov/ReportGenerator`.
 ```sh
 ceedling gcov:all utils:gcov
 ```
+## Known issues
+### Empty Gcovr report with Gcovr 4.2+
+- If you are facing an empty gcovr report with version 4.2+ try to specify the folder you want to get a coverage.
+```bash
+├── Includes
+├── Sources
+└── UnitTestFramework
+    └──project.yml
+```
+
+```yaml
+:gcov:
+  :gcovr:
+    # Keep only source files that match this filter. (gcovr --filter).
+    :report_include: "^../Sources.*"
+ ```
+
 
 ## To-Do list
 

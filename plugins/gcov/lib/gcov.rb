@@ -111,7 +111,7 @@ class Gcov < Plugin
     ignore_path_list = @ceedling[:file_system_utils].collect_paths(@ceedling[:configurator].project_config_hash[:gcov_uncovered_ignore_list] || [])
     ignore_uncovered_list = @ceedling[:file_wrapper].instantiate_file_list
     ignore_path_list.each do |path|
-      if File.exists?(path) and not File.directory?(path)
+      if File.exist?(path) and not File.directory?(path)
         ignore_uncovered_list.include(path)
       else
         ignore_uncovered_list.include(File.join(path, "*#{EXTENSION_SOURCE}"))

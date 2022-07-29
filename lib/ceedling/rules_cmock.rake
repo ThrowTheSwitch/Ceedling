@@ -5,5 +5,6 @@ rule(/#{CMOCK_MOCK_PREFIX}[^\/\\]+#{'\\'+EXTENSION_SOURCE}$/ => [
       @ceedling[:file_finder].find_header_input_for_mock_file(task_name)
     end  
   ]) do |mock|
-  @ceedling[:generator].generate_mock(TEST_SYM, mock.source)
+
+  @ceedling[:generator].generate_mock(TEST_SYM, mock)
 end

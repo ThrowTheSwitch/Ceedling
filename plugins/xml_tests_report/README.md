@@ -30,6 +30,9 @@ You can also configure the path that this artifact is stored. This can be done
 by setting `path`. The default is that it will be placed in a subfolder under
 the `build` directory.
 
+If you use some means for continuous integration, you may also want to add
+.xsl file to CI's configuration for proper parsing of .xml report.
+
 ``` YAML
 :xml_tests_report:
   :artifact_filename: report_xunit.xml

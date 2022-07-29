@@ -24,7 +24,7 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
 
       # We double-check that it doesn't already exist, because this process sometimes
       # produces multiple files, but they may have already been flagged as invoked
-      unless (File.exists?(path))
+      unless (File.exist?(path))
 
         # Set Environment Variables, Fetch, and Build
         @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)

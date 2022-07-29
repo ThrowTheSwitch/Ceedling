@@ -9,13 +9,13 @@ module Ceedling
       # Check for local or global version of vendor directory in order to look up versions
       path1 = File.expand_path( File.join("..","..","vendor",path) )
       path2 = File.expand_path( File.join(File.dirname(__FILE__),"..","..","vendor",path) )
-      filename = if (File.exists?(path1))
+      filename = if (File.exist?(path1))
         path1
-      elsif (File.exists?(path2))
+      elsif (File.exist?(path2))
         path2
-      elsif File.exists?(CEEDLING_VENDOR)
+      elsif File.exist?(CEEDLING_VENDOR)
         path3 = File.expand_path( File.join(CEEDLING_VENDOR,path) )
-        if (File.exists?(path3))
+        if (File.exist?(path3))
           path3
         else
           basepath = File.join( CEEDLING_VENDOR, path.split(/\\\//)[0], 'release')
@@ -48,7 +48,7 @@ module Ceedling
       eval("#{name} = '#{a.join(".")}'")
     end
 
-    GEM = "0.31.0"
+    GEM = "0.31.1"
     CEEDLING = GEM
   end
 end

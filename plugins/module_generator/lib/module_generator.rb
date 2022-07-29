@@ -54,15 +54,15 @@ class ModuleGenerator < Plugin
 
       bf = MODULE_GENERATOR_BOILERPLATE_FILES
 
-      if !bf[:src].nil? && File.exists?(bf[:src])
+      if !bf[:src].nil? && File.exist?(bf[:src])
         unity_generator_options[:boilerplates][:src] = File.read(bf[:src])
       end
 
-      if !bf[:inc].nil? && File.exists?(bf[:inc])
+      if !bf[:inc].nil? && File.exist?(bf[:inc])
         unity_generator_options[:boilerplates][:inc] = File.read(bf[:inc])
       end
 
-      if !bf[:tst].nil? && File.exists?(bf[:tst])
+      if !bf[:tst].nil? && File.exist?(bf[:tst])
         unity_generator_options[:boilerplates][:tst] = File.read(bf[:tst])
       end
     end

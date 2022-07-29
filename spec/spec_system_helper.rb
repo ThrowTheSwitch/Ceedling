@@ -147,11 +147,11 @@ module CeedlingTestCases
   def can_create_projects
     @c.with_context do
       Dir.chdir @proj_name do
-        expect(File.exists?("project.yml")).to eq true
-        expect(File.exists?("src")).to eq true
-        expect(File.exists?("test")).to eq true
-        expect(File.exists?("test/support")).to eq true
-        expect(File.exists?("test/support/.gitkeep")).to eq true
+        expect(File.exist?("project.yml")).to eq true
+        expect(File.exist?("src")).to eq true
+        expect(File.exist?("test")).to eq true
+        expect(File.exist?("test/support")).to eq true
+        expect(File.exist?("test/support/.gitkeep")).to eq true
       end
     end
   end
@@ -159,7 +159,7 @@ module CeedlingTestCases
   def has_an_ignore
     @c.with_context do
       Dir.chdir @proj_name do
-        expect(File.exists?(".gitignore")).to eq true
+        expect(File.exist?(".gitignore")).to eq true
       end
     end
   end
@@ -170,9 +170,9 @@ module CeedlingTestCases
       expect($?.exitstatus).to match(0)
       expect(output).to match(/upgraded!/i)
       Dir.chdir @proj_name do
-        expect(File.exists?("project.yml")).to eq true
-        expect(File.exists?("src")).to eq true
-        expect(File.exists?("test")).to eq true
+        expect(File.exist?("project.yml")).to eq true
+        expect(File.exist?("src")).to eq true
+        expect(File.exist?("test")).to eq true
         all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
       end
     end
@@ -181,7 +181,7 @@ module CeedlingTestCases
   def contains_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do
-        expect(File.exists?("vendor/ceedling")).to eq true
+        expect(File.exist?("vendor/ceedling")).to eq true
       end
     end
   end
@@ -189,7 +189,7 @@ module CeedlingTestCases
   def does_not_contain_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do
-        expect(File.exists?("vendor/ceedling")).to eq false
+        expect(File.exist?("vendor/ceedling")).to eq false
       end
     end
   end
@@ -206,7 +206,7 @@ module CeedlingTestCases
   def does_not_contain_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        expect(File.exists?("vendor/ceedling/docs")).to eq false
+        expect(File.exist?("vendor/ceedling/docs")).to eq false
         expect(Dir["vendor/ceedling/**/*.pdf"].length).to eq 0
       end
     end
@@ -458,7 +458,7 @@ module CeedlingTestCases
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
         expect(output).to match(/IGNORED:\s+\d/)
-        expect(File.exists?("build/artifacts/test/test_example_file_verbose.log")).to eq true
+        expect(File.exist?("build/artifacts/test/test_example_file_verbose.log")).to eq true
       end
     end
   end
@@ -521,9 +521,9 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling module:create[myPonies:ponies]`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Generate Complete/i)
-        expect(File.exists?("myPonies/src/ponies.c")).to eq true
-        expect(File.exists?("myPonies/src/ponies.h")).to eq true
-        expect(File.exists?("myPonies/test/test_ponies.c")).to eq true
+        expect(File.exist?("myPonies/src/ponies.c")).to eq true
+        expect(File.exist?("myPonies/src/ponies.h")).to eq true
+        expect(File.exist?("myPonies/test/test_ponies.c")).to eq true
 
         # add module path to project file
         settings = { :paths => { :test => [ "myPonies/test" ],
@@ -541,9 +541,9 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling module:destroy[myPonies:ponies]`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Destroy Complete/i)
-        expect(File.exists?("myPonies/src/ponies.c")).to eq false
-        expect(File.exists?("myPonies/src/ponies.h")).to eq false
-        expect(File.exists?("myPonies/test/test_ponies.c")).to eq false
+        expect(File.exist?("myPonies/src/ponies.c")).to eq false
+        expect(File.exist?("myPonies/src/ponies.h")).to eq false
+        expect(File.exist?("myPonies/test/test_ponies.c")).to eq false
       end
     end
   end
@@ -565,17 +565,17 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling module:create[myPonies:ponies]`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Generate Complete/i)
-        expect(File.exists?("myPonies/src/ponies.c")).to eq true
-        expect(File.exists?("myPonies/inc/ponies.h")).to eq true
-        expect(File.exists?("myPonies/test/test_ponies.c")).to eq true
+        expect(File.exist?("myPonies/src/ponies.c")).to eq true
+        expect(File.exist?("myPonies/inc/ponies.h")).to eq true
+        expect(File.exist?("myPonies/test/test_ponies.c")).to eq true
 
         # Module destruction
         output = `bundle exec ruby -S ceedling module:destroy[myPonies:ponies]`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Destroy Complete/i)
-        expect(File.exists?("myPonies/src/ponies.c")).to eq false
-        expect(File.exists?("myPonies/inc/ponies.h")).to eq false
-        expect(File.exists?("myPonies/test/test_ponies.c")).to eq false
+        expect(File.exist?("myPonies/src/ponies.c")).to eq false
+        expect(File.exist?("myPonies/inc/ponies.h")).to eq false
+        expect(File.exist?("myPonies/test/test_ponies.c")).to eq false
       end
     end
   end
@@ -584,7 +584,7 @@ module CeedlingTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         # add paths to module generator
-        mod_gen = Modulegenerator.new({source_root: "foo/", inc_root: "bar/", test_root: "barz/"})
+        mod_gen = Modulegenerator.new(source_root: "foo/", inc_root: "bar/", test_root: "barz/")
         settings = { :module_generator => { :project_root => mod_gen.project_root,
                                             :source_root => mod_gen.source_root,
                                             :inc_root => mod_gen.inc_root,
@@ -597,17 +597,17 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling module:create[ponies]`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Generate Complete/i)
-        expect(File.exists?("foo/ponies.c")).to eq true
-        expect(File.exists?("bar/ponies.h")).to eq true
-        expect(File.exists?("barz/test_ponies.c")).to eq true
+        expect(File.exist?("foo/ponies.c")).to eq true
+        expect(File.exist?("bar/ponies.h")).to eq true
+        expect(File.exist?("barz/test_ponies.c")).to eq true
 
         # Module destruction
         output = `bundle exec ruby -S ceedling module:destroy[ponies]`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/Destroy Complete/i)
-        expect(File.exists?("foo/ponies.c")).to eq false
-        expect(File.exists?("bar/ponies.h")).to eq false
-        expect(File.exists?("barz/test_ponies.c")).to eq false
+        expect(File.exist?("foo/ponies.c")).to eq false
+        expect(File.exist?("bar/ponies.h")).to eq false
+        expect(File.exist?("barz/test_ponies.c")).to eq false
       end
     end
   end
