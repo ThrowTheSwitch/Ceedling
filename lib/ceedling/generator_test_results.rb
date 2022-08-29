@@ -28,7 +28,7 @@ class GeneratorTestResults
 
     output_string.lines do |line|
       # process unity output
-      case line
+      case line.chomp!
       when /(:IGNORE)/
         elements = extract_line_elements(line, results[:source][:file])
         results[:ignores] << elements[0]
@@ -46,7 +46,7 @@ class GeneratorTestResults
         results[:failures] << elements[0]
         results[:stdout] << elements[1] if (!elements[1].nil?)
       else # collect up all other
-        results[:stdout] << line.chomp
+        results[:stdout] << line
       end
     end
 
