@@ -422,7 +422,7 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'TEST OUTPUT')%>
 %   hash[:results][:stdout].each do |string|
 %     string[:collection].each do |item|
-<%=string[:source][:path]%><%=File::SEPARATOR%><%=string[:source][:file]%>: "<%=item%>"
+<%=string[:source][:file]%>: "<%=item%>"
 %     end
 %   end
 
@@ -431,7 +431,7 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'IGNORED TEST SUMMARY')%>
 %   hash[:results][:ignores].each do |ignore|
 %     ignore[:collection].each do |item|
-<%=ignore[:source][:path]%><%=File::SEPARATOR%><%=ignore[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+<%=ignore[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
 % if (item[:message].length > 0)
 : "<%=item[:message]%>"
 % else
@@ -445,7 +445,7 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'FAILED TEST SUMMARY')%>
 %   hash[:results][:failures].each do |failure|
 %     failure[:collection].each do |item|
-<%=failure[:source][:path]%><%=File::SEPARATOR%><%=failure[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+<%=failure[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
 % if (item[:message].length > 0)
 : "<%=item[:message]%>"
 % else

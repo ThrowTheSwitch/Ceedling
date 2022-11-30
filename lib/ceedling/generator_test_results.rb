@@ -11,8 +11,9 @@ class GeneratorTestResults
 
     results = get_results_structure
 
-    results[:source][:path] = File.dirname(test_file)
-    results[:source][:file] = File.basename(test_file)
+    results[:source][:dirname] = File.dirname(test_file)
+    results[:source][:basename] = File.basename(test_file)
+    results[:source][:file] = test_file
     results[:time] = unity_shell_result[:time] unless unity_shell_result[:time].nil?
 
     # process test statistics
@@ -63,7 +64,7 @@ class GeneratorTestResults
 
   def get_results_structure
     return {
-      :source    => {:path => '', :file => ''},
+      :source    => {:file => '', :dirname => '', :basename => '' },
       :successes => [],
       :failures  => [],
       :ignores   => [],

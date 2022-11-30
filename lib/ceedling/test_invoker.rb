@@ -50,7 +50,7 @@ class TestInvoker
 
     @tests.each do |test|
       # announce beginning of test run
-      header = "Test '#{File.basename(test)}'"
+      header = "Test '#{test}'"
       @streaminator.stdout_puts("\n\n#{header}\n#{'-' * header.length}")
 
       begin
