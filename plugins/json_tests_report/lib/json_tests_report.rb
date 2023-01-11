@@ -47,7 +47,7 @@ class JsonTestsReport < Plugin
       result[:collection].each do |item|
         @test_counter += 1
         retval << {
-          "file" => File.join(result[:source][:path], result[:source][:file]),
+          "file" => result[:source][:file],
           "test" => item[:test],
           "line" => item[:line],
           "message" => item[:message]
@@ -63,7 +63,7 @@ class JsonTestsReport < Plugin
       result[:collection].each do |item|
         @test_counter += 1
         retval << { 
-          "file" => File.join(result[:source][:path], result[:source][:file]),
+          "file" => result[:source][:file],
           "test" => item[:test]
         }
       end
