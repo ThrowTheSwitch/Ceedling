@@ -2233,7 +2233,7 @@ differs whether you are using the gem version or a local Ceedling version.
 
 Gem Version:
 ```ruby
-require('Ceedling')
+require('ceedling')
 Ceedling.load_project
 ```
 
