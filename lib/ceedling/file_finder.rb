@@ -33,7 +33,7 @@ class FileFinder
       mock_input = @cacheinator.diff_cached_test_file( @file_path_utils.form_preprocessed_file_filepath( found_path ) )
     end
 
-    return mock_input
+    return mock_input, found_path
   end
 
 

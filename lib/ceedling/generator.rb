@@ -43,15 +43,15 @@ class Generator
   end
 
   def generate_mock(context, mock)
-    arg_hash = {:header_file => mock.source, :context => context}
+    arg_hash = {:header_file => mock[0].source, :context => context}
     @plugin_manager.pre_mock_generate( arg_hash )
 
     begin
-      folder = @file_path_utils.form_folder_for_mock(mock.name)
+      folder = @file_path_utils.form_folder_for_mock(mock[0].name)
       if folder == ''
         folder = nil
       end
-      @cmock_builder.cmock.setup_mocks( arg_hash[:header_file], folder )
+      @cmock_builder.cmock.setup_mocks( arg_hash[:header_file], mock[0].sources[1], folder )
     rescue
       raise
     ensure
