@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby: [2.5, 2.6, 2.7, '3.0']
+        ruby: [2.7, '3.0'] #ready for '3.1' and '3.2'?
     steps:
       # Install Binutils, Multilib, etc
       - name: Install C dev Tools
