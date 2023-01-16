@@ -53,6 +53,11 @@ unless (project_found)
       as_local = true
       begin
         require "yaml"
+        module YAML
+          class << self
+            alias_method :load, :unsafe_load if YAML.respond_to? :unsafe_load
+          end
+        end
         as_local = (YAML.load_file(File.join(name, "project.yml"))[:project][:which_ceedling] != 'gem')
       rescue
         raise "ERROR: Could not find valid project file '#{yaml_path}'"
@@ -240,6 +245,13 @@ unless (project_found)
 else
   require 'yaml'
   require 'rbconfig'
+
+  # make it so the new restrictions don't break things
+  module YAML
+    class << self
+      alias_method :load, :unsafe_load if YAML.respond_to? :unsafe_load
+    end
+  end
 
   #determine platform
   platform = begin
