@@ -112,7 +112,9 @@ class SystemContext
 
   def backup_env
     # Force a deep clone. Hacktacular, but works.
-    @_env = YAML.load(ENV.to_hash.to_yaml)
+
+    yaml_wrapper = YamlWrapper.new
+    @_env = yaml_wrapper.load_string(ENV.to_hash.to_yaml)
   end
 
   def reduce_env(destroy_keys=[])

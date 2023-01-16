@@ -28,9 +28,9 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
     "source_code_uri"   => "https://github.com/ThrowTheSwitch/Ceedling"
   }
   
-  s.required_ruby_version = ">= 2.4.0"
+  s.required_ruby_version = ">= 2.7.0"
   
-  s.add_dependency "thor", "~> 0.14"
+  s.add_dependency "thor", ">= 0.14"
   s.add_dependency "rake", ">= 12", "< 14"
   s.add_dependency "deep_merge", "~> 1.2"
   s.add_dependency "constructor", "~> 2"

@@ -17,15 +17,15 @@ def is_windows?
   return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
 end
 
+def here
+  File.join(File.dirname(__FILE__),"/..")
+end
+
 unless (project_found)
 #===================================== We Do Not Have A Project ================================================
 
   puts "Welcome to Ceedling!"
   require 'thor'
-
-  def here
-    File.dirname(__FILE__) + "/.."
-  end
 
   class CeedlingTasks < Thor
     include Thor::Actions
@@ -52,8 +52,8 @@ unless (project_found)
     def upgrade(name, silent = false)
       as_local = true
       begin
-        require "yaml"
-        as_local = (YAML.load_file(File.join(name, "project.yml"))[:project][:which_ceedling] != 'gem')
+        require File.join(here,"lib","ceedling","yaml_wrapper.rb")
+        as_local = (YamlWrapper.new.load(File.join(name, "project.yml"))[:project][:which_ceedling] != 'gem')
       rescue
         raise "ERROR: Could not find valid project file '#{yaml_path}'"
       end
@@ -238,7 +238,7 @@ unless (project_found)
 
 #===================================== We Have A Project Already ================================================
 else
-  require 'yaml'
+  require File.join(here,"lib","ceedling","yaml_wrapper.rb")
   require 'rbconfig'
 
   #determine platform
@@ -275,7 +275,7 @@ else
   end
 
   #merge in project settings if they can be found here
-  yaml_options = YAML.load_file(main_filepath)
+  yaml_options = YamlWrapper.new.load(main_filepath)
   if (yaml_options[:paths])
     options[:add_path] = yaml_options[:paths][:tools] || []
   else
