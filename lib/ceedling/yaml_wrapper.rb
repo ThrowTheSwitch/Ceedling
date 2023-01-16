@@ -7,17 +7,17 @@ class YamlWrapper
   def load(filepath)
     source = ERB.new(File.read(filepath)).result
     begin
-      return YAML.load(source, aliases: true, **options)
+      return YAML.load(source, aliases: true)
     rescue ArgumentError
-      return YAML.load(source, **options)
+      return YAML.load(source)
     end
   end
 
   def load_string(source)
     begin
-      return YAML.load(source, aliases: true, **options)
+      return YAML.load(source, aliases: true)
     rescue ArgumentError
-      return YAML.load(source, **options)
+      return YAML.load(source)
     end
   end
 
