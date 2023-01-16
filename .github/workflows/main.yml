@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby: [2.5, 2.6, 2.7, '3.0']
+        ruby: [2.6, 2.7, 3.0]
     steps:
       # Install Binutils, Multilib, etc
       - name: Install C dev Tools
@@ -45,6 +45,7 @@ jobs:
       # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
       - name: Install Ruby Testing Tools
         run: |
+          gem update --system 3.2.3
           gem install rspec
           gem install rubocop -v 0.57.2
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
