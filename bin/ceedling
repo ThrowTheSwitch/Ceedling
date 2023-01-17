@@ -18,7 +18,7 @@ def is_windows?
 end
 
 def here
-  File.join(File.dirname(__FILE__),"/..")
+  File.join(File.expand_path(File.dirname(__FILE__)),"/..")
 end
 
 unless (project_found)
@@ -51,9 +51,10 @@ unless (project_found)
     desc "upgrade PROJECT_NAME", "upgrade ceedling for a project (not req'd if gem used)"
     def upgrade(name, silent = false)
       as_local = true
+      yaml_path = File.join(name, "project.yml")
       begin
         require File.join(here,"lib","ceedling","yaml_wrapper.rb")
-        as_local = (YamlWrapper.new.load(File.join(name, "project.yml"))[:project][:which_ceedling] != 'gem')
+        as_local = (YamlWrapper.new.load(yaml_path)[:project][:which_ceedling] != 'gem')
       rescue
         raise "ERROR: Could not find valid project file '#{yaml_path}'"
       end

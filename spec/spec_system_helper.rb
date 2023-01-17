@@ -180,6 +180,14 @@ module CeedlingTestCases
     end
   end
 
+  def cannot_upgrade_non_existing_project
+    @c.with_context do
+      output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
+      expect($?.exitstatus).to match(1)
+      expect(output).to match(/rescue in upgrade/i)
+    end
+  end
+
   def contains_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do

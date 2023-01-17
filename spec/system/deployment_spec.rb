@@ -147,6 +147,10 @@ describe "Ceedling" do
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
+  describe "Cannot ugrade a non existing project" do
+    it { cannot_upgrade_non_existing_project }
+  end
+
   describe "deployed as a gem" do
     before do
       @c.with_context do
