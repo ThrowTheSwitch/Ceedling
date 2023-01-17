@@ -924,6 +924,13 @@ are easily capable of building a final release binary artifact
 (i.e. non test code; the thing that is your final working software
 that you execute on target hardware).
 
+* `use_backtrace_gdb_reporter`:
+  Set this value to true if you project use gcc compiler and you want to collect
+  backtrace from test runners which fail with **Segmentation fault** error.
+  The .fail files will contain testsuite with information, which test failed.
+  Backtrace is fully integrated with **junit_tests_report** plugin.
+
+  **Default**: FALSE
 
 * `output`:
 
