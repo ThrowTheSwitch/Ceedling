@@ -46,6 +46,9 @@ describe "Ceedling" do
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
+
+    it { test_run_of_projects_fail_because_of_sigsegv_without_report }
+    it { test_run_of_projects_fail_because_of_sigsegv_with_report }
   end
 
   describe "deployed in a project's `vendor` directory with gitignore." do

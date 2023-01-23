@@ -682,4 +682,55 @@ module CeedlingTestCases
     end
   end
 
+  def test_run_of_projects_fail_because_of_sigsegv_without_report
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Segmentation fault \(core dumped\)/)
+        expect(output).to match(/No tests executed./)
+        expect(!File.exists?('./build/test/results/test_add.fail'))
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        add_line = false
+        updated_prj_yml = []
+        File.read('project.yml').split("\n").each do |line|
+          if line =~ /\:project\:/
+            add_line = true
+            updated_prj_yml.append(line)
+          else
+            if add_line
+              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
+              add_line = false
+            end
+            updated_prj_yml.append(line)
+          end
+        end
+
+        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Program received signal SIGSEGV, Segmentation fault./)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exists?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
 end
