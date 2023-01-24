@@ -85,13 +85,22 @@ unless (project_found)
           [source_path, test_path, test_support_path].each do |d|
             FileUtils.mkdir_p d
           end
+        else
+          prj_yaml = YamlWrapper.new.load(File.join(name, 'project.yml'))
+          test_support_path = if prj_yaml.key?(:path) && \
+                                 prj_yaml[:path].key?(:support)
+                                prj_yaml.key?[:path][:support]
+                              else
+                                ''
+                              end
         end
 
         # Genarate gitkeep in test support path
-        FileUtils.touch(File.join(test_support_path, '.gitkeep'))
+        FileUtils.touch(File.join(test_support_path, '.gitkeep')) unless \
+          test_support_path.empty?
 
         # If documentation requested, create a place to dump them and do so
-        doc_path = ""
+        doc_path = ''
         if use_docs
           doc_path = use_gem ? File.join(name, 'docs') : File.join(ceedling_path, 'docs')
           FileUtils.mkdir_p doc_path
