@@ -38,6 +38,7 @@ describe "Ceedling" do
     it { can_test_projects_with_fail_default }
     it { can_test_projects_with_compile_error }
     it { can_test_projects_with_both_mock_and_real_header }
+    it { can_test_projects_with_success_when_space_appears_between_hash_and_include }
     it { uses_raw_output_report_plugin }
     it { can_use_the_module_plugin }
     it { can_use_the_module_plugin_path_extension }
@@ -49,6 +50,7 @@ describe "Ceedling" do
 
     it { test_run_of_projects_fail_because_of_sigsegv_without_report }
     it { test_run_of_projects_fail_because_of_sigsegv_with_report }
+
   end
 
   describe "deployed in a project's `vendor` directory with gitignore." do
