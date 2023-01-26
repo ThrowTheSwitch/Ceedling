@@ -16,7 +16,8 @@ class Generator
               :file_path_utils,
               :streaminator,
               :plugin_manager,
-              :file_wrapper
+              :file_wrapper,
+              :unity_utils
 
 
   def generate_shallow_includes_list(context, file)
@@ -169,6 +170,7 @@ class Generator
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results
     command = @tool_executor.build_command_line(arg_hash[:tool], [], arg_hash[:executable])
+    command[:line] += @unity_utils.collect_test_runner_additional_args
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )

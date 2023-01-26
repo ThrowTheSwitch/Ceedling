@@ -312,6 +312,10 @@ else
         options[:list_tasks] = true
       when /^project:(\w+)/
         ENV['CEEDLING_USER_PROJECT_FILE'] = "#{$1}.yml"
+      when /^--test_case=(\w+)/
+        ENV['CEEDLING_INCLUDE_TEST_CASE_NAME'] = $1
+      when /^--exclude_test_case=(\w+)/
+        ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'] = $1
       else
         options[:args].push(v)
     end

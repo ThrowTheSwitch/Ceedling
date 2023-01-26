@@ -580,6 +580,134 @@ module CeedlingTestCases
     end
   end
 
+  def can_run_single_test_with_full_test_case_name_from_test_file_with_success_cmdline_args_are_enabled
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=test_add_numbers_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  def can_run_single_test_with_partiall_test_case_name_from_test_file_with_enabled_cmdline_args_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  def none_of_test_is_executed_if_test_case_name_passed_does_not_fit_defined_in_test_file_and_cmdline_args_are_enabled
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=zumzum 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/No tests executed./)
+      end
+    end
+  end
+
+  def none_of_test_is_executed_if_test_case_name_and_exclude_test_case_name_is_the_same
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers --exclude_test_case=_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/No tests executed./)
+      end
+    end
+  end
+
+  def exlcude_test_case_name_filter_works_and_only_one_test_case_is_executed
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+1/)
+      end
+    end
+  end
+
+  def run_all_test_when_test_case_name_is_passed_but_cmdline_args_are_disabled_with_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+1/)
+        expect(output).to match(/please add `:cmdline_args` under :test_runner option/)
+      end
+    end
+  end
+
   def can_use_the_module_plugin_with_include_path
     @c.with_context do
       Dir.chdir @proj_name do
