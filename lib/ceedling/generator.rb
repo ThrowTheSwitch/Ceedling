@@ -46,11 +46,11 @@ class Generator
 
   def generate_mock(context, mock)
     arg_hash = if mock.is_a? String
-      mock_name = mock.name
-      {:header_file => mock.source, :context => context}
-    else
       mock_name = @file_finder.find_header_input_for_mock_file(mock)
       {:header_file => mock, :context => context }
+    else
+      mock_name = mock.name
+      {:header_file => mock.source, :context => context}
     end
     @plugin_manager.pre_mock_generate( arg_hash )
 
