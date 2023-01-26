@@ -38,6 +38,10 @@ project_file_loader:
     - system_wrapper
     - file_wrapper
 
+unity_utils:
+  compose:
+     - configurator
+
 project_config_manager:
   compose:
     - cacheinator
@@ -196,6 +200,7 @@ generator:
     - streaminator
     - plugin_manager
     - file_wrapper
+    - unity_utils
 
 generator_helper:
   compose:

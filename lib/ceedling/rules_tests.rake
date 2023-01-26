@@ -58,7 +58,7 @@ end
 
 namespace TEST_SYM do
   # use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
-
+  @ceedling[:unity_utils].create_test_runner_additional_args
   rule(/^#{TEST_TASK_ROOT}\S+$/ => [ # test task names by regex
       proc do |task_name|
         test = task_name.sub(/#{TEST_TASK_ROOT}/, '')
