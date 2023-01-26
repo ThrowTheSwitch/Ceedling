@@ -666,7 +666,7 @@ module CeedlingTestCases
     end
   end
 
-  def exlcude_test_case_name_filter_works_and_only_one_test_case_is_executed
+  def exclude_test_case_name_filter_works_and_only_one_test_case_is_executed
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
