@@ -38,6 +38,7 @@ describe "Ceedling" do
     it { can_test_projects_with_fail_default }
     it { can_test_projects_with_compile_error }
     it { can_test_projects_with_both_mock_and_real_header }
+    it { can_test_projects_with_success_when_space_appears_between_hash_and_include }
     it { uses_raw_output_report_plugin }
     it { can_use_the_module_plugin }
     it { can_use_the_module_plugin_path_extension }
@@ -46,7 +47,8 @@ describe "Ceedling" do
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
-
+    it { test_run_of_projects_fail_because_of_sigsegv_without_report }
+    it { test_run_of_projects_fail_because_of_sigsegv_with_report }
     it { can_run_single_test_with_full_test_case_name_from_test_file_with_success_cmdline_args_are_enabled }
     it { can_run_single_test_with_partiall_test_case_name_from_test_file_with_enabled_cmdline_args_success }
     it { exlcude_test_case_name_filter_works_and_only_one_test_case_is_executed }

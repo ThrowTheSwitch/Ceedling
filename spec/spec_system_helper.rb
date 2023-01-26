@@ -832,4 +832,89 @@ module CeedlingTestCases
     end
   end
 
+  def test_run_of_projects_fail_because_of_sigsegv_without_report
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Segmentation fault \(core dumped\)/)
+        expect(output).to match(/No tests executed./)
+        expect(!File.exists?('./build/test/results/test_add.fail'))
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        add_line = false
+        updated_prj_yml = []
+        File.read('project.yml').split("\n").each do |line|
+          if line =~ /\:project\:/
+            add_line = true
+            updated_prj_yml.append(line)
+          else
+            if add_line
+              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
+              add_line = false
+            end
+            updated_prj_yml.append(line)
+          end
+        end
+
+        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Program received signal SIGSEGV, Segmentation fault./)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exists?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def can_test_projects_with_success_when_space_appears_between_hash_and_include
+    # test case cover issue described in https://github.com/ThrowTheSwitch/Ceedling/issues/588
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path('test_example_file_success.c'), 'test/'
+
+        add_line = false
+        updated_test_file = []
+        File.read(File.join('test','test_example_file_success.c')).split("\n").each do |line|
+          if line =~ /#include "unity.h"/
+            add_line = true
+            updated_test_file.append(line)
+          else
+            if add_line
+              updated_test_file.append('# include "unity.h"')
+              add_line = false
+            end
+            updated_test_file.append(line)
+          end
+        end
+
+        File.write(File.join('test','test_example_file_success.c'), updated_test_file.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
 end
