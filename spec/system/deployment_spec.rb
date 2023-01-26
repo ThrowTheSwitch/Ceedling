@@ -125,6 +125,7 @@ describe "Ceedling" do
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
 
     it { can_upgrade_projects }
+    it { can_upgrade_projects_even_if_test_support_folder_does_not_exists }
     it { contains_a_vendor_directory }
     it { does_not_contain_documentation }
     it { can_fetch_non_project_help }

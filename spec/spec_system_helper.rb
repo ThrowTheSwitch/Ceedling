@@ -180,6 +180,28 @@ module CeedlingTestCases
     end
   end
 
+  def can_upgrade_projects_even_if_test_support_folder_does_not_exists
+    @c.with_context do
+      output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
+      FileUtils.rm_rf("#{@proj_name}/test/support")
+
+      updated_prj_yml = []
+      File.read("#{@proj_name}/project.yml").split("\n").each do |line|
+        updated_prj_yml.append(line) unless line =~ /support/
+      end
+      File.write("#{@proj_name}/project.yml", updated_prj_yml.join("\n"), mode: 'w')
+
+      expect($?.exitstatus).to match(0)
+      expect(output).to match(/upgraded!/i)
+      Dir.chdir @proj_name do
+        expect(File.exist?("project.yml")).to eq true
+        expect(File.exist?("src")).to eq true
+        expect(File.exist?("test")).to eq true
+        all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
+      end
+    end
+  end
+
   def cannot_upgrade_non_existing_project
     @c.with_context do
       output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
