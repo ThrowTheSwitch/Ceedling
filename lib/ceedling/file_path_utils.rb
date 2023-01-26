@@ -174,18 +174,32 @@ class FilePathUtils
     return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{@configurator.project_test_build_output_c_path}/%n#{@configurator.extension_object}")
   end
 
+  def form_folder_for_mock(mock)
+    path = File.dirname(mock).sub(/^#{@configurator.cmock_mock_path}[\\\/]?/, '')
+    
+    # If we dont have a path then File.dirname() returns '.' however, we cannot return this because it would break
+    # dependency handling.
+    return '' if path == '.'
+
+    if path != ''
+      path = File.join(path, "")
+    end
+    return path
+  end
+
   def form_preprocessed_mockable_headers_filelist(mocks)
     list = @file_wrapper.instantiate_file_list(mocks)
     headers = list.map do |file|
+      path_name   = form_folder_for_mock(file)
       module_name = File.basename(file).sub(/^#{@configurator.cmock_mock_prefix}/, '').sub(/\.[a-zA-Z]+$/,'')
-      "#{@configurator.project_test_preprocess_files_path}/#{module_name}#{@configurator.extension_header}"
+      "#{@configurator.project_test_preprocess_files_path}/#{path_name}#{module_name}#{@configurator.extension_header}"
     end
     return headers
   end
 
   def form_mocks_source_filelist(mocks)
     list = (@file_wrapper.instantiate_file_list(mocks))
-    sources = list.map{|file| "#{@configurator.cmock_mock_path}/#{file}#{@configurator.extension_source}"}
+    sources = list.map{|file| "#{@configurator.cmock_mock_path}/#{form_folder_for_mock(file)}#{File.basename(file)}#{@configurator.extension_source}"}
     return sources
   end
 

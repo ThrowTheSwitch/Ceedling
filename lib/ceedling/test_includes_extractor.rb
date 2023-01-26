@@ -56,7 +56,7 @@ class TestIncludesExtractor
 
     contents.split("\n").each do |line|
       # look for include statement
-      scan_results = line.scan(/#include\s+\"\s*(.+#{'\\'+header_extension})\s*\"/)
+      scan_results = line.scan(/#\s*include\s+\"\s*(.+#{'\\'+header_extension})\s*\"/)
 
       includes << scan_results[0][0] if (scan_results.size > 0)
 
@@ -99,7 +99,7 @@ class TestIncludesExtractor
     # add includes to lookup hash
     includes.each do |include_file|
       # check if include is a mock
-      scan_results = include_file.scan(/(#{mock_prefix}.+)#{'\\'+header_extension}/)
+      scan_results = include_file.scan(/(.*#{mock_prefix}.+)#{'\\'+header_extension}/)
       # add mock to lookup hash
       mocks << scan_results[0][0] if (scan_results.size > 0)
     end

@@ -36,7 +36,7 @@ class TeamcityTestsReport < Plugin
     results[:failures].each do |failure|
       failure[:collection].each do |test|
         teamcity_message "testStarted name='#{test[:test]}'"
-        teamcity_message "testFailed name='#{test[:test]}' message='#{escape(test[:message])}' details='File: #{failure[:source][:path]}/#{failure[:source][:file]} Line: #{test[:line]}'"
+        teamcity_message "testFailed name='#{test[:test]}' message='#{escape(test[:message])}' details='File: #{failure[:source][:file]} Line: #{test[:line]}'"
         teamcity_message "testFinished name='#{test[:test]}' duration='#{avg_duration}'"
       end
     end

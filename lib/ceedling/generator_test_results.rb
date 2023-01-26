@@ -11,8 +11,9 @@ class GeneratorTestResults
 
     results = get_results_structure
 
-    results[:source][:path] = File.dirname(test_file)
-    results[:source][:file] = File.basename(test_file)
+    results[:source][:dirname] = File.dirname(test_file)
+    results[:source][:basename] = File.basename(test_file)
+    results[:source][:file] = test_file
     results[:time] = unity_shell_result[:time] unless unity_shell_result[:time].nil?
 
     # process test statistics
@@ -21,6 +22,23 @@ class GeneratorTestResults
       results[:counts][:failed] = $2.to_i
       results[:counts][:ignored] = $3.to_i
       results[:counts][:passed] = (results[:counts][:total] - results[:counts][:failed] - results[:counts][:ignored])
+    else
+      if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+        # Accessing this code block we expect failure during test execution
+        # which should be connected with SIGSEGV
+        results[:counts][:total] = 1   # Set to one as the amount of test is unknown in segfault, and one of the test is failing
+        results[:counts][:failed] = 1  # Set to one as the one of tests is failing with segfault
+        results[:counts][:ignored] = 0
+        results[:counts][:passed] = 0
+
+        #Collect function name which cause issue and line number
+        if unity_shell_result[:output] =~ /\s"(.*)",\sline_num=(\d*)/
+          results[:failures] << { :test => $1, :line =>$2, :message => unity_shell_result[:output], :unity_test_time => unity_shell_result[:time]}
+        else
+          #In case if regex fail write default values
+          results[:failures] << { :test => '??', :line =>-1, :message => unity_shell_result[:output], :unity_test_time => unity_shell_result[:time]}
+        end
+      end
     end
 
     # remove test statistics lines
@@ -28,7 +46,7 @@ class GeneratorTestResults
 
     output_string.lines do |line|
       # process unity output
-      case line
+      case line.chomp!
       when /(:IGNORE)/
         elements = extract_line_elements(line, results[:source][:file])
         results[:ignores] << elements[0]
@@ -46,7 +64,9 @@ class GeneratorTestResults
         results[:failures] << elements[0]
         results[:stdout] << elements[1] if (!elements[1].nil?)
       else # collect up all other
-        results[:stdout] << line.chomp
+        if !@configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+          results[:stdout] << line.chomp
+        end
       end
     end
 
@@ -63,7 +83,7 @@ class GeneratorTestResults
 
   def get_results_structure
     return {
-      :source    => {:path => '', :file => ''},
+      :source    => {:file => '', :dirname => '', :basename => '' },
       :successes => [],
       :failures  => [],
       :ignores   => [],

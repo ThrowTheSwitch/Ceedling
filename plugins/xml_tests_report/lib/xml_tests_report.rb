@@ -56,7 +56,7 @@ class XmlTestsReport < Plugin
 
     results.each do |result|
       result[:collection].each do |item|
-        filename = File.join(result[:source][:path], result[:source][:file])
+        filename = result[:source][:file]
 
         stream.puts "\t\t<Test id=\"#{@test_counter}\">"
         stream.puts "\t\t\t<Name>#{filename}::#{item[:test]}</Name>"
@@ -84,8 +84,9 @@ class XmlTestsReport < Plugin
 
     results.each do |result|
       result[:collection].each do |item|
+ 		filename = result[:source][:file]
         stream.puts "\t\t<Test id=\"#{@test_counter}\">"
-        stream.puts "\t\t\t<Name>#{File.join(result[:source][:path], result[:source][:file])}::#{item[:test]}</Name>"
+        stream.puts "\t\t\t<Name>#{filename}::#{item[:test]}</Name>"
         stream.puts "\t\t</Test>"
         @test_counter += 1
       end

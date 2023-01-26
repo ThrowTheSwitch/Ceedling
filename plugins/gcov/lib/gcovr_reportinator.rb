@@ -29,7 +29,18 @@ class GcovrReportinator
       STDOUT.flush
 
       # Generate the report(s).
-      run(args)
+      # only if one of the previous done checks for:
+      #
+      # - args_builder_cobertura
+      # - args_builder_sonarqube
+      # - args_builder_json
+      # - args_builder_html
+      #
+      # updated the args variable. In other case, no need to run GCOVR
+      # for current setup.
+      if !(args == args_common)
+        run(args)
+      end
     else
       # gcovr version 4.1 and earlier supports HTML and Cobertura XML reports.
       # It does not support SonarQube and JSON reports.

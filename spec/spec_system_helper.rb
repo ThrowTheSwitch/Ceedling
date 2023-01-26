@@ -112,7 +112,9 @@ class SystemContext
 
   def backup_env
     # Force a deep clone. Hacktacular, but works.
-    @_env = YAML.load(ENV.to_hash.to_yaml)
+
+    yaml_wrapper = YamlWrapper.new
+    @_env = yaml_wrapper.load_string(ENV.to_hash.to_yaml)
   end
 
   def reduce_env(destroy_keys=[])
@@ -175,6 +177,36 @@ module CeedlingTestCases
         expect(File.exist?("test")).to eq true
         all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
       end
+    end
+  end
+
+  def can_upgrade_projects_even_if_test_support_folder_does_not_exists
+    @c.with_context do
+      output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
+      FileUtils.rm_rf("#{@proj_name}/test/support")
+
+      updated_prj_yml = []
+      File.read("#{@proj_name}/project.yml").split("\n").each do |line|
+        updated_prj_yml.append(line) unless line =~ /support/
+      end
+      File.write("#{@proj_name}/project.yml", updated_prj_yml.join("\n"), mode: 'w')
+
+      expect($?.exitstatus).to match(0)
+      expect(output).to match(/upgraded!/i)
+      Dir.chdir @proj_name do
+        expect(File.exist?("project.yml")).to eq true
+        expect(File.exist?("src")).to eq true
+        expect(File.exist?("test")).to eq true
+        all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
+      end
+    end
+  end
+
+  def cannot_upgrade_non_existing_project
+    @c.with_context do
+      output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
+      expect($?.exitstatus).to match(1)
+      expect(output).to match(/rescue in upgrade/i)
     end
   end
 
@@ -548,6 +580,134 @@ module CeedlingTestCases
     end
   end
 
+  def can_run_single_test_with_full_test_case_name_from_test_file_with_success_cmdline_args_are_enabled
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=test_add_numbers_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  def can_run_single_test_with_partiall_test_case_name_from_test_file_with_enabled_cmdline_args_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  def none_of_test_is_executed_if_test_case_name_passed_does_not_fit_defined_in_test_file_and_cmdline_args_are_enabled
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=zumzum 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/No tests executed./)
+      end
+    end
+  end
+
+  def none_of_test_is_executed_if_test_case_name_and_exclude_test_case_name_is_the_same
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers --exclude_test_case=_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/No tests executed./)
+      end
+    end
+  end
+
+  def exlcude_test_case_name_filter_works_and_only_one_test_case_is_executed
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        enable_unity_extra_args = "\n:test_runner:\n"\
+                                  "  :cmdline_args: true\n"
+        fake_prj_yml= File.read('project.yml').split("\n")
+        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
+        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+1/)
+      end
+    end
+  end
+
+  def run_all_test_when_test_case_name_is_passed_but_cmdline_args_are_disabled_with_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+1/)
+        expect(output).to match(/please add `:cmdline_args` under :test_runner option/)
+      end
+    end
+  end
+
   def can_use_the_module_plugin_with_include_path
     @c.with_context do
       Dir.chdir @proj_name do
@@ -672,4 +832,89 @@ module CeedlingTestCases
     end
   end
 
+  def test_run_of_projects_fail_because_of_sigsegv_without_report
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Segmentation fault \(core dumped\)/)
+        expect(output).to match(/No tests executed./)
+        expect(!File.exists?('./build/test/results/test_add.fail'))
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        add_line = false
+        updated_prj_yml = []
+        File.read('project.yml').split("\n").each do |line|
+          if line =~ /\:project\:/
+            add_line = true
+            updated_prj_yml.append(line)
+          else
+            if add_line
+              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
+              add_line = false
+            end
+            updated_prj_yml.append(line)
+          end
+        end
+
+        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Program received signal SIGSEGV, Segmentation fault./)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exists?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def can_test_projects_with_success_when_space_appears_between_hash_and_include
+    # test case cover issue described in https://github.com/ThrowTheSwitch/Ceedling/issues/588
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path('test_example_file_success.c'), 'test/'
+
+        add_line = false
+        updated_test_file = []
+        File.read(File.join('test','test_example_file_success.c')).split("\n").each do |line|
+          if line =~ /#include "unity.h"/
+            add_line = true
+            updated_test_file.append(line)
+          else
+            if add_line
+              updated_test_file.append('# include "unity.h"')
+              add_line = false
+            end
+            updated_test_file.append(line)
+          end
+        end
+
+        File.write(File.join('test','test_example_file_success.c'), updated_test_file.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
 end

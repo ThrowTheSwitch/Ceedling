@@ -326,6 +326,59 @@ Ceedling (more on this later).
   whose path contains foo/bar. Note: both directory separator characters
   / and \ are valid.
 
+* `ceedling test:* --test_case=<test_case_name> `
+  Execute test case which match **test_case_name**. Option available only after 
+  setting up **cmdline_args** to true under **test_runner** in project.yml:
+    
+    ```
+    :test_runner:
+      :cmdline_args: true
+    ```
+
+  For instance, if you have file test_gpio.c with defined 3 tests:
+
+    - test_gpio_start
+    - test_gpio_configure_proper
+    - test_gpio_configure_fail_pin_not_allowed
+
+  and you want to run only configure tests, you can call:
+
+    ```ceedling test:gpio --test_case=configure```
+
+    ---
+  **Limitation**
+
+    The Unity implementation use test case name as substring which will be search in your test case names. If you pass only **gpio** and your file under test contains **gpio** in the name, it will run all tests from it. This is connected with the logic, how Unity generates test_<file_name_runner.c> files. In such case, it is suggested to use full name of test case.
+
+  ---
+
+* `ceedling test:* --exclude_test_case=<test_case_name> `
+  Execute test case which does not match **test_case_name**. Option available only after 
+  setting up **cmdline_args** to true under **test_runner** in project.yml:
+    
+    ```
+    :test_runner:
+      :cmdline_args: true
+    ```
+
+  For instance, if you have file test_gpio.c with defined 3 tests:
+
+    - test_gpio_start
+    - test_gpio_configure_proper
+    - test_gpio_configure_fail_pin_not_allowed
+
+  and you want to run only start tests, you can call:
+
+    ```ceedling test:gpio --exclude_test_case=configure```
+
+  ---
+  **Limitation**
+
+    The Unity implementation use test case name as substring which will be search in your test case names. If you pass only **gpio** and your file under test contains **gpio** in the name, it will run all tests from it. This is connected with the logic, how Unity generates test_<file_name_runner.c> files. In such case, it is suggested to use full name of test case.
+
+  ---
+
+
 * `ceedling release`:
 
   Build all source into a release artifact (if the release build option
@@ -924,6 +977,13 @@ are easily capable of building a final release binary artifact
 (i.e. non test code; the thing that is your final working software
 that you execute on target hardware).
 
+* `use_backtrace_gdb_reporter`:
+  Set this value to true if you project use gcc compiler and you want to collect
+  backtrace from test runners which fail with **Segmentation fault** error.
+  The .fail files will contain testsuite with information, which test failed.
+  Backtrace is fully integrated with **junit_tests_report** plugin.
+
+  **Default**: FALSE
 
 * `output`:
 
@@ -2233,7 +2293,7 @@ differs whether you are using the gem version or a local Ceedling version.
 
 Gem Version:
 ```ruby
-require('Ceedling')
+require('ceedling')
 Ceedling.load_project
 ```
 

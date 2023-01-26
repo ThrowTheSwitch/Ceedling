@@ -109,7 +109,7 @@ class FileFinder
         found_file =
           @file_finder_helper.find_file_in_collection(
             source_file,
-            @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '*') ),
+            @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '**/*.*') ),
             complain,
             file_path)
 
@@ -120,6 +120,7 @@ class FileFinder
             @configurator.collection_release_existing_compilation_input,
             complain,
             file_path)
+          
       else
         temp_complain = (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY) ? :ignore : complain
         found_file =

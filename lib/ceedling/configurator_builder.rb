@@ -320,7 +320,7 @@ class ConfiguratorBuilder
       in_hash[:collection_paths_include]
 
     paths.each do |path|
-      all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
+      all_headers.include( File.join(path, "**/*#{in_hash[:extension_header]}") )
     end
 
     @file_system_utils.revise_file_list( all_headers, in_hash[:files_include] )
@@ -404,8 +404,13 @@ class ConfiguratorBuilder
 
   def collect_test_and_vendor_defines(in_hash)
     defines = in_hash[:defines_test].clone
+
+    require_relative 'unity_utils.rb'
+    cmd_line_define = UnityUtils.update_defines_if_args_enables(in_hash)
+
     vendor_defines = get_vendor_defines(in_hash)
     defines.concat(vendor_defines) if vendor_defines
+    defines.concat(cmd_line_define) if cmd_line_define
 
     return {:collection_defines_test_and_vendor => defines}
   end
@@ -462,7 +467,6 @@ class ConfiguratorBuilder
              :collection_test_fixture_extra_link_objects => objects
            }
   end
-
 
   private
 
