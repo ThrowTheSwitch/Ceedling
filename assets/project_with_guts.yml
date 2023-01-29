@@ -6,14 +6,15 @@
 # This sample, therefore, only demonstrates running a collection of unit tests.
 
 :project:
-  :use_exceptions: FALSE
   :use_test_preprocessor: TRUE
   :use_auxiliary_dependencies: TRUE
   :build_root: build
-#  :release_build: TRUE
+  :release_build: FALSE
   :test_file_prefix: test_
   :which_ceedling: vendor/ceedling
   :ceedling_version: '?'
+  :test_threads: 8
+  :compile_threads: 8
   :default_tasks:
     - test:all
 
@@ -24,7 +25,7 @@
 #  :output: MyApp.out
 #  :use_assembly: FALSE
 
-:environment:
+:environment: []
 
 :extension:
   :executable: .out

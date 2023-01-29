@@ -51,7 +51,7 @@ describe "Ceedling" do
     it { test_run_of_projects_fail_because_of_sigsegv_with_report }
     it { can_run_single_test_with_full_test_case_name_from_test_file_with_success_cmdline_args_are_enabled }
     it { can_run_single_test_with_partiall_test_case_name_from_test_file_with_enabled_cmdline_args_success }
-    it { exlcude_test_case_name_filter_works_and_only_one_test_case_is_executed }
+    it { exclude_test_case_name_filter_works_and_only_one_test_case_is_executed }
     it { none_of_test_is_executed_if_test_case_name_passed_does_not_fit_defined_in_test_file_and_cmdline_args_are_enabled }
     it { none_of_test_is_executed_if_test_case_name_and_exclude_test_case_name_is_the_same }
     it { run_all_test_when_test_case_name_is_passed_but_cmdline_args_are_disabled_with_success }

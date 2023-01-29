@@ -95,7 +95,6 @@ class UnityUtils
   # Print on output console warning about lack of support for single test run
   # if cmdline_args is not set to true in project.yml file, that
   def print_warning_about_not_enabled_cmdline_args
-    puts(format(@test_runner_disabled_replay, opt: @not_supported)) unless \
-      @configurator.project_config_hash[:test_runner_cmdline_args]
+    puts(format(@test_runner_disabled_replay, opt: @not_supported)) unless @not_supported.empty?
   end
 end

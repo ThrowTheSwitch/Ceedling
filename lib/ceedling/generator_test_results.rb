@@ -43,21 +43,20 @@ class GeneratorTestResults
 
     # remove test statistics lines
     output_string = unity_shell_result[:output].sub(TEST_STDOUT_STATISTICS_PATTERN, '')
-
     output_string.lines do |line|
       # process unity output
-      case line.chomp!
+      case line.chomp
       when /(:IGNORE)/
         elements = extract_line_elements(line, results[:source][:file])
-        results[:ignores] << elements[0]
+        results[:ignores] << elements[0] 
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:PASS$)/
         elements = extract_line_elements(line, results[:source][:file])
-        results[:successes] << elements[0]
+        results[:successes] << elements[0] 
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:PASS \(.* ms\)$)/
         elements = extract_line_elements(line, results[:source][:file])
-        results[:successes] << elements[0]
+        results[:successes] << elements[0] 
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:FAIL)/
         elements = extract_line_elements(line, results[:source][:file])

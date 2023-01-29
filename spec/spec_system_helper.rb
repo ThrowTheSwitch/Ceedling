@@ -841,8 +841,8 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation fault \(core dumped\)/)
-        expect(output).to match(/No tests executed./)
+        expect(output).to match(/Segmentation Fault/i)
+        expect(output).to match(/Unit test failures./)
         expect(!File.exists?('./build/test/results/test_add.fail'))
       end
     end
@@ -874,7 +874,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Program received signal SIGSEGV, Segmentation fault./)
+        expect(output).to match(/Segmentation Fault/i)
         expect(output).to match(/Unit test failures./)
         expect(File.exists?('./build/test/results/test_example_file_sigsegv.fail'))
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')

@@ -46,8 +46,9 @@ class Generator
 
   def generate_mock(context, mock)
     arg_hash = if mock.is_a? String
-      mock_name = @file_finder.find_header_input_for_mock_file(mock)
-      {:header_file => mock, :context => context }
+      header_name = mock
+      mock_name = File.basename(mock)
+      {:header_file => header_name, :context => context }
     else
       mock_name = mock.name
       {:header_file => mock.source, :context => context}
@@ -181,14 +182,18 @@ class Generator
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
 
-    shell_result[:exit_code] = 0
     # Add extra collecting backtrace
     # if use_backtrace_gdb_reporter is set to true
-    if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] and (shell_result[:output] =~ /\s*Segmentation\sfault.*/)
-      gdb_file_name = FilePathUtils.os_executable_ext('gdb').freeze
-      gdb_exec_cmd = "#{gdb_file_name} -q #{command[:line]} --eval-command run --eval-command backtrace --batch"
-      crash_result = @tool_executor.exec(gdb_exec_cmd, command[:options] )
-      shell_result[:output] = crash_result[:output]
+    if shell_result[:output] =~ /\s*Segmentation\sfault.*/
+      shell_result[:output] = "#{File.basename(@file_finder.find_compilation_input_file(executable))}:1:test_Unknown:FAIL:Segmentation Fault" 
+      shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
+      if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]  
+        gdb_file_name = FilePathUtils.os_executable_ext('gdb').freeze
+        gdb_exec_cmd = "#{gdb_file_name} -q #{command[:line]} --eval-command run --eval-command backtrace --batch"
+        crash_result = @tool_executor.exec(gdb_exec_cmd, command[:options] )
+        shell_result[:output] += crash_result[:output]
+      end
+      shell_result[:exit_code] = 1
     else
       # Don't Let The Failure Count Make Us Believe Things Aren't Working
       @generator_helper.test_results_error_handler(executable, shell_result)

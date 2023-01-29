@@ -286,7 +286,6 @@ DEFAULT_RELEASE_TARGET_NAME = 'project'
 DEFAULT_CEEDLING_CONFIG = {
     :project => {
       # :build_root must be set by user
-      :use_exceptions => true,
       :use_mocks => true,
       :compile_threads => 1,
       :test_threads => 1,

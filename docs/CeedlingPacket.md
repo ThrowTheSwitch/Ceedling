@@ -835,14 +835,6 @@ project: global project settings
 
   **Default**: (none)
 
-* `use_exceptions`:
-
-  Configures the build environment to make use of CException. Note that
-  if you do not use exceptions, there's no harm in leaving this as its
-  default value.
-
-  **Default**: TRUE
-
 * `use_mocks`:
 
   Configures the build environment to make use of CMock. Note that if
@@ -1589,13 +1581,8 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
 
 * `plugins`:
 
-  If [:project][:use_exceptions] is enabled, the internal plugins list is pre-populated with 'cexception'.
-
-  Whether or not you have included [:cmock][:plugins] in your
-  configuration file, Ceedling automatically adds 'cexception' to the
-  plugin list if exceptions are enabled. To add to the list Ceedling
-  provides CMock, simply add [:cmock][:plugins] to your configuration
-  and specify your desired additional plugins.
+  To add to the list Ceedling provides CMock, simply add [:cmock][:plugins] 
+  to your configuration and specify your desired additional plugins.
 
   Each of the plugins have their own additional documentation.
 

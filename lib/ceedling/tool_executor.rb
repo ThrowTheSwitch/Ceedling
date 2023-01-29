@@ -66,7 +66,7 @@ class ToolExecutor
       if (options[:background_exec] != BackgroundExec::NONE)
         shell_result = @system_wrapper.shell_system( command_line, options[:boom] )
       else
-        shell_result = @system_wrapper.shell_backticks( command_line, options[:boom] )
+        shell_result = @system_wrapper.shell_capture3( command_line, options[:boom] )
       end
     end
     shell_result[:time] = time
