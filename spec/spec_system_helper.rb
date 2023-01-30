@@ -843,7 +843,7 @@ module CeedlingTestCases
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
         expect(output).to match(/Segmentation Fault/i)
         expect(output).to match(/Unit test failures./)
-        expect(!File.exists?('./build/test/results/test_add.fail'))
+        expect(!File.exist?('./build/test/results/test_add.fail'))
       end
     end
   end
@@ -876,7 +876,7 @@ module CeedlingTestCases
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
         expect(output).to match(/Segmentation Fault/i)
         expect(output).to match(/Unit test failures./)
-        expect(File.exists?('./build/test/results/test_example_file_sigsegv.fail'))
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
       end
