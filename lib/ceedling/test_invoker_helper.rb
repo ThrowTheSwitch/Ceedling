@@ -47,6 +47,12 @@ class TestInvokerHelper
     end
   end
 
+  def invalidate_objects(object_list)
+    object_list.each do |obj|
+      @file_wrapper.rm_f(obj) #TODO eventually these will just be in another subfolder
+    end
+  end
+
   def generate_objects_now(object_list, options)
     par_map(PROJECT_COMPILE_THREADS, object_list) do |object|
       if (@rake_wrapper[object].needed?)
