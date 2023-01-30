@@ -42,6 +42,12 @@ unity_utils:
   compose:
      - configurator
 
+debugger_utils:
+  compose:
+     - configurator
+     - tool_executor
+     - unity_utils
+
 project_config_manager:
   compose:
     - cacheinator
@@ -201,6 +207,7 @@ generator:
     - plugin_manager
     - file_wrapper
     - unity_utils
+    - debugger_utils
 
 generator_helper:
   compose:
@@ -211,6 +218,7 @@ generator_test_results:
     - configurator
     - generator_test_results_sanity_checker
     - yaml_wrapper
+    - debugger_utils
 
 generator_test_results_sanity_checker:
   compose:

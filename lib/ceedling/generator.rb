@@ -17,6 +17,7 @@ class Generator
               :streaminator,
               :plugin_manager,
               :file_wrapper,
+              :debugger_utils,
               :unity_utils
 
 
@@ -166,28 +167,36 @@ class Generator
     @plugin_manager.pre_test_fixture_execute(arg_hash)
 
     @streaminator.stdout_puts("Running #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
-
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results
     command = @tool_executor.build_command_line(arg_hash[:tool], [], arg_hash[:executable])
+
+    # Configure debugger
+    @debugger_utils.configure_debugger(command)
+
+    # Apply additional test case filters 
     command[:line] += @unity_utils.collect_test_runner_additional_args
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
+
+    # Enable collecting GCOV results even when segmenatation fault is appearing
+    # The gcda and gcno files will be generated for a test cases which doesn't
+    # cause segmentation fault
+    @debugger_utils.enable_gcov_with_gdb_and_cmdargs(command)
+
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
 
     shell_result[:exit_code] = 0
+    
     # Add extra collecting backtrace
     # if use_backtrace_gdb_reporter is set to true
-    if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] and (shell_result[:output] =~ /\s*Segmentation\sfault.*/)
-      gdb_file_name = FilePathUtils.os_executable_ext('gdb').freeze
-      gdb_exec_cmd = "#{gdb_file_name} -q #{command[:line]} --eval-command run --eval-command backtrace --batch"
-      crash_result = @tool_executor.exec(gdb_exec_cmd, command[:options] )
-      shell_result[:output] = crash_result[:output]
+    if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] &&
+       (shell_result[:output] =~ /\s*Segmentation\sfault.*/)
+      shell_result = @debugger_utils.gdb_output_collector(shell_result)
     else
       # Don't Let The Failure Count Make Us Believe Things Aren't Working
       @generator_helper.test_results_error_handler(executable, shell_result)
     end
-
     processed = @generator_test_results.process_and_write_results( shell_result,
                                                                    arg_hash[:result_file],
                                                                    @file_finder.find_test_from_file_path(arg_hash[:executable]) )
