@@ -2066,7 +2066,7 @@ Notes:
 
 * `load_paths`:
 
-  Base paths to search for plugin subdirectories or extra ruby functionalit
+  Base paths to search for plugin subdirectories or extra ruby functionality
 
   **Default**: `[]` (empty)
 

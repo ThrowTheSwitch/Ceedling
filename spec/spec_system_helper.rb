@@ -361,7 +361,6 @@ module CeedlingTestCases
                      :unity => { :use_param_tests => true }
                    }
         add_project_settings("project.yml", settings)
-
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
