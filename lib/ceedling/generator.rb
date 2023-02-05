@@ -17,6 +17,7 @@ class Generator
               :streaminator,
               :plugin_manager,
               :file_wrapper,
+              :debugger_utils,
               :unity_utils
 
 
@@ -177,21 +178,29 @@ class Generator
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results
     command = @tool_executor.build_command_line(arg_hash[:tool], [], arg_hash[:executable])
+
+    # Configure debugger
+    @debugger_utils.configure_debugger(command)
+
+    # Apply additional test case filters 
     command[:line] += @unity_utils.collect_test_runner_additional_args
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
+
+    # Enable collecting GCOV results even when segmenatation fault is appearing
+    # The gcda and gcno files will be generated for a test cases which doesn't
+    # cause segmentation fault
+    @debugger_utils.enable_gcov_with_gdb_and_cmdargs(command)
+
+    # Run the test itself (allow it to fail. we'll analyze it in a moment)
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
 
     # Add extra collecting backtrace
-    # if use_backtrace_gdb_reporter is set to true
-    if shell_result[:output] =~ /\s*Segmentation\sfault.*/
+    if shell_result[:output] =~ /\s*Segmentation\sfault.*/i
       shell_result[:output] = "#{File.basename(@file_finder.find_compilation_input_file(executable))}:1:test_Unknown:FAIL:Segmentation Fault" 
       shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
       if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]  
-        gdb_file_name = FilePathUtils.os_executable_ext('gdb').freeze
-        gdb_exec_cmd = "#{gdb_file_name} -q #{command[:line]} --eval-command run --eval-command backtrace --batch"
-        crash_result = @tool_executor.exec(gdb_exec_cmd, command[:options] )
-        shell_result[:output] += crash_result[:output]
+        shell_result = @debugger_utils.gdb_output_collector(shell_result)
       end
       shell_result[:exit_code] = 1
     else

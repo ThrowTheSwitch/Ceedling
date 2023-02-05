@@ -63,11 +63,11 @@ class ToolExecutor
 
     # depending on background exec option, we shell out differently
     time = Benchmark.realtime do
-      if (options[:background_exec] != BackgroundExec::NONE)
-        shell_result = @system_wrapper.shell_system( command_line, options[:boom] )
-      else
+      #if (options[:background_exec] != BackgroundExec::NONE)
+      #  shell_result = @system_wrapper.shell_system( command_line, options[:boom] )
+      #else
         shell_result = @system_wrapper.shell_capture3( command_line, options[:boom] )
-      end
+      #end
     end
     shell_result[:time] = time
 

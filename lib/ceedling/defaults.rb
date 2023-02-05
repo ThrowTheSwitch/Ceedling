@@ -237,12 +237,28 @@ DEFAULT_RELEASE_LINKER_TOOL = {
     ].freeze
   }
 
+DEFAULT_BACKTRACE_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('gdb').freeze,
+  :name => 'default_backtrace_settings'.freeze,
+  :stderr_redirect => StdErrRedirect::AUTO.freeze,
+  :background_exec => BackgroundExec::NONE.freeze,
+  :optional => false.freeze,
+  :arguments => [
+    '-q',
+    '--eval-command run',
+    '--eval-command backtrace',
+    '--batch',
+    '--args'
+    ].freeze
+  }
+
 
 DEFAULT_TOOLS_TEST = {
   :tools => {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
     :test_linker   => DEFAULT_TEST_LINKER_TOOL,
     :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
+    :backtrace_settings => DEFAULT_BACKTRACE_TOOL,
     }
   }
 

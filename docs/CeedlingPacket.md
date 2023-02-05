@@ -977,6 +977,46 @@ that you execute on target hardware).
 
   **Default**: FALSE
 
+  ---
+
+  **Note:**
+
+    The configuration can be combined together with
+    
+    ```
+    :test_runner:
+        :cmdline_args: true
+    ```
+
+    After setting **cmdline_args** to **true**, the debuger will execute each test
+    case from crashing test file separately. The exclude and include test_case patterns will
+    be applied, to filter execution of test cases.
+
+    The .gcno and .gcda files will be generated and section of the code under test case
+    causing segmetation fault will be omitted from Coverage Report.
+
+    The default debugger (**gdb**)[https://www.sourceware.org/gdb/] can be switch to any other
+    via setting new configuration under tool node in project.yml. At default set to:
+
+    ```yaml
+      :tools:
+        :backtrace_settings:
+          :executable: gdb
+          :arguments:
+            - -q
+            - --eval-command run
+            - --eval-command backtrace
+            - --batch
+            - --args
+    ```
+    
+    Important. The debugger which will collect segmentation fault should run in:
+
+    - background
+    - with option to enable pass to executable binary additional arguments
+
+  ---
+
 * `output`:
 
   The name of your release build binary artifact to be found in <build

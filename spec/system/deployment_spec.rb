@@ -49,6 +49,9 @@ describe "Ceedling" do
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
     it { test_run_of_projects_fail_because_of_sigsegv_without_report }
     it { test_run_of_projects_fail_because_of_sigsegv_with_report }
+    it { execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue_when_cmd_args_set_to_true }
+    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true }
+    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true }
     it { can_run_single_test_with_full_test_case_name_from_test_file_with_success_cmdline_args_are_enabled }
     it { can_run_single_test_with_partiall_test_case_name_from_test_file_with_enabled_cmdline_args_success }
     it { exclude_test_case_name_filter_works_and_only_one_test_case_is_executed }
