@@ -82,7 +82,7 @@ class DebuggerUtils
   def enable_gcov_with_gdb_and_cmdargs(command)
     if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] &&
        @configurator.project_config_hash[:test_runner_cmdline_args]
-       command[:options][:stderr_redirect] = if @configurator.project_config_hash[:tools_backtrace_settings][:stderr_redirect] == StdErrRedirect::NONE
+       command[:options][:stderr_redirect] = if [:none, StdErrRedirect::NONE].include? @configurator.project_config_hash[:tools_backtrace_settings][:stderr_redirect]
                                                DEFAULT_BACKTRACE_TOOL[:stderr_redirect]
                                              else
                                                @configurator.project_config_hash[:tools_backtrace_settings][:stderr_redirect]
