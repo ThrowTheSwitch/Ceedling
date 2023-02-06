@@ -694,6 +694,25 @@ module CeedlingTestCases
     end
   end
 
+  def confirm_if_notification_for_cmdline_args_not_enabled_is_disabled
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+1/)
+        expect(output).not_to match(/please add `:cmdline_args` under :test_runner option/)
+      end
+    end
+  end
+
   def exclude_test_case_name_filter_works_and_only_one_test_case_is_executed
     @c.with_context do
       Dir.chdir @proj_name do
