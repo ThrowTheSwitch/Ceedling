@@ -81,7 +81,9 @@ class UnityUtils
         @not_supported = "\n\t--exclude_test_case"
       end
     end
-    print_warning_about_not_enabled_cmdline_args
+    if ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'] || ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
+      print_warning_about_not_enabled_cmdline_args
+    end
   end
 
   # Return UNITY_USE_COMMAND_LINE_ARGS define required by Unity to
