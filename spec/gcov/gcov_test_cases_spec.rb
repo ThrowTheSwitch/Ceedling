@@ -203,26 +203,8 @@ module GcovTestCases
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
-        add_line = false
-        updated_prj_yml = []
-        File.read('project.yml').split("\n").each do |line|
-          if line =~ /\:project\:/
-            add_line = true
-            updated_prj_yml.append(line)
-          else
-            if add_line
-              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
-              add_line = false
-            end
-            updated_prj_yml.append(line)
-          end
-        end
-        enable_unity_extra_args = "\n:test_runner:\n"\
-                                  "  :cmdline_args: true\n"
-
-        updated_prj_yml.insert(updated_prj_yml.length() -1, enable_unity_extra_args)
-
-        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
 
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -253,26 +235,8 @@ module GcovTestCases
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
-        add_line = false
-        updated_prj_yml = []
-        File.read('project.yml').split("\n").each do |line|
-          if line =~ /\:project\:/
-            add_line = true
-            updated_prj_yml.append(line)
-          else
-            if add_line
-              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
-              add_line = false
-            end
-            updated_prj_yml.append(line)
-          end
-        end
-        enable_unity_extra_args = "\n:test_runner:\n"\
-                                  "  :cmdline_args: true\n"
-
-        updated_prj_yml.insert(updated_prj_yml.length() -1, enable_unity_extra_args)
-
-        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
 
         output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -303,14 +267,7 @@ module GcovTestCases
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
-        add_line = false
-        updated_prj_yml = File.read('project.yml').split("\n")
-        enable_unity_extra_args = "\n:test_runner:\n"\
-                                  "  :cmdline_args: true\n"
-
-        updated_prj_yml.insert(updated_prj_yml.length() -1, enable_unity_extra_args)
-
-        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
 
         add_test_case = "\nvoid test_difference_between_two_numbers(void)\n"\
                         "{\n" \

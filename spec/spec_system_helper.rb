@@ -143,6 +143,35 @@ class SystemContext
       restore_env
     end
   end
+
+  def modify_project_yml_for_test(prefix, key, new_value)
+    add_line = nil
+    updated = false
+    updated_yml = []
+    File.read('project.yml').split("\n").each_with_index do |line, i|
+      m = line.match /\:#{key.to_s}\:\s*(.*)/
+      unless m.nil?
+        line = line.gsub(m[1], new_value)
+        updated = true
+      end
+
+      m = line.match /(\s*)\:#{prefix.to_s}\:/
+      unless m.nil?
+        add_line = [i+1, m[1]+'  ']
+      end
+
+      updated_yml.append(line)
+    end
+    unless updated
+      if add_line.nil?
+        updated_yml.insert(updated_yml.length - 1, ":#{prefix.to_s}:\n  :#{key.to_s}: #{new_value}")
+      else
+        updated_yml.insert(add_line[0], "#{add_line[1]}:#{key}: #{new_value}")
+      end
+    end
+
+    File.write('project.yml', updated_yml.join("\n"), mode: 'w')
+  end
 end
 
 module CeedlingTestCases
@@ -854,22 +883,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        add_line = false
-        updated_prj_yml = []
-        File.read('project.yml').split("\n").each do |line|
-          if line =~ /\:project\:/
-            add_line = true
-            updated_prj_yml.append(line)
-          else
-            if add_line
-              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
-              add_line = false
-            end
-            updated_prj_yml.append(line)
-          end
-        end
-
-        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -889,26 +903,8 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        add_line = false
-        updated_prj_yml = []
-        File.read('project.yml').split("\n").each do |line|
-          if line =~ /\:project\:/
-            add_line = true
-            updated_prj_yml.append(line)
-          else
-            if add_line
-              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
-              add_line = false
-            end
-            updated_prj_yml.append(line)
-          end
-        end
-        enable_unity_extra_args = "\n:test_runner:\n"\
-                                  "  :cmdline_args: true\n"
-
-        updated_prj_yml.insert(updated_prj_yml.length() -1, enable_unity_extra_args)
-
-        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -932,26 +928,8 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        add_line = false
-        updated_prj_yml = []
-        File.read('project.yml').split("\n").each do |line|
-          if line =~ /\:project\:/
-            add_line = true
-            updated_prj_yml.append(line)
-          else
-            if add_line
-              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
-              add_line = false
-            end
-            updated_prj_yml.append(line)
-          end
-        end
-        enable_unity_extra_args = "\n:test_runner:\n"\
-                                  "  :cmdline_args: true\n"
-
-        updated_prj_yml.insert(updated_prj_yml.length() -1, enable_unity_extra_args)
-
-        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all --test_case=test_add_numbers_will_fail 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -975,26 +953,8 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        add_line = false
-        updated_prj_yml = []
-        File.read('project.yml').split("\n").each do |line|
-          if line =~ /\:project\:/
-            add_line = true
-            updated_prj_yml.append(line)
-          else
-            if add_line
-              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
-              add_line = false
-            end
-            updated_prj_yml.append(line)
-          end
-        end
-        enable_unity_extra_args = "\n:test_runner:\n"\
-                                  "  :cmdline_args: true\n"
-
-        updated_prj_yml.insert(updated_prj_yml.length() -1, enable_unity_extra_args)
-
-        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all --exclude_test_case=add_numbers_adds_numbers 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
