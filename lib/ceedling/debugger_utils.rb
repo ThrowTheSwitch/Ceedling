@@ -38,14 +38,18 @@ class DebuggerUtils
   # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
   # @return [String, #output] - output from binary execution
   # @return [Float, #time] - time execution of the binary file
-  def collect_cmd_output_with_gdb(command, cmd)
+  def collect_cmd_output_with_gdb(command, cmd, test_case=nil)
     gdb_file_name = @configurator.project_config_hash[:tools_backtrace_settings][:executable]
     gdb_extra_args = @configurator.project_config_hash[:tools_backtrace_settings][:arguments]
     gdb_extra_args = gdb_extra_args.join(' ')
 
     gdb_exec_cmd = "#{gdb_file_name} #{gdb_extra_args} #{cmd}"
     crash_result = @tool_executor.exec(gdb_exec_cmd, command[:options])
-    [crash_result[:output], crash_result[:time].to_f]
+    if (crash_result[:exit_code] == 0) and (crash_result[:output] =~ /(?:PASS|FAIL|IGNORE)/)
+      [crash_result[:output], crash_result[:time].to_f]
+    else
+      ["#{gdb_file_name.split(/\w+/)[0]}:1:#{test_case || 'test_Unknown'}:FAIL:#{crash_result[:output]}", 0.0]
+    end
   end
 
   # Collect list of test cases from test_runner
@@ -113,7 +117,7 @@ class DebuggerUtils
       test_case_list_to_execute.each do |test_case_name|
         test_run_cmd = @command_line.clone
         test_run_cmd_with_args = test_run_cmd[:line] + @unity_utils.additional_test_run_args(test_case_name, 'test_case')
-        test_output, exec_time = collect_cmd_output_with_gdb(test_run_cmd, test_run_cmd_with_args)
+        test_output, exec_time = collect_cmd_output_with_gdb(test_run_cmd, test_run_cmd_with_args, test_case_name)
 
         # Concatenate execution time between tests
         # running tests serpatatelly might increase total execution time
@@ -173,13 +177,15 @@ class DebuggerUtils
                   else
                     "OK\n"
                   end
-      shell_result[:output] = test_case_result_collector[:output].join('') + \
-                              template
+      shell_result[:output] = test_case_result_collector[:output].join('') + template
     else
       shell_result[:output], shell_result[:time] = collect_cmd_output_with_gdb(
         @command_line,
         @command_line[:line]
-      )
+      )      
+
+      template = "\n-----------------------\n\n1 Tests 1 Failures 0 Ignored\n\nFAIL\n"
+      shell_result[:output] = shell_result[:output] + template
     end
 
     shell_result
