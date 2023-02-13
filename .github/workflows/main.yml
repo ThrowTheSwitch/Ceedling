@@ -87,22 +87,33 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby: [3.2']
+        ruby: [3.2]
 
     steps:
+      # Checks out repository under $GITHUB_WORKSPACE
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      # Setup Ruby Testing Tools to do tests on multiple ruby version
+      - name: Setup Ruby Testing Tools
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
       # Generate the Version + Hash Name
       - name: version
-        uses: pr-mpt/actions-commit-hash@v2
         run: |
-          echo "::set-output name=short_version::$(ruby ./lib/ceedling/version)"
-          echo "::set-output name=version::$(ruby ./lib/ceedling/version)-${{ github.event.workflow_run.head_sha.short }}"
+          echo "::set-output name=shortver::$(ruby ./lib/ceedling/version)"
+          echo "::set-output name=version::$(ruby ./lib/ceedling/version)-$(git rev-parse --short HEAD)"
         id: version
 
       # Build & Install Gem
       - name:  build and install Gem
         run: |
           gem build ceedling.gemspec
-          gem install --local ceedling-${{ steps.version.outputs.version }}.gem
+          gem install --local ceedling-${{ steps.version.outputs.shortver }}.gem
 
       # Create Unofficial Release
       - name: create release
@@ -124,6 +135,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./ceedling-*.gem
+          asset_path: ./ceedling-${{ steps.version.outputs.shortver }}.gem
           asset_name: ceedling-${{ steps.version.outputs.version }}.gem
           asset_content_type: test/x-gemfile
