@@ -74,6 +74,12 @@ jobs:
       #    ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
       #    cd ../..
 
+      # Build & Install Gem
+      - name:  build and install Gem
+        run: |
+          gem build ceedling.gemspec
+          gem install --local ceedling-*.gem
+
       # Run Temp Sensor
       - name: Run Tests On Temp Sensor Project
         run: |
@@ -104,16 +110,16 @@ jobs:
 
       # Generate the Version + Hash Name
       - name: version
+        id: versions
+        shell: bash
         run: |
           echo "::set-output name=shortver::$(ruby ./lib/ceedling/version)"
           echo "::set-output name=version::$(ruby ./lib/ceedling/version)-$(git rev-parse --short HEAD)"
-        id: version
 
-      # Build & Install Gem
-      - name:  build and install Gem
+      # Build Gem
+      - name:  build gem
         run: |
           gem build ceedling.gemspec
-          gem install --local ceedling-${{ steps.version.outputs.shortver }}.gem
 
       # Create Unofficial Release
       - name: create release
@@ -122,8 +128,8 @@ jobs:
         with:
           draft: false
           prerelease: true
-          release_name: ${{ steps.version.outputs.version }}
-          tag_name: ${{ steps.version.outputs.version }}
+          release_name: ${{ steps.versions.outputs.version }}
+          tag_name: ${{ steps.versions.outputs.version }}
           body_path: CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -135,6 +141,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./ceedling-${{ steps.version.outputs.shortver }}.gem
-          asset_name: ceedling-${{ steps.version.outputs.version }}.gem
+          asset_path: ./ceedling-${{ steps.versions.outputs.shortver }}.gem
+          asset_name: ceedling-${{ steps.versions.outputs.version }}.gem
           asset_content_type: test/x-gemfile
