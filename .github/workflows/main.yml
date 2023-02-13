@@ -66,12 +66,6 @@ jobs:
         run: |
           bundle exec rake ci
 
-      # Build & Install Gem
-      - name: Build and Install Gem
-        run: |
-          gem build ceedling.gemspec
-          gem install --local ceedling-*.gem
-
       # Run Blinky
       # Disabled because it's set up for avr-gcc
       #- name: Run Tests On Blinky Project
@@ -86,3 +80,49 @@ jobs:
           cd examples/temp_sensor
           ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
           cd ../..
+
+  # Job: Automatic Minor Releases
+  auto-release:
+    name: "Automatic Minor Releases"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby: [3.2']
+
+    steps:
+      # Generate the Version + Hash Name
+      - name: version
+        uses: pr-mpt/actions-commit-hash@v2
+        run: echo "::set-output name=short_version::$(ruby ./lib/ceedling/version)"
+        run: echo "::set-output name=version::$(ruby ./lib/ceedling/version)-${{ github.event.workflow_run.head_sha.short }}"
+        id: version
+
+      # Build & Install Gem
+      - name:  build and install Gem
+        run: |
+          gem build ceedling.gemspec
+          gem install --local ceedling-${{ steps.version.outputs.version }}.gem
+
+      # Create Unofficial Release
+      - name: create release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: true
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.version }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # Post Gem to Unofficial Release
+      - name: release gem
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ceedling-*.gem
+          asset_name: ceedling-${{ steps.version.outputs.version }}.gem
+          asset_content_type: test/x-gemfile

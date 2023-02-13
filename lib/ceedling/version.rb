@@ -50,5 +50,7 @@ module Ceedling
 
     GEM = "0.32.0"
     CEEDLING = GEM
+
+    puts CEEDLING if __FILE__ == $0
   end
 end
