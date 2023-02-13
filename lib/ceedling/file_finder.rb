@@ -19,7 +19,7 @@ class FileFinder
   def find_header_file(mock_file)
     header = File.basename(mock_file).sub(/#{@configurator.cmock_mock_prefix}/, '').ext(@configurator.extension_header)
 
-    found_path = @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_headers, :error)
+    found_path = @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_headers, :error, mock_file)
 
     return found_path
   end
@@ -44,7 +44,7 @@ class FileFinder
     source = File.basename(test).sub(/#{test_prefix}/, '')
 
     # we don't blow up if a test file has no corresponding source file
-    return @file_finder_helper.find_file_in_collection(source, source_paths, complain)
+    return @file_finder_helper.find_file_in_collection(source, source_paths, complain, test)
   end
 
 
@@ -53,7 +53,7 @@ class FileFinder
 
     test_file = File.basename(runner_path).sub(/#{@configurator.test_runner_file_suffix}#{'\\'+extension_source}/, extension_source)
 
-    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error)
+    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error, runner_path)
 
     return found_path
   end
@@ -74,7 +74,7 @@ class FileFinder
   def find_test_from_file_path(file_path)
     test_file = File.basename(file_path).ext(@configurator.extension_source)
 
-    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error)
+    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error, file_path)
 
     return found_path
   end
@@ -82,7 +82,7 @@ class FileFinder
 
   def find_test_or_source_or_header_file(file_path)
     file = File.basename(file_path)
-    return @file_finder_helper.find_file_in_collection(file, @all_test_source_and_header_file_collection, :error)
+    return @file_finder_helper.find_file_in_collection(file, @all_test_source_and_header_file_collection, :error, file_path)
   end
 
 
@@ -102,28 +102,33 @@ class FileFinder
           @file_finder_helper.find_file_in_collection(
             source_file,
             @file_wrapper.directory_listing( File.join(@configurator.project_test_runners_path, '*') ),
-            complain)
+            complain,
+            file_path)
 
       elsif (@configurator.project_use_mocks and (source_file =~ /#{@configurator.cmock_mock_prefix}/))
         found_file =
           @file_finder_helper.find_file_in_collection(
             source_file,
             @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '**/*.*') ),
-            complain)
+            complain,
+            file_path)
 
       elsif release
         found_file =
           @file_finder_helper.find_file_in_collection(
             source_file,
             @configurator.collection_release_existing_compilation_input,
-            complain)
+            complain,
+            file_path)
+          
       else
         temp_complain = (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY) ? :ignore : complain
         found_file =
           @file_finder_helper.find_file_in_collection(
             source_file,
             @configurator.collection_all_existing_compilation_input,
-            temp_complain)
+            temp_complain,
+            file_path)
         found_file ||= find_assembly_file(file_path, false) if (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
       end
     }
@@ -133,17 +138,17 @@ class FileFinder
 
   def find_source_file(file_path, complain)
     source_file = File.basename(file_path).ext(@configurator.extension_source)
-    return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_source, complain)
+    return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_source, complain, file_path)
   end
 
 
   def find_assembly_file(file_path, complain = :error)
     assembly_file = File.basename(file_path).ext(@configurator.extension_assembly)
-    return @file_finder_helper.find_file_in_collection(assembly_file, @configurator.collection_all_assembly, complain)
+    return @file_finder_helper.find_file_in_collection(assembly_file, @configurator.collection_all_assembly, complain, file_path)
   end
 
   def find_file_from_list(file_path, file_list, complain)
-    return @file_finder_helper.find_file_in_collection(file_path, file_list, complain)
+    return @file_finder_helper.find_file_in_collection(file_path, file_list, complain, file_path)
   end
 end
 

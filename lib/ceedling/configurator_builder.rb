@@ -19,6 +19,10 @@ class ConfiguratorBuilder
       # create global constant
       Object.module_eval("#{formatted_key} = value")
     end
+
+    # TODO: This wants to go somewhere better
+    Object.module_eval("TOOLS_TEST_ASSEMBLER = {}") if (not config[:test_build_use_assembly]) && !defined?(TOOLS_TEST_ASSEMBLER)
+    Object.module_eval("TOOLS_RELEASE_ASSEMBLER = {}") if (not config[:release_build_use_assembly]) && !defined?(TOOLS_RELEASE_ASSEMBLER)
   end
 
 
@@ -74,6 +78,9 @@ class ConfiguratorBuilder
   def clean(in_hash)
     # ensure that include files inserted into test runners have file extensions & proper ones at that
     in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
+
+    # create a shortcut for seeing if we're using cexception
+    in_hash[:project_use_exceptions] = in_hash[:cmock] && in_hash[:cmock][:plugins] && in_hash[:cmock][:plugins].include?(:cexception)
   end
 
 
