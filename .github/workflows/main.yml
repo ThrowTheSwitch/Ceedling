@@ -113,8 +113,8 @@ jobs:
         id: versions
         shell: bash
         run: |
-          echo "::set-output name=shortver::$(ruby ./lib/ceedling/version)"
-          echo "::set-output name=version::$(ruby ./lib/ceedling/version)-$(git rev-parse --short HEAD)"
+          echo "short_ver=$(ruby ./lib/ceedling/version)" >> $GITHUB_ENV
+          echo "full_ver=$(ruby ./lib/ceedling/version)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       # Build Gem
       - name:  build gem
@@ -128,8 +128,8 @@ jobs:
         with:
           draft: false
           prerelease: true
-          release_name: ${{ steps.versions.outputs.version }}
-          tag_name: ${{ steps.versions.outputs.version }}
+          release_name: ${{ env.full_ver }}
+          tag_name: ${{ env.full_ver }}
           body_path: CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -141,6 +141,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./ceedling-${{ steps.versions.outputs.shortver }}.gem
-          asset_name: ceedling-${{ steps.versions.outputs.version }}.gem
+          asset_path: ./ceedling-${{ env.short_ver }}.gem
+          asset_name: ceedling-${{ env.full_ver }}.gem
           asset_content_type: test/x-gemfile
