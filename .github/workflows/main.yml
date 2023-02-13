@@ -113,8 +113,8 @@ jobs:
         id: versions
         shell: bash
         run: |
-          echo "short_ver=$(ruby ./lib/ceedling/version)" >> $GITHUB_ENV
-          echo "full_ver=$(ruby ./lib/ceedling/version)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "short_ver=$(ruby ./lib/ceedling/version.rb)" >> $GITHUB_ENV
+          echo "full_ver=$(ruby ./lib/ceedling/version.rb)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       # Build Gem
       - name:  build gem
@@ -130,7 +130,7 @@ jobs:
           prerelease: true
           release_name: ${{ env.full_ver }}
           tag_name: ${{ env.full_ver }}
-          body_path: CHANGELOG.md
+          body: "automatic generated pre-release for ${{ env.full_ver }}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
