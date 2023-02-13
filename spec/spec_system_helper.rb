@@ -143,6 +143,35 @@ class SystemContext
       restore_env
     end
   end
+
+  def modify_project_yml_for_test(prefix, key, new_value)
+    add_line = nil
+    updated = false
+    updated_yml = []
+    File.read('project.yml').split("\n").each_with_index do |line, i|
+      m = line.match /\:#{key.to_s}\:\s*(.*)/
+      unless m.nil?
+        line = line.gsub(m[1], new_value)
+        updated = true
+      end
+
+      m = line.match /(\s*)\:#{prefix.to_s}\:/
+      unless m.nil?
+        add_line = [i+1, m[1]+'  ']
+      end
+
+      updated_yml.append(line)
+    end
+    unless updated
+      if add_line.nil?
+        updated_yml.insert(updated_yml.length - 1, ":#{prefix.to_s}:\n  :#{key.to_s}: #{new_value}")
+      else
+        updated_yml.insert(add_line[0], "#{add_line[1]}:#{key}: #{new_value}")
+      end
+    end
+
+    File.write('project.yml', updated_yml.join("\n"), mode: 'w')
+  end
 end
 
 module CeedlingTestCases
@@ -361,7 +390,6 @@ module CeedlingTestCases
                      :unity => { :use_param_tests => true }
                    }
         add_project_settings("project.yml", settings)
-
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
@@ -378,7 +406,7 @@ module CeedlingTestCases
         FileUtils.copy_entry test_asset_path("tests_with_defines/src/"), 'src/'
         FileUtils.cp_r test_asset_path("tests_with_defines/test/."), 'test/'
         settings = { :defines => { :test => [ "STANDARD_CONFIG" ],
-                                   :test_adc_hardware_special => [ "TEST", "SPECIFIC_CONFIG" ]
+                                   :test_adc_hardware_special => [ "TEST", "SPECIFIC_CONFIG" ],
                                  }
                    }
         add_project_settings("project.yml", settings)
@@ -666,7 +694,26 @@ module CeedlingTestCases
     end
   end
 
-  def exlcude_test_case_name_filter_works_and_only_one_test_case_is_executed
+  def confirm_if_notification_for_cmdline_args_not_enabled_is_disabled
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+1/)
+        expect(output).not_to match(/please add `:cmdline_args` under :test_runner option/)
+      end
+    end
+  end
+
+  def exclude_test_case_name_filter_works_and_only_one_test_case_is_executed
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -841,9 +888,9 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation fault \(core dumped\)/)
-        expect(output).to match(/No tests executed./)
-        expect(!File.exists?('./build/test/results/test_add.fail'))
+        expect(output).to match(/Segmentation Fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(!File.exist?('./build/test/results/test_add.fail'))
       end
     end
   end
@@ -855,30 +902,90 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        add_line = false
-        updated_prj_yml = []
-        File.read('project.yml').split("\n").each do |line|
-          if line =~ /\:project\:/
-            add_line = true
-            updated_prj_yml.append(line)
-          else
-            if add_line
-              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
-              add_line = false
-            end
-            updated_prj_yml.append(line)
-          end
-        end
-
-        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Program received signal SIGSEGV, Segmentation fault./)
+        expect(output).to match(/Segmentation Fault/i)
         expect(output).to match(/Unit test failures./)
-        expect(File.exists?('./build/test/results/test_example_file_sigsegv.fail'))
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue_when_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Segmentation fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+
+        output = `bundle exec ruby -S ceedling test:all --test_case=test_add_numbers_will_fail 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Segmentation fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+
+        output = `bundle exec ruby -S ceedling test:all --exclude_test_case=add_numbers_adds_numbers 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Segmentation fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
       end
     end
   end
