@@ -93,8 +93,9 @@ jobs:
       # Generate the Version + Hash Name
       - name: version
         uses: pr-mpt/actions-commit-hash@v2
-        run: echo "::set-output name=short_version::$(ruby ./lib/ceedling/version)"
-        run: echo "::set-output name=version::$(ruby ./lib/ceedling/version)-${{ github.event.workflow_run.head_sha.short }}"
+        run: |
+          echo "::set-output name=short_version::$(ruby ./lib/ceedling/version)"
+          echo "::set-output name=version::$(ruby ./lib/ceedling/version)-${{ github.event.workflow_run.head_sha.short }}"
         id: version
 
       # Build & Install Gem
