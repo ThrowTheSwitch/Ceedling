@@ -196,16 +196,15 @@ class Generator
     shell_result = @tool_executor.exec( command[:line], command[:options] )
 
     # Handle SegFaults
-    if shell_result[:output] =~ /\s*Segmentation\sfault.*/i
-      if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] && @configurator.project_config_hash[:test_runner_cmdline_args]
+    if shell_result[:output] =~ /\s*Segmentation\sfault.*/i || shell_result[:output] =~ /.*SIGSEGV.*/
+      if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
         # If we have the options and tools to learn more, dig into the details
         shell_result = @debugger_utils.gdb_output_collector(shell_result)
       else
-        # Otherwise, call a segfault a single failure so it shows up in the report
         shell_result[:output] = "#{File.basename(@file_finder.find_compilation_input_file(executable))}:1:test_Unknown:FAIL:Segmentation Fault" 
         shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
-        shell_result[:exit_code] = 1
       end
+      shell_result[:exit_code] = 1
     else
       # Don't Let The Failure Count Make Us Believe Things Aren't Working
       @generator_helper.test_results_error_handler(executable, shell_result)

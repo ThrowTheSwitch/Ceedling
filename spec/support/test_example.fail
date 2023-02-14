@@ -7,11 +7,13 @@
 :failures:
 - :test: test_one
   :line: 257
-  :message: ''
+  :message: "Verbose output one\nVerbous output two\ntest_example.c:257:test_one:FAIL\ntest_example.c:269:test_two:FAIL\n\n-----------------------\n2
+    Tests 2 Failures 0 Ignored \nOK\n"
   :unity_test_time: 0
 - :test: test_two
   :line: 269
-  :message: ''
+  :message: "Verbose output one\nVerbous output two\ntest_example.c:257:test_one:FAIL\ntest_example.c:269:test_two:FAIL\n\n-----------------------\n2
+    Tests 2 Failures 0 Ignored \nOK\n"
   :unity_test_time: 0
 :ignores: []
 :counts:

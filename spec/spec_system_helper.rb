@@ -887,7 +887,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
-        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect($?.exitstatus).to match(1)
         expect(output).to match(/Segmentation Fault/i)
         expect(output).to match(/Unit test failures./)
         expect(!File.exist?('./build/test/results/test_add.fail'))
