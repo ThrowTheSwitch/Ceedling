@@ -4,7 +4,7 @@
 void Adc_ResetSpec(void)
 {
 }
-#elif STANDARD_CONFIG
+#elif defined(STANDARD_CONFIG)
 void Adc_Reset(void)
 {
 }

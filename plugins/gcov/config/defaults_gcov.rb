@@ -36,7 +36,7 @@ DEFAULT_GCOV_LINKER_TOOL = {
         ENV['CCLD'].nil? ? "" : ENV['CCLD'].split[1..-1],
         ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
         ENV['LDFLAGS'].nil? ? "" : ENV['LDFLAGS'].split,
-        "\"${1}\"".freeze,
+        "${1}".freeze,
         "-o \"${2}\"".freeze,
         "${4}".freeze,
         "${5}".freeze,
@@ -47,7 +47,7 @@ DEFAULT_GCOV_LINKER_TOOL = {
 DEFAULT_GCOV_FIXTURE_TOOL = {
     :executable => '${1}'.freeze,
     :name => 'default_gcov_fixture'.freeze,
-    :stderr_redirect => StdErrRedirect::NONE.freeze,
+    :stderr_redirect => StdErrRedirect::AUTO.freeze,
     :background_exec => BackgroundExec::NONE.freeze,
     :optional => false.freeze,
     :arguments => [].freeze

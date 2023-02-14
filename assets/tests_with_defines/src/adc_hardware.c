@@ -5,7 +5,7 @@ void AdcHardware_Init(void)
 {
   #ifdef SPECIFIC_CONFIG
   Adc_ResetSpec();
-  #elif STANDARD_CONFIG
+  #elif defined(STANDARD_CONFIG)
   Adc_Reset();
   #endif
 }
