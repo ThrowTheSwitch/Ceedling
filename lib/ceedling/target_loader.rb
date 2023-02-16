@@ -1,10 +1,10 @@
 module TargetLoader
-  class NoTargets    < Exception; end
-  class NoDirectory  < Exception; end
-  class NoDefault    < Exception; end
-  class NoSuchTarget < Exception; end
+  class NoTargets    < RuntimeError; end
+  class NoDirectory  < RuntimeError; end
+  class NoDefault    < RuntimeError; end
+  class NoSuchTarget < RuntimeError; end
 
-  class RequestReload < Exception; end
+  class RequestReload < RuntimeError; end
 
   def self.inspect(config, target_name=nil)
     unless config[:targets]
