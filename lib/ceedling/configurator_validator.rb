@@ -185,7 +185,7 @@ class ConfiguratorValidator
 
   def format_key_sequence(keys, depth)
     walked_keys    = keys.slice(0, depth)
-    formatted_keys = walked_keys.map{|key| "[:#{key.to_s}]"}
+    formatted_keys = walked_keys.map{|key| "[:#{key}]"}
     
     return formatted_keys.join
   end

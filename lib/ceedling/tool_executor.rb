@@ -57,7 +57,7 @@ class ToolExecutor
       @tool_executor_helper.background_exec_cmdline_append( options ),
       ].flatten.compact.join(' ')
 
-    @streaminator.stderr_puts("Verbose: #{__method__.to_s}(): #{command_line}", Verbosity::DEBUG)
+    @streaminator.stderr_puts("Verbose: #{__method__}(): #{command_line}", Verbosity::DEBUG)
 
     shell_result = {}
 

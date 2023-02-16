@@ -166,17 +166,17 @@ if PROJECT_USE_DEEP_DEPENDENCIES
   end
 end
 
+# Report Creation Utilities
+UTILITY_NAME_GCOVR = "gcovr"
+UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
+UTILITY_NAMES = [UTILITY_NAME_GCOVR, UTILITY_NAME_REPORT_GENERATOR]
+
 namespace UTILS_SYM do
-  # Report Creation Utilities
-  UTILITY_NAME_GCOVR = "gcovr"
-  UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
-  UTILITY_NAMES = [UTILITY_NAME_GCOVR, UTILITY_NAME_REPORT_GENERATOR]
 
   # Returns true is the given utility is enabled, otherwise returns false.
   def is_utility_enabled(opts, utility_name)
     return !(opts.nil?) && !(opts[:gcov_utilities].nil?) && (opts[:gcov_utilities].map(&:upcase).include? utility_name.upcase)
   end
-
 
   desc "Create gcov code coverage html/xml/json/text report(s). (Note: Must run 'ceedling gcov' first)."
   task GCOV_SYM do

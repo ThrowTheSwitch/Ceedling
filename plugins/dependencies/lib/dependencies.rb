@@ -137,7 +137,7 @@ class Dependencies < Plugin
             when :custom
               blob[:fetch][:executable]
             else
-              raise "Unknown fetch method '#{blob[:fetch][:method].to_s}' for dependency '#{blob[:name]}'"
+              raise "Unknown fetch method '#{blob[:fetch][:method]}' for dependency '#{blob[:name]}'"
             end
 
     # Perform the actual fetching

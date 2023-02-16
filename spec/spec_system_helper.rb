@@ -51,8 +51,8 @@ class GemDirLayout
 end
 
 class SystemContext
-  class VerificationFailed < Exception; end
-  class InvalidBackupEnv < Exception; end
+  class VerificationFailed < RuntimeError; end
+  class InvalidBackupEnv < RuntimeError; end
 
   attr_reader :dir, :gem
 
@@ -69,7 +69,7 @@ class SystemContext
     git_repo = File.expand_path(File.join(File.dirname(__FILE__), '..'))
     bundler_gem_file_data = [ %Q{source "http://rubygems.org/"},
                               %Q{gem "rake"},
-                              %Q{gem "ceedling", :path => '#{git_repo.to_s}'}
+                              %Q{gem "ceedling", :path => '#{git_repo}'}
                             ].join("\n")
 
     File.open(File.join(@dir, "Gemfile"), "w+") do |f|
@@ -829,13 +829,11 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling module:create[unicorns] 2>&1`
         expect($?.exitstatus).to match(1)
         expect(output).to match(/ERROR: Ceedling Failed/)
-
-        self.handles_creating_the_same_module_twice_using_the_module_plugin_path_extension
       end
     end
   end
 
-  def handles_creating_the_same_module_twice_using_the_module_plugin
+  def handles_creating_the_same_module_twice_using_the_module_plugin_extension
     @c.with_context do
       Dir.chdir @proj_name do
         output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns]`
