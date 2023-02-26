@@ -40,7 +40,7 @@ class DebuggerUtils
   # @return [Float, #time] - time execution of the binary file
   def collect_cmd_output_with_gdb(command, cmd, test_case=nil)
     gdb_file_name = @configurator.project_config_hash[:tools_backtrace_settings][:executable]
-    gdb_extra_args = @configurator.project_config_hash[:tools_backtrace_settings][:arguments]
+    gdb_extra_args = @configurator.project_config_hash[:tools_backtrace_settings][:arguments].nil? ? [] : @configurator.project_config_hash[:tools_backtrace_settings][:arguments]
     gdb_extra_args = gdb_extra_args.join(' ')
 
     gdb_exec_cmd = "#{gdb_file_name} #{gdb_extra_args} #{cmd}"
@@ -64,7 +64,6 @@ class DebuggerUtils
     all_test_names = command[:line] + @unity_utils.additional_test_run_args('', 'list_test_cases')
     test_list = @tool_executor.exec(all_test_names, command[:options])
     test_runner_tc = test_list[:output].split("\n").drop(1)
-
     # Clean collected test case names
     # Filter tests which contain test_case_name passed by `--test_case` argument
     if ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
@@ -100,8 +99,9 @@ class DebuggerUtils
   # test with segmentation fault as failure
   #
   # @param [hash, #shell_result] - output shell created by calling @tool_executor.exec
+  # @param [String, #test_runner_file_name] - test runner file name
   # @return hash - updated shell_result passed as argument
-  def gdb_output_collector(shell_result)
+  def gdb_output_collector(shell_result, test_runner_file_name)
     test_case_result_collector = @test_result_collector_struct.new(
       passed: 0,
       failed: 0,
@@ -135,7 +135,7 @@ class DebuggerUtils
             test_case_result_collector[:failed] += 1
           end
         else
-          test_output = analyze_output(test_output)
+          test_output = analyze_output(test_output, test_runner_file_name)
 
           # Mark test as failure
           test_case_result_collector[:failed] += 1
@@ -162,7 +162,7 @@ class DebuggerUtils
       # Concatenate execution time between tests
       # running tests serpatatelly might increase total execution time
       shell_result[:time] += exec_time
-      test_output = analyze_output(test_output)
+      test_output = analyze_output(test_output, test_runner_file_name)
 
       # Mark test as failure
       test_case_result_collector[:failed] += 1
@@ -220,36 +220,50 @@ class DebuggerUtils
   # Parse Segmentatation Fault output section
   #
   # @param[String, #output_log] - command line output log storing potential backtrace data
+  # @param[String, #test_runner_file_name] - test runner name
   # @return [String, #output] - output with fixed information about failed test
-  def analyze_output(output_log)
+  def analyze_output(output_log, test_runner_file_name)
 
     # <-- Parse Segmentatation Fault output section -->
     # Withdraw test_name from gdb output
-    test_name = if output_log =~ /<(.*)>/
-                  Regexp.last_match(1)
-                else
-                  ''
-                end
-
-    # Collect file_name and line in which Segmentation fault have his beginning
-    if output_log =~ /#{test_name}\s\(\)\sat\s(.*):(\d+)\n/
-      # Remove path from file_name
-      file_name = Regexp.last_match(1).to_s.split('/').last.split('\\').last
-      # Save line number
-      line = Regexp.last_match(2)
-
-      # Remove test_Unknown log
-      if output_log =~ /:FAIL/
-        output_log = output_log.gsub(/(.*):FAIL:/, '')
+    if @configurator.project_config_hash[:tools_backtrace_settings][:regex_patter].nil? or
+       @configurator.project_config_hash[:tools_backtrace_settings][:regex_patter][:test_name].nil?
+      test_name_reg = DEFAULT_BACKTRACE_TOOL[:regex_patter][:test_name]
+      test_name = "test_Unknown"
+    else
+      test_name_reg = @configurator.project_config_hash[:tools_backtrace_settings][:regex_patter][:test_name]
+      test_name = if output_log =~ /#{test_name_reg}/
+        $1
+      else
+        ''
       end
-
-      # Replace:
-      # - '\n' by @new_line_tag to make gdb output flat
-      # - ':' by @colon_tag to avoid test results problems
-      # to enable parsing output for default generator_test_results regex
-      output_log = output_log.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
-      output_log = "#{file_name}:#{line}:#{test_name}:FAIL: #{output_log}"
     end
+
+    # Set default values
+    line = 1
+    file_name = test_runner_file_name
+    # Collect file_name and line in which Segmentation fault have his beginning
+    unless @configurator.project_config_hash[:tools_backtrace_settings][:regex_patter].nil? or
+           @configurator.project_config_hash[:tools_backtrace_settings][:regex_patter][:line_number].nil?
+      if output_log =~ /#{test_name}#{@configurator.project_config_hash[:tools_backtrace_settings][:regex_patter][:line_number]}/ ||
+         output_log =~ /#{@configurator.project_config_hash[:tools_backtrace_settings][:regex_patter][:line_number]}/
+      
+        # Save line number
+        line = $1
+      end
+    end
+    
+    # Remove test_Unknown log
+    if output_log =~ /:FAIL/
+      output_log = output_log.gsub(/(.*):FAIL:/, '')
+    end
+
+    # Replace:
+    # - '\n' by @new_line_tag to make gdb output flat
+    # - ':' by @colon_tag to avoid test results problems
+    # to enable parsing output for default generator_test_results regex
+    output_log = output_log.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
+    output_log = "#{file_name}:#{line}:#{test_name}:FAIL: #{output_log}"
 
     return output_log
   end

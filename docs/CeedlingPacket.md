@@ -1008,12 +1008,27 @@ that you execute on target hardware).
             - --eval-command backtrace
             - --batch
             - --args
+          :regex_patter:
+            :line_numer: '\s\(\)\sat\s.*:(\d+)\n'
+            :test_name: <(.*)>
+
+    for instance for valgrind configuration might look:
+
+    ```yaml
+      :tools:
+        :backtrace_settings:
+          :executable: valgrind
+          :regex_patter:
+            :line_numer: '\s\(\)\sat\s.*:(\d+)\n'
+            :test_name: (test_.*)\s\((\w+.c):(\d+)\)
+
     ```
     
     Important. The debugger which will collect segmentation fault should run in:
 
     - background
     - with option to enable pass to executable binary additional arguments
+    - the regex_pattern and arguments fields does not inherit settings from default. 
 
   ---
 

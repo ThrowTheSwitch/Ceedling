@@ -199,7 +199,7 @@ class Generator
     if shell_result[:output] =~ /\s*Segmentation\sfault.*/i || shell_result[:output] =~ /.*SIGSEGV.*/
       if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
         # If we have the options and tools to learn more, dig into the details
-        shell_result = @debugger_utils.gdb_output_collector(shell_result)
+        shell_result = @debugger_utils.gdb_output_collector(shell_result, File.basename(@file_finder.find_compilation_input_file(executable)))
       else
         shell_result[:output] = "#{File.basename(@file_finder.find_compilation_input_file(executable))}:1:test_Unknown:FAIL:Segmentation Fault" 
         shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"

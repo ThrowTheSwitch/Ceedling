@@ -148,19 +148,34 @@ class SystemContext
     add_line = nil
     updated = false
     updated_yml = []
+    next_line = nil
     File.read('project.yml').split("\n").each_with_index do |line, i|
       m = line.match /\:#{key.to_s}\:\s*(.*)/
       unless m.nil?
         line = line.gsub(m[1], new_value)
         updated = true
+        if line.match(/# /)
+          line = line.gsub(/# /, '')
+        end
+        if line.include? "\n"
+          line = line.split("\n")[0]
+          next_line = line.split("\n").slice(1,line.split("\n").length )
+        end
       end
-
+      
       m = line.match /(\s*)\:#{prefix.to_s}\:/
       unless m.nil?
         add_line = [i+1, m[1]+'  ']
+        if line.match(/# /)
+          line = line.gsub(/# /, '')
+        end
       end
 
       updated_yml.append(line)
+      unless next_line.nil?
+        next_line.each { |x| updated_yml.append(x) }
+        updated_yml.append(next_line)
+      end
     end
     unless updated
       if add_line.nil?
@@ -169,7 +184,6 @@ class SystemContext
         updated_yml.insert(add_line[0], "#{add_line[1]}:#{key}: #{new_value}")
       end
     end
-
     File.write('project.yml', updated_yml.join("\n"), mode: 'w')
   end
 end
@@ -908,6 +922,8 @@ module CeedlingTestCases
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
         expect(output).to match(/Segmentation Fault/i)
         expect(output).to match(/Unit test failures./)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
         expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
@@ -986,6 +1002,315 @@ module CeedlingTestCases
         expect(output).to match(/PASSED:\s+0/)
         expect(output).to match(/FAILED:\s+1/)
         expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_without_regex_pattern_set
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, "\n      :executable: valgrind")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/1\:test_Unknown\:FAIL/i)
+        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_with_line_number_regex_set
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, 
+        "\n      :executable: valgrind" +
+        "\n      :regex_patter:" +
+        "\n        :line_number: test_.*\\s\\(\\w+.c:(\\d+)\\)")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/test_example_file_sigsegv.c:14:test_Unknown:FAIL/i)
+        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_with_test_name_regex_set
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, 
+        "\n      :executable: valgrind" +
+        "\n      :regex_patter:" +
+        "\n        :test_name: (test_.*)\\s\\((\\w+.c):(\\d+)\\)"+
+        "\n        :line_number: test_.*\\s\\(\\w+.c:(\\d+)\\)")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/test_example_file_sigsegv.c:14:test_add_numbers_will_fail:FAIL/i) # all fields properly collected
+        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_with_regex_node_without_test_name_and_line_no
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, 
+        "\n      :executable: valgrind" +
+        "\n      :regex_patter:")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/test_example_file_sigsegv.c:1:test_Unknown:FAIL/i) # all fields properly collected
+        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_with_test_name_and_line_regex_set
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, 
+        "\n      :executable: valgrind" +\
+        "\n      :regex_patter:" +\
+        "\n        :test_name: (test_.*)\\s\\((\\w+.c):(\\d+)\\)")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/test_example_file_sigsegv.c:1:test_add_numbers_will_fail:FAIL/i) # the line is not collected from regex
+        expect(output).to match(/Unit test failures./)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_without_regex_pattern_set_and_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, "\n      :executable: valgrind")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/1\:test_Unknown\:FAIL/i)
+        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_with_line_number_regex_set_and_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, 
+        "\n      :executable: valgrind" +
+        "\n      :regex_patter:" +
+        "\n        :line_number: test_.*\\s\\(\\w+.c:(\\d+)\\)")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/test_example_file_sigsegv.c:14:test_Unknown:FAIL/i)
+        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_with_test_name_regex_set_and_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, 
+        "\n      :executable: valgrind" +
+        "\n      :regex_patter:" +
+        "\n        :test_name: (test_.*)\\s\\((\\w+.c):(\\d+)\\)"+
+        "\n        :line_number: test_.*\\s\\(\\w+.c:(\\d+)\\)")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/test_example_file_sigsegv.c:14:test_add_numbers_will_fail:FAIL/i) # all fields properly collected
+        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_with_regex_node_without_test_name_and_line_no_and_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, 
+        "\n      :executable: valgrind" +
+        "\n      :regex_patter:")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/test_example_file_sigsegv.c:1:test_Unknown:FAIL/i) # all fields properly collected
+        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def test_run_of_projects_fail_because_of_sigsegv_with_report_using_valgrind_as_debugger_with_test_name_and_line_regex_set_and_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.modify_project_yml_for_test(:tools, :backtrace_settings, 
+        "\n      :executable: valgrind" +\
+        "\n      :regex_patter:" +\
+        "\n        :test_name: (test_.*)\\s\\((\\w+.c):(\\d+)\\)")
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/SIGSEGV/i)
+        expect(output).to match(/test_example_file_sigsegv.c:1:test_add_numbers_will_fail:FAIL/i) # the line is not collected from regex
+        expect(output).to match(/Unit test failures./)
+        expect(output).not_to match(/\$\$\$/) # Confirm wherever the new line tag is not visible and restored at output
+        expect(output).not_to match(/!!!/) # Confirm wherever the colon tag is not visible and colon character is respoted
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
       end
     end
   end

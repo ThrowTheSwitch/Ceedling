@@ -58,10 +58,10 @@ class GeneratorTestResults
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:FAIL)/
         elements = extract_line_elements(line, results[:source][:file])
-        elements[0][:test] = @debugger_utils.restore_new_line_character_in_flatten_log(elements[0][:test])
-        elements[0][:message] = @debugger_utils.restore_new_line_character_in_flatten_log(unity_shell_result[:output])
+        elements[0][:test] = @debugger_utils.unflat_debugger_log(elements[0][:test])
+        elements[0][:message] = @debugger_utils.unflat_debugger_log(unity_shell_result[:output])
         results[:failures] << elements[0]
-        results[:stdout] << @debugger_utils.restore_new_line_character_in_flatten_log(elements[1]) if (!elements[1].nil?)
+        results[:stdout] << @debugger_utils.unflat_debugger_log(elements[1]) if (!elements[1].nil?)
       else # collect up all other
         if !@configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
           results[:stdout] << line.chomp
