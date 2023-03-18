@@ -37,8 +37,8 @@ class HtmlTestsReport < Plugin
     write_statistics(results[:counts], stream)
     write_footer(stream)
     write_failures(results[:failures], stream)
-    write_tests(results[:ignores], stream, "Ignored Tests")
-    write_tests(results[:successes], stream, "Succeed Tests")
+    write_tests(results[:ignores], stream, "Ignored Tests", "ignored")
+    write_tests(results[:successes], stream, "Succeed Tests", "success")
   end
 
   def write_header(stream)
@@ -63,6 +63,7 @@ class HtmlTestsReport < Plugin
     stream.puts 'overflow: hidden;'
     stream.puts 'box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);'
     stream.puts '}'
+    stream.puts 'details summary { cursor: pointer; }'
     stream.puts 'h1 {'
     stream.puts 'margin: 0 0 7px 14px;'
     stream.puts 'font-size: 1.5em;'
@@ -75,11 +76,20 @@ class HtmlTestsReport < Plugin
     stream.puts 'text-align: left;'
     stream.puts 'font-weight: bold;'
     stream.puts '}'
+    stream.puts '.failed thead tr { background-color: #983500; }'
+    stream.puts '.ignored thead tr { background-color: #849800; }'
+    stream.puts '.success thead tr { background-color: #00981e; }'
     stream.puts 'table th, td { padding: 12px 15px; word-break: break-all; }'
     stream.puts 'table tbody tr { border-bottom: 1px solid #dddddd; }'
     stream.puts 'table tbody tr:nth-of-type(even) { background-color: #f3f3f3; }'
     stream.puts 'table tbody tr:last-of-type { border-bottom: 2px solid #009879; }'
+    stream.puts '.failed tbody tr:last-of-type { border-bottom: 2px solid #983500; }'
+    stream.puts '.ignored tbody tr:last-of-type { border-bottom: 2px solid #849800; }'
+    stream.puts '.success tbody tr:last-of-type { border-bottom: 2px solid #00981e; }'
     stream.puts 'table tbody tr:hover { color: #009879; }'
+    stream.puts '.failed tbody tr:hover { color: #983500; }'
+    stream.puts '.ignored tbody tr:hover { color: #849800; }'
+    stream.puts '.success tbody tr:hover { color: #00981e; }'
     stream.puts '</style>'
     stream.puts '</head>'
     stream.puts '<body>'
@@ -106,7 +116,7 @@ class HtmlTestsReport < Plugin
     end
 
     stream.puts '<h1>Failed Test</h1>'
-    stream.puts '<table>'
+    stream.puts '<table class="failed">'
     stream.puts '<thead><tr><th>File</th><th>Location</th><th>Message</th></tr></thead>'
     stream.puts '<tbody>'
 
@@ -141,13 +151,13 @@ class HtmlTestsReport < Plugin
     stream.puts "</table>"
   end
 
-  def write_tests(results, stream, title)
+  def write_tests(results, stream, title, style)
     if results.size.zero?
       return
     end
 
     stream.puts "<h1>#{title}</h1>"
-    stream.puts '<table>'
+    stream.puts "<table class='#{style}'>"
     stream.puts '<thead><tr><th>File</th><th>Name</th><th>Message</th</tr></thead>'
     stream.puts '<tbody>'
 
