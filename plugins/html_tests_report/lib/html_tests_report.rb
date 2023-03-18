@@ -35,10 +35,10 @@ class HtmlTestsReport < Plugin
   def write_results(results, stream)
     write_header(stream)
     write_statistics(results[:counts], stream)
-    write_footer(stream)
     write_failures(results[:failures], stream)
     write_tests(results[:ignores], stream, "Ignored Tests", "ignored")
-    write_tests(results[:successes], stream, "Succeed Tests", "success")
+    write_tests(results[:successes], stream, "Success Tests", "success")
+    write_footer(stream)
   end
 
   def write_header(stream)
@@ -96,7 +96,7 @@ class HtmlTestsReport < Plugin
   end
 
   def write_statistics(counts, stream)
-    stream.puts '<h1>Test Summary</h1>'
+    stream.puts '<h1>Summary</h1>'
     stream.puts '<table>'
     stream.puts '<thead><tr><th>Total</th><th>Passed</th><th>Ignored</th><th>Failed</th></tr></thead>'
     stream.puts '<tbody>'
