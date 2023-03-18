@@ -158,7 +158,7 @@ class HtmlTestsReport < Plugin
 
     stream.puts "<h1>#{title}</h1>"
     stream.puts "<table class='#{style}'>"
-    stream.puts '<thead><tr><th>File</th><th>Name</th><th>Message</th</tr></thead>'
+    stream.puts '<thead><tr><th>File</th><th>Name</th><th>Message</th></tr></thead>'
     stream.puts '<tbody>'
 
     results.each do |result|
