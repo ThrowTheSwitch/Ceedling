@@ -13,12 +13,9 @@ the internet and/or ask your preferred AI powered code generation tool ;).
 ## Table of Contents
 - [Introduction](#introduction)
 - [Ceedling Plugin Architecture](#ceedling-plugin-architecture)
-- [Choosing a Plugin Idea](#choosing-a-plugin-idea)
-- [Creating a Plugin Skeleton](#creating-a-plugin-skeleton)
-- [Implementing Plugin Logic](#implementing-plugin-logic)
-- [Testing the Plugin](#testing-the-plugin)
-- [Packaging and Distributing the Plugin](#packaging-and-distributing-the-plugin)
-- [Conclusion](#conclusion)
+  - [Configuration](#configuration)
+  - [Script](#script)
+  - [Rake Tasks](#rake-tasks)
 
 ## Introduction
 
