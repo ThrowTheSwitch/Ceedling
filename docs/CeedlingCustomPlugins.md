@@ -48,7 +48,7 @@ done with the `project.yml` file.
   :setting_1: value 1
   :setting_2: value 2
   :setting_3: value 3
-# ...
+  # ...
   :setting_n: value n
 ...
 ```
@@ -65,7 +65,7 @@ for your plugin that inherits from Ceedling's plugin base class. e.g.:
 require 'ceedling/plugin'
 
 class PluginName < Plugin
-#  ...
+  # ...
 end
 ```
 
@@ -86,23 +86,104 @@ suggests, to setup your plugin for subsequent runs.
 These methods are called before and after execution of mock generation tool
 respectively.
 
-The argument `arg_hash` is as follows:
+The argument `arg_hash` follows the structure below:
 
 ```ruby
-arg_hash = {}
+arg_hash = {
+  # Path of the header file being mocked.
+  :header_file => "<header file being mocked>",
+  # Additional context passed by the calling function.
+  # Ceedling passes the 'test' symbol.
+  :context => TEST_SYM
+}
 ```
 
 #### `pre_runner_generate(arg_hash)` and `post_runner_generate(arg_hash)`
 
+These methods are called before and after execution of the Unity's test runner
+generator tool.
 
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  # Additional context passed by the calling function.
+  # Ceedling passes the 'test' symbol.
+  :context => TEST_SYM,
+  # Path of the tests source file.
+  :test_file => "<tests source file>",
+  # Path of the tests runner file.
+  :runner_file => "<tests runner source file>"
+}
+```
 
 #### `pre_compile_execute(arg_hash)` and `post_compile_execute(arg_hash)`
 
+These methods are called before and after source file compilation.
 
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  # Hash holding executed tool properties.
+  :tool => {
+    :executable => "<tool executable>",
+    :name => "<tool name>",
+    :stderr_redirect => StdErrRedirect::NONE,
+    :background_exec => BackgroundExec::NONE,
+    :optional => false,
+    :arguments => [],
+  },
+  # Symbol of the operation being performed, i.e.: compile, assemble or link
+  :operation => OPERATION_COMPILE_SYM,
+  # Additional context passed by the calling function.
+  # Ceedling passes a symbol according to the build type.
+  # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
+  :context => TEST_SYM,
+  # Path of the input source file. e.g.: .c file
+  :source => "<source file>",
+  # Path of the output object file. e.g.: .o file
+  :object => "<object file>",
+  # Path of the listing file. e.g.: .lst file
+  :list => "<listing file>",
+  # Path of the dependencies file. e.g.: .d file
+  :dependencies => "<dependencies file>"
+}
+```
 
 #### `pre_link_execute(arg_hash)` and `post_link_execute(arg_hash)`
 
+These methods are called before and after linking the executable file.
 
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  # Hash holding executed tool properties.
+  :tool => {
+    :executable => "<tool executable>",
+    :name => "<tool name>",
+    :stderr_redirect => StdErrRedirect::NONE,
+    :background_exec => BackgroundExec::NONE,
+    :optional => false,
+    :arguments => [],
+  },
+  # Additional context passed by the calling function.
+  # Ceedling passes a symbol according to the build type.
+  # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
+  :context => TEST_SYM,
+  # List of object files paths being linked. e.g.: .o files
+  :objects => objects,
+  # Path of the output file. e.g.: .out file
+  :executable => executable,
+  # Path of the map file. e.g.: .map file
+  :map => map,
+  # List of libraries to link.
+  :libraries => libraries,
+  # List of libraries 
+  :libpaths => libpaths
+}
+```
 
 #### `pre_test_fixture_execute(arg_hash)` and `post_test_fixture_execute(arg_hash)`
 
@@ -150,4 +231,8 @@ end
 
 ### Rake Tasks
 
-Add custom Rake tasks to your project that can be run with `ceedling <custom_task>`.
+Add custom Rake tasks to your project that can be run with
+`ceedling <custom_task>`.
+
+To implement this strategy, add the file `<plugin-name>.rake` to the plugin
+source root folder.
