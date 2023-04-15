@@ -24,12 +24,13 @@ They are implemented in Ruby programming language and are loaded by Ceedling at
 runtime.
 Plugins provide the ability to customize the behavior of Ceedling at various
 stages like preprocessing, compiling, linking, building, testing, and reporting.
-They are configured and enabled from within the project's YAML configuration file.
+They are configured and enabled from within the project's YAML configuration
+file.
 
 ## Ceedling Plugin Architecture
 
-Ceedling provides 3 ways in which its behavior can be customized through a plugin.
-Each strategy is implemented in a specific source file.
+Ceedling provides 3 ways in which its behavior can be customized through a
+plugin. Each strategy is implemented in a specific source file.
 
 ### Configuration
 
@@ -59,19 +60,35 @@ Perform some custom actions at various stages of the build process.
 
 To implement this strategy, add the file `<plugin-name>.rb` to the `lib`
 folder of your plugin source root. In this file you have to implement a class
-for your plugin that inherits from Ceedling's plugin base class. e.g.:
+for your plugin that inherits from Ceedling's plugin base class.
+
+The `<plugin-name>.rb` file might look like this:
+
+##### **`lib/<plugin-name>.rb`**
 
 ```ruby
 require 'ceedling/plugin'
 
 class PluginName < Plugin
-  # ...
+  def setup
+    # ...
+  end
+  
+  def pre_test(test)
+    # ...
+  end
+  
+  def post_test(test)
+    # ...
+  end
 end
 ```
 
-There are some methods that the class can define which will be called by
-Ceedling automatically at predefined stages of the build process.
-These are:
+It is also possible and probably convenient to add more `.rb` files to the `lib`
+folder to allow organizing better the plugin source code.
+
+The derived plugin class can define which will be called by Ceedling
+automatically at predefined stages of the build process.
 
 #### `setup`
 
@@ -101,7 +118,7 @@ arg_hash = {
 #### `pre_runner_generate(arg_hash)` and `post_runner_generate(arg_hash)`
 
 These methods are called before and after execution of the Unity's test runner
-generator tool.
+generator tool respectively.
 
 The argument `arg_hash` follows the structure below:
 
@@ -119,13 +136,13 @@ arg_hash = {
 
 #### `pre_compile_execute(arg_hash)` and `post_compile_execute(arg_hash)`
 
-These methods are called before and after source file compilation.
+These methods are called before and after source file compilation respectively.
 
 The argument `arg_hash` follows the structure below:
 
 ```ruby
 arg_hash = {
-  # Hash holding executed tool properties.
+  # Hash holding compiler tool properties.
   :tool => {
     :executable => "<tool executable>",
     :name => "<tool name>",
@@ -153,13 +170,14 @@ arg_hash = {
 
 #### `pre_link_execute(arg_hash)` and `post_link_execute(arg_hash)`
 
-These methods are called before and after linking the executable file.
+These methods are called before and after linking the executable file
+respectively.
 
 The argument `arg_hash` follows the structure below:
 
 ```ruby
 arg_hash = {
-  # Hash holding executed tool properties.
+  # Hash holding linker tool properties.
   :tool => {
     :executable => "<tool executable>",
     :name => "<tool name>",
@@ -173,61 +191,74 @@ arg_hash = {
   # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
   :context => TEST_SYM,
   # List of object files paths being linked. e.g.: .o files
-  :objects => objects,
+  :objects => [],
   # Path of the output file. e.g.: .out file
-  :executable => executable,
+  :executable => "<executable file>",
   # Path of the map file. e.g.: .map file
-  :map => map,
-  # List of libraries to link.
-  :libraries => libraries,
-  # List of libraries 
-  :libpaths => libpaths
+  :map => "<map file>",
+  # List of libraries to link. e.g.: the ones passed to the linker with -l
+  :libraries => [],
+  # List of libraries paths. e.g.: the ones passed to the linker with -L
+  :libpaths => []
 }
 ```
 
 #### `pre_test_fixture_execute(arg_hash)` and `post_test_fixture_execute(arg_hash)`
 
+These methods are called before and after running the tests executable file
+respectively.
 
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  # Hash holding execution tool properties.
+  :tool => {
+    :executable => "<tool executable>",
+    :name => "<tool name>",
+    :stderr_redirect => StdErrRedirect::NONE,
+    :background_exec => BackgroundExec::NONE,
+    :optional => false,
+    :arguments => [],
+  },
+  # Additional context passed by the calling function.
+  # Ceedling passes a symbol according to the build type.
+  # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
+  :context => TEST_SYM,
+  # Path to the tests executable file. e.g.: .out file
+  :executable => "<executable file>",
+  # Path to the tests result file. e.g.: .pass/.fail file
+  :result_file => "<result file>"
+}
+```
 
 #### `pre_test(test)` and `post_test(test)`
 
+These methods are called before and after performing all steps needed to run a
+test file respectively, i.e. configure, preprocess, compile, link, run, get
+results, etc.
 
+The argument `test` corresponds to the path of the test source file being
+processed.
 
 #### `pre_release` and `post_release`
 
-
+These methods are called before and after performing all steps needed to run the
+release task respectively, i.e. configure, preprocess, compile, link, etc.
 
 #### `pre_build` and `post_build`
 
+These methods are called before and after executing any ceedling task
+respectively. e.g: test, release, coverage, etc.
 
+#### `post_error`
+
+This method is called in case an error happens during project build process.
 
 #### `summary`
 
-
-It is also possible and probably convinient to add more `.rb` files to the `lib`
-folder to allow organizing better the plugin source code.
-
-The `<plugin-name>.rb` file might look like this:
-
-##### **`lib/<plugin-name>.rb`**
-
-```ruby
-require 'ceedling/plugin'
-
-class PluginName < Plugin
-  def setup
-    # ...
-  end
-  
-  def pre_test(test)
-    # ...
-  end
-  
-  def post_test(test)
-    # ...
-  end
-end
-```
+This method is called when onvoking the `summary` task, i.e.: `ceedling summary`.
+The idea is that the method prints the results of the last build.
 
 ### Rake Tasks
 
@@ -235,4 +266,16 @@ Add custom Rake tasks to your project that can be run with
 `ceedling <custom_task>`.
 
 To implement this strategy, add the file `<plugin-name>.rake` to the plugin
-source root folder.
+source root folder and define your rake tasks inside. e.g.:
+
+##### **`<plugin-name>.rake`**
+
+```ruby
+# Only tasks with description are listed by ceedling -T
+desc "Print hello world in sh"
+task :hello_world do
+  sh "echo Hello World!"
+end
+```
+
+The task can be called with: `ceedling hello_world`
