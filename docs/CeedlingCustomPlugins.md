@@ -87,8 +87,8 @@ end
 It is also possible and probably convenient to add more `.rb` files to the `lib`
 folder to allow organizing better the plugin source code.
 
-The derived plugin class can define which will be called by Ceedling
-automatically at predefined stages of the build process.
+The derived plugin class can define some methods which will be called by
+Ceedling automatically at predefined stages of the build process.
 
 #### `setup`
 
