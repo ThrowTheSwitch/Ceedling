@@ -163,7 +163,7 @@ class PreprocessinatorIncludesHandler
   private
 
   def extract_full_path_dependencies(dependencies)
-    # Separate the real files form the annotated ones and remove the '@@@@'
+    # Separate the real files from the annotated ones and remove the '@@@@'
     annotated_files, real_files = dependencies.partition {|file| file =~ /^@@@@/}
     annotated_files.map! {|file| file.gsub('@@@@','') }
     # Matching annotated_files values against real_files to ensure that
