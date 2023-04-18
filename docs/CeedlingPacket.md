@@ -2350,4 +2350,4 @@ cross-compiling on the desktop just ain't gonna get it done.
 Creating Custom Plugins
 -----------------------
 
-Oh boy. This is going to take some explaining.
+There is a [doc](CeedlingCustomPlugins.md) for this.
