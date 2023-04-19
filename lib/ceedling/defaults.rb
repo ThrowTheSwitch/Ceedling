@@ -243,6 +243,10 @@ DEFAULT_BACKTRACE_TOOL = {
   :stderr_redirect => StdErrRedirect::AUTO.freeze,
   :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
+  :regex_patter => {
+    :test_name => '<(.*)>'.freeze,
+    :line_number => '\s\(\)\sat\s.*:(\d+)\n'.freeze,
+  },
   :arguments => [
     '-q',
     '--eval-command run',
