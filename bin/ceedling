@@ -17,15 +17,15 @@ def is_windows?
   return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
 end
 
+def here
+  File.join(File.expand_path(File.dirname(__FILE__)),"/..")
+end
+
 unless (project_found)
 #===================================== We Do Not Have A Project ================================================
 
   puts "Welcome to Ceedling!"
   require 'thor'
-
-  def here
-    File.dirname(__FILE__) + "/.."
-  end
 
   class CeedlingTasks < Thor
     include Thor::Actions
@@ -51,9 +51,10 @@ unless (project_found)
     desc "upgrade PROJECT_NAME", "upgrade ceedling for a project (not req'd if gem used)"
     def upgrade(name, silent = false)
       as_local = true
+      yaml_path = File.join(name, "project.yml")
       begin
-        require "yaml"
-        as_local = (YAML.load_file(File.join(name, "project.yml"))[:project][:which_ceedling] != 'gem')
+        require File.join(here,"lib","ceedling","yaml_wrapper.rb")
+        as_local = (YamlWrapper.new.load(yaml_path)[:project][:which_ceedling] != 'gem')
       rescue
         raise "ERROR: Could not find valid project file '#{yaml_path}'"
       end
@@ -66,7 +67,7 @@ unless (project_found)
 
         puts "WARNING: --no_docs deprecated. It is now the default. Specify -docs if you want docs installed." if (options[:no_docs] || options[:nodocs])
         puts "WARNING: --as_gem deprecated. It is now the default. Specify -local if you want ceedling installed to this project." if (options[:as_gem] || options[:asgem])
-        puts "WARNING: --with_ignore deprecated. It is now called -gitignore" if (options[:with_ignore] || options[:with_ignore])
+        puts "WARNING: --with_ignore deprecated. It is now called -gitignore" if (options[:with_ignore] || options[:withignore])
 
         use_docs     = options[:docs] || false
         use_configs  = !(options[:no_configs] || options[:noconfigs] || false)
@@ -84,13 +85,22 @@ unless (project_found)
           [source_path, test_path, test_support_path].each do |d|
             FileUtils.mkdir_p d
           end
+        else
+          prj_yaml = YamlWrapper.new.load(File.join(name, 'project.yml'))
+          test_support_path = if prj_yaml.key?(:path) && \
+                                 prj_yaml[:path].key?(:support)
+                                prj_yaml.key?[:path][:support]
+                              else
+                                ''
+                              end
         end
 
         # Genarate gitkeep in test support path
-        FileUtils.touch(File.join(test_support_path, '.gitkeep'))
+        FileUtils.touch(File.join(test_support_path, '.gitkeep')) unless \
+          test_support_path.empty?
 
         # If documentation requested, create a place to dump them and do so
-        doc_path = ""
+        doc_path = ''
         if use_docs
           doc_path = use_gem ? File.join(name, 'docs') : File.join(ceedling_path, 'docs')
           FileUtils.mkdir_p doc_path
@@ -238,7 +248,7 @@ unless (project_found)
 
 #===================================== We Have A Project Already ================================================
 else
-  require 'yaml'
+  require File.join(here,"lib","ceedling","yaml_wrapper.rb")
   require 'rbconfig'
 
   #determine platform
@@ -269,13 +279,13 @@ else
 
   #guess that we need a special script file first if it exists
   if (platform == :mswin)
-    options[:pretest] = File.exist?("#{ platform.to_s }_setup.bat") ? "#{ platform.to_s }_setup.bat" : nil
+    options[:pretest] = File.exist?("#{ platform }_setup.bat") ? "#{ platform }_setup.bat" : nil
   else
-    options[:pretest] = File.exist?("#{ platform.to_s }_setup.sh") ? "source #{ platform.to_s }_setup.sh" : nil
+    options[:pretest] = File.exist?("#{ platform }_setup.sh") ? "source #{ platform }_setup.sh" : nil
   end
 
   #merge in project settings if they can be found here
-  yaml_options = YAML.load_file(main_filepath)
+  yaml_options = YamlWrapper.new.load(main_filepath)
   if (yaml_options[:paths])
     options[:add_path] = yaml_options[:paths][:tools] || []
   else
@@ -302,6 +312,10 @@ else
         options[:list_tasks] = true
       when /^project:(\w+)/
         ENV['CEEDLING_USER_PROJECT_FILE'] = "#{$1}.yml"
+      when /^--test_case=(\w+)/
+        ENV['CEEDLING_INCLUDE_TEST_CASE_NAME'] = $1
+      when /^--exclude_test_case=(\w+)/
+        ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'] = $1
       else
         options[:args].push(v)
     end

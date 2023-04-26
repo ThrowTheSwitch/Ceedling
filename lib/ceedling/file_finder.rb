@@ -1,8 +1,5 @@
 require 'rubygems'
 require 'rake' # for adding ext() method to string
-require 'thread'
-
-
 class FileFinder
   SEMAPHORE = Mutex.new
 

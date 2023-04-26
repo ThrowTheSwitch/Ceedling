@@ -25,7 +25,7 @@ class ConfiguratorBuilder
   def build_accessor_methods(config, context)
     config.each_pair do |key, value|
       # fill configurator object with accessor methods
-      eval("def #{key.to_s.downcase}() return @project_config_hash[:#{key.to_s}] end", context)
+      eval("def #{key.to_s.downcase}() return @project_config_hash[:#{key}] end", context)
     end
   end
 
@@ -203,7 +203,7 @@ class ConfiguratorBuilder
 
     # sorted to provide assured order of traversal in test calls on mocks
     path_keys.sort.each do |key|
-      out_hash["collection_#{key.to_s}".to_sym] = @file_system_utils.collect_paths( in_hash[key] )
+      out_hash["collection_#{key}".to_sym] = @file_system_utils.collect_paths( in_hash[key] )
     end
 
     return out_hash
@@ -400,8 +400,13 @@ class ConfiguratorBuilder
 
   def collect_test_and_vendor_defines(in_hash)
     defines = in_hash[:defines_test].clone
+
+    require_relative 'unity_utils.rb'
+    cmd_line_define = UnityUtils.update_defines_if_args_enables(in_hash)
+
     vendor_defines = get_vendor_defines(in_hash)
     defines.concat(vendor_defines) if vendor_defines
+    defines.concat(cmd_line_define) if cmd_line_define
 
     return {:collection_defines_test_and_vendor => defines}
   end

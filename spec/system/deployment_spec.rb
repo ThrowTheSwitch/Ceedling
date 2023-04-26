@@ -38,14 +38,24 @@ describe "Ceedling" do
     it { can_test_projects_with_fail_default }
     it { can_test_projects_with_compile_error }
     it { can_test_projects_with_both_mock_and_real_header }
+    it { can_test_projects_with_success_when_space_appears_between_hash_and_include }
     it { uses_raw_output_report_plugin }
     it { can_use_the_module_plugin }
     it { can_use_the_module_plugin_path_extension }
     it { can_use_the_module_plugin_with_include_path }
     it { can_use_the_module_plugin_with_non_default_paths }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
+    it { test_run_of_projects_fail_because_of_sigsegv_without_report }
+    it { test_run_of_projects_fail_because_of_sigsegv_with_report }
+    it { can_run_single_test_with_full_test_case_name_from_test_file_with_success_cmdline_args_are_enabled }
+    it { can_run_single_test_with_partiall_test_case_name_from_test_file_with_enabled_cmdline_args_success }
+    it { exlcude_test_case_name_filter_works_and_only_one_test_case_is_executed }
+    it { none_of_test_is_executed_if_test_case_name_passed_does_not_fit_defined_in_test_file_and_cmdline_args_are_enabled }
+    it { none_of_test_is_executed_if_test_case_name_and_exclude_test_case_name_is_the_same }
+    it { run_all_test_when_test_case_name_is_passed_but_cmdline_args_are_disabled_with_success }
   end
 
   describe "deployed in a project's `vendor` directory with gitignore." do
@@ -121,10 +131,12 @@ describe "Ceedling" do
     it { can_use_the_module_plugin_with_include_path }
     it { can_use_the_module_plugin_with_non_default_paths }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
 
     it { can_upgrade_projects }
+    it { can_upgrade_projects_even_if_test_support_folder_does_not_exists }
     it { contains_a_vendor_directory }
     it { does_not_contain_documentation }
     it { can_fetch_non_project_help }
@@ -143,8 +155,13 @@ describe "Ceedling" do
     it { can_use_the_module_plugin_with_include_path }
     it { can_use_the_module_plugin_with_non_default_paths }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
+  end
+
+  describe "Cannot ugrade a non existing project" do
+    it { cannot_upgrade_non_existing_project }
   end
 
   describe "deployed as a gem" do
@@ -171,6 +188,7 @@ describe "Ceedling" do
     it { can_use_the_module_plugin_with_include_path }
     it { can_use_the_module_plugin_with_non_default_paths }
     it { handles_creating_the_same_module_twice_using_the_module_plugin }
+    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
     it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end

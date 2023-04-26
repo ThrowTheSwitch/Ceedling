@@ -1,7 +1,8 @@
 ---
 :source:
-  :path: some/place
-  :file: test_example.c
+  :file: some/place/test_example.c
+  :dirname: some/place
+  :basename: test_example.c
 :successes: []
 :failures: []
 :ignores: []

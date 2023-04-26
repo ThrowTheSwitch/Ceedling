@@ -1,4 +1,5 @@
 require 'ceedling/constants'
+require 'ceedling/file_path_utils'
 
 class Generator
 
@@ -15,7 +16,8 @@ class Generator
               :file_path_utils,
               :streaminator,
               :plugin_manager,
-              :file_wrapper
+              :file_wrapper,
+              :unity_utils
 
 
   def generate_shallow_includes_list(context, file)
@@ -168,13 +170,23 @@ class Generator
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results
     command = @tool_executor.build_command_line(arg_hash[:tool], [], arg_hash[:executable])
+    command[:line] += @unity_utils.collect_test_runner_additional_args
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command[:line], command[:options] )
 
-    #Don't Let The Failure Count Make Us Believe Things Aren't Working
     shell_result[:exit_code] = 0
-    @generator_helper.test_results_error_handler(executable, shell_result)
+    # Add extra collecting backtrace
+    # if use_backtrace_gdb_reporter is set to true
+    if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] and (shell_result[:output] =~ /\s*Segmentation\sfault.*/)
+      gdb_file_name = FilePathUtils.os_executable_ext('gdb').freeze
+      gdb_exec_cmd = "#{gdb_file_name} -q #{command[:line]} --eval-command run --eval-command backtrace --batch"
+      crash_result = @tool_executor.exec(gdb_exec_cmd, command[:options] )
+      shell_result[:output] = crash_result[:output]
+    else
+      # Don't Let The Failure Count Make Us Believe Things Aren't Working
+      @generator_helper.test_results_error_handler(executable, shell_result)
+    end
 
     processed = @generator_test_results.process_and_write_results( shell_result,
                                                                    arg_hash[:result_file],
