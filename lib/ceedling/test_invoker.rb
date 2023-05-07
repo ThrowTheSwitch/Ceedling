@@ -50,6 +50,8 @@ class TestInvoker
 
     @project_config_manager.process_test_config_change
 
+    options[:symbol] = context
+
     # Create Storage For Works In Progress
     testables = {}
     mock_list = []
