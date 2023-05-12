@@ -242,7 +242,7 @@ DEFAULT_BACKTRACE_TOOL = {
   :name => 'default_backtrace_settings'.freeze,
   :stderr_redirect => StdErrRedirect::AUTO.freeze,
   :background_exec => BackgroundExec::NONE.freeze,
-  :optional => false.freeze,
+  :optional => true.freeze,
   :arguments => [
     '-q',
     '--eval-command run',
