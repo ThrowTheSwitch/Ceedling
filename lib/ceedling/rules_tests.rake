@@ -57,8 +57,16 @@ end
 
 
 namespace TEST_SYM do
-  # use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
+  TOOL_COLLECTION_TEST_RULES = {
+    :test_compiler  => TOOLS_TEST_COMPILER,
+    :test_assembler => TOOLS_TEST_ASSEMBLER,
+    :test_linker    => TOOLS_TEST_LINKER,
+    :test_fixture   => TOOLS_TEST_FIXTURE
+  }
+
   @ceedling[:unity_utils].create_test_runner_additional_args
+
+  # use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
   rule(/^#{TEST_TASK_ROOT}\S+$/ => [ # test task names by regex
       proc do |task_name|
         test = task_name.sub(/#{TEST_TASK_ROOT}/, '')
@@ -67,7 +75,7 @@ namespace TEST_SYM do
       end
   ]) do |test|
     @ceedling[:rake_wrapper][:test_deps].invoke
-    @ceedling[:test_invoker].setup_and_invoke([test.source])
+    @ceedling[:test_invoker].setup_and_invoke([test.source], TEST_SYM, TOOL_COLLECTION_TEST_RULES)
   end
 end
 

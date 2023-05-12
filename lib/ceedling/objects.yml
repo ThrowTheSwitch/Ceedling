@@ -42,6 +42,12 @@ unity_utils:
   compose:
      - configurator
 
+debugger_utils:
+  compose:
+     - configurator
+     - tool_executor
+     - unity_utils
+
 project_config_manager:
   compose:
     - cacheinator
@@ -201,6 +207,7 @@ generator:
     - plugin_manager
     - file_wrapper
     - unity_utils
+    - debugger_utils
 
 generator_helper:
   compose:
@@ -211,6 +218,7 @@ generator_test_results:
     - configurator
     - generator_test_results_sanity_checker
     - yaml_wrapper
+    - debugger_utils
 
 generator_test_results_sanity_checker:
   compose:
@@ -234,22 +242,16 @@ dependinator:
 
 preprocessinator:
   compose:
-    - preprocessinator_helper
     - preprocessinator_includes_handler
     - preprocessinator_file_handler
     - task_invoker
+    - file_finder
     - file_path_utils
     - yaml_wrapper
     - project_config_manager
     - configurator
-
-preprocessinator_helper:
-  compose:
-    - configurator
     - test_includes_extractor
-    - task_invoker
-    - file_finder
-    - file_path_utils
+    - rake_wrapper
 
 preprocessinator_includes_handler:
   compose:
@@ -293,6 +295,8 @@ test_invoker_helper:
     - file_finder
     - file_path_utils
     - file_wrapper
+    - generator
+    - rake_wrapper
 
 release_invoker:
   compose:
