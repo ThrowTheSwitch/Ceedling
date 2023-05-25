@@ -103,9 +103,17 @@ class ConfiguratorSetup
     validation = []
 
     config[:tools].keys.sort.each do |key|
-      validation << @configurator_validator.exists?(config, :tools, key, :executable)
-      validation << @configurator_validator.validate_executable_filepath(config, :tools, key, :executable) if (not config[:tools][key][:optional])
-      validation << @configurator_validator.validate_tool_stderr_redirect(config, :tools, key)
+      if config[:tools][key].is_a? Array
+        config[:tools][key].each_index do |idx|
+          validation << @configurator_validator.exists?(config, :tools, key, idx, :executable)
+          validation << @configurator_validator.validate_executable_filepath(config, :tools, key, idx, :executable) if (not config[:tools][key][idx][:optional])
+          validation << @configurator_validator.validate_tool_stderr_redirect(config, :tools, key, idx)
+        end
+      else
+        validation << @configurator_validator.exists?(config, :tools, key, :executable)
+        validation << @configurator_validator.validate_executable_filepath(config, :tools, key, :executable) if (not config[:tools][key][:optional])
+        validation << @configurator_validator.validate_tool_stderr_redirect(config, :tools, key)
+      end
     end
 
     return false if (validation.include?(false))

@@ -129,24 +129,25 @@ class Configurator
   # set up default values
   def tools_setup(config)
     config[:tools].each_key do |name|
-      tool = config[:tools][name]
+      tools = [config[:tools][name]].flatten(1)
+      tools.each do |tool|
+        # populate name if not given
+        tool[:name] = name.to_s if (tool[:name].nil?)
 
-      # populate name if not given
-      tool[:name] = name.to_s if (tool[:name].nil?)
+        # handle inline ruby string substitution in executable
+        if (tool[:executable] =~ RUBY_STRING_REPLACEMENT_PATTERN)
+          tool[:executable].replace(@system_wrapper.module_eval(tool[:executable]))
+        end
 
-      # handle inline ruby string substitution in executable
-      if (tool[:executable] =~ RUBY_STRING_REPLACEMENT_PATTERN)
-        tool[:executable].replace(@system_wrapper.module_eval(tool[:executable]))
+        # populate stderr redirect option
+        tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
+
+        # populate background execution option
+        tool[:background_exec] = BackgroundExec::NONE if (tool[:background_exec].nil?)
+
+        # populate optional option to control verification of executable in search paths
+        tool[:optional] = false if (tool[:optional].nil?)
       end
-
-      # populate stderr redirect option
-      tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
-
-      # populate background execution option
-      tool[:background_exec] = BackgroundExec::NONE if (tool[:background_exec].nil?)
-
-      # populate optional option to control verification of executable in search paths
-      tool[:optional] = false if (tool[:optional].nil?)
     end
   end
 
@@ -155,11 +156,12 @@ class Configurator
     tools_name_prefix = 'tools_'
     config[:tools].each_key do |name|
       tool = @project_config_hash[(tools_name_prefix + name.to_s).to_sym]
+      next if tool.is_a? Array
 
       # smoosh in extra arguments if specified at top-level of config (useful for plugins & default gcc tools)
       # arguments are squirted in at _end_ of list
       top_level_tool = (tools_name_prefix + name.to_s).to_sym
-      if (not config[top_level_tool].nil?)
+      if (not config[top_level_tool].nil? and not config[top_level_tool].is_a? Array)
          # adding and flattening is not a good idea: might over-flatten if there's array nesting in tool args
          tool[:arguments].concat config[top_level_tool][:arguments]
       end
@@ -284,7 +286,12 @@ class Configurator
 
     config[:files].each_pair { |collection, files| files.each{ |path| FilePathUtils::standardize( path ) } }
 
-    config[:tools].each_pair { |tool, config| FilePathUtils::standardize( config[:executable] ) if (config.include? :executable) }
+    config[:tools].each_pair do |tool, config|
+      tools = [config].flatten(1)
+      tools.each do |config|
+        FilePathUtils::standardize( config[:executable] ) if (config.include? :executable)
+      end
+    end
 
     # all other paths at secondary hash key level processed by convention:
     # ex. [:toplevel][:foo_path] & [:toplevel][:bar_paths] are standardized
@@ -378,4 +385,3 @@ class Configurator
 
 
 end
-
