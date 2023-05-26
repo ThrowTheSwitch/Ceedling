@@ -53,7 +53,7 @@ class FileSystemUtils
       FilePathUtils.add_path?(path) ? plus.merge(dirs) : minus.merge(dirs)
     end
 
-    return (plus - minus).to_a.uniq.sort
+    return (plus - minus).to_a.uniq
   end
 
 
