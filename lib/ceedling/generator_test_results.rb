@@ -4,7 +4,7 @@ require 'ceedling/constants'
 
 class GeneratorTestResults
 
-  constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper
+  constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper, :debugger_utils
 
   def process_and_write_results(unity_shell_result, results_file, test_file)
     output_file = results_file
@@ -43,24 +43,24 @@ class GeneratorTestResults
 
     # remove test statistics lines
     output_string = unity_shell_result[:output].sub(TEST_STDOUT_STATISTICS_PATTERN, '')
-
     output_string.lines do |line|
       # process unity output
-      case line.chomp!
+      case line.chomp
       when /(:IGNORE)/
         elements = extract_line_elements(line, results[:source][:file])
-        results[:ignores] << elements[0]
+        results[:ignores] << elements[0] 
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:PASS$)/
         elements = extract_line_elements(line, results[:source][:file])
-        results[:successes] << elements[0]
+        results[:successes] << elements[0] 
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:PASS \(.* ms\)$)/
         elements = extract_line_elements(line, results[:source][:file])
-        results[:successes] << elements[0]
+        results[:successes] << elements[0] 
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:FAIL)/
         elements = extract_line_elements(line, results[:source][:file])
+        elements[0][:test] = @debugger_utils.restore_new_line_character_in_flatten_log(elements[0][:test])
         results[:failures] << elements[0]
         results[:stdout] << elements[1] if (!elements[1].nil?)
       else # collect up all other
@@ -74,6 +74,9 @@ class GeneratorTestResults
 
     output_file = results_file.ext(@configurator.extension_testfail) if (results[:counts][:failed] > 0)
 
+    results[:failures].each do |failure|
+      failure[:message] = @debugger_utils.unflat_debugger_log(failure[:message])
+    end
     @yaml_wrapper.dump(output_file, results)
 
     return { :result_file => output_file, :result => results }
@@ -101,7 +104,9 @@ class GeneratorTestResults
 
     if (line =~ stdout_regex)
       stdout = $1.clone
-      line.sub!(/#{Regexp.escape(stdout)}/, '')
+      unless @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+        line.sub!(/#{Regexp.escape(stdout)}/, '')
+      end
     end
 
     # collect up test results minus and extra output
@@ -112,8 +117,14 @@ class GeneratorTestResults
       unity_test_time = $1.to_f / 1000
       elements[-1].sub!(/ \((\d*(?:\.\d*)?) ms\)/, '')
     end
+    if elements[3..-1]
+      message = (elements[3..-1].join(':')).strip
+      message = @debugger_utils.unflat_debugger_log(message)
+    else
+      message = nil
+    end
 
-    return {:test => elements[1], :line => elements[0].to_i, :message => (elements[3..-1].join(':')).strip, :unity_test_time => unity_test_time}, stdout if elements.size >= 3
+    return {:test => elements[1], :line => elements[0].to_i, :message => message, :unity_test_time => unity_test_time}, stdout if elements.size >= 3
     return {:test => '???', :line => -1, :message => nil, :unity_test_time => unity_test_time} #fallback safe option. TODO better handling
   end
 

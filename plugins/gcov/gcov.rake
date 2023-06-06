@@ -72,12 +72,21 @@ end
 task directories: [GCOV_BUILD_OUTPUT_PATH, GCOV_RESULTS_PATH, GCOV_DEPENDENCIES_PATH, GCOV_ARTIFACTS_PATH]
 
 namespace GCOV_SYM do
+
+  TOOL_COLLECTION_GCOV_TASKS = {
+    :symbol         => GCOV_SYM,
+    :test_compiler  => TOOLS_GCOV_COMPILER,
+    :test_assembler => TOOLS_TEST_ASSEMBLER,
+    :test_linker    => TOOLS_GCOV_LINKER,
+    :test_fixture   => TOOLS_GCOV_FIXTURE
+  }
+
   task source_coverage: COLLECTION_ALL_SOURCE.pathmap("#{GCOV_BUILD_OUTPUT_PATH}/%n#{@ceedling[:configurator].extension_object}")
 
   desc 'Run code coverage for all tests'
   task all: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM)
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM, TOOL_COLLECTION_GCOV_TASKS)
     @ceedling[:configurator].restore_config
   end
 
@@ -100,7 +109,7 @@ namespace GCOV_SYM do
 
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, force_run: false)
+      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
@@ -117,7 +126,7 @@ namespace GCOV_SYM do
 
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, force_run: false)
+      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
@@ -127,7 +136,7 @@ namespace GCOV_SYM do
   desc 'Run code coverage for changed files'
   task delta: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM, force_run: false)
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
     @ceedling[:configurator].restore_config
   end
 
@@ -142,7 +151,7 @@ namespace GCOV_SYM do
        ]) do |test|
     @ceedling[:rake_wrapper][:test_deps].invoke
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke([test.source], GCOV_SYM)
+    @ceedling[:test_invoker].setup_and_invoke([test.source], GCOV_SYM, TOOL_COLLECTION_GCOV_TASKS)
     @ceedling[:configurator].restore_config
   end
 end
