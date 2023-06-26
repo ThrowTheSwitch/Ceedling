@@ -19,3 +19,5 @@ ceedling-*.gem
 .ruby-version
 /.idea
 /.vscode
+
+*~

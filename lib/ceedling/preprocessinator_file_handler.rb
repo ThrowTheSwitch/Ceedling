@@ -14,7 +14,7 @@ class PreprocessinatorFileHandler
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion(preprocessed_filepath)
 
     includes.each{|include| contents.unshift("#include \"#{include}\"")}
-
+    contents.unshift("/* Source File = #{filepath} */")
     @file_wrapper.write(preprocessed_filepath, contents.join("\n"))
   end
 
