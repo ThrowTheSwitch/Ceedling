@@ -27,9 +27,12 @@ class ConfiguratorBuilder
 
 
   def build_accessor_methods(config, context)
+    # Fill configurator object with accessor methods
     config.each_pair do |key, value|
-      # fill configurator object with accessor methods
-      eval("def #{key.to_s.downcase}() return @project_config_hash[:#{key}] end", context)
+      # Convert key names to Ruby method names
+      # Some key names can be C file names that can include dashes; dashes are not allowed in Ruby method names
+      # Downcase the key names for consistency and replace any illegal dashes with legal underscores
+      eval("def #{key.to_s.gsub('-','_').downcase}() return @project_config_hash[:#{key}] end", context)
     end
   end
 
