@@ -54,7 +54,7 @@
   :load_paths: []
   :enabled:
     #- beep                           # beeps when finished, so you don't waste time waiting for ceedling
-    - module_generator               # handy for quickly creating source, header, and test templates
+    - module_generator                # handy for quickly creating source, header, and test templates
     #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
