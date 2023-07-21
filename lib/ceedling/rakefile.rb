@@ -18,10 +18,9 @@ Rake::TaskManager.record_task_metadata = true
 
 require 'diy'
 require 'constructor'
-
 require 'ceedling/constants'
 require 'ceedling/target_loader'
-
+require 'deep_merge'
 
 # construct all our objects
 # ensure load path contains all libraries needed first
