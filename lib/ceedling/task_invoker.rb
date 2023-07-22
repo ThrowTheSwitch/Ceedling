@@ -55,10 +55,10 @@ class TaskInvoker
 
   def invoke_test_mocks(mocks)
     @dependinator.enhance_mock_dependencies( mocks )
-    mocks.each { |mock|
+    par_map(PROJECT_TEST_THREADS, mocks) do |mock|
       reset_rake_task_for_changed_defines( mock )
       @rake_wrapper[mock].invoke
-    }
+    end
   end
   
   def invoke_test_runner(runner)
