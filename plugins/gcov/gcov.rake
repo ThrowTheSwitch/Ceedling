@@ -74,7 +74,7 @@ task directories: [GCOV_BUILD_OUTPUT_PATH, GCOV_RESULTS_PATH, GCOV_DEPENDENCIES_
 namespace GCOV_SYM do
 
   TOOL_COLLECTION_GCOV_TASKS = {
-    :symbol         => GCOV_SYM,
+    :context        => GCOV_SYM,
     :test_compiler  => TOOLS_GCOV_COMPILER,
     :test_assembler => TOOLS_TEST_ASSEMBLER,
     :test_linker    => TOOLS_GCOV_LINKER,
@@ -86,7 +86,7 @@ namespace GCOV_SYM do
   desc 'Run code coverage for all tests'
   task all: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM, TOOL_COLLECTION_GCOV_TASKS)
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, TOOL_COLLECTION_GCOV_TASKS)
     @ceedling[:configurator].restore_config
   end
 
@@ -109,7 +109,7 @@ namespace GCOV_SYM do
 
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
+      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
@@ -126,7 +126,7 @@ namespace GCOV_SYM do
 
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
+      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
@@ -136,7 +136,7 @@ namespace GCOV_SYM do
   desc 'Run code coverage for changed files'
   task delta: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
     @ceedling[:configurator].restore_config
   end
 
@@ -151,7 +151,7 @@ namespace GCOV_SYM do
        ]) do |test|
     @ceedling[:rake_wrapper][:test_deps].invoke
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke([test.source], GCOV_SYM, TOOL_COLLECTION_GCOV_TASKS)
+    @ceedling[:test_invoker].setup_and_invoke([test.source], TOOL_COLLECTION_GCOV_TASKS)
     @ceedling[:configurator].restore_config
   end
 end

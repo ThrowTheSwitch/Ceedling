@@ -44,7 +44,7 @@ class TestInvoker
     return paths
   end
 
-  def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true, :build_only => false})
+  def setup_and_invoke(tests, options={:context => TEST_SYM, :force_run => true, :build_only => false})
 
     @tests = tests
 
@@ -243,7 +243,7 @@ class TestInvoker
             test_name ="#{File.basename(test)}".chomp('.c')
             @test_invoker_helper.run_fixture_now( testables[test][:results_pass], options )
           rescue => e
-            @build_invoker_utils.process_exception( e, context )
+            @build_invoker_utils.process_exception( e, options[:context] )
           ensure
 
             @lock.synchronize do

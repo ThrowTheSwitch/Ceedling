@@ -13,10 +13,16 @@ class ConfiguratorBuilder
 
   def build_global_constants(config)
     config.each_pair do |key, value|
-      formatted_key = key.to_s.upcase
-      # undefine global constant if it already exists
+      # Convert key names to Ruby constant names
+      # Some key names can be C file names that can include dashes
+      # Upcase the key names to create consitency and Ruby constants by convention
+      # Replace dashes with underscores to match handling of Ruby accessor method names
+      formatted_key = key.to_s.gsub('-','_').upcase
+
+      # Undefine global constant if it already exists
       Object.send(:remove_const, formatted_key.to_sym) if @system_wrapper.constants_include?(formatted_key)
-      # create global constant
+
+      # Create global constant
       Object.module_eval("#{formatted_key} = value")
     end
 
@@ -31,7 +37,8 @@ class ConfiguratorBuilder
     config.each_pair do |key, value|
       # Convert key names to Ruby method names
       # Some key names can be C file names that can include dashes; dashes are not allowed in Ruby method names
-      # Downcase the key names for consistency and replace any illegal dashes with legal underscores
+      # Downcase the key names and replace any illegal dashes with legal underscores
+      # Downcased key names create consistency and ensure no method names become Ruby constants by accident
       eval("def #{key.to_s.gsub('-','_').downcase}() return @project_config_hash[:#{key}] end", context)
     end
   end

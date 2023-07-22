@@ -61,7 +61,7 @@ class TestInvokerHelper
           @generator.generate_object_file(
             options[:test_compiler],
             OPERATION_COMPILE_SYM,
-            options[:symbol],
+            options[:context],
             src,
             object,
             @file_path_utils.form_test_build_list_filepath( object ),
@@ -70,7 +70,7 @@ class TestInvokerHelper
           @generator.generate_object_file(
             options[:test_assembler],
             OPERATION_ASSEMBLE_SYM,
-            options[:symbol],
+            options[:context],
             src,
             object )
         end
@@ -82,7 +82,7 @@ class TestInvokerHelper
     par_map(PROJECT_COMPILE_THREADS, executables) do |executable|
       @generator.generate_executable_file(
         options[:test_linker],
-        options[:symbol],
+        options[:context],
         details[executable][:objects].map{|v| "\"#{v}\""},
         @file_path_utils.form_test_executable_filepath( executable ),
         @file_path_utils.form_test_build_map_filepath( executable ),
@@ -94,7 +94,7 @@ class TestInvokerHelper
   def run_fixture_now(result, options)
     @generator.generate_test_results(
       options[:test_fixture], 
-      options[:symbol], 
+      options[:context],
       @file_path_utils.form_test_executable_filepath(result), 
       result)
   end

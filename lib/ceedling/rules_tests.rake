@@ -58,6 +58,7 @@ end
 
 namespace TEST_SYM do
   TOOL_COLLECTION_TEST_RULES = {
+    :context        => TEST_SYM,
     :test_compiler  => TOOLS_TEST_COMPILER,
     :test_assembler => TOOLS_TEST_ASSEMBLER,
     :test_linker    => TOOLS_TEST_LINKER,
@@ -75,7 +76,7 @@ namespace TEST_SYM do
       end
   ]) do |test|
     @ceedling[:rake_wrapper][:test_deps].invoke
-    @ceedling[:test_invoker].setup_and_invoke([test.source], TEST_SYM, TOOL_COLLECTION_TEST_RULES)
+    @ceedling[:test_invoker].setup_and_invoke([test.source], TOOL_COLLECTION_TEST_RULES)
   end
 end
 

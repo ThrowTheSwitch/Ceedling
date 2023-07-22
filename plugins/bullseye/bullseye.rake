@@ -72,7 +72,7 @@ task :directories => [BULLSEYE_BUILD_OUTPUT_PATH, BULLSEYE_RESULTS_PATH, BULLSEY
 namespace BULLSEYE_SYM do
 
   TOOL_COLLECTION_BULLSEYE_TASKS = {
-    :symbol         => BULLSEYE_SYM,
+    :context        => BULLSEYE_SYM,
     :test_compiler  => TOOLS_BULLSEYE_COMPILER,
     :test_assembler => TOOLS_TEST_ASSEMBLER,
     :test_linker    => TOOLS_BULLSEYE_LINKER,
@@ -85,7 +85,7 @@ namespace BULLSEYE_SYM do
   task all: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, BULLSEYE_SYM, TOOL_COLLECTION_BULLSEYE_TASKS)
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, TOOL_COLLECTION_BULLSEYE_TASKS)
     @ceedling[:configurator].restore_config
   end
 
@@ -109,7 +109,7 @@ namespace BULLSEYE_SYM do
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
       @ceedling[BULLSEYE_SYM].enableBullseye(true)
-      @ceedling[:test_invoker].setup_and_invoke(matches, BULLSEYE_SYM, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
+      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
@@ -127,7 +127,7 @@ namespace BULLSEYE_SYM do
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
       @ceedling[BULLSEYE_SYM].enableBullseye(true)
-      @ceedling[:test_invoker].setup_and_invoke(matches, BULLSEYE_SYM, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
+      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
@@ -138,7 +138,7 @@ namespace BULLSEYE_SYM do
   task delta: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, BULLSEYE_SYM, {:force_run => false}.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, {:force_run => false}.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
     @ceedling[:configurator].restore_config
   end
 
@@ -154,7 +154,7 @@ namespace BULLSEYE_SYM do
     @ceedling[:rake_wrapper][:test_deps].invoke
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke([test.source], BULLSEYE_SYM, TOOL_COLLECTION_BULLSEYE_TASKS)
+    @ceedling[:test_invoker].setup_and_invoke([test.source], TOOL_COLLECTION_BULLSEYE_TASKS)
     @ceedling[:configurator].restore_config
   end
 
