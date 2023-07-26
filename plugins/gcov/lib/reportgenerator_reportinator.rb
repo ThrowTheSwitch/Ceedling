@@ -112,7 +112,7 @@ class ReportGeneratorReportinator
   REPORT_GENERATOR_SETTING_PREFIX = "gcov_report_generator"
 
   # Deep clone the gcov tool config, so we can modify it locally if specified via options.
-  GCOV_TOOL_CONFIG = Marshal.load(Marshal.dump(TOOLS_GCOV_GCOV_POST_REPORT))
+  GCOV_TOOL_CONFIG = Marshal.load(Marshal.dump(TOOLS_GCOV_POST_REPORT_CUSTOM))
 
   # Build the ReportGenerator arguments.
   def args_builder(opts)
