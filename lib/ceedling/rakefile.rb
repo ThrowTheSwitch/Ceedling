@@ -51,7 +51,9 @@ project_config =
 @ceedling[:plugin_manager].pre_build
 
 # load rakefile component files (*.rake)
-PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
+PROJECT_RAKEFILE_COMPONENT_FILES.each { |component|
+  $stderr.puts "Loading rakefile component: #{component}..." unless @silent
+  load(component) }
 
 # tell rake to shut up by default (overridden in verbosity / debug tasks as appropriate)
 verbose(false)
