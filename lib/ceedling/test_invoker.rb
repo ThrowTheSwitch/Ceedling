@@ -58,6 +58,7 @@ class TestInvoker
       testables[test] = {}
     end
 
+    # TODO: Revert collections (whole test executable builds with the same :define: sets)
     # Group definition sets into collections
     collections = []
     general_collection = { :tests   => tests.clone,
@@ -78,7 +79,7 @@ class TestInvoker
           tst_defs_cfg = Array.new(defs_bkp)
           if has_specific_defines
             tst_defs_cfg.replace(@configurator.project_config_hash[def_test_key])
-            tst_defs_cfg .concat(COLLECTION_DEFINES_VENDOR) if COLLECTION_DEFINES_VENDOR
+            tst_defs_cfg.concat(COLLECTION_DEFINES_VENDOR) if COLLECTION_DEFINES_VENDOR
           end
           if @configurator.defines_use_test_definition
             tst_defs_cfg << File.basename(test, ".*").strip.upcase.sub(/@.*$/, "")
@@ -104,6 +105,7 @@ class TestInvoker
 
       # Switch to the things that make this collection unique
       COLLECTION_DEFINES_TEST_AND_VENDOR.replace( collection[:defines] )
+
       @configurator.project_config_hash[:project_test_build_output_path] = collection[:build]
       @file_wrapper.mkdir(@configurator.project_test_build_output_path)
 
@@ -223,8 +225,9 @@ class TestInvoker
       # Build All Test objects
       @streaminator.stdout_puts("\nBuilding Objects", Verbosity::NORMAL)
       @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
-      @test_invoker_helper.generate_objects_now(object_list, options)
-      #@task_invoker.invoke_test_objects(object_list)
+      # FYI: Removed direct object generation to allow rake invoke() of compilation to execute custom compilations (plugins, special cases)
+      # @test_invoker_helper.generate_objects_now(object_list, options)
+      @task_invoker.invoke_test_objects(object_list)
 
       # Create Final Tests And/Or Executable Links
       @streaminator.stdout_puts("\nBuilding Test Executables", Verbosity::NORMAL)
@@ -254,10 +257,11 @@ class TestInvoker
         end
       end
 
+      # TODO: Remove when reverting collection feature
       # If not the final collection, invalidate files so they'll be rebuilt collection
-      if collection != general_collection
-        @test_invoker_helper.invalidate_objects(object_list)
-      end
+      # if collection != general_collection
+      #   @test_invoker_helper.invalidate_objects(object_list)
+      # end
 
     # this collection has finished
     end
