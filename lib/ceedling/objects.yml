@@ -189,6 +189,7 @@ task_invoker:
 flaginator:
   compose:
     - configurator
+    - streaminator
 
 generator:
   compose:
