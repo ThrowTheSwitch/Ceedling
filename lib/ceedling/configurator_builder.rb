@@ -85,12 +85,24 @@ class ConfiguratorBuilder
   end
 
 
-  def clean(in_hash)
+  def cleanup(in_hash)
     # ensure that include files inserted into test runners have file extensions & proper ones at that
     in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
+  end
 
-    # create a shortcut for seeing if we're using cexception
-    in_hash[:project_use_exceptions] = in_hash[:cmock] && in_hash[:cmock][:plugins] && in_hash[:cmock][:plugins].include?(:cexception)
+
+  def set_exception_handling(in_hash)
+    # If project defines exception handling, do not change the setting.
+    # But, if the project omits exception handling setting...
+    if not in_hash[:project_use_exceptions]
+      # Automagically set it if cmock is configured for it
+      if in_hash[:cmock_plugins] && in_hash[:cmock_plugins].include?(:cexception)
+        in_hash[:project_use_exceptions] = true
+      # Otherwise, disable exceptions for the project
+      else
+        in_hash[:project_use_exceptions] = false
+      end  
+    end
   end
 
 
