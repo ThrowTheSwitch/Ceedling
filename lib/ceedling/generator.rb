@@ -93,12 +93,25 @@ class Generator
     end
   end
 
-  def generate_object_file(tool, operation, context, source, object, list='', dependencies='')
+  def generate_object_file(tool, operation, context, source, object, list='', dependencies='', msg=nil)
     shell_result = {}
-    arg_hash = {:tool => tool, :operation => operation, :context => context, :source => source, :object => object, :list => list, :dependencies => dependencies}
+    arg_hash = { :tool => tool,
+                 :operation => operation,
+                 :context => context,
+                 :source => source,
+                 :object => object, 
+                 :list => list,
+                 :dependencies => dependencies}
+
     @plugin_manager.pre_compile_execute(arg_hash)
 
-    @streaminator.stdout_puts("Compiling #{File.basename(arg_hash[:source])}...", Verbosity::NORMAL)
+    msg = String(msg)
+    if msg.empty?
+      msg = "Compiling #{File.basename(arg_hash[:source])}..."
+    end
+
+    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+
     command =
       @tool_executor.build_command_line( arg_hash[:tool],
                                          @flaginator.flag_down( operation, context, source ),
