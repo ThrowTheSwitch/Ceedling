@@ -16,7 +16,8 @@ class ConfiguratorSetup
 
   def build_project_config(config, flattened_config)
     ### flesh out config
-    @configurator_builder.clean(flattened_config)
+    @configurator_builder.cleanup(flattened_config)
+    @configurator_builder.set_exception_handling(flattened_config)
 
     ### add to hash values we build up from configuration & file system contents
     flattened_config.merge!(@configurator_builder.set_build_paths(flattened_config))

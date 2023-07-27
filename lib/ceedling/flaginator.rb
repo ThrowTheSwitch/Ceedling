@@ -25,7 +25,23 @@ end
 
 class Flaginator
 
-  constructor :configurator
+  constructor :configurator, :streaminator
+
+  def flags_defined?(context, operation)
+    # create configurator accessor method
+    accessor = ('flags_' + context.to_s).to_sym
+
+    # check for context in flags configuration
+    return false if not @configurator.respond_to?( accessor )
+
+    # get flags sub hash associated with this context
+    flags = @configurator.send( accessor )
+
+    # check if operation represented in flags hash
+    return false if not flags.include?( operation )    
+
+    return true
+  end
 
   def get_flag(hash, file_name)
     file_key = file_name.to_sym
@@ -48,7 +64,7 @@ class Flaginator
     return []
   end
   
-  def flag_down( operation, context, file )
+  def flag_down(operation, context, file)
     # create configurator accessor method
     accessor = ('flags_' + context.to_s).to_sym
 
@@ -67,6 +83,21 @@ class Flaginator
 
     # redefine flags to sub hash associated with the operation
     flags = flags[operation]
+
+    if flags == nil
+      error = "ERROR: No entries for '[#{operation}][#{context}]' flags in project configuration."
+      @streaminator.stderr_puts(error, Verbosity::ERRORS)
+      raise
+    end
+
+    # look for missing flag values
+    flags.each do |k, v|
+      if v == nil
+        error = "ERROR: Missing value for '[#{operation}][#{context}][#{k}]' flags in project configuration."
+        @streaminator.stderr_puts(error, Verbosity::ERRORS)
+        raise
+      end
+    end
 
     return get_flag(flags, file_name)
   end
