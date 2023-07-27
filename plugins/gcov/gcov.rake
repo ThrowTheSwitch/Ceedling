@@ -18,27 +18,18 @@ rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
          @ceedling[:file_finder].find_compilation_input_file(task_name)
        end
      ]) do |object|
-
-  if File.basename(object.source) =~ /^(#{PROJECT_TEST_FILE_PREFIX}|#{CMOCK_MOCK_PREFIX})|(#{VENDORS_FILES.map{|source| '\b' + source + '\b'}.join('|')})/
-    @ceedling[:generator].generate_object_file(
-      TOOLS_GCOV_COMPILER,
-      OPERATION_COMPILE_SYM,
-      GCOV_SYM,
-      object.source,
-      object.name,
-      @ceedling[:file_path_utils].form_test_build_list_filepath(object.name)
-    )
-  else
-    @ceedling[GCOV_SYM].generate_coverage_object_file(object.source, object.name)
-  end
+  @ceedling[GCOV_SYM].generate_coverage_object_file(object.source, object.name)
 end
 
+# TODO: if [flags][gcov][linker] defined, context is GCOV_SYM, otherwise TEST_SYM
 rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_EXECUTABLE}$/) do |bin_file|
   lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
   lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
   @ceedling[:generator].generate_executable_file(
     TOOLS_GCOV_LINKER,
-    GCOV_SYM,
+    # If gcov has an entry in the configuration, use its flags by lookup with gcov's context.
+    # Otherwise, use any linker flags configured for the vanilla test context.
+    @ceedling[GCOV_SYM].flags_defined?(OPERATION_LINK_SYM) ? GCOV_SYM : TEST_SYM,
     bin_file.prerequisites,
     bin_file.name,
     @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name),
