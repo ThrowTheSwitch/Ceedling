@@ -6,6 +6,7 @@ class TestIncludesExtractor
   def setup
     @includes  = {}
     @mocks     = {}
+    @lock      = Mutex.new
   end
 
 
@@ -27,15 +28,13 @@ class TestIncludesExtractor
   # mocks with no file extension
   def lookup_raw_mock_list(test)
     file_key = form_file_key(test)
-    return [] if @mocks[file_key].nil?
-    return @mocks[file_key]
+    return @mocks[file_key] || []
   end
 
   # includes with file extension
   def lookup_includes_list(file)
     file_key = form_file_key(file)
-    return [] if (@includes[file_key]).nil?
-    return @includes[file_key]
+    return @includes[file_key] || []
   end
 
   private #################################
@@ -95,16 +94,20 @@ class TestIncludesExtractor
     mock_prefix      = @configurator.cmock_mock_prefix
     header_extension = @configurator.extension_header
     file_key         = form_file_key(file)
-    @mocks[file_key] = []
+    mocks            = []
 
-    # add includes to lookup hash
-    @includes[file_key] = includes
-
+    # Add includes to lookup hash
     includes.each do |include_file|
-      # check if include is a mock
-      scan_results = include_file.scan(/(.*#{mock_prefix}.+)#{'\\'+header_extension}/)
-      # add mock to lookup hash
-      @mocks[file_key] << scan_results[0][0] if (scan_results.size > 0)
+      # Check if include is a mock with regex match that extracts only mock name (no path or .h)
+      scan_results = include_file.scan(/.*(#{mock_prefix}.+)#{'\\'+header_extension}/)
+      # Add mock to lookup hash
+      mocks << scan_results[0][0] if (scan_results.size > 0)
+    end
+
+    # finalize the information
+    @lock.synchronize do
+      @mocks[file_key] = mocks
+      @includes[file_key] = includes
     end
   end
 
