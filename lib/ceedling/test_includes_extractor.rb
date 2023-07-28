@@ -96,11 +96,11 @@ class TestIncludesExtractor
     file_key         = form_file_key(file)
     mocks            = []
 
-    # add includes to lookup hash
+    # Add includes to lookup hash
     includes.each do |include_file|
-      # check if include is a mock
-      scan_results = include_file.scan(/(.*#{mock_prefix}.+)#{'\\'+header_extension}/)
-      # add mock to lookup hash
+      # Check if include is a mock with regex match that extracts only mock name (no path or .h)
+      scan_results = include_file.scan(/.*(#{mock_prefix}.+)#{'\\'+header_extension}/)
+      # Add mock to lookup hash
       mocks << scan_results[0][0] if (scan_results.size > 0)
     end
 
