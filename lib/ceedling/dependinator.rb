@@ -1,7 +1,7 @@
 
 class Dependinator
 
-  constructor :configurator, :project_config_manager, :test_includes_extractor, :file_path_utils, :rake_wrapper, :file_wrapper
+  constructor :configurator, :project_config_manager, :test_context_extractor, :file_path_utils, :rake_wrapper, :file_wrapper
 
   def touch_force_rebuild_files
     @file_wrapper.touch( @configurator.project_test_force_rebuild_filepath )

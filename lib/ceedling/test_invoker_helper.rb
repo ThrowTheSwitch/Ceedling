@@ -3,7 +3,22 @@ require 'ceedling/par_map'
 
 class TestInvokerHelper
 
-  constructor :configurator, :task_invoker, :test_includes_extractor, :file_finder, :file_path_utils, :file_wrapper, :generator, :rake_wrapper
+  constructor :configurator, :streaminator, :task_invoker, :test_context_extractor, :file_finder, :file_path_utils, :file_wrapper, :generator, :rake_wrapper
+
+  def execute_build_step(msg, banner: true)
+    if banner
+      # <Message>
+      # ---------
+      msg = "\n#{msg}\n#{'-' * msg.length}"
+    else
+      # <Message>...
+      msg = "\n#{msg}..."
+    end
+
+    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+
+    yield # Execute build step block
+  end
 
   def clean_results(results, options)
     @file_wrapper.rm_f( results[:fail] )
@@ -23,10 +38,12 @@ class TestInvokerHelper
   end
   
   def extract_sources(test)
-    sources  = []
-    includes = @test_includes_extractor.lookup_includes_list(test)
+    sources  = @test_context_extractor.lookup_source_extras_list(test)
+    includes = @test_context_extractor.lookup_header_includes_list(test)
     
-    includes.each { |include| sources << @file_finder.find_compilation_input_file(include, :ignore) }
+    includes.each do |include|
+      sources << @file_finder.find_compilation_input_file(include, :ignore)
+    end
     
     return sources.compact
   end

@@ -18,7 +18,7 @@ class ToolExecutor
 
   # build up a command line from yaml provided config
 
-  # @param extra_params is an array of parameters to append to executable
+  # @param extra_params is an array of parameters to append to executable (prepend to rest of command line)
   def build_command_line(tool_config, extra_params, *args)
     command = {}
 
@@ -95,11 +95,10 @@ class ToolExecutor
 
     return nil if (config.nil?)
 
-    # iterate through each argument
+    # Iterate through each argument
 
-    # the yaml blob array needs to be flattened so that yaml substitution
-    # is handled correctly, since it creates a nested array when an anchor is
-    # dereferenced
+    # The yaml blob array needs to be flattened so that yaml substitution is handled
+    # correctly as it creates a nested array when an anchor is dereferenced
     config.flatten.each do |element|
       argument = ''
 

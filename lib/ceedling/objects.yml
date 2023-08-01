@@ -173,7 +173,7 @@ file_finder:
 file_finder_helper:
   compose: streaminator
 
-test_includes_extractor:
+test_context_extractor:
   compose:
     - configurator
     - yaml_wrapper
@@ -200,7 +200,7 @@ generator:
     - generator_test_runner
     - generator_test_results
     - flaginator
-    - test_includes_extractor
+    - test_context_extractor
     - tool_executor
     - file_finder
     - file_path_utils
@@ -236,7 +236,7 @@ dependinator:
   compose:
     - configurator
     - project_config_manager
-    - test_includes_extractor
+    - test_context_extractor
     - file_path_utils 
     - rake_wrapper
     - file_wrapper
@@ -251,7 +251,7 @@ preprocessinator:
     - yaml_wrapper
     - project_config_manager
     - configurator
-    - test_includes_extractor
+    - test_context_extractor
     - rake_wrapper
 
 preprocessinator_includes_handler:
@@ -293,8 +293,9 @@ test_invoker:
 test_invoker_helper:
   compose:
     - configurator
+    - streaminator
     - task_invoker
-    - test_includes_extractor
+    - test_context_extractor
     - file_finder
     - file_path_utils
     - file_wrapper

@@ -40,7 +40,7 @@ class PreprocessinatorIncludesHandler
     end
 
     contents.gsub!( /^\s*#include\s+[\"<]\s*(\S+)\s*[\">]/, "#include \"\\1\"\n#include \"@@@@\\1\"" )
-    contents.gsub!( /^\s*TEST_FILE\(\s*\"\s*(\S+)\s*\"\s*\)/, "#include \"\\1\"\n#include \"@@@@\\1\"")
+    contents.gsub!( /^\s*#{UNITY_TEST_SOURCE_FILE}\(\s*\"\s*(\S+)\s*\"\s*\)/, "#include \"\\1\"\n#include \"@@@@\\1\"")
     @file_wrapper.write( temp_filepath, contents )
 
     # extract the make-style dependency rule telling the preprocessor to

@@ -53,6 +53,10 @@ UNITY_C_FILE           = 'unity.c'
 UNITY_H_FILE           = 'unity.h'
 UNITY_INTERNALS_H_FILE = 'unity_internals.h'
 
+# Do-nothing macros defined in unity.h for extra build context to be used by build tools like Ceedling
+UNITY_TEST_SOURCE_FILE  = 'TEST_SOURCE_FILE'
+UNITY_TEST_INCLUDE_PATH = 'TEST_INCLUDE_PATH'
+
 CMOCK_ROOT_PATH = 'cmock'
 CMOCK_LIB_PATH  = "#{CMOCK_ROOT_PATH}/src"
 CMOCK_C_FILE    = 'cmock.c'

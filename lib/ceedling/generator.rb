@@ -10,7 +10,7 @@ class Generator
               :generator_test_runner,
               :generator_test_results,
               :flaginator,
-              :test_includes_extractor,
+              :test_context_extractor,
               :tool_executor,
               :file_finder,
               :file_path_utils,
@@ -77,7 +77,7 @@ class Generator
     # collect info we need
     module_name = File.basename(arg_hash[:test_file])
     test_cases  = @generator_test_runner.find_test_cases( @file_finder.find_test_from_runner_path(runner_filepath) )
-    mock_list   = @test_includes_extractor.lookup_raw_mock_list(arg_hash[:test_file])
+    mock_list   = @test_context_extractor.lookup_raw_mock_list(arg_hash[:test_file])
 
     @streaminator.stdout_puts("Generating runner for #{module_name}...", Verbosity::NORMAL)
 
@@ -118,7 +118,8 @@ class Generator
                                          arg_hash[:source],
                                          arg_hash[:object],
                                          arg_hash[:list],
-                                         arg_hash[:dependencies])
+                                         arg_hash[:dependencies],
+                                         @test_context_extractor.lookup_include_paths_list( source ) )
 
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
