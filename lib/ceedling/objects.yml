@@ -42,6 +42,12 @@ unity_utils:
   compose:
      - configurator
 
+debugger_utils:
+  compose:
+     - configurator
+     - tool_executor
+     - unity_utils
+
 project_config_manager:
   compose:
     - cacheinator
@@ -167,7 +173,7 @@ file_finder:
 file_finder_helper:
   compose: streaminator
 
-test_includes_extractor:
+test_context_extractor:
   compose:
     - configurator
     - yaml_wrapper
@@ -183,6 +189,7 @@ task_invoker:
 flaginator:
   compose:
     - configurator
+    - streaminator
 
 generator:
   compose:
@@ -193,7 +200,7 @@ generator:
     - generator_test_runner
     - generator_test_results
     - flaginator
-    - test_includes_extractor
+    - test_context_extractor
     - tool_executor
     - file_finder
     - file_path_utils
@@ -201,6 +208,7 @@ generator:
     - plugin_manager
     - file_wrapper
     - unity_utils
+    - debugger_utils
 
 generator_helper:
   compose:
@@ -211,6 +219,7 @@ generator_test_results:
     - configurator
     - generator_test_results_sanity_checker
     - yaml_wrapper
+    - debugger_utils
 
 generator_test_results_sanity_checker:
   compose:
@@ -227,33 +236,28 @@ dependinator:
   compose:
     - configurator
     - project_config_manager
-    - test_includes_extractor
+    - test_context_extractor
     - file_path_utils 
     - rake_wrapper
     - file_wrapper
 
 preprocessinator:
   compose:
-    - preprocessinator_helper
     - preprocessinator_includes_handler
     - preprocessinator_file_handler
     - task_invoker
+    - file_finder
     - file_path_utils
     - yaml_wrapper
     - project_config_manager
     - configurator
-
-preprocessinator_helper:
-  compose:
-    - configurator
-    - test_includes_extractor
-    - task_invoker
-    - file_finder
-    - file_path_utils
+    - test_context_extractor
+    - rake_wrapper
 
 preprocessinator_includes_handler:
   compose:
     - configurator
+    - flaginator
     - tool_executor
     - task_invoker
     - file_path_utils
@@ -265,6 +269,7 @@ preprocessinator_file_handler:
   compose:
     - preprocessinator_extractor
     - configurator
+    - flaginator
     - tool_executor
     - file_path_utils
     - file_wrapper
@@ -288,11 +293,14 @@ test_invoker:
 test_invoker_helper:
   compose:
     - configurator
+    - streaminator
     - task_invoker
-    - test_includes_extractor
+    - test_context_extractor
     - file_finder
     - file_path_utils
     - file_wrapper
+    - generator
+    - rake_wrapper
 
 release_invoker:
   compose:

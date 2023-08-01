@@ -22,18 +22,31 @@ class Gcov < Plugin
   end
 
   def generate_coverage_object_file(source, object)
-    lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
-    compile_command =
-      @ceedling[:tool_executor].build_command_line(
-        TOOLS_GCOV_COMPILER,
-        @ceedling[:flaginator].flag_down(OPERATION_COMPILE_SYM, GCOV_SYM, source),
-        source,
-        object,
-        @ceedling[:file_path_utils].form_test_build_list_filepath(object),
-        lib_args
-      )
-    @ceedling[:streaminator].stdout_puts("Compiling #{File.basename(source)} with coverage...")
-    @ceedling[:tool_executor].exec(compile_command[:line], compile_command[:options])
+    tool = TOOLS_TEST_COMPILER
+    msg = nil
+
+    # If a source file (not unity, mocks, etc.) is to be compiled use code coverage compiler
+    if @ceedling[:configurator].collection_all_source.to_a.include?(source)
+      tool = TOOLS_GCOV_COMPILER
+      msg = "Compiling #{File.basename(source)} with coverage..."
+    end
+
+    @ceedling[:generator].generate_object_file(
+      tool,
+      OPERATION_COMPILE_SYM,
+      # If gcov has an entry in the configuration, use its flags by lookup with gcov's context.
+      # Otherwise, use any compiler flags configured for the vanilla test context.
+      flags_defined?(OPERATION_COMPILE_SYM) ? GCOV_SYM : TEST_SYM,
+      source,
+      object,
+      @ceedling[:file_path_utils].form_test_build_list_filepath(object),
+      '',
+      msg
+    )
+  end
+
+  def flags_defined?(context)
+    return @ceedling[:flaginator].flags_defined?(GCOV_SYM, context)
   end
 
   def post_test_fixture_execute(arg_hash)

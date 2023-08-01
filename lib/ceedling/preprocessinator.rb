@@ -1,56 +1,91 @@
 
 class Preprocessinator
 
-  constructor :preprocessinator_helper, :preprocessinator_includes_handler, :preprocessinator_file_handler, :task_invoker, :file_path_utils, :yaml_wrapper, :project_config_manager, :configurator
+  constructor :preprocessinator_includes_handler,
+              :preprocessinator_file_handler,
+              :task_invoker,
+              :file_finder,
+              :file_path_utils,
+              :yaml_wrapper,
+              :project_config_manager,
+              :configurator,
+              :test_context_extractor,
+              :rake_wrapper
 
 
   def setup
-    # fashion ourselves callbacks @preprocessinator_helper can use
-    @preprocess_includes_proc  = Proc.new { |filepath| self.preprocess_shallow_includes(filepath) }
-    @preprocess_mock_file_proc = Proc.new { |filepath| self.preprocess_file(filepath) }
-    @preprocess_test_file_directives_proc = Proc.new { |filepath| self.preprocess_file_directives(filepath) }
-    @preprocess_test_file_proc = Proc.new { |filepath| self.preprocess_file(filepath) }
+    # Aliases
+    @includes_handler = @preprocessinator_includes_handler
+    @file_handler = @preprocessinator_file_handler
   end
 
-  def preprocess_shallow_source_includes(test)
-    @preprocessinator_helper.preprocess_source_includes(test)
+  def fetch_shallow_source_includes(test)
+    return @test_context_extractor.lookup_source_includes_list(test)
   end
 
-  def preprocess_test_and_invoke_test_mocks(test)
-    @preprocessinator_helper.preprocess_includes(test, @preprocess_includes_proc)
+  def preprocess_test_file(test)
+    # Extract all context from test file
+    @test_context_extractor.parse_test_file(test)
 
-    mocks_list = @preprocessinator_helper.assemble_mocks_list(test)
-
-    @project_config_manager.process_test_defines_change(mocks_list)
-
-    @preprocessinator_helper.preprocess_mockable_headers(mocks_list, @preprocess_mock_file_proc)
-
-    @task_invoker.invoke_test_mocks(mocks_list)
-
-    if (@configurator.project_use_preprocessor_directives)
-      @preprocessinator_helper.preprocess_test_file(test, @preprocess_test_file_directives_proc)
-    else
-      @preprocessinator_helper.preprocess_test_file(test, @preprocess_test_file_proc)
+    if (@configurator.project_use_test_preprocessor)
+      preprocessed_includes_list = @file_path_utils.form_preprocessed_includes_list_filepath(test)
+      preprocess_shallow_includes( @file_finder.find_test_from_file_path(preprocessed_includes_list) )
+      # Replace includes & mocks context with preprocessing results
+      @test_context_extractor.parse_includes_list(preprocessed_includes_list)
     end
+  end
 
-    return mocks_list
+  def fetch_mock_list_for_test_file(test)
+    return @file_path_utils.form_mocks_source_filelist( @test_context_extractor.lookup_raw_mock_list(test) )
+  end
+
+  def fetch_include_search_paths_for_test_file(test)
+    return @test_context_extractor.lookup_include_paths_list(test)
+  end
+
+  def preprocess_mockable_header(mockable_header)
+    if (@configurator.project_use_test_preprocessor)
+      if (@configurator.project_use_deep_dependencies)
+        @task_invoker.invoke_test_preprocessed_files([mockable_header])
+      else
+        preprocess_file(@file_finder.find_header_file(mockable_header)) 
+      end
+    end
+  end
+
+  def preprocess_remainder(test)
+    if (@configurator.project_use_test_preprocessor)
+      if (@configurator.project_use_preprocessor_directives)
+        preprocess_file_directives(test)
+      else
+        preprocess_file(test)
+      end
+    end
   end
 
   def preprocess_shallow_includes(filepath)
-    includes = @preprocessinator_includes_handler.extract_includes(filepath)
+    includes = @includes_handler.extract_includes(filepath)
 
-    @preprocessinator_includes_handler.write_shallow_includes_list(
+    @includes_handler.write_shallow_includes_list(
       @file_path_utils.form_preprocessed_includes_list_filepath(filepath), includes)
   end
 
   def preprocess_file(filepath)
-    @preprocessinator_includes_handler.invoke_shallow_includes_list(filepath)
-    @preprocessinator_file_handler.preprocess_file( filepath, @yaml_wrapper.load(@file_path_utils.form_preprocessed_includes_list_filepath(filepath)) )
+    # Attempt to directly run shallow includes instead of TODO@includes_handler.invoke_shallow_includes_list(filepath)
+    pre = @file_path_utils.form_preprocessed_includes_list_filepath(filepath)
+    if (@rake_wrapper[pre].needed?)
+      src = @file_finder.find_test_or_source_or_header_file(pre)
+      preprocess_shallow_includes(src) 
+    end
+
+    # Reload it and 
+    includes = @yaml_wrapper.load(pre)
+    @file_handler.preprocess_file( filepath, includes )
   end
 
   def preprocess_file_directives(filepath)
-    @preprocessinator_includes_handler.invoke_shallow_includes_list( filepath )
-    @preprocessinator_file_handler.preprocess_file_directives( filepath,
+    @includes_handler.invoke_shallow_includes_list( filepath )
+    @file_handler.preprocess_file_directives( filepath,
       @yaml_wrapper.load( @file_path_utils.form_preprocessed_includes_list_filepath( filepath ) ) )
   end
 end
