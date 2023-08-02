@@ -13,7 +13,8 @@ class PreprocessinatorFileHandler
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion(preprocessed_filepath)
 
-    includes.each{|include| contents.unshift("#include \"#{include}\"")}
+    # we want to keep the order of the included files, it may be important!
+    includes.reverse.each{|include| contents.unshift("#include \"#{include}\"")}
     contents.unshift("/* Source File = #{filepath} */")
     @file_wrapper.write(preprocessed_filepath, contents.join("\n"))
   end
@@ -26,8 +27,8 @@ class PreprocessinatorFileHandler
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_directives(preprocessed_filepath)
 
-    includes.each{|include| contents.unshift("#include \"#{include}\"")}
-
+    includes.reverse.each{|include| contents.unshift("#include \"#{include}\"")}
+    contents.unshift("/* Source File = #{filepath} */")
     @file_wrapper.write(preprocessed_filepath, contents.join("\n"))
   end
 
