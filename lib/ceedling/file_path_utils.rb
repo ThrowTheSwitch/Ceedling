@@ -122,12 +122,12 @@ class FilePathUtils
     return File.join( @configurator.project_test_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies) )
   end
 
-  def form_pass_results_filepath(filepath)
-    return File.join( @configurator.project_test_results_path, File.basename(filepath).ext(@configurator.extension_testpass) )
+  def form_pass_results_filepath(build_output_path, filepath)
+    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testpass) )
   end
 
-  def form_fail_results_filepath(filepath)
-    return File.join( @configurator.project_test_results_path, File.basename(filepath).ext(@configurator.extension_testfail) )
+  def form_fail_results_filepath(build_output_path, filepath)
+    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testfail) )
   end
 
   def form_runner_filepath_from_test(filepath)
@@ -150,12 +150,12 @@ class FilePathUtils
     return File.join( @configurator.project_test_build_output_asm_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
-  def form_test_executable_filepath(filepath)
-    return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_executable) )
+  def form_test_executable_filepath(build_output_path, filepath)
+    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_executable) )
   end
 
-  def form_test_build_map_filepath(filepath)
-    return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_map) )
+  def form_test_build_map_filepath(build_output_path, filepath)
+    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_map) )
   end
 
   def form_test_build_list_filepath(filepath)
@@ -170,8 +170,8 @@ class FilePathUtils
     return File.join( @configurator.project_test_preprocess_includes_path, File.basename(filepath) )
   end
 
-  def form_test_build_objects_filelist(sources)
-    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{@configurator.project_test_build_output_c_path}/%n#{@configurator.extension_object}")
+  def form_test_build_objects_filelist(path, sources)
+    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{path}/%n#{@configurator.extension_object}")
   end
 
   def form_folder_for_mock(mock)

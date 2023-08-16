@@ -2,7 +2,7 @@
 
 class PreprocessinatorIncludesHandler
 
-  constructor :configurator, :tool_executor, :task_invoker, :file_path_utils, :yaml_wrapper, :file_wrapper, :file_finder
+  constructor :configurator, :flaginator, :tool_executor, :task_invoker, :file_path_utils, :yaml_wrapper, :file_wrapper, :file_finder
   @@makefile_cache = {}
 
   # shallow includes: only those headers a source file explicitly includes
@@ -40,12 +40,16 @@ class PreprocessinatorIncludesHandler
     end
 
     contents.gsub!( /^\s*#include\s+[\"<]\s*(\S+)\s*[\">]/, "#include \"\\1\"\n#include \"@@@@\\1\"" )
-    contents.gsub!( /^\s*TEST_FILE\(\s*\"\s*(\S+)\s*\"\s*\)/, "#include \"\\1\"\n#include \"@@@@\\1\"")
+    contents.gsub!( /^\s*#{UNITY_TEST_SOURCE_FILE}\(\s*\"\s*(\S+)\s*\"\s*\)/, "#include \"\\1\"\n#include \"@@@@\\1\"")
     @file_wrapper.write( temp_filepath, contents )
 
     # extract the make-style dependency rule telling the preprocessor to
     # ignore the fact that it can't find the included files
-    command = @tool_executor.build_command_line(@configurator.tools_test_includes_preprocessor, [], temp_filepath)
+    command = 
+      @tool_executor.build_command_line( @configurator.tools_test_includes_preprocessor,
+                                         @flaginator.flag_down( OPERATION_COMPILE_SYM, TEST_SYM, temp_filepath ),
+                                         temp_filepath)
+
     shell_result = @tool_executor.exec(command[:line], command[:options])
 
     @@makefile_cache[filepath] = shell_result[:output]
@@ -163,7 +167,7 @@ class PreprocessinatorIncludesHandler
   private
 
   def extract_full_path_dependencies(dependencies)
-    # Separate the real files form the annotated ones and remove the '@@@@'
+    # Separate the real files from the annotated ones and remove the '@@@@'
     annotated_files, real_files = dependencies.partition {|file| file =~ /^@@@@/}
     annotated_files.map! {|file| file.gsub('@@@@','') }
     # Matching annotated_files values against real_files to ensure that

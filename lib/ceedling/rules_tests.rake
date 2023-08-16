@@ -8,20 +8,25 @@ rule(/#{PROJECT_TEST_FILE_PREFIX}#{'.+'+TEST_RUNNER_FILE_SUFFIX}#{'\\'+EXTENSION
   @ceedling[:generator].generate_test_runner(TEST_SYM, runner.source, runner.name)
 end
 
-rule(/#{PROJECT_TEST_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
+rule(/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
-      @ceedling[:file_finder].find_compilation_input_file(task_name)
+      _, object = (task_name.split('+'))
+      @ceedling[:file_finder].find_compilation_input_file(object)
     end
-  ]) do |object|
-  if (File.basename(object.source) =~ /#{EXTENSION_SOURCE}$/)
-    @ceedling[:generator].generate_object_file(
-      TOOLS_TEST_COMPILER,
-      OPERATION_COMPILE_SYM,
-      TEST_SYM,
-      object.source,
-      object.name,
-      @ceedling[:file_path_utils].form_test_build_list_filepath( object.name ),
-      @ceedling[:file_path_utils].form_test_dependencies_filepath( object.name ))
+  ]) do |target|
+  test, object = (target.name.split('+'))
+
+  if (File.basename(target.source) =~ /#{EXTENSION_SOURCE}$/)
+    @ceedling[:test_invoker].compile_test_component(test: test.to_sym, source: target.source, object: object)
+    # @ceedling[:generator].generate_object_file(
+    #   TOOLS_TEST_COMPILER,
+    #   OPERATION_COMPILE_SYM,
+    #   TEST_SYM,
+    #   target.source,
+    #   object,
+    #   @ceedling[:test_context_extractor].lookup_include_paths_list( test ),
+    #   @ceedling[:file_path_utils].form_test_build_list_filepath( object ),
+    #   @ceedling[:file_path_utils].form_test_dependencies_filepath( object ))
   elsif (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
     @ceedling[:generator].generate_object_file(
       TOOLS_TEST_ASSEMBLER,
@@ -57,8 +62,17 @@ end
 
 
 namespace TEST_SYM do
-  # use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
+  TOOL_COLLECTION_TEST_RULES = {
+    :context        => TEST_SYM,
+    :test_compiler  => TOOLS_TEST_COMPILER,
+    :test_assembler => TOOLS_TEST_ASSEMBLER,
+    :test_linker    => TOOLS_TEST_LINKER,
+    :test_fixture   => TOOLS_TEST_FIXTURE
+  }
+
   @ceedling[:unity_utils].create_test_runner_additional_args
+
+  # use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
   rule(/^#{TEST_TASK_ROOT}\S+$/ => [ # test task names by regex
       proc do |task_name|
         test = task_name.sub(/#{TEST_TASK_ROOT}/, '')
@@ -67,7 +81,7 @@ namespace TEST_SYM do
       end
   ]) do |test|
     @ceedling[:rake_wrapper][:test_deps].invoke
-    @ceedling[:test_invoker].setup_and_invoke([test.source])
+    @ceedling[:test_invoker].setup_and_invoke(tests:[test.source], options:{:force_run => true, :build_only => false}.merge(TOOL_COLLECTION_TEST_RULES))
   end
 end
 

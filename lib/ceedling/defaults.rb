@@ -15,9 +15,10 @@ DEFAULT_TEST_COMPILER_TOOL = {
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
+    "-I\"${5}\"".freeze, # Per-test executable search paths
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
+    "-D${6}".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze,
     "-g".freeze,
     ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
@@ -39,7 +40,7 @@ DEFAULT_TEST_LINKER_TOOL = {
     ENV['CCLD'].nil? ? "" : ENV['CCLD'].split[1..-1],
     ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
     ENV['LDFLAGS'].nil? ? "" : ENV['LDFLAGS'].split,
-    "\"${1}\"".freeze,
+    "${1}".freeze,
     "${5}".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
@@ -237,12 +238,28 @@ DEFAULT_RELEASE_LINKER_TOOL = {
     ].freeze
   }
 
+DEFAULT_BACKTRACE_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('gdb').freeze,
+  :name => 'default_backtrace_settings'.freeze,
+  :stderr_redirect => StdErrRedirect::AUTO.freeze,
+  :background_exec => BackgroundExec::NONE.freeze,
+  :optional => true.freeze,
+  :arguments => [
+    '-q',
+    '--eval-command run',
+    '--eval-command backtrace',
+    '--batch',
+    '--args'
+    ].freeze
+  }
+
 
 DEFAULT_TOOLS_TEST = {
   :tools => {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
     :test_linker   => DEFAULT_TEST_LINKER_TOOL,
     :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
+    :backtrace_settings => DEFAULT_BACKTRACE_TOOL,
     }
   }
 
@@ -286,7 +303,6 @@ DEFAULT_RELEASE_TARGET_NAME = 'project'
 DEFAULT_CEEDLING_CONFIG = {
     :project => {
       # :build_root must be set by user
-      :use_exceptions => true,
       :use_mocks => true,
       :compile_threads => 1,
       :test_threads => 1,
@@ -332,23 +348,24 @@ DEFAULT_CEEDLING_CONFIG = {
     ],
 
     :defines => {
-      :test => [],
-      :test_preprocess => [],
+      :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
       :release => [],
-      :release_preprocess => [],
-      :use_test_definition => false,
+      :unity => [],
+      :cmock => [],
+      :cexception => []
+    },
+
+    :flags => {
+      :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
+      :release => []
     },
 
     :libraries => {
       :flag => '-l${1}',
       :path_flag => '-L ${1}',
       :test => [],
-      :test_preprocess => [],
-      :release => [],
-      :release_preprocess => [],
+      :release => []
     },
-
-    :flags => {},
 
     :extension => {
       :header => '.h',
@@ -365,19 +382,16 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :unity => {
-      :vendor_path => CEEDLING_VENDOR,
-      :defines => []
+      :vendor_path => CEEDLING_VENDOR
     },
 
     :cmock => {
       :vendor_path => CEEDLING_VENDOR,
-      :defines => [],
       :includes => []
     },
 
     :cexception => {
-      :vendor_path => CEEDLING_VENDOR,
-      :defines => []
+      :vendor_path => CEEDLING_VENDOR
     },
 
     :test_runner => {

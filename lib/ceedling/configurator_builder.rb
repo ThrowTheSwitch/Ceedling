@@ -13,19 +13,33 @@ class ConfiguratorBuilder
 
   def build_global_constants(config)
     config.each_pair do |key, value|
-      formatted_key = key.to_s.upcase
-      # undefine global constant if it already exists
+      # Convert key names to Ruby constant names
+      # Some key names can be C file names that can include dashes
+      # Upcase the key names to create consitency and Ruby constants by convention
+      # Replace dashes with underscores to match handling of Ruby accessor method names
+      formatted_key = key.to_s.gsub('-','_').upcase
+
+      # Undefine global constant if it already exists
       Object.send(:remove_const, formatted_key.to_sym) if @system_wrapper.constants_include?(formatted_key)
-      # create global constant
+
+      # Create global constant
       Object.module_eval("#{formatted_key} = value")
     end
+
+    # TODO: This wants to go somewhere better
+    Object.module_eval("TOOLS_TEST_ASSEMBLER = {}") if (not config[:test_build_use_assembly]) && !defined?(TOOLS_TEST_ASSEMBLER)
+    Object.module_eval("TOOLS_RELEASE_ASSEMBLER = {}") if (not config[:release_build_use_assembly]) && !defined?(TOOLS_RELEASE_ASSEMBLER)
   end
 
 
   def build_accessor_methods(config, context)
+    # Fill configurator object with accessor methods
     config.each_pair do |key, value|
-      # fill configurator object with accessor methods
-      eval("def #{key.to_s.downcase}() return @project_config_hash[:#{key}] end", context)
+      # Convert key names to Ruby method names
+      # Some key names can be C file names that can include dashes; dashes are not allowed in Ruby method names
+      # Downcase the key names and replace any illegal dashes with legal underscores
+      # Downcased key names create consistency and ensure no method names become Ruby constants by accident
+      eval("def #{key.to_s.gsub('-','_').downcase}() return @project_config_hash[:#{key}] end", context)
     end
   end
 
@@ -71,9 +85,24 @@ class ConfiguratorBuilder
   end
 
 
-  def clean(in_hash)
+  def cleanup(in_hash)
     # ensure that include files inserted into test runners have file extensions & proper ones at that
     in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
+  end
+
+
+  def set_exception_handling(in_hash)
+    # If project defines exception handling, do not change the setting.
+    # But, if the project omits exception handling setting...
+    if not in_hash[:project_use_exceptions]
+      # Automagically set it if cmock is configured for it
+      if in_hash[:cmock_plugins] && in_hash[:cmock_plugins].include?(:cexception)
+        in_hash[:project_use_exceptions] = true
+      # Otherwise, disable exceptions for the project
+      else
+        in_hash[:project_use_exceptions] = false
+      end  
+    end
   end
 
 
@@ -381,43 +410,6 @@ class ConfiguratorBuilder
     # finding assembly files handled explicitly through other means
 
     return {:collection_all_existing_compilation_input => all_input}
-  end
-
-
-  def get_vendor_defines(in_hash)
-    defines = in_hash[:unity_defines].clone
-    defines.concat(in_hash[:cmock_defines])      if (in_hash[:project_use_mocks])
-    defines.concat(in_hash[:cexception_defines]) if (in_hash[:project_use_exceptions])
-
-    return defines
-  end
-
-
-  def collect_vendor_defines(in_hash)
-    return {:collection_defines_vendor => get_vendor_defines(in_hash)}
-  end
-
-
-  def collect_test_and_vendor_defines(in_hash)
-    defines = in_hash[:defines_test].clone
-
-    require_relative 'unity_utils.rb'
-    cmd_line_define = UnityUtils.update_defines_if_args_enables(in_hash)
-
-    vendor_defines = get_vendor_defines(in_hash)
-    defines.concat(vendor_defines) if vendor_defines
-    defines.concat(cmd_line_define) if cmd_line_define
-
-    return {:collection_defines_test_and_vendor => defines}
-  end
-
-
-  def collect_release_and_vendor_defines(in_hash)
-    release_defines = in_hash[:defines_release].clone
-
-    release_defines.concat(in_hash[:cexception_defines]) if (in_hash[:project_use_exceptions])
-
-    return {:collection_defines_release_and_vendor => release_defines}
   end
 
 
