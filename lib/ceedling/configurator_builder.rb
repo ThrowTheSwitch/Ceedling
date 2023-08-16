@@ -413,43 +413,6 @@ class ConfiguratorBuilder
   end
 
 
-  def get_vendor_defines(in_hash)
-    defines = in_hash[:unity_defines].clone
-    defines.concat(in_hash[:cmock_defines])      if (in_hash[:project_use_mocks])
-    defines.concat(in_hash[:cexception_defines]) if (in_hash[:project_use_exceptions])
-
-    return defines
-  end
-
-
-  def collect_vendor_defines(in_hash)
-    return {:collection_defines_vendor => get_vendor_defines(in_hash)}
-  end
-
-
-  def collect_test_and_vendor_defines(in_hash)
-    defines = in_hash[:defines_test].clone
-
-    require_relative 'unity_utils.rb'
-    cmd_line_define = UnityUtils.update_defines_if_args_enables(in_hash)
-
-    vendor_defines = get_vendor_defines(in_hash)
-    defines.concat(vendor_defines) if vendor_defines
-    defines.concat(cmd_line_define) if cmd_line_define
-
-    return {:collection_defines_test_and_vendor => defines}
-  end
-
-
-  def collect_release_and_vendor_defines(in_hash)
-    release_defines = in_hash[:defines_release].clone
-
-    release_defines.concat(in_hash[:cexception_defines]) if (in_hash[:project_use_exceptions])
-
-    return {:collection_defines_release_and_vendor => release_defines}
-  end
-
-
   def collect_release_artifact_extra_link_objects(in_hash)
     objects = []
 

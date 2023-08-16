@@ -91,10 +91,11 @@ class TaskInvoker
     end
   end
 
-  def invoke_test_objects(objects)
+  def invoke_test_objects(testname:, objects:)
     par_map(PROJECT_COMPILE_THREADS, objects) do |object|
       reset_rake_task_for_changed_defines( object )
-      @rake_wrapper[object].invoke
+      # Encode context with concatenated compilation target: <testname>+<object file>
+      @rake_wrapper["#{testname}+#{object}"].invoke
     end
   end
 

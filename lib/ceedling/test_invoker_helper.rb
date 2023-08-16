@@ -95,24 +95,23 @@ class TestInvokerHelper
     end
   end
 
-  def generate_executables_now(executables, details, lib_args, lib_paths, options)
-    par_map(PROJECT_COMPILE_THREADS, executables) do |executable|
-      @generator.generate_executable_file(
-        options[:test_linker],
-        options[:context],
-        details[executable][:objects].map{|v| "\"#{v}\""},
-        @file_path_utils.form_test_executable_filepath( executable ),
-        @file_path_utils.form_test_build_map_filepath( executable ),
-        lib_args,
-        lib_paths )
-    end
+  def generate_executable_now(build_path, executable, objects, flags, lib_args, lib_paths, options)
+    @generator.generate_executable_file(
+      options[:test_linker],
+      options[:context],
+      objects.map{|v| "\"#{v}\""},
+      flags,
+      executable,
+      @file_path_utils.form_test_build_map_filepath( build_path, executable ),
+      lib_args,
+      lib_paths )
   end
 
-  def run_fixture_now(result, options)
+  def run_fixture_now(executable, result, options)
     @generator.generate_test_results(
       options[:test_fixture], 
       options[:context],
-      @file_path_utils.form_test_executable_filepath(result), 
+      executable, 
       result)
   end
   

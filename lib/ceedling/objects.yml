@@ -186,10 +186,22 @@ task_invoker:
     - rake_wrapper
     - project_config_manager
 
+config_matchinator:
+  compose:
+    - configurator
+    - streaminator
+
 flaginator:
   compose:
     - configurator
     - streaminator
+    - config_matchinator
+
+defineinator:
+  compose:
+    - configurator
+    - streaminator
+    - config_matchinator
 
 generator:
   compose:
@@ -199,7 +211,6 @@ generator:
     - cmock_builder
     - generator_test_runner
     - generator_test_results
-    - flaginator
     - test_context_extractor
     - tool_executor
     - file_finder
@@ -287,6 +298,10 @@ test_invoker:
     - dependinator
     - project_config_manager
     - build_invoker_utils
+    - generator
+    - test_context_extractor
+    - flaginator
+    - defineinator
     - file_path_utils
     - file_wrapper
 

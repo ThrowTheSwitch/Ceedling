@@ -13,7 +13,7 @@ class Gcov < Plugin
       project_test_build_output_c_path: GCOV_BUILD_OUTPUT_PATH,
       project_test_results_path: GCOV_RESULTS_PATH,
       project_test_dependencies_path: GCOV_DEPENDENCIES_PATH,
-      defines_test: DEFINES_TEST + ['CODE_COVERAGE'],
+#      defines_test: DEFINES_TEST + ['CODE_COVERAGE'],
       gcov_html_report_filter: GCOV_FILTER_EXCLUDE
     }
 
@@ -45,8 +45,8 @@ class Gcov < Plugin
     )
   end
 
-  def flags_defined?(context)
-    return @ceedling[:flaginator].flags_defined?(GCOV_SYM, context)
+  def flags_defined?(operation)
+    return @ceedling[:flaginator].flags_defined?(GCOV_SYM, operation)
   end
 
   def post_test_fixture_execute(arg_hash)

@@ -15,10 +15,10 @@ DEFAULT_TEST_COMPILER_TOOL = {
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
-    "-I\"${5}\"".freeze,
+    "-I\"${5}\"".freeze, # Per-test executable search paths
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
+    "-D${6}".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze,
     "-g".freeze,
     ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
@@ -348,23 +348,24 @@ DEFAULT_CEEDLING_CONFIG = {
     ],
 
     :defines => {
-      :test => [],
-      :test_preprocess => [],
+      :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
       :release => [],
-      :release_preprocess => [],
-      :use_test_definition => false,
+      :unity => [],
+      :cmock => [],
+      :cexception => []
+    },
+
+    :flags => {
+      :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
+      :release => []
     },
 
     :libraries => {
       :flag => '-l${1}',
       :path_flag => '-L ${1}',
       :test => [],
-      :test_preprocess => [],
-      :release => [],
-      :release_preprocess => [],
+      :release => []
     },
-
-    :flags => {},
 
     :extension => {
       :header => '.h',
@@ -381,19 +382,16 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :unity => {
-      :vendor_path => CEEDLING_VENDOR,
-      :defines => []
+      :vendor_path => CEEDLING_VENDOR
     },
 
     :cmock => {
       :vendor_path => CEEDLING_VENDOR,
-      :defines => [],
       :includes => []
     },
 
     :cexception => {
-      :vendor_path => CEEDLING_VENDOR,
-      :defines => []
+      :vendor_path => CEEDLING_VENDOR
     },
 
     :test_runner => {

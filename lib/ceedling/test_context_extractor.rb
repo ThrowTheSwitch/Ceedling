@@ -9,53 +9,49 @@ class TestContextExtractor
     @source_extras   = {}
     @mocks           = {}
     @include_paths   = {}
-    @lock            = Mutex.new
+
+    @lock = Mutex.new
   end
 
 
-  # open, scan for, and sort & store header_includes of test file
-  def parse_test_file(test)
-    test_context_extraction( test, @file_wrapper.read(test) )
+  # open, scan for, and sort & store all test includes, mocks, build directives, etc
+  def parse_test_file(filepath)
+    test_context_extraction( filepath, @file_wrapper.read(filepath) )
   end
 
   # for includes_list file, slurp up array from yaml file and sort & store header_includes
-  def parse_includes_list(includes_list)
-    ingest_includes_and_mocks( includes_list, @yaml_wrapper.load(includes_list) )
+  def parse_includes_list(filepath)
+    ingest_includes_and_mocks( includes_list, @yaml_wrapper.load(filepath) )
   end
 
   # header header_includes of test file with file extension
-  def lookup_header_includes_list(file)
-    file_key = form_file_key(file)
-    return @header_includes[file_key] || []
+  def lookup_header_includes_list(test)
+    return @header_includes[form_file_key(test)] || []
   end
 
   # include paths of test file specified with TEST_INCLUDE_PATH()
-  def lookup_include_paths_list(file)
-    file_key = form_file_key(file)
-    return @include_paths[file_key] || []
+  def lookup_include_paths_list(test)
+    return @include_paths[form_file_key(test)] || []
   end
 
   # source header_includes within test file
   def lookup_source_includes_list(test)
-    file_key = form_file_key(test)
-    return @source_includes[file_key] || []
+    return @source_includes[form_file_key(test)] || []
   end
 
   # source extras via TEST_SOURCE_FILE() within test file
   def lookup_source_extras_list(test)
-    file_key = form_file_key(test)
-    return @source_extras[file_key] || []
+    return @source_extras[form_file_key(test)] || []
   end
 
   # mocks within test file with no file extension
   def lookup_raw_mock_list(test)
-    file_key = form_file_key(test)
-    return @mocks[file_key] || []
+    return @mocks[form_file_key(test)] || []
   end
 
   private #################################
 
-  def test_context_extraction(test, contents)
+  def test_context_extraction(filepath, contents)
     header_includes = []
     include_paths = []
     source_includes = []
@@ -87,16 +83,16 @@ class TestContextExtractor
       source_includes << scan_results[0][0] if (scan_results.size > 0)
     end
 
-    ingest_includes_and_mocks( test, header_includes.uniq )
-    ingest_include_paths( test, include_paths.uniq )
-    ingest_source_extras( test, source_extras.uniq )
-    ingest_source_includes( test, source_includes.uniq )
+    ingest_includes_and_mocks( filepath, header_includes.uniq )
+    ingest_include_paths( filepath, include_paths.uniq )
+    ingest_source_extras( filepath, source_extras.uniq )
+    ingest_source_includes( filepath, source_includes.uniq )
   end
 
-  def ingest_includes_and_mocks(file, includes)
+  def ingest_includes_and_mocks(filepath, includes)
     mock_prefix      = @configurator.cmock_mock_prefix
     header_extension = @configurator.extension_header
-    file_key         = form_file_key(file)
+    file_key         = form_file_key(filepath)
     mocks            = []
 
     # Add header_includes to lookup hash
@@ -114,35 +110,29 @@ class TestContextExtractor
     end
   end
 
-  def ingest_include_paths(file, paths)
-    file_key = form_file_key(file)
-
+  def ingest_include_paths(filepath, paths)
     # finalize the information
     @lock.synchronize do
-      @include_paths[file_key] = paths
+      @include_paths[form_file_key(filepath)] = paths
     end
   end
 
-  def ingest_source_extras(file, sources)
-    file_key = form_file_key(file)
-
+  def ingest_source_extras(filepath, sources)
     # finalize the information
     @lock.synchronize do
-      @source_extras[file_key] = sources
+      @source_extras[form_file_key(filepath)] = sources
     end
   end
 
-  def ingest_source_includes(file, includes)
-    file_key = form_file_key(file)
-
+  def ingest_source_includes(filepath, includes)
     # finalize the information
     @lock.synchronize do
-      @source_includes[file_key] = includes
+      @source_includes[form_file_key(filepath)] = includes
     end
   end
 
   def form_file_key(filepath)
-    return File.basename(filepath).to_sym
+    return filepath.to_s.to_sym
   end
 
 end

@@ -9,7 +9,6 @@ class Generator
               :cmock_builder,
               :generator_test_runner,
               :generator_test_results,
-              :flaginator,
               :test_context_extractor,
               :tool_executor,
               :file_finder,
@@ -93,7 +92,64 @@ class Generator
     end
   end
 
-  def generate_object_file(tool, operation, context, source, object, list='', dependencies='', msg=nil)
+
+  def generate_object_file_c(tool:TOOLS_TEST_COMPILER,
+                             context:TEST_SYM,
+                             source:,
+                             object:,
+                             search_paths:[],
+                             flags:[],
+                             defines:[],
+                             list:'',
+                             dependencies:'',
+                             msg:nil)
+
+    shell_result = {}
+    arg_hash = { :tool => tool,
+                 :operation => OPERATION_COMPILE_SYM,
+                 :context => context,
+                 :source => source,
+                 :object => object,
+                 :search_paths => search_paths,
+                 :flags => flags,
+                 :defines => defines,
+                 :list => list,
+                 :dependencies => dependencies}
+
+    @plugin_manager.pre_compile_execute(arg_hash)
+
+    msg = String(msg)
+    msg = "Compiling #{File.basename(arg_hash[:source])}..." if msg.empty?
+
+    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+
+    command =
+      @tool_executor.build_command_line( arg_hash[:tool],
+                                         arg_hash[:flags],
+                                         arg_hash[:source],
+                                         arg_hash[:object],
+                                         arg_hash[:list],
+                                         arg_hash[:dependencies],
+                                         arg_hash[:search_paths],
+                                         arg_hash[:defines])
+
+    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
+
+    begin
+      shell_result = @tool_executor.exec( command[:line], command[:options] )
+    rescue ShellExecutionException => ex
+      shell_result = ex.shell_result
+      raise ex
+    ensure
+      arg_hash[:shell_command] = command[:line]
+      arg_hash[:shell_result] = shell_result
+      @plugin_manager.post_compile_execute(arg_hash)
+    end
+  end
+
+  # def generate_object_file_asm(tool, operation, context, source, object, search_paths, list='', dependencies='', msg=nil)
+
+  def generate_object_file(tool, operation, context, source, object, search_paths, list='', dependencies='', msg=nil)
     shell_result = {}
     arg_hash = { :tool => tool,
                  :operation => operation,
@@ -119,7 +175,8 @@ class Generator
                                          arg_hash[:object],
                                          arg_hash[:list],
                                          arg_hash[:dependencies],
-                                         @test_context_extractor.lookup_include_paths_list( source ) )
+                                         search_paths,
+                                         [] )
 
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
@@ -135,11 +192,12 @@ class Generator
     end
   end
 
-  def generate_executable_file(tool, context, objects, executable, map='', libraries=[], libpaths=[])
+  def generate_executable_file(tool, context, objects, flags, executable, map='', libraries=[], libpaths=[])
     shell_result = {}
     arg_hash = { :tool => tool,
                  :context => context,
                  :objects => objects,
+                 :flags => flags,
                  :executable => executable,
                  :map => map,
                  :libraries => libraries,
@@ -151,7 +209,7 @@ class Generator
     @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
     command =
       @tool_executor.build_command_line( arg_hash[:tool],
-                                         @flaginator.flag_down( OPERATION_LINK_SYM, context, executable ),
+                                         arg_hash[:flags],
                                          arg_hash[:objects],
                                          arg_hash[:executable],
                                          arg_hash[:map],
