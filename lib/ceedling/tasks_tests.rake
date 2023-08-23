@@ -1,6 +1,24 @@
 require 'ceedling/constants'
 
-task :test_deps => [:directories]
+task :test_deps => [:directories] do
+  # Copy Unity C files into build/vendor directory structure
+  @ceedling[:file_wrapper].cp_r(
+    # '/.' to cause cp_r to copy directory contents
+    File.join( UNITY_VENDOR_PATH, UNITY_LIB_PATH, '/.' ),
+    PROJECT_BUILD_VENDOR_UNITY_PATH )
+
+  # Copy CMock C files into build/vendor directory structure
+  @ceedling[:file_wrapper].cp_r(
+    # '/.' to cause cp_r to copy directory contents
+    File.join( CMOCK_VENDOR_PATH, CMOCK_LIB_PATH, '/.' ),
+    PROJECT_BUILD_VENDOR_CMOCK_PATH ) if PROJECT_USE_MOCKS
+
+  # Copy CException C files into build/vendor directory structure
+  @ceedling[:file_wrapper].cp_r(
+    # '/.' to cause cp_r to copy directory contents
+    File.join( CEXCEPTION_VENDOR_PATH, CEXCEPTION_LIB_PATH, '/.' ),
+    PROJECT_BUILD_VENDOR_CEXCEPTION_PATH ) if PROJECT_USE_EXCEPTIONS
+end
 
 task :test => [:test_deps] do
   Rake.application['test:all'].invoke
@@ -19,7 +37,7 @@ namespace TEST_SYM do
   task :all => [:test_deps] do
     @ceedling[:test_invoker].setup_and_invoke(
       tests:COLLECTION_ALL_TESTS,
-      options:{:force_run => true, build_only => false}.merge(TOOL_COLLECTION_TEST_TASKS))
+      options:{:force_run => true, :build_only => false}.merge(TOOL_COLLECTION_TEST_TASKS))
   end
 
   desc "Run single test ([*] real test or source file name, no path)."

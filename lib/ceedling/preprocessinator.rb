@@ -6,10 +6,12 @@ class Preprocessinator
               :task_invoker,
               :file_finder,
               :file_path_utils,
+              :file_wrapper,
               :yaml_wrapper,
               :project_config_manager,
               :configurator,
               :test_context_extractor,
+              :streaminator,
               :rake_wrapper
 
 
@@ -19,68 +21,68 @@ class Preprocessinator
     @file_handler = @preprocessinator_file_handler
   end
 
-  def fetch_shallow_source_includes(test)
-    return @test_context_extractor.lookup_source_includes_list(test)
+  def extract_test_build_directives(filepath:)
+    # Parse file in Ruby to extract build directives
+    @streaminator.stdout_puts( "Parsing #{File.basename(filepath)}...", Verbosity::NORMAL)
+    @test_context_extractor.collect_build_directives( filepath )
   end
 
-  def preprocess_test_file(test)
-    # Extract all context from test file
-    @test_context_extractor.parse_test_file(test)
-
-    if (@configurator.project_use_test_preprocessor)
-      preprocessed_includes_list = @file_path_utils.form_preprocessed_includes_list_filepath(test)
-      preprocess_shallow_includes( @file_finder.find_test_from_file_path(preprocessed_includes_list) )
-      # Replace includes & mocks context with preprocessing results
-      @test_context_extractor.parse_includes_list(preprocessed_includes_list)
+  def extract_testing_context(filepath:, subdir:, flags:, include_paths:, defines:)
+    # Parse file in Ruby to extract testing details (e.g. header files, mocks, etc.)
+    if (not @configurator.project_use_test_preprocessor)
+      @streaminator.stdout_puts( "Parsing & processing #include statements within #{File.basename(filepath)}...", Verbosity::NORMAL)
+      @test_context_extractor.collect_testing_details( filepath )
+    # Run test file through preprocessor to parse out include statements and then collect header files, mocks, etc.
+    else
+      includes = preprocess_shallow_includes(
+        filepath:      filepath,
+        subdir:        subdir,
+        flags:         flags,
+        include_paths: include_paths,
+        defines:       defines)
+      @streaminator.stdout_puts( "Processing #include statements for #{File.basename(filepath)}...", Verbosity::NORMAL)
+      @test_context_extractor.ingest_includes_and_mocks( filepath, includes )
     end
   end
 
-  def fetch_mock_list_for_test_file(test)
-    return @file_path_utils.form_mocks_source_filelist( @test_context_extractor.lookup_raw_mock_list(test) )
-  end
+  def preprocess_shallow_includes(filepath:, subdir:, flags:, include_paths:, defines:)
+    includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, subdir )
 
-  def fetch_include_search_paths_for_test_file(test)
-    return @test_context_extractor.lookup_include_paths_list(test)
-  end
+    includes = []
 
-  def preprocess_mockable_header(mockable_header)
-    if (@configurator.project_use_test_preprocessor)
-      if (@configurator.project_use_deep_dependencies)
-        @task_invoker.invoke_test_preprocessed_files([mockable_header])
-      else
-        preprocess_file(@file_finder.find_header_file(mockable_header)) 
-      end
-    end
-  end
-
-  def preprocess_remainder(test)
-    if (@configurator.project_use_test_preprocessor)
-      if (@configurator.project_use_preprocessor_directives)
-        preprocess_file_directives(test)
-      else
-        preprocess_file(test)
-      end
-    end
-  end
-
-  def preprocess_shallow_includes(filepath)
-    includes = @includes_handler.extract_includes(filepath)
-
-    @includes_handler.write_shallow_includes_list(
-      @file_path_utils.form_preprocessed_includes_list_filepath(filepath), includes)
-  end
-
-  def preprocess_file(filepath)
-    # Attempt to directly run shallow includes instead of TODO@includes_handler.invoke_shallow_includes_list(filepath)
-    pre = @file_path_utils.form_preprocessed_includes_list_filepath(filepath)
-    if (@rake_wrapper[pre].needed?)
-      src = @file_finder.find_test_or_source_or_header_file(pre)
-      preprocess_shallow_includes(src) 
+    if @file_wrapper.newer?(includes_list_filepath, filepath)
+      @streaminator.stdout_puts( "Loading existing #include statement listing file for #{File.basename(filepath)}...", Verbosity::NORMAL)
+      includes = @yaml_wrapper.load(includes_list_filepath)
+    else
+      includes = @includes_handler.extract_includes(filepath:filepath, subdir:subdir, flags:flags, include_paths:include_paths, defines:defines)
+      @includes_handler.write_shallow_includes_list(includes_list_filepath, includes)
     end
 
-    # Reload it and 
-    includes = @yaml_wrapper.load(pre)
-    @file_handler.preprocess_file( filepath, includes )
+    return includes
+  end
+
+  def preprocess_file(filepath:, test:, flags:, include_paths:, defines:)
+    # Extract shallow includes
+    includes = preprocess_shallow_includes(
+      filepath:      filepath,
+      subdir:        test,
+      flags:         flags,
+      include_paths: include_paths,
+      defines:       defines) 
+
+    file = File.basename(filepath)
+    @streaminator.stdout_puts(
+      "Preprocessing #{file}#{" as #{test} build component" unless file.include?(test)}...",
+      Verbosity::NORMAL)
+
+    # Run file through preprocessor & further process result
+    return @file_handler.preprocess_file(
+      filepath:      filepath,
+      subdir:        test,
+      includes:      includes,
+      flags:         flags,
+      include_paths: include_paths,
+      defines:       defines )
   end
 
   def preprocess_file_directives(filepath)

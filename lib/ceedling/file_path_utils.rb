@@ -76,8 +76,10 @@ class FilePathUtils
 
   ######### instance methods ##########
 
-  def form_temp_path(filepath, prefix='')
-    return File.join( @configurator.project_temp_path, prefix + File.basename(filepath) )
+  def form_temp_path(filepath, subdir, prefix='')
+    path = File.join( @configurator.project_temp_path, subdir )
+    @file_wrapper.mkdir(path)
+    return File.join( path, prefix + File.basename(filepath) )
   end
 
   ### release ###
@@ -162,45 +164,21 @@ class FilePathUtils
     return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_list) )
   end
 
-  def form_preprocessed_file_filepath(filepath)
-    return File.join( @configurator.project_test_preprocess_files_path, File.basename(filepath) )
+  def form_preprocessed_file_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_files_path, subdir, File.basename(filepath) )
   end
 
-  def form_preprocessed_includes_list_filepath(filepath)
-    return File.join( @configurator.project_test_preprocess_includes_path, File.basename(filepath) )
+  def form_preprocessed_includes_list_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_includes_path, subdir, File.basename(filepath) + @configurator.extension_yaml )
   end
 
   def form_test_build_objects_filelist(path, sources)
     return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{path}/%n#{@configurator.extension_object}")
   end
 
-  def form_folder_for_mock(mock)
-    path = File.dirname(mock).sub(/^#{@configurator.cmock_mock_path}[\\\/]?/, '')
-    
-    # If we dont have a path then File.dirname() returns '.' however, we cannot return this because it would break
-    # dependency handling.
-    return '' if path == '.'
-
-    if path != ''
-      path = File.join(path, "")
-    end
-    return path
-  end
-
-  def form_preprocessed_mockable_headers_filelist(mocks)
-    list = @file_wrapper.instantiate_file_list(mocks)
-    headers = list.map do |file|
-      path_name   = form_folder_for_mock(file)
-      module_name = File.basename(file).sub(/^#{@configurator.cmock_mock_prefix}/, '').sub(/\.[a-zA-Z]+$/,'')
-      "#{@configurator.project_test_preprocess_files_path}/#{path_name}#{module_name}#{@configurator.extension_header}"
-    end
-    return headers
-  end
-
-  def form_mocks_source_filelist(mocks)
+  def form_mocks_source_filelist(path, mocks)
     list = (@file_wrapper.instantiate_file_list(mocks))
-    sources = list.map{|file| "#{@configurator.cmock_mock_path}/#{form_folder_for_mock(file)}#{File.basename(file)}#{@configurator.extension_source}"}
-    return sources
+    return list.map{ |file| File.join(path, File.basename(file).ext(@configurator.extension_source)) }
   end
 
   def form_test_dependencies_filelist(files)

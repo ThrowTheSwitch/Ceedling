@@ -23,14 +23,7 @@ class FileFinder
 
 
   def find_header_input_for_mock_file(mock_file)
-    found_path = find_header_file(mock_file)
-    mock_input = found_path
-
-    if (@configurator.project_use_test_preprocessor)
-      mock_input = @cacheinator.diff_cached_test_file( @file_path_utils.form_preprocessed_file_filepath( found_path ) )
-    end
-
-    return mock_input
+    return find_header_file(mock_file)
   end
 
 

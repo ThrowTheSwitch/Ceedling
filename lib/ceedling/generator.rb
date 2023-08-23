@@ -44,23 +44,38 @@ class Generator
     @tool_executor.exec( command[:line], command[:options] )
   end
 
-  def generate_mock(context, mock)
-    arg_hash = if mock.is_a? String
-      header_name = mock
-      mock_name = File.basename(mock)
-      {:header_file => header_name, :context => context }
-    else
-      mock_name = mock.name
-      {:header_file => mock.source, :context => context}
-    end
+  def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
+    arg_hash = {
+      :header_file => input_filepath,
+      :context => context,
+      :output_path => output_path }
+    
     @plugin_manager.pre_mock_generate( arg_hash )
 
     begin
-      folder = @file_path_utils.form_folder_for_mock(mock_name)
-      if folder == ''
-        folder = nil
+      # TODO: Add option to CMock to generate mock to any destination path
+      # Below is a hack that insantiates CMock anew for each desired output path
+
+      # Get default config created by Ceedling and customize it
+      config = @cmock_builder.get_default_config
+      config[:mock_path] = output_path
+
+      # Verbosity management for logging messages
+      case @configurator.project_verbosity
+      when Verbosity::SILENT
+        config[:verbosity] = 0 # CMock is silent
+      when Verbosity::ERRORS
+      when Verbosity::COMPLAIN
+      when Verbosity::NORMAL
+      when Verbosity::OBNOXIOUS
+        config[:verbosity] = 1 # Errors and warnings only so we can customize generation message ourselves
+      else # DEBUG
+        config[:verbosity] = 3 # Max verbosity
       end
-      @cmock_builder.cmock.setup_mocks( arg_hash[:header_file], folder )
+  
+      # Generate mock
+      @streaminator.stdout_puts("Generating mock for #{mock} as #{test} build component...", Verbosity::NORMAL)
+      @cmock_builder.manufacture(config).setup_mocks( arg_hash[:header_file] )
     rescue
       raise
     ensure
@@ -69,22 +84,24 @@ class Generator
   end
 
   # test_filepath may be either preprocessed test file or original test file
-  def generate_test_runner(context, test_filepath, runner_filepath)
-    arg_hash = {:context => context, :test_file => test_filepath, :runner_file => runner_filepath}
+  def generate_test_runner(context:, mock_list:, test_filepath:, input_filepath:, runner_filepath:)
+    arg_hash = {
+      :context => context,
+      :test_file => test_filepath,
+      :input_file => input_filepath,
+      :runner_file => runner_filepath}
+
     @plugin_manager.pre_runner_generate(arg_hash)
 
     # collect info we need
-    module_name = File.basename(arg_hash[:test_file])
-    test_cases  = @generator_test_runner.find_test_cases( @file_finder.find_test_from_runner_path(runner_filepath) )
-    mock_list   = @test_context_extractor.lookup_raw_mock_list(arg_hash[:test_file])
+    module_name = File.basename( arg_hash[:test_file] )
+    test_cases  = @generator_test_runner.find_test_cases( test_filepath: arg_hash[:test_file], input_filepath: arg_hash[:input_file] )
 
     @streaminator.stdout_puts("Generating runner for #{module_name}...", Verbosity::NORMAL)
 
-    test_file_includes = [] # Empty list for now, since apparently unused
-
     # build runner file
     begin
-      @generator_test_runner.generate(module_name, runner_filepath, test_cases, mock_list, test_file_includes)
+      @generator_test_runner.generate(module_name, runner_filepath, test_cases, mock_list, [])
     rescue
       raise
     ensure
@@ -93,8 +110,8 @@ class Generator
   end
 
 
-  def generate_object_file_c(tool:TOOLS_TEST_COMPILER,
-                             context:TEST_SYM,
+  def generate_object_file_c(tool:,
+                             context:,
                              source:,
                              object:,
                              search_paths:[],

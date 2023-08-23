@@ -72,6 +72,7 @@ tool_executor:
     - configurator
     - tool_executor_helper
     - streaminator
+    - verbosinator
     - system_wrapper
 
 tool_executor_helper:
@@ -176,7 +177,13 @@ file_finder_helper:
 test_context_extractor:
   compose:
     - configurator
-    - yaml_wrapper
+    - file_wrapper
+
+include_pathinator:
+  compose:
+    - configurator
+    - test_context_extractor
+    - streaminator
     - file_wrapper
 
 task_invoker:
@@ -259,10 +266,12 @@ preprocessinator:
     - task_invoker
     - file_finder
     - file_path_utils
+    - file_wrapper
     - yaml_wrapper
     - project_config_manager
     - configurator
     - test_context_extractor
+    - streaminator
     - rake_wrapper
 
 preprocessinator_includes_handler:
@@ -275,6 +284,7 @@ preprocessinator_includes_handler:
     - yaml_wrapper
     - file_wrapper
     - file_finder
+    - streaminator
 
 preprocessinator_file_handler:
   compose:
@@ -284,6 +294,7 @@ preprocessinator_file_handler:
     - tool_executor
     - file_path_utils
     - file_wrapper
+    - streaminator
 
 preprocessinator_extractor:
 
@@ -295,13 +306,10 @@ test_invoker:
     - streaminator
     - preprocessinator
     - task_invoker
-    - dependinator
     - project_config_manager
     - build_invoker_utils
     - generator
     - test_context_extractor
-    - flaginator
-    - defineinator
     - file_path_utils
     - file_wrapper
 
@@ -311,11 +319,14 @@ test_invoker_helper:
     - streaminator
     - task_invoker
     - test_context_extractor
+    - include_pathinator
+    - defineinator
+    - flaginator
     - file_finder
     - file_path_utils
     - file_wrapper
     - generator
-    - rake_wrapper
+    - reportinator
 
 release_invoker:
   compose:

@@ -14,58 +14,60 @@ CLEAN.include(File.join(GCOV_DEPENDENCIES_PATH, '*'))
 CLOBBER.include(File.join(GCOV_BUILD_PATH, '**/*'))
 
 rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
-       proc do |task_name|
-         @ceedling[:file_finder].find_compilation_input_file(task_name)
-       end
-     ]) do |object|
-  @ceedling[GCOV_SYM].generate_coverage_object_file(object.source, object.name)
-end
+    proc do |task_name|
+      _, object = (task_name.split('+'))
+      @ceedling[:file_finder].find_compilation_input_file(object)
+    end
+  ]) do |target|
+    test, object = (target.name.split('+'))
 
-# TODO: if [flags][gcov][linker] defined, context is GCOV_SYM, otherwise TEST_SYM
-rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_EXECUTABLE}$/) do |bin_file|
-  lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
-  lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
-  @ceedling[:generator].generate_executable_file(
-    TOOLS_GCOV_LINKER,
-    # If gcov has an entry in the configuration, use its flags by lookup with gcov's context.
-    # Otherwise, use any linker flags configured for the vanilla test context.
-    @ceedling[GCOV_SYM].flags_defined?(OPERATION_LINK_SYM) ? GCOV_SYM : TEST_SYM,
-    bin_file.prerequisites,
-    bin_file.name,
-    @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name),
-    lib_args,
-    lib_paths
-  )
-end
+    @ceedling[GCOV_SYM].generate_coverage_object_file(test.to_sym, target.source, object)
+  end
 
-rule(/#{GCOV_RESULTS_PATH}\/#{'.+\\' + EXTENSION_TESTPASS}$/ => [
-       proc do |task_name|
-         @ceedling[:file_path_utils].form_test_executable_filepath(task_name)
-       end
-     ]) do |test_result|
-  @ceedling[:generator].generate_test_results(TOOLS_GCOV_FIXTURE, GCOV_SYM, test_result.source, test_result.name)
-end
+# # TODO: if [flags][gcov][linker] defined, context is GCOV_SYM, otherwise TEST_SYM
+# rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_EXECUTABLE}$/) do |bin_file|
+#   lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
+#   lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
+#   @ceedling[:generator].generate_executable_file(
+#     TOOLS_GCOV_LINKER,
+#     # If gcov has an entry in the configuration, use its flags by lookup with gcov's context.
+#     # Otherwise, use any linker flags configured for the vanilla test context.
+#     @ceedling[GCOV_SYM].flags_defined?(OPERATION_LINK_SYM) ? GCOV_SYM : TEST_SYM,
+#     bin_file.prerequisites,
+#     bin_file.name,
+#     @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name),
+#     lib_args,
+#     lib_paths
+#   )
+# end
 
-rule(/#{GCOV_DEPENDENCIES_PATH}\/#{'.+\\' + EXTENSION_DEPENDENCIES}$/ => [
-       proc do |task_name|
-         @ceedling[:file_finder].find_compilation_input_file(task_name)
-       end
-     ]) do |dep|
-  @ceedling[:generator].generate_dependencies_file(
-    TOOLS_TEST_DEPENDENCIES_GENERATOR,
-    GCOV_SYM,
-    dep.source,
-    File.join(GCOV_BUILD_OUTPUT_PATH, File.basename(dep.source).ext(EXTENSION_OBJECT)),
-    dep.name
-  )
-end
+# rule(/#{GCOV_RESULTS_PATH}\/#{'.+\\' + EXTENSION_TESTPASS}$/ => [
+#        proc do |task_name|
+#          @ceedling[:file_path_utils].form_test_executable_filepath(task_name)
+#        end
+#      ]) do |test_result|
+#   @ceedling[:generator].generate_test_results(TOOLS_GCOV_FIXTURE, GCOV_SYM, test_result.source, test_result.name)
+# end
+
+# rule(/#{GCOV_DEPENDENCIES_PATH}\/#{'.+\\' + EXTENSION_DEPENDENCIES}$/ => [
+#        proc do |task_name|
+#          @ceedling[:file_finder].find_compilation_input_file(task_name)
+#        end
+#      ]) do |dep|
+#   @ceedling[:generator].generate_dependencies_file(
+#     TOOLS_TEST_DEPENDENCIES_GENERATOR,
+#     GCOV_SYM,
+#     dep.source,
+#     File.join(GCOV_BUILD_OUTPUT_PATH, File.basename(dep.source).ext(EXTENSION_OBJECT)),
+#     dep.name
+#   )
+# end
 
 task directories: [GCOV_BUILD_OUTPUT_PATH, GCOV_RESULTS_PATH, GCOV_DEPENDENCIES_PATH, GCOV_ARTIFACTS_PATH]
 
 namespace GCOV_SYM do
 
   TOOL_COLLECTION_GCOV_TASKS = {
-    :context        => GCOV_SYM,
     :test_compiler  => TOOLS_GCOV_COMPILER,
     :test_assembler => TOOLS_TEST_ASSEMBLER,
     :test_linker    => TOOLS_GCOV_LINKER,
@@ -77,7 +79,7 @@ namespace GCOV_SYM do
   desc 'Run code coverage for all tests'
   task all: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, TOOL_COLLECTION_GCOV_TASKS)
+    @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS)
     @ceedling[:configurator].restore_config
   end
 
@@ -100,7 +102,7 @@ namespace GCOV_SYM do
 
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
+      @ceedling[:test_invoker].setup_and_invoke(tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
@@ -117,7 +119,7 @@ namespace GCOV_SYM do
 
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
+      @ceedling[:test_invoker].setup_and_invoke(tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
       @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
@@ -127,7 +129,7 @@ namespace GCOV_SYM do
   desc 'Run code coverage for changed files'
   task delta: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, { force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
+    @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
     @ceedling[:configurator].restore_config
   end
 
@@ -142,7 +144,7 @@ namespace GCOV_SYM do
        ]) do |test|
     @ceedling[:rake_wrapper][:test_deps].invoke
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke([test.source], TOOL_COLLECTION_GCOV_TASKS)
+    @ceedling[:test_invoker].setup_and_invoke(tests:[test.source], context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS)
     @ceedling[:configurator].restore_config
   end
 end

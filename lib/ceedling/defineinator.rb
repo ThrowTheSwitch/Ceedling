@@ -14,8 +14,8 @@
 
 # :defines:
 #   :test:                               # Equivalent to [test]['*'] -- i.e. same defines for all test executables
-#     - -foo
-#     - -Wall
+#     - TEST
+#     - PLATFORM_B
 
 
 
@@ -28,15 +28,15 @@ class Defineinator
   end
 
   def defines_defined?(context:)
-    return @config_matchinator.config_include?(@section, context)
+    return @config_matchinator.config_include?(section:@section, context:context)
   end
 
-  def defines(context:, filepath:)
+  def defines(context:, filepath:nil)
     defines = @config_matchinator.get_config(section:@section, context:context)
 
     if defines == nil then return []
-    elsif defines.class == Array then return defines
-    elsif defines.class == Hash
+    elsif defines.is_a?(Array) then return defines.flatten # Flatten to handle YAML aliases
+    elsif defines.is_a?(Hash)
       @config_matchinator.validate_matchers(hash:defines, section:@section, context:context)
 
       return @config_matchinator.matches?(

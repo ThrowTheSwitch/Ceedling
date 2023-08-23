@@ -23,6 +23,7 @@ class Setupinator
     @ceedling[:configurator].populate_defaults( config_hash )
     @ceedling[:configurator].populate_unity_defaults( config_hash )
     @ceedling[:configurator].populate_cmock_defaults( config_hash )
+    @ceedling[:configurator].copy_vendor_defines( config_hash )
     @ceedling[:configurator].find_and_merge_plugins( config_hash )
     @ceedling[:configurator].merge_imports( config_hash )
     @ceedling[:configurator].eval_environment_variables( config_hash )

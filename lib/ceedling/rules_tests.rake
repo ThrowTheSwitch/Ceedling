@@ -1,64 +1,47 @@
 
 
-rule(/#{PROJECT_TEST_FILE_PREFIX}#{'.+'+TEST_RUNNER_FILE_SUFFIX}#{'\\'+EXTENSION_SOURCE}$/ => [
-    proc do |task_name|
-      @ceedling[:file_finder].find_test_input_for_runner_file(task_name)
-    end
-  ]) do |runner|
-  @ceedling[:generator].generate_test_runner(TEST_SYM, runner.source, runner.name)
-end
-
-rule(/#{'.+\\'+EXTENSION_OBJECT}$/ => [
+rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       _, object = (task_name.split('+'))
       @ceedling[:file_finder].find_compilation_input_file(object)
     end
   ]) do |target|
-  test, object = (target.name.split('+'))
+    test, object = (target.name.split('+'))
 
-  if (File.basename(target.source) =~ /#{EXTENSION_SOURCE}$/)
-    @ceedling[:test_invoker].compile_test_component(test: test.to_sym, source: target.source, object: object)
-    # @ceedling[:generator].generate_object_file(
-    #   TOOLS_TEST_COMPILER,
-    #   OPERATION_COMPILE_SYM,
-    #   TEST_SYM,
-    #   target.source,
-    #   object,
-    #   @ceedling[:test_context_extractor].lookup_include_paths_list( test ),
-    #   @ceedling[:file_path_utils].form_test_build_list_filepath( object ),
-    #   @ceedling[:file_path_utils].form_test_dependencies_filepath( object ))
-  elsif (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
-    @ceedling[:generator].generate_object_file(
-      TOOLS_TEST_ASSEMBLER,
-      OPERATION_ASSEMBLE_SYM,
-      TEST_SYM,
-      object.source,
-      object.name )
-  end
-end
-
-
-rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
-  lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
-  lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
-  @ceedling[:generator].generate_executable_file(
-    TOOLS_TEST_LINKER,
-    TEST_SYM,
-    bin_file.prerequisites,
-    bin_file.name,
-    @ceedling[:file_path_utils].form_test_build_map_filepath( bin_file.name ),
-    lib_args,
-    lib_paths )
-end
-
-
-rule(/#{PROJECT_TEST_RESULTS_PATH}\/#{'.+\\'+EXTENSION_TESTPASS}$/ => [
-    proc do |task_name|
-      @ceedling[:file_path_utils].form_test_executable_filepath(task_name)
+    if (File.basename(target.source) =~ /#{EXTENSION_SOURCE}$/)
+      @ceedling[:test_invoker].compile_test_component(test: test.to_sym, source: target.source, object: object)
+    elsif (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
+      @ceedling[:generator].generate_object_file(
+        TOOLS_TEST_ASSEMBLER,
+        OPERATION_ASSEMBLE_SYM,
+        TEST_SYM,
+        object.source,
+        object.name )
     end
-  ]) do |test_result|
-  @ceedling[:generator].generate_test_results(TOOLS_TEST_FIXTURE, TEST_SYM, test_result.source, test_result.name)
-end
+  end
+
+
+# rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
+#   lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
+#   lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
+#   @ceedling[:generator].generate_executable_file(
+#     TOOLS_TEST_LINKER,
+#     TEST_SYM,
+#     bin_file.prerequisites,
+#     bin_file.name,
+#     @ceedling[:file_path_utils].form_test_build_map_filepath( bin_file.name ),
+#     lib_args,
+#     lib_paths )
+# end
+
+
+# rule(/#{PROJECT_TEST_RESULTS_PATH}\/#{'.+\\'+EXTENSION_TESTPASS}$/ => [
+#     proc do |task_name|
+#       @ceedling[:file_path_utils].form_test_executable_filepath(task_name)
+#     end
+#   ]) do |test_result|
+#   @ceedling[:generator].generate_test_results(TOOLS_TEST_FIXTURE, TEST_SYM, test_result.source, test_result.name)
+# end
 
 
 namespace TEST_SYM do

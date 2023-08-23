@@ -10,7 +10,7 @@ end
 
 class ToolExecutor
 
-  constructor :configurator, :tool_executor_helper, :streaminator, :system_wrapper
+  constructor :configurator, :tool_executor_helper, :streaminator, :verbosinator, :system_wrapper
 
   def setup
 
@@ -80,8 +80,10 @@ class ToolExecutor
     @tool_executor_helper.print_happy_results( command_line, shell_result, options[:boom] )
     @tool_executor_helper.print_error_results( command_line, shell_result, options[:boom] )
 
-    # go boom if exit code isn't 0 (but in some cases we don't want a non-0 exit code to raise)
-    raise ShellExecutionException.new(shell_result) if ((shell_result[:exit_code] != 0) and options[:boom])
+    # Go boom if exit code is not 0 and we want to debug (in some cases we don't want a non-0 exit code to raise)
+    if ((shell_result[:exit_code] != 0) and options[:boom])
+      raise ShellExecutionException.new(shell_result)
+    end
 
     return shell_result
   end

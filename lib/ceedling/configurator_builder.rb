@@ -11,19 +11,23 @@ class ConfiguratorBuilder
   constructor :file_system_utils, :file_wrapper, :system_wrapper
 
 
+  def build_global_constant(elem, value)
+    # Convert key names to Ruby constant names
+    # Some key names can be C file names that can include dashes
+    # Upcase the key names to create consitency and Ruby constants by convention
+    # Replace dashes with underscores to match handling of Ruby accessor method names
+    formatted_key = elem.to_s.gsub('-','_').upcase
+
+    # Undefine global constant if it already exists
+    Object.send(:remove_const, formatted_key.to_sym) if @system_wrapper.constants_include?(formatted_key)
+
+    # Create global constant
+    Object.module_eval("#{formatted_key} = value")
+  end
+
   def build_global_constants(config)
     config.each_pair do |key, value|
-      # Convert key names to Ruby constant names
-      # Some key names can be C file names that can include dashes
-      # Upcase the key names to create consitency and Ruby constants by convention
-      # Replace dashes with underscores to match handling of Ruby accessor method names
-      formatted_key = key.to_s.gsub('-','_').upcase
-
-      # Undefine global constant if it already exists
-      Object.send(:remove_const, formatted_key.to_sym) if @system_wrapper.constants_include?(formatted_key)
-
-      # Create global constant
-      Object.module_eval("#{formatted_key} = value")
+      build_global_constant(key, value)
     end
 
     # TODO: This wants to go somewhere better
@@ -111,27 +115,29 @@ class ConfiguratorBuilder
 
     project_build_artifacts_root = File.join(in_hash[:project_build_root], 'artifacts')
     project_build_tests_root     = File.join(in_hash[:project_build_root], TESTS_BASE_PATH)
+    project_build_vendor_root    = File.join(in_hash[:project_build_root], 'vendor')
     project_build_release_root   = File.join(in_hash[:project_build_root], RELEASE_BASE_PATH)
 
     paths = [
       [:project_build_artifacts_root,  project_build_artifacts_root, true ],
       [:project_build_tests_root,      project_build_tests_root,     true ],
+      [:project_build_vendor_root,     project_build_vendor_root,    true ],
       [:project_build_release_root,    project_build_release_root,   in_hash[:project_release_build] ],
 
       [:project_test_artifacts_path,            File.join(project_build_artifacts_root, TESTS_BASE_PATH), true ],
       [:project_test_runners_path,              File.join(project_build_tests_root, 'runners'),           true ],
       [:project_test_results_path,              File.join(project_build_tests_root, 'results'),           true ],
       [:project_test_build_output_path,         File.join(project_build_tests_root, 'out'),               true ],
-      [:project_test_build_output_asm_path,     File.join(project_build_tests_root, 'out', 'asm'),        true ],
-      [:project_test_build_output_c_path,       File.join(project_build_tests_root, 'out', 'c'),          true ],
       [:project_test_build_cache_path,          File.join(project_build_tests_root, 'cache'),             true ],
       [:project_test_dependencies_path,         File.join(project_build_tests_root, 'dependencies'),      true ],
+
+      [:project_build_vendor_unity_path,        File.join(project_build_vendor_root, 'unity', 'src'),       true ],
+      [:project_build_vendor_cmock_path,        File.join(project_build_vendor_root, 'cmock', 'src'),       in_hash[:project_use_mocks] ],
+      [:project_build_vendor_cexception_path,   File.join(project_build_vendor_root, 'c_exception', 'lib'), in_hash[:project_use_exceptions] ],
 
       [:project_release_artifacts_path,         File.join(project_build_artifacts_root, RELEASE_BASE_PATH), in_hash[:project_release_build] ],
       [:project_release_build_cache_path,       File.join(project_build_release_root, 'cache'),             in_hash[:project_release_build] ],
       [:project_release_build_output_path,      File.join(project_build_release_root, 'out'),               in_hash[:project_release_build] ],
-      [:project_release_build_output_asm_path,  File.join(project_build_release_root, 'out', 'asm'),        in_hash[:project_release_build] ],
-      [:project_release_build_output_c_path,    File.join(project_build_release_root, 'out', 'c'),          in_hash[:project_release_build] ],
       [:project_release_dependencies_path,      File.join(project_build_release_root, 'dependencies'),      in_hash[:project_release_build] ],
 
       [:project_log_path,   File.join(in_hash[:project_build_root], 'logs'), true ],
@@ -177,7 +183,6 @@ class ConfiguratorBuilder
         [File.join(CEEDLING_LIB, 'ceedling', 'tasks_base.rake'),
          File.join(CEEDLING_LIB, 'ceedling', 'tasks_filesystem.rake'),
          File.join(CEEDLING_LIB, 'ceedling', 'tasks_tests.rake'),
-         File.join(CEEDLING_LIB, 'ceedling', 'tasks_vendor.rake'),
          File.join(CEEDLING_LIB, 'ceedling', 'rules_tests.rake')]}
 
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'rules_cmock.rake') if (in_hash[:project_use_mocks])
@@ -460,10 +465,9 @@ class ConfiguratorBuilder
 
   def get_vendor_paths(in_hash)
     vendor_paths = []
-    vendor_paths << File.join(in_hash[:unity_vendor_path],      UNITY_LIB_PATH)
-    vendor_paths << File.join(in_hash[:cexception_vendor_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
-    vendor_paths << File.join(in_hash[:cmock_vendor_path],      CMOCK_LIB_PATH)      if (in_hash[:project_use_mocks])
-    vendor_paths << in_hash[:cmock_mock_path]                                        if (in_hash[:project_use_mocks])
+    vendor_paths << in_hash[:project_build_vendor_unity_path]
+    vendor_paths << in_hash[:project_build_vendor_cmock_path]       if (in_hash[:project_use_mocks])
+    vendor_paths << in_hash[:project_build_vendor_cexception_path]  if (in_hash[:project_use_exceptions])
 
     return vendor_paths
   end

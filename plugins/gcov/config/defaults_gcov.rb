@@ -11,9 +11,8 @@ DEFAULT_GCOV_COMPILER_TOOL = {
     "-ftest-coverage".freeze,
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
+    "-I\"${5}\"".freeze, # Per-test executable search paths
+    "-D\"${6}\"".freeze, # Per-test executable defines
     "-DGCOV_COMPILER".freeze,
     "-DCODE_COVERAGE".freeze,
     ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
@@ -65,7 +64,7 @@ DEFAULT_GCOV_REPORT_TOOL = {
     "-n".freeze,
     "-p".freeze,
     "-b".freeze,
-    {"-o \"$\"" => 'GCOV_BUILD_OUTPUT_PATH'}.freeze,
+    "-o \"${2}\"".freeze,
     "\"${1}\"".freeze
     ].freeze
   }

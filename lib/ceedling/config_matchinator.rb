@@ -25,16 +25,14 @@ class ConfigMatchinator
     # Get element associated with this context
     elem = @configurator.send( accessor )
 
-    case elem.class
     # If [section][context] is a simple array
-    when Array
+    if elem.is_a?(Array)
       # A list instead of a hash, means [operation] is not present
       return false
 
     # If [section][context] is a hash
-    when Hash
-       return elem.include?( operation )
-
+    elsif elem.is_a?(Hash)
+      return elem.include?( operation )
     end
 
     # Otherwise, [section][context] is something that cannot contain an [operation] sub-hash
@@ -101,6 +99,12 @@ class ConfigMatchinator
   def matches?(hash:, filepath:, section:, context:, operation:nil)
     _values = []
 
+    # Sanity check
+    if filepath.nil?
+      @streaminator.stderr_puts("NOTICE: [#{section}][#{context}]#{operation} > '#{matcher}' matching provided nil #{filepath}", Verbosity::ERROR)
+      raise
+    end
+
     # Iterate through every hash touple [matcher key, values array]
     # In prioritized order match test filepath against each matcher key...
     #  1. Wildcard
@@ -109,22 +113,22 @@ class ConfigMatchinator
     #
     # Wildcard and filepath matching can look like valid regexes, so they must be evaluated first.
     #
-    # Each element of the collected _values array will be an array of values. Return flattened _values.
+    # Each element of the collected _values array will be an array of values.
 
     hash.each do |matcher, values|
       # 1. Try wildcard matching -- return values for every test filepath if '*' is found in values matching key
       if ('*' == matcher.to_s.strip)
-        _values << values
+        _values += values
 
       # 2. Try filepath literal matching (including substring matching) with each values matching key
       elsif (filepath.include?(matcher.to_s.strip))
-        _values << values
+        _values += values
 
       # 3. Try regular expression matching against all values matching keys that are regexes (ignore if not a valid regex)
       # Note: We use logical AND here so that we get a meaningful fall-through to the else reporting condition.
       #       Nesting the actual regex matching beneath validity checking improperly catches unmatched regexes
       elsif (regex?(matcher.to_s.strip)) and (!(filepath =~ /#{matcher.to_s.strip}/).nil?)
-        _values << values
+        _values += values
 
       else
         operation = operation.nil? ? '' : "[#{operation}]"
@@ -132,7 +136,7 @@ class ConfigMatchinator
       end        
     end
 
-    return _values.flatten
+    return _values.flatten # Flatten to handle YAML aliases
   end
 
   private

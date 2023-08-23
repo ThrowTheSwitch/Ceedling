@@ -12,21 +12,18 @@ class TestInvoker
               :streaminator,
               :preprocessinator,
               :task_invoker,
-              :dependinator,
               :project_config_manager,
               :build_invoker_utils,
               :generator,
               :test_context_extractor,
-              :flaginator,
-              :defineinator,
               :file_path_utils,
               :file_wrapper
 
   def setup
+    # Master data structure for all test activities
     @testables = {}
-    @mocks     = []
-    @runners   = []
 
+    # For thread-safe operations on @testables
     @lock = Mutex.new
 
     # Alias for brevity in code that follows
@@ -51,150 +48,215 @@ class TestInvoker
     return paths
   end
 
-  def setup_and_invoke(tests:, context: TEST_SYM, options: {:force_run => true, :build_only => false})
+  def setup_and_invoke(tests:, context:TEST_SYM, options:{:force_run => true, :build_only => false})
     @project_config_manager.process_test_config_change
 
     # Begin fleshing out the testables data structure
-    @helper.execute_build_step("Extracting Build Context for Test Files", banner: false) do
-      par_map(PROJECT_TEST_THREADS, tests) do |filepath|
+    @helper.execute_build_step("Creating Build Paths", heading: false) do
+      par_map(PROJECT_COMPILE_THREADS, tests) do |filepath|
         filepath = filepath.to_s
-        test = test_filepath_symbolize(filepath)
+        key = testable_symbolize(filepath)
+        name = key.to_s
+        build_path = File.join( @configurator.project_build_root, context.to_s, 'out', name )
+        results_path = File.join( @configurator.project_build_root, context.to_s, 'results', name )
+        mocks_path = File.join( @configurator.cmock_mock_path, name )
+        preprocess_includes_path = File.join( @configurator.project_test_preprocess_includes_path, name )
+        preprocess_files_path    = File.join( @configurator.project_test_preprocess_files_path, name )
 
         @lock.synchronize do
-          @testables[test] = {
+          @testables[key] = {
             :filepath => filepath,
-            :compile_flags => @flaginator.flag_down( context:context, operation:OPERATION_COMPILE_SYM, filepath:filepath ),
-            :link_flags => @flaginator.flag_down( context:context, operation:OPERATION_LINK_SYM, filepath:filepath ),
-            :defines => @defineinator.defines( context:context, filepath:filepath )
+            :name => name,
+            :paths => {}
           }
+
+          paths = @testables[key][:paths]
+          paths[:build] = build_path
+          paths[:results] = results_path
+          paths[:mocks] = mocks_path if @configurator.project_use_mocks
+          if @configurator.project_use_test_preprocessor
+            paths[:preprocess_incudes] = preprocess_includes_path
+            paths[:preprocess_files] = preprocess_files_path
+          end
+        end
+
+        @testables[key][:paths].each {|_, path| @file_wrapper.mkdir(path) }
+      end
+    end
+
+    # Collect in-test build directives, etc. from test files
+    @helper.execute_build_step("Extracting Build Directive Macros") do
+      par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
+        @preprocessinator.extract_test_build_directives( filepath:details[:filepath] )
+      end
+
+      # Validate test build directive paths via TEST_INCLUDE_PATH() & augment header file collection from the same
+      @helper.process_project_include_paths
+
+      # Validate test build directive source file entries via TEST_SOURCE_FILE()
+      par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
+        @helper.validate_build_directive_source_files( test:details[:name], filepath:details[:filepath] )
+      end
+    end
+
+    # Fill out testables data structure with build context
+    @helper.execute_build_step("Ingesting Test Configurations") do
+      par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
+        filepath = details[:filepath]
+
+        search_paths       = @helper.search_paths( filepath, details[:name] )
+        compile_flags      = @helper.flags( context:context, operation:OPERATION_COMPILE_SYM, filepath:filepath )
+        link_flags         = @helper.flags( context:context, operation:OPERATION_LINK_SYM, filepath:filepath )
+        compile_defines    = @helper.compile_defines( context:context, filepath:filepath )
+        preprocess_defines = @helper.preprocess_defines( test_defines: compile_defines, filepath:filepath )
+
+        @streaminator.stdout_puts( "Collecting search paths, flags, and defines for #{File.basename(filepath)}...", Verbosity::NORMAL)
+
+        @lock.synchronize do
+          details[:search_paths] = search_paths
+          details[:compile_flags] = compile_flags
+          details[:link_flags] = link_flags
+          details[:compile_defines] = compile_defines
+          details[:preprocess_defines] = preprocess_defines
         end
       end
     end
 
-    # TODO: Revert collections (whole test executable builds with the same :define: sets)
-    # Group definition sets into collections
-    # collections = []
-    # general_collection = { :tests   => tests.clone,
-    #                        :build   => @configurator.project_test_build_output_path,
-    #                        :defines => COLLECTION_DEFINES_TEST_AND_VENDOR.clone }  
-    # test_specific_defines = @configurator.project_config_hash.keys.select {|k| k.to_s.match /defines_\w+/}
-
-    # @helper.execute_build_step("Collecting Definitions", banner: false) {
-    #   par_map(PROJECT_TEST_THREADS, @tests) do |test|
-    #     test_name ="#{File.basename(test)}".chomp('.c')
-    #     def_test_key="defines_#{test_name.downcase}".to_sym
-    #     has_specific_defines = test_specific_defines.include?(def_test_key)
-
-    #     if has_specific_defines || @configurator.defines_use_test_definition
-    #       @streaminator.stdout_puts("Updating test definitions for #{test_name}", Verbosity::NORMAL)
-    #       defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
-    #       tst_defs_cfg = Array.new(defs_bkp)
-    #       if has_specific_defines
-    #         tst_defs_cfg.replace(@configurator.project_config_hash[def_test_key])
-    #         tst_defs_cfg.concat(COLLECTION_DEFINES_VENDOR) if COLLECTION_DEFINES_VENDOR
-    #       end
-    #       if @configurator.defines_use_test_definition
-    #         tst_defs_cfg << File.basename(test, ".*").strip.upcase.sub(/@.*$/, "")
-    #       end
-
-    #       # add this to our collection of things to build
-    #       collections << { :tests => [ test ],
-    #                        :build => has_specific_defines ? File.join(@configurator.project_test_build_output_path, test_name) : @configurator.project_test_build_output_path,
-    #                        :defines => tst_defs_cfg }
-
-    #       # remove this test from the general collection
-    #       general_collection[:tests].delete(test)
-    #     end
-    #   end
-    # } if test_specific_defines.size > 0
-
-    # # add a general collection if there are any files remaining for it
-    # collections << general_collection unless general_collection[:tests].empty?
-
-    # Run Each Collection
-    # TODO: eventually, if we pass ALL arguments to the build system, this can be done in parallel
-    # collections.each do |collection|
-
-      # # Switch to the things that make this collection unique
-      # COLLECTION_DEFINES_TEST_AND_VENDOR.replace( collection[:defines] )
-
-      # @configurator.project_config_hash[:project_test_build_output_path] = collection[:build]
-
-    # Determine include statements, mocks, build directives, etc. from test files
-    @helper.execute_build_step("Extracting Testing Context from Test Files", banner: false) do
-      par_map(PROJECT_TEST_THREADS, @testables) do |_, details|
-        @preprocessinator.preprocess_test_file( details[:filepath] )
+    # Collect include statements & mocks from test files
+    @helper.execute_build_step("Collecting Testing Context") do
+      par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
+        @preprocessinator.extract_testing_context(
+          filepath:      details[:filepath],
+          subdir:        details[:name],
+          flags:         details[:compile_flags],
+          include_paths: details[:search_paths],
+          defines:       details[:preprocess_defines] )
       end
     end
 
     # Determine Runners & Mocks For All Tests
-    @helper.execute_build_step("Determining Files to be Generated", banner: false) do
-      par_map(PROJECT_TEST_THREADS, @testables) do |test, details|
-        runner = @file_path_utils.form_runner_filepath_from_test( details[:filepath] )
-        mock_list = @preprocessinator.fetch_mock_list_for_test_file( details[:filepath] )
+    @helper.execute_build_step("Determining Files to be Generated", heading: false) do
+      par_map(PROJECT_COMPILE_THREADS, @testables) do |test, details|
+        runner_filepath = @file_path_utils.form_runner_filepath_from_test( details[:filepath] )
+        
+        mocks = {}
+        mocks_list = @configurator.project_use_mocks ? @test_context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
+        mocks_list.each do |name|
+          source = @helper.find_header_input_for_mock_file( name, details[:search_paths] )
+          preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
+          mocks[name.to_sym] = {
+            :name => name,
+            :source => source,
+            :input => (@configurator.project_use_test_preprocessor ? preprocessed_input : source)
+          }
+        end
 
         @lock.synchronize do
-          details[:runner] = runner
-          @runners << runner
-
-          details[:mock_list] = mock_list
-          @mocks += mock_list
+          details[:runner] = {
+            :output_filepath => runner_filepath,
+            :input_filepath => details[:filepath]  # Default of the test file
+          }
+          details[:mocks] = mocks
+          details[:mock_list] = mocks_list
         end
       end
+    end
 
-      @mocks.uniq!
+    # Create inverted/flattened mock lookup list to take advantage of threading
+    # (Iterating each testable and mock list instead would limits the number of simultaneous mocking threads)
+    mocks = []
+    if @configurator.project_use_mocks
+      @testables.each do |_, details|
+        details[:mocks].each do |name, elems|
+          mocks << {:name => name, :details => elems, :testable => details}
+        end
+      end
     end
 
     # Preprocess Header Files
-    @helper.execute_build_step("Preprocessing Header Files", banner: false) {
-      mockable_headers = @file_path_utils.form_preprocessed_mockable_headers_filelist(@mocks) 
-      par_map(PROJECT_TEST_THREADS, mockable_headers) do |header|
-        @preprocessinator.preprocess_mockable_header( header )
+    @helper.execute_build_step("Preprocessing for Mocks") {
+      par_map(PROJECT_COMPILE_THREADS, mocks) do |mock|
+        details = mock[:details]
+        testable = mock[:testable]
+        @preprocessinator.preprocess_file(
+          filepath:      details[:source],
+          test:          testable[:name],
+          flags:         testable[:compile_flags],
+          include_paths: testable[:search_paths],
+          defines:       testable[:preprocess_defines])
+      end
+    } if @configurator.project_use_mocks and @configurator.project_use_test_preprocessor
+
+    # Generate mocks for all tests
+    @helper.execute_build_step("Mocking") {
+      par_map(PROJECT_COMPILE_THREADS, mocks) do |mock| 
+        details = mock[:details]
+        testable = mock[:testable]
+        @generator.generate_mock(
+          context:        TEST_SYM,
+          mock:           mock[:name],
+          test:           testable[:name],
+          input_filepath: details[:input],
+          output_path:    testable[:paths][:mocks] )
+      end
+    } if @configurator.project_use_mocks
+
+    # Preprocess test files
+    @helper.execute_build_step("Preprocessing for Test Runners") {
+      par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
+
+        filepath = @preprocessinator.preprocess_file(
+          filepath:      details[:filepath],
+          test:        details[:name],
+          flags:         details[:compile_flags],
+          include_paths: details[:search_paths],
+          defines:       details[:preprocess_defines])
+
+        @lock.synchronize { details[:runner][:input_filepath] = filepath } # Replace default input with preprocessed fle
       end
     } if @configurator.project_use_test_preprocessor
 
-    # Generate mocks for all tests
-    @helper.execute_build_step("Generating Mocks") do
-      @test_invoker_helper.generate_mocks_now(@mocks)
-      #@task_invoker.invoke_test_mocks( mock_list )
-    end
-
-    # Preprocess Test Files
-    @helper.execute_build_step("Preprocess Test Files", banner: false) do
-      par_map(PROJECT_TEST_THREADS, @testables) do |_, details|
-        @preprocessinator.preprocess_remainder(details[:filepath])     
+    # Build runners for all tests
+    @helper.execute_build_step("Test Runners") do
+      par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
+        @generator.generate_test_runner(
+          context:         TEST_SYM,
+          mock_list:       details[:mock_list],
+          test_filepath:   details[:filepath],
+          input_filepath:  details[:runner][:input_filepath],
+          runner_filepath: details[:runner][:output_filepath])
       end
     end
 
-    # Build Runners For All Tests
-    @helper.execute_build_step("Generating Test Runners") do
-      @test_invoker_helper.generate_runners_now(@runners)
-      #par_map(PROJECT_TEST_THREADS, tests) do |test|
-      #  @task_invoker.invoke_test_runner( testables[test][:runner] )
-      #end
-    end
-
-    # Determine Objects Required For Each Test
-    @helper.execute_build_step("Determining Objects to Be Built", banner: false) do
-      par_map(PROJECT_TEST_THREADS, @testables) do |test, details|
-        # collect up test fixture pieces & parts
-        test_build_path    = File.join(@configurator.project_build_root, context.to_s, 'out')
+    # Determine objects required for each test
+    @helper.execute_build_step("Determining Artifacts to Be Built", heading: false) do
+      par_map(PROJECT_COMPILE_THREADS, @testables) do |test, details|
+        # Source files referenced by conventions or specified by build directives in a test file
         test_sources       = @test_invoker_helper.extract_sources( details[:filepath] )
-        test_extras        = @configurator.collection_test_fixture_extra_link_objects
-        test_core          = [details[:filepath]] + details[:mock_list] + test_sources
-        test_objects       = @file_path_utils.form_test_build_objects_filelist( test_build_path, [details[:runner]] + test_core + test_extras ).uniq
-        test_executable    = @file_path_utils.form_test_executable_filepath( test_build_path, details[:filepath] )
-        test_pass          = @file_path_utils.form_pass_results_filepath( test_build_path, details[:filepath] )
-        test_fail          = @file_path_utils.form_fail_results_filepath( test_build_path, details[:filepath] )
+        test_core          = test_sources + details[:mock_list]
+        # CMock + Unity + CException
+        test_frameworks    = @helper.collect_test_framework_sources
 
-        # identify all the objects shall not be linked and then remove them from objects list.
-        test_no_link_objects = @file_path_utils.form_test_build_objects_filelist(test_build_path, @preprocessinator.fetch_shallow_source_includes( details[:filepath] ))
+        compilations       = []
+        compilations       << details[:filepath]
+        compilations       +=  test_core
+        compilations       << details[:runner][:output_filepath]
+        compilations       += test_frameworks
+        compilations.uniq!
+
+        test_objects       = @file_path_utils.form_test_build_objects_filelist( details[:paths][:build], compilations )
+
+        test_executable    = @file_path_utils.form_test_executable_filepath( details[:paths][:build], details[:filepath] )
+        test_pass          = @file_path_utils.form_pass_results_filepath( details[:paths][:results], details[:filepath] )
+        test_fail          = @file_path_utils.form_fail_results_filepath( details[:paths][:results], details[:filepath] )
+
+        # Identify all the objects shall not be linked and then remove them from objects list.
+        test_no_link_objects = @file_path_utils.form_test_build_objects_filelist(details[:paths][:build], @helper.fetch_shallow_source_includes( details[:filepath] ))
         test_objects = test_objects.uniq - test_no_link_objects
 
         @lock.synchronize do
-          details[:build_path]      = test_build_path
           details[:sources]         = test_sources
-          details[:extras]          = test_extras
+          details[:frameworks]      = test_frameworks
           details[:core]            = test_core
           details[:objects]         = test_objects
           details[:executable]      = test_executable
@@ -202,21 +264,11 @@ class TestInvoker
           details[:results_pass]    = test_pass
           details[:results_fail]    = test_fail
         end
-
-        # remove results files for the tests we plan to run
-        @test_invoker_helper.clean_results( {:pass => test_pass, :fail => test_fail}, options )
-      end
-    end
-
-    # Create build path structure
-    @helper.execute_build_step("Creating Test Executable Build Paths", banner: false) do
-      par_map(PROJECT_TEST_THREADS, @testables) do |_, details|
-        @file_wrapper.mkdir(details[:build_path])
       end
     end
 
     # TODO: Replace with smart rebuild feature
-    # @helper.execute_build_step("Generating Dependencies", banner: false) {
+    # @helper.execute_build_step("Generating Dependencies", heading: false) {
     #   par_map(PROJECT_TEST_THREADS, core_testables) do |dependency|
     #     @test_invoker_helper.process_deep_dependencies( dependency ) do |dep|
     #       @dependinator.load_test_object_deep_dependencies( dep)
@@ -226,7 +278,7 @@ class TestInvoker
 
     # TODO: Replace with smart rebuild
     # # Update All Dependencies
-    # @helper.execute_build_step("Preparing to Build", banner: false) do
+    # @helper.execute_build_step("Preparing to Build", heading: false) do
     #   par_map(PROJECT_TEST_THREADS, tests) do |test|
     #     # enhance object file dependencies to capture externalities influencing regeneration
     #     @dependinator.enhance_test_build_object_dependencies( testables[test][:objects] )
@@ -240,8 +292,8 @@ class TestInvoker
     @helper.execute_build_step("Building Objects") do
       # FYI: Temporarily removed direct object generation to allow rake invoke() to execute custom compilations (plugins, special cases)
       # @test_invoker_helper.generate_objects_now(object_list, options)
-      @testables.each do |test, details|
-        @task_invoker.invoke_test_objects(testname: test.to_s, objects:details[:objects])
+      @testables.each do |_, details|
+        @task_invoker.invoke_test_objects(test: details[:name], objects:details[:objects])
       end
     end
 
@@ -249,9 +301,9 @@ class TestInvoker
     @helper.execute_build_step("Building Test Executables") do
       lib_args = convert_libraries_to_arguments()
       lib_paths = get_library_paths_to_arguments()
-      par_map(PROJECT_TEST_THREADS, @testables) do |_, details|
+      par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
         @test_invoker_helper.generate_executable_now(
-          details[:build_path],
+          details[:paths][:build],
           details[:executable],
           details[:objects],
           details[:link_flags],
@@ -263,7 +315,7 @@ class TestInvoker
 
     # Execute Final Tests
     @helper.execute_build_step("Executing") {
-      par_map(PROJECT_TEST_THREADS, @testables) do |test, details|
+      par_map(PROJECT_TEST_THREADS, @testables) do |_, details|
         begin
           @plugin_manager.pre_test( details[:filepath] )
           @test_invoker_helper.run_fixture_now( details[:executable], details[:results_pass], options )
@@ -276,20 +328,36 @@ class TestInvoker
     } unless options[:build_only]
   end
 
-  def compile_test_component(test:, source:, object:)
+  def each_test_with_sources
+    @testables.each do |test, details|
+      yield(test.to_s, lookup_sources(test:test))
+    end
+  end
+
+  def lookup_sources(test:)
+    _test = test.is_a?(Symbol) ? test : test.to_sym
+    return (@testables[_test])[:sources]
+  end
+
+  def compile_test_component(tool:TOOLS_TEST_COMPILER, context:TEST_SYM, test:, source:, object:, msg:nil)
     testable = @testables[test]
     filepath = testable[:filepath]
-    compile_flags = testable[:compile_flags]
-    defines = testable[:defines]
+    search_paths = testable[:search_paths]
+    flags = testable[:compile_flags]
+    defines = testable[:compile_defines]
 
     @generator.generate_object_file_c(
-      source: source,
-      object: object,
-      search_paths: @test_context_extractor.lookup_include_paths_list( filepath ),
-      flags: compile_flags,
-      defines: defines,
-      list: @file_path_utils.form_test_build_list_filepath( object ),
-      dependencies: @file_path_utils.form_test_dependencies_filepath( object ))
+      tool:         tool,
+      context:      context,
+      source:       source,
+      object:       object,
+      search_paths: search_paths,
+      flags:        flags,
+      defines:      defines,
+      list:         @file_path_utils.form_test_build_list_filepath( object ),
+      dependencies: @file_path_utils.form_test_dependencies_filepath( object ),
+      msg:          msg
+      )
   end
 
   def refresh_deep_dependencies
@@ -303,7 +371,7 @@ class TestInvoker
 
   private
 
-  def test_filepath_symbolize(filepath)
+  def testable_symbolize(filepath)
     return (File.basename( filepath ).ext('')).to_sym
   end
 
