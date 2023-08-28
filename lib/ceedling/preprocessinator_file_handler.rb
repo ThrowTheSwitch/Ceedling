@@ -2,26 +2,69 @@
 
 class PreprocessinatorFileHandler
 
-  constructor :preprocessinator_extractor, :configurator, :tool_executor, :file_path_utils, :file_wrapper
+  constructor :preprocessinator_extractor, :configurator, :flaginator, :tool_executor, :file_path_utils, :file_wrapper, :streaminator
 
 
-  def preprocess_file(filepath, includes)
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath(filepath)
+  def preprocess_file(filepath:, subdir:, includes:, flags:, include_paths:, defines:)
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, subdir )
 
-    command = @tool_executor.build_command_line(@configurator.tools_test_file_preprocessor, [], filepath, preprocessed_filepath)
-    @tool_executor.exec(command[:line], command[:options])
+    filename = File.basename(filepath)
 
-    contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion(preprocessed_filepath)
+    command = 
+      @tool_executor.build_command_line( @configurator.tools_test_file_preprocessor,
+                                         flags,
+                                         filepath,
+                                         preprocessed_filepath,
+                                         defines,
+                                         include_paths)
+    
+    @tool_executor.exec( command[:line], command[:options] )
 
-    includes.each{|include| contents.unshift("#include \"#{include}\"")}
+    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
-    @file_wrapper.write(preprocessed_filepath, contents.join("\n"))
+    contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
+
+    # Reinsert #include statements into stripped down file
+    # ----------------------------------------------------
+    # Notes:
+    #  - Preprocessing expands #includes, and we strip out those expansions.
+    #  - #include order can be important. Iterating with unshift() inverts the order. So, we use revese().
+    includes.reverse.each{ |include| contents.unshift( "#include \"#{include}\"" ) }
+
+
+    # Add #include guards for header files
+    # Note: These aren't truly needed as preprocessed header files are only ingested by CMock.
+    #       They're created for sake of completeness and just in case...
+    # ----------------------------------------------------
+    if File.extname(filename) == @configurator.extension_header
+      # abc-XYZ.h --> _ABC_XYZ_H_
+      guardname = '_' + filename.gsub(/\W/, '_').upcase + '_'
+
+      forward_guards = [
+        "#ifndef #{guardname}",
+        "#define #{guardname}"
+      ]
+
+      contents =  forward_guards + contents # Add guards to beginning of file
+      contents << "#endif // #{guardname}"  # Rear guard
+    end
+
+    # Write file
+    # ----------------------------------------------------    
+    @file_wrapper.write( preprocessed_filepath, contents.join("\n") )
+
+    return preprocessed_filepath
   end
 
   def preprocess_file_directives(filepath, includes)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath(filepath)
 
-    command = @tool_executor.build_command_line(@configurator.tools_test_file_preprocessor_directives, [], filepath, preprocessed_filepath)
+    command = 
+      @tool_executor.build_command_line( @configurator.tools_test_file_preprocessor_directives,
+                                         @flaginator.flag_down( OPERATION_COMPILE_SYM, TEST_SYM, filepath ),
+                                         filepath,
+                                         preprocessed_filepath)
+
     @tool_executor.exec(command[:line], command[:options])
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_directives(preprocessed_filepath)

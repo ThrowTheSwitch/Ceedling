@@ -2,14 +2,18 @@ require 'cmock'
 
 class CmockBuilder
   
-  attr_accessor :cmock
+  attr_writer :default_config
   
   def setup 
-    @cmock = nil
+    @default_config = nil
+  end
+
+  def get_default_config
+    return @default_config.clone
   end
   
-  def manufacture(cmock_config)
-    @cmock = CMock.new(cmock_config)
+  def manufacture(config)
+    return CMock.new(config)
   end
 
 end
