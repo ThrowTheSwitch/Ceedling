@@ -255,7 +255,7 @@ class ConfiguratorBuilder
 
   def collect_source_include_vendor_paths(in_hash)
     extra_paths = []
-    extra_paths << File.join(in_hash[:cexception_vendor_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
+    extra_paths <<  in_hash[:project_build_vendor_cexception_path] if (in_hash[:project_use_exceptions])
 
     return {
       :collection_paths_source_include_vendor =>
@@ -392,11 +392,12 @@ class ConfiguratorBuilder
       in_hash[:collection_paths_test] +
       in_hash[:collection_paths_support] +
       in_hash[:collection_paths_source] +
-      in_hash[:collection_paths_include] +
-      [File.join(in_hash[:unity_vendor_path], UNITY_LIB_PATH)]
+      in_hash[:collection_paths_include]
 
-    paths << File.join(in_hash[:cexception_vendor_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
-    paths << File.join(in_hash[:cmock_vendor_path],      CMOCK_LIB_PATH)      if (in_hash[:project_use_mocks])
+    # Vendor paths for frameworks
+    paths << in_hash[:project_build_vendor_unity_path]
+    paths << in_hash[:project_build_vendor_cexception_path] if (in_hash[:project_use_exceptions])
+    paths << in_hash[:project_build_vendor_cmock_path]      if (in_hash[:project_use_mocks])
 
     paths.each do |path|
       all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )

@@ -6,7 +6,9 @@ class PreprocessinatorFileHandler
 
 
   def preprocess_file(filepath:, subdir:, includes:, flags:, include_paths:, defines:)
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath(filepath, subdir)
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, subdir )
+
+    filename = File.basename(filepath)
 
     command = 
       @tool_executor.build_command_line( @configurator.tools_test_file_preprocessor,
@@ -23,9 +25,32 @@ class PreprocessinatorFileHandler
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
 
     # Reinsert #include statements into stripped down file
-    # (Preprocessing expands #includes and we strip out those expansions, leaving no #include statements that we need)
-    includes.each{ |include| contents.unshift( "#include \"#{include}\"" ) }
+    # ----------------------------------------------------
+    # Notes:
+    #  - Preprocessing expands #includes, and we strip out those expansions.
+    #  - #include order can be important. Iterating with unshift() inverts the order. So, we use revese().
+    includes.reverse.each{ |include| contents.unshift( "#include \"#{include}\"" ) }
 
+
+    # Add #include guards for header files
+    # Note: These aren't truly needed as preprocessed header files are only ingested by CMock.
+    #       They're created for sake of completeness and just in case...
+    # ----------------------------------------------------
+    if File.extname(filename) == @configurator.extension_header
+      # abc-XYZ.h --> _ABC_XYZ_H_
+      guardname = '_' + filename.gsub(/\W/, '_').upcase + '_'
+
+      forward_guards = [
+        "#ifndef #{guardname}",
+        "#define #{guardname}"
+      ]
+
+      contents =  forward_guards + contents # Add guards to beginning of file
+      contents << "#endif // #{guardname}"  # Rear guard
+    end
+
+    # Write file
+    # ----------------------------------------------------    
     @file_wrapper.write( preprocessed_filepath, contents.join("\n") )
 
     return preprocessed_filepath

@@ -24,45 +24,6 @@ rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
     @ceedling[GCOV_SYM].generate_coverage_object_file(test.to_sym, target.source, object)
   end
 
-# # TODO: if [flags][gcov][linker] defined, context is GCOV_SYM, otherwise TEST_SYM
-# rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_EXECUTABLE}$/) do |bin_file|
-#   lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
-#   lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
-#   @ceedling[:generator].generate_executable_file(
-#     TOOLS_GCOV_LINKER,
-#     # If gcov has an entry in the configuration, use its flags by lookup with gcov's context.
-#     # Otherwise, use any linker flags configured for the vanilla test context.
-#     @ceedling[GCOV_SYM].flags_defined?(OPERATION_LINK_SYM) ? GCOV_SYM : TEST_SYM,
-#     bin_file.prerequisites,
-#     bin_file.name,
-#     @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name),
-#     lib_args,
-#     lib_paths
-#   )
-# end
-
-# rule(/#{GCOV_RESULTS_PATH}\/#{'.+\\' + EXTENSION_TESTPASS}$/ => [
-#        proc do |task_name|
-#          @ceedling[:file_path_utils].form_test_executable_filepath(task_name)
-#        end
-#      ]) do |test_result|
-#   @ceedling[:generator].generate_test_results(TOOLS_GCOV_FIXTURE, GCOV_SYM, test_result.source, test_result.name)
-# end
-
-# rule(/#{GCOV_DEPENDENCIES_PATH}\/#{'.+\\' + EXTENSION_DEPENDENCIES}$/ => [
-#        proc do |task_name|
-#          @ceedling[:file_finder].find_compilation_input_file(task_name)
-#        end
-#      ]) do |dep|
-#   @ceedling[:generator].generate_dependencies_file(
-#     TOOLS_TEST_DEPENDENCIES_GENERATOR,
-#     GCOV_SYM,
-#     dep.source,
-#     File.join(GCOV_BUILD_OUTPUT_PATH, File.basename(dep.source).ext(EXTENSION_OBJECT)),
-#     dep.name
-#   )
-# end
-
 task directories: [GCOV_BUILD_OUTPUT_PATH, GCOV_RESULTS_PATH, GCOV_DEPENDENCIES_PATH, GCOV_ARTIFACTS_PATH]
 
 namespace GCOV_SYM do
@@ -166,12 +127,7 @@ UTILITY_NAMES = [UTILITY_NAME_GCOVR, UTILITY_NAME_REPORT_GENERATOR]
 
 namespace UTILS_SYM do
 
-  # Returns true is the given utility is enabled, otherwise returns false.
-  def is_utility_enabled(opts, utility_name)
-    return !(opts.nil?) && !(opts[:gcov_utilities].nil?) && (opts[:gcov_utilities].map(&:upcase).include? utility_name.upcase)
-  end
-
-  desc "Create gcov code coverage html/xml/json/text report(s). (Note: Must run 'ceedling gcov' first)."
+  desc "Generate gcov code coverage report(s). (Note: Must run a 'ceedling gcov:' task first)."
   task GCOV_SYM do
     # Get the gcov options from project.yml.
     opts = @ceedling[:configurator].project_config_hash
@@ -198,11 +154,11 @@ namespace UTILS_SYM do
     gcovr_reportinator = GcovrReportinator.new(@ceedling)
     gcovr_reportinator.support_deprecated_options(opts)
 
-    if is_utility_enabled(opts, UTILITY_NAME_GCOVR)
+    if gcovr_reportinator.utility_enabled?(opts, UTILITY_NAME_GCOVR)
       gcovr_reportinator.make_reports(opts)
     end
 
-    if is_utility_enabled(opts, UTILITY_NAME_REPORT_GENERATOR)
+    if gcovr_reportinator.utility_enabled?(opts, UTILITY_NAME_REPORT_GENERATOR)
       reportgenerator_reportinator = ReportGeneratorReportinator.new(@ceedling)
       reportgenerator_reportinator.make_reports(opts)
     end

@@ -79,8 +79,6 @@ class Gcov < Plugin
   private ###################################
 
   def report_per_file_coverage_results()
-    found_uncovered = false
-
     banner = @ceedling[:plugin_reportinator].generate_banner( "#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
     @ceedling[:streaminator].stdout_puts "\n" + banner
 
@@ -91,35 +89,40 @@ class Gcov < Plugin
 
       sources = @ceedling[:project_config_manager].filter_internal_sources(sources)
       sources.each do |source|
-        filename         = File.basename(source)
-        name             = filename.ext('')
-        command          = @ceedling[:tool_executor].build_command_line(
-                             TOOLS_GCOV_REPORT,
-                             [], # No additional arguments
-                             filename, # .c source file that should have been compiled with coverage
-                             File.join(GCOV_BUILD_OUTPUT_PATH, test) # <build>/gcov/out/<test name> for coverage data files
-                           )
+        filename = File.basename(source)
+        name     = filename.ext('')
+        command  = @ceedling[:tool_executor].build_command_line(
+                     TOOLS_GCOV_REPORT,
+                     [], # No additional arguments
+                     filename, # .c source file that should have been compiled with coverage
+                     File.join(GCOV_BUILD_OUTPUT_PATH, test) # <build>/gcov/out/<test name> for coverage data files
+                   )
+
         # Run the gcov tool and collect raw coverage report
-        shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
-        results          = shell_results[:output]
+        shell_results  = @ceedling[:tool_executor].exec(command[:line], command[:options])
+        results        = shell_results[:output].strip
+
+        # Skip to next loop iteration if no coverage results.
+        # A source component may have been compiled with coverage but none of its code actually called in a test.
+        # In this case, gcov does not produce an error, only blank results.
+        if results.empty?
+          @ceedling[:streaminator].stdout_puts("#{filename} : No functions called or code paths exercised by test\n")
+          next
+        end
 
         # If results include intended source, extract details from console
-        if results.strip =~ /(File\s+'#{Regexp.escape(source)}'.+$)/m
+        if results =~ /(File\s+'#{Regexp.escape(source)}'.+$)/m
           # Reformat from first line as filename banner to each line labeled with the filename
-          # Only extract the first four lines of the console report (to avoid spidering coverage through libs, etc.)
-          report = Regexp.last_match(1).lines.to_a[1..4].map { |line| filename + ' ' + line }.join('')
+          # Only extract the first four lines of the console report (to avoid spidering coverage reports through libs, etc.)
+          report = Regexp.last_match(1).lines.to_a[1..4].map { |line| filename + ' | ' + line }.join('')
           @ceedling[:streaminator].stdout_puts(report + "\n")
+        
         # Otherwise, no coverage results were found
         else
           msg = "ERROR: Could not find coverage results for #{source} component of #{test}"
           @ceedling[:streaminator].stderr_puts( msg, Verbosity::NORMAL )
         end
       end
-    end
-
-    if (found_uncovered and @ceedling[:configurator].project_config_hash[:gcov_abort_on_uncovered])
-      @ceedling[:streaminator].stderr_puts( "Source files encountered with no coverage results: Aborting.\n", Verbosity::NORMAL )
-      raise
     end
   end
 

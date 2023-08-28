@@ -63,24 +63,31 @@ class TestInvokerHelper
   end
 
   def compile_defines(context:, filepath:)
-    _defines = []
-
     # If this context exists ([:defines][context]), use it. Otherwise, default to test context.
     context = TEST_SYM unless @defineinator.defines_defined?( context:context )
 
     # Defines for the test file
-    _defines += @defineinator.defines( context:context, filepath:filepath )
+    return @defineinator.defines( context:context, filepath:filepath )
+  end
+
+  def augment_vendor_defines(filepath:, defines:)
+    # Start with base defines provided
+    _defines = defines
 
     # Unity defines
-    _defines += @defineinator.defines( context:UNITY_SYM )
+    if filepath == File.join(PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE)
+      _defines += @defineinator.defines( context:UNITY_SYM )
 
-    # CMock define
-    _defines += @defineinator.defines( context:CMOCK_SYM ) if @configurator.project_use_mocks
+    # CMock defines
+    elsif filepath == File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE)
+      _defines += @defineinator.defines( context:CMOCK_SYM ) if @configurator.project_use_mocks
 
     # CException defines
-    _defines += @defineinator.defines( context:CEXCEPTION_SYM ) if @configurator.project_use_exceptions
+    elsif filepath == File.join(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE)
+      _defines += @defineinator.defines( context:CEXCEPTION_SYM ) if @configurator.project_use_exceptions
+    end
 
-    return _defines
+    return _defines.uniq
   end
 
   def preprocess_defines(test_defines:, filepath:)

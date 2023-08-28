@@ -237,9 +237,9 @@ class TestInvoker
         # CMock + Unity + CException
         test_frameworks    = @helper.collect_test_framework_sources
 
-        compilations       = []
+        compilations       =  []
         compilations       << details[:filepath]
-        compilations       +=  test_core
+        compilations       += test_core
         compilations       << details[:runner][:output_filepath]
         compilations       += test_frameworks
         compilations.uniq!
@@ -344,7 +344,9 @@ class TestInvoker
     filepath = testable[:filepath]
     search_paths = testable[:search_paths]
     flags = testable[:compile_flags]
-    defines = testable[:compile_defines]
+
+    # If source file is one of our vendor frameworks, augments its defines
+    defines = @helper.augment_vendor_defines(defines:testable[:compile_defines], filepath:source)
 
     @generator.generate_object_file_c(
       tool:         tool,
