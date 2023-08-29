@@ -37,21 +37,31 @@ class PreprocessinatorFileHandler
     #       They're created for sake of completeness and just in case...
     # ----------------------------------------------------
     if File.extname(filename) == @configurator.extension_header
+      comment = "// CEEDLING NOTICE: This generated file only to be consumed by CMock"
+
       # abc-XYZ.h --> _ABC_XYZ_H_
       guardname = '_' + filename.gsub(/\W/, '_').upcase + '_'
 
       forward_guards = [
         "#ifndef #{guardname}",
-        "#define #{guardname}"
+        "#define #{guardname}",
+        ''
       ]
 
-      contents =  forward_guards + contents # Add guards to beginning of file
-      contents << "#endif // #{guardname}"  # Rear guard
+      # Add comment and guards to beginning of file contents
+      contents =  [comment, ''] + forward_guards + contents
+      contents += ["#endif // #{guardname}", '']  # Rear guard
+    elsif File.extname(filename) == @configurator.extension_source
+      comment = "// CEEDLING NOTICE: This generated file only to be consumed by test runner generation"
+      contents = [comment, ''] + contents
     end
 
-    # Write file
+    # Write file, collapsing any repeated blank lines
     # ----------------------------------------------------    
-    @file_wrapper.write( preprocessed_filepath, contents.join("\n") )
+    @file_wrapper.write(
+      preprocessed_filepath,
+      contents.join("\n").gsub( /(\h*\n){3,}/, "\n\n" )
+      )
 
     return preprocessed_filepath
   end

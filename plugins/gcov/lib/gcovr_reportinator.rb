@@ -31,15 +31,25 @@ class GcovrReportinator
     args_common = args_builder_common(opts)
 
     if ((gcovr_version_info[0] == 4) && (gcovr_version_info[1] >= 2)) || (gcovr_version_info[0] > 4)
+      reports = []
+
       # gcovr version 4.2 and later supports generating multiple reports with a single call.
       args = args_common
-      args += args_builder_cobertura(opts, false)
-      args += args_builder_sonarqube(opts, false)
-      args += args_builder_json(opts, true)
-      # As of gcovr version 4.2, the --html argument must appear last.
-      args += args_builder_html(opts, false)
 
-      msg = @ceedling[:reportinator].generate_progress("Creating gcov results report(s) in '#{GCOV_ARTIFACTS_PATH}'")
+      args += (_args = args_builder_cobertura(opts, false))
+      reports << "Cobertura XML" if not _args.empty?
+
+      args += (_args = args_builder_sonarqube(opts, false))
+      reports << "SonarQube" if not _args.empty?
+      
+      args += (_args = args_builder_json(opts, true))
+      reports << "JSON" if not _args.empty?
+      
+      # As of gcovr version 4.2, the --html argument must appear last.
+      args += (_args = args_builder_html(opts, false))
+      reports << "HTML" if not _args.empty?
+      
+      msg = @ceedling[:reportinator].generate_progress("Creating #{reports.join(', ')} coverage report(s) with gcovr in '#{GCOV_ARTIFACTS_PATH}'")
       @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
 
       # Generate the report(s).
@@ -63,7 +73,7 @@ class GcovrReportinator
       args_html = args_builder_html(opts, true)
 
       if args_html.length > 0
-        msg = @ceedling[:reportinator].generate_progress("Creating an HTML coverage report in '#{GCOV_ARTIFACTS_PATH}'")
+        msg = @ceedling[:reportinator].generate_progress("Creating an HTML coverage report with gcovr in '#{GCOV_ARTIFACTS_PATH}'")
         @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
 
         # Generate the HTML report.
@@ -71,7 +81,7 @@ class GcovrReportinator
       end
 
       if args_cobertura.length > 0
-        msg = @ceedling[:reportinator].generate_progress("Creating an XML coverage report in '#{GCOV_ARTIFACTS_PATH}'")
+        msg = @ceedling[:reportinator].generate_progress("Creating an Cobertura XML coverage report with gcovr in '#{GCOV_ARTIFACTS_PATH}'")
         @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
 
         # Generate the Cobertura XML report.
@@ -282,18 +292,18 @@ class GcovrReportinator
   def make_text_report(opts, args_common)
     gcovr_opts = get_opts(opts)
     args_text = ""
-    message_text = "Creating a gcov text report"
+    message_text = "Creating a text coverage report"
 
-    if !(gcovr_opts[:text_artifact_filename].nil?)
-      artifacts_file_txt = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:text_artifact_filename])
-      args_text += "--output \"#{artifacts_file_txt}\" "
-      message_text += " in '#{GCOV_ARTIFACTS_PATH}'"
-    end
+    filename = gcovr_opts[:text_artifact_filename] || 'coverage.txt'
+
+    artifacts_file_txt = File.join(GCOV_ARTIFACTS_PATH, filename)
+    args_text += "--output \"#{artifacts_file_txt}\" "
+    message_text += " in '#{GCOV_ARTIFACTS_PATH}'"
 
     msg = @ceedling[:reportinator].generate_progress(message_text)
     @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
 
-    # Generate the text report.
+    # Generate the text report
     run(args_common + args_text)
   end
 

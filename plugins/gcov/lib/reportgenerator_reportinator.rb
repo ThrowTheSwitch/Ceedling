@@ -16,7 +16,7 @@ class ReportGeneratorReportinator
     total_time = Benchmark.realtime do
       rg_opts = get_opts(opts)
 
-      msg = @ceedling[:reportinator].generate_progress("Creating gcov results report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_PATH}'")
+      msg = @ceedling[:reportinator].generate_progress("Creating #{opts[:gcov_reports].join(', ')} coverage report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_PATH}'")
       @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.
@@ -139,7 +139,7 @@ class ReportGeneratorReportinator
       # Removing trailing ';' after the last report type.
       args = args.chomp(";")
 
-      # Append a space seperator after the report type.
+      # Append a space separator after the report type.
       args += "\" "
     end
 
