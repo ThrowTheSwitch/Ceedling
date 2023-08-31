@@ -102,7 +102,9 @@ class TestContextExtractor
     ingest_include_paths( filepath, include_paths.uniq )
     ingest_source_extras( filepath, source_extras.uniq )
 
-    @all_include_paths += include_paths
+    @lock.synchronize do
+      @all_include_paths += include_paths
+    end
   end
 
   def extract_test_details(filepath, contents)

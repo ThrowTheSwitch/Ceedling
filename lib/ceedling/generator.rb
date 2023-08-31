@@ -1,5 +1,7 @@
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'
+# Pull in Unity's Test Runner Generator
+require 'generate_test_runner.rb'
 
 class Generator
 
@@ -13,6 +15,7 @@ class Generator
               :tool_executor,
               :file_finder,
               :file_path_utils,
+              :reportinator,
               :streaminator,
               :plugin_manager,
               :file_wrapper,
@@ -20,33 +23,10 @@ class Generator
               :unity_utils
 
 
-  def generate_shallow_includes_list(context, file)
-    @streaminator.stdout_puts("Generating include list for #{File.basename(file)}...", Verbosity::NORMAL)
-    @preprocessinator.preprocess_shallow_includes(file)
-  end
-
-  def generate_preprocessed_file(context, file)
-    @streaminator.stdout_puts("Preprocessing #{File.basename(file)}...", Verbosity::NORMAL)
-    @preprocessinator.preprocess_file(file)
-  end
-
-  def generate_dependencies_file(tool, context, source, object, dependencies)
-    @streaminator.stdout_puts("Generating dependencies for #{File.basename(source)}...", Verbosity::NORMAL)
-
-    command =
-      @tool_executor.build_command_line(
-        tool,
-        [], # extra per-file command line parameters
-        source,
-        dependencies,
-        object)
-
-    @tool_executor.exec( command[:line], command[:options] )
-  end
-
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
     arg_hash = {
       :header_file => input_filepath,
+      :test => test,
       :context => context,
       :output_path => output_path }
     
@@ -74,7 +54,9 @@ class Generator
       end
   
       # Generate mock
-      @streaminator.stdout_puts("Generating mock for #{mock} as #{test} build component...", Verbosity::NORMAL)
+      msg = @reportinator.generate_progress("Generating mock for #{File.basename(input_filepath)} as #{test} build component")
+      @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+
       @cmock_builder.manufacture(config).setup_mocks( arg_hash[:header_file] )
     rescue
       raise
@@ -93,15 +75,29 @@ class Generator
 
     @plugin_manager.pre_runner_generate(arg_hash)
 
+    # Instantiate the test runner generator each time needed for thread safety
+    # TODO: Make UnityTestRunnerGenerator thread-safe
+    generator = UnityTestRunnerGenerator.new( @configurator.get_runner_config )
+
     # collect info we need
     module_name = File.basename( arg_hash[:test_file] )
-    test_cases  = @generator_test_runner.find_test_cases( test_filepath: arg_hash[:test_file], input_filepath: arg_hash[:input_file] )
+    test_cases  = @generator_test_runner.find_test_cases(
+      generator: generator,
+      test_filepath:  arg_hash[:test_file],
+      input_filepath: arg_hash[:input_file]
+      )
 
-    @streaminator.stdout_puts("Generating runner for #{module_name}...", Verbosity::NORMAL)
+    msg = @reportinator.generate_progress("Generating runner for #{module_name}")
+    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
     # build runner file
     begin
-      @generator_test_runner.generate(module_name, runner_filepath, test_cases, mock_list, [])
+      @generator_test_runner.generate(
+        generator: generator,
+        module_name: module_name,
+        runner_filepath: runner_filepath,
+        test_cases: test_cases,
+        mock_list: mock_list)
     rescue
       raise
     ensure
@@ -111,6 +107,7 @@ class Generator
 
 
   def generate_object_file_c(tool:,
+                             test:,
                              context:,
                              source:,
                              object:,
@@ -123,6 +120,7 @@ class Generator
 
     shell_result = {}
     arg_hash = { :tool => tool,
+                 :test => test,
                  :operation => OPERATION_COMPILE_SYM,
                  :context => context,
                  :source => source,
@@ -136,7 +134,7 @@ class Generator
     @plugin_manager.pre_compile_execute(arg_hash)
 
     msg = String(msg)
-    msg = "Compiling #{File.basename(arg_hash[:source])}..." if msg.empty?
+    msg = @reportinator.generate_progress("Compiling #{File.basename(arg_hash[:source])} as #{test} build component") if msg.empty?
 
     @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
@@ -223,7 +221,8 @@ class Generator
 
     @plugin_manager.pre_link_execute(arg_hash)
 
-    @streaminator.stdout_puts("Linking #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
+    msg = @reportinator.generate_progress("Linking #{File.basename(arg_hash[:executable])}")
+    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
     command =
       @tool_executor.build_command_line( arg_hash[:tool],
                                          arg_hash[:flags],

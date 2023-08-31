@@ -178,7 +178,7 @@ class TestInvoker
       par_map(PROJECT_COMPILE_THREADS, mocks) do |mock|
         details = mock[:details]
         testable = mock[:testable]
-        @preprocessinator.preprocess_file(
+        @preprocessinator.preprocess_header_file(
           filepath:      details[:source],
           test:          testable[:name],
           flags:         testable[:compile_flags],
@@ -205,9 +205,9 @@ class TestInvoker
     @helper.execute_build_step("Preprocessing for Test Runners") {
       par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
 
-        filepath = @preprocessinator.preprocess_file(
+        filepath = @preprocessinator.preprocess_test_file(
           filepath:      details[:filepath],
-          test:        details[:name],
+          test:          details[:name],
           flags:         details[:compile_flags],
           include_paths: details[:search_paths],
           defines:       details[:preprocess_defines])
@@ -350,6 +350,7 @@ class TestInvoker
 
     @generator.generate_object_file_c(
       tool:         tool,
+      test:         test,
       context:      context,
       source:       source,
       object:       object,

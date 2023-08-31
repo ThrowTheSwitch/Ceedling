@@ -185,11 +185,6 @@ class ConfiguratorBuilder
          File.join(CEEDLING_LIB, 'ceedling', 'tasks_tests.rake'),
          File.join(CEEDLING_LIB, 'ceedling', 'rules_tests.rake')]}
 
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'rules_cmock.rake') if (in_hash[:project_use_mocks])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'rules_preprocess.rake') if (in_hash[:project_use_test_preprocessor])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'rules_tests_deep_dependencies.rake') if (in_hash[:project_use_deep_dependencies])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'tasks_tests_deep_dependencies.rake') if (in_hash[:project_use_deep_dependencies])
-
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'rules_release_deep_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_deep_dependencies])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'rules_release.rake') if (in_hash[:project_release_build])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'tasks_release_deep_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_deep_dependencies])

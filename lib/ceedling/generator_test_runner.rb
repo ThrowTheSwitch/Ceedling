@@ -1,19 +1,16 @@
 
+
 class GeneratorTestRunner
 
   constructor :configurator, :file_path_utils, :file_wrapper
 
-  def find_test_cases(test_filepath:, input_filepath:)
-
-    #Pull in Unity's Test Runner Generator
-    require 'generate_test_runner.rb'
-    @test_runner_generator ||= UnityTestRunnerGenerator.new( @configurator.get_runner_config )
+  def find_test_cases(generator:, test_filepath:, input_filepath:)
 
     if (@configurator.project_use_test_preprocessor)
       #actually look for the tests using Unity's test runner generator
       contents = @file_wrapper.read(input_filepath)
-      tests_and_line_numbers = @test_runner_generator.find_tests(contents)
-      @test_runner_generator.find_setup_and_teardown(contents)
+      tests_and_line_numbers = generator.find_tests(contents)
+      generator.find_setup_and_teardown(contents)
 
       #look up the line numbers in the original file
       source_lines = @file_wrapper.read(test_filepath).split("\n")
@@ -28,27 +25,26 @@ class GeneratorTestRunner
         end
       end
     else
-      #Just look for the tests using Unity's test runner generator
+      # Just look for the tests using Unity's test runner generator
       contents = @file_wrapper.read(test_filepath)
-      tests_and_line_numbers = @test_runner_generator.find_tests(contents)
-      @test_runner_generator.find_setup_and_teardown(contents)
+      tests_and_line_numbers = generator.find_tests(contents)
+      generator.find_setup_and_teardown(contents)
     end
 
     return tests_and_line_numbers
   end
 
-  def generate(module_name, runner_filepath, test_cases, mock_list, test_file_includes=[])
-    require 'generate_test_runner.rb'
-
+  def generate(generator:, module_name:, runner_filepath:, test_cases:, mock_list:, test_file_includes:[])
     header_extension = @configurator.extension_header
 
     # Actually build the test runner using Unity's test runner generator.
     # (There is no need to use preprocessor here because we've already looked up test cases and are passing them in here.)
-    @test_runner_generator ||= UnityTestRunnerGenerator.new( @configurator.get_runner_config )
-    @test_runner_generator.generate( module_name,
-                                     runner_filepath,
-                                     test_cases,
-                                     mock_list.map{ |mock| mock + header_extension },
-                                     test_file_includes.map{|f| File.basename(f,'.*') + header_extension})
+    generator.generate(
+      module_name,
+      runner_filepath,
+      test_cases,
+      mock_list.map{ |mock| mock + header_extension },
+      test_file_includes.map{|f| File.basename(f,'.*') + header_extension}
+      )
   end
 end

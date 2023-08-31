@@ -31,7 +31,7 @@ class Reportinator
 
   def generate_progress(message)
     # <Message>...
-    return "\n#{message}..."
+    return "#{message}..."
   end
 
 end

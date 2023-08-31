@@ -222,6 +222,7 @@ generator:
     - tool_executor
     - file_finder
     - file_path_utils
+    - reportinator
     - streaminator
     - plugin_manager
     - file_wrapper
