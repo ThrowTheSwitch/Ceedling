@@ -20,6 +20,10 @@ class FileWrapper
     return File.exist?(filepath)
   end
 
+  def extname(filepath)
+    return File.extname(filepath)
+  end
+
   def directory?(path)
     return File.directory?(path)
   end
@@ -40,12 +44,32 @@ class FileWrapper
     FileUtils.rm_r(filepath, **options={})
   end
 
+  def rm_rf(path, options={})
+    FileUtils.rm_rf(path, **options={})
+  end
+
   def cp(source, destination, options={})
     FileUtils.cp(source, destination, **options)
   end
 
+  def cp_r(source, destination, options={})
+    FileUtils.cp_r(source, destination, **options)
+  end
+
+  def mv(source, destination, options={})
+    FileUtils.mv(source, destination, **options)
+  end
+
   def compare(from, to)
     return FileUtils.compare_file(from, to)
+  end
+
+  # Is filepath A newer than B?
+  def newer?(filepathA, filepathB)
+    return false unless File.exist?(filepathA)
+    return false unless File.exist?(filepathB)
+
+    return (File.mtime(filepathA) > File.mtime(filepathB))
   end
 
   def open(filepath, flags)

@@ -15,10 +15,9 @@ DEFAULT_TEST_COMPILER_TOOL = {
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
-    "-DGNU_COMPILER".freeze,
+    "-I\"${5}\"".freeze, # Per-test executable search paths
+    "-D\"${6}\"".freeze, # Per-test executable defines
+    "-DGNU_COMPILER".freeze, # OSX clang
     "-g".freeze,
     ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
     "-c \"${1}\"".freeze,
@@ -39,7 +38,7 @@ DEFAULT_TEST_LINKER_TOOL = {
     ENV['CCLD'].nil? ? "" : ENV['CCLD'].split[1..-1],
     ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
     ENV['LDFLAGS'].nil? ? "" : ENV['LDFLAGS'].split,
-    "\"${1}\"".freeze,
+    "${1}".freeze,
     "${5}".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
@@ -69,13 +68,8 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
     '-E'.freeze, # OSX clang
     '-MM'.freeze,
     '-MG'.freeze,
-    # avoid some possibility of deep system lib header file complications by omitting vendor paths
-    # if cpp is run on *nix system, escape spaces in paths; if cpp on windows just use the paths collection as is
-    # {"-I\"$\"" => "{SystemWrapper.windows? ? COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE : COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE.map{|path| path.gsub(\/ \/, \'\\\\ \') }}"}.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
-    {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
+    "-I\"${2}\"".freeze, # Per-test executable search paths
+    "-D\"${3}\"".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
     # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "\"${1}\"".freeze
@@ -92,11 +86,9 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
     '-E'.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
-    {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
-    "-DGNU_COMPILER".freeze,
+    "-I\"${4}\"".freeze, # Per-test executable search paths
+    "-D\"${3}\"".freeze, # Per-test executable defines
+    "-DGNU_COMPILER".freeze, # OSX clang
     # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
@@ -111,10 +103,8 @@ DEFAULT_TEST_FILE_PREPROCESSOR_DIRECTIVES_TOOL = {
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
-    {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
+    "-I\"${4}\"".freeze, # Per-test executable search paths
+    "-D\"${3}\"".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze,
     '-fdirectives-only'.freeze,
     # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
@@ -140,10 +130,8 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
     '-E'.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR'}.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_TEST_AND_VENDOR'}.freeze,
-    {"-D$" => 'DEFINES_TEST_PREPROCESS'}.freeze,
+    "-I\"${5}\"".freeze, # Per-test executable search paths
+    "-D\"${4}\"".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
@@ -237,12 +225,28 @@ DEFAULT_RELEASE_LINKER_TOOL = {
     ].freeze
   }
 
+DEFAULT_BACKTRACE_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('gdb').freeze,
+  :name => 'default_backtrace_settings'.freeze,
+  :stderr_redirect => StdErrRedirect::AUTO.freeze,
+  :background_exec => BackgroundExec::NONE.freeze,
+  :optional => true.freeze,
+  :arguments => [
+    '-q',
+    '--eval-command run',
+    '--eval-command backtrace',
+    '--batch',
+    '--args'
+    ].freeze
+  }
+
 
 DEFAULT_TOOLS_TEST = {
   :tools => {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
     :test_linker   => DEFAULT_TEST_LINKER_TOOL,
     :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
+    :backtrace_settings => DEFAULT_BACKTRACE_TOOL,
     }
   }
 
@@ -286,7 +290,6 @@ DEFAULT_RELEASE_TARGET_NAME = 'project'
 DEFAULT_CEEDLING_CONFIG = {
     :project => {
       # :build_root must be set by user
-      :use_exceptions => true,
       :use_mocks => true,
       :compile_threads => 1,
       :test_threads => 1,
@@ -332,23 +335,25 @@ DEFAULT_CEEDLING_CONFIG = {
     ],
 
     :defines => {
-      :test => [],
-      :test_preprocess => [],
+      :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
+      :preprocess => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
       :release => [],
-      :release_preprocess => [],
-      :use_test_definition => false,
+      :unity => [],
+      :cmock => [],
+      :cexception => []
+    },
+
+    :flags => {
+      :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
+      :release => []
     },
 
     :libraries => {
       :flag => '-l${1}',
       :path_flag => '-L ${1}',
       :test => [],
-      :test_preprocess => [],
-      :release => [],
-      :release_preprocess => [],
+      :release => []
     },
-
-    :flags => {},
 
     :extension => {
       :header => '.h',
@@ -362,22 +367,20 @@ DEFAULT_CEEDLING_CONFIG = {
       :testpass => '.pass',
       :testfail => '.fail',
       :dependencies => '.d',
+      :yaml => '.yml'
     },
 
     :unity => {
-      :vendor_path => CEEDLING_VENDOR,
-      :defines => []
+      :vendor_path => CEEDLING_VENDOR
     },
 
     :cmock => {
       :vendor_path => CEEDLING_VENDOR,
-      :defines => [],
       :includes => []
     },
 
     :cexception => {
-      :vendor_path => CEEDLING_VENDOR,
-      :defines => []
+      :vendor_path => CEEDLING_VENDOR
     },
 
     :test_runner => {

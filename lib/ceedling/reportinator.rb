@@ -23,4 +23,15 @@ class Reportinator
     return "#{'-' * dash_count}\n#{message}\n#{'-' * dash_count}\n"
   end
 
+  def generate_heading(message)
+    # <Message>
+    # ---------
+    return "\n#{message}\n#{'-' * message.length}"
+  end
+
+  def generate_progress(message)
+    # <Message>...
+    return "#{message}..."
+  end
+
 end

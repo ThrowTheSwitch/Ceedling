@@ -1,11 +1,12 @@
 require 'benchmark'
 require 'reportinator_helper'
+require 'ceedling/constants'
 
 class ReportGeneratorReportinator
 
   def initialize(system_objects)
     @ceedling = system_objects
-    @reportinator_helper = ReportinatorHelper.new
+    @reportinator_helper = ReportinatorHelper.new(system_objects)
   end
 
 
@@ -15,8 +16,8 @@ class ReportGeneratorReportinator
     total_time = Benchmark.realtime do
       rg_opts = get_opts(opts)
 
-      print "Creating gcov results report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_PATH}'... "
-      STDOUT.flush
+      msg = @ceedling[:reportinator].generate_progress("Creating #{opts[:gcov_reports].join(', ')} coverage report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_PATH}'")
+      @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.
       for gcov_file in Dir.glob("*.gcov")
@@ -68,7 +69,7 @@ class ReportGeneratorReportinator
         # Generate the report(s).
         shell_result = run(args)
       else
-        puts "\nWarning: No matching .gcno coverage files found."
+        @ceedling[:streaminator].stdout_puts("\nWARNING: No matching .gcno coverage files found.", Verbosity::NORMAL)
       end
 
       # Cleanup .gcov files.
@@ -138,7 +139,7 @@ class ReportGeneratorReportinator
       # Removing trailing ';' after the last report type.
       args = args.chomp(";")
 
-      # Append a space seperator after the report type.
+      # Append a space separator after the report type.
       args += "\" "
     end
 
