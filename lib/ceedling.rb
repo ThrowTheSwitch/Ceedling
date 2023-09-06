@@ -93,8 +93,8 @@ module Ceedling
 
     # Register the plugin with Ceedling
     require 'ceedling/defaults'
-    DEFAULT_CEEDLING_CONFIG[:plugins][:enabled]    << name
-    DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths] << gem_dir
+    CEEDLING_CONFIG_INTERNAL[:plugins][:enabled]    << name
+    CEEDLING_CONFIG_INTERNAL[:plugins][:load_paths] << gem_dir
   end
 end
 

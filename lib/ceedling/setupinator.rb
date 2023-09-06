@@ -25,18 +25,22 @@ class Setupinator
 
   def do_setup(config_hash)
     @config_hash = config_hash
+    defaults_hash = {}
 
     # Load up all the constants and accessors our rake files, objects, & external scripts will need.
-    # Note: Configurator modifies the cmock section of the hash with a couple defaults to tie 
+    # Note: Configurator modifies the cmock section of the hash with a couple defaults to tie
     #       projects together -- the modified hash is used to build the cmock object.
     @ceedling[:configurator].set_verbosity( config_hash )
-    @ceedling[:configurator].populate_defaults( config_hash )
-    @ceedling[:configurator].populate_unity_defaults( config_hash )
-    @ceedling[:configurator].populate_cmock_defaults( config_hash )
+    @ceedling[:configurator].merge_ceedling_config( config_hash, defaults_hash )
+    @ceedling[:configurator].merge_cmock_config( config_hash, defaults_hash )
+    @ceedling[:configurator].eval_environment_variables( config_hash )
+    @ceedling[:configurator].find_and_merge_plugins( config_hash, defaults_hash )
+    @ceedling[:configurator].populate_config_with_defaults( config_hash, defaults_hash )
+    @ceedling[:configurator].populate_runner_config( config_hash )
+    @ceedling[:configurator].merge_imports( config_hash )
     @ceedling[:configurator].eval_environment_variables( config_hash )
     @ceedling[:configurator].eval_paths( config_hash )
     @ceedling[:configurator].standardize_paths( config_hash )
-    @ceedling[:configurator].find_and_merge_plugins( config_hash )
     @ceedling[:configurator].merge_imports( config_hash )
     @ceedling[:configurator].tools_setup( config_hash )
     @ceedling[:configurator].validate( config_hash )
@@ -45,13 +49,13 @@ class Setupinator
 
     @ceedling[:configurator].insert_rake_plugins( @ceedling[:configurator].rake_plugins )
     @ceedling[:configurator].tools_supplement_arguments( config_hash )
-    
+
     # Merge in any environment variables that plugins specify after the main build
     @ceedling[:plugin_manager].load_programmatic_plugins( @ceedling[:configurator].programmatic_plugins, @ceedling ) do |env|
       @ceedling[:configurator].eval_environment_variables( env )
       @ceedling[:configurator].build_supplement( config_hash, env )
     end
-    
+
     @ceedling[:plugin_reportinator].set_system_objects( @ceedling )
     @ceedling[:loginator].project_log_filepath = form_log_filepath()
     @ceedling[:project_config_manager].config_hash = config_hash
@@ -68,7 +72,7 @@ private
   def form_log_filepath()
     # Various project files and options files can combine to create different configurations.
     # Different configurations means different behaviors.
-    # As these variations are easy to run from the command line, a resulting log file 
+    # As these variations are easy to run from the command line, a resulting log file
     # should differentiate its context.
     # We do this by concatenating config/options names into a log filename.
 
@@ -78,7 +82,7 @@ private
     config_files << @ceedling[:project_file_loader].user_file
     config_files += @ceedling[:project_config_manager].options_files
     config_files.compact! # Remove empties
-    
+
     # Drop component file name extensions and smoosh together with underscores
     log_name = config_files.map{ |file| file.ext('') }.join( '_' )
 
