@@ -1,0 +1,5 @@
+---
+:beep:
+  :on_done: :bell
+  :on_error: :bell
+...

@@ -16,7 +16,6 @@ CLOBBER.include(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, '**/*'))
 CLOBBER.include(File.join(PROJECT_BUILD_TESTS_ROOT, '**/*'))
 CLOBBER.include(File.join(PROJECT_BUILD_RELEASE_ROOT, '**/*'))
 CLOBBER.include(File.join(PROJECT_LOG_PATH, '**/*'))
-CLOBBER.include(File.join(PROJECT_TEMP_PATH, '**/*'))
 
 # just in case they're using git, let's make sure we allow them to preserved the build directory if desired.
 CLOBBER.exclude(File.join(TESTS_BASE_PATH), '**/.gitkeep')
@@ -33,22 +32,14 @@ task(:clean) do
   if (not @ceedling[:task_invoker].invoked?(/^clobber$/))
     @ceedling[:streaminator].stdout_puts("\nCleaning build artifacts...\n(For large projects, this task may take a long time to complete)\n\n")
   end
-  begin
-    CLEAN.each { |fn| REMOVE_FILE_PROC.call(fn) }
-  rescue
-  end
+  CLEAN.each { |fn| REMOVE_FILE_PROC.call(fn) }
 end
 
 # redefine clobber so we can override how it advertises itself
 desc "Delete all generated files (and build artifacts)."
 task(:clobber => [:clean]) do
   @ceedling[:streaminator].stdout_puts("\nClobbering all generated files...\n(For large projects, this task may take a long time to complete)\n\n")
-  begin
-    CLOBBER.each { |fn| REMOVE_FILE_PROC.call(fn) }
-    @ceedling[:rake_wrapper][:directories].invoke
-    @ceedling[:dependinator].touch_force_rebuild_files
-  rescue
-  end
+  CLOBBER.each { |fn| REMOVE_FILE_PROC.call(fn) }
 end
 
 # create a directory task for each of the paths, so we know how to build them
@@ -56,14 +47,6 @@ PROJECT_BUILD_PATHS.each { |path| directory(path) }
 
 # create a single directory task which verifies all the others get built
 task :directories => PROJECT_BUILD_PATHS
-
-# when the force file doesn't exist, it probably means we clobbered or are on a fresh
-# install. In either case, stuff was deleted, so assume we want to rebuild it all
-file @ceedling[:configurator].project_test_force_rebuild_filepath do
-  unless File.exist?(@ceedling[:configurator].project_test_force_rebuild_filepath)
-    @ceedling[:dependinator].touch_force_rebuild_files
-  end
-end
 
 # list paths discovered at load time
 namespace :paths do

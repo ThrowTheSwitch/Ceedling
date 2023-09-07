@@ -23,6 +23,7 @@ class Setupinator
     @ceedling[:configurator].populate_defaults( config_hash )
     @ceedling[:configurator].populate_unity_defaults( config_hash )
     @ceedling[:configurator].populate_cmock_defaults( config_hash )
+    @ceedling[:configurator].copy_vendor_defines( config_hash )
     @ceedling[:configurator].find_and_merge_plugins( config_hash )
     @ceedling[:configurator].merge_imports( config_hash )
     @ceedling[:configurator].eval_environment_variables( config_hash )
@@ -31,7 +32,7 @@ class Setupinator
     @ceedling[:configurator].standardize_paths( config_hash )
     @ceedling[:configurator].validate( config_hash )
     @ceedling[:configurator].build( config_hash, :environment )
-    
+
     @ceedling[:configurator].insert_rake_plugins( @ceedling[:configurator].rake_plugins )
     @ceedling[:configurator].tools_supplement_arguments( config_hash )
     
