@@ -56,7 +56,7 @@ DEFAULT_TEST_FIXTURE_TOOL = {
   :arguments => [].freeze
   }
 
-DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
+DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
   :name => 'default_test_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
@@ -68,10 +68,30 @@ DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL = {
     '-E'.freeze, # OSX clang
     '-MM'.freeze,
     '-MG'.freeze,
+    "-D\"${2}\"".freeze, # Per-test executable defines
+    "-DGNU_COMPILER".freeze, # OSX clang
+    '-nostdinc'.freeze,
+    "\"${1}\"".freeze
+    ].freeze
+  }
+
+DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
+  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
+  :name => 'default_test_includes_preprocessor'.freeze,
+  :stderr_redirect => StdErrRedirect::NONE.freeze,
+  :background_exec => BackgroundExec::NONE.freeze,
+  :optional => false.freeze,
+  :arguments => [
+    ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
+    ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
+    '-E'.freeze, # OSX clang
+    '-MM'.freeze,
+    '-MG'.freeze,
+    '-H'.freeze,
     "-I\"${2}\"".freeze, # Per-test executable search paths
     "-D\"${3}\"".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
+    '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "\"${1}\"".freeze
     ].freeze
   }
@@ -252,7 +272,8 @@ DEFAULT_TOOLS_TEST = {
 
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
-    :test_includes_preprocessor => DEFAULT_TEST_INCLUDES_PREPROCESSOR_TOOL,
+    :test_shallow_includes_preprocessor => DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL,
+    :test_nested_includes_preprocessor => DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL,
     :test_file_preprocessor     => DEFAULT_TEST_FILE_PREPROCESSOR_TOOL,
     :test_file_preprocessor_directives => DEFAULT_TEST_FILE_PREPROCESSOR_DIRECTIVES_TOOL,
     }
@@ -344,8 +365,9 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :flags => {
-      :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
-      :release => []
+      # Test flags are validated for presence--empty test flags causes an error
+      # :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
+      :release => [] 
     },
 
     :libraries => {

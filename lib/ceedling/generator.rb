@@ -54,7 +54,11 @@ class Generator
       end
   
       # Generate mock
-      msg = @reportinator.generate_progress("Generating mock for #{File.basename(input_filepath)} as #{test} build component")
+      msg = @reportinator.generate_test_component_progress(
+        operation: "Generating mock for",
+        test: test,
+        filename: File.basename(input_filepath)
+      )
       @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
       @cmock_builder.manufacture(config).setup_mocks( arg_hash[:header_file] )
@@ -134,8 +138,11 @@ class Generator
     @plugin_manager.pre_compile_execute(arg_hash)
 
     msg = String(msg)
-    msg = @reportinator.generate_progress("Compiling #{File.basename(arg_hash[:source])} as #{test} build component") if msg.empty?
-
+    msg = @reportinator.generate_test_component_progress(
+      operation: "Compiling",
+      test: test,
+      filename: File.basename(arg_hash[:source])
+      ) if msg.empty?
     @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
     command =
@@ -261,7 +268,8 @@ class Generator
     arg_hash = {:tool => tool, :context => context, :executable => executable, :result_file => result}
     @plugin_manager.pre_test_fixture_execute(arg_hash)
 
-    @streaminator.stdout_puts("Running #{File.basename(arg_hash[:executable])}...", Verbosity::NORMAL)
+    msg = @reportinator.generate_progress("Running #{File.basename(arg_hash[:executable])}")
+    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results

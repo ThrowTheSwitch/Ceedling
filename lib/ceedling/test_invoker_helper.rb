@@ -20,7 +20,7 @@ class TestInvokerHelper
     if heading
       msg = @reportinator.generate_heading(msg)
     else # Progress message
-      msg = @reportinator.generate_progress(msg)
+      msg = "\n" + @reportinator.generate_progress(msg)
     end
 
     @streaminator.stdout_puts(msg, Verbosity::NORMAL)

@@ -141,7 +141,6 @@ class ConfiguratorBuilder
       [:project_release_dependencies_path,      File.join(project_build_release_root, 'dependencies'),      in_hash[:project_release_build] ],
 
       [:project_log_path,   File.join(in_hash[:project_build_root], 'logs'), true ],
-      [:project_temp_path,  File.join(in_hash[:project_build_root], 'temp'), true ],
 
       [:project_test_preprocess_includes_path,  File.join(project_build_tests_root, 'preprocess/includes'), in_hash[:project_use_test_preprocessor] ],
       [:project_test_preprocess_files_path,     File.join(project_build_tests_root, 'preprocess/files'),    in_hash[:project_use_test_preprocessor] ],
@@ -162,16 +161,6 @@ class ConfiguratorBuilder
       # set path symbol name and path for each entry in paths array
       out_hash[build_path_name] = build_path
     end
-
-    return out_hash
-  end
-
-
-  def set_force_build_filepaths(in_hash)
-    out_hash = {}
-
-    out_hash[:project_test_force_rebuild_filepath]    = File.join( in_hash[:project_test_dependencies_path], 'force_build' )
-    out_hash[:project_release_force_rebuild_filepath] = File.join( in_hash[:project_release_dependencies_path], 'force_build' ) if (in_hash[:project_release_build])
 
     return out_hash
   end
@@ -341,11 +330,10 @@ class ConfiguratorBuilder
     paths =
       in_hash[:collection_paths_test] +
       in_hash[:collection_paths_support] +
-      in_hash[:collection_paths_source] +
       in_hash[:collection_paths_include]
 
     paths.each do |path|
-      all_headers.include( File.join(path, "**/*#{in_hash[:extension_header]}") )
+      all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
     end
 
     @file_system_utils.revise_file_list( all_headers, in_hash[:files_include] )

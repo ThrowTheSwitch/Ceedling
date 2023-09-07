@@ -127,7 +127,7 @@ class TestInvoker
       par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
         @preprocessinator.extract_testing_context(
           filepath:      details[:filepath],
-          subdir:        details[:name],
+          test:          details[:name],
           flags:         details[:compile_flags],
           include_paths: details[:search_paths],
           defines:       details[:preprocess_defines] )

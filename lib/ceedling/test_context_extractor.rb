@@ -15,36 +15,50 @@ class TestContextExtractor
   end
 
 
+  # Scan for & store build directives
+  #  - TEST_SOURCE_FILE()
+  #  - TEST_INCLUDE_PATH()
   def collect_build_directives(filepath)
-    extract_build_directives( filepath, @file_wrapper.read(filepath) )
+    include_paths, source_extras = extract_build_directives( filepath, @file_wrapper.read(filepath) )
+    ingest_build_directives(
+      filepath:filepath,
+      include_paths:include_paths,
+      source_extras:source_extras
+      )
   end
 
-  # Scan for & store all test includes, mocks, build directives, etc
-  def collect_testing_details(filepath)
-    extract_test_details( filepath, @file_wrapper.read(filepath) )
+  # Scan for & store includes (.h & .c) and mocks
+  def collect_includes(filepath)
+    includes = extract_includes( filepath, @file_wrapper.read(filepath) )
+    ingest_includes(filepath, includes)
   end
 
-  # header header_includes of test file with file extension
+  # Scan for all includes
+  def scan_includes(filepath)
+    return extract_includes( filepath, @file_wrapper.read(filepath) )
+  end
+
+  # Header header_includes of test file with file extension
   def lookup_header_includes_list(filepath)
     return @header_includes[form_file_key(filepath)] || []
   end
 
-  # include paths of test file specified with TEST_INCLUDE_PATH()
+  # Include paths of test file specified with TEST_INCLUDE_PATH()
   def lookup_include_paths_list(filepath)
     return @include_paths[form_file_key(filepath)] || []
   end
 
-  # source header_includes within test file
+  # Source header_includes within test file
   def lookup_source_includes_list(filepath)
     return @source_includes[form_file_key(filepath)] || []
   end
 
-  # source extras via TEST_SOURCE_FILE() within test file
+  # Source extras via TEST_SOURCE_FILE() within test file
   def lookup_build_directive_sources_list(filepath)
     return @source_extras[form_file_key(filepath)] || []
   end
 
-  # mocks within test file with no file extension
+  # Mocks within test file with no file extension
   def lookup_raw_mock_list(filepath)
     return @mocks[form_file_key(filepath)] || []
   end
@@ -57,39 +71,46 @@ class TestContextExtractor
     @include_paths.each { |test, paths| yield test, paths }
   end
 
-  def ingest_includes_and_mocks(filepath, includes)
-    mock_prefix      = @configurator.cmock_mock_prefix
-    header_extension = @configurator.extension_header
-    file_key         = form_file_key(filepath)
-    mocks            = []
+  def ingest_includes(filepath, includes)
+    mock_prefix = @configurator.cmock_mock_prefix
+    file_key    = form_file_key(filepath)
+    
+    mocks   = []
+    headers = []
+    sources = []
 
-    # Add header_includes to lookup hash
     includes.each do |include|
-      # Check if include is a mock with regex match that extracts only mock name (no path or .h)
-      scan_results = include.scan(/.*(#{mock_prefix}.+)#{'\\'+header_extension}/)
-      # Add mock to lookup hash
-      mocks << scan_results[0][0] if (scan_results.size > 0)
+      # <*.h>
+      if include =~ /#{Regexp.escape(@configurator.extension_header)}$/
+        # Check if include is a mock with regex match that extracts only mock name (no .h)
+        scan_results = include.scan(/(#{mock_prefix}.+)#{Regexp.escape(@configurator.extension_header)}/)
+        mocks << scan_results[0][0] if (scan_results.size > 0)
+
+        # Add to .h includes list
+        headers << include
+      # <*.c>
+      elsif include =~ /#{Regexp.escape(@configurator.extension_source)}$/
+        # Add to .c includes list
+        sources << include
+      end
     end
 
-    # finalize the information
     @lock.synchronize do
       @mocks[file_key] = mocks
-      @header_includes[file_key] = includes
+      @header_includes[file_key] = headers
+      @source_includes[file_key] = sources
     end
   end
 
   private #################################
 
-  def extract_build_directives(filepath, contents)
+  def extract_build_directives(filepath, content)
     include_paths = []
     source_extras = []
 
-    # Remove line comments
-    contents = contents.gsub(/\/\/.*$/, '')
-    # Remove block comments
-    contents = contents.gsub(/\/\*.*?\*\//m, '')
+    content = remove_comments(content)
 
-    contents.split("\n").each do |line|
+    content.split("\n").each do |line|
       # Look for TEST_INCLUDE_PATH("<*>") statements
       results = line.scan(/#{UNITY_TEST_INCLUDE_PATH}\(\s*\"\s*(.+)\s*\"\s*\)/)
       include_paths << FilePathUtils.standardize( results[0][0] ) if (results.size > 0)
@@ -99,59 +120,48 @@ class TestContextExtractor
       source_extras << FilePathUtils.standardize( results[0][0] ) if (results.size > 0)
     end
 
-    ingest_include_paths( filepath, include_paths.uniq )
-    ingest_source_extras( filepath, source_extras.uniq )
+    return include_paths.uniq, source_extras.uniq
+  end
+
+  def extract_includes(filepath, content)
+    includes = []
+
+    content = remove_comments(content)
+
+    content.split("\n").each do |line|
+      # Look for #include statements
+      results = line.scan(/#\s*include\s+\"\s*(.+)\s*\"/)
+      includes << results[0][0] if (results.size > 0)
+    end
+
+    return includes.uniq
+  end
+
+  def ingest_build_directives(filepath:, include_paths:, source_extras:)
+    key = form_file_key(filepath)
+
+    @lock.synchronize do
+      @include_paths[key] = include_paths
+    end
+
+    @lock.synchronize do
+      @source_extras[key] = source_extras
+    end
 
     @lock.synchronize do
       @all_include_paths += include_paths
     end
   end
 
-  def extract_test_details(filepath, contents)
-    header_includes = []
-    source_includes = []
-
-    source_extension = @configurator.extension_source
-    header_extension = @configurator.extension_header
-
+  # Note: This method is destructive to content argument to reduce memory usage
+  def remove_comments(content)
     # Remove line comments
-    contents = contents.gsub(/\/\/.*$/, '')
+    content.gsub!(/\/\/.*$/, '')
+
     # Remove block comments
-    contents = contents.gsub(/\/\*.*?\*\//m, '')
+    content.gsub!(/\/\*.*?\*\//m, '')
 
-    contents.split("\n").each do |line|
-      # Look for #include statement for .h files
-      results = line.scan(/#\s*include\s+\"\s*(.+#{'\\'+header_extension})\s*\"/)
-      header_includes << results[0][0] if (results.size > 0)
-
-      # Look for #include statement for .c files
-      results = line.scan(/#\s*include\s+\"\s*(.+#{'\\'+source_extension})\s*\"/)
-      source_includes << results[0][0] if (results.size > 0)
-    end
-
-    ingest_includes_and_mocks( filepath, header_includes.uniq )
-    ingest_source_includes( filepath, source_includes.uniq )
-  end
-
-  def ingest_include_paths(filepath, paths)
-    # finalize the information
-    @lock.synchronize do
-      @include_paths[form_file_key(filepath)] = paths
-    end
-  end
-
-  def ingest_source_extras(filepath, sources)
-    # finalize the information
-    @lock.synchronize do
-      @source_extras[form_file_key(filepath)] = sources
-    end
-  end
-
-  def ingest_source_includes(filepath, includes)
-    # finalize the information
-    @lock.synchronize do
-      @source_includes[form_file_key(filepath)] = includes
-    end
+    return content
   end
 
   def form_file_key(filepath)

@@ -3,12 +3,6 @@ class Dependinator
 
   constructor :configurator, :project_config_manager, :test_context_extractor, :file_path_utils, :rake_wrapper, :file_wrapper
 
-  def touch_force_rebuild_files
-    @file_wrapper.touch( @configurator.project_test_force_rebuild_filepath )
-    @file_wrapper.touch( @configurator.project_release_force_rebuild_filepath ) if (@configurator.project_release_build)
-  end
-
-
 
   def load_release_object_deep_dependencies(dependencies_list)
     dependencies_list.each do |dependencies_file|

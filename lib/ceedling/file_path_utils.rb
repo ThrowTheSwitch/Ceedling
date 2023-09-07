@@ -76,12 +76,6 @@ class FilePathUtils
 
   ######### instance methods ##########
 
-  def form_temp_path(filepath, subdir, prefix='')
-    path = File.join( @configurator.project_temp_path, subdir )
-    @file_wrapper.mkdir(path)
-    return File.join( path, prefix + File.basename(filepath) )
-  end
-
   ### release ###
   def form_release_build_cache_path(filepath)
     return File.join( @configurator.project_release_build_cache_path, File.basename(filepath) )

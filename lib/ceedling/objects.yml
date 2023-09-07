@@ -273,19 +273,17 @@ preprocessinator:
     - configurator
     - test_context_extractor
     - streaminator
+    - reportinator
     - rake_wrapper
 
 preprocessinator_includes_handler:
   compose:
     - configurator
-    - flaginator
     - tool_executor
-    - task_invoker
-    - file_path_utils
+    - test_context_extractor
     - yaml_wrapper
-    - file_wrapper
-    - file_finder
     - streaminator
+    - reportinator
 
 preprocessinator_file_handler:
   compose:

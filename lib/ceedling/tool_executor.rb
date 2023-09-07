@@ -35,8 +35,7 @@ class ToolExecutor
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     command[:options] = {
-      :stderr_redirect => @tool_executor_helper.stderr_redirection(tool_config, @configurator.project_logging),
-      :background_exec => tool_config[:background_exec]
+      :stderr_redirect => @tool_executor_helper.stderr_redirection(tool_config, @configurator.project_logging)
       }
 
     return command
@@ -47,14 +46,13 @@ class ToolExecutor
   def exec(command, options={}, args=[])
     options[:boom] = true if (options[:boom].nil?)
     options[:stderr_redirect] = StdErrRedirect::NONE if (options[:stderr_redirect].nil?)
-    options[:background_exec] = BackgroundExec::NONE if (options[:background_exec].nil?)
-    # build command line
+
+    # Build command line
     command_line = [
       @tool_executor_helper.background_exec_cmdline_prepend( options ),
       command.strip,
       args,
       @tool_executor_helper.stderr_redirect_cmdline_append( options ),
-      @tool_executor_helper.background_exec_cmdline_append( options ),
       ].flatten.compact.join(' ')
 
     @streaminator.stderr_puts("Verbose: #{__method__}(): #{command_line}", Verbosity::DEBUG)
@@ -63,15 +61,11 @@ class ToolExecutor
 
     # depending on background exec option, we shell out differently
     time = Benchmark.realtime do
-      #if (options[:background_exec] != BackgroundExec::NONE)
-      #  shell_result = @system_wrapper.shell_system( command_line, options[:boom] )
-      #else
-        shell_result = @system_wrapper.shell_capture3( command_line, options[:boom] )
-      #end
+      shell_result = @system_wrapper.shell_capture3( command_line, options[:boom] )
     end
     shell_result[:time] = time
 
-    #scrub the string for illegal output
+    # Scrub the string for illegal output
     unless shell_result[:output].nil?
       shell_result[:output] = shell_result[:output].scrub if "".respond_to?(:scrub)
       shell_result[:output].gsub!(/\033\[\d\dm/,'')

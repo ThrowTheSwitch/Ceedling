@@ -12,6 +12,7 @@ class Preprocessinator
               :configurator,
               :test_context_extractor,
               :streaminator,
+              :reportinator,
               :rake_wrapper
 
 
@@ -23,25 +24,30 @@ class Preprocessinator
 
   def extract_test_build_directives(filepath:)
     # Parse file in Ruby to extract build directives
-    @streaminator.stdout_puts( "Parsing #{File.basename(filepath)}...", Verbosity::NORMAL)
+    msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)}" )
+    @streaminator.stdout_puts( msg, Verbosity::NORMAL )
     @test_context_extractor.collect_build_directives( filepath )
   end
 
-  def extract_testing_context(filepath:, subdir:, flags:, include_paths:, defines:)
-    # Parse file in Ruby to extract testing details (e.g. header files, mocks, etc.)
+  def extract_testing_context(filepath:, test:, flags:, include_paths:, defines:)
     if (not @configurator.project_use_test_preprocessor)
-      @streaminator.stdout_puts( "Parsing & processing #include statements within #{File.basename(filepath)}...", Verbosity::NORMAL )
-      @test_context_extractor.collect_testing_details( filepath )
-    # Run test file through preprocessor to parse out include statements and then collect header files, mocks, etc.
+      # Parse file in Ruby to extract testing details (e.g. header files, mocks, etc.)
+      msg = @reportinator.generate_progress( "Parsing & processing #include statements within #{File.basename(filepath)}" )
+      @streaminator.stdout_puts( msg, Verbosity::NORMAL )
+      @test_context_extractor.collect_includes( filepath )
     else
-      includes = preprocess_shallow_includes(
+      # Run test file through preprocessor to parse out include statements and then collect header files, mocks, etc.
+      includes = preprocess_includes(
         filepath:      filepath,
-        subdir:        subdir,
+        test:          test,
         flags:         flags,
         include_paths: include_paths,
         defines:       defines)
-      @streaminator.stdout_puts( "Processing #include statements for #{File.basename(filepath)}...", Verbosity::NORMAL )
-      @test_context_extractor.ingest_includes_and_mocks( filepath, includes )
+
+      msg = @reportinator.generate_progress( "Processing #include statements for #{File.basename(filepath)}" )
+      @streaminator.stdout_puts( msg, Verbosity::NORMAL )
+
+      @test_context_extractor.ingest_includes( filepath, includes )
     end
   end
 
@@ -93,37 +99,52 @@ class Preprocessinator
       @yaml_wrapper.load( @file_path_utils.form_preprocessed_includes_list_filepath( filepath ) ) )
   end
 
-  ### private ###
+  ### Private ###
   private
 
   def preprocess_file_common(filepath:, test:, flags:, include_paths:, defines:)
-    # Extract shallow includes
-    includes = preprocess_shallow_includes(
+    msg = @reportinator.generate_test_component_progress(
+      operation: "Preprocessing",
+      test: test,
+      filename: File.basename(filepath)
+    )
+
+    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+
+    # Extract includes
+    includes = preprocess_includes(
       filepath:      filepath,
-      subdir:        test,
+      test:          test,
       flags:         flags,
       include_paths: include_paths,
       defines:       defines) 
 
-    file = File.basename(filepath)
-    @streaminator.stdout_puts(
-      "Preprocessing #{file}#{" as #{test} build component" unless file.include?(test)}...",
-      Verbosity::NORMAL)
-
     return includes
   end
 
-  def preprocess_shallow_includes(filepath:, subdir:, flags:, include_paths:, defines:)
-    includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, subdir )
+  def preprocess_includes(filepath:, test:, flags:, include_paths:, defines:)
+    includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
     includes = []
 
     if @file_wrapper.newer?(includes_list_filepath, filepath)
-      @streaminator.stdout_puts( "Loading existing #include statement listing file for #{File.basename(filepath)}...", Verbosity::NORMAL )
+      msg = @reportinator.generate_test_component_progress(
+        operation: "Loading #include statement listing file for",
+        test: test,
+        filename: File.basename(filepath)
+        )
+      @streaminator.stdout_puts( msg, Verbosity::NORMAL )
       includes = @yaml_wrapper.load(includes_list_filepath)
     else
-      includes = @includes_handler.extract_includes(filepath:filepath, subdir:subdir, flags:flags, include_paths:include_paths, defines:defines)
-      @includes_handler.write_shallow_includes_list(includes_list_filepath, includes)
+      includes = @includes_handler.extract_includes(
+        filepath:      filepath,
+        test:          test,
+        flags:         flags,
+        include_paths: include_paths,
+        defines:       defines
+        )
+      
+      @includes_handler.write_includes_list(includes_list_filepath, includes)
     end
 
     return includes

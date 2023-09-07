@@ -38,6 +38,8 @@ class IncludePathinator
     # Add to collection of headers (Rake FileList) with directive paths and shallow wildcard matching on header file extension
     headers += @file_wrapper.instantiate_file_list( directive_paths.map { |path| File.join(path, '*' + EXTENSION_HEADER) } )
 
+    headers.uniq!
+
     @configurator.redefine_element(:collection_all_headers, headers)
   end
 

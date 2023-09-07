@@ -21,7 +21,6 @@ class ConfiguratorSetup
 
     ### add to hash values we build up from configuration & file system contents
     flattened_config.merge!(@configurator_builder.set_build_paths(flattened_config))
-    flattened_config.merge!(@configurator_builder.set_force_build_filepaths(flattened_config))
     flattened_config.merge!(@configurator_builder.set_rakefile_components(flattened_config))
     flattened_config.merge!(@configurator_builder.set_release_target(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_project_options(flattened_config))
