@@ -1,12 +1,26 @@
 require 'reportinator_helper'
+require 'ceedling/constants'
 
 class GcovrReportinator
 
   def initialize(system_objects)
     @ceedling = system_objects
-    @reportinator_helper = ReportinatorHelper.new
+    @reportinator_helper = ReportinatorHelper.new(system_objects)
   end
 
+  # Returns true if the given utility is enabled, otherwise returns false.
+  def utility_enabled?(opts, utility_name)
+    enabled = !(opts.nil?) && !(opts[:gcov_utilities].nil?) && (opts[:gcov_utilities].map(&:upcase).include? utility_name.upcase)
+
+    # Simple check for utility installation
+    # system() result is nil if could not run command
+    if enabled and system(utility_name, '--version', [:out, :err] => File::NULL).nil?
+      @ceedling[:streaminator].stderr_puts("ERROR: gcov report generation tool #{utility_name} not installed.", Verbosity::NORMAL)
+      raise
+    end
+
+    return enabled
+  end
 
   # Generate the gcovr report(s) specified in the options.
   def make_reports(opts)
@@ -17,16 +31,26 @@ class GcovrReportinator
     args_common = args_builder_common(opts)
 
     if ((gcovr_version_info[0] == 4) && (gcovr_version_info[1] >= 2)) || (gcovr_version_info[0] > 4)
+      reports = []
+
       # gcovr version 4.2 and later supports generating multiple reports with a single call.
       args = args_common
-      args += args_builder_cobertura(opts, false)
-      args += args_builder_sonarqube(opts, false)
-      args += args_builder_json(opts, true)
-      # As of gcovr version 4.2, the --html argument must appear last.
-      args += args_builder_html(opts, false)
 
-      print "Creating gcov results report(s) in '#{GCOV_ARTIFACTS_PATH}'... "
-      STDOUT.flush
+      args += (_args = args_builder_cobertura(opts, false))
+      reports << "Cobertura XML" if not _args.empty?
+
+      args += (_args = args_builder_sonarqube(opts, false))
+      reports << "SonarQube" if not _args.empty?
+      
+      args += (_args = args_builder_json(opts, true))
+      reports << "JSON" if not _args.empty?
+      
+      # As of gcovr version 4.2, the --html argument must appear last.
+      args += (_args = args_builder_html(opts, false))
+      reports << "HTML" if not _args.empty?
+      
+      msg = @ceedling[:reportinator].generate_progress("Creating #{reports.join(', ')} coverage report(s) with gcovr in '#{GCOV_ARTIFACTS_PATH}'")
+      @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
 
       # Generate the report(s).
       # only if one of the previous done checks for:
@@ -49,16 +73,16 @@ class GcovrReportinator
       args_html = args_builder_html(opts, true)
 
       if args_html.length > 0
-        print "Creating a gcov HTML report in '#{GCOV_ARTIFACTS_PATH}'... "
-        STDOUT.flush
+        msg = @ceedling[:reportinator].generate_progress("Creating an HTML coverage report with gcovr in '#{GCOV_ARTIFACTS_PATH}'")
+        @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
 
         # Generate the HTML report.
         run(args_common + args_html)
       end
 
       if args_cobertura.length > 0
-        print "Creating a gcov XML report in '#{GCOV_ARTIFACTS_PATH}'... "
-        STDOUT.flush
+        msg = @ceedling[:reportinator].generate_progress("Creating an Cobertura XML coverage report with gcovr in '#{GCOV_ARTIFACTS_PATH}'")
+        @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
 
         # Generate the Cobertura XML report.
         run(args_common + args_cobertura)
@@ -92,19 +116,22 @@ class GcovrReportinator
     if opts[:gcov_reports].empty? && opts[:gcov_html_report_type].nil? && opts[:gcov_xml_report].nil?
       opts[:gcov_reports] = [ReportTypes::HTML_BASIC]
 
-      puts "In your project.yml, define one or more of the"
-      puts "following to specify which reports to generate."
-      puts "For now, creating only an #{ReportTypes::HTML_BASIC} report."
-      puts ""
-      puts ":gcov:"
-      puts "  :reports:"
-      puts "    - #{ReportTypes::HTML_BASIC}"
-      puts "    - #{ReportTypes::HTML_DETAILED}"
-      puts "    - #{ReportTypes::TEXT}"
-      puts "    - #{ReportTypes::COBERTURA}"
-      puts "    - #{ReportTypes::SONARQUBE}"
-      puts "    - #{ReportTypes::JSON}"
-      puts ""
+      msg = <<~TEXT_BLOCK
+        NOTE: In your project.yml, define one or more of the following to specify which reports to generate.
+        For now, creating only an #{ReportTypes::HTML_BASIC} report...
+        
+        :gcov:
+          :reports:
+            - #{ReportTypes::HTML_BASIC}"
+            - #{ReportTypes::HTML_DETAILED}"
+            - #{ReportTypes::TEXT}"
+            - #{ReportTypes::COBERTURA}"
+            - #{ReportTypes::SONARQUBE}"
+            - #{ReportTypes::JSON}"
+  
+      TEXT_BLOCK
+
+      @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
     end
   end
 
@@ -136,7 +163,7 @@ class GcovrReportinator
     args += "--gcov-ignore-parse-errors " if gcovr_opts[:gcov_ignore_parse_errors]
     args += "--keep " if gcovr_opts[:keep]
     args += "--delete " if gcovr_opts[:delete]
-    args += "-j #{gcovr_opts[:num_parallel_threads]} " if !(gcovr_opts[:num_parallel_threads].nil?) && (gcovr_opts[:num_parallel_threads].is_a? Integer)
+    args += "-j #{gcovr_opts[:threads]} " if !(gcovr_opts[:threads].nil?) && (gcovr_opts[:threads].is_a? Integer)
 
     [:fail_under_line, :fail_under_branch, :source_encoding, :object_directory].each do |opt|
       unless gcovr_opts[opt].nil?
@@ -144,10 +171,10 @@ class GcovrReportinator
         value = gcovr_opts[opt]
         if (opt == :fail_under_line) || (opt == :fail_under_branch)
           if not value.is_a? Integer
-            puts "Option value #{opt} has to be an integer"
+            @ceedling[:streaminator].stdout_puts("ERROR: Option value #{opt} has to be an integer", Verbosity::NORMAL)
             value = nil
           elsif (value < 0) || (value > 100)
-            puts "Option value #{opt} has to be a percentage from 0 to 100"
+            @ceedling[:streaminator].stdout_puts("ERROR: Option value #{opt} has to be a percentage from 0 to 100", Verbosity::NORMAL)
             value = nil
           end
         end
@@ -265,20 +292,18 @@ class GcovrReportinator
   def make_text_report(opts, args_common)
     gcovr_opts = get_opts(opts)
     args_text = ""
-    message_text = "Creating a gcov text report"
+    message_text = "Creating a text coverage report"
 
-    if !(gcovr_opts[:text_artifact_filename].nil?)
-      artifacts_file_txt = File.join(GCOV_ARTIFACTS_PATH, gcovr_opts[:text_artifact_filename])
-      args_text += "--output \"#{artifacts_file_txt}\" "
-      message_text += " in '#{GCOV_ARTIFACTS_PATH}'... "
-    else
-      message_text += "... "
-    end
+    filename = gcovr_opts[:text_artifact_filename] || 'coverage.txt'
 
-    print message_text
-    STDOUT.flush
+    artifacts_file_txt = File.join(GCOV_ARTIFACTS_PATH, filename)
+    args_text += "--output \"#{artifacts_file_txt}\" "
+    message_text += " in '#{GCOV_ARTIFACTS_PATH}'"
 
-    # Generate the text report.
+    msg = @ceedling[:reportinator].generate_progress(message_text)
+    @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
+
+    # Generate the text report
     run(args_common + args_text)
   end
 
@@ -326,10 +351,10 @@ class GcovrReportinator
   # Show a more human-friendly message on gcovr return code
   def show_gcovr_message(exitcode)
     if ((exitcode & 2) == 2)
-      puts "The line coverage is less than the minimum"
+      @ceedling[:streaminator].stdout_puts("ERROR: Line coverage is less than the minimum", Verbosity::NORMAL)
     end
     if ((exitcode & 4) == 4)
-      puts "The branch coverage is less than the minimum"
+      @ceedling[:streaminator].stdout_puts("ERROR: Branch coverage is less than the minimum", Verbosity::NORMAL)
     end
   end
 
