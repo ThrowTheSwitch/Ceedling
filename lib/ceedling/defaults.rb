@@ -65,12 +65,13 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
-    '-E'.freeze, # OSX clang
-    '-MM'.freeze,
-    '-MG'.freeze,
-    "-D\"${2}\"".freeze, # Per-test executable defines
+    '-E'.freeze,             # Run only through preprocessor stage with its output
+    '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
+    '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
+    '-MP'.freeze,            # Create make "phony" rules for each include dependency
+    "-D\"${2}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    '-nostdinc'.freeze,
+    '-nostdinc'.freeze,      # Ignore standard include paths
     "\"${1}\"".freeze
     ].freeze
   }
@@ -84,14 +85,14 @@ DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
-    '-E'.freeze, # OSX clang
-    '-MM'.freeze,
-    '-MG'.freeze,
-    '-H'.freeze,
-    "-I\"${2}\"".freeze, # Per-test executable search paths
-    "-D\"${3}\"".freeze, # Per-test executable defines
+    '-E'.freeze,             # Run only through preprocessor stage with its output
+    '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
+    '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
+    '-H'.freeze,             # Also output #include list with depth
+    "-I\"${2}\"".freeze,     # Per-test executable search paths
+    "-D\"${3}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
+    '-nostdinc'.freeze,      # Ignore standard include paths
     "\"${1}\"".freeze
     ].freeze
   }
@@ -187,7 +188,6 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
     # '-nostdinc'.freeze,
     ].freeze
   }
-
 
 DEFAULT_RELEASE_COMPILER_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],

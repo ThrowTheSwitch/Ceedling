@@ -126,6 +126,7 @@ class TestContextExtractor
   def extract_includes(filepath, content)
     includes = []
 
+    content = check_encoding(content)
     content = remove_comments(content)
 
     content.split("\n").each do |line|
@@ -153,7 +154,15 @@ class TestContextExtractor
     end
   end
 
-  # Note: This method is destructive to content argument to reduce memory usage
+  # Note: This method modifies encoding in place (encode!) in an attempt to reduce long string copies
+  def check_encoding(content)
+    if not content.valid_encoding?
+      content.encode!("UTF-16be", :invalid=>:replace, :replace=>"?").encode('UTF-8')
+    end
+    return content
+  end
+
+  # Note: This method is destructive to argument content in an attempt to reduce memory usage
   def remove_comments(content)
     # Remove line comments
     content.gsub!(/\/\/.*$/, '')
