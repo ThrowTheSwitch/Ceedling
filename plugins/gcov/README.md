@@ -10,7 +10,7 @@ future we could configure this to work with other code coverage tools.
 This plugin currently uses [gcovr](https://www.gcovr.com/) and / or
 [ReportGenerator](https://danielpalme.github.io/ReportGenerator/)
 as utilities to generate HTML, XML, JSON, or Text reports. The normal gcov
-plugin _must_ be run first for these reports to generate.
+plugin _must_ be run first before reports can be generated.
 
 ## Installation
 
@@ -155,7 +155,6 @@ Generation of Gcovr HTML reports may be modified with the following configuratio
   # Deprecated - See the :reports: configuration option.
   :html_report_type: [basic|detailed]
 
-
   :gcovr:
     # HTML report filename.
     :html_artifact_filename: <output>
@@ -194,7 +193,6 @@ Generation of Cobertura XML reports may be modified with the following configura
   # Defaults to disabled. (gcovr --xml)
   # Deprecated - See the :reports: configuration option.
   :xml_report: [true|false]
-
 
   :gcovr:
     # Set to 'true' to pretty-print the Cobertura XML report, otherwise set to 'false'.
@@ -345,18 +343,7 @@ default behaviors of gcovr:
     :delete: [true|false]
 
     # Set the number of threads to use in parallel. (gcovr -j).
-    :num_parallel_threads: <num_threads>
-
-  # When scanning the code coverage, if any files are found that do not have
-  # associated coverage data, the command will abort with an error message.
-  :abort_on_uncovered: true
-
-  # When using the ``abort_on_uncovered`` option, the files in this list will not
-  # trigger a failure.
-  # Ceedling globs described in the Ceedling packet ``Path`` section can be used
-  # when directories are placed on the list. Globs are limited to matching directories
-  # and not files.
-  :uncovered_ignore_list: []
+    :threads: <num_threads>
 ```
 
 ### ReportGenerator Configuration

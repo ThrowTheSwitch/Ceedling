@@ -24,7 +24,10 @@ class PluginReportinator
     return @reportinator.generate_banner(message)
   end
 
-  
+  def generate_heading(message)
+    return @reportinator.generate_heading(message)
+  end
+
   def assemble_test_results(results_list, options={:boom => false})
     aggregated_results = get_results_structure
     

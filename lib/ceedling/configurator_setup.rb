@@ -16,11 +16,11 @@ class ConfiguratorSetup
 
   def build_project_config(config, flattened_config)
     ### flesh out config
-    @configurator_builder.clean(flattened_config)
+    @configurator_builder.cleanup(flattened_config)
+    @configurator_builder.set_exception_handling(flattened_config)
 
     ### add to hash values we build up from configuration & file system contents
     flattened_config.merge!(@configurator_builder.set_build_paths(flattened_config))
-    flattened_config.merge!(@configurator_builder.set_force_build_filepaths(flattened_config))
     flattened_config.merge!(@configurator_builder.set_rakefile_components(flattened_config))
     flattened_config.merge!(@configurator_builder.set_release_target(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_project_options(flattened_config))
@@ -39,9 +39,6 @@ class ConfiguratorSetup
     flattened_config.merge!(@configurator_builder.collect_headers(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_release_existing_compilation_input(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_all_existing_compilation_input(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_vendor_defines(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_test_and_vendor_defines(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_release_and_vendor_defines(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_release_artifact_extra_link_objects(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_test_fixture_extra_link_objects(flattened_config))
 
