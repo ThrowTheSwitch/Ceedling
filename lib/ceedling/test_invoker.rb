@@ -30,35 +30,18 @@ class TestInvoker
     @helper = @test_invoker_helper
   end
 
-  # Convert libraries configuration form YAML configuration
-  # into a string that can be given to the compiler.
-  def convert_libraries_to_arguments()
-    args = ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
-    if (defined? LIBRARIES_FLAG)
-      args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) }
-    end
-    return args
-  end
-
-  def get_library_paths_to_arguments()
-    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []).clone : []
-    if (defined? LIBRARIES_PATH_FLAG)
-      paths.map! {|v| LIBRARIES_PATH_FLAG.gsub(/\$\{1\}/, v) }
-    end
-    return paths
-  end
-
   def setup_and_invoke(tests:, context:TEST_SYM, options:{:force_run => true, :build_only => false})
     @project_config_manager.process_test_config_change
 
     # Begin fleshing out the testables data structure
-    @helper.execute_build_step("Creating Build Paths", heading: false) do
+    @helper.execute_build_step("Preparing Build Paths", heading: false) do
+      results_path = File.join( @configurator.project_build_root, context.to_s, 'results' )
+
       par_map(PROJECT_COMPILE_THREADS, tests) do |filepath|
         filepath = filepath.to_s
         key = testable_symbolize(filepath)
         name = key.to_s
         build_path = File.join( @configurator.project_build_root, context.to_s, 'out', name )
-        results_path = File.join( @configurator.project_build_root, context.to_s, 'results', name )
         mocks_path = File.join( @configurator.cmock_mock_path, name )
         preprocess_includes_path = File.join( @configurator.project_test_preprocess_includes_path, name )
         preprocess_files_path    = File.join( @configurator.project_test_preprocess_files_path, name )
@@ -82,6 +65,9 @@ class TestInvoker
 
         @testables[key][:paths].each {|_, path| @file_wrapper.mkdir(path) }
       end
+
+      # Remove any left over test results from previous runs
+      @helper.clean_test_results( results_path, @testables.map{ |_, t| t[:name] } )
     end
 
     # Collect in-test build directives, etc. from test files
@@ -299,17 +285,19 @@ class TestInvoker
 
     # Create Final Tests And/Or Executable Links
     @helper.execute_build_step("Building Test Executables") do
-      lib_args = convert_libraries_to_arguments()
-      lib_paths = get_library_paths_to_arguments()
+      lib_args = @helper.convert_libraries_to_arguments()
+      lib_paths = @helper.get_library_paths_to_arguments()
       par_map(PROJECT_COMPILE_THREADS, @testables) do |_, details|
         @test_invoker_helper.generate_executable_now(
-          details[:paths][:build],
-          details[:executable],
-          details[:objects],
-          details[:link_flags],
-          lib_args,
-          lib_paths,
-          options)
+          context:    context,
+          build_path: details[:paths][:build],
+          executable: details[:executable],
+          objects:    details[:objects],
+          flags:      details[:link_flags],
+          lib_args:   lib_args,
+          lib_paths:  lib_paths,
+          options:    options
+          )
       end
     end
 
@@ -318,7 +306,12 @@ class TestInvoker
       par_map(PROJECT_TEST_THREADS, @testables) do |_, details|
         begin
           @plugin_manager.pre_test( details[:filepath] )
-          @test_invoker_helper.run_fixture_now( details[:executable], details[:results_pass], options )
+          @test_invoker_helper.run_fixture_now(
+            context:    context,
+            executable: details[:executable],
+            result:     details[:results_pass],
+            options:    options
+            )
         rescue => e
           @build_invoker_utils.process_exception( e, context )
         ensure

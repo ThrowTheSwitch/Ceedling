@@ -110,25 +110,10 @@ namespace GCOV_SYM do
   end
 end
 
-if PROJECT_USE_DEEP_DEPENDENCIES
-  namespace REFRESH_SYM do
-    task GCOV_SYM do
-      @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].refresh_deep_dependencies
-      @ceedling[:configurator].restore_config
-    end
-  end
-end
+namespace :report do
 
-# Report Creation Utilities
-UTILITY_NAME_GCOVR = "gcovr"
-UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
-UTILITY_NAMES = [UTILITY_NAME_GCOVR, UTILITY_NAME_REPORT_GENERATOR]
-
-namespace UTILS_SYM do
-
-  desc "Generate gcov code coverage report(s). (Note: Must run a 'ceedling gcov:' task first)."
-  task GCOV_SYM do
+  desc "Generate code coverage report(s). (Note: Must run a 'gcov:' test task first)."
+  task :gcov do
     # Get the gcov options from project.yml.
     opts = @ceedling[:configurator].project_config_hash
 
@@ -162,6 +147,5 @@ namespace UTILS_SYM do
       reportgenerator_reportinator = ReportGeneratorReportinator.new(@ceedling)
       reportgenerator_reportinator.make_reports(opts)
     end
-
   end
 end

@@ -160,20 +160,21 @@ class TestInvokerHelper
     return @file_finder.find_header_input_for_mock_file(mock)
   end
 
-  def invalidate_objects(object_list)
-    object_list.each do |obj|
-      @file_wrapper.rm_f(obj) #TODO eventually these will just be in another subfolder
+  def clean_test_results(path, tests)
+    tests.each do |test|
+      puts(File.join( path, test + '.*' ))
+      @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
     end
   end
 
-  def generate_objects_now(object_list, options)
+  def generate_objects_now(object_list, context, options)
     par_map(PROJECT_COMPILE_THREADS, object_list) do |object|
       src = @file_finder.find_compilation_input_file(object)
       if (File.basename(src) =~ /#{EXTENSION_SOURCE}$/)
         @generator.generate_object_file(
           options[:test_compiler],
           OPERATION_COMPILE_SYM,
-          options[:context],
+          context,
           src,
           object,
           @file_path_utils.form_test_build_list_filepath( object ),
@@ -182,17 +183,35 @@ class TestInvokerHelper
         @generator.generate_object_file(
           options[:test_assembler],
           OPERATION_ASSEMBLE_SYM,
-          options[:context],
+          context,
           src,
           object )
       end
     end
   end
 
-  def generate_executable_now(build_path, executable, objects, flags, lib_args, lib_paths, options)
+  # Convert libraries configuration form YAML configuration
+  # into a string that can be given to the compiler.
+  def convert_libraries_to_arguments()
+    args = ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
+    if (defined? LIBRARIES_FLAG)
+      args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) }
+    end
+    return args
+  end
+
+  def get_library_paths_to_arguments()
+    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []).clone : []
+    if (defined? LIBRARIES_PATH_FLAG)
+      paths.map! {|v| LIBRARIES_PATH_FLAG.gsub(/\$\{1\}/, v) }
+    end
+    return paths
+  end
+
+  def generate_executable_now(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, options:)
     @generator.generate_executable_file(
       options[:test_linker],
-      options[:context],
+      context,
       objects.map{|v| "\"#{v}\""},
       flags,
       executable,
@@ -201,12 +220,12 @@ class TestInvokerHelper
       lib_paths )
   end
 
-  def run_fixture_now(executable, result, options)
+  def run_fixture_now(context:, executable:, result:, options:)
     @generator.generate_test_results(
-      options[:test_fixture], 
-      options[:context],
-      executable, 
-      result)
+      tool:       options[:test_fixture], 
+      context:    context,
+      executable: executable, 
+      result:     result)
   end
   
 end
