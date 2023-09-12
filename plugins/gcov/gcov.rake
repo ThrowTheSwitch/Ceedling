@@ -28,15 +28,6 @@ task directories: [GCOV_BUILD_OUTPUT_PATH, GCOV_RESULTS_PATH, GCOV_DEPENDENCIES_
 
 namespace GCOV_SYM do
 
-  TOOL_COLLECTION_GCOV_TASKS = {
-    :test_compiler  => TOOLS_GCOV_COMPILER,
-    :test_assembler => TOOLS_TEST_ASSEMBLER,
-    :test_linker    => TOOLS_GCOV_LINKER,
-    :test_fixture   => TOOLS_GCOV_FIXTURE
-  }
-
-  task source_coverage: COLLECTION_ALL_SOURCE.pathmap("#{GCOV_BUILD_OUTPUT_PATH}/%n#{@ceedling[:configurator].extension_object}")
-
   desc 'Run code coverage for all tests'
   task all: [:test_deps] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
@@ -44,7 +35,7 @@ namespace GCOV_SYM do
     @ceedling[:configurator].restore_config
   end
 
-  desc 'Run single test w/ coverage ([*] real test or source file name, no path).'
+  desc 'Run single test w/ coverage ([*] test or source file name, no path).'
   task :* do
     message = "\nOops! '#{GCOV_ROOT_NAME}:*' isn't a real task. " \
               "Use a real test or source file name (no path) in place of the wildcard.\n" \
@@ -87,13 +78,6 @@ namespace GCOV_SYM do
     end
   end
 
-  desc 'Run code coverage for changed files'
-  task delta: [:test_deps] do
-    @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
-    @ceedling[:configurator].restore_config
-  end
-
   # use a rule to increase efficiency for large projects
   # gcov test tasks by regex
   rule(/^#{GCOV_TASK_ROOT}\S+$/ => [
@@ -107,45 +91,5 @@ namespace GCOV_SYM do
     @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
     @ceedling[:test_invoker].setup_and_invoke(tests:[test.source], context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS)
     @ceedling[:configurator].restore_config
-  end
-end
-
-namespace :report do
-
-  desc "Generate code coverage report(s). (Note: Must run a 'gcov:' test task first)."
-  task :gcov do
-    # Get the gcov options from project.yml.
-    opts = @ceedling[:configurator].project_config_hash
-
-    # Create the artifacts output directory.
-    if !File.directory? GCOV_ARTIFACTS_PATH
-      FileUtils.mkdir_p GCOV_ARTIFACTS_PATH
-    end
-
-    # Remove unsupported reporting utilities.
-    if !(opts[:gcov_utilities].nil?)
-      opts[:gcov_utilities].reject! { |item| !(UTILITY_NAMES.map(&:upcase).include? item.upcase) }
-    end
-
-    # Default to gcovr when no reporting utilities are specified.
-    if opts[:gcov_utilities].nil? || opts[:gcov_utilities].empty?
-      opts[:gcov_utilities] = [UTILITY_NAME_GCOVR]
-    end
-
-    if opts[:gcov_reports].nil?
-      opts[:gcov_reports] = []
-    end
-
-    gcovr_reportinator = GcovrReportinator.new(@ceedling)
-    gcovr_reportinator.support_deprecated_options(opts)
-
-    if gcovr_reportinator.utility_enabled?(opts, UTILITY_NAME_GCOVR)
-      gcovr_reportinator.make_reports(opts)
-    end
-
-    if gcovr_reportinator.utility_enabled?(opts, UTILITY_NAME_REPORT_GENERATOR)
-      reportgenerator_reportinator = ReportGeneratorReportinator.new(@ceedling)
-      reportgenerator_reportinator.make_reports(opts)
-    end
   end
 end

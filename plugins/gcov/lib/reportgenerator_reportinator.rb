@@ -17,7 +17,7 @@ class ReportGeneratorReportinator
       rg_opts = get_opts(opts)
 
       msg = @ceedling[:reportinator].generate_progress("Creating #{opts[:gcov_reports].join(', ')} coverage report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_PATH}'")
-      @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
+      @ceedling[:streaminator].stdout_puts("\n" + msg, Verbosity::NORMAL)
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.
       for gcov_file in Dir.glob("*.gcov")

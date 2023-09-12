@@ -8,20 +8,6 @@ class GcovrReportinator
     @reportinator_helper = ReportinatorHelper.new(system_objects)
   end
 
-  # Returns true if the given utility is enabled, otherwise returns false.
-  def utility_enabled?(opts, utility_name)
-    enabled = !(opts.nil?) && !(opts[:gcov_utilities].nil?) && (opts[:gcov_utilities].map(&:upcase).include? utility_name.upcase)
-
-    # Simple check for utility installation
-    # system() result is nil if could not run command
-    if enabled and system(utility_name, '--version', [:out, :err] => File::NULL).nil?
-      @ceedling[:streaminator].stderr_puts("ERROR: gcov report generation tool #{utility_name} not installed.", Verbosity::NORMAL)
-      raise
-    end
-
-    return enabled
-  end
-
   # Generate the gcovr report(s) specified in the options.
   def make_reports(opts)
     # Get the gcovr version number.
@@ -50,7 +36,7 @@ class GcovrReportinator
       reports << "HTML" if not _args.empty?
       
       msg = @ceedling[:reportinator].generate_progress("Creating #{reports.join(', ')} coverage report(s) with gcovr in '#{GCOV_ARTIFACTS_PATH}'")
-      @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
+      @ceedling[:streaminator].stdout_puts("\n" + msg, Verbosity::NORMAL)
 
       # Generate the report(s).
       # only if one of the previous done checks for:
