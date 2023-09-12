@@ -40,18 +40,13 @@ namespace TEST_SYM do
       options:{:force_run => true, :build_only => false}.merge(TOOL_COLLECTION_TEST_TASKS))
   end
 
-  desc "Run single test ([*] real test or source file name, no path)."
+  desc "Run single test ([*] test or source file name, no path)."
   task :* do
     message = "\nOops! '#{TEST_ROOT_NAME}:*' isn't a real task. " +
               "Use a real test or source file name (no path) in place of the wildcard.\n" +
               "Example: rake #{TEST_ROOT_NAME}:foo.c\n\n"
 
     @ceedling[:streaminator].stdout_puts( message )
-  end
-
-  desc "Run tests for changed files."
-  task :delta => [:test_deps] do
-    @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, options:{:force_run => false}.merge(TOOL_COLLECTION_TEST_TASKS))
   end
 
   desc "Just build tests without running."
