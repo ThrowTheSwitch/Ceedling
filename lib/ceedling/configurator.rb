@@ -104,7 +104,6 @@ class Configurator
 
     cmock[:plugins] = []                             if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym }
-    cmock[:plugins] << (:cexception)                 if (!cmock[:plugins].include?(:cexception) and (config[:project][:use_exceptions]))
     cmock[:plugins].uniq!
 
     cmock[:unity_helper] = false                     if (cmock[:unity_helper].nil?)
@@ -117,7 +116,16 @@ class Configurator
 
     @runner_config = cmock.merge(@runner_config || config[:test_runner] || {})
 
-    @cmock_builder.manufacture(cmock)
+    @cmock_builder.default_config = cmock
+  end
+
+
+  def copy_vendor_defines(config)
+    # NOTE: To maintain any backwards compatibility following a refactoring of :defines: handling,
+    #       copy top-level vendor defines into the respective tool areas.
+    config[UNITY_SYM].store(:defines, config[:defines][UNITY_SYM])
+    config[CMOCK_SYM].store(:defines, config[:defines][CMOCK_SYM])
+    config[CEXCEPTION_SYM].store(:defines, config[:defines][CEXCEPTION_SYM])
   end
 
 
@@ -325,6 +333,27 @@ class Configurator
       hash = { key => config[key] }
       @configurator_setup.build_constants_and_accessors(hash, binding())
     end
+  end
+
+
+  def redefine_element(elem, value)
+    # Ensure elem is a symbol
+    elem = elem.to_sym if elem.class != Symbol
+
+    # Ensure element already exists
+    if not @project_config_hash.include?(elem)
+      @streaminator.stderr_puts("Could not rederine #{elem} in configurator--element does not exist", Verbosity::ERROR)
+      raise
+    end
+
+    # Update internal hash
+    @project_config_hash[elem] = value
+
+    # Update global constant
+    @configurator_builder.build_global_constant(elem, value)
+
+    # Update backup config
+    store_config
   end
 
 
