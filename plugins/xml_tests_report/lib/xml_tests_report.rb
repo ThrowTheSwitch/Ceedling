@@ -21,6 +21,7 @@ class XmlTestsReport < Plugin
 
       artifact_filename = @ceedling[:configurator].project_config_hash[:xml_tests_report_artifact_filename] || 'report.xml'
       artifact_fullpath = @ceedling[:configurator].project_config_hash[:xml_tests_report_path] || File.join(PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s)
+
       file_path = File.join(artifact_fullpath, artifact_filename)
 
       @ceedling[:file_wrapper].open(file_path, 'w') do |f|

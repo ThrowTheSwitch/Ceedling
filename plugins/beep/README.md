@@ -8,10 +8,10 @@ it's time to pay attention again.
 This plugin has very few configuration options. At this time it can beep on completion of a task and/or on an error condition.
 For each of these, you can configure the method that it should beep.
 
-```
-:tools:
-  :beep_on_done: :bell
-  :beep_on_error: :bell
+```yaml
+:beep:
+  :on_done: :bell
+  :on_error: :bell
 ```
 
 Each of these have the following options:

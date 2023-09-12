@@ -82,7 +82,6 @@ class ToolExecutorHelper
     end
 
     case redirect
-      # we may need more complicated processing after some learning with various environments
       when StdErrRedirect::NONE then nil
       when StdErrRedirect::WIN  then '2>&1'
       when StdErrRedirect::UNIX then '2>&1'
