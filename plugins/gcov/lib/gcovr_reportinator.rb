@@ -6,6 +6,7 @@ class GcovrReportinator
   def initialize(system_objects)
     @ceedling = system_objects
     @reportinator_helper = ReportinatorHelper.new(system_objects)
+    support_deprecated_options( @ceedling[:configurator].project_config_hash )
   end
 
   # Generate the gcovr report(s) specified in the options.
@@ -302,16 +303,14 @@ class GcovrReportinator
 
   # Run gcovr with the given arguments.
   def run(args)
-    begin
-      command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_POST_REPORT, [], args)
-      shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
-      @reportinator_helper.print_shell_result(shell_result)
-    rescue
-      # handle any unforeseen issues with called tool
-      exitcode = $?.exitstatus
-      show_gcovr_message(exitcode)
-      exit(exitcode)
-    end
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_POST_REPORT, [], args)
+    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
+
+    command[:options][:boom] = false # Don't raise an exception if non-zero exit
+    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+
+    @reportinator_helper.print_shell_result(shell_result)
+    show_gcovr_message(shell_result[:exit_code])
   end
 
 
@@ -322,6 +321,8 @@ class GcovrReportinator
     version_number_minor = 0
 
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_POST_REPORT, [], "--version")
+    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
+
     shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
     version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)
 
@@ -338,9 +339,11 @@ class GcovrReportinator
   def show_gcovr_message(exitcode)
     if ((exitcode & 2) == 2)
       @ceedling[:streaminator].stdout_puts("ERROR: Line coverage is less than the minimum", Verbosity::NORMAL)
+      raise
     end
     if ((exitcode & 4) == 4)
       @ceedling[:streaminator].stdout_puts("ERROR: Branch coverage is less than the minimum", Verbosity::NORMAL)
+      raise
     end
   end
 

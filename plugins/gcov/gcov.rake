@@ -93,3 +93,16 @@ namespace GCOV_SYM do
     @ceedling[:configurator].restore_config
   end
 end
+
+# If gcov config enables separate report generation task, create the task
+if @ceedling[GCOV_SYM].automatic_reporting_disabled?
+namespace GCOV_REPORT_NAMESPACE_SYM do
+  desc "Generate reports from coverage results (Note: a #{GCOV_SYM}: task must be executed first)"
+  task GCOV_SYM do
+    @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
+    @ceedling[:gcov].generate_coverage_reports()
+    @ceedling[:configurator].restore_config
+  end
+end
+end
+

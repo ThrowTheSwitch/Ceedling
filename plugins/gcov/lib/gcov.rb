@@ -1,6 +1,8 @@
 require 'ceedling/plugin'
 require 'ceedling/constants'
 require 'gcov_constants'
+require 'gcovr_reportinator'
+require 'reportgenerator_reportinator'
 
 class Gcov < Plugin
   attr_reader :config
@@ -14,6 +16,13 @@ class Gcov < Plugin
 
     @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
     @coverage_template_all = @ceedling[:file_wrapper].read(File.join(@plugin_root, 'assets/template.erb'))
+
+    config = @ceedling[:configurator].project_config_hash
+    @reports_enabled = reports_enabled?( config[:gcov_reports] )
+
+    # This may raise an exception because of configuration or tool installation issues.
+    # Best to complain about it before allowing any tasks to run.
+    @reportinators = build_reportinators( config[:gcov_utilities], @reports_enabled )
   end
 
   def generate_coverage_object_file(test, source, object)
@@ -66,7 +75,7 @@ class Gcov < Plugin
     report_per_file_coverage_results()
 
     # Run coverage report generation
-    generate_coverage_reports()
+    generate_coverage_reports() if not automatic_reporting_disabled?
   end
 
   def summary
@@ -79,6 +88,27 @@ class Gcov < Plugin
     }
 
     @ceedling[:plugin_reportinator].run_test_results_report(hash)
+  end
+
+  def automatic_reporting_disabled?
+    config = @ceedling[:configurator].project_config_hash
+
+    task = config[:gcov_report_task]
+
+    return task if not task.nil?
+
+    return false
+  end
+
+  def generate_coverage_reports
+    return if (not @reports_enabled) or @reportinators.empty?
+
+    # Create the artifacts output directory.
+    @ceedling[:file_wrapper].mkdir( GCOV_ARTIFACTS_PATH )
+
+    @reportinators.each do |reportinator|
+      reportinator.make_reports( @ceedling[:configurator].project_config_hash )
+    end
   end
 
   private ###################################
@@ -131,52 +161,49 @@ class Gcov < Plugin
     end
   end
 
-  def generate_coverage_reports()
-    # Get the gcov options from the project configuration
-    cfg = @ceedling[:configurator].project_config_hash
-    cfg_utils = cfg[:gcov_utilities]
-    cfg_reports = cfg[:gcov_reports]
+  def reports_enabled?(cfg_reports)
+    return false if cfg_reports.nil? or cfg_reports.empty?
+    return true
+  end
 
-    # Create the artifacts output directory.
-    @ceedling[:file_wrapper].mkdir( GCOV_ARTIFACTS_PATH )
+  def build_reportinators(cfg_utils, enabled)
+    reportinators = []
+
+    return [] if not enabled
 
     # Remove unsupported reporting utilities.
-    if !(cfg_utils.nil?)
+    if (not cfg_utils.nil?)
       cfg_utils.reject! { |item| !(UTILITY_NAMES.map(&:upcase).include? item.upcase) }
     end
 
     # Default to gcovr when no reporting utilities are specified.
     if cfg_utils.nil? || cfg_utils.empty?
-      cfg[:gcov_utilities] = [UTILITY_NAME_GCOVR]
+      cfg_utils = [UTILITY_NAME_GCOVR]
     end
-
-    # Default to no reports if entry missing from project config
-    if cfg_reports.nil?
-      cfg[:gcov_reports] = []
-    end
-
-    reportinator = nil
 
     # Run reports using gcovr
-    if utility_enabled?( cfg, UTILITY_NAME_GCOVR )
+    if utility_enabled?( cfg_utils, UTILITY_NAME_GCOVR )
       reportinator = GcovrReportinator.new( @ceedling )
-      reportinator.support_deprecated_options( cfg )
-    # Run reports using ReportGenerator
-    elsif utility_enabled?( cfg, UTILITY_NAME_REPORT_GENERATOR )
-      reportinator = ReportGeneratorReportinator.new( @ceedling )
+      reportinators << reportinator
     end
 
-    reportinator.make_reports( cfg ) if not reportinator.nil?
+    # Run reports using ReportGenerator
+    if utility_enabled?( cfg_utils, UTILITY_NAME_REPORT_GENERATOR )
+      reportinator = ReportGeneratorReportinator.new( @ceedling )
+      reportinators << reportinator
+    end
+
+    return reportinators
   end
 
   # Returns true if the given utility is enabled, otherwise returns false.
   def utility_enabled?(opts, utility_name)
-    enabled = !(opts.nil?) && !(opts[:gcov_utilities].nil?) && (opts[:gcov_utilities].map(&:upcase).include? utility_name.upcase)
+    enabled = !(opts.nil?) && (opts.map(&:upcase).include? utility_name.upcase)
 
     # Simple check for utility installation
     # system() result is nil if could not run command
     if enabled and system(utility_name, '--version', [:out, :err] => File::NULL).nil?
-      @ceedling[:streaminator].stderr_puts("ERROR: gcov report generation tool #{utility_name} not installed.", Verbosity::NORMAL)
+      @ceedling[:streaminator].stderr_puts("ERROR: gcov report generation tool '#{utility_name}'' not installed.", Verbosity::NORMAL)
       raise
     end
 
