@@ -162,7 +162,6 @@ class TestInvokerHelper
 
   def clean_test_results(path, tests)
     tests.each do |test|
-      puts(File.join( path, test + '.*' ))
       @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
     end
   end
