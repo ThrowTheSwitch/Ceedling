@@ -475,7 +475,7 @@ are not listed in `-T` output. Because so many files may be present
 it's unwieldy to list them all.
 
 Multiple rake tasks can be executed at the command line (order
-is executed as provided). For example, `ceed
+is executed as provided). For example, `ceedling
 clobber test:all release` will removed all generated files;
 build and run all tests; and then build all source - in that order.
 If any Rake task fails along the way, execution halts before the
