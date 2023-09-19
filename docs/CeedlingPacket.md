@@ -835,14 +835,6 @@ project: global project settings
 
   **Default**: (none)
 
-* `use_exceptions`:
-
-  Configures the build environment to make use of CException. Note that
-  if you do not use exceptions, there's no harm in leaving this as its
-  default value.
-
-  **Default**: TRUE
-
 * `use_mocks`:
 
   Configures the build environment to make use of CMock. Note that if
@@ -984,6 +976,46 @@ that you execute on target hardware).
   Backtrace is fully integrated with **junit_tests_report** plugin.
 
   **Default**: FALSE
+
+  ---
+
+  **Note:**
+
+    The configuration can be combined together with
+    
+    ```
+    :test_runner:
+        :cmdline_args: true
+    ```
+
+    After setting **cmdline_args** to **true**, the debuger will execute each test
+    case from crashing test file separately. The exclude and include test_case patterns will
+    be applied, to filter execution of test cases.
+
+    The .gcno and .gcda files will be generated and section of the code under test case
+    causing segmetation fault will be omitted from Coverage Report.
+
+    The default debugger (**gdb**)[https://www.sourceware.org/gdb/] can be switch to any other
+    via setting new configuration under tool node in project.yml. At default set to:
+
+    ```yaml
+      :tools:
+        :backtrace_settings:
+          :executable: gdb
+          :arguments:
+            - -q
+            - --eval-command run
+            - --eval-command backtrace
+            - --batch
+            - --args
+    ```
+    
+    Important. The debugger which will collect segmentation fault should run in:
+
+    - background
+    - with option to enable pass to executable binary additional arguments
+
+  ---
 
 * `output`:
 
@@ -1508,20 +1540,20 @@ Example [:flags] YAML blurb
 :flags:
   :release:
     :compile:
-      :main:       # add '-Wall' to compilation of main.c
+      'main':       # add '-Wall' to compilation of main.c
         - -Wall
-      :fan:        # add '--O2' to compilation of fan.c
+      'fan':        # add '--O2' to compilation of fan.c
         - --O2
-      :'test_.+':   # add '-pedantic' to all test-files
+      'test_.+':   # add '-pedantic' to all test-files
         - -pedantic
-      :*:          # add '-foo' to compilation of all files not main.c or fan.c
+      '*':          # add '-foo' to compilation of all files not main.c or fan.c
         - -foo
   :test:
     :compile:
-      :main:       # add '--O1' to compilation of main.c as part of test builds including main.c
+      'main':       # add '--O1' to compilation of main.c as part of test builds including main.c
         - --O1
     :link:
-      :test_main:  # add '--bar --baz' to linking of test_main.exe
+      'test_main':  # add '--bar --baz' to linking of test_main.exe
         - --bar
         - --baz
 ```
@@ -1589,13 +1621,8 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
 
 * `plugins`:
 
-  If [:project][:use_exceptions] is enabled, the internal plugins list is pre-populated with 'cexception'.
-
-  Whether or not you have included [:cmock][:plugins] in your
-  configuration file, Ceedling automatically adds 'cexception' to the
-  plugin list if exceptions are enabled. To add to the list Ceedling
-  provides CMock, simply add [:cmock][:plugins] to your configuration
-  and specify your desired additional plugins.
+  To add to the list Ceedling provides CMock, simply add [:cmock][:plugins] 
+  to your configuration and specify your desired additional plugins.
 
   Each of the plugins have their own additional documentation.
 
@@ -2079,7 +2106,7 @@ Notes:
 
 * `load_paths`:
 
-  Base paths to search for plugin subdirectories or extra ruby functionalit
+  Base paths to search for plugin subdirectories or extra ruby functionality
 
   **Default**: `[]` (empty)
 
@@ -2323,4 +2350,4 @@ cross-compiling on the desktop just ain't gonna get it done.
 Creating Custom Plugins
 -----------------------
 
-Oh boy. This is going to take some explaining.
+There is a [doc](CeedlingCustomPlugins.md) for this.

@@ -1,4 +1,5 @@
-require 'rbconfig'
+require 'rbconfig'    
+require 'open3'
 
 class SystemWrapper
 
@@ -39,6 +40,23 @@ class SystemWrapper
 
   def time_now
     return Time.now.asctime
+  end
+
+  def shell_capture3(command, boom = true) 
+    begin 
+      stdout, stderr, status = Open3.capture3(command)
+    rescue => err
+      stderr = err
+      status = -1
+    end
+    $exit_code = status.freeze if boom
+    if (status != 0)
+      stdout += stderr
+    end
+    return {
+      :output    => stdout.freeze,
+      :exit_code => status.freeze
+    }
   end
 
   def shell_backticks(command, boom = true)

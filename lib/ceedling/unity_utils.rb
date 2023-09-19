@@ -3,7 +3,7 @@
 # and additional warning definitions
 class UnityUtils
   attr_reader :test_runner_disabled_replay, :arg_option_map
-  attr_accessor :test_runner_args, :not_supported
+  attr_accessor :test_case_incl, :test_case_excl, :not_supported
 
   constructor :configurator
 
@@ -12,7 +12,8 @@ class UnityUtils
      "The option[s]: %<opt>.s \ncannot be applied." \
      'To enable it, please add `:cmdline_args` under' \
      ' :test_runner option in your project.yml.'
-    @test_runner_args = ''
+    @test_case_incl = ''
+    @test_case_excl = ''
     @not_supported = ''
 
     # Refering to Unity implementation of the parser implemented in the unit.c :
@@ -40,6 +41,9 @@ class UnityUtils
   # @param [String, #option] one of the supported by unity arguments.
   #                          At current moment only "test_case_name" to
   #                          run single test
+  #
+  # @return String - empty if cmdline_args is not set
+  #                  In other way properly formated command line for Unity
   def additional_test_run_args(argument, option)
     # Confirm wherever cmdline_args is set to true
     # and parsing arguments under generated test runner in Unity is enabled
@@ -52,36 +56,41 @@ class UnityUtils
     raise 'Unknown Unity argument option' unless \
       @arg_option_map.key?(option)
 
-    @test_runner_args += " -#{@arg_option_map[option]} #{argument} "
+    " -#{@arg_option_map[option]} #{argument} "
   end
 
   # Return test case arguments
   #
   # @return [String] formatted arguments for test file
   def collect_test_runner_additional_args
-    @test_runner_args
+    "#{@test_case_incl} #{@test_case_excl}"
   end
 
   # Parse passed by user arguments
   def create_test_runner_additional_args
     if ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
       if @configurator.project_config_hash[:test_runner_cmdline_args]
-        additional_test_run_args(ENV['CEEDLING_INCLUDE_TEST_CASE_NAME'],
-                                 'test_case')
+        @test_case_incl += additional_test_run_args(
+          ENV['CEEDLING_INCLUDE_TEST_CASE_NAME'],
+          'test_case')
       else
-        @not_supported = "\n\t--test_case"
+        @not_supported += "\n\t--test_case"
       end
     end
 
     if ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME']
       if @configurator.project_config_hash[:test_runner_cmdline_args]
-        additional_test_run_args(ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'],
-                                 'exclude_test_case')
+        @test_case_excl += additional_test_run_args(
+          ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'],
+          'exclude_test_case')
       else
-        @not_supported = "\n\t--exclude_test_case"
+        @not_supported += "\n\t--exclude_test_case"
       end
     end
-    print_warning_about_not_enabled_cmdline_args
+
+    if ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'] || ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
+      print_warning_about_not_enabled_cmdline_args
+    end
   end
 
   # Return UNITY_USE_COMMAND_LINE_ARGS define required by Unity to
@@ -95,7 +104,6 @@ class UnityUtils
   # Print on output console warning about lack of support for single test run
   # if cmdline_args is not set to true in project.yml file, that
   def print_warning_about_not_enabled_cmdline_args
-    puts(format(@test_runner_disabled_replay, opt: @not_supported)) unless \
-      @configurator.project_config_hash[:test_runner_cmdline_args]
+    puts(format(@test_runner_disabled_replay, opt: @not_supported)) unless @not_supported.empty?
   end
 end

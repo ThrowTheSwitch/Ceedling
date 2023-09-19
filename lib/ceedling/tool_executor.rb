@@ -10,37 +10,32 @@ end
 
 class ToolExecutor
 
-  constructor :configurator, :tool_executor_helper, :streaminator, :system_wrapper
+  constructor :configurator, :tool_executor_helper, :streaminator, :verbosinator, :system_wrapper
 
   def setup
-    @tool_name  = ''
-    @executable = ''
+
   end
 
   # build up a command line from yaml provided config
 
-  # @param extra_params is an array of parameters to append to executable
+  # @param extra_params is an array of parameters to append to executable (prepend to rest of command line)
   def build_command_line(tool_config, extra_params, *args)
-    @tool_name  = tool_config[:name]
-    @executable = tool_config[:executable]
-
     command = {}
 
     # basic premise is to iterate top to bottom through arguments using '$' as
     #  a string replacement indicator to expand globals or inline yaml arrays
     #  into command line arguments via substitution strings
     # executable must be quoted if it includes spaces (common on windows)
-    executable = @tool_executor_helper.osify_path_separators( expandify_element(@executable, *args) )
+    executable = @tool_executor_helper.osify_path_separators( expandify_element(tool_config[:name], tool_config[:executable], *args) )
     executable = "\"#{executable}\"" if executable.include?(' ')
     command[:line] = [
       executable,
       extra_params.join(' ').strip,
-      build_arguments(tool_config[:arguments], *args),
+      build_arguments(tool_config[:name], tool_config[:arguments], *args),
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     command[:options] = {
-      :stderr_redirect => @tool_executor_helper.stderr_redirection(tool_config, @configurator.project_logging),
-      :background_exec => tool_config[:background_exec]
+      :stderr_redirect => @tool_executor_helper.stderr_redirection(tool_config, @configurator.project_logging)
       }
 
     return command
@@ -51,14 +46,13 @@ class ToolExecutor
   def exec(command, options={}, args=[])
     options[:boom] = true if (options[:boom].nil?)
     options[:stderr_redirect] = StdErrRedirect::NONE if (options[:stderr_redirect].nil?)
-    options[:background_exec] = BackgroundExec::NONE if (options[:background_exec].nil?)
-    # build command line
+
+    # Build command line
     command_line = [
       @tool_executor_helper.background_exec_cmdline_prepend( options ),
       command.strip,
       args,
       @tool_executor_helper.stderr_redirect_cmdline_append( options ),
-      @tool_executor_helper.background_exec_cmdline_append( options ),
       ].flatten.compact.join(' ')
 
     @streaminator.stderr_puts("Verbose: #{__method__}(): #{command_line}", Verbosity::DEBUG)
@@ -67,15 +61,11 @@ class ToolExecutor
 
     # depending on background exec option, we shell out differently
     time = Benchmark.realtime do
-      if (options[:background_exec] != BackgroundExec::NONE)
-        shell_result = @system_wrapper.shell_system( command_line, options[:boom] )
-      else
-        shell_result = @system_wrapper.shell_backticks( command_line, options[:boom] )
-      end
+      shell_result = @system_wrapper.shell_capture3( command_line, options[:boom] )
     end
     shell_result[:time] = time
 
-    #scrub the string for illegal output
+    # Scrub the string for illegal output
     unless shell_result[:output].nil?
       shell_result[:output] = shell_result[:output].scrub if "".respond_to?(:scrub)
       shell_result[:output].gsub!(/\033\[\d\dm/,'')
@@ -84,8 +74,10 @@ class ToolExecutor
     @tool_executor_helper.print_happy_results( command_line, shell_result, options[:boom] )
     @tool_executor_helper.print_error_results( command_line, shell_result, options[:boom] )
 
-    # go boom if exit code isn't 0 (but in some cases we don't want a non-0 exit code to raise)
-    raise ShellExecutionException.new(shell_result) if ((shell_result[:exit_code] != 0) and options[:boom])
+    # Go boom if exit code is not 0 and we want to debug (in some cases we don't want a non-0 exit code to raise)
+    if ((shell_result[:exit_code] != 0) and options[:boom])
+      raise ShellExecutionException.new(shell_result)
+    end
 
     return shell_result
   end
@@ -94,26 +86,25 @@ class ToolExecutor
   private #############################
 
 
-  def build_arguments(config, *args)
+  def build_arguments(tool_name, config, *args)
     build_string = ''
 
     return nil if (config.nil?)
 
-    # iterate through each argument
+    # Iterate through each argument
 
-    # the yaml blob array needs to be flattened so that yaml substitution
-    # is handled correctly, since it creates a nested array when an anchor is
-    # dereferenced
+    # The yaml blob array needs to be flattened so that yaml substitution is handled
+    # correctly as it creates a nested array when an anchor is dereferenced
     config.flatten.each do |element|
       argument = ''
 
       case(element)
         # if we find a simple string then look for string replacement operators
         #  and expand with the parameters in this method's argument list
-        when String then argument = expandify_element(element, *args)
+        when String then argument = expandify_element(tool_name, element, *args)
         # if we find a hash, then we grab the key as a substitution string and expand the
         #  hash's value(s) within that substitution string
-        when Hash   then argument = dehashify_argument_elements(element)
+        when Hash   then argument = dehashify_argument_elements(tool_name, element)
       end
 
       build_string.concat("#{argument} ") if (argument.length > 0)
@@ -126,7 +117,7 @@ class ToolExecutor
 
 
   # handle simple text string argument & argument array string replacement operators
-  def expandify_element(element, *args)
+  def expandify_element(tool_name, element, *args)
     match = //
     to_process = nil
     args_index = 0
@@ -136,7 +127,7 @@ class ToolExecutor
       args_index = ($2.to_i - 1)
 
       if (args.nil? or args[args_index].nil?)
-        @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' expected valid argument data to accompany replacement operator #{$1}.", Verbosity::ERRORS)
+        @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' expected valid argument data to accompany replacement operator #{$1}.", Verbosity::ERRORS)
         raise
       end
 
@@ -171,7 +162,7 @@ class ToolExecutor
 
 
   # handle argument hash: keys are substitution strings, values are data to be expanded within substitution strings
-  def dehashify_argument_elements(hash)
+  def dehashify_argument_elements(tool_name, hash)
     build_string = ''
     elements = []
 
@@ -181,7 +172,7 @@ class ToolExecutor
     expand = hash[hash.keys[0]]
 
     if (expand.nil?)
-      @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' could not expand nil elements for substitution string '#{substitution}'.", Verbosity::ERRORS)
+      @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' could not expand nil elements for substitution string '#{substitution}'.", Verbosity::ERRORS)
       raise
     end
 
@@ -199,7 +190,7 @@ class ToolExecutor
       elsif (@system_wrapper.constants_include?(item))
         const = Object.const_get(item)
         if (const.nil?)
-          @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' found constant '#{item}' to be nil.", Verbosity::ERRORS)
+          @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' found constant '#{item}' to be nil.", Verbosity::ERRORS)
           raise
         else
           elements << const
@@ -207,10 +198,10 @@ class ToolExecutor
       elsif (item.class == Array)
         elements << item
       elsif (item.class == String)
-        @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' cannot expand nonexistent value '#{item}' for substitution string '#{substitution}'.", Verbosity::ERRORS)
+        @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' cannot expand nonexistent value '#{item}' for substitution string '#{substitution}'.", Verbosity::ERRORS)
         raise
       else
-        @streaminator.stderr_puts("ERROR: Tool '#{@tool_name}' cannot expand value having type '#{item.class}' for substitution string '#{substitution}'.", Verbosity::ERRORS)
+        @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' cannot expand value having type '#{item.class}' for substitution string '#{substitution}'.", Verbosity::ERRORS)
         raise
       end
     end
