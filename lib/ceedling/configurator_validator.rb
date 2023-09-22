@@ -144,12 +144,14 @@ class ConfiguratorValidator
     return true
   end
   
-  def validate_tool_stderr_redirect(config, tools, tool)
-    redirect = config[tools][tool][:stderr_redirect]
+  def validate_tool_stderr_redirect(config, *keys)
+    hash = retrieve_value(config, keys + [:stderr_redirect])
+    redirect = hash[:value]
+    
     if (redirect.class == Symbol)
       # map constants and force to array of strings for runtime universality across ruby versions
       if (not StdErrRedirect.constants.map{|constant| constant.to_s}.include?(redirect.to_s.upcase))
-        error = "ERROR: [:#{tools}][:#{tool}][:stderr_redirect][:#{redirect}] is not a recognized option " +
+        error = "ERROR: #{format_key_sequence(keys, hash[:depth])}[:#{redirect}] is not a recognized option " +
                 "{#{StdErrRedirect.constants.map{|constant| ':' + constant.to_s.downcase}.join(', ')}}."
         @stream_wrapper.stderr_puts(error) 
         return false        
@@ -185,7 +187,7 @@ class ConfiguratorValidator
 
   def format_key_sequence(keys, depth)
     walked_keys    = keys.slice(0, depth)
-    formatted_keys = walked_keys.map{|key| "[:#{key}]"}
+    formatted_keys = walked_keys.map{|key| "[#{key.is_a?(Integer)? '' : ':'}#{key}]"}
     
     return formatted_keys.join
   end
