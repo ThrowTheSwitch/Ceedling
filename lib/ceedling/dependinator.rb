@@ -13,14 +13,6 @@ class Dependinator
   end
 
 
-  def enhance_release_file_dependencies(files)
-    files.each do |filepath|
-      @rake_wrapper[filepath].enhance( [@configurator.project_release_force_rebuild_filepath] ) if (@project_config_manager.release_config_changed)
-    end
-  end
-
-
-
   def load_test_object_deep_dependencies(files_list)
     dependencies_list = @file_path_utils.form_test_dependencies_filelist(files_list)
     dependencies_list.each do |dependencies_file|

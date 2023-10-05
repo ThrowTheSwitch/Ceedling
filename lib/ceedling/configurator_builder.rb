@@ -138,6 +138,8 @@ class ConfiguratorBuilder
       [:project_release_artifacts_path,         File.join(project_build_artifacts_root, RELEASE_BASE_PATH), in_hash[:project_release_build] ],
       [:project_release_build_cache_path,       File.join(project_build_release_root, 'cache'),             in_hash[:project_release_build] ],
       [:project_release_build_output_path,      File.join(project_build_release_root, 'out'),               in_hash[:project_release_build] ],
+      [:project_release_build_output_asm_path,  File.join(project_build_release_root, 'out', 'asm'),        in_hash[:project_release_build] ],
+      [:project_release_build_output_c_path,    File.join(project_build_release_root, 'out', 'c'),          in_hash[:project_release_build] ],
       [:project_release_dependencies_path,      File.join(project_build_release_root, 'dependencies'),      in_hash[:project_release_build] ],
 
       [:project_log_path,   File.join(in_hash[:project_build_root], 'logs'), true ],
@@ -174,9 +176,7 @@ class ConfiguratorBuilder
          File.join(CEEDLING_LIB, 'ceedling', 'tasks_tests.rake'),
          File.join(CEEDLING_LIB, 'ceedling', 'rules_tests.rake')]}
 
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'rules_release_deep_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_deep_dependencies])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'rules_release.rake') if (in_hash[:project_release_build])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'tasks_release_deep_dependencies.rake') if (in_hash[:project_release_build] and in_hash[:project_use_deep_dependencies])
     out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'ceedling', 'tasks_release.rake') if (in_hash[:project_release_build])
 
     return out_hash
@@ -413,26 +413,12 @@ class ConfiguratorBuilder
 
 
   def collect_test_fixture_extra_link_objects(in_hash)
-    #  Note: Symbols passed to compiler at command line can change Unity and CException behavior / configuration;
-    #    we also handle those dependencies elsewhere in compilation dependencies
+    sources = []
+    support = @file_wrapper.instantiate_file_list()
 
-    sources = [UNITY_C_FILE]
+    @file_system_utils.revise_file_list( support, in_hash[:files_support] )
 
-    in_hash[:files_support].each { |file| sources << file }
-
-    # we don't include paths here because use of plugins or mixing different compilers may require different build paths
-    sources << CEXCEPTION_C_FILE if (in_hash[:project_use_exceptions])
-    sources << CMOCK_C_FILE      if (in_hash[:project_use_mocks])
-
-    # if we're using mocks & a unity helper is defined & that unity helper includes a source file component (not only a header of macros),
-    # then link in the unity_helper object file too
-    if ( in_hash[:project_use_mocks] and in_hash[:cmock_unity_helper] )
-      in_hash[:cmock_unity_helper].each do |helper|
-        if @file_wrapper.exist?(helper.ext(in_hash[:extension_source]))
-          sources << helper
-        end
-      end
-    end
+    support.each { |file| sources << file }
 
     # create object files from all the sources
     objects = sources.map { |file| File.basename(file) }

@@ -50,44 +50,32 @@ task :directories => PROJECT_BUILD_PATHS
 
 # list paths discovered at load time
 namespace :paths do
-  standard_paths = ['test','source','include']
+  standard_paths = ['test', 'source', 'include', 'support']
   paths = @ceedling[:setupinator].config_hash[:paths].keys.map{|n| n.to_s.downcase}
-  paths = (paths + standard_paths).uniq
   paths.each do |name|
-    path_list = Object.const_get("COLLECTION_PATHS_#{name.upcase}")
-
-    if (path_list.size != 0) || (standard_paths.include?(name))
-      desc "List all collected #{name} paths."
-      task(name.to_sym) { puts "#{name} paths:"; path_list.sort.each {|path| puts " - #{path}" } }
+    desc "List all collected #{name} paths." if standard_paths.include?(name)
+    task(name.to_sym) do
+      path_list = Object.const_get("COLLECTION_PATHS_#{name.upcase}")
+      puts "#{name.capitalize} paths:"
+      path_list.sort.each {|path| puts " - #{path}" }
+      puts "path count: #{path_list.size}"
     end
   end
-
 end
 
 
 # list files & file counts discovered at load time
 namespace :files do
 
-  categories = [
-    ['test',    COLLECTION_ALL_TESTS],
-    ['source',  COLLECTION_ALL_SOURCE],
-    ['include', COLLECTION_ALL_HEADERS],
-    ['support', COLLECTION_ALL_SUPPORT]
-  ]
-
-  using_assembly = (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY) ||
-                   (defined?(RELEASE_BUILD_USE_ASSEMBLY) && RELEASE_BUILD_USE_ASSEMBLY)
-  categories << ['assembly', COLLECTION_ALL_ASSEMBLY] if using_assembly
+  categories = ['tests', 'source', 'assembly', 'include', 'support']
 
   categories.each do |category|
-    name       = category[0]
-    collection = category[1]
-
-    desc "List all collected #{name} files."
-    task(name.to_sym) do
-      puts "#{name} files:"
-      collection.sort.each { |filepath| puts " - #{filepath}" }
-      puts "file count: #{collection.size}"
+    desc "List all collected #{category.chomp('s')} files."
+    task(category.chomp('s').to_sym) do
+      files_list = Object.const_get("COLLECTION_ALL_#{category.upcase}")
+      puts "#{category.chomp('s').capitalize} files:"
+      files_list.sort.each { |filepath| puts " - #{filepath}" }
+      puts "file count: #{files_list.size}"
     end
   end
 

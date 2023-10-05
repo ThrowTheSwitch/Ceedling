@@ -25,13 +25,6 @@ class StdErrRedirect
 end
 
 
-class BackgroundExec
-  NONE = :none
-  AUTO = :auto
-  WIN  = :win
-  UNIX = :unix
-end
-
 unless defined?(PROJECT_ROOT)
   PROJECT_ROOT = Dir.pwd()
 end

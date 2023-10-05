@@ -10,7 +10,6 @@ DEFAULT_TEST_COMPILER_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
   :name => 'default_test_compiler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
@@ -32,7 +31,6 @@ DEFAULT_TEST_LINKER_TOOL = {
   :executable => ENV['CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CCLD'].split[0],
   :name => 'default_test_linker'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CCLD'].nil? ? "" : ENV['CCLD'].split[1..-1],
@@ -51,7 +49,6 @@ DEFAULT_TEST_FIXTURE_TOOL = {
   :executable => '${1}'.freeze,
   :name => 'default_test_fixture'.freeze,
   :stderr_redirect => StdErrRedirect::AUTO.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [].freeze
   }
@@ -60,7 +57,6 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
   :name => 'default_test_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
@@ -80,7 +76,6 @@ DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
   :name => 'default_test_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
@@ -101,7 +96,6 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
   :name => 'default_test_file_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
@@ -120,7 +114,6 @@ DEFAULT_TEST_FILE_PREPROCESSOR_DIRECTIVES_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_file_preprocessor_directives'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,
@@ -145,7 +138,6 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
   :name => 'default_test_dependencies_generator'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
@@ -168,7 +160,6 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
   :name => 'default_release_dependencies_generator'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
@@ -193,14 +184,12 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
   :name => 'default_release_compiler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
-    {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR'}.freeze,
-    {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'}.freeze,
-    {"-D$" => 'COLLECTION_DEFINES_RELEASE_AND_VENDOR'}.freeze,
+    "-I\"${5}\"".freeze, # Search paths
+    "-D\"${6}\"".freeze, # Defines
     "-DGNU_COMPILER".freeze,
     ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
     "-c \"${1}\"".freeze,
@@ -215,12 +204,12 @@ DEFAULT_RELEASE_ASSEMBLER_TOOL = {
   :executable => ENV['AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['AS'].split[0],
   :name => 'default_release_assembler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['AS'].nil? ? "" : ENV['AS'].split[1..-1],
     ENV['ASFLAGS'].nil? ? "" : ENV['ASFLAGS'].split,
-    {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_AND_INCLUDE'}.freeze,
+    "-I\"${3}\"".freeze, # Search paths
+    "-D\"${4}\"".freeze, # Defines (FYI--allowed with GNU assembler but ignored)
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     ].freeze
@@ -230,7 +219,6 @@ DEFAULT_RELEASE_LINKER_TOOL = {
   :executable => ENV['CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CCLD'].split[0],
   :name => 'default_release_linker'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CCLD'].nil? ? "" : ENV['CCLD'].split[1..-1],
@@ -249,7 +237,6 @@ DEFAULT_BACKTRACE_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gdb').freeze,
   :name => 'default_backtrace_settings'.freeze,
   :stderr_redirect => StdErrRedirect::AUTO.freeze,
-  :background_exec => BackgroundExec::NONE.freeze,
   :optional => true.freeze,
   :arguments => [
     '-q',
@@ -365,9 +352,9 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :flags => {
-      # Test flags are validated for presence--empty test flags causes an error
+      # Test & release flags are validated for presence--empty flags causes an error
       # :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
-      :release => [] 
+      # :release => [] # A hash/sub-hashes in config file can include arrays for operations
     },
 
     :libraries => {

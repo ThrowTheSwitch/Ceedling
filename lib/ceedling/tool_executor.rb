@@ -49,7 +49,6 @@ class ToolExecutor
 
     # Build command line
     command_line = [
-      @tool_executor_helper.background_exec_cmdline_prepend( options ),
       command.strip,
       args,
       @tool_executor_helper.stderr_redirect_cmdline_append( options ),
@@ -59,7 +58,6 @@ class ToolExecutor
 
     shell_result = {}
 
-    # depending on background exec option, we shell out differently
     time = Benchmark.realtime do
       shell_result = @system_wrapper.shell_capture3( command_line, options[:boom] )
     end

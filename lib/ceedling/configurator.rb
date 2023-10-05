@@ -151,9 +151,6 @@ class Configurator
       # populate stderr redirect option
       tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
 
-      # populate background execution option
-      tool[:background_exec] = BackgroundExec::NONE if (tool[:background_exec].nil?)
-
       # populate optional option to control verification of executable in search paths
       tool[:optional] = false if (tool[:optional].nil?)
     end

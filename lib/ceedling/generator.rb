@@ -54,9 +54,9 @@ class Generator
       end
   
       # Generate mock
-      msg = @reportinator.generate_test_component_progress(
+      msg = @reportinator.generate_module_progress(
         operation: "Generating mock for",
-        test: test,
+        module_name: test,
         filename: File.basename(input_filepath)
       )
       @streaminator.stdout_puts(msg, Verbosity::NORMAL)
@@ -109,22 +109,23 @@ class Generator
     end
   end
 
-
-  def generate_object_file_c(tool:,
-                             test:,
-                             context:,
-                             source:,
-                             object:,
-                             search_paths:[],
-                             flags:[],
-                             defines:[],
-                             list:'',
-                             dependencies:'',
-                             msg:nil)
+  def generate_object_file_c(
+      tool:,
+      module_name:,
+      context:,
+      source:,
+      object:,
+      search_paths:[],
+      flags:[],
+      defines:[],
+      list:'',
+      dependencies:'',
+      msg:nil
+    )
 
     shell_result = {}
     arg_hash = { :tool => tool,
-                 :test => test,
+                 :module_name => module_name,
                  :operation => OPERATION_COMPILE_SYM,
                  :context => context,
                  :source => source,
@@ -133,27 +134,30 @@ class Generator
                  :flags => flags,
                  :defines => defines,
                  :list => list,
-                 :dependencies => dependencies}
+                 :dependencies => dependencies
+               }
 
     @plugin_manager.pre_compile_execute(arg_hash)
 
     msg = String(msg)
-    msg = @reportinator.generate_test_component_progress(
+    msg = @reportinator.generate_module_progress(
       operation: "Compiling",
-      test: test,
+      module_name: module_name,
       filename: File.basename(arg_hash[:source])
       ) if msg.empty?
     @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
     command =
-      @tool_executor.build_command_line( arg_hash[:tool],
-                                         arg_hash[:flags],
-                                         arg_hash[:source],
-                                         arg_hash[:object],
-                                         arg_hash[:list],
-                                         arg_hash[:dependencies],
-                                         arg_hash[:search_paths],
-                                         arg_hash[:defines])
+      @tool_executor.build_command_line(
+        arg_hash[:tool],
+        arg_hash[:flags],
+        arg_hash[:source],
+        arg_hash[:object],
+        arg_hash[:list],
+        arg_hash[:dependencies],
+        arg_hash[:search_paths],
+        arg_hash[:defines]
+      )
 
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
@@ -169,36 +173,56 @@ class Generator
     end
   end
 
-  # def generate_object_file_asm(tool, operation, context, source, object, search_paths, list='', dependencies='', msg=nil)
+  def generate_object_file_asm(
+      tool:,
+      module_name:,
+      context:,
+      source:,
+      object:,
+      search_paths:[],
+      flags:[],
+      defines:[],
+      list:'',
+      dependencies:'',
+      msg:nil
+    )
 
-  def generate_object_file(tool, operation, context, source, object, search_paths, list='', dependencies='', msg=nil)
     shell_result = {}
+
     arg_hash = { :tool => tool,
-                 :operation => operation,
+                 :module_name => module_name,
+                 :operation => OPERATION_ASSEMBLE_SYM,
                  :context => context,
                  :source => source,
-                 :object => object, 
+                 :object => object,
+                 :search_paths => search_paths,
+                 :flags => flags,
+                 :defines => defines,
                  :list => list,
-                 :dependencies => dependencies}
+                 :dependencies => dependencies
+               }
 
     @plugin_manager.pre_compile_execute(arg_hash)
 
     msg = String(msg)
-    if msg.empty?
-      msg = "Compiling #{File.basename(arg_hash[:source])}..."
-    end
-
+    msg = @reportinator.generate_module_progress(
+      operation: "Assembling",
+      module_name: module_name,
+      filename: File.basename(arg_hash[:source])
+      ) if msg.empty?
     @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
     command =
-      @tool_executor.build_command_line( arg_hash[:tool],
-                                         @flaginator.flag_down( operation, context, source ),
-                                         arg_hash[:source],
-                                         arg_hash[:object],
-                                         arg_hash[:list],
-                                         arg_hash[:dependencies],
-                                         search_paths,
-                                         [] )
+      @tool_executor.build_command_line( 
+        arg_hash[:tool],
+        arg_hash[:flags],
+        arg_hash[:source],
+        arg_hash[:object],
+        arg_hash[:search_paths],
+        arg_hash[:defines],
+        arg_hash[:list],
+        arg_hash[:dependencies]
+      )
 
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
@@ -230,15 +254,17 @@ class Generator
 
     msg = @reportinator.generate_progress("Linking #{File.basename(arg_hash[:executable])}")
     @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+
     command =
-      @tool_executor.build_command_line( arg_hash[:tool],
-                                         arg_hash[:flags],
-                                         arg_hash[:objects],
-                                         arg_hash[:executable],
-                                         arg_hash[:map],
-                                         arg_hash[:libraries],
-                                         arg_hash[:libpaths]
-                                       )
+      @tool_executor.build_command_line(
+        arg_hash[:tool],
+        arg_hash[:flags],
+        arg_hash[:objects],
+        arg_hash[:executable],
+        arg_hash[:map],
+        arg_hash[:libraries],
+        arg_hash[:libpaths]
+      )
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     begin

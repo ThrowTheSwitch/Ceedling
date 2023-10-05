@@ -34,11 +34,11 @@ class Reportinator
     return "#{message}..."
   end
 
-  def generate_test_component_progress(test:, filename:, operation:)
-    # <Operation [test::]filename>..."
+  def generate_module_progress(module_name:, filename:, operation:)
+    # <Operation [module_name::]filename>..."
 
-    # If filename is the test name, don't add the test name label
-    label = (File.basename(filename).ext('') == test.to_s) ? '' : "#{test}::"
+    # If filename is the module name, don't add the module label
+    label = (File.basename(filename).ext('') == module_name.to_s) ? '' : "#{module_name}::"
     return generate_progress("#{operation} #{label}#{filename}")
   end
 

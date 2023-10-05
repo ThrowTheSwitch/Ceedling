@@ -222,12 +222,15 @@ class TestInvoker
         test_core          = test_sources + details[:mock_list]
         # CMock + Unity + CException
         test_frameworks    = @helper.collect_test_framework_sources
+        # Extra suport source files (e.g. microcontroller startup code needed by simulator)
+        test_support       = @configurator.collection_all_support
 
         compilations       =  []
         compilations       << details[:filepath]
         compilations       += test_core
         compilations       << details[:runner][:output_filepath]
         compilations       += test_frameworks
+        compilations       += test_support
         compilations.uniq!
 
         test_objects       = @file_path_utils.form_test_build_objects_filelist( details[:paths][:build], compilations )
@@ -252,27 +255,6 @@ class TestInvoker
         end
       end
     end
-
-    # TODO: Replace with smart rebuild feature
-    # @helper.execute_build_step("Generating Dependencies", heading: false) {
-    #   par_map(PROJECT_TEST_THREADS, core_testables) do |dependency|
-    #     @test_invoker_helper.process_deep_dependencies( dependency ) do |dep|
-    #       @dependinator.load_test_object_deep_dependencies( dep)
-    #     end
-    #   end
-    # } if @configurator.project_use_deep_dependencies
-
-    # TODO: Replace with smart rebuild
-    # # Update All Dependencies
-    # @helper.execute_build_step("Preparing to Build", heading: false) do
-    #   par_map(PROJECT_TEST_THREADS, tests) do |test|
-    #     # enhance object file dependencies to capture externalities influencing regeneration
-    #     @dependinator.enhance_test_build_object_dependencies( testables[test][:objects] )
-
-    #     # associate object files with executable
-    #     @dependinator.enhance_test_executable_dependencies( test, testables[test][:objects] )
-    #   end
-    # end
 
     # Build All Test objects
     @helper.execute_build_step("Building Objects") do
@@ -343,7 +325,7 @@ class TestInvoker
 
     @generator.generate_object_file_c(
       tool:         tool,
-      test:         test,
+      module_name:  test,
       context:      context,
       source:       source,
       object:       object,

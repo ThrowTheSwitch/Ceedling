@@ -103,9 +103,9 @@ class Preprocessinator
   private
 
   def preprocess_file_common(filepath:, test:, flags:, include_paths:, defines:)
-    msg = @reportinator.generate_test_component_progress(
+    msg = @reportinator.generate_module_progress(
       operation: "Preprocessing",
-      test: test,
+      module_name: test,
       filename: File.basename(filepath)
     )
 
@@ -128,9 +128,9 @@ class Preprocessinator
     includes = []
 
     if @file_wrapper.newer?(includes_list_filepath, filepath)
-      msg = @reportinator.generate_test_component_progress(
+      msg = @reportinator.generate_module_progress(
         operation: "Loading #include statement listing file for",
-        test: test,
+        module_name: test,
         filename: File.basename(filepath)
         )
       @streaminator.stdout_puts( msg, Verbosity::NORMAL )

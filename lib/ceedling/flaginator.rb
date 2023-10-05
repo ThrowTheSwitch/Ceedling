@@ -34,7 +34,7 @@ class Flaginator
     return @config_matchinator.config_include?(section:@section, context:context, operation:operation)
   end
 
-  def flag_down(context:, operation:nil, filepath:)
+  def flag_down(context:, operation:, filepath:nil)
     flags = @config_matchinator.get_config(section:@section, context:context, operation:operation)
 
     if flags == nil then return []

@@ -3,8 +3,7 @@ BEEP_TOOLS = {
     :executable => 'echo'.freeze,
     :name => 'default_beep_bell'.freeze,
     :stderr_redirect => StdErrRedirect::NONE.freeze,
-    :background_exec => BackgroundExec::NONE.freeze,
-    :optional => false.freeze,
+      :optional => false.freeze,
     :arguments => [
       *('-ne'.freeze unless SystemWrapper.windows?),
       "\x07".freeze
@@ -14,8 +13,7 @@ BEEP_TOOLS = {
     :executable => 'speaker-test'.freeze,
     :name => 'default_beep_speaker_test'.freeze,
     :stderr_redirect => StdErrRedirect::NONE.freeze,
-    :background_exec => BackgroundExec::NONE.freeze,
-    :optional => false.freeze,
+      :optional => false.freeze,
     :arguments => [
       - '-t sine'.freeze,
       - '-f 1000'.freeze,

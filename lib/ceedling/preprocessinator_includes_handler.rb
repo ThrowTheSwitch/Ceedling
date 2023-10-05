@@ -42,9 +42,9 @@ class PreprocessinatorIncludesHandler
   ##
 
   def extract_includes(filepath:, test:, flags:, include_paths:, defines:)
-    msg = @reportinator.generate_test_component_progress(
+    msg = @reportinator.generate_module_progress(
       operation: "Extracting #include statements via preprocessor from",
-      test: test,
+      module_name: test,
       filename: File.basename(filepath)
       )
     @streaminator.stdout_puts(msg, Verbosity::NORMAL)
@@ -203,9 +203,9 @@ class PreprocessinatorIncludesHandler
   end
 
   def extract_shallow_includes_regex(test:, filepath:, flags:, defines:)
-    msg = @reportinator.generate_test_component_progress(
+    msg = @reportinator.generate_module_progress(
       operation: "Using fallback regex #include extraction for",
-      test: test,
+      module_name: test,
       filename: File.basename( filepath )
       )
     @streaminator.stdout_puts(msg, Verbosity::NORMAL)
