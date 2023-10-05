@@ -112,17 +112,15 @@ class TestInvokerHelper
     sources << File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE) if @configurator.project_use_mocks
     sources << File.join(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE) if @configurator.project_use_exceptions
 
-    # TODO!
-    # # if we're using mocks & a unity helper is defined & that unity helper includes a source file component (not only a header of macros),
-    # # then link in the unity_helper object file too
-    # if ( in_hash[:project_use_mocks] and in_hash[:cmock_unity_helper] )
-    #   in_hash[:cmock_unity_helper].each do |helper|
-    #     if @file_wrapper.exist?(helper.ext(in_hash[:extension_source]))
-    #       sources << helper
-    #     end
-    #   end
-    # end
-
+    # If we're (a) using mocks (b) a Unity helper is defined and (c) that unity helper includes a source file component,
+    # then link in the unity_helper object file too.
+    if ( @configurator.project_use_mocks and @configurator.cmock_unity_helper )
+      @configurator.cmock_unity_helper.each do |helper|
+        if @file_wrapper.exist?(helper.ext(EXTENSION_SOURCE))
+          sources << helper
+        end
+      end
+    end
 
     return sources
   end
