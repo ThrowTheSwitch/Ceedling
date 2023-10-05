@@ -643,65 +643,22 @@ for Unity and CMock.
 The Magic of Dependency Tracking
 --------------------------------
 
-Ceedling is pretty smart in using Rake to build up your project's
-dependencies. This means that Ceedling automagically rebuilds
-all the appropriate files in your project when necessary: when
-your configuration changes, Ceedling or any of the other tools
-are updated, or your source or test files change. For instance,
-if you modify a header file that is mocked, Ceedling will ensure
-that the mock is regenerated and all tests that use that mock are
-rebuilt and re-run when you initiate a relevant testing task.
-When you see things rebuilding, it's for a good reason. Ceedling
-attempts to regenerate and rebuild only what's needed for a given
-execution of a task. In the case of large projects, assembling
-dependencies and acting upon them can cause some delay in executing
-tasks.
+Previous versions of Ceedling used features of Rake to offer
+various kinds of smart rebuilds--that is, only regenerating files, 
+recompiling code files, or relinking executables when changes within 
+the project had occurred since the last build. Optional features 
+discovered “deep dependencies” such that, for example, a change in a 
+header file several nested layers deep in `#include` statements 
+would cause all the correct test executables to be updated and run.
 
-With one exception, the trigger to rebuild or regenerate a file
-is always a disparity in timestamps between a target file and
-its source - if an input file is newer than its target dependency,
-the target is rebuilt or regenerated. For example, if the C source
-file from which an object file is compiled is newer than that object
-file on disk, recompilation will occur (of course, if no object
-file exists on disk, compilation will always occur). The one
-exception to this dependency behavior is specific to your input
-configuration. Only if your logical configuration changes
-will a system-wide rebuild occur. Reorganizing your input configuration
-or otherwise updating its file timestamp without modifying
-the values within the file will not trigger a rebuild. This behavior
-handles the various ways in which your input configuration can
-change (discussed later in this document) without having changed
-your actual project YAML file.
+These features have been temporarily disabled and/or removed while
+Ceedling undergoes a major overhaul. Please see the [Release Notes](ReleaseNotes.md).
 
-Ceedling needs a bit of help to accomplish its magic with deep
-dependencies. Shallow dependencies are straightforward:
-a mock is dependent on the header file from which it's generated,
-a test file is dependent upon the source files it includes (see
-the preceding conventions section), etc. Ceedling handles
-these "out of the box." Deep dependencies are specifically a
-C-related phenomenon and occur as a consequence of include statements
-within C source files. Say a source file includes a header file
-and that header file in turn includes another header file which
-includes still another header file. A change to the deepest header
-file should trigger a recompilation of the source file, a relinking
-of all the object files comprising a test fixture, and a new execution
-of that test fixture.
+Note that new features that are a part of this overhaul can 
+significantly speed up test suite execution and release builds 
+despite each build brute force running all build steps. When smart
+rebuilds are implemented again, they will further speed up builds.
 
-Ceedling can handle deep dependencies but only with the help
-of a C preprocessor. Ceedling is quite capable, but a full C preprocessor
-it ain't. Your project can be configured to use a C preprocessor
-or not. Simple projects or large projects constructed so as to
-be quite flat in their include structure generally don't need
-deep dependency preprocessing - and can enjoy the benefits of
-faster execution. Legacy code, on the other hand, will almost
-always want to be tested with deep preprocessing enabled. Set
-up of the C preprocessor is covered in the documentation for the
-[:project] and [:tools] section of the configuration file (later
-in this document). Ceedling contains all the configuration
-necessary to use the gcc preprocessor by default. That is, as
-long as gcc is in your system search path, deep preprocessing
-of deep dependencies is available to you by simply enabling it
-in your project configuration file.
 
 Ceedling's Build Output
 -----------------------
@@ -880,34 +837,6 @@ project: global project settings
 
   **Default**: FALSE
 
-* `use_deep_dependencies`:
-
-  The base rules and tasks that Ceedling creates using Rake capture most
-  of the dependencies within a standard project (e.g. when the source
-  file accompanying a test file changes, the corresponding test fixture
-  executable will be rebuilt when tests are re-run). However, deep
-  dependencies cannot be captured this way. If a typedef or macro
-  changes in a header file three levels of #include statements deep,
-  this option allows the appropriate incremental build actions to occur
-  for both test execution and release builds.
-
-  This is accomplished by using the dependencies discovery mode of gcc.
-  With this option enabled, gcc must exist in an accessible system
-  search path.
-
-  **Default**: FALSE
-
-* `generate_deep_dependencies`:
-
-  When `use_deep_dependencies` is set to TRUE, Ceedling will run a separate
-  build step to generate the deep dependencies. If you are using gcc as your
-  primary compiler, or another compiler that can generate makefile rules as
-  a side effect of compilation, then you can set this to FALSE to avoid the
-  extra build step but still use the deep dependencies data when deciding
-  which source files to rebuild.
-
-  **Default**: TRUE
-
 * `test_file_prefix`:
 
   Ceedling collects test files by convention from within the test file
@@ -956,7 +885,6 @@ Example `[:project]` YAML blurb
   :build_root: project_awesome/build
   :use_exceptions: FALSE
   :use_test_preprocessor: TRUE
-  :use_deep_dependencies: TRUE
   :options_paths:
     - project/options
     - external/shared/options
@@ -1397,11 +1325,10 @@ Example [:extension] YAML blurb
 
 * `test_preprocess`:
 
-  If [:project][:use_test_preprocessor] or
-  [:project][:use_deep_dependencies] is set and code is structured in a
+  If [:project][:use_test_preprocessor] is set and code is structured in a
   certain way, the gcc preprocessor may need symbol definitions to
-  properly preprocess files to extract function signatures for mocking
-  and extract deep dependencies for incremental builds.
+  properly preprocess files to extract test functions for test runner 
+  generation and function signatures for mocking.
 
   **Default**: `[]` (empty)
 
@@ -1792,26 +1719,6 @@ tools.
 
   **Default**: `gcc`
 
-* `test_file_preprocessor_directives`:
-
-  Preprocessor of test files to expand only conditional compilation statements,
-  handle directives, but do not expand macros
-
-   - `${1}`: input source file
-   - `${2}`: not-fully preprocessed output source file
-
-  **Default**: `gcc`
-
-* `test_dependencies_generator`:
-
-  Discovers deep dependencies of source & test (for incremental builds)
-
-   - `${1}`: input source file
-   - `${2}`: compiled object filepath
-   - `${3}`: output dependencies file
-
-  **Default**: `gcc`
-
 * `release_compiler`:
 
   Compiler for release source code
@@ -1844,17 +1751,6 @@ tools.
 
   **Default**: `gcc`
 
-* `release_dependencies_generator`:
-
-  Discovers deep dependencies of source files (for incremental builds)
-
-   - `${1}`: input source file
-   - `${2}`: compiled object filepath
-   - `${3}`: output dependencies file
-
-  **Default**: `gcc`
-
-
 A Ceedling tool has a handful of configurable elements:
 
 1. [:executable] - Command line executable (required)
@@ -1872,11 +1768,7 @@ A Ceedling tool has a handful of configurable elements:
    specifying a simple string instead of any of the available
    symbols.
 
-5. [:background_exec] - Control execution as background process
-   {:none, :auto, :win, :unix}.
-   Defaults to :none if unspecified.
-
-6. [:optional] - By default a tool is required for operation, which
+5. [:optional] - By default a tool is required for operation, which
    means tests will be aborted if the tool is not present. However,
    you can set this to `TRUE` if it's not needed for testing.
 
