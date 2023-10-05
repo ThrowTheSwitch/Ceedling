@@ -18,10 +18,9 @@ Rake::TaskManager.record_task_metadata = true
 
 require 'diy'
 require 'constructor'
-
 require 'ceedling/constants'
 require 'ceedling/target_loader'
-
+require 'deep_merge'
 
 # construct all our objects
 # ensure load path contains all libraries needed first
@@ -65,11 +64,6 @@ END {
   # cache our input configurations to use in comparison upon next execution
   @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash )    if (@ceedling[:task_invoker].test_invoked?)
   @ceedling[:cacheinator].cache_release_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].release_invoked?)
-
-  # delete all temp files unless we're in debug mode
-  if (not @ceedling[:configurator].project_debug)
-    @ceedling[:file_wrapper].rm_f( @ceedling[:file_wrapper].directory_listing( File.join(@ceedling[:configurator].project_temp_path, '*') ))
-  end
 
   # only perform these final steps if we got here without runtime exceptions or errors
   if (@ceedling[:system_wrapper].ruby_success)

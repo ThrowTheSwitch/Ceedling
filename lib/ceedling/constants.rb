@@ -25,13 +25,6 @@ class StdErrRedirect
 end
 
 
-class BackgroundExec
-  NONE = :none
-  AUTO = :auto
-  WIN  = :win
-  UNIX = :unix
-end
-
 unless defined?(PROJECT_ROOT)
   PROJECT_ROOT = Dir.pwd()
 end
@@ -42,17 +35,26 @@ EXTENSION_WIN_EXE    = '.exe'
 EXTENSION_NONWIN_EXE = '.out'
 
 
+PREPROCESS_SYM = :preprocess
+
+CEXCEPTION_SYM       = :cexception
 CEXCEPTION_ROOT_PATH = 'c_exception'
 CEXCEPTION_LIB_PATH  = "#{CEXCEPTION_ROOT_PATH}/lib"
 CEXCEPTION_C_FILE    = 'CException.c'
 CEXCEPTION_H_FILE    = 'CException.h'
 
+UNITY_SYM              = :unity
 UNITY_ROOT_PATH        = 'unity'
 UNITY_LIB_PATH         = "#{UNITY_ROOT_PATH}/src"
 UNITY_C_FILE           = 'unity.c'
 UNITY_H_FILE           = 'unity.h'
 UNITY_INTERNALS_H_FILE = 'unity_internals.h'
 
+# Do-nothing macros defined in unity.h for extra build context to be used by build tools like Ceedling
+UNITY_TEST_SOURCE_FILE  = 'TEST_SOURCE_FILE'
+UNITY_TEST_INCLUDE_PATH = 'TEST_INCLUDE_PATH'
+
+CMOCK_SYM       = :cmock
 CMOCK_ROOT_PATH = 'cmock'
 CMOCK_LIB_PATH  = "#{CMOCK_ROOT_PATH}/src"
 CMOCK_C_FILE    = 'cmock.c'
@@ -67,7 +69,7 @@ DEFINES_DEPENDENCY_CACHE_FILE      = 'defines_dependency.yml' unless defined?(DE
 
 TEST_ROOT_NAME    = 'test'                unless defined?(TEST_ROOT_NAME)
 TEST_TASK_ROOT    = TEST_ROOT_NAME + ':'  unless defined?(TEST_TASK_ROOT)
-TEST_SYM          = TEST_ROOT_NAME.to_sym unless defined?(TEST_SYM)
+TEST_SYM          = :test
 
 RELEASE_ROOT_NAME = 'release'                unless defined?(RELEASE_ROOT_NAME)
 RELEASE_TASK_ROOT = RELEASE_ROOT_NAME + ':'  unless defined?(RELEASE_TASK_ROOT)
