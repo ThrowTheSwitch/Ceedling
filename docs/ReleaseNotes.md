@@ -12,7 +12,7 @@ This Ceedling release is probably the most significant since the project was fir
 
 Ceedling now runs in Ruby 3. Builds can now run much faster than previous versions because of parallelized tasks. Header file search paths, code defines, and tool run flags are now customizable per test executable.
 
-<mark>**Ahoy!** 🏴‍☠️ There be **[breaking changes](#-Breaking-Changes)** ahead, mateys!</mark> Arrr…
+<span style="background-color: #FFFF00">**Ahoy!** 🏴‍☠️ There be **[breaking changes](#-Breaking-Changes)** ahead, mateys!</span> Arrr…
 
 ### Big Deal Highlights 🏅
 
