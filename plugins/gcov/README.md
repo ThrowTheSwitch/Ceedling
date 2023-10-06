@@ -4,15 +4,25 @@ ceedling-gcov
 # Plugin Overview
 
 Plugin for integrating GNU GCov code coverage tool into Ceedling projects.
-Currently only designed for the gcov command (like LCOV for example). In the
-future we could configure this to work with other code coverage tools.
 
-This plugin currently uses [gcovr](https://www.gcovr.com/) and / or
-[ReportGenerator](https://danielpalme.github.io/ReportGenerator/)
-as utilities to generate HTML, XML, JSON, or Text reports. The normal gcov
-plugin _must_ be run first for these reports to generate.
+In its simplest usage, this plugin outputs coverage statistics to the 
+console for each source file exercised by a test after the standard 
+Ceedling test results summary. For more advanced visualization and 
+reporting, this plugin also supports a variety of report generation 
+options.
 
-## Installation
+Advanced report generation uses [gcovr](https://www.gcovr.com/) and / or
+[ReportGenerator](https://reportgenerator.io)
+as utilities to generate HTML, XML, JSON, or Text reports.
+
+In the default configuration, if reports are configured, this plugin 
+automatically generates reports after each execution of a `gcov:` task.
+An optional setting documented below disables automatic report 
+generation, providing a separate Ceedling task instead.
+
+## Installation of Report Generation Tools
+
+[gcovr](https://www.gcovr.com/) is available on any platform supported by Python.
 
 gcovr can be installed via pip like so:
 
@@ -20,16 +30,19 @@ gcovr can be installed via pip like so:
 pip install gcovr
 ```
 
-ReportGenerator can be installed via .NET Core like so:
+[ReportGenerator](https://reportgenerator.io) is available on any platform supported by .Net.
+
+It can be installed via .NET Core like so:
 
 ```sh
 dotnet tool install -g dotnet-reportgenerator-globaltool
 ```
 
 It is not required to install both `gcovr` and `ReportGenerator`. Either utility
-may be installed to create reports.
+may be installed, or both utilities may be used. If reports are configured but 
+no `utilities:` section exists, `gcovr` is the default tool.
 
-## Configuration
+## Plugin Configuration
 
 The gcov plugin supports configuration options via your `project.yml` provided
 by Ceedling.
@@ -47,9 +60,54 @@ Gcovr and / or ReportGenerator may be enabled to create coverage reports.
 
 ### Reports
 
+By default, if report generation is configured, this plugin automatically
+generates reports after any `gcov:` task is executed. To disable this behavior,
+add `:report_task: TRUE` to your `:gcov:` configuration.
+
+With this setting enabled, an additional Ceedling task `report:gcov` is created.
+It may be executed after `gcov:` tasks to generate the configured reports.
+
+For small projects, the default behavior is likely preferred. Alternatively, this 
+setting allows large or complex projects to execute potentially time intensive 
+report generation only when desired.
+
+```yaml
+:gcov:
+  :report_task: [TRUE|FALSE]
+```
+
+## Example Usage
+_Note_: Basic coverage statistics are always printed to the console regardless of 
+report generation options.
+
+### With automatic coverage report generation (default)
+If coverage report generation is configured, the plugin defaults to running 
+reports after any `gcov:` task.
+
+```sh
+ceedling gcov:all
+```
+
+### With coverage report generation configured as an additional task
+If the `:report_task:` configuration option is enabled, reports are not 
+automatically generaed after test suite coverage builds. Instead, report generation 
+is triggered by the `report:gcov` task.
+
+```sh
+ceedling gcov:all report:gcov
+```
+
+```sh
+ceedling gcov:all
+ceedling report:gcov
+```
+
+## Report Generation Configuration
+
 Various reports are available and may be enabled with the following
-configuration item. See the specific report sections in this README
-for additional options and information. All generated reports will be found in `build/artifacts/gcov`.
+configuration items. See the specific report sections that follow
+for additional options and information. All generated reports will be 
+found in `build/artifacts/gcov`.
 
 ```yaml
 :gcov:
@@ -155,7 +213,6 @@ Generation of Gcovr HTML reports may be modified with the following configuratio
   # Deprecated - See the :reports: configuration option.
   :html_report_type: [basic|detailed]
 
-
   :gcovr:
     # HTML report filename.
     :html_artifact_filename: <output>
@@ -194,7 +251,6 @@ Generation of Cobertura XML reports may be modified with the following configura
   # Defaults to disabled. (gcovr --xml)
   # Deprecated - See the :reports: configuration option.
   :xml_report: [true|false]
-
 
   :gcovr:
     # Set to 'true' to pretty-print the Cobertura XML report, otherwise set to 'false'.
@@ -345,18 +401,7 @@ default behaviors of gcovr:
     :delete: [true|false]
 
     # Set the number of threads to use in parallel. (gcovr -j).
-    :num_parallel_threads: <num_threads>
-
-  # When scanning the code coverage, if any files are found that do not have
-  # associated coverage data, the command will abort with an error message.
-  :abort_on_uncovered: true
-
-  # When using the ``abort_on_uncovered`` option, the files in this list will not
-  # trigger a failure.
-  # Ceedling globs described in the Ceedling packet ``Path`` section can be used
-  # when directories are placed on the list. Globs are limited to matching directories
-  # and not files.
-  :uncovered_ignore_list: []
+    :threads: <num_threads>
 ```
 
 ### ReportGenerator Configuration
@@ -405,7 +450,7 @@ All generated reports may be found in `build/artifacts/gcov/ReportGenerator`.
     :gcov_executable: <gcov_cmd>
 
     # Optionally set the number of threads to use in parallel. Defaults to 1.
-    :num_parallel_threads: <num_threads>
+    :threads: <num_threads>
 
     # Optional list of one or more command line arguments to pass to Report Generator.
     # Useful for configuring Risk Hotspots and Other Settings.
@@ -415,11 +460,6 @@ All generated reports may be found in `build/artifacts/gcov/ReportGenerator`.
       - <custom_arg2>
 ```
 
-## Example Usage
-
-```sh
-ceedling gcov:all utils:gcov
-```
 ## Known issues
 ### Empty Gcovr report with Gcovr 4.2+
 - If you are facing an empty gcovr report with version 4.2+ try to specify the folder you want to get a coverage.
