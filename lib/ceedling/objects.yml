@@ -11,8 +11,6 @@ yaml_wrapper:
 
 system_wrapper:
 
-cmock_builder:
-
 reportinator:
 
 rake_utils:
@@ -86,7 +84,6 @@ configurator:
     - configurator_setup
     - configurator_plugins
     - configurator_builder
-    - cmock_builder
     - yaml_wrapper
     - system_wrapper
 
@@ -215,7 +212,7 @@ generator:
     - configurator
     - generator_helper
     - preprocessinator
-    - cmock_builder
+    - generator_mocks
     - generator_test_runner
     - generator_test_results
     - test_context_extractor
@@ -244,6 +241,10 @@ generator_test_results_sanity_checker:
   compose:
     - configurator
     - streaminator
+
+generator_mocks:
+  compose:
+    - configurator
 
 generator_test_runner:
   compose:

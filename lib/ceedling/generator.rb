@@ -1,14 +1,12 @@
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'
-# Pull in Unity's Test Runner Generator
-require 'generate_test_runner.rb'
 
 class Generator
 
   constructor :configurator,
               :generator_helper,
               :preprocessinator,
-              :cmock_builder,
+              :generator_mocks,
               :generator_test_runner,
               :generator_test_results,
               :test_context_extractor,
@@ -33,25 +31,16 @@ class Generator
     @plugin_manager.pre_mock_generate( arg_hash )
 
     begin
-      # TODO: Add option to CMock to generate mock to any destination path
-      # Below is a hack that insantiates CMock anew for each desired output path
+      # Below is a workaround that nsantiates CMock anew:
+      #  1. To allow dfferent output path per mock
+      #  2. To avoid any thread safety complications
+
+      # TODO:
+      #  - Add option to CMock to generate mock to any destination path
+      #  - Make CMock thread-safe
 
       # Get default config created by Ceedling and customize it
-      config = @cmock_builder.get_default_config
-      config[:mock_path] = output_path
-
-      # Verbosity management for logging messages
-      case @configurator.project_verbosity
-      when Verbosity::SILENT
-        config[:verbosity] = 0 # CMock is silent
-      when Verbosity::ERRORS
-      when Verbosity::COMPLAIN
-      when Verbosity::NORMAL
-      when Verbosity::OBNOXIOUS
-        config[:verbosity] = 1 # Errors and warnings only so we can customize generation message ourselves
-      else # DEBUG
-        config[:verbosity] = 3 # Max verbosity
-      end
+      config = @generator_mocks.build_configuration( output_path )
   
       # Generate mock
       msg = @reportinator.generate_module_progress(
@@ -61,7 +50,8 @@ class Generator
       )
       @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
-      @cmock_builder.manufacture(config).setup_mocks( arg_hash[:header_file] )
+      cmock = @generator_mocks.manufacture( config )
+      cmock.setup_mocks( arg_hash[:header_file] )
     rescue
       raise
     ensure
@@ -81,7 +71,7 @@ class Generator
 
     # Instantiate the test runner generator each time needed for thread safety
     # TODO: Make UnityTestRunnerGenerator thread-safe
-    generator = UnityTestRunnerGenerator.new( @configurator.get_runner_config )
+    generator = @generator_test_runner.manufacture()
 
     # collect info we need
     module_name = File.basename( arg_hash[:test_file] )

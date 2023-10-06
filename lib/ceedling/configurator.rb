@@ -10,7 +10,7 @@ class Configurator
   attr_reader :project_config_hash, :script_plugins, :rake_plugins
   attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
 
-  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
+  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper) do
     @project_logging   = false
     @project_debug     = false
     @project_verbosity = Verbosity::NORMAL
@@ -18,8 +18,11 @@ class Configurator
   end
 
   def setup
-    # special copy of cmock config to provide to cmock for construction
-    @cmock_config_hash = {}
+    # Cmock config reference to provide to CMock for mock generation
+    @cmock_config = {} # Default empty hash, replaced by reference below
+
+    # Runner config reference to provide to runner generation
+    @runner_config = {} # Default empty hash, replaced by reference below
 
     # note: project_config_hash is an instance variable so constants and accessors created
     # in eval() statements in build() have something of proper scope and persistence to reference
@@ -84,7 +87,7 @@ class Configurator
 
   def populate_unity_defaults(config)
       unity = config[:unity] || {}
-      @runner_config = unity.merge(@runner_config || config[:test_runner] || {})
+      @runner_config = unity.merge(config[:test_runner] || {})
   end
 
   def populate_cmock_defaults(config)
@@ -100,6 +103,7 @@ class Configurator
     cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
 
     cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
+
     cmock[:verbosity] = @project_verbosity                                                  if (cmock[:verbosity].nil?)
 
     cmock[:plugins] = []                             if (cmock[:plugins].nil?)
@@ -116,7 +120,7 @@ class Configurator
 
     @runner_config = cmock.merge(@runner_config || config[:test_runner] || {})
 
-    @cmock_builder.default_config = cmock
+    @cmock_config = cmock
   end
 
 
@@ -130,7 +134,12 @@ class Configurator
 
 
   def get_runner_config
-    @runner_config
+    return @runner_config.clone
+  end
+
+
+  def get_cmock_config
+    return @cmock_config.clone
   end
 
 

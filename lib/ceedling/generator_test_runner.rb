@@ -1,8 +1,12 @@
-
+require 'generate_test_runner.rb' # Unity's test runner generator
 
 class GeneratorTestRunner
 
   constructor :configurator, :file_path_utils, :file_wrapper
+
+  def manufacture()
+    return UnityTestRunnerGenerator.new( @configurator.get_runner_config )
+  end
 
   def find_test_cases(generator:, test_filepath:, input_filepath:)
 
