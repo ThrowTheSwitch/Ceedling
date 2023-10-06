@@ -194,4 +194,104 @@ module GcovTestCases
       end
     end
   end
+
+  def can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_and_cmd_args_set_to_true_for_test_cases_not_causing_crash
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        gcov_html_report = `bundle exec ruby -S ceedling utils:gcov 2>&1`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Segmentation fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exist?('./build/gcov/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/gcov/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).to match(/example_file.c Lines executed:50.00% of 4/)
+
+        expect(gcov_html_report).to match(/Creating gcov results report\(s\) in 'build\/artifacts\/gcov'\.\.\. Done/)
+        expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
+      end
+    end
+  end
+
+  def can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_and_cmd_args_set_to_true_with_zero_coverage
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+
+        output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        gcov_html_report = `bundle exec ruby -S ceedling utils:gcov 2>&1`
+        expect($?.exitstatus).to match(0)
+        expect(output).to match(/Segmentation fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exist?('./build/gcov/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/gcov/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).to match(/example_file.c Lines executed:0.00% of 4/)
+
+        expect(gcov_html_report).to match(/Creating gcov results report\(s\) in 'build\/artifacts\/gcov'\.\.\. Done/)
+        expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
+      end
+    end
+  end
+
+  def can_create_gcov_html_report_from_test_runner_with_enabled_debug_and_cmd_args_set_to_true_with_100_coverage_when_excluding_crashing_test_case
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
+
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+
+        add_test_case = "\nvoid test_difference_between_two_numbers(void)\n"\
+                        "{\n" \
+                        "  TEST_ASSERT_EQUAL(0, difference_between_numbers(1,1));\n" \
+                        "}\n"
+        
+        updated_test_file = File.read('test/test_example_file_sigsegv.c').split("\n")
+        updated_test_file.insert(updated_test_file.length(), add_test_case)
+        File.write('test/test_example_file_sigsegv.c', updated_test_file.join("\n"), mode: 'w')
+
+        output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_will_fail 2>&1`
+        expect($?.exitstatus).to match(0)
+        gcov_html_report = `bundle exec ruby -S ceedling utils:gcov 2>&1`
+        expect($?.exitstatus).to match(0)
+        expect(File.exist?('./build/gcov/results/test_example_file_sigsegv.pass'))
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+2/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+0/)
+        expect(output).to match(/example_file.c Lines executed:100.00% of 4/)
+
+        expect(gcov_html_report).to match(/Creating gcov results report\(s\) in 'build\/artifacts\/gcov'\.\.\. Done/)
+        expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
+      end
+    end
+  end
 end

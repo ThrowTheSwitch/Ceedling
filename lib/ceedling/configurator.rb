@@ -10,7 +10,7 @@ class Configurator
   attr_reader :project_config_hash, :script_plugins, :rake_plugins
   attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
 
-  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :cmock_builder, :yaml_wrapper, :system_wrapper) do
+  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper) do
     @project_logging   = false
     @project_debug     = false
     @project_verbosity = Verbosity::NORMAL
@@ -18,8 +18,11 @@ class Configurator
   end
 
   def setup
-    # special copy of cmock config to provide to cmock for construction
-    @cmock_config_hash = {}
+    # Cmock config reference to provide to CMock for mock generation
+    @cmock_config = {} # Default empty hash, replaced by reference below
+
+    # Runner config reference to provide to runner generation
+    @runner_config = {} # Default empty hash, replaced by reference below
 
     # note: project_config_hash is an instance variable so constants and accessors created
     # in eval() statements in build() have something of proper scope and persistence to reference
@@ -84,7 +87,7 @@ class Configurator
 
   def populate_unity_defaults(config)
       unity = config[:unity] || {}
-      @runner_config = unity.merge(@runner_config || config[:test_runner] || {})
+      @runner_config = unity.merge(config[:test_runner] || {})
   end
 
   def populate_cmock_defaults(config)
@@ -100,11 +103,11 @@ class Configurator
     cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
 
     cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
+
     cmock[:verbosity] = @project_verbosity                                                  if (cmock[:verbosity].nil?)
 
     cmock[:plugins] = []                             if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym }
-    cmock[:plugins] << (:cexception)                 if (!cmock[:plugins].include?(:cexception) and (config[:project][:use_exceptions]))
     cmock[:plugins].uniq!
 
     cmock[:unity_helper] = false                     if (cmock[:unity_helper].nil?)
@@ -117,12 +120,26 @@ class Configurator
 
     @runner_config = cmock.merge(@runner_config || config[:test_runner] || {})
 
-    @cmock_builder.manufacture(cmock)
+    @cmock_config = cmock
+  end
+
+
+  def copy_vendor_defines(config)
+    # NOTE: To maintain any backwards compatibility following a refactoring of :defines: handling,
+    #       copy top-level vendor defines into the respective tool areas.
+    config[UNITY_SYM].store(:defines, config[:defines][UNITY_SYM])
+    config[CMOCK_SYM].store(:defines, config[:defines][CMOCK_SYM])
+    config[CEXCEPTION_SYM].store(:defines, config[:defines][CEXCEPTION_SYM])
   end
 
 
   def get_runner_config
-    @runner_config
+    return @runner_config.clone
+  end
+
+
+  def get_cmock_config
+    return @cmock_config.clone
   end
 
 
@@ -142,9 +159,6 @@ class Configurator
 
       # populate stderr redirect option
       tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
-
-      # populate background execution option
-      tool[:background_exec] = BackgroundExec::NONE if (tool[:background_exec].nil?)
 
       # populate optional option to control verification of executable in search paths
       tool[:optional] = false if (tool[:optional].nil?)
@@ -325,6 +339,27 @@ class Configurator
       hash = { key => config[key] }
       @configurator_setup.build_constants_and_accessors(hash, binding())
     end
+  end
+
+
+  def redefine_element(elem, value)
+    # Ensure elem is a symbol
+    elem = elem.to_sym if elem.class != Symbol
+
+    # Ensure element already exists
+    if not @project_config_hash.include?(elem)
+      @streaminator.stderr_puts("Could not rederine #{elem} in configurator--element does not exist", Verbosity::ERROR)
+      raise
+    end
+
+    # Update internal hash
+    @project_config_hash[elem] = value
+
+    # Update global constant
+    @configurator_builder.build_global_constant(elem, value)
+
+    # Update backup config
+    store_config
   end
 
 

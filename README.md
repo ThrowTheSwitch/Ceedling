@@ -8,10 +8,10 @@ in C a breeze by integrating [CMock](https://github.com/throwtheswitch/cmock),
 three other awesome open-source projects you can’t live without if you're creating awesomeness 
 in the C language. Ceedling is also extensible with a handy plugin mechanism.
 
-Usage Documentation
-===================
+Documentation
+=============
 
-Documentation and license info exists [in the repo in docs/](docs/CeedlingPacket.md)
+[Usage help](docs/CeedlingPacket.md), [release notes](docs/ReleaseNotes.md), integration guides, and more exists [in docs/](docs/).
 
 Getting Started
 ===============
