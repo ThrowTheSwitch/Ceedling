@@ -24,30 +24,6 @@ class ToolExecutorHelper
     return StdErrRedirect::AUTO
   end
 
-
-  ##
-  # Returns the background execution prepend based on the config.
-  # ==== Attributes
-  #
-  # * _tool_config_:  A hash containing config information.
-  #
-  def background_exec_cmdline_prepend(tool_config)
-    return nil if (tool_config.nil? || tool_config[:background_exec].nil?)
-
-    config_exec = tool_config[:background_exec]
-
-    if ((config_exec == BackgroundExec::AUTO) and (@system_wrapper.windows?))
-      return 'start'
-    end
-
-    if (config_exec == BackgroundExec::WIN)
-      return 'start'
-    end
-
-    return nil
-  end
-
-
   ##
   # Modifies an executables path based on platform.
   # ==== Attributes
@@ -82,38 +58,12 @@ class ToolExecutorHelper
     end
 
     case redirect
-      # we may need more complicated processing after some learning with various environments
       when StdErrRedirect::NONE then nil
       when StdErrRedirect::WIN  then '2>&1'
       when StdErrRedirect::UNIX then '2>&1'
       when StdErrRedirect::TCSH then '|&'
       else redirect.to_s
     end
-  end
-
-  ##
-  # Returns the background execution append based on the config.
-  # ==== Attributes
-  #
-  # * _tool_config_:  A hash containing config information.
-  #
-  def background_exec_cmdline_append(tool_config)
-    return nil if (tool_config.nil? || tool_config[:background_exec].nil?)
-
-    config_exec = tool_config[:background_exec]
-
-    # if :auto & windows, then we already prepended 'start' and should append nothing
-    return nil if ((config_exec == BackgroundExec::AUTO) and (@system_wrapper.windows?))
-
-    # if :auto & not windows, then we append standard '&'
-    return '&' if ((config_exec == BackgroundExec::AUTO) and (not @system_wrapper.windows?))
-
-    # if explicitly Unix, then append '&'
-    return '&' if (config_exec == BackgroundExec::UNIX)
-
-  # * _command_str_:  A hash containing config information.
-    # all other cases, including :none, :win, & anything unrecognized, append nothing
-    return nil
   end
 
   ##
