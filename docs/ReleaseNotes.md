@@ -2,7 +2,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** October 5, 2023
+**Date:** October 6, 2023
 
 ## 👀 Highlights
 
