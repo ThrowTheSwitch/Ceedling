@@ -122,7 +122,6 @@ class Gcov < Plugin
       heading = @ceedling[:plugin_reportinator].generate_heading( test )
       @ceedling[:streaminator].stdout_puts(heading)
 
-      sources = @ceedling[:project_config_manager].filter_internal_sources(sources)
       sources.each do |source|
         filename = File.basename(source)
         name     = filename.ext('')
