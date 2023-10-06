@@ -18,9 +18,9 @@ Ceedling now runs in Ruby3. This latest version of Ceedling is _not_ backwards c
 
 #### Way faster suite execution with parallel build steps
 
-Previously, Ceedling builds were depth-first. Each test executable built to completion and then ran with every other test ins uccession within the suite building to completion and running.
+Previously, Ceedling builds were depth-first. In succession, each test executable within the suite built to completion. The previous build ordering was an artifact of relying on general purpose Rake for the build pipeline. This approach limited builds to a single line of execution no matter how many CPU resources were available.
 
-The previous build ordering was an artifact of relying on general purpose Rake for the build pipeline. This approach limited builds to a single line execution no matter how many CPU resources were available in your build system. Ceedling version 0.32 introduces a new build pipeline that batches build steps breadth-first. This means all preprocessor steps, all compilation steps, all linking steps, etc. can benefit from concurrent and parallel execution.
+Ceedling 0.32 introduces a new build pipeline that batches build steps breadth-first. This means all preprocessor steps, all compilation steps, all linking steps, etc. can benefit from concurrent and parallel execution.
 
 #### Per-test-executable configurations
 
@@ -28,11 +28,13 @@ In previous versions of Ceedling each test executable was built with essentially
 
 Now Ceedling builds each test executable as a mini project where header file search paths, compilation `#define`s, and tool flags can be specified per test executable. That is, each file that ultimately comprises a test executable is handled with the same configuration as the other files that make up that test executable.
 
+Now you can have tests with quite different configurations and behaviors. Two tests needed different mocks of the same header file? No problem. You want to test the same source file two different ways? We got you.
+
 The following new features (discussed in later sections) contribute to this new ability:
 
 - `TEST_INCLUDE_PATH(...)`. This build directive macro can be used within a test file to tell Ceedling which header search paths should be used during compilation. These paths are only used for compiling the files that comprise that test executable.
-- `[:defines]` definitions and matching in the project file. `#define`s are now specified for the compilation of all components of a test executable. Matching is only against test file names but now includes wildcard and regular expression options.
-- `[:flags]` definitions and matching in the project file. Flags (e.g. `-std=c99`) are now specified for the build steps of all components of a test executable. Matching is only against test file names and now includes more sensible and robust wildcard and regular expression options.
+- `[:defines]` handling. `#define`s are now specified for the compilation of all modules comprising a test executable. Matching is only against test file names but now includes wildcard and regular expression options.
+- `[:flags]` handling. Flags (e.g. `-std=c99`) are now specified for the build steps—preprocessing, compilation, and linking—of all modules comprising a test executable. Matching is only against test file names and now includes more sensible and robust wildcard and regular expression options.
 
 ### Medium Deal Highlights 🥈
 
@@ -55,15 +57,24 @@ Ceedling has been around for a number of years and has had the benefit of many c
 
 ### 👋 Deprecated / Temporarily Removed Abilities
 
-- All “smart” rebuild features built around Rake no longer exist. That is, incremental test suite builds for only changed files are no longer possible. In future revisions, this ability will be brought back without relying on Rake. In the meantime, all builds rebuild everything (the speed increase due to parallel build tasks more than makes up for this). The following project configuration options are no longer recognized:
+#### Test suite smart rebuilds
+
+All “smart” rebuild features built around Rake no longer exist. That is, incremental test suite builds for only changed files are no longer possible. In future revisions, this ability will be brought back without relying on Rake. In the meantime, any test build is a full rebuild of its components (the speed increase due to parallel build tasks more than makes up for this). The following project configuration options are no longer recognized:
   - `:use_deep_dependencies`
   - `:generate_deep_dependencies`
-- Background task execution for tool configurations (`:background_exec`) has been deprecated. This option was one of Ceedling's earliest features attempting to speed up builds within the constraints of Rake-based builds. It has rarely if ever been used in practice, and other, better options exist to manage any sort of scenario that might motivate a background task.
+
+Note that release builds do retain a fair amount of smart rebuild capabilities.
+
+#### Background task execution
+
+Background task execution for tool configurations (`:background_exec`) has been deprecated. This option was one of Ceedling's earliest features attempting to speed up builds within the constraints of relying on Rake. This feature has rarely, if ever, been used in practice, and other, better options exist to manage any scenario that might motivate a background task.
 
 
 #### Tool `[:defines]`
 
-In previous versions of Ceedling, one option for configuring compiled elements of vendor tools was to specify their `#define`s in that tool's project file configuration section. In conjunction with the improvements to `#define`s handling generally, the tools' `#define`s no live in the top-level `[:defines]` area of the project configuration.
+In previous versions of Ceedling, one option for configuring compiled elements of vendor tools was to specify their `#define`s in that tool's project file configuration section. In conjunction with the general improvements to handling `#define`s, vendor tools' `#define`s now live in the top-level `[:defines]` area of the project configuration.
+
+Note that to preserve some measure of backwards compatibility, Ceedling inserts a copy of a vendor tool's `#define` list into its top-level config.
 
 Example of the old way:
 
@@ -99,17 +110,25 @@ Example of the new way:
     - CMOCK_MEM_ALIGN=2
 ```
 
-
 ## 🌟 New Features
 
-### 
+### `TEST_INCLUDE_PATH(...)`
 
+Issue #743
+
+### More better `[:flags]` handling
+
+Issue #43
+
+### More better `[:defines]` handling
+
+…
 
 ## 💪 Improvements and 🪲 Bug Fixes
 
 ### Preprocessing improvements
 
-…
+… Issues #806, #796
 
 ### Improvements and bug fixes for gcov plugin
 
@@ -124,6 +143,10 @@ A longstanding bug produced duplicate and sometimes incorrect lists of header fi
 ### JUnit, XML & JSON test report plugins bug fix
 
 When used with other plugins, the these test reporting plugins' generated report could end up in a location within `build/artifacts/` that was inconsistent and confusing. This has been fixed.
+
+### Dashed filename handling bug fix
+
+In certain combinations of Ceedling features, a dash in a C filename could cause Ceedling to exit with an exception (#780). This has been fixed.
 
 ## 💔 Breaking Changes
 
@@ -160,7 +183,7 @@ In brief:
 
 ### `TEST_FILE()` ➡️ `TEST_SOURCE_FILE()`
 
-The previously undocumented `TEST_FILE()` build directive macro available within test files has been renamed and is now officially documented. See earlier section on this.
+The previously undocumented `TEST_FILE()` build directive macro (#796) available within test files has been renamed and is now officially documented. See earlier section on this.
 
 ### Build output directory structure
 
@@ -179,6 +202,7 @@ Some global “collections” that were previously key elements of Ceedling have
   1. Threads do not always shut down immediately when build errors occur. This can introduce delays that look like mini-hangs. Builds do   eventually conclude. `<ctrl-c>` can help speed up the process.
   1. Certain “high stress” scenarios on Windows can cause data stream buffering errors. Many parallel build tasks with verbosity at an elevated level (>= 4) can lead to buffering failures when logging to the console.
   1. Error messages can be obscured by lengthy and duplicated backtraces across multiple threads.
+1. Fake Function Framework support in place of CMock mock generation is currently broken.
 
 ## 📚 Background Knowledge
 
@@ -193,7 +217,6 @@ You may have heard that Ruby is actually only single-threaded or may know of its
 
 Thank yous and acknowledgments:
 
-- …
 - …
 
 
