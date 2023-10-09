@@ -14,15 +14,6 @@ desc "Set verbose output (silent:[#{Verbosity::SILENT}] - obnoxious:[#{Verbosity
 task :verbosity, :level do |t, args|
   verbosity_level = args.level.to_i
 
-  if (PROJECT_USE_MOCKS)
-    # don't store verbosity level in setupinator's config hash, use a copy;
-    # otherwise, the input configuration will change and trigger entire project rebuilds
-    hash = @ceedling[:setupinator].config_hash[:cmock].clone
-    hash[:verbosity] = verbosity_level
-
-    @ceedling[:cmock_builder].manufacture( hash )
-  end
-
   @ceedling[:configurator].project_verbosity = verbosity_level
 
   # control rake's verbosity with new setting

@@ -18,10 +18,9 @@ Rake::TaskManager.record_task_metadata = true
 
 require 'diy'
 require 'constructor'
-
 require 'ceedling/constants'
 require 'ceedling/target_loader'
-
+require 'deep_merge'
 
 # construct all our objects
 # ensure load path contains all libraries needed first
@@ -46,6 +45,16 @@ project_config =
 
 @ceedling[:setupinator].do_setup( project_config )
 
+# Configure Ruby's default reporting for Thread exceptions.
+unless @ceedling[:configurator].project_verbosity == Verbosity::DEBUG
+  # In Ceedling's case thread scenarios will fall into these buckets:
+  #  1. Jobs shut down cleanly
+  #  2. Jobs shut down at garbage collected after a build step terminates with an error
+  #
+  # Since Ceedling is not a daemon, server app, or something to run continuously,
+  # we can safely disable forced exception reporting.
+  Thread.report_on_exception = false
+end
 
 # tell all our plugins we're about to do something
 @ceedling[:plugin_manager].pre_build
@@ -65,11 +74,6 @@ END {
   # cache our input configurations to use in comparison upon next execution
   @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash )    if (@ceedling[:task_invoker].test_invoked?)
   @ceedling[:cacheinator].cache_release_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].release_invoked?)
-
-  # delete all temp files unless we're in debug mode
-  if (not @ceedling[:configurator].project_debug)
-    @ceedling[:file_wrapper].rm_f( @ceedling[:file_wrapper].directory_listing( File.join(@ceedling[:configurator].project_temp_path, '*') ))
-  end
 
   # only perform these final steps if we got here without runtime exceptions or errors
   if (@ceedling[:system_wrapper].ruby_success)

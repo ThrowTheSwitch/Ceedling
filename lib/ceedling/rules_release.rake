@@ -20,29 +20,36 @@ rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_ASM_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => 
       @ceedling[:file_finder].find_assembly_file(task_name)
     end
   ]) do |object|
-  @ceedling[:generator].generate_object_file(
-    TOOLS_RELEASE_ASSEMBLER,
-    OPERATION_ASSEMBLE_SYM,
-    RELEASE_SYM,
-    object.source,
-    object.name )
+  @ceedling[:generator].generate_object_file_asm(
+    tool:         TOOLS_RELEASE_ASSEMBLER,
+    module_name:  File.basename(object.source).ext(), # Source filename as module name
+    context:      RELEASE_SYM,
+    source:       object.source,
+    object:       object.name,
+    search_paths: COLLECTION_PATHS_SOURCE_AND_INCLUDE,
+    flags:        @ceedling[:flaginator].flag_down( context:RELEASE_SYM, operation:OPERATION_ASSEMBLE_SYM ),
+    defines:      @ceedling[:defineinator].defines( context:RELEASE_SYM ),
+    list:         @ceedling[:file_path_utils].form_release_build_c_list_filepath( object.name ),
+    dependencies: @ceedling[:file_path_utils].form_release_dependencies_filepath( object.name ) )
 end
 end
-
 
 rule(/#{PROJECT_RELEASE_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       @ceedling[:file_finder].find_compilation_input_file(task_name, :error, true)
     end
   ]) do |object|
-  @ceedling[:generator].generate_object_file(
-    TOOLS_RELEASE_COMPILER,
-    OPERATION_COMPILE_SYM,
-    RELEASE_SYM,
-    object.source,
-    object.name,
-    @ceedling[:file_path_utils].form_release_build_c_list_filepath( object.name ),
-    @ceedling[:file_path_utils].form_release_dependencies_filepath( object.name ) )
+  @ceedling[:generator].generate_object_file_c(
+    tool:         TOOLS_RELEASE_COMPILER,
+    module_name:  File.basename(object.source).ext(), # Source filename as module name
+    context:      RELEASE_SYM,
+    source:       object.source,
+    object:       object.name,
+    search_paths: COLLECTION_PATHS_INCLUDE,
+    flags:        @ceedling[:flaginator].flag_down( context:RELEASE_SYM, operation:OPERATION_COMPILE_SYM ),
+    defines:      @ceedling[:defineinator].defines( context:RELEASE_SYM ),
+    list:         @ceedling[:file_path_utils].form_release_build_c_list_filepath( object.name ),
+    dependencies: @ceedling[:file_path_utils].form_release_dependencies_filepath( object.name ) )
 end
 
 
@@ -52,10 +59,12 @@ rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
   lib_args  = @ceedling[:release_invoker].convert_libraries_to_arguments(libraries)
   lib_paths = @ceedling[:release_invoker].get_library_paths_to_arguments()
   map_file  = @ceedling[:configurator].project_release_build_map
+
   @ceedling[:generator].generate_executable_file(
     tool,
     RELEASE_SYM,
     objects,
+    [], # Flags
     bin_file.name,
     map_file,
     lib_args,
