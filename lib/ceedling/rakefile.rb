@@ -45,6 +45,16 @@ project_config =
 
 @ceedling[:setupinator].do_setup( project_config )
 
+# Configure Ruby's default reporting for Thread exceptions.
+unless @ceedling[:configurator].project_verbosity == Verbosity::DEBUG
+  # In Ceedling's case thread scenarios will fall into these buckets:
+  #  1. Jobs shut down cleanly
+  #  2. Jobs shut down at garbage collected after a build step terminates with an error
+  #
+  # Since Ceedling is not a daemon, server app, or something to run continuously,
+  # we can safely disable forced exception reporting.
+  Thread.report_on_exception = false
+end
 
 # tell all our plugins we're about to do something
 @ceedling[:plugin_manager].pre_build

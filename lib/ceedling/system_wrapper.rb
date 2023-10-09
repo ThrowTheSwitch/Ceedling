@@ -43,7 +43,7 @@ class SystemWrapper
   end
 
   def shell_capture3(command, boom = true) 
-    begin 
+    begin
       stdout, stderr, status = Open3.capture3(command)
     rescue => err
       stderr = err

@@ -1,10 +1,9 @@
 
-require 'ceedling/par_map'
-
 class TestInvokerHelper
 
   constructor :configurator,
               :streaminator,
+              :build_batchinator,
               :task_invoker,
               :test_context_extractor,
               :include_pathinator,
@@ -13,19 +12,11 @@ class TestInvokerHelper
               :file_finder,
               :file_path_utils,
               :file_wrapper,
-              :generator,
-              :reportinator
+              :generator
 
-  def execute_build_step(msg, heading: true)
-    if heading
-      msg = @reportinator.generate_heading(msg)
-    else # Progress message
-      msg = "\n" + @reportinator.generate_progress(msg)
-    end
-
-    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
-
-    yield # Execute build step block
+  def setup
+    # Alias for brevity
+    @batchinator = @build_batchinator
   end
 
   def process_project_include_paths
@@ -177,7 +168,7 @@ class TestInvokerHelper
   end
 
   def generate_objects_now(object_list, context, options)
-    par_map(PROJECT_COMPILE_THREADS, object_list) do |object|
+    @batchinator.exec(workload: :compile, things: object_list) do |object|
       src = @file_finder.find_compilation_input_file(object)
       if (File.basename(src) =~ /#{EXTENSION_SOURCE}$/)
         @generator.generate_object_file(

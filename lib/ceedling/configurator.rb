@@ -392,7 +392,7 @@ class Configurator
     end
   end
 
-  ### private ###
+  ### Private ###
 
   private
 

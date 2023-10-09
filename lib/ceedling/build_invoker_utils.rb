@@ -12,10 +12,8 @@ class BuildInvokerUtils
   # ==== Attributes
   #
   # * _exception_:  The exception given by a rescue statement.
-  # * _context_:    A symbol representing where in the build the exception
-  # occurs. 
-  # * _test_build_: A bool to signify if the exception occurred while building
-  # from test or source.
+  # * _context_:    A symbol representing where in the build the exception occurs. 
+  # * _test_build_: A bool to signify if the exception occurred while building from test or source.
   #
   def process_exception(exception, context, test_build=true)
     if (exception.message =~ /Don't know how to build task '(.+)'/i)

@@ -3,8 +3,9 @@ require 'benchmark'
 
 class ShellExecutionException < RuntimeError
   attr_reader :shell_result
-  def initialize(shell_result)
+  def initialize(shell_result:, message:)
     @shell_result = shell_result
+    super(message)
   end
 end
 
@@ -74,7 +75,7 @@ class ToolExecutor
 
     # Go boom if exit code is not 0 and we want to debug (in some cases we don't want a non-0 exit code to raise)
     if ((shell_result[:exit_code] != 0) and options[:boom])
-      raise ShellExecutionException.new(shell_result)
+      raise ShellExecutionException.new(shell_result: shell_result, message: "Tool exited with an error")
     end
 
     return shell_result

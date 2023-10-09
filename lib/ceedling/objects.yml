@@ -186,6 +186,7 @@ include_pathinator:
 task_invoker:
   compose:
     - dependinator
+    - build_batchinator
     - rake_utils
     - rake_wrapper
     - project_config_manager
@@ -298,25 +299,34 @@ preprocessinator_file_handler:
 
 preprocessinator_extractor:
 
+build_batchinator:
+  compose:
+    - configurator
+    - streaminator
+    - reportinator
+
+
 test_invoker:
   compose:
     - configurator
     - test_invoker_helper
     - plugin_manager
+    - build_batchinator
     - streaminator
     - preprocessinator
     - task_invoker
-    - project_config_manager
     - build_invoker_utils
     - generator
     - test_context_extractor
     - file_path_utils
     - file_wrapper
+    - verbosinator
 
 test_invoker_helper:
   compose:
     - configurator
     - streaminator
+    - build_batchinator
     - task_invoker
     - test_context_extractor
     - include_pathinator
@@ -326,7 +336,6 @@ test_invoker_helper:
     - file_path_utils
     - file_wrapper
     - generator
-    - reportinator
 
 release_invoker:
   compose:
