@@ -646,10 +646,11 @@ The Magic of Dependency Tracking
 Previous versions of Ceedling used features of Rake to offer
 various kinds of smart rebuilds--that is, only regenerating files, 
 recompiling code files, or relinking executables when changes within 
-the project had occurred since the last build. Optional features 
-discovered “deep dependencies” such that, for example, a change in a 
-header file several nested layers deep in `#include` statements 
-would cause all the correct test executables to be updated and run.
+the project had occurred since the last build. Optional Ceedling 
+features discovered “deep dependencies” such that, for example, a 
+change in a header file several nested layers deep in `#include` 
+statements would cause all the correct test executables to be 
+updated and run.
 
 These features have been temporarily disabled and/or removed while
 Ceedling undergoes a major overhaul. Please see the [Release Notes](ReleaseNotes.md).
@@ -817,23 +818,6 @@ project: global project settings
   With this option enabled, the gcc & cpp tools must exist in an
   accessible system search path and test runner files are always
   regenerated.
-
-  **Default**: FALSE
-
-* `use_preprocessor_directives`:
-
-  After standard preprocessing when `use_test_preprocessor` is used
-  macros are fully expanded to C code. Some features, for example
-  TEST_CASE() or TEST_RANGE() from Unity require not-fully preprocessed
-  file to be detected by Ceedling. To do this gcc directives-only
-  option is used to expand only conditional compilation statements,
-  handle directives, but do not expand macros preprocessor and leave
-  the other content of file untouched.
-
-  With this option enabled, `use_test_preprocessor` must be also enabled
-  and gcc must exist in an accessible system search path. For other
-  compilers behavior can be changed by `test_file_preprocessor_directives`
-  compiler tool.
 
   **Default**: FALSE
 
@@ -1350,15 +1334,6 @@ Example [:extension] YAML blurb
 * `release`:
 
   Defines needed for the release build binary artifact.
-
-  **Default**: `[]` (empty)
-
-* `release_preprocess`:
-
-  If [:project][:use_deep_dependencies] is set and code is structured in
-  a certain way, the gcc preprocessor may need symbol definitions to
-  properly preprocess files for incremental release builds due to deep
-  dependencies.
 
   **Default**: `[]` (empty)
 
