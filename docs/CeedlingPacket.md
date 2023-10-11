@@ -912,6 +912,7 @@ Example `[:project]` YAML blurb
     - project/options
     - external/shared/options
   :release_build: TRUE
+  :compile_threads: :auto
 ```
 
 Ceedling is primarily concerned with facilitating the somewhat
