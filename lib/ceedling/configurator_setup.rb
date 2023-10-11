@@ -23,6 +23,7 @@ class ConfiguratorSetup
     flattened_config.merge!(@configurator_builder.set_build_paths(flattened_config))
     flattened_config.merge!(@configurator_builder.set_rakefile_components(flattened_config))
     flattened_config.merge!(@configurator_builder.set_release_target(flattened_config))
+    flattened_config.merge!(@configurator_builder.set_build_thread_counts(flattened_config))    
     flattened_config.merge!(@configurator_builder.collect_project_options(flattened_config))
 
     ### iterate through all entries in paths section and expand any & all globs to actual paths
@@ -107,6 +108,47 @@ class ConfiguratorSetup
 
     return false if (validation.include?(false))
     return true
+  end
+
+  def validate_threads(config)
+    validate = true
+
+    compile_threads = config[:project][:compile_threads]
+    test_threads = config[:project][:test_threads]
+
+    case compile_threads
+    when Integer
+      if compile_threads < 1
+        @stream_wrapper.stderr_puts("ERROR: [:project][:compile_threads] must be greater than 0")
+        validate = false
+      end
+    when Symbol
+      if compile_threads != :auto
+        @stream_wrapper.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto") 
+        validate = false
+      end
+    else
+      @stream_wrapper.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto") 
+      validate = false
+    end
+
+    case test_threads
+    when Integer
+      if test_threads < 1
+        @stream_wrapper.stderr_puts("ERROR: [:project][:test_threads] must be greater than 0")
+        validate = false
+      end
+    when Symbol
+      if test_threads != :auto
+        @stream_wrapper.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto") 
+        validate = false
+      end
+    else
+      @stream_wrapper.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto") 
+      validate = false
+    end
+
+    return validate
   end
 
   def validate_plugins(config)

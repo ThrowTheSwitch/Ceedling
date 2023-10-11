@@ -197,6 +197,37 @@ class ConfiguratorBuilder
   end
 
 
+  def set_build_thread_counts(in_hash)
+    require 'etc'
+
+    auto_thread_count = (Etc.nprocessors + 4)
+
+    compile_threads = in_hash[:project_compile_threads]
+    test_threads = in_hash[:project_test_threads]
+
+    case compile_threads
+    when Integer
+      # Do nothing--value already validated
+    when Symbol
+      # If a symbol, it's already been validated as legal
+      compile_threads = auto_thread_count if compile_threads == :auto
+    end
+
+    case test_threads
+    when Integer
+      # Do nothing--value already validated
+    when Symbol
+      # If a symbol, it's already been validated as legal
+      test_threads = auto_thread_count if test_threads == :auto
+    end
+
+    return {
+      :project_compile_threads => compile_threads,
+      :project_test_threads => test_threads
+    }
+  end
+
+
   def collect_project_options(in_hash)
     options = []
 

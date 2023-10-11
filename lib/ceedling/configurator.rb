@@ -311,16 +311,17 @@ class Configurator
 
   def validate(config)
     # collect felonies and go straight to jail
-    raise if (not @configurator_setup.validate_required_sections( config ))
+    raise "ERROR: Ceedling configuration failed validation" if (not @configurator_setup.validate_required_sections( config ))
 
     # collect all misdemeanors, everybody on probation
     blotter = []
     blotter << @configurator_setup.validate_required_section_values( config )
     blotter << @configurator_setup.validate_paths( config )
     blotter << @configurator_setup.validate_tools( config )
+    blotter << @configurator_setup.validate_threads( config )
     blotter << @configurator_setup.validate_plugins( config )
 
-    raise if (blotter.include?( false ))
+    raise "ERROR: Ceedling configuration failed validation" if (blotter.include?( false ))
   end
 
 
