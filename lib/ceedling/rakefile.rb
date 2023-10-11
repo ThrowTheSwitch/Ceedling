@@ -22,49 +22,53 @@ require 'ceedling/constants'
 require 'ceedling/target_loader'
 require 'deep_merge'
 
-# construct all our objects
-# ensure load path contains all libraries needed first
-lib_ceedling_load_path_temp = File.join(CEEDLING_LIB, 'ceedling')
-$LOAD_PATH.unshift( lib_ceedling_load_path_temp )
-@ceedling = DIY::Context.from_yaml( File.read( File.join(lib_ceedling_load_path_temp, 'objects.yml') ) )
-@ceedling.build_everything
-# now that all objects are built, delete 'lib/ceedling' from load path
-$LOAD_PATH.delete(lib_ceedling_load_path_temp)
-# one-stop shopping for all our setup and such after construction
-@ceedling[:setupinator].ceedling = @ceedling
+begin
+  # construct all our objects
+  # ensure load path contains all libraries needed first
+  lib_ceedling_load_path_temp = File.join(CEEDLING_LIB, 'ceedling')
+  $LOAD_PATH.unshift( lib_ceedling_load_path_temp )
+  @ceedling = DIY::Context.from_yaml( File.read( File.join(lib_ceedling_load_path_temp, 'objects.yml') ) )
+  @ceedling.build_everything
+  # now that all objects are built, delete 'lib/ceedling' from load path
+  $LOAD_PATH.delete(lib_ceedling_load_path_temp)
+  # one-stop shopping for all our setup and such after construction
+  @ceedling[:setupinator].ceedling = @ceedling
 
-project_config =
-  begin
-    cfg = @ceedling[:setupinator].load_project_files
-    TargetLoader.inspect(cfg, ENV['TARGET'])
-  rescue TargetLoader::NoTargets
-    cfg
-  rescue TargetLoader::RequestReload
-    @ceedling[:setupinator].load_project_files
+  project_config =
+    begin
+      cfg = @ceedling[:setupinator].load_project_files
+      TargetLoader.inspect(cfg, ENV['TARGET'])
+    rescue TargetLoader::NoTargets
+      cfg
+    rescue TargetLoader::RequestReload
+      @ceedling[:setupinator].load_project_files
+    end
+
+  @ceedling[:setupinator].do_setup( project_config )
+
+  # Configure Ruby's default reporting for Thread exceptions.
+  unless @ceedling[:configurator].project_verbosity == Verbosity::DEBUG
+    # In Ceedling's case thread scenarios will fall into these buckets:
+    #  1. Jobs shut down cleanly
+    #  2. Jobs shut down at garbage collected after a build step terminates with an error
+    #
+    # Since Ceedling is not a daemon, server app, or something to run continuously,
+    # we can safely disable forced exception reporting.
+    Thread.report_on_exception = false
   end
 
-@ceedling[:setupinator].do_setup( project_config )
+  # tell all our plugins we're about to do something
+  @ceedling[:plugin_manager].pre_build
 
-# Configure Ruby's default reporting for Thread exceptions.
-unless @ceedling[:configurator].project_verbosity == Verbosity::DEBUG
-  # In Ceedling's case thread scenarios will fall into these buckets:
-  #  1. Jobs shut down cleanly
-  #  2. Jobs shut down at garbage collected after a build step terminates with an error
-  #
-  # Since Ceedling is not a daemon, server app, or something to run continuously,
-  # we can safely disable forced exception reporting.
-  Thread.report_on_exception = false
+  # load rakefile component files (*.rake)
+  PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
+
+  # tell rake to shut up by default (overridden in verbosity / debug tasks as appropriate)
+  verbose(false)
+rescue StandardError => e
+  $stderr.puts(e.message)
+  abort # Rake's abort
 end
-
-# tell all our plugins we're about to do something
-@ceedling[:plugin_manager].pre_build
-
-# load rakefile component files (*.rake)
-PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
-
-# tell rake to shut up by default (overridden in verbosity / debug tasks as appropriate)
-verbose(false)
-
 
 # end block always executed following rake run
 END {
