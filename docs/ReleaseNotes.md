@@ -22,17 +22,17 @@ Ceedling now runs in Ruby3. This latest version of Ceedling is _not_ backwards c
 
 #### Way faster execution with parallel build steps
 
-Previously, Ceedling builds were depth-first and limited to a single line of execution. This limitation was an artifact of relying on general purpose Rake for the build pipeline. Rake does, in fact, support multi-threaded builds. But, the way Ceedling was using Rake complicated taking advantage of this. As such, effectively, builds were limited to a single line of execution no matter how many CPU resources were available.
+Previously, Ceedling builds were depth-first and limited to a single line of execution. This limitation was an artifact of how Ceedling was architected and relying on general purpose Rake for the build pipeline. Rake does, in fact, support multi-threaded builds, but, Ceedling was unable to take advantage of this. As such, builds were limited to a single line of execution no matter how many CPU resources were available.
 
 Ceedling 0.32 introduces a new build pipeline that batches build steps breadth-first. This means all test preprocessor steps, all compilation steps, all linking steps, etc. can benefit from concurrent and parallel execution. This speedup applies to both test suite and release builds.
 
 #### Per-test-executable configurations
 
-In previous versions of Ceedling each test executable was built with essentially the same global configuration. In the case of `#define`s and tool command line flags, individual files could be handled differently, but configuring Ceedling for doing so for all the files in a test executable was tedious and error prone.
+In previous versions of Ceedling each test executable was built with essentially the same global configuration. In the case of `#define`s and tool command line flags, individual files could be handled differently, but configuring Ceedling for doing so for all the files in any one test executable was tedious and error prone.
 
 Now Ceedling builds each test executable as a mini project where header file search paths, compilation `#define`s, and tool flags can be specified per test executable. That is, each file that ultimately comprises a test executable is handled with the same configuration as the other files that make up that test executable.
 
-Now you can have tests with quite different configurations and behaviors. Two tests needed different mocks of the same header file? No problem. You want to test the same source file two different ways? We got you.
+Now you can have tests with quite different configurations and behaviors. Two tests need different mocks of the same header file? No problem. You want to test the same source file two different ways? We got you.
 
 The following new features (discussed in later sections) contribute to this new ability:
 
@@ -56,8 +56,8 @@ Ceedling has been around for a number of years and has had the benefit of many c
 
 ### Small Deal Highlights 🥉
 
-- This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake's design assumptions hamper building the sorts of features Ceedling's users want, Rake's command line structure creates a messy user experience, and Rake's quirks cause maintenance challenges. Particularly for test suites, much of Ceedling's (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
-- This is the first ever release of Ceedling with proper release notes. Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in this release. Future releases will have far shorter notes.
+- This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake's design assumptions hamper building the sorts of features Ceedling's users want, Rake's command line structure creates a messy user experience for a full application built around it, and Rake's quirks cause maintenance challenges. Particularly for test suites, much of Ceedling's (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
+- This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 0.32 release. Future releases will have far shorter notes.
 
 <br/>
 
@@ -94,6 +94,12 @@ Background task execution for tool configurations (`:background_exec`) has been 
 
 
 ## 🌟 New Features
+
+### Parallel execution of build steps
+
+As was explained in the _[Highlights](#-Highlights)_, Ceedling can now run its internal tasks in parallel and take full advantage of your build system's resources. Even lacking various optimizations (see _[Known Issues](#-Known-Issues)_) builds are now often quite speedy.
+
+Enabling this speedup requires either or both of two simple configuration settings. See Ceedling's [documentation](CeedlingPacket.md) for `[:project][:compile_threads]` and `[:project][:test_threads]`.
 
 ### `TEST_INCLUDE_PATH(...)`
 

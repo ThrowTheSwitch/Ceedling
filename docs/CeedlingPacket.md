@@ -660,7 +660,6 @@ significantly speed up test suite execution and release builds
 despite each build brute force running all build steps. When smart
 rebuilds are implemented again, they will further speed up builds.
 
-
 Ceedling's Build Output
 -----------------------
 
@@ -861,6 +860,46 @@ project: global project settings
 
   **Default**: FALSE
 
+
+* `compile_threads`:
+
+  A value greater than one enables parallelized build steps. Ceedling
+  creates a number of threads up to `:compile_threads` for build steps.
+  These build steps execute batched operations including but not 
+  limited to mock generation, code compilation, and running test 
+  executables.
+
+  Particularly if your build system includes multiple cores, overall 
+  build time will drop considerably as compared to running a build with 
+  a single thread.
+
+  Tuning the number of threads for peak performance is an art more 
+  than a science. A special value of `:auto` instructs Ceedling to 
+  query the host system's number of virtual cores. To this value it 
+  adds a constant of 4. This is often a good value sufficient to "max
+  out" available resources without overloading availble resources.
+
+  `:compile_threads` is used for all release build steps and all test
+  suite build steps except for running the test executables that make
+  up a test suite. See next section for more.
+
+  **Default**: 1
+
+* `test_threads`:
+
+  The behavior of and values for `:test_threads` are identical to 
+  `:compile_threads` with one exception.
+
+  `test_threads:` specifically controls the number of threads used to
+  run the test executables comprising a test suite. Why the 
+  distinction from `:compile_threads`? Some test suite builds rely not
+  on native executables but simulators running cross-compiled code.
+  Some simulators are limted to running only a single instance at a 
+  time. Thus, with this and the previous setting, it becomes possible 
+  to parallelize nearly all of a test suite build while still respecting
+  the limits of certain simulators depended upon by test executables.
+
+  **Default**: 1
 
 Example `[:project]` YAML blurb
 
