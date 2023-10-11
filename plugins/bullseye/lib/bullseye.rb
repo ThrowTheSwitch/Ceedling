@@ -26,6 +26,7 @@ class Bullseye < Plugin
   def config
     {
       :project_test_build_output_path     => BULLSEYE_BUILD_OUTPUT_PATH,
+      :project_test_build_output_c_path   => BULLSEYE_BUILD_OUTPUT_PATH,
       :project_test_results_path          => BULLSEYE_RESULTS_PATH,
       :project_test_dependencies_path     => BULLSEYE_DEPENDENCIES_PATH,
       :defines_test                       => DEFINES_TEST + ['CODE_COVERAGE'],

@@ -1,11 +1,12 @@
 require 'benchmark'
 require 'reportinator_helper'
+require 'ceedling/constants'
 
 class ReportGeneratorReportinator
 
   def initialize(system_objects)
     @ceedling = system_objects
-    @reportinator_helper = ReportinatorHelper.new
+    @reportinator_helper = ReportinatorHelper.new(system_objects)
   end
 
 
@@ -15,8 +16,8 @@ class ReportGeneratorReportinator
     total_time = Benchmark.realtime do
       rg_opts = get_opts(opts)
 
-      print "Creating gcov results report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_PATH}'... "
-      STDOUT.flush
+      msg = @ceedling[:reportinator].generate_progress("Creating #{opts[:gcov_reports].join(', ')} coverage report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_PATH}'")
+      @ceedling[:streaminator].stdout_puts("\n" + msg, Verbosity::NORMAL)
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.
       for gcov_file in Dir.glob("*.gcov")
@@ -26,10 +27,7 @@ class ReportGeneratorReportinator
       # Use a custom gcov executable, if specified.
       GCOV_TOOL_CONFIG[:executable] = rg_opts[:gcov_executable] unless rg_opts[:gcov_executable].nil?
 
-      # Avoid running gcov on the mock, test, unity, and cexception gcov notes files to save time.
-      gcno_exclude_str = "#{opts[:cmock_mock_prefix]}.*"
-      gcno_exclude_str += "|#{opts[:project_test_file_prefix]}.*"
-      gcno_exclude_str += "|#{VENDORS_FILES.join('|')}"
+      gcno_exclude_str = ""
 
       # Avoid running gcov on custom specified .gcno files.
       if !(rg_opts.nil?) && !(rg_opts[:gcov_exclude].nil?) && !(rg_opts[:gcov_exclude].empty?)
@@ -52,8 +50,7 @@ class ReportGeneratorReportinator
 
       # Generate .gcov files by running gcov on gcov notes files (*.gcno).
       for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
-        match_data = gcno_filepath.match(gcno_exclude_regex)
-        if match_data.nil? || (match_data[1].nil? && match_data[1].nil?)
+        if not (gcno_filepath =~ gcno_exclude_regex) # Skip path that matches exclude pattern
           # Ensure there is a matching gcov data file.
           if File.file?(gcno_filepath.gsub(".gcno", ".gcda"))
             run_gcov("\"#{gcno_filepath}\"")
@@ -68,7 +65,7 @@ class ReportGeneratorReportinator
         # Generate the report(s).
         shell_result = run(args)
       else
-        puts "\nWarning: No matching .gcno coverage files found."
+        @ceedling[:streaminator].stdout_puts("\nWARNING: No matching .gcno coverage files found.", Verbosity::NORMAL)
       end
 
       # Cleanup .gcov files.
@@ -138,7 +135,7 @@ class ReportGeneratorReportinator
       # Removing trailing ';' after the last report type.
       args = args.chomp(";")
 
-      # Append a space seperator after the report type.
+      # Append a space separator after the report type.
       args += "\" "
     end
 
@@ -182,6 +179,8 @@ class ReportGeneratorReportinator
   # Run ReportGenerator with the given arguments.
   def run(args)
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORTGENERATOR_POST_REPORT, [], args)
+    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
+
     return @ceedling[:tool_executor].exec(command[:line], command[:options])
   end
 
@@ -189,6 +188,8 @@ class ReportGeneratorReportinator
   # Run gcov with the given arguments.
   def run_gcov(args)
     command = @ceedling[:tool_executor].build_command_line(GCOV_TOOL_CONFIG, [], args)
+    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
+
     return @ceedling[:tool_executor].exec(command[:line], command[:options])
   end
 

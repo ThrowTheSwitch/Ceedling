@@ -23,4 +23,23 @@ class Reportinator
     return "#{'-' * dash_count}\n#{message}\n#{'-' * dash_count}\n"
   end
 
+  def generate_heading(message)
+    # <Message>
+    # ---------
+    return "\n#{message}\n#{'-' * message.length}"
+  end
+
+  def generate_progress(message)
+    # <Message>...
+    return "#{message}..."
+  end
+
+  def generate_module_progress(module_name:, filename:, operation:)
+    # <Operation [module_name::]filename>..."
+
+    # If filename is the module name, don't add the module label
+    label = (File.basename(filename).ext('') == module_name.to_s) ? '' : "#{module_name}::"
+    return generate_progress("#{operation} #{label}#{filename}")
+  end
+
 end

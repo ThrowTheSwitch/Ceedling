@@ -7,7 +7,7 @@ require 'ceedling/configurator'
 describe GeneratorTestResultsSanityChecker do
   before(:each) do
     # this will always be mocked
-    @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :cmock_builder => nil, :yaml_wrapper => nil, :system_wrapper => nil})
+    @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :yaml_wrapper => nil, :system_wrapper => nil})
     @streaminator = Streaminator.new({:streaminator_helper => nil, :verbosinator => nil, :loginator => nil, :stream_wrapper => nil})
 
     @sanity_checker = described_class.new({:configurator => @configurator, :streaminator => @streaminator})
