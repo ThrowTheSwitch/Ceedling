@@ -109,7 +109,7 @@ Finally, you can force a particular naming convention. Even if someone calls the
 with something like `MyNewModule`, if they have the naming convention set to `:caps`, it will
 generate files like `MY_NEW_MODULE.c`. This keeps everyone on your team behaving the same way.
 
-Your options are as follows:
+Your options for `:naming:` are as follows:
 
   - `:bumpy` - BumpyFilesLooksLikeSo
   - `:camel` - camelFilesAreSimilarButStartLow

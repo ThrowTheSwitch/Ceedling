@@ -643,65 +643,22 @@ for Unity and CMock.
 The Magic of Dependency Tracking
 --------------------------------
 
-Ceedling is pretty smart in using Rake to build up your project's
-dependencies. This means that Ceedling automagically rebuilds
-all the appropriate files in your project when necessary: when
-your configuration changes, Ceedling or any of the other tools
-are updated, or your source or test files change. For instance,
-if you modify a header file that is mocked, Ceedling will ensure
-that the mock is regenerated and all tests that use that mock are
-rebuilt and re-run when you initiate a relevant testing task.
-When you see things rebuilding, it's for a good reason. Ceedling
-attempts to regenerate and rebuild only what's needed for a given
-execution of a task. In the case of large projects, assembling
-dependencies and acting upon them can cause some delay in executing
-tasks.
+Previous versions of Ceedling used features of Rake to offer
+various kinds of smart rebuilds--that is, only regenerating files, 
+recompiling code files, or relinking executables when changes within 
+the project had occurred since the last build. Optional Ceedling 
+features discovered “deep dependencies” such that, for example, a 
+change in a header file several nested layers deep in `#include` 
+statements would cause all the correct test executables to be 
+updated and run.
 
-With one exception, the trigger to rebuild or regenerate a file
-is always a disparity in timestamps between a target file and
-its source - if an input file is newer than its target dependency,
-the target is rebuilt or regenerated. For example, if the C source
-file from which an object file is compiled is newer than that object
-file on disk, recompilation will occur (of course, if no object
-file exists on disk, compilation will always occur). The one
-exception to this dependency behavior is specific to your input
-configuration. Only if your logical configuration changes
-will a system-wide rebuild occur. Reorganizing your input configuration
-or otherwise updating its file timestamp without modifying
-the values within the file will not trigger a rebuild. This behavior
-handles the various ways in which your input configuration can
-change (discussed later in this document) without having changed
-your actual project YAML file.
+These features have been temporarily disabled and/or removed while
+Ceedling undergoes a major overhaul. Please see the [Release Notes](ReleaseNotes.md).
 
-Ceedling needs a bit of help to accomplish its magic with deep
-dependencies. Shallow dependencies are straightforward:
-a mock is dependent on the header file from which it's generated,
-a test file is dependent upon the source files it includes (see
-the preceding conventions section), etc. Ceedling handles
-these "out of the box." Deep dependencies are specifically a
-C-related phenomenon and occur as a consequence of include statements
-within C source files. Say a source file includes a header file
-and that header file in turn includes another header file which
-includes still another header file. A change to the deepest header
-file should trigger a recompilation of the source file, a relinking
-of all the object files comprising a test fixture, and a new execution
-of that test fixture.
-
-Ceedling can handle deep dependencies but only with the help
-of a C preprocessor. Ceedling is quite capable, but a full C preprocessor
-it ain't. Your project can be configured to use a C preprocessor
-or not. Simple projects or large projects constructed so as to
-be quite flat in their include structure generally don't need
-deep dependency preprocessing - and can enjoy the benefits of
-faster execution. Legacy code, on the other hand, will almost
-always want to be tested with deep preprocessing enabled. Set
-up of the C preprocessor is covered in the documentation for the
-[:project] and [:tools] section of the configuration file (later
-in this document). Ceedling contains all the configuration
-necessary to use the gcc preprocessor by default. That is, as
-long as gcc is in your system search path, deep preprocessing
-of deep dependencies is available to you by simply enabling it
-in your project configuration file.
+Note that new features that are a part of this overhaul can 
+significantly speed up test suite execution and release builds 
+despite each build brute force running all build steps. When smart
+rebuilds are implemented again, they will further speed up builds.
 
 Ceedling's Build Output
 -----------------------
@@ -835,14 +792,6 @@ project: global project settings
 
   **Default**: (none)
 
-* `use_exceptions`:
-
-  Configures the build environment to make use of CException. Note that
-  if you do not use exceptions, there's no harm in leaving this as its
-  default value.
-
-  **Default**: TRUE
-
 * `use_mocks`:
 
   Configures the build environment to make use of CMock. Note that if
@@ -870,51 +819,6 @@ project: global project settings
   regenerated.
 
   **Default**: FALSE
-
-* `use_preprocessor_directives`:
-
-  After standard preprocessing when `use_test_preprocessor` is used
-  macros are fully expanded to C code. Some features, for example
-  TEST_CASE() or TEST_RANGE() from Unity require not-fully preprocessed
-  file to be detected by Ceedling. To do this gcc directives-only
-  option is used to expand only conditional compilation statements,
-  handle directives, but do not expand macros preprocessor and leave
-  the other content of file untouched.
-
-  With this option enabled, `use_test_preprocessor` must be also enabled
-  and gcc must exist in an accessible system search path. For other
-  compilers behavior can be changed by `test_file_preprocessor_directives`
-  compiler tool.
-
-  **Default**: FALSE
-
-* `use_deep_dependencies`:
-
-  The base rules and tasks that Ceedling creates using Rake capture most
-  of the dependencies within a standard project (e.g. when the source
-  file accompanying a test file changes, the corresponding test fixture
-  executable will be rebuilt when tests are re-run). However, deep
-  dependencies cannot be captured this way. If a typedef or macro
-  changes in a header file three levels of #include statements deep,
-  this option allows the appropriate incremental build actions to occur
-  for both test execution and release builds.
-
-  This is accomplished by using the dependencies discovery mode of gcc.
-  With this option enabled, gcc must exist in an accessible system
-  search path.
-
-  **Default**: FALSE
-
-* `generate_deep_dependencies`:
-
-  When `use_deep_dependencies` is set to TRUE, Ceedling will run a separate
-  build step to generate the deep dependencies. If you are using gcc as your
-  primary compiler, or another compiler that can generate makefile rules as
-  a side effect of compilation, then you can set this to FALSE to avoid the
-  extra build step but still use the deep dependencies data when deciding
-  which source files to rebuild.
-
-  **Default**: TRUE
 
 * `test_file_prefix`:
 
@@ -957,6 +861,46 @@ project: global project settings
   **Default**: FALSE
 
 
+* `compile_threads`:
+
+  A value greater than one enables parallelized build steps. Ceedling
+  creates a number of threads up to `:compile_threads` for build steps.
+  These build steps execute batched operations including but not 
+  limited to mock generation, code compilation, and running test 
+  executables.
+
+  Particularly if your build system includes multiple cores, overall 
+  build time will drop considerably as compared to running a build with 
+  a single thread.
+
+  Tuning the number of threads for peak performance is an art more 
+  than a science. A special value of `:auto` instructs Ceedling to 
+  query the host system's number of virtual cores. To this value it 
+  adds a constant of 4. This is often a good value sufficient to "max
+  out" available resources without overloading availble resources.
+
+  `:compile_threads` is used for all release build steps and all test
+  suite build steps except for running the test executables that make
+  up a test suite. See next section for more.
+
+  **Default**: 1
+
+* `test_threads`:
+
+  The behavior of and values for `:test_threads` are identical to 
+  `:compile_threads` with one exception.
+
+  `test_threads:` specifically controls the number of threads used to
+  run the test executables comprising a test suite. Why the 
+  distinction from `:compile_threads`? Some test suite builds rely not
+  on native executables but simulators running cross-compiled code.
+  Some simulators are limted to running only a single instance at a 
+  time. Thus, with this and the previous setting, it becomes possible 
+  to parallelize nearly all of a test suite build while still respecting
+  the limits of certain simulators depended upon by test executables.
+
+  **Default**: 1
+
 Example `[:project]` YAML blurb
 
 ```yaml
@@ -964,7 +908,6 @@ Example `[:project]` YAML blurb
   :build_root: project_awesome/build
   :use_exceptions: FALSE
   :use_test_preprocessor: TRUE
-  :use_deep_dependencies: TRUE
   :options_paths:
     - project/options
     - external/shared/options
@@ -984,6 +927,46 @@ that you execute on target hardware).
   Backtrace is fully integrated with **junit_tests_report** plugin.
 
   **Default**: FALSE
+
+  ---
+
+  **Note:**
+
+    The configuration can be combined together with
+    
+    ```
+    :test_runner:
+        :cmdline_args: true
+    ```
+
+    After setting **cmdline_args** to **true**, the debuger will execute each test
+    case from crashing test file separately. The exclude and include test_case patterns will
+    be applied, to filter execution of test cases.
+
+    The .gcno and .gcda files will be generated and section of the code under test case
+    causing segmetation fault will be omitted from Coverage Report.
+
+    The default debugger (**gdb**)[https://www.sourceware.org/gdb/] can be switch to any other
+    via setting new configuration under tool node in project.yml. At default set to:
+
+    ```yaml
+      :tools:
+        :backtrace_settings:
+          :executable: gdb
+          :arguments:
+            - -q
+            - --eval-command run
+            - --eval-command backtrace
+            - --batch
+            - --args
+    ```
+    
+    Important. The debugger which will collect segmentation fault should run in:
+
+    - background
+    - with option to enable pass to executable binary additional arguments
+
+  ---
 
 * `output`:
 
@@ -1365,11 +1348,10 @@ Example [:extension] YAML blurb
 
 * `test_preprocess`:
 
-  If [:project][:use_test_preprocessor] or
-  [:project][:use_deep_dependencies] is set and code is structured in a
+  If [:project][:use_test_preprocessor] is set and code is structured in a
   certain way, the gcc preprocessor may need symbol definitions to
-  properly preprocess files to extract function signatures for mocking
-  and extract deep dependencies for incremental builds.
+  properly preprocess files to extract test functions for test runner 
+  generation and function signatures for mocking.
 
   **Default**: `[]` (empty)
 
@@ -1391,15 +1373,6 @@ Example [:extension] YAML blurb
 * `release`:
 
   Defines needed for the release build binary artifact.
-
-  **Default**: `[]` (empty)
-
-* `release_preprocess`:
-
-  If [:project][:use_deep_dependencies] is set and code is structured in
-  a certain way, the gcc preprocessor may need symbol definitions to
-  properly preprocess files for incremental release builds due to deep
-  dependencies.
 
   **Default**: `[]` (empty)
 
@@ -1508,20 +1481,20 @@ Example [:flags] YAML blurb
 :flags:
   :release:
     :compile:
-      :main:       # add '-Wall' to compilation of main.c
+      'main':       # add '-Wall' to compilation of main.c
         - -Wall
-      :fan:        # add '--O2' to compilation of fan.c
+      'fan':        # add '--O2' to compilation of fan.c
         - --O2
-      :'test_.+':   # add '-pedantic' to all test-files
+      'test_.+':   # add '-pedantic' to all test-files
         - -pedantic
-      :*:          # add '-foo' to compilation of all files not main.c or fan.c
+      '*':          # add '-foo' to compilation of all files not main.c or fan.c
         - -foo
   :test:
     :compile:
-      :main:       # add '--O1' to compilation of main.c as part of test builds including main.c
+      'main':       # add '--O1' to compilation of main.c as part of test builds including main.c
         - --O1
     :link:
-      :test_main:  # add '--bar --baz' to linking of test_main.exe
+      'test_main':  # add '--bar --baz' to linking of test_main.exe
         - --bar
         - --baz
 ```
@@ -1589,13 +1562,8 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
 
 * `plugins`:
 
-  If [:project][:use_exceptions] is enabled, the internal plugins list is pre-populated with 'cexception'.
-
-  Whether or not you have included [:cmock][:plugins] in your
-  configuration file, Ceedling automatically adds 'cexception' to the
-  plugin list if exceptions are enabled. To add to the list Ceedling
-  provides CMock, simply add [:cmock][:plugins] to your configuration
-  and specify your desired additional plugins.
+  To add to the list Ceedling provides CMock, simply add [:cmock][:plugins] 
+  to your configuration and specify your desired additional plugins.
 
   Each of the plugins have their own additional documentation.
 
@@ -1765,26 +1733,6 @@ tools.
 
   **Default**: `gcc`
 
-* `test_file_preprocessor_directives`:
-
-  Preprocessor of test files to expand only conditional compilation statements,
-  handle directives, but do not expand macros
-
-   - `${1}`: input source file
-   - `${2}`: not-fully preprocessed output source file
-
-  **Default**: `gcc`
-
-* `test_dependencies_generator`:
-
-  Discovers deep dependencies of source & test (for incremental builds)
-
-   - `${1}`: input source file
-   - `${2}`: compiled object filepath
-   - `${3}`: output dependencies file
-
-  **Default**: `gcc`
-
 * `release_compiler`:
 
   Compiler for release source code
@@ -1817,17 +1765,6 @@ tools.
 
   **Default**: `gcc`
 
-* `release_dependencies_generator`:
-
-  Discovers deep dependencies of source files (for incremental builds)
-
-   - `${1}`: input source file
-   - `${2}`: compiled object filepath
-   - `${3}`: output dependencies file
-
-  **Default**: `gcc`
-
-
 A Ceedling tool has a handful of configurable elements:
 
 1. [:executable] - Command line executable (required)
@@ -1845,11 +1782,7 @@ A Ceedling tool has a handful of configurable elements:
    specifying a simple string instead of any of the available
    symbols.
 
-5. [:background_exec] - Control execution as background process
-   {:none, :auto, :win, :unix}.
-   Defaults to :none if unspecified.
-
-6. [:optional] - By default a tool is required for operation, which
+5. [:optional] - By default a tool is required for operation, which
    means tests will be aborted if the tool is not present. However,
    you can set this to `TRUE` if it's not needed for testing.
 
@@ -2079,7 +2012,7 @@ Notes:
 
 * `load_paths`:
 
-  Base paths to search for plugin subdirectories or extra ruby functionalit
+  Base paths to search for plugin subdirectories or extra ruby functionality
 
   **Default**: `[]` (empty)
 
@@ -2323,4 +2256,4 @@ cross-compiling on the desktop just ain't gonna get it done.
 Creating Custom Plugins
 -----------------------
 
-Oh boy. This is going to take some explaining.
+There is a [doc](CeedlingCustomPlugins.md) for this.
