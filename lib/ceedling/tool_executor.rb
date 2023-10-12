@@ -23,6 +23,9 @@ class ToolExecutor
   def build_command_line(tool_config, extra_params, *args)
     command = {}
 
+    command[:name] = tool_config[:name]
+    command[:executable] = tool_config[:executable]
+
     # basic premise is to iterate top to bottom through arguments using '$' as
     #  a string replacement indicator to expand globals or inline yaml arrays
     #  into command line arguments via substitution strings
@@ -44,13 +47,15 @@ class ToolExecutor
 
 
   # shell out, execute command, and return response
-  def exec(command, options={}, args=[])
+  def exec(command, args=[])
+    options = command[:options]
+
     options[:boom] = true if (options[:boom].nil?)
     options[:stderr_redirect] = StdErrRedirect::NONE if (options[:stderr_redirect].nil?)
 
     # Build command line
     command_line = [
-      command.strip,
+      command[:line].strip,
       args,
       @tool_executor_helper.stderr_redirect_cmdline_append( options ),
       ].flatten.compact.join(' ')
@@ -75,7 +80,11 @@ class ToolExecutor
 
     # Go boom if exit code is not 0 and we want to debug (in some cases we don't want a non-0 exit code to raise)
     if ((shell_result[:exit_code] != 0) and options[:boom])
-      raise ShellExecutionException.new(shell_result: shell_result, message: "Tool exited with an error")
+      raise ShellExecutionException.new(
+        shell_result: shell_result,
+        # Titleize the command's name--each word is capitalized and any underscores replaced with spaces
+        message: "'#{command[:name].split(/ |\_/).map(&:capitalize).join(" ")}'(#{command[:executable]}) exited with an error"
+        )
     end
 
     return shell_result

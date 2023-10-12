@@ -133,7 +133,7 @@ class Gcov < Plugin
                    )
 
         # Run the gcov tool and collect raw coverage report
-        shell_results  = @ceedling[:tool_executor].exec(command[:line], command[:options])
+        shell_results  = @ceedling[:tool_executor].exec( command )
         results        = shell_results[:output].strip
 
         # Skip to next loop iteration if no coverage results.

@@ -17,7 +17,7 @@ class PreprocessinatorFileHandler
       include_paths
       )
     
-    @tool_executor.exec( command[:line], command[:options] )
+    @tool_executor.exec( command )
 
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
@@ -74,7 +74,7 @@ class PreprocessinatorFileHandler
       include_paths
       )
     
-    @tool_executor.exec( command[:line], command[:options] )
+    @tool_executor.exec( command )
 
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
@@ -116,7 +116,7 @@ class PreprocessinatorFileHandler
                                          filepath,
                                          preprocessed_filepath)
 
-    @tool_executor.exec(command[:line], command[:options])
+    @tool_executor.exec( command )
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_directives(preprocessed_filepath)
 

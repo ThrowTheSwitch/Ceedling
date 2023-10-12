@@ -152,7 +152,7 @@ class Generator
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     begin
-      shell_result = @tool_executor.exec( command[:line], command[:options] )
+      shell_result = @tool_executor.exec( command )
     rescue ShellExecutionException => ex
       shell_result = ex.shell_result
       raise ex
@@ -217,7 +217,7 @@ class Generator
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     begin
-      shell_result = @tool_executor.exec( command[:line], command[:options] )
+      shell_result = @tool_executor.exec( command )
     rescue ShellExecutionException => ex
       shell_result = ex.shell_result
       raise ex
@@ -258,7 +258,7 @@ class Generator
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     begin
-      shell_result = @tool_executor.exec( command[:line], command[:options] )
+      shell_result = @tool_executor.exec( command )
     rescue ShellExecutionException => ex
       notice =    "\n" +
                   "NOTICE: Ceedling assumes header files correspond to source files. A test file directs its build\n" +
@@ -313,7 +313,7 @@ class Generator
 
     # Run the test itself (allow it to fail. we'll analyze it in a moment)
     command[:options][:boom] = false
-    shell_result = @tool_executor.exec( command[:line], command[:options] )
+    shell_result = @tool_executor.exec( command )
 
     # Handle SegFaults
     if shell_result[:output] =~ /\s*Segmentation\sfault.*/i

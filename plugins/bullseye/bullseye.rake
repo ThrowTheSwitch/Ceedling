@@ -176,7 +176,7 @@ namespace UTILS_SYM do
   desc "Open Bullseye code coverage browser"
   task BULLSEYE_SYM do
     command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BROWSER, [])
-    @ceedling[:tool_executor].exec(command[:line], command[:options])
+    @ceedling[:tool_executor].exec( command )
   end
 
 end
