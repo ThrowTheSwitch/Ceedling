@@ -236,6 +236,7 @@ Some global “collections” that were previously key elements of Ceedling have
 1. While header file search paths are now customizable per executable, this currently only applies to the search paths the compiler uses. Distinguishing test files or header files of the same name in different directories for test runner and mock generation respectively continues to rely on educated guesses in Ceedling code.
 1. Any path for a C file specified with `TEST_SOURCE_FILE(...)` is in relation to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, many of your `TEST_SOURCE_FILE(...)` may need to be updated. A more flexible and dynamic approach to path handling will come in a future update.
 1. Fake Function Framework support in place of CMock mock generation is currently broken.
+1. The gcov plugin has been updated and improved, but its counterpart, the [Bullseye plugin](plugins/bullseye/README.md), is not presently functional.
 
 <br/>
 
@@ -251,13 +252,13 @@ You may have heard that Ruby is actually only single-threaded or may know of its
 
 Since version 1.9, Ruby supports native threads and not only green threads. However, native threads are limited by the GIL to executing one at a time regardless of the number of cores in your processor. But, the GIL is “relaxed” for I/O operations.
 
-When a native thread blocks for I/O, Ruby allows the OS scheduler to context switch to a thread ready to execute. This is the original benefit of threads from when they were first developed back when CPUs typically contained a single core. Ceedling does a fair amount of file and standard stream I/O in its pure Ruby code. Thus, when threads are enabled in the proejct configuration file, execution can speed up for these operations.
+When a native thread blocks for I/O, Ruby allows the OS scheduler to context switch to a thread ready to execute. This is the original benefit of threads when they were first developed back when CPUs contained a single core and multi-processor systems were rare and special. Ceedling does a fair amount of file and standard stream I/O in its pure Ruby code. Thus, when multiple threads are enabled in the proejct configuration file, execution can speed up for these operations.
 
 #### Process spawning
 
-Ruby's process spawning abilities have always mapped directly to OS capabilities. When a processor has multiple cores available, the OS tends to spread child processes across those cores in true parallel execution.
+Ruby's process spawning abilities have always mapped directly to OS capabilities. When a processor has multiple cores available, the OS tends to spread multiple child processes across those cores in true parallel execution.
 
-Much of Ceedling's workload is executing a tool—such as a compiler—in a child process. With build threads enabled, each thread can spawn a child process for a build tool used by a build step. These child processes can be spread across multiple cores in parallel execution.
+Much of Ceedling's workload is executing a tool—such as a compiler—in a child process. With multiple threads enabled, each thread can spawn a child process for a build tool used by a build step. These child processes can be spread across multiple cores in true parallel execution.
 
 <br/>
 
