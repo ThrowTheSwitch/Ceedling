@@ -160,17 +160,6 @@ namespace BULLSEYE_SYM do
 
 end
 
-if PROJECT_USE_DEEP_DEPENDENCIES
-namespace REFRESH_SYM do
-  task BULLSEYE_SYM do
-    @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
-    @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].refresh_deep_dependencies
-    @ceedling[:configurator].restore_config
-  end
-end
-end
-
 namespace UTILS_SYM do
 
   desc "Open Bullseye code coverage browser"
