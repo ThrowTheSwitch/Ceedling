@@ -1,4 +1,4 @@
-
+require 'ceedling/exceptions'
 
 # :<section>:
 #   :<context>:
@@ -56,8 +56,7 @@ class ConfigMatchinator
 
       # Otherwise, if an operation is specified but we have an array, go boom
       error = "ERROR: [#{section}][#{context}] present in project configuration but does not contain [#{operation}]."
-      @streaminator.stderr_puts(error, Verbosity::ERRORS)
-      raise
+      raise CeedlingException.new(error)
 
     # If [section][context] is a hash
     elsif elem.class == Hash
@@ -76,8 +75,7 @@ class ConfigMatchinator
     # If [section][context] is nothing we expect--something other than an array or hash
     else
       error = "ERROR: [#{section}][#{context}] in project configuration is neither a list nor hash."
-      @streaminator.stderr_puts(error, Verbosity::ERRORS)
-      raise
+      raise CeedlingException.new(error)
     end
 
     return nil
@@ -89,8 +87,7 @@ class ConfigMatchinator
       if v == nil
         operation = operation.nil? ? '' : "[#{operation}]"
         error = "ERROR: Missing list of values for [#{section}][#{context}]#{operation}[#{k}] matcher in project configuration."
-        @streaminator.stderr_puts(error, Verbosity::ERRORS)
-        raise
+        raise CeedlingException.new(error)
       end
     end
   end
@@ -101,8 +98,8 @@ class ConfigMatchinator
 
     # Sanity check
     if filepath.nil?
-      @streaminator.stderr_puts("NOTICE: [#{section}][#{context}]#{operation} > '#{matcher}' matching provided nil #{filepath}", Verbosity::ERROR)
-      raise
+      error = "ERROR: [#{section}][#{context}]#{operation} > '#{matcher}' matching provided nil #{filepath}"
+      raise CeedlingException.new(error)
     end
 
     # Iterate through every hash touple [matcher key, values array]

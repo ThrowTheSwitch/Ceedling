@@ -1,21 +1,10 @@
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 require 'benchmark'
-
-class ShellExecutionException < RuntimeError
-  attr_reader :shell_result
-  def initialize(shell_result:, message:)
-    @shell_result = shell_result
-    super(message)
-  end
-end
 
 class ToolExecutor
 
   constructor :configurator, :tool_executor_helper, :streaminator, :verbosinator, :system_wrapper
-
-  def setup
-
-  end
 
   # build up a command line from yaml provided config
 
@@ -83,7 +72,7 @@ class ToolExecutor
       raise ShellExecutionException.new(
         shell_result: shell_result,
         # Titleize the command's name--each word is capitalized and any underscores replaced with spaces
-        message: "'#{command[:name].split(/ |\_/).map(&:capitalize).join(" ")}'(#{command[:executable]}) exited with an error"
+        message: "'#{command[:name].split(/ |\_/).map(&:capitalize).join(" ")}' (#{command[:executable]}) exited with an error"
         )
     end
 
@@ -135,8 +124,8 @@ class ToolExecutor
       args_index = ($2.to_i - 1)
 
       if (args.nil? or args[args_index].nil?)
-        @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' expected valid argument data to accompany replacement operator #{$1}.", Verbosity::ERRORS)
-        raise
+        error = "ERROR: Tool '#{tool_name}' expected valid argument data to accompany replacement operator #{$1}."
+        raise CeedlingException.new(error)
       end
 
       match = /#{Regexp.escape($1)}/
@@ -180,8 +169,8 @@ class ToolExecutor
     expand = hash[hash.keys[0]]
 
     if (expand.nil?)
-      @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' could not expand nil elements for substitution string '#{substitution}'.", Verbosity::ERRORS)
-      raise
+      error = "ERROR: Tool '#{tool_name}' could not expand nil elements for substitution string '#{substitution}'."
+      raise CeedlingException.new(error)
     end
 
     # array-ify expansion input if only a single string
@@ -198,19 +187,19 @@ class ToolExecutor
       elsif (@system_wrapper.constants_include?(item))
         const = Object.const_get(item)
         if (const.nil?)
-          @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' found constant '#{item}' to be nil.", Verbosity::ERRORS)
-          raise
+          error = "ERROR: Tool '#{tool_name}' found constant '#{item}' to be nil."
+          raise CeedlingException.new(error)
         else
           elements << const
         end
       elsif (item.class == Array)
         elements << item
       elsif (item.class == String)
-        @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' cannot expand nonexistent value '#{item}' for substitution string '#{substitution}'.", Verbosity::ERRORS)
-        raise
+        error = "ERROR: Tool '#{tool_name}' cannot expand nonexistent value '#{item}' for substitution string '#{substitution}'."
+        raise CeedlingException.new(error)
       else
-        @streaminator.stderr_puts("ERROR: Tool '#{tool_name}' cannot expand value having type '#{item.class}' for substitution string '#{substitution}'.", Verbosity::ERRORS)
-        raise
+        error = "ERROR: Tool '#{tool_name}' cannot expand value having type '#{item.class}' for substitution string '#{substitution}'."
+        raise CeedlingException.new(error)
       end
     end
 

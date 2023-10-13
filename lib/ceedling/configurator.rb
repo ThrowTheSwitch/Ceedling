@@ -1,6 +1,7 @@
 require 'ceedling/defaults'
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'
+require 'ceedling/exceptions'
 require 'deep_merge'
 
 
@@ -311,7 +312,7 @@ class Configurator
 
   def validate(config)
     # collect felonies and go straight to jail
-    raise "ERROR: Ceedling configuration failed validation" if (not @configurator_setup.validate_required_sections( config ))
+    raise CeedlingException.new("ERROR: Ceedling configuration failed validation") if (not @configurator_setup.validate_required_sections( config ))
 
     # collect all misdemeanors, everybody on probation
     blotter = []
@@ -321,7 +322,7 @@ class Configurator
     blotter << @configurator_setup.validate_threads( config )
     blotter << @configurator_setup.validate_plugins( config )
 
-    raise "ERROR: Ceedling configuration failed validation" if (blotter.include?( false ))
+    aise CeedlingException.new("ERROR: Ceedling configuration failed validation") if (blotter.include?( false ))
   end
 
 
@@ -349,8 +350,8 @@ class Configurator
 
     # Ensure element already exists
     if not @project_config_hash.include?(elem)
-      @streaminator.stderr_puts("Could not rederine #{elem} in configurator--element does not exist", Verbosity::ERROR)
-      raise
+      error = "Could not rederine #{elem} in configurator--element does not exist"
+      raise CeedlingException.new(error)
     end
 
     # Update internal hash
@@ -412,7 +413,6 @@ class Configurator
       path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
     end
   end
-
 
 end
 

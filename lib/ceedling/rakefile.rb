@@ -13,7 +13,7 @@ $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'cmock/lib') )
 
 require 'rake'
 
-#Let's make sure we remember the task descriptions in case we need them
+# Let's make sure we remember the task descriptions in case we need them
 Rake::TaskManager.record_task_metadata = true
 
 require 'diy'
@@ -22,6 +22,7 @@ require 'ceedling/constants'
 require 'ceedling/target_loader'
 require 'deep_merge'
 
+# Top-level exception handling for any otherwise un-handled exceptions, particularly around startup
 begin
   # construct all our objects
   # ensure load path contains all libraries needed first
@@ -55,6 +56,13 @@ begin
     # Since Ceedling is not a daemon, server app, or something to run continuously,
     # we can safely disable forced exception reporting.
     Thread.report_on_exception = false
+
+    # Tell Rake to shut up by default unless we're in DEBUG
+    verbose(false)
+    Rake.application.options.silent = true
+
+    # Remove all Rake backtrace
+    Rake.application.options.suppress_backtrace_pattern = /.*/
   end
 
   # tell all our plugins we're about to do something
@@ -62,15 +70,12 @@ begin
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
-
-  # tell rake to shut up by default (overridden in verbosity / debug tasks as appropriate)
-  verbose(false)
 rescue StandardError => e
-  $stderr.puts(e.message)
+  $stderr.puts(e)
   abort # Rake's abort
 end
 
-# end block always executed following rake run
+# End block always executed following rake run
 END {
   $stdout.flush unless $stdout.nil?
   $stderr.flush unless $stderr.nil?
@@ -79,15 +84,17 @@ END {
   @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash )    if (@ceedling[:task_invoker].test_invoked?)
   @ceedling[:cacheinator].cache_release_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].release_invoked?)
 
-  # only perform these final steps if we got here without runtime exceptions or errors
-  if (@ceedling[:system_wrapper].ruby_success)
+  graceful_fail = @ceedling[:setupinator].config_hash[:graceful_fail]
 
+  # Only perform these final steps if we got here without runtime exceptions or errors
+  if (@ceedling[:application].build_succeeded?)
     # tell all our plugins the build is done and process results
     @ceedling[:plugin_manager].post_build
     @ceedling[:plugin_manager].print_plugin_failures
-    exit(1) if (@ceedling[:plugin_manager].plugins_failed? && !@ceedling[:setupinator].config_hash[:graceful_fail])
+    exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
   else
-    puts "ERROR: Ceedling Failed"
+    puts("\nCeedling failed")
     @ceedling[:plugin_manager].post_error
+    exit(1) if !graceful_fail
   end
 }

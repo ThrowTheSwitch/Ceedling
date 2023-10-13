@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'rake' # for ext() method
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 
 class GeneratorTestResultsSanityChecker
@@ -11,7 +12,7 @@ class GeneratorTestResultsSanityChecker
   
     # do no sanity checking if it's disabled
     return if (@configurator.sanity_checks == TestResultsSanityChecks::NONE)
-    raise "results nil or empty" if results.nil? || results.empty?
+    raise CeedlingException.new("ERROR: Test results nil or empty") if results.nil? || results.empty?
 
     ceedling_ignores_count   = results[:ignores].size 
     ceedling_failures_count  = results[:failures].size
@@ -55,10 +56,8 @@ class GeneratorTestResultsSanityChecker
                "    2. Your test + source indexed past the end of a buffer.\n" +
                "    3. Your test + source committed a memory access violation.\n" +
                "    4. Your test fixture produced an exit code of 0 despite execution ending prematurely.\n" +
-               "  Sanity check failures of test results are usually a symptom of interrupted test execution.\n\n"
-      
-      @streaminator.stderr_puts( notice )
-      raise
+               "  Sanity check failures of test results are usually a symptom of interrupted test execution.\n\n"      
+      raise CeedlingException.new(notice)
     end
   end
 

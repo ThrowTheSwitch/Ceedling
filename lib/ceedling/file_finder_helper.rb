@@ -1,5 +1,6 @@
 require 'fileutils'
 require 'ceedling/constants' # for Verbosity enumeration
+require 'ceedling/exceptions'
 
 class FileFinderHelper
 
@@ -47,15 +48,12 @@ class FileFinderHelper
   private
   
   def blow_up(file_name, extra_message="")
-    error = "ERROR: Found no file '#{file_name}' in search paths."
-    error += ' ' if (extra_message.length > 0)
-    @streaminator.stderr_puts(error + extra_message, Verbosity::ERRORS)
-    raise
+    error = ["ERROR: Found no file '#{file_name}' in search paths.", extra_message].join(' ')
+    raise CeedlingException.new(error)
   end
   
   def gripe(file_name, extra_message="")
-    warning = "WARNING: Found no file '#{file_name}' in search paths."
-    warning += ' ' if (extra_message.length > 0)
+    warning = ["WARNING: Found no file '#{file_name}' in search paths.", extra_message].join(' ')
     @streaminator.stderr_puts(warning + extra_message, Verbosity::COMPLAIN)
   end
 

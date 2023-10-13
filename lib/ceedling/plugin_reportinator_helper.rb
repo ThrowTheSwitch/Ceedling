@@ -2,6 +2,7 @@ require 'erb'
 require 'rubygems'
 require 'rake' # for ext()
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 class PluginReportinatorHelper
   
@@ -19,8 +20,8 @@ class PluginReportinatorHelper
       return @yaml_wrapper.load(pass_path)
     else
       if (options[:boom])
-        @streaminator.stderr_puts("Could find no test results for '#{File.basename(results_path).ext(@configurator.extension_source)}'", Verbosity::ERRORS)
-        raise
+        error = "Could find no test results for '#{File.basename(results_path).ext(@configurator.extension_source)}'"
+        raise CeedlingException.new(error)
       end
     end
     

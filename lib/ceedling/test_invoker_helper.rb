@@ -1,3 +1,4 @@
+require 'ceedling/exceptions'
 
 class TestInvokerHelper
 
@@ -30,13 +31,13 @@ class TestInvokerHelper
     sources.each do |source|
       ext = @configurator.extension_source
       unless @file_wrapper.extname(source) == ext
-        @streaminator.stderr_puts("File '#{source}' specified with #{UNITY_TEST_SOURCE_FILE}() in #{test} is not a #{ext} source file", Verbosity::NORMAL)
-        raise
+        error = "File '#{source}' specified with #{UNITY_TEST_SOURCE_FILE}() in #{test} is not a #{ext} source file"
+        raise CeedlingException.new(error)
       end
 
       if @file_finder.find_compilation_input_file(source, :ignore).nil?
-        @streaminator.stderr_puts("File '#{source}' specified with #{UNITY_TEST_SOURCE_FILE}() in #{test} cannot be found in the source file collection", Verbosity::NORMAL)
-        raise
+        error = "File '#{source}' specified with #{UNITY_TEST_SOURCE_FILE}() in #{test} cannot be found in the source file collection"
+        raise CeedlingException.new(error)
       end
     end
   end
@@ -209,15 +210,43 @@ class TestInvokerHelper
   end
 
   def generate_executable_now(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, options:)
-    @generator.generate_executable_file(
-      options[:test_linker],
-      context,
-      objects.map{|v| "\"#{v}\""},
-      flags,
-      executable,
-      @file_path_utils.form_test_build_map_filepath( build_path, executable ),
-      lib_args,
-      lib_paths )
+    begin
+      @generator.generate_executable_file(
+        options[:test_linker],
+        context,
+        objects.map{|v| "\"#{v}\""},
+        flags,
+        executable,
+        @file_path_utils.form_test_build_map_filepath( build_path, executable ),
+        lib_args,
+        lib_paths )
+    rescue ShellExecutionException => ex
+      notice =    "\n" +
+                  "NOTICE: Ceedling assumes header files correspond to source files. A test file directs its\n" +
+                  "build with #include statemetns--which code files to compile and link into the executable.\n\n" +
+                  "If the linker reports missing symbols, the following may be to blame:\n" +
+                  "  1. This test lacks #include header statements corresponding to needed source files.\n" +
+                  "  2. Project file paths omit source files corresponding to #include statements in this test.\n" +
+                  "  3. Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n"
+
+      if (@configurator.project_use_mocks)
+        notice += "  4. This test does not #include needed mocks (that triggers their generation).\n\n"
+      else
+        notice += "\n"
+      end
+
+      notice +=   "OPTIONS:\n" +
+                  "  1. Doublecheck this test's #include statements.\n" +
+                  "  2. Simplify complex macros or fully specify symbols for this test in [:project][:defines].\n" +
+                  "  3. If no header file corresponds to the needed source file, use the #{UNITY_TEST_SOURCE_FILE}()\n" +
+                  "     build diective macro in this test to inject a source file into the build.\n\n"
+
+      # Print helpful notice
+      @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
+
+      # Re-raise the exception
+      raise ex
+    end
   end
 
   def run_fixture_now(context:, executable:, result:, options:)

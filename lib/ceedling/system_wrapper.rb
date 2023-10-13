@@ -85,7 +85,7 @@ class SystemWrapper
     require(path)
   end
 
-  def ruby_success
+  def ruby_success?
     # We are successful if we've never had an exit code that went boom (either because it's empty or it was 0)
     return ($exit_code.nil? || ($exit_code == 0)) && ($!.nil? || $!.is_a?(SystemExit) && $!.success?)
   end

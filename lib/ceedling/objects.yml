@@ -1,4 +1,8 @@
 
+application:
+  compose:
+    - system_wrapper
+
 file_wrapper:
 
 file_system_wrapper:
@@ -308,6 +312,7 @@ build_batchinator:
 
 test_invoker:
   compose:
+    - application
     - configurator
     - test_invoker_helper
     - plugin_manager
@@ -315,7 +320,6 @@ test_invoker:
     - streaminator
     - preprocessinator
     - task_invoker
-    - build_invoker_utils
     - generator
     - test_context_extractor
     - file_path_utils
@@ -341,7 +345,6 @@ release_invoker:
   compose:
     - configurator
     - release_invoker_helper
-    - build_invoker_utils
     - dependinator
     - task_invoker
     - file_path_utils
@@ -352,10 +355,5 @@ release_invoker_helper:
     - configurator
     - dependinator
     - task_invoker
-
-build_invoker_utils:
-  compose:
-    - configurator
-    - streaminator
 
 erb_wrapper:

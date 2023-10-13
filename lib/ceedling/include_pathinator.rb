@@ -1,5 +1,5 @@
-
 require 'pathname'
+require 'ceedling/exceptions'
 
 class IncludePathinator
 
@@ -21,8 +21,8 @@ class IncludePathinator
         # TODO: When Ceedling's base project path handling is resolved, enable this path redefinition
         # path = File.join( @base_path, path )
         unless @file_wrapper.exist?(path)
-          @streaminator.stderr_puts("'#{path}' specified by #{UNITY_TEST_INCLUDE_PATH}() within #{test_filepath} not found", Verbosity::NORMAL)
-          raise
+          error = "ERROR: '#{path}' specified by #{UNITY_TEST_INCLUDE_PATH}() within #{test_filepath} not found"
+          raise CeedlingException.new(error)
         end
       end
     end

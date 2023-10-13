@@ -25,7 +25,9 @@ task RELEASE_SYM => [:directories] do
     Rake::Task[PROJECT_RELEASE_BUILD_TARGET].invoke
 
   rescue StandardError => e
-    @ceedling[:streaminator].stderr_puts("Error ==> #{e.class}:: #{e.message}")
+    @ceedling[:application].register_build_failure
+
+    @ceedling[:streaminator].stderr_puts("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
 
     # Debug backtrace
     @ceedling[:streaminator].stderr_puts("Backtrace ==>", Verbosity::DEBUG)
