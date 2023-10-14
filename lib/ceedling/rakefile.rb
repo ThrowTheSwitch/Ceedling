@@ -93,8 +93,8 @@ END {
     @ceedling[:plugin_manager].print_plugin_failures
     exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
   else
-    puts("\nCeedling failed")
+    puts("\nCeedling could not complete the build because of errors.")
     @ceedling[:plugin_manager].post_error
-    exit(1) if !graceful_fail
+    exit(1)
   end
 }
