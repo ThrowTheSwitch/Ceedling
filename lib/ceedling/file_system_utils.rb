@@ -3,6 +3,7 @@ require 'rake'
 require 'set'
 require 'fileutils'
 require 'ceedling/file_path_utils'
+require 'ceedling/exceptions'
 
 
 class FileSystemUtils
@@ -20,7 +21,7 @@ class FileSystemUtils
       case (paths_container)
         when String then raw << (FilePathUtils::reform_glob(paths_container))
         when Array  then paths_container.each {|path| raw << (FilePathUtils::reform_glob(path))}
-        else raise "Don't know how to handle #{paths_container.class}"
+        else raise CeedlingException.new("Do not know how to handle paths container #{paths_container.class}")
       end
     end
 

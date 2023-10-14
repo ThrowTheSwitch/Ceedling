@@ -5,14 +5,14 @@ class TestInvoker
 
   attr_reader :sources, :tests, :mocks
 
-  constructor :configurator,
+  constructor :application,
+              :configurator,
               :test_invoker_helper,
               :plugin_manager,
               :streaminator,
               :build_batchinator,
               :preprocessinator,
               :task_invoker,
-              :build_invoker_utils,
               :generator,
               :test_context_extractor,
               :file_path_utils,
@@ -297,7 +297,7 @@ class TestInvoker
               options:    options
               )
           rescue => e
-            @build_invoker_utils.process_exception( e, context )
+            raise e # Re-raise
           ensure
             @plugin_manager.post_test( details[:filepath] )
           end
@@ -308,7 +308,8 @@ class TestInvoker
     # StandardError is the parent class of all application-level exceptions.
     # Runtime errors (parent is Exception) continue on up to be caught by Ruby itself.
     rescue StandardError => e
-      @streaminator.stderr_puts("Error ==> #{e.class}:: #{e.message}")
+      @application.register_build_failure
+      @streaminator.stderr_puts("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
 
       # Debug backtrace
       @streaminator.stderr_puts("Backtrace ==>", Verbosity::DEBUG)
@@ -316,7 +317,6 @@ class TestInvoker
         $stderr.puts(e.backtrace) # Formats properly when directly passed to puts()
       end
     end
-
   end
 
   def each_test_with_sources
@@ -352,15 +352,6 @@ class TestInvoker
       dependencies: @file_path_utils.form_test_dependencies_filepath( object ),
       msg:          msg
       )
-  end
-
-  def refresh_deep_dependencies
-    @file_wrapper.rm_f(
-      @file_wrapper.directory_listing(
-        File.join( @configurator.project_test_dependencies_path, '*' + @configurator.extension_dependencies ) ) )
-
-    @test_invoker_helper.process_deep_dependencies(
-      (@configurator.collection_all_tests + @configurator.collection_all_source).uniq )
   end
 
   private

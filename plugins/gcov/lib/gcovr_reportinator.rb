@@ -307,7 +307,7 @@ class GcovrReportinator
     @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     command[:options][:boom] = false # Don't raise an exception if non-zero exit
-    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+    shell_result = @ceedling[:tool_executor].exec( command )
 
     @reportinator_helper.print_shell_result(shell_result)
     show_gcovr_message(shell_result[:exit_code])
@@ -323,7 +323,7 @@ class GcovrReportinator
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_POST_REPORT, [], "--version")
     @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
-    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+    shell_result = @ceedling[:tool_executor].exec( command )
     version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)
 
     if !(version_number_match_data.nil?) && !(version_number_match_data[1].nil?) && !(version_number_match_data[2].nil?)

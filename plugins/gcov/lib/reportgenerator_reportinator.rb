@@ -181,7 +181,7 @@ class ReportGeneratorReportinator
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORTGENERATOR_POST_REPORT, [], args)
     @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
-    return @ceedling[:tool_executor].exec(command[:line], command[:options])
+    return @ceedling[:tool_executor].exec( command )
   end
 
 
@@ -190,7 +190,7 @@ class ReportGeneratorReportinator
     command = @ceedling[:tool_executor].build_command_line(GCOV_TOOL_CONFIG, [], args)
     @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
-    return @ceedling[:tool_executor].exec(command[:line], command[:options])
+    return @ceedling[:tool_executor].exec( command )
   end
 
 end

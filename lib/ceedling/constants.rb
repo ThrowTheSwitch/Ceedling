@@ -75,10 +75,6 @@ RELEASE_ROOT_NAME = 'release'                unless defined?(RELEASE_ROOT_NAME)
 RELEASE_TASK_ROOT = RELEASE_ROOT_NAME + ':'  unless defined?(RELEASE_TASK_ROOT)
 RELEASE_SYM       = RELEASE_ROOT_NAME.to_sym unless defined?(RELEASE_SYM)
 
-REFRESH_ROOT_NAME = 'refresh'                unless defined?(REFRESH_ROOT_NAME)
-REFRESH_TASK_ROOT = REFRESH_ROOT_NAME + ':'  unless defined?(REFRESH_TASK_ROOT)
-REFRESH_SYM       = REFRESH_ROOT_NAME.to_sym unless defined?(REFRESH_SYM)
-
 UTILS_ROOT_NAME   = 'utils'                unless defined?(UTILS_ROOT_NAME)
 UTILS_TASK_ROOT   = UTILS_ROOT_NAME + ':'  unless defined?(UTILS_TASK_ROOT)
 UTILS_SYM         = UTILS_ROOT_NAME.to_sym unless defined?(UTILS_SYM)

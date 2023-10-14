@@ -61,7 +61,7 @@ class CommandHooks < Plugin
     if (hook[:executable])
       # Handle argument replacemant ({$1}), and get commandline
       cmd = @ceedling[:tool_executor].build_command_line( hook, [], name )
-      shell_result = @ceedling[:tool_executor].exec(cmd[:line], cmd[:options])
+      shell_result = @ceedling[:tool_executor].exec(cmd)
     end
   end
 

@@ -34,7 +34,7 @@ class BuildBatchinator
     when :test
       workers = @configurator.project_test_threads
     else
-      raise NameError("Unrecognized batch workload type: #{workload}")
+      raise NameError.new("Unrecognized batch workload type: #{workload}")
     end
 
     # Enqueue all the items the block will execute against

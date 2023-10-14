@@ -1,5 +1,6 @@
 require 'ceedling/plugin'
 require 'ceedling/yaml_wrapper'
+require 'ceedling/exceptions'
 
 class PluginBuilder
 
@@ -18,7 +19,7 @@ class PluginBuilder
         construct_object(obj)
       end
     else
-      raise "Invalid object map for plugin #{plugin_name}!"
+      raise CeedlingException.new("Invalid object map for plugin #{plugin_name}!")
     end
 
     return @plugin_objects

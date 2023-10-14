@@ -3,31 +3,19 @@ require 'ceedling/constants'
 
 class ReleaseInvoker
 
-  constructor :configurator, :release_invoker_helper, :build_invoker_utils, :dependinator, :task_invoker, :file_path_utils, :file_wrapper
+  constructor :configurator, :release_invoker_helper, :dependinator, :task_invoker, :file_path_utils, :file_wrapper
 
 
   def setup_and_invoke_c_objects( c_files )
     objects = @file_path_utils.form_release_build_c_objects_filelist( c_files )
-
-    begin
-      @task_invoker.invoke_release_objects( objects )
-    rescue => e
-      @build_invoker_utils.process_exception( e, RELEASE_SYM, false )
-    end
-
+    @task_invoker.invoke_release_objects( objects )
     return objects
   end
 
 
   def setup_and_invoke_asm_objects( asm_files )
     objects = @file_path_utils.form_release_build_asm_objects_filelist( asm_files )
-
-    begin
-      @task_invoker.invoke_release_objects( objects )
-    rescue => e
-      @build_invoker_utils.process_exception( e, RELEASE_SYM, false )
-    end
-
+    @task_invoker.invoke_release_objects( objects )
     return objects
   end
 

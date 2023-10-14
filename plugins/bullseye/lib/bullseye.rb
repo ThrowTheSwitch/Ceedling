@@ -82,7 +82,7 @@ class Bullseye < Plugin
     return if (verify_coverage_file() == false)
     if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
       command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC, [])
-      shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+      shell_result = @ceedling[:tool_executor].exec( command )
       report_coverage_results_all(shell_result[:output])
     else
       report_per_function_coverage_results(@ceedling[:test_invoker].sources)
@@ -104,7 +104,7 @@ class Bullseye < Plugin
     
     # coverage results
     command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC)
-    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+    shell_result = @ceedling[:tool_executor].exec( command )
     report_coverage_results_all(shell_result[:output])
   end
   
@@ -120,7 +120,7 @@ class Bullseye < Plugin
 
       args.each do |arg| 
         command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BUILD_ENABLE_DISABLE, [], arg)
-        shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+        shell_result = @ceedling[:tool_executor].exec( command )
       end
 
     end
@@ -158,7 +158,7 @@ class Bullseye < Plugin
 
     coverage_sources.each do |source|
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, [], source)
-      shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
+      shell_results    = @ceedling[:tool_executor].exec( command )
       coverage_results = shell_results[:output].deep_clone
       coverage_results.sub!(/.*\n.*\n/,'') # Remove the Bullseye tool banner
       if (coverage_results =~ /warning cov814: report is empty/)

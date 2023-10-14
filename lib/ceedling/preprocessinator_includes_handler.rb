@@ -180,7 +180,7 @@ class PreprocessinatorIncludesHandler
     @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     command[:options][:boom] = false # Assume errors and do not raise an exception
-    shell_result = @tool_executor.exec(command[:line], command[:options])
+    shell_result = @tool_executor.exec( command )
 
     make_rules = shell_result[:output]
 
@@ -279,7 +279,7 @@ class PreprocessinatorIncludesHandler
 
     @streaminator.stdout_puts( "Command: #{command}", Verbosity::DEBUG )
 
-    shell_result = @tool_executor.exec( command[:line], command[:options] )
+    shell_result = @tool_executor.exec( command )
 
     list = shell_result[:output]
 
