@@ -55,8 +55,8 @@ class TestInvoker
 
       begin
         @plugin_manager.pre_test( test )
-        test_name ="#{File.basename(test)}".chomp('.c')
-        def_test_key="defines_#{test_name.downcase}"
+        test_name = "#{File.basename(test)}".chomp('.c')
+        def_test_key = "defines_#{test_name.downcase}"
 
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym) || @configurator.defines_use_test_definition
           defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
@@ -74,9 +74,12 @@ class TestInvoker
         # redefine the project out path and preprocessor defines
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
           @streaminator.stdout_puts("Updating test definitions for #{test_name}", Verbosity::NORMAL)
-          orig_path = @configurator.project_test_build_output_path
+          orig_project_test_build_output_path = @configurator.project_test_build_output_path
+          orig_project_test_build_output_c_path = @configurator.project_test_build_output_c_path
           @configurator.project_config_hash[:project_test_build_output_path] = File.join(@configurator.project_test_build_output_path, test_name)
           @file_wrapper.mkdir(@configurator.project_test_build_output_path)
+          @configurator.project_config_hash[:project_test_build_output_c_path] = File.join(@configurator.project_test_build_output_c_path, test_name)
+          @file_wrapper.mkdir(@configurator.project_test_build_output_c_path)
         end
 
         # collect up test fixture pieces & parts
@@ -132,7 +135,8 @@ class TestInvoker
         if @configurator.project_config_hash.has_key?(def_test_key.to_sym) || @configurator.defines_use_test_definition
           COLLECTION_DEFINES_TEST_AND_VENDOR.replace(defs_bkp)
           if @configurator.project_config_hash.has_key?(def_test_key.to_sym)
-            @configurator.project_config_hash[:project_test_build_output_path] = orig_path
+            @configurator.project_config_hash[:project_test_build_output_path] = orig_project_test_build_output_path
+            @configurator.project_config_hash[:project_test_build_output_c_path] = orig_project_test_build_output_c_path
             @streaminator.stdout_puts("Restored defines and build path to standard", Verbosity::NORMAL)
           end
         end

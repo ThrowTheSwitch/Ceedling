@@ -63,8 +63,8 @@ DEFAULT_GCOV_REPORT_TOOL = {
         "-n".freeze,
         "-p".freeze,
         "-b".freeze,
-        {"-o \"$\"" => 'GCOV_BUILD_OUTPUT_PATH'}.freeze,
-        "\"${1}\"".freeze
+        "-o \"${1}\"".freeze,
+        "\"${2}\"".freeze
         ].freeze
     }
 
@@ -78,7 +78,7 @@ DEFAULT_GCOV_GCOV_POST_REPORT_TOOL = {
         "-b".freeze,
         "-c".freeze,
         "-r".freeze,
-        "-x".freeze,
+        "-t".freeze,
         "${1}".freeze
         ].freeze
     }
