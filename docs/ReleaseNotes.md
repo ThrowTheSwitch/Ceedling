@@ -12,7 +12,9 @@ This Ceedling release is probably the most significant since the project was fir
 
 Ceedling now runs in Ruby 3. Builds can now run much faster than previous versions because of parallelized tasks. For test suites, header file search paths, code defines, and tool run flags are now customizable per test executable.
 
-🏴‍☠️ **_Ahoy!_** There be **[breaking changes](#-Breaking-Changes)** ahead, mateys! Arrr…
+### Avast, Breaking Changes, Ye Scallywags! 🏴‍☠️
+
+**_Ahoy!_** There be **[breaking changes](#-Breaking-Changes)** ahead, mateys! Arrr…
 
 ### Big Deal Highlights 🏅
 
@@ -39,6 +41,15 @@ The following new features (discussed in later sections) contribute to this new 
 - `TEST_INCLUDE_PATH(...)`. This build directive macro can be used within a test file to tell Ceedling which header search paths should be used during compilation. These paths are only used for compiling the files that comprise that test executable.
 - `[:defines]` handling. `#define`s are now specified for the compilation of all modules comprising a test executable. Matching is only against test file names but now includes wildcard and regular expression options.
 - `[:flags]` handling. Flags (e.g. `-std=c99`) are now specified for the build steps—preprocessing, compilation, and linking—of all modules comprising a test executable. Matching is only against test file names and now includes more sensible and robust wildcard and regular expression options.
+
+### Important Changes in Behavior to Be Aware Of 🚨
+
+- **Test suite build order 🔢.** Ceedling no longer builds each test executable one at a time. From the tasks you provide at the command line, Ceedling now collects up and batches all preprocessing steps, all mock generation, all test runner generation, all compilation, etc. Previously you would see each of these done for a single test executable and then repeated for the next executable and so on. Now, each build step happens to completion for all specified tests before moving on to the next build step. 
+- **Logging output order 🔢.** When multi-threaded builds are enabled, logging output may not be what you expect. Progress statements may be all batched together or interleaved in ways that are misleading. The steps are happening in the correct order. How you are informed of them may be somewhat out of order.
+- **Files generated multiple times 🔀.** Now that each test is essentially a self-contained mini-project, some output may be generated multiple times. For instance, if the same mock is required by multiple tests, it will be generated multiple times. The same holds for compilation of source files into object files. A coming version of Ceedling will concentrate on optimizations to reuse any output that is truly identical across tests.
+- **Test suite plugin runs 🏃🏻.** Because build steps are run to completion across all the tests you specify at the command line (e.g. all the mocks for your tests are generated at one time) you may need to adjust how you depend on build steps.
+
+Together, these changes may cause you to think that Ceedling is running steps out of order or duplicating work. While bugs are always possible, more than likely, the output you see and the build ordering is expected.
 
 ### Medium Deal Highlights 🥈
 

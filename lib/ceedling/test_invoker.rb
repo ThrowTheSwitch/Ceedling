@@ -113,12 +113,15 @@ class TestInvoker
       # Collect include statements & mocks from test files
       @batchinator.build_step("Collecting Testing Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
-          @preprocessinator.extract_testing_context(
+          arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:compile_flags],
             include_paths: details[:search_paths],
-            defines:       details[:preprocess_defines] )
+            defines:       details[:preprocess_defines]
+          }
+
+          @preprocessinator.extract_testing_context(**arg_hash)
         end
       end
 
@@ -146,6 +149,9 @@ class TestInvoker
             }
             details[:mocks] = mocks
             details[:mock_list] = mocks_list
+
+            # Trigger pre_test plugin hook after having assembled all testing context
+            @plugin_manager.pre_test( details[:filepath] )
           end
         end
       end
@@ -166,12 +172,16 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
-          @preprocessinator.preprocess_header_file(
+
+          arg_hash = {
             filepath:      details[:source],
             test:          testable[:name],
             flags:         testable[:compile_flags],
             include_paths: testable[:search_paths],
-            defines:       testable[:preprocess_defines])
+            defines:       testable[:preprocess_defines]
+          }
+
+          @preprocessinator.preprocess_mockable_header_file(**arg_hash)
         end
       } if @configurator.project_use_mocks and @configurator.project_use_test_preprocessor
 
@@ -180,12 +190,16 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: mocks) do |mock| 
           details = mock[:details]
           testable = mock[:testable]
-          @generator.generate_mock(
+
+          arg_hash = {
             context:        TEST_SYM,
             mock:           mock[:name],
             test:           testable[:name],
             input_filepath: details[:input],
-            output_path:    testable[:paths][:mocks] )
+            output_path:    testable[:paths][:mocks]
+          }
+
+          @generator.generate_mock(**arg_hash)
         end
       } if @configurator.project_use_mocks
 
@@ -193,26 +207,33 @@ class TestInvoker
       @batchinator.build_step("Preprocessing for Test Runners") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
 
-          filepath = @preprocessinator.preprocess_test_file(
+          arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:compile_flags],
             include_paths: details[:search_paths],
-            defines:       details[:preprocess_defines])
+            defines:       details[:preprocess_defines]
+          }
 
-          @lock.synchronize { details[:runner][:input_filepath] = filepath } # Replace default input with preprocessed fle
+          filepath = @preprocessinator.preprocess_test_file(**arg_hash)
+
+          # Replace default input with preprocessed fle
+          @lock.synchronize { details[:runner][:input_filepath] = filepath }
         end
       } if @configurator.project_use_test_preprocessor
 
       # Build runners for all tests
       @batchinator.build_step("Test Runners") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
-          @generator.generate_test_runner(
+          arg_hash = {
             context:         TEST_SYM,
             mock_list:       details[:mock_list],
             test_filepath:   details[:filepath],
             input_filepath:  details[:runner][:input_filepath],
-            runner_filepath: details[:runner][:output_filepath])
+            runner_filepath: details[:runner][:output_filepath]            
+          }
+
+          @generator.generate_test_runner(**arg_hash)
         end
       end
 
@@ -242,7 +263,11 @@ class TestInvoker
           test_fail          = @file_path_utils.form_fail_results_filepath( details[:paths][:results], details[:filepath] )
 
           # Identify all the objects shall not be linked and then remove them from objects list.
-          test_no_link_objects = @file_path_utils.form_test_build_objects_filelist(details[:paths][:build], @helper.fetch_shallow_source_includes( details[:filepath] ))
+          test_no_link_objects = 
+            @file_path_utils.form_test_build_objects_filelist(
+              details[:paths][:build],
+              @helper.fetch_shallow_source_includes( details[:filepath] ))
+          
           test_objects = test_objects.uniq - test_no_link_objects
 
           @lock.synchronize do
@@ -272,7 +297,7 @@ class TestInvoker
         lib_args = @helper.convert_libraries_to_arguments()
         lib_paths = @helper.get_library_paths_to_arguments()
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
-          @test_invoker_helper.generate_executable_now(
+          arg_hash = {
             context:    context,
             build_path: details[:paths][:build],
             executable: details[:executable],
@@ -280,8 +305,10 @@ class TestInvoker
             flags:      details[:link_flags],
             lib_args:   lib_args,
             lib_paths:  lib_paths,
-            options:    options
-            )
+            options:    options            
+          }
+
+          @test_invoker_helper.generate_executable_now(**arg_hash)
         end
       end
 
@@ -289,13 +316,14 @@ class TestInvoker
       @batchinator.build_step("Executing") {
         @batchinator.exec(workload: :test, things: @testables) do |_, details|
           begin
-            @plugin_manager.pre_test( details[:filepath] )
-            @test_invoker_helper.run_fixture_now(
+            arg_hash = {
               context:    context,
               executable: details[:executable],
               result:     details[:results_pass],
-              options:    options
-              )
+              options:    options              
+            }
+
+            @test_invoker_helper.run_fixture_now(**arg_hash)
           rescue => e
             raise e # Re-raise
           ensure
@@ -339,7 +367,7 @@ class TestInvoker
     # If source file is one of our vendor frameworks, augments its defines
     defines = @helper.augment_vendor_defines(defines:testable[:compile_defines], filepath:source)
 
-    @generator.generate_object_file_c(
+    arg_hash = {
       tool:         tool,
       module_name:  test,
       context:      context,
@@ -351,7 +379,9 @@ class TestInvoker
       list:         @file_path_utils.form_test_build_list_filepath( object ),
       dependencies: @file_path_utils.form_test_dependencies_filepath( object ),
       msg:          msg
-      )
+    }
+
+    @generator.generate_object_file_c(**arg_hash)
   end
 
   private

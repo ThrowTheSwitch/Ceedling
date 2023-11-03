@@ -69,6 +69,16 @@ class Configurator
   end
 
 
+  # Set up essential flattened config
+  # (In case YAML validation failure prevents flattening of config into configurator accessors)
+  def set_debug(config)
+    if config[:project][:debug]
+      eval("def project_debug() return true end", binding())
+      eval("def project_verbosity() return Verbosity::DEBUG end", binding())
+    end
+  end
+
+
   # The default values defined in defaults.rb (eg. DEFAULT_TOOLS_TEST) are populated
   # into @param config
   def populate_defaults(config)
@@ -144,13 +154,17 @@ class Configurator
   end
 
 
-  # grab tool names from yaml and insert into tool structures so available for error messages
-  # set up default values
+  # Grab tool names from yaml and insert into tool structures so available for error messages.
+  # Set up default values.
   def tools_setup(config)
     config[:tools].each_key do |name|
       tool = config[:tools][name]
 
-      # populate name if not given
+      if not tool.is_a?(Hash)
+        raise CeedlingException.new("ERROR: Expected configuration for tool :#{name} is a Hash but found #{tool.class}")
+      end
+
+      # Populate name if not given
       tool[:name] = name.to_s if (tool[:name].nil?)
 
       # handle inline ruby string substitution in executable

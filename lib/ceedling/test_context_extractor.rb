@@ -38,7 +38,7 @@ class TestContextExtractor
     return extract_includes( filepath, @file_wrapper.read(filepath) )
   end
 
-  # Header header_includes of test file with file extension
+  # Header includes of test file with file extension
   def lookup_header_includes_list(filepath)
     return @header_includes[form_file_key(filepath)] || []
   end

@@ -44,8 +44,9 @@ class TestInvokerHelper
 
   def search_paths(filepath, subdir)
     paths = @include_pathinator.lookup_test_directive_include_paths( filepath )
-    paths += @configurator.collection_paths_include
+    paths += @include_pathinator.collect_test_include_paths()
     paths += @configurator.collection_paths_support
+    paths += @configurator.collection_paths_include
     paths << File.join( @configurator.cmock_mock_path, subdir ) if @configurator.project_use_mocks
     paths += @configurator.collection_paths_libraries
     paths += @configurator.collection_paths_vendor
@@ -141,6 +142,7 @@ class TestInvokerHelper
     # Get all #include .h files from test file so we can find any source files by convention
     includes = @test_context_extractor.lookup_header_includes_list(test_filepath)
     includes.each do |include|
+      next if File.basename(include) == UNITY_H_FILE # Ignore Unity in this list
       next if File.basename(include).start_with?(CMOCK_MOCK_PREFIX) # Ignore mocks in this list
       sources << @file_finder.find_compilation_input_file(include, :ignore)
     end
