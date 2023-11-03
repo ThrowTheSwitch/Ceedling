@@ -1,5 +1,4 @@
-ceedling-gcov
-=============
+# Ceedling Gcov Plugin
 
 # Plugin Overview
 
@@ -20,7 +19,7 @@ automatically generates reports after each execution of a `gcov:` task.
 An optional setting documented below disables automatic report 
 generation, providing a separate Ceedling task instead.
 
-## Installation of Report Generation Tools
+# Installation of Report Generation Tools
 
 [gcovr](https://www.gcovr.com/) is available on any platform supported by Python.
 
@@ -42,12 +41,12 @@ It is not required to install both `gcovr` and `ReportGenerator`. Either utility
 may be installed, or both utilities may be used. If reports are configured but 
 no `utilities:` section exists, `gcovr` is the default tool.
 
-## Plugin Configuration
+# Plugin Configuration
 
 The gcov plugin supports configuration options via your `project.yml` provided
 by Ceedling.
 
-### Utilities
+## Utilities
 
 Gcovr and / or ReportGenerator may be enabled to create coverage reports.
 
@@ -58,7 +57,7 @@ Gcovr and / or ReportGenerator may be enabled to create coverage reports.
     - ReportGenerator # Use ReportGenerator to create the specified reports.
 ```
 
-### Reports
+## Reports
 
 By default, if report generation is configured, this plugin automatically
 generates reports after any `gcov:` task is executed. To disable this behavior,
@@ -76,11 +75,11 @@ report generation only when desired.
   :report_task: [TRUE|FALSE]
 ```
 
-## Example Usage
+# Example Usage
 _Note_: Basic coverage statistics are always printed to the console regardless of 
 report generation options.
 
-### With automatic coverage report generation (default)
+## With automatic coverage report generation (default)
 If coverage report generation is configured, the plugin defaults to running 
 reports after any `gcov:` task.
 
@@ -88,7 +87,7 @@ reports after any `gcov:` task.
 ceedling gcov:all
 ```
 
-### With coverage report generation configured as an additional task
+## With coverage report generation configured as an additional task
 If the `:report_task:` configuration option is enabled, reports are not 
 automatically generaed after test suite coverage builds. Instead, report generation 
 is triggered by the `report:gcov` task.
@@ -102,7 +101,7 @@ ceedling gcov:all
 ceedling report:gcov
 ```
 
-## Report Generation Configuration
+# Report Generation Configuration
 
 Various reports are available and may be enabled with the following
 configuration items. See the specific report sections that follow
@@ -195,7 +194,7 @@ found in `build/artifacts/gcov`.
     - XmlSummary
 ```
 
-### Gcovr HTML Reports
+## Gcovr HTML Reports
 
 Generation of Gcovr HTML reports may be modified with the following configuration items.
 
@@ -241,7 +240,7 @@ Generation of Gcovr HTML reports may be modified with the following configuratio
     :html_encoding: <html_encoding>
 ```
 
-### Cobertura XML Reports
+## Cobertura XML Reports
 
 Generation of Cobertura XML reports may be modified with the following configuration items.
 
@@ -263,7 +262,7 @@ Generation of Cobertura XML reports may be modified with the following configura
     :cobertura_artifact_filename: <output>
 ```
 
-### SonarQube XML Reports
+## SonarQube XML Reports
 
 Generation of SonarQube XML reports may be modified with the following configuration items.
 
@@ -274,7 +273,7 @@ Generation of SonarQube XML reports may be modified with the following configura
     :sonarqube_artifact_filename: <output>
 ```
 
-### JSON Reports
+## JSON Reports
 
 Generation of JSON reports may be modified with the following configuration items.
 
@@ -289,7 +288,7 @@ Generation of JSON reports may be modified with the following configuration item
     :json_artifact_filename: <output>
 ```
 
-### Text Reports
+## Text Reports
 
 Generation of text reports may be modified with the following configuration items.
 Text reports may be printed to the console or output to a file.
@@ -302,7 +301,7 @@ Text reports may be printed to the console or output to a file.
     :text_artifact_filename: <output>
 ```
 
-### Common Report Options
+## Common Report Options
 
 There are a number of options to control which files are considered part of
 the coverage report. Most often, we only care about coverage on our source code, and not
@@ -404,7 +403,7 @@ default behaviors of gcovr:
     :threads: <num_threads>
 ```
 
-### ReportGenerator Configuration
+## ReportGenerator Configuration
 
 The ReportGenerator utility may be configured with the following configuration items.
 All generated reports may be found in `build/artifacts/gcov/ReportGenerator`.
@@ -460,8 +459,8 @@ All generated reports may be found in `build/artifacts/gcov/ReportGenerator`.
       - <custom_arg2>
 ```
 
-## Known issues
-### Empty Gcovr report with Gcovr 4.2+
+# Known issues
+## Empty Gcovr report with Gcovr 4.2+
 - If you are facing an empty gcovr report with version 4.2+ try to specify the folder you want to get a coverage.
 ```bash
 ├── Includes
@@ -478,11 +477,11 @@ All generated reports may be found in `build/artifacts/gcov/ReportGenerator`.
  ```
 
 
-## To-Do list
+# To-Do list
 
 - Generate overall report (combined statistics from all files with coverage)
 
-## Citations
+# Citations
 
 Most of the comment text which describes the options was taken from the
 [Gcovr User Guide](https://www.gcovr.com/en/stable/guide.html) and the

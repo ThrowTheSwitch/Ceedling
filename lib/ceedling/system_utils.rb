@@ -24,7 +24,7 @@ class SystemUtils
     # once run a single time, return state determined at that execution
     return @tcsh_shell if not @tcsh_shell.nil?
   
-    result = @system_wrapper.shell_backticks('echo $version')
+    result = @system_wrapper.shell_backticks(command:'echo $version')
 
     if ((result[:exit_code] == 0) and (result[:output].strip =~ /^tcsh/))
       @tcsh_shell = true

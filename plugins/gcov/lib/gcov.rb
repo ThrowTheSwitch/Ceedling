@@ -1,5 +1,6 @@
 require 'ceedling/plugin'
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 require 'gcov_constants'
 require 'gcovr_reportinator'
 require 'reportgenerator_reportinator'
@@ -200,10 +201,18 @@ class Gcov < Plugin
     enabled = !(opts.nil?) && (opts.map(&:upcase).include? utility_name.upcase)
 
     # Simple check for utility installation
-    # system() result is nil if could not run command
-    if enabled and system(utility_name, '--version', [:out, :err] => File::NULL).nil?
-      @ceedling[:streaminator].stderr_puts("ERROR: gcov report generation tool '#{utility_name}'' not installed.", Verbosity::NORMAL)
-      raise
+    if enabled
+      # system() result is nil if could not run command
+      exec = 
+        @ceedling[:system_wrapper].shell_system(
+          command:utility_name,
+          verbose:@ceedling[:verbosinator].should_output?(Verbosity::OBNOXIOUS),
+          args: ['--version']
+        )
+      
+      if exec[:result].nil?
+        raise CeedlingException.new("ERROR: gcov report generation tool `#{utility_name}` not installed.")
+      end
     end
 
     return enabled

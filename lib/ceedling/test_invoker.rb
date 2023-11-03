@@ -361,11 +361,13 @@ class TestInvoker
   def compile_test_component(tool:TOOLS_TEST_COMPILER, context:TEST_SYM, test:, source:, object:, msg:nil)
     testable = @testables[test]
     filepath = testable[:filepath]
-    search_paths = testable[:search_paths]
     flags = testable[:compile_flags]
 
-    # If source file is one of our vendor frameworks, augments its defines
-    defines = @helper.augment_vendor_defines(defines:testable[:compile_defines], filepath:source)
+    # Tailor defines--remove duplicates and reduce list to only those needed by vendor / support file compilation
+    defines = @helper.tailor_defines(defines:testable[:compile_defines], filepath:source)
+
+    # Tailor search path--remove duplicates and reduce list to only those needed by vendor / support file compilation
+    search_paths = @helper.tailor_search_paths(search_paths:testable[:search_paths], filepath:source)
 
     arg_hash = {
       tool:         tool,

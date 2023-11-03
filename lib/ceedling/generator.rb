@@ -31,7 +31,7 @@ class Generator
     @plugin_manager.pre_mock_generate( arg_hash )
 
     begin
-      # Below is a workaround that nsantiates CMock anew:
+      # Below is a workaround that instantiates CMock anew:
       #  1. To allow dfferent output path per mock
       #  2. To avoid any thread safety complications
 

@@ -52,7 +52,7 @@ class ToolExecutor
     shell_result = {}
 
     time = Benchmark.realtime do
-      shell_result = @system_wrapper.shell_capture3( command_line, options[:boom] )
+      shell_result = @system_wrapper.shell_capture3( command:command_line, boom:options[:boom] )
     end
     shell_result[:time] = time
 

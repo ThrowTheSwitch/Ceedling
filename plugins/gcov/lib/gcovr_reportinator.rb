@@ -338,12 +338,9 @@ class GcovrReportinator
   # Show a more human-friendly message on gcovr return code
   def show_gcovr_message(exitcode)
     if ((exitcode & 2) == 2)
-      @ceedling[:streaminator].stdout_puts("ERROR: Line coverage is less than the minimum", Verbosity::NORMAL)
-      raise
-    end
-    if ((exitcode & 4) == 4)
-      @ceedling[:streaminator].stdout_puts("ERROR: Branch coverage is less than the minimum", Verbosity::NORMAL)
-      raise
+      raise CeedlingException.new("ERROR: Line coverage is less than the minimum")
+    elsif ((exitcode & 4) == 4)
+      raise CeedlingException.new("ERROR: Branch coverage is less than the minimum")
     end
   end
 

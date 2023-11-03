@@ -42,7 +42,7 @@ class SystemWrapper
     return Time.now.asctime
   end
 
-  def shell_capture3(command, boom = true) 
+  def shell_capture3(command:, boom:false) 
     begin
       stdout, stderr, status = Open3.capture3(command)
     rescue => err
@@ -59,20 +59,29 @@ class SystemWrapper
     }
   end
 
-  def shell_backticks(command, boom = true)
-    retval = `#{command}`.freeze
+  def shell_backticks(command:, boom:false)
+    output = `#{command}`.freeze
     $exit_code = ($?.exitstatus).freeze if boom
     return {
-      :output    => retval.freeze,
+      :output    => output.freeze,
       :exit_code => ($?.exitstatus).freeze
     }
   end
 
-  def shell_system(command, boom = true)
-    system( command )
+  def shell_system(command:, args:[], verbose:false, boom:false)
+    result = nil
+
+    if verbose
+      # Allow console output
+      result = system( command, *args)
+    else
+      # Shush the console output
+      result = system( command, *args, [:out, :err] => File::NULL)
+    end
+
     $exit_code = ($?.exitstatus).freeze if boom
     return {
-      :output    => "".freeze,
+      :result    => result.freeze,
       :exit_code => ($?.exitstatus).freeze
     }
   end

@@ -63,24 +63,76 @@ class TestInvokerHelper
     return @defineinator.defines( context:context, filepath:filepath )
   end
 
-  def augment_vendor_defines(filepath:, defines:)
-    # Start with base defines provided
-    _defines = defines
+  def tailor_defines(filepath:, defines:)
+    _defines = []
 
     # Unity defines
     if filepath == File.join(PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE)
       _defines += @defineinator.defines( context:UNITY_SYM )
 
     # CMock defines
-    elsif filepath == File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE)
-      _defines += @defineinator.defines( context:CMOCK_SYM ) if @configurator.project_use_mocks
+    elsif @configurator.project_use_mocks and 
+          (filepath == File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE))
+      _defines += @defineinator.defines( context:CMOCK_SYM )
 
     # CException defines
-    elsif filepath == File.join(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE)
+    elsif @configurator.project_use_exceptions and 
+          (filepath == File.join(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE))
+      _defines += @defineinator.defines( context:CEXCEPTION_SYM )
+
+    # Support files defines
+    elsif (@configurator.collection_all_support.include?(filepath))
+      _defines = defines
+      _defines += @defineinator.defines( context:UNITY_SYM )
+      _defines += @defineinator.defines( context:CMOCK_SYM ) if @configurator.project_use_mocks
       _defines += @defineinator.defines( context:CEXCEPTION_SYM ) if @configurator.project_use_exceptions
     end
 
+    # Not a vendor file, return original defines
+    if _defines.length == 0
+      return defines
+    end
+
     return _defines.uniq
+  end
+
+  def tailor_search_paths(filepath:, search_paths:)
+    _search_paths = []
+
+    # Unity search paths
+    if filepath == File.join(PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE)
+      _search_paths += @configurator.collection_paths_support
+      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
+
+    # CMock search paths
+    elsif @configurator.project_use_mocks and 
+      (filepath == File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE))
+      _search_paths += @configurator.collection_paths_support
+      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
+      _search_paths << PROJECT_BUILD_VENDOR_CMOCK_PATH
+      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+
+    # CException search paths
+    elsif @configurator.project_use_exceptions and 
+      (filepath == File.join(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE))
+      _search_paths += @configurator.collection_paths_support
+      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH
+
+    # Support files search paths
+    elsif (@configurator.collection_all_support.include?(filepath))
+      _search_paths = search_paths
+      _search_paths += @configurator.collection_paths_support
+      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
+      _search_paths << PROJECT_BUILD_VENDOR_CMOCK_PATH if @configurator.project_use_mocks
+      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+    end
+
+    # Not a vendor file, return original search paths
+    if _search_paths.length == 0
+      return search_paths
+    end
+
+    return _search_paths.uniq
   end
 
   def preprocess_defines(test_defines:, filepath:)

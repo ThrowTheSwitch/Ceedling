@@ -9,36 +9,38 @@ class PreprocessinatorIncludesHandler
   ## ============================
   ##
   ## BACKGROUND
-  ## #include extraction is hard to do. In simple cases a regex approach suffices. Not all the uncommon nested 
-  ## header files, clever macros, and conditional preprocessing statements introduce high complexity.
+  ## #include extraction is hard to do. In simple cases a regex approach suffices, but nested header files,
+  ## clever macros, and conditional preprocessing statements easily introduce high complexity.
   ##
-  ## Unfortunately, there's no easily available C parsing tool that provides a simple means to extract the 
-  ## #include statements directly embedded in a given file. Even the gcc preprocessor itself only comes close 
-  ## to providing this information.
+  ## Unfortunately, there's no readily available cross-platform C parsing tool that provides a simple means 
+  ## to extract the #include statements directly embedded in a given file. Even the gcc preprocessor itself 
+  ## only comes close to providing this information externally.
   ##
   ## APPROACH
   ## --------
   ## (Full details including fallback options are in the extensive code comments among the methods below.)
   ## 
   ## Sadly, we can't preprocess a file with full search paths and defines and ask for the #include statements
-  ## embedded in a file. We get far more #includes than we want with no was to discern which are at the depth
+  ## embedded in a file. We get far more #includes than we want with no way to discern which are at the depth
   ## of the file being processed.
   ##
   ## Instead, we try our best to use some educated guessing to get as close as possible to the desired list.
   ##
-  ##   I. Try to extract shallow defines with no crawling out into other header files. This gives us a 
-  ##      reference point on possible directly included files. The results may be incomplete, though. They 
-  ##      also may mistakenly list #includes that should not be in the list--because of #ifndef defaults or
+  ##   I. Try to extract shallow defines with no crawling out into other header files. This conservative approach
+  ##      gives us a reference point on possible directly included files. The results may be incomplete, though. 
+  ##      They also may mistakenly list #includes that should not be in the list--because of #ifndef defaults or
   ##      because of system headers or #include <...> statements and differences among gcc implementations.
   ##
   ##  II. Extract a full list of #includes by spidering out into nested headers and processing all macros, etc.
+  ##      This is the greedy approach.
   ##
   ## III. Find #includes common to (I) and (II). THe results of (I) should limit the potentially lengthy
   ##      results of (II). The complete and accurate list of (II) should cut out any mistaken entries in (I).
   ##
-  ##  IV. I–III are not foolproof. This approach should come quite close to an accurate list of shallow
-  ##      includes. Edge cases and gaps will cause trouble. Other Ceedling features should provide the tools
-  ##      to intervene.
+  ##  IV. I–III are not foolproof. A purely greedy approach or a prely conservative approach will cause symbol 
+  ##      conflicts, missing symbols, etc. The blended and balanced approach should come quite close to an 
+  ##      accurate list of shallow includes. Edge cases and gaps will cause trouble. Other Ceedling features 
+  ##      should provide the tools to intervene. 
   ##
 
   def extract_includes(filepath:, test:, flags:, include_paths:, defines:)
