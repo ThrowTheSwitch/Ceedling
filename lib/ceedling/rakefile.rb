@@ -48,7 +48,7 @@ begin
   @ceedling[:setupinator].do_setup( project_config )
 
   # Configure Ruby's default reporting for Thread exceptions.
-  unless @ceedling[:configurator].project_verbosity == Verbosity::DEBUG
+  unless @ceedling[:configurator].project_debug
     # In Ceedling's case thread scenarios will fall into these buckets:
     #  1. Jobs shut down cleanly
     #  2. Jobs shut down at garbage collected after a build step terminates with an error
@@ -71,7 +71,12 @@ begin
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 rescue StandardError => e
-  $stderr.puts(e)
+  $stderr.puts("#{e.class} ==> #{e.message}")
+  if @ceedling[:configurator].project_debug
+    $stderr.puts("Backtrace ==>")
+    $stderr.puts(e.backtrace)
+  end
+
   abort # Rake's abort
 end
 

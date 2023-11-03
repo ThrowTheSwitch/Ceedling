@@ -49,4 +49,15 @@ class IncludePathinator
     return @extractor.lookup_include_paths_list(filepath)
   end
 
+  # Gather together [:paths][:test] that actually contain .h files
+  def collect_test_include_paths
+    paths = []
+    @configurator.collection_paths_test.each do |path|
+      headers = @file_wrapper.directory_listing( File.join( path, '*' + @configurator.extension_header ) )
+      paths << path if headers.length > 0
+    end
+
+    return paths
+  end
+
 end

@@ -3,15 +3,13 @@ class PreprocessinatorFileHandler
 
   constructor :preprocessinator_extractor, :configurator, :flaginator, :tool_executor, :file_path_utils, :file_wrapper, :streaminator
 
-  def preprocess_header_file(filepath:, subdir:, includes:, flags:, include_paths:, defines:)
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, subdir )
-
-    filename = File.basename(filepath)
+  def preprocess_header_file(source_filepath:, preprocessed_filepath:, includes:, flags:, include_paths:, defines:)
+    filename = File.basename(source_filepath)
 
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_preprocessor,
       flags,
-      filepath,
+      source_filepath,
       preprocessed_filepath,
       defines,
       include_paths
@@ -58,17 +56,13 @@ class PreprocessinatorFileHandler
     contents.gsub!( /(\h*\n){3,}/, "\n\n" )
     
     @file_wrapper.write( preprocessed_filepath, contents )
-
-    return preprocessed_filepath
   end
 
-  def preprocess_test_file(filepath:, subdir:, includes:, flags:, include_paths:, defines:)
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, subdir )
-
+  def preprocess_test_file(source_filepath:, preprocessed_filepath:, includes:, flags:, include_paths:, defines:)
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_preprocessor,
       flags,
-      filepath,
+      source_filepath,
       preprocessed_filepath,
       defines,
       include_paths
@@ -102,8 +96,6 @@ class PreprocessinatorFileHandler
     contents.gsub!( /(\h*\n){3,}/, "\n\n" ) # Collapse repeated blank lines
 
     @file_wrapper.write( preprocessed_filepath, contents )
-
-    return preprocessed_filepath
   end
 
 

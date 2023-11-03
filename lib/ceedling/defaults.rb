@@ -306,6 +306,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :options_paths => [],
       :release_build => false,
       :use_backtrace_gdb_reporter => false,
+      :debug => false
     },
 
     :release_build => {

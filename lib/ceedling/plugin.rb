@@ -43,35 +43,43 @@ class Plugin
 
   def setup; end
 
-  # mock generation
+  # Preprocessing (before / after each and every header file preprocessing operation before mocking)
+  def pre_mock_preprocess(arg_hash); end
+  def post_mock_preprocess(arg_hash); end
+
+  # Preprocessing (before / after each and every test preprocessing operation before runner generation)
+  def pre_test_preprocess(arg_hash); end
+  def post_test_preprocess(arg_hash); end
+
+  # Mock generation (before / after each and every mock)
   def pre_mock_generate(arg_hash); end
   def post_mock_generate(arg_hash); end
 
-  # test runner generation
+  # Test runner generation (before / after each and every test runner)
   def pre_runner_generate(arg_hash); end
   def post_runner_generate(arg_hash); end
 
-  # compilation (test or source)
+  # Compilation (before / after each and test or source file compilation)
   def pre_compile_execute(arg_hash); end
   def post_compile_execute(arg_hash); end
 
-  # linking (test or source)
+  # Linking (before / after each and every test executable or release artifact)
   def pre_link_execute(arg_hash); end
   def post_link_execute(arg_hash); end
 
-  # test fixture execution
+  # Test fixture execution (before / after each and every test fixture executable)
   def pre_test_fixture_execute(arg_hash); end
   def post_test_fixture_execute(arg_hash); end
 
-  # test task
+  # Test task (before / after each test executable build)
   def pre_test(test); end
   def post_test(test); end
 
-  # release task
+  # Release task (before / after a release build)
   def pre_release; end
   def post_release; end
 
-  # whole shebang (any use of Ceedling)
+  # Whole shebang (any use of Ceedling)
   def pre_build; end
   def post_build; end
   

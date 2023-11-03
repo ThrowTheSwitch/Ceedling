@@ -20,6 +20,7 @@ class Setupinator
     # load up all the constants and accessors our rake files, objects, & external scripts will need;
     # note: configurator modifies the cmock section of the hash with a couple defaults to tie 
     #       project together - the modified hash is used to build cmock object
+    @ceedling[:configurator].set_debug( config_hash )
     @ceedling[:configurator].populate_defaults( config_hash )
     @ceedling[:configurator].populate_unity_defaults( config_hash )
     @ceedling[:configurator].populate_cmock_defaults( config_hash )

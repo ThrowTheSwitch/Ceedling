@@ -56,6 +56,12 @@ class PluginManager
 
   #### execute all plugin methods ####
 
+  def pre_mock_preprocess(arg_hash); execute_plugins(:pre_mock_preprocess, arg_hash); end
+  def post_mock_preprocess(arg_hash); execute_plugins(:post_mock_preprocess, arg_hash); end
+
+  def pre_test_preprocess(arg_hash); execute_plugins(:pre_test_preprocess, arg_hash); end
+  def post_test_preprocess(arg_hash); execute_plugins(:post_test_preprocess, arg_hash); end
+
   def pre_mock_generate(arg_hash); execute_plugins(:pre_mock_generate, arg_hash); end
   def post_mock_generate(arg_hash); execute_plugins(:post_mock_generate, arg_hash); end
 
@@ -98,7 +104,7 @@ class PluginManager
       begin
         plugin.send(method, *args) if plugin.respond_to?(method)
       rescue
-        puts "Exception raised in plugin: #{plugin.name}, in method #{method}"
+        @streaminator.stderr_puts("Exception raised in plugin: #{plugin.name}, in method #{method}")
         raise
       end
     end

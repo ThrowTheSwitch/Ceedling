@@ -49,8 +49,6 @@ class ToolExecutor
       @tool_executor_helper.stderr_redirect_cmdline_append( options ),
       ].flatten.compact.join(' ')
 
-    @streaminator.stderr_puts("Verbose: #{__method__}(): #{command_line}", Verbosity::DEBUG)
-
     shell_result = {}
 
     time = Benchmark.realtime do
@@ -138,6 +136,7 @@ class ToolExecutor
 
     # handle inline ruby execution
     if (element =~ RUBY_EVAL_REPLACEMENT_PATTERN)
+      puts("HERE")
       element.replace(eval($1))
     end
 

@@ -8,6 +8,7 @@ class Preprocessinator
               :file_path_utils,
               :file_wrapper,
               :yaml_wrapper,
+              :plugin_manager,
               :project_config_manager,
               :configurator,
               :test_context_extractor,
@@ -37,12 +38,15 @@ class Preprocessinator
       @test_context_extractor.collect_includes( filepath )
     else
       # Run test file through preprocessor to parse out include statements and then collect header files, mocks, etc.
-      includes = preprocess_includes(
+      arg_hash = {
         filepath:      filepath,
         test:          test,
         flags:         flags,
         include_paths: include_paths,
-        defines:       defines)
+        defines:       defines
+      }
+
+      includes = preprocess_includes(**arg_hash)
 
       msg = @reportinator.generate_progress( "Processing #include statements for #{File.basename(filepath)}" )
       @streaminator.stdout_puts( msg, Verbosity::NORMAL )
@@ -51,46 +55,92 @@ class Preprocessinator
     end
   end
 
-  def preprocess_header_file(filepath:, test:, flags:, include_paths:, defines:)
-    # Extract shallow includes & print status message
-    includes = preprocess_file_common(
-      filepath:      filepath,
-      test:          test,
-      flags:         flags,
-      include_paths: include_paths,
-      defines:       defines
-      )
+  def preprocess_mockable_header_file(filepath:, test:, flags:, include_paths:, defines:)
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
+
+    plugin_arg_hash = {
+      header_file:              filepath,
+      preprocessed_header_file: preprocessed_filepath,
+      test:                     test,
+      flags:                    flags,
+      include_paths:            include_paths,
+      defines:                  defines      
+    }
+
+    # Trigger pre_mock_preprocessing plugin hook
+    @plugin_manager.pre_mock_preprocess( plugin_arg_hash )
+
+    arg_hash = {
+      filepath:       filepath,
+      test:           test,
+      flags:          flags,
+      include_paths:  include_paths,
+      defines:        defines      
+    }
+
+    # Extract shallow includes & print status message    
+    includes = preprocess_file_common(**arg_hash)
+
+    arg_hash = {
+      source_filepath:       filepath,
+      preprocessed_filepath: preprocessed_filepath,
+      includes:              includes,
+      flags:                 flags,
+      include_paths:         include_paths,
+      defines:               defines      
+    }
 
     # Run file through preprocessor & further process result
-    return @file_handler.preprocess_header_file(
-      filepath:      filepath,
-      subdir:        test,
-      includes:      includes,
-      flags:         flags,
-      include_paths: include_paths,
-      defines:       defines
-      )
+    @file_handler.preprocess_header_file(**arg_hash)
+
+    # Trigger post_mock_preprocessing plugin hook
+    @plugin_manager.post_mock_preprocess( plugin_arg_hash )
+
+    return preprocessed_filepath
   end
 
   def preprocess_test_file(filepath:, test:, flags:, include_paths:, defines:)
-    # Extract shallow includes & print status message
-    includes = preprocess_file_common(
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
+
+    plugin_arg_hash = {
+      test_file:              filepath,
+      preprocessed_test_file: preprocessed_filepath,
+      test:                   test,
+      flags:                  flags,
+      include_paths:          include_paths,
+      defines:                defines      
+    }
+
+    # Trigger pre_mock_preprocessing plugin hook
+    @plugin_manager.pre_test_preprocess( plugin_arg_hash )
+
+    arg_hash = {
       filepath:      filepath,
       test:          test,
       flags:         flags,
       include_paths: include_paths,
-      defines:       defines
-      )
+      defines:       defines      
+    }
+
+    # Extract shallow includes & print status message
+    includes = preprocess_file_common(**arg_hash)
+
+    arg_hash = {
+      source_filepath:       filepath,
+      preprocessed_filepath: preprocessed_filepath,
+      includes:              includes,
+      flags:                 flags,
+      include_paths:         include_paths,
+      defines:               defines      
+    }
 
     # Run file through preprocessor & further process result
-    return @file_handler.preprocess_test_file(
-      filepath:      filepath,
-      subdir:        test,
-      includes:      includes,
-      flags:         flags,
-      include_paths: include_paths,
-      defines:       defines
-      )
+    @file_handler.preprocess_test_file(**arg_hash)
+
+    # Trigger pre_mock_preprocessing plugin hook
+    @plugin_manager.post_test_preprocess( plugin_arg_hash )
+
+    return preprocessed_filepath
   end
 
   def preprocess_file_directives(filepath)
