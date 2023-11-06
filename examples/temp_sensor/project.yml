@@ -29,6 +29,8 @@
     - -:test/support
   :source:
     - src/**
+  :include:
+    - src/**
   :support:
     - test/support
 

@@ -204,13 +204,13 @@ item listed below.
 
 1. **[Native][tts-build-native].** This option builds and runs code on your 
    host system.
-  1. In the simplest case this means you are testing code that is intended
-     to run on the same sort of system as the test suite. Your test 
-     compiler toolchain is the same as your release compiler toolchain.
-  1. However, a native build can also mean your test compiler is different
-     than your release compiler. With some thought and effort, code for
-     another platform can be tested on your host system. This is often
-     the best approach for embedded and other specialized development.
+   1. In the simplest case this means you are testing code that is intended
+      to run on the same sort of system as the test suite. Your test 
+      compiler toolchain is the same as your release compiler toolchain.
+   1. However, a native build can also mean your test compiler is different
+      than your release compiler. With some thought and effort, code for
+      another platform can be tested on your host system. This is often
+      the best approach for embedded and other specialized development.
 1. **[Emulator][tts-build-cross].** In this option, you build your test code with your target's
    toolchain, and then run the test suite using an emulator provided for
    that target. This is a good option for embedded and other specialized
@@ -263,7 +263,7 @@ useful for developing Ceedling
    or an empty Ceedling project in your filesystem (executing
    `ceedling help` first is, well, helpful).
 
-[ruby-install] http://www.ruby-lang.org/en/downloads/
+[ruby-install]: http://www.ruby-lang.org/en/downloads/
 
 ### Gem install notes
 
@@ -593,31 +593,61 @@ within source directories, or tests and source directories
 can be wholly separated at the top of your project's directory
 tree.
 
-## Search Path Order
+## Search Path / File Collection Ordering
 
-When Ceedling searches for files (e.g. looking for header files
-to mock) or when it provides search paths to default toolchain 
-executables, it organizes / prioritizes the search paths.
+Path order is important and needed by various functions. Ceedling
+itself needs a path order to find files such as header files
+that get mocked. Tasks are often ordered by the contents of file 
+collections Ceedling builds. Toolchains rely on a search path 
+order to compile code.
 
-Search path order is always:
+Paths are organized and prioritized like this:
 
 1. Test paths
 1. Support paths
+1. Source paths
 1. Source include paths
 
-This can be useful, for instance, in certain testing scenarios 
+Of course, this list is context dependent. A release build pays
+no attention to test or support paths. And, as is documented 
+elsewhere, header file search paths do not incorporate source 
+file paths.
+
+This ordering can be useful to the user in certain testing scenarios 
 where we desire Ceedling or a compiler to find a stand-in header 
 file in our support directory before the actual source header 
-file of the same name.
+file of the same name in the source include path list.
 
-This convention only holds when Ceedling is using its default
-tool configurations and / or when tests are involved. If you define
-your own tools in the configuration file (see the `:tools` section
-documented later in this here document), you have some control over 
-what directories are searched and in what order. Further, test and 
-support directories are only searched when appropriate. That is, 
-when running a release build, test and support directories are not 
-used at all, of course.
+If you define your own tools in the project configuration file (see 
+the `:tools` section documented later in this here document), you have 
+some control over what directories are searched and in what order.
+
+## Configuring Your Header File Search Paths
+
+Ceedling **must** be told where to find header files. Without search
+path knowledge, mocks cannot be generated, and code cannot be compiled.
+
+Ceedling provides two mechanisms for configuring header file 
+search paths:
+
+1. The `[:paths ↳ :include](##-paths-↳-include)` section within your 
+   project file. This is available to both test and release builds.
+1. The `[TEST_INCLUDE_PATH(...)](##test-include-path)` build directive 
+   macro. This is only available within test files.
+
+In testing contexts, you have three options for creating the header 
+file search path list used by Ceedling:
+
+1. List all search paths within the `:paths` ↳ `:include` subsection 
+   of your project file. This is the simplest and most common approach.
+1. Create the search paths for each test file using calls to the 
+  `TEST_INCLUDE_PATH(...)` build directive macro within each test file.
+1. Blending the preceding options. In this approach the subsection
+   within your project file acts as a common, base list of search 
+   paths while the build directive macro allows the list to be 
+   expanded upon for each test file. This method is especially helpful 
+   for large and/or complex projects—especially in trimming down 
+   problematically long compiler command lines.
 
 ## Source Files & Binary Release Artifacts
 
@@ -1220,19 +1250,21 @@ internally - thus leading to unexpected behavior without warning.
     - build/release/out/c/top_secret.s19
 ```
 
-## `:paths` Collections of paths for build tools and collecting files
+## Project `:paths` configuration
+
+**Collections of paths for build tools and collecting files**
 
 These configuration settings control search paths for test code files,
 source code files, header files, and (optionally) assembly files.
 
-* `:test`
+### `:paths` ↳ `:test`
 
   All C files containing unit test code. Note: this is one of the
   handful of configuration values that must be set.
 
   **Default**: `[]` (empty)
 
-* `:source`
+### `:paths` ↳ `:source`
 
   All C files containing release code (code to be tested)
 
@@ -1241,7 +1273,7 @@ source code files, header files, and (optionally) assembly files.
 
   **Default**: `[]` (empty)
 
-* `:support`
+### `:paths` ↳ `:support`
 
   Any C files you might need to aid your unit testing. For example, on
   occasion, you may need to create a header file containing a subset of
@@ -1252,7 +1284,7 @@ source code files, header files, and (optionally) assembly files.
 
   **Default**: `[]` (empty)
 
-* `:include`
+### `:paths` ↳ `:include`
 
   This is a separate set of paths that specify locations to look for
   header files. If your header files are intermixed with source files,
@@ -1271,11 +1303,12 @@ source code files, header files, and (optionally) assembly files.
 
   **Default**: `[]` (empty)
 
-* `:test_toolchain_include`
+### `:paths` ↳ `:test_toolchain_include`
 
   System header files needed by the test toolchain - should your
   compiler be unable to find them, finds the wrong system include search
   path, or you need a creative solution to a tricky technical problem.
+
   Note that if you configure your own toolchain in the `:tools` section,
   this search path is largely meaningless to you. However, this is a
   convenient way to control the system include path should you rely on
@@ -1283,13 +1316,13 @@ source code files, header files, and (optionally) assembly files.
 
   **Default**: `[]` (empty)
 
-* `:release_toolchain_include`
+### `:paths` ↳ `:release_toolchain_include`
 
   Same as preceding albeit related to the release toolchain.
 
   **Default**: `[]` (empty)
 
-* `:<custom>`
+### `:paths` ↳ `:<custom>`
 
   Any paths you specify for custom list. List is available to tool
   configurations and/or plugins. Note a distinction – the preceding names
@@ -1297,32 +1330,20 @@ source code files, header files, and (optionally) assembly files.
   build collections of files contained in those paths. A custom list is
   just that - a custom list of paths.
 
-### Notes on path grammar within the `:paths` configuration section
+### `:paths` configuration options & notes
 
-* Order of search paths listed in `:paths` is preserved when used by an
-  entry in the `:tools` section.
-
-* Wherever multiple path lists are combined for use Ceedling prioritizes
-  path groups as follows:
-  test paths, support paths, source paths, include paths.
-
-  This can be useful, for instance, in certain testing scenarios where
-  we desire Ceedling or the compiler to find a stand-in header file before
-  the actual source header file of the same name.
-
-### Paths configuration options
-
-  1. Can be absolute or relative.
-  1. Can be singularly explicit - a single fully specified path.
-  1. Can include a glob operator (more on this below).
-  1. Can use inline Ruby string replacement (see `:environment`
+  1. A path can be absolute or relative.
+  1. A path can include a glob operator (more on this below).
+  1. A path can use inline Ruby string replacement (see `:environment`
      section for more).
-  1. Default as an addition to a specific search list (more on this
+  1. The default is addition to the named search list (more on this
      in the examples).
-  1. Can act to subtract from a glob included in the path list (more
-     on this in the examples).
+  1. Subtractive paths are possible and useful. See the dcoumentation
+     below.
+  1. Path order beneath a subsection (e.g. `:paths` ↳ `:include`) is 
+     preserved when the list is iterated internally or passed to a tool.
 
-### Path globs
+### `:paths` Globs
 
 [Globs](http://ruby.about.com/od/beginningruby/a/dir2.htm)
 as used by Ceedling are wildcards for specifying directories
@@ -1354,7 +1375,7 @@ include the following `*`, `**`, `?`, `[-]`, `{,}`.
 
   Single alphanumeric character from the specified list
 
-### Subtractive paths
+### Subtractive `:paths` entries
 
 Globs are super duper helpful when you have many paths to list. But,
 what if a single glob gets you 20 nested paths, but you actually want
@@ -1378,7 +1399,6 @@ See example below.
 ### Example `:paths` YAML blurbs
 
 ```yaml
----
 :paths:
   :source:              
     - project/source/*    # Glob expansion yields all subdirectories of depth 1 plus parent directory
@@ -1389,9 +1409,8 @@ See example below.
   :test:                
     - project/**/test?    # Glob expansion yields any subdirectory found anywhere in the project that
                           # begins with "test" and contains 5 characters
-...
-
----
+```
+```yaml
 :paths:
   :source:                           
     - +:project/source/**            # All subdirectories recursively discovered plus parent directory
@@ -1408,7 +1427,6 @@ See example below.
 
   :my_things:                        # Custom path list
     - "#{PROJECT_ROOT}/other"        # Inline Ruby string expansion of a global constant
-...
 ```
 
 Globs and inline Ruby string expansion can require trial and
@@ -1422,47 +1440,47 @@ Ceedling relies on file collections automagically assembled
 from paths, globs, and file extensions.
 
 On occasion you may need to remove from or add individual files to file 
-collections assembled from paths and broad file extension matching.
+collections assembled from paths plus file extension matching.
 
-* `:test`:
-
-  Modify the collection of unit test C files.
-
-  **Default**: `[]` (empty)
-
-* `:source`:
-
-  Modify the collection of all source files used in unit test builds and release builds.
-
-  **Default**: `[]` (empty)
-
-* `:assembly`:
-
-  Modify the (optional) collection of assembly files used in release builds.
-
-  **Default**: `[]` (empty)
-
-* `:include`:
-
-  Modify the collection of all source header files used in unit test builds (e.g. for mocking) and release builds.
-
-  **Default**: `[]` (empty)
-
-* `:support`:
-
-  Modify the collection of supporting C files available to unit tests builds.
-
-  **Default**: `[]` (empty)
-
-* `:libraries`:
-
-  Add a collection of library paths to be included when linking.
-
-  **Default**: `[]` (empty)
-
-**Note:** All path grammar documented in `:paths` section applies
-to `:files` path entries - albeit at the file path level and not
+Note that all path grammar documented in the project file `:paths` section 
+applies to `:files` path entries - albeit at the file path level and not
 the directory level.
+
+### `:files` ↳ `:test`
+
+Modify the collection of unit test C files.
+
+**Default**: `[]` (empty)
+
+### `:files` ↳ `:source`:
+
+Modify the collection of all source files used in unit test builds and release builds.
+
+**Default**: `[]` (empty)
+
+### `:files` ↳ `:assembly`:
+
+Modify the (optional) collection of assembly files used in release builds.
+
+**Default**: `[]` (empty)
+
+### `:files` ↳ `:include`:
+
+Modify the collection of all source header files used in unit test builds (e.g. for mocking) and release builds.
+
+**Default**: `[]` (empty)
+
+### `:files` ↳ `:support`:
+
+Modify the collection of supporting C files available to unit tests builds.
+
+**Default**: `[]` (empty)
+
+### `:files` ↳ `:libraries`:
+
+Add a collection of library paths to be included when linking.
+
+**Default**: `[]` (empty)
 
 ### Example `:files` YAML blurb
 
@@ -2305,7 +2323,85 @@ test results from all test fixtures executed.
   root>/artifacts` directory (e.g. test/ for test tasks, `release/` for a
   release build, or even `bullseye/` for bullseye runs).
 
-# Ceedling Global Collections
+# Build Directive Macros
+
+## Overview of Build Directive Macros
+
+Ceedling supports a small number of build directive macros. By placing 
+these macros in your test files, you may control aspects of an 
+individual test executable's build from within the test file itself.
+
+These macros are actually defined in Unity, but they evaluate to empty 
+strings. That is, the macros do nothing. But, by placing them in your 
+test files they communicate instructions to Ceedling when scanned at 
+the beginning of a test build.
+
+## `TEST_SOURCE_FILE()`
+
+### `TEST_SOURCE_FILE()` Purpose
+
+The `TEST_SOURCE_FILE()` build directive allows the simple injection of 
+a specific source file into a test executable's build.
+
+The Ceedling convention of compiling and linking any C file that 
+corresponds in name to an `#include`d header file does not always work.
+The alternative of `#include`ing a source file directly is ugly and can
+cause other problems.
+
+### `TEST_SOURCE_FILE()` Example
+
+```c
+// Test file test_mycode.c
+#include "unity.h"
+#include "somefile.h"
+
+// There is no file.h in this project to trigger Ceedling's convention.
+// Compile file.c and link into test_mycode executable.
+TEST_SOURCE_FILE("foo/bar/file.c")
+
+void setUp(void) {
+  // Do some set up
+}
+
+// ...
+```
+
+## `TEST_INCLUDE_PATH()`
+
+### `TEST_INCLUDE_PATH()` Purpose
+
+The `TEST_INCLUDE_PATH()` build directive allows a header search path to
+be injected into the build of a test executable.
+
+This is only an additive customization. The path will be added to the 
+base/common path list speified by `:paths`  ↳ `:include` in the project 
+file. If no list is specified in the project file, calls to
+`TEST_INCLUDE_PATH()` will comprise the entire header search path list.
+
+Note that at least one search path entry — however formed — is necessary
+for every test executable.
+
+### `TEST_INCLUDE_PATH()` Example
+
+```c
+// Test file test_mycode.c
+#include "unity.h"
+#include "somefile.h"
+
+// Add the following to the compiler's -I search paths used to
+// compile all components comprising the test_mycode executable.
+TEST_INCLUDE_PATH("foo/bar/")
+TEST_INCLUDE_PATH("/usr/local/include/baz/")
+
+void setUp(void) {
+  // Do some set up
+}
+
+// ...
+```
+
+
+# Global Collections
 
 TODO: Revise list and explain utility.
 

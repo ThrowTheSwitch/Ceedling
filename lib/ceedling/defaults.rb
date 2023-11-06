@@ -316,10 +316,10 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :paths => {
-      :test => [],   # must be populated by user
-      :source => [], # must be populated by user
+      :test => [],    # Must be populated by user
+      :source => [],  # Should be populated by user but TEST_INCLUDE_PATH() could be used exclusively instead
       :support => [],
-      :include => [],
+      :include => [], # Must be populated by user
       :libraries => [],
       :test_toolchain_include => [],
       :release_toolchain_include => [],

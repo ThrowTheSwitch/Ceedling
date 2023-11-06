@@ -2,7 +2,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** October 6, 2023
+**Date:** November 6, 2023
 
 <br/>
 
@@ -42,15 +42,6 @@ The following new features (discussed in later sections) contribute to this new 
 - `[:defines]` handling. `#define`s are now specified for the compilation of all modules comprising a test executable. Matching is only against test file names but now includes wildcard and regular expression options.
 - `[:flags]` handling. Flags (e.g. `-std=c99`) are now specified for the build steps—preprocessing, compilation, and linking—of all modules comprising a test executable. Matching is only against test file names and now includes more sensible and robust wildcard and regular expression options.
 
-### Important Changes in Behavior to Be Aware Of 🚨
-
-- **Test suite build order 🔢.** Ceedling no longer builds each test executable one at a time. From the tasks you provide at the command line, Ceedling now collects up and batches all preprocessing steps, all mock generation, all test runner generation, all compilation, etc. Previously you would see each of these done for a single test executable and then repeated for the next executable and so on. Now, each build step happens to completion for all specified tests before moving on to the next build step. 
-- **Logging output order 🔢.** When multi-threaded builds are enabled, logging output may not be what you expect. Progress statements may be all batched together or interleaved in ways that are misleading. The steps are happening in the correct order. How you are informed of them may be somewhat out of order.
-- **Files generated multiple times 🔀.** Now that each test is essentially a self-contained mini-project, some output may be generated multiple times. For instance, if the same mock is required by multiple tests, it will be generated multiple times. The same holds for compilation of source files into object files. A coming version of Ceedling will concentrate on optimizations to reuse any output that is truly identical across tests.
-- **Test suite plugin runs 🏃🏻.** Because build steps are run to completion across all the tests you specify at the command line (e.g. all the mocks for your tests are generated at one time) you may need to adjust how you depend on build steps.
-
-Together, these changes may cause you to think that Ceedling is running steps out of order or duplicating work. While bugs are always possible, more than likely, the output you see and the build ordering is expected.
-
 ### Medium Deal Highlights 🥈
 
 #### `TEST_SOURCE_FILE(...)`
@@ -70,6 +61,15 @@ Ceedling has been around for a number of years and has had the benefit of many c
 - Effort has been invested across the project to improve error messages, exception handling, and exit code processing. Noisy backtraces have been relegated to the verbosity level of DEBUG as <insert higher power> intended.
 - This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake's design assumptions hamper building the sorts of features Ceedling's users want, Rake's command line structure creates a messy user experience for a full application built around it, and Rake's quirks cause maintenance challenges. Particularly for test suites, much of Ceedling's (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
 - This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 0.32 release. Future releases will have far shorter notes.
+
+### Important Changes in Behavior to Be Aware Of 🚨
+
+- **Test suite build order 🔢.** Ceedling no longer builds each test executable one at a time. From the tasks you provide at the command line, Ceedling now collects up and batches all preprocessing steps, all mock generation, all test runner generation, all compilation, etc. Previously you would see each of these done for a single test executable and then repeated for the next executable and so on. Now, each build step happens to completion for all specified tests before moving on to the next build step. 
+- **Logging output order 🔢.** When multi-threaded builds are enabled, logging output may not be what you expect. Progress statements may be all batched together or interleaved in ways that are misleading. The steps are happening in the correct order. How you are informed of them may be somewhat out of order.
+- **Files generated multiple times 🔀.** Now that each test is essentially a self-contained mini-project, some output may be generated multiple times. For instance, if the same mock is required by multiple tests, it will be generated multiple times. The same holds for compilation of source files into object files. A coming version of Ceedling will concentrate on optimizations to reuse any output that is truly identical across tests.
+- **Test suite plugin runs 🏃🏻.** Because build steps are run to completion across all the tests you specify at the command line (e.g. all the mocks for your tests are generated at one time) you may need to adjust how you depend on build steps.
+
+Together, these changes may cause you to think that Ceedling is running steps out of order or duplicating work. While bugs are always possible, more than likely, the output you see and the build ordering is expected.
 
 <br/>
 
@@ -166,7 +166,7 @@ This behavior is no more. Why? For two interrelated reasons.
 1. For large or complex projects, expansive header file search path lists can exceed command line maximum lengths on some platforms. An enforced, tailored set of search paths helps prevent this problem.
 1. In order to support the desired behavior of `TEST_INCLUDE_PATH()` a concice set of “base” header file search paths is necessary. `[:paths][:include]` is that base list.
 
-Using 0.32 Ceedling with older project files can lead to compiler errors on finding header files. Add all paths to the `[:paths][:include]` project file entry to fix this problem.
+Using 0.32 Ceedling with older project files can lead to errors when generating mocks or compiler errors on finding header files. Add all paths to the `[:paths][:include]` project file entry to fix this problem.
 
 ### Format change for `[:defines]` in the project file
 
