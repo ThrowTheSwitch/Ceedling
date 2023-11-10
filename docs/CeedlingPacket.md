@@ -15,13 +15,13 @@ Ceedling is a fancypants build system that greatly simplifies building
 C projects. While it can certainly build release targets, it absolutely 
 shines at running unit test suites.
 
-1. [Installation](#-ceedling-installation-set-up)
-1. [Sample test code file + Example Ceedling projects](#-commented-sample-test-file)
-1. [Simple project file](##-simple-sample-project-file)
-1. [Ceedling at the command line](#-now-what-how-do-i-make-it-go) — tasks look like this:
+1. [Installation](#ceedling-installation--set-up)
+1. [Sample test code file + Example Ceedling projects](#commented-sample-test-file)
+1. [Simple project file](#simple-sample-project-file)
+1. [Ceedling at the command line](#now-what-how-do-i-make-it-go) — tasks look like this:
    - `ceedling test:all`
    - `ceedling release`
-1. [All your project file options](#-the-almighty-project-configuration-file-in-glorious-yaml)
+1. [All your project file options](#the-almighty-project-configuration-file-in-glorious-yaml)
 
 <br/>
 
@@ -29,16 +29,16 @@ shines at running unit test suites.
 
 # Contents
 
-1. [Ceedling, a C Build System for All Your Mad Scientisting Needs](#-ceedling-a-c-build-system-for-all-your-mad-scientisting-needs)
-1. [Ceedling, Unity, and CMock’s Testing Abilities](#-ceedling-unity-and-c-mocks-testing-abilities)
-1. [Anatomy of a Test Suite](#-anatomy-of-a-test-suite)
-1. [Ceedling Installation & Set Up](#-ceedling-installation-set-up)
-1. [Now What? How Do I Make It _GO_?](#-now-what-how-do-i-make-it-go)
-1. [Important Conventions & Behaviors](#-important-conventions-behaviors)
-1. [The Almighty Project Configuration File (in Glorious YAML)](#-the-almighty-project-configuration-file-in-glorious-yaml)
-1. [Build Directive Macros](#-build-directive-macros)
-1. [Global Collections](#-global-collections)
-1. [Module Generator](#-module-generator)
+1. [Ceedling, a C Build System for All Your Mad Scientisting Needs](#ceedling-a-c-build-system-for-all-your-mad-scientisting-needs)
+1. [Ceedling, Unity, and CMock’s Testing Abilities](#ceedling-unity-and-c-mocks-testing-abilities)
+1. [Anatomy of a Test Suite](#anatomy-of-a-test-suite)
+1. [Ceedling Installation & Set Up](#ceedling-installation--set-up)
+1. [Now What? How Do I Make It _GO_?](#now-what-how-do-i-make-it-go)
+1. [Important Conventions & Behaviors](#important-conventions--behaviors)
+1. [The Almighty Project Configuration File (in Glorious YAML)](#the-almighty-project-configuration-file-in-glorious-yaml)
+1. [Build Directive Macros](#build-directive-macros)
+1. [Global Collections](#global-collections)
+1. [Module Generator](#module-generator)
 
 ---
 
@@ -801,9 +801,9 @@ path knowledge, mocks cannot be generated, and code cannot be compiled.
 Ceedling provides two mechanisms for configuring header file 
 search paths:
 
-1. The [`:paths` ↳ `:include`](##-paths-↳-include) section within your 
+1. The [`:paths` ↳ `:include`](#paths--include) section within your 
    project file. This is available to both test and release builds.
-1. The [`TEST_INCLUDE_PATH(...)`](##-test-include-path) build directive 
+1. The [`TEST_INCLUDE_PATH(...)`](#test-include-path) build directive 
    macro. This is only available within test files.
 
 In testing contexts, you have three options for creating the header 
