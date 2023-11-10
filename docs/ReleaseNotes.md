@@ -56,6 +56,12 @@ The previously undocumented build directive macro `TEST_FILE(...)` has been rena
 
 Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling's long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release.
 
+#### Documentation
+
+The [Ceedling user guide](CeedlingPacket.md) has been significantly revised and expanded. We will expand it further in future releases and eventually break it up into multiple documents or migrate it to a full documentation management system.
+
+Many of the plugins have received documentation updates as well.
+
 ### Small Deal Highlights 🥉
 
 - Effort has been invested across the project to improve error messages, exception handling, and exit code processing. Noisy backtraces have been relegated to the verbosity level of DEBUG as <insert higher power> intended.
