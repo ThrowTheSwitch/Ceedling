@@ -14,7 +14,7 @@ class IncludePathinator
     @extractor = @test_context_extractor
   end
 
-  def validate_test_directive_paths
+  def validate_test_build_directive_paths
     @extractor.inspect_include_paths do |test_filepath, include_paths|
       include_paths.each do |path|
 
@@ -28,7 +28,8 @@ class IncludePathinator
     end
   end
 
-  def augment_environment_header_files
+
+  def validate_header_files_collection
     # Get existing, possibly minimal header file collection
     headers = @configurator.collection_all_headers
 
@@ -40,6 +41,16 @@ class IncludePathinator
 
     headers.uniq!
 
+    if headers.length == 0
+      error = "WARNING: No header files found in project.\n" +
+              "Add search paths to [:paths][:include] in your configuration file and/or use #{UNITY_TEST_INCLUDE_PATH}() in your test files."
+      @streaminator.stderr_puts(error, Verbosity::COMPLAIN)
+    end
+
+    return headers
+  end
+
+  def augment_environment_header_files(headers)
     @configurator.redefine_element(:collection_all_headers, headers)
   end
 

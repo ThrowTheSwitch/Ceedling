@@ -21,8 +21,9 @@ class TestInvokerHelper
   end
 
   def process_project_include_paths
-    @include_pathinator.validate_test_directive_paths
-    @include_pathinator.augment_environment_header_files
+    @include_pathinator.validate_test_build_directive_paths
+    headers = @include_pathinator.validate_header_files_collection
+    @include_pathinator.augment_environment_header_files(headers)
   end
 
   def validate_build_directive_source_files(test:, filepath:)
