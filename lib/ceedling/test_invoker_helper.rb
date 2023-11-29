@@ -60,8 +60,28 @@ class TestInvokerHelper
     # If this context exists ([:defines][context]), use it. Otherwise, default to test context.
     context = TEST_SYM unless @defineinator.defines_defined?( context:context )
 
+    defines = []
+
+    # Optionally add a #define symbol that is the test file's sanitized/converted name
+    if @configurator.defines_use_test_definition
+      # Get filename with no path or extension
+      test_def = File.basename(filepath, '.*').strip
+      # Replace any non-ASCII characters with underscores
+      test_def = test_def.encode("ASCII", "UTF-8", invalid: :replace, undef: :replace, replace: "_")
+      # Replace all non-alphanumeric characters (including spaces/punctuation but excluding dashes and underscores) with underscores
+      test_def.gsub!(/[^0-9a-z_-]/i, '_')
+      # Convert to all caps
+      test_def.upcase!
+      # Add leading and trailiing underscores unless they already exist
+      test_def = test_def.start_with?('_') ? test_def : ('_' + test_def)
+      test_def = test_def.end_with?('_') ? test_def : (test_def + '_')
+
+      # Add the test filename as a #define symbol to the array
+      defines << test_def
+    end
+
     # Defines for the test file
-    return @defineinator.defines( context:context, filepath:filepath )
+    return defines + @defineinator.defines( context:context, filepath:filepath )
   end
 
   def tailor_defines(filepath:, defines:)
