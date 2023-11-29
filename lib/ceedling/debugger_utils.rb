@@ -43,8 +43,9 @@ class DebuggerUtils
     gdb_extra_args = @configurator.project_config_hash[:tools_backtrace_settings][:arguments]
     gdb_extra_args = gdb_extra_args.join(' ')
 
-    gdb_exec_cmd = "#{gdb_file_name} #{gdb_extra_args} #{cmd}"
-    crash_result = @tool_executor.exec(gdb_exec_cmd, command[:options])
+    gdb_exec_cmd = command.clone 
+    gdb_exec_cmd[:line] = "#{gdb_file_name} #{gdb_extra_args} #{cmd}"
+    crash_result = @tool_executor.exec(gdb_exec_cmd)
     if (crash_result[:exit_code] == 0) and (crash_result[:output] =~ /(?:PASS|FAIL|IGNORE)/)
       [crash_result[:output], crash_result[:time].to_f]
     else
@@ -61,8 +62,9 @@ class DebuggerUtils
   # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
   # @return Array - list of the test_cases defined in test_file_runner
   def collect_list_of_test_cases(command)
-    all_test_names = command[:line] + @unity_utils.additional_test_run_args('', 'list_test_cases')
-    test_list = @tool_executor.exec(all_test_names, command[:options])
+    all_test_names = command.clone 
+    all_test_names[:line] += @unity_utils.additional_test_run_args('', 'list_test_cases')
+    test_list = @tool_executor.exec(all_test_names)
     test_runner_tc = test_list[:output].split("\n").drop(1)
 
     # Clean collected test case names

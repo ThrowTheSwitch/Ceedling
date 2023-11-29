@@ -24,6 +24,29 @@ task :verbosity, :level do |t, args|
   end
 end
 
+namespace :verbosity do 
+  VERBOSITY_OPTIONS = { 
+    :silent    => Verbosity::SILENT,
+    :errors    => Verbosity::ERRORS,
+    :warnings  => Verbosity::COMPLAIN,
+    :normal    => Verbosity::NORMAL,
+    :obnoxious => Verbosity::OBNOXIOUS,
+    :debug     => Verbosity::DEBUG,
+  }
+  VERBOSITY_OPTIONS.each_pair do |key, val|
+    task key do 
+      @ceedling[:configurator].project_verbosity = val
+      @ceedling[:configurator].project_debug = true if (val == Verbosity::DEBUG)
+      verbose(val >= Verbosity::OBNOXIOUS)
+    end
+  end
+  task :list do 
+    VERBOSITY_OPTIONS.keys.each do |key|
+      puts "verbosity:#{key}"
+    end
+  end
+end
+
 desc "Enable logging"
 task :logging do
   @ceedling[:configurator].project_logging = true

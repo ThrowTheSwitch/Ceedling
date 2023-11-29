@@ -2,7 +2,7 @@
 #include "Types.h"
 #include <math.h>
 
-TEST_FILE("TemperatureCalculator.c")
+TEST_SOURCE_FILE("TemperatureCalculator.c")
 
 extern float TemperatureCalculator_Calculate(uint16_t val);
 
