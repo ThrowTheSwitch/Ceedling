@@ -39,8 +39,8 @@ Now you can have tests with quite different configurations and behaviors. Two te
 The following new features (discussed in later sections) contribute to this new ability:
 
 - `TEST_INCLUDE_PATH(...)`. This build directive macro can be used within a test file to tell Ceedling which header search paths should be used during compilation. These paths are only used for compiling the files that comprise that test executable.
-- `[:defines]` handling. `#define`s are now specified for the compilation of all modules comprising a test executable. Matching is only against test file names but now includes wildcard and regular expression options.
-- `[:flags]` handling. Flags (e.g. `-std=c99`) are now specified for the build steps—preprocessing, compilation, and linking—of all modules comprising a test executable. Matching is only against test file names and now includes more sensible and robust wildcard and regular expression options.
+- `:defines` handling. `#define`s are now specified for the compilation of all modules comprising a test executable. Matching is only against test file names but now includes wildcard and regular expression options.
+- `:flags` handling. Flags (e.g. `-std=c99`) are now specified for the build steps—preprocessing, compilation, and linking—of all modules comprising a test executable. Matching is only against test file names and now includes more sensible and robust wildcard and regular expression options.
 
 ### Medium Deal Highlights 🥈
 
@@ -117,19 +117,35 @@ Background task execution for tool configurations (`:background_exec`) has been 
 
 As was explained in the _[Highlights](#-Highlights)_, Ceedling can now run its internal tasks in parallel and take full advantage of your build system's resources. Even lacking various optimizations (see _[Known Issues](#-Known-Issues)_) builds are now often quite speedy.
 
-Enabling this speedup requires either or both of two simple configuration settings. See Ceedling's [documentation](CeedlingPacket.md) for `[:project][:compile_threads]` and `[:project][:test_threads]`.
+Enabling this speedup requires either or both of two simple configuration settings. See Ceedling's [documentation](CeedlingPacket.md) for `:project` ↳ `:compile_threads` and `:project` ↳ `:test_threads`.
 
-### `TEST_INCLUDE_PATH(...)`
+### `TEST_INCLUDE_PATH(...)` & `TEST_SOURCE_FILE(...)`
 
 Issue #743
 
-### More better `[:flags]` handling
+Using what we are calling build directive macros, you can now provide Ceedling certain configuration details from inside a test file.
+
+See the [documentation](CeedlingPacket.md) discussion on include paths, Ceedling conventions, and these macros to understand all the details.
+
+#### `TEST_INCLUDE_PATH(...)` 
+
+In short, `TEST_INCLUDE_PATH()` allows you to add a header file search path to the build of the test executable in which it is found. This can mean much shorter compilation command lines and good flexibility for complicated projects.
+
+#### `TEST_SOURCE_FILE(...)`
+
+In short, `TEST_SOURCE_FILE()` allows you to be explicit as to which source C files should be compiled and linked into a test executable. Sometimes Ceedling's convention for matching source files with test files by way of `#include`d header files does not meet the need. This solves the problems of those scenarios.
+
+### More better `:flags` handling
 
 Issue #43
 
-### More better `[:defines]` handling
+Each test executable is now built as a mini project. Using improved `:flags` handling and an updated section format within Ceedling's project file, you have much better options for specifying flags presented to the various tools within your build, particulary within test builds.
 
-…
+### More better `:defines` handling
+
+Each test executable is now built as a mini project. Using improved `:defines` handling and an updated section format within Ceedling's project file, you have much better options for specifying symbols used in your builds' compilation steps, particulary within test builds.
+
+One powerful new feature is the ability to test the same source file built differently for different tests. Imagine a source file has three different conditional compilation sections. You can now write unit tests for each of those sections without complicated gymnastics to cause your test suite to build and run properly.
 
 <br/>
 
@@ -161,36 +177,36 @@ In certain combinations of Ceedling features, a dash in a C filename could cause
 
 ## 💔 Breaking Changes
 
-### Explicit `[:paths][:include]` entries in the project file
+### Explicit `:paths` ↳ `:include` entries in the project file
 
-The `[:paths][:include]` entries in the project file must now be explicit and complete.
+The `:paths` ↳ `:include` entries in the project file must now be explicit and complete.
 
-Eaerlier versions of Ceedling were rather accomodating when assembling the search paths for header files. The full list of directories was pulled from multiple `[:paths]` entries with de-duplication. If you had header files in your [:source] directories but did not explicitly list those directories in your `[:include]` paths, Ceedling would helpfully figure it out and use all the paths.
+Eaerlier versions of Ceedling were rather accomodating when assembling the search paths for header files. The full list of directories was pulled from multiple `:paths` entries with de-duplication. If you had header files in your `:source` directories but did not explicitly list those directories in your `:include` paths, Ceedling would helpfully figure it out and use all the paths.
 
 This behavior is no more. Why? For two interrelated reasons.
 
 1. For large or complex projects, expansive header file search path lists can exceed command line maximum lengths on some platforms. An enforced, tailored set of search paths helps prevent this problem.
-1. In order to support the desired behavior of `TEST_INCLUDE_PATH()` a concice set of “base” header file search paths is necessary. `[:paths][:include]` is that base list.
+1. In order to support the desired behavior of `TEST_INCLUDE_PATH()` a concice set of “base” header file search paths is necessary. `:paths` ↳ `:include` is that base list.
 
-Using 0.32 Ceedling with older project files can lead to errors when generating mocks or compiler errors on finding header files. Add all paths to the `[:paths][:include]` project file entry to fix this problem.
+Using 0.32 Ceedling with older project files can lead to errors when generating mocks or compiler errors on finding header files. Add all paths to the `:paths` ↳ `:include` project file entry to fix this problem.
 
-### Format change for `[:defines]` in the project file
+### Format change for `:defines` in the project file
 
-To better support per-test-executable configurations, the format of `[:defines]` has changed. See the [official documentation](CeedlingPacket.md) for specifics.
+To better support per-test-executable configurations, the format of `:defines` has changed. See the [official documentation](CeedlingPacket.md) for specifics.
 
 In brief:
 
 1. A more logically named hierarchy differentiates `#define`s for test preprocessing, test compilation, and release compilation. The new format also allows a cleaner organization of `#define`s for configuration of tools like Unity.
 1. Previously, `#define`s could be specified for a specific C file by name, but these `#define`s were only applied when compiling that specific file. Further, this matching was only against a file's full name. Now, pattern matching is also an option against test file names (only test file names) and the configured `#define`s are applied to each C file that comprises a test executable.
 
-### Format change for `[:flags]` in the project file
+### Format change for `:flags` in the project file
 
 To better support per-test-executable configurations, the format and function of `[flags]` has changed somewhat. See the [official documentation](CeedlingPacket.md) for specifics.
 
 In brief:
 
 1. All matching of file names is limited to test files. For any test file that matches, the specified flags are added to the named build step for all files that comprise that test executable. Previously, matching was against individual files, and flags were applied as such.
-1. The format of the `[:flags]` configuration section is largely the same as in previous versions of Ceedling. The behavior of the matching rules is slightly different with more matching options.
+1. The format of the `:flags` configuration section is largely the same as in previous versions of Ceedling. The behavior of the matching rules is slightly different with more matching options.
 
 ### `TEST_FILE()` ➡️ `TEST_SOURCE_FILE()`
 
@@ -200,9 +216,9 @@ The previously undocumented `TEST_FILE()` build directive macro (#796) available
 
 Differentiating components of the same name that are a part of multiple test executables built with differing configurations has required further subdirectories in the build directory structure. Generated mocks, compiled object files, linked executables, and preprocessed output all end up one directory deeper than in previous versions of Ceedling. In each case, these files are found inside a subdirectory named for their containing test.
 
-#### Tool `[:defines]`
+#### Tool `:defines`
 
-In previous versions of Ceedling, one option for configuring compiled elements of vendor tools was to specify their `#define`s in that tool's project file configuration section. In conjunction with the general improvements to handling `#define`s, vendor tools' `#define`s now live in the top-level `[:defines]` area of the project configuration.
+In previous versions of Ceedling, one option for configuring compiled elements of vendor tools was to specify their `#define`s in that tool's project file configuration section. In conjunction with the general improvements to handling `#define`s, vendor tools' `#define`s now live in the top-level `:defines` area of the project configuration.
 
 Note that to preserve some measure of backwards compatibility, Ceedling inserts a copy of a vendor tool's `#define` list into its top-level config.
 

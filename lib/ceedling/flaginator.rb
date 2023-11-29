@@ -42,12 +42,15 @@ class Flaginator
     elsif flags.is_a?(Hash)
       @config_matchinator.validate_matchers(hash:flags, section:@section, context:context, operation:operation)
 
-      return @config_matchinator.matches?(
+      arg_hash = {
         hash: flags,
         filepath: filepath,
         section: @section,
         context: context,
-        operation: operation)
+        operation: operation
+      }
+
+      return @config_matchinator.matches?(**arg_hash)
     end
 
     # Handle unexpected config element type

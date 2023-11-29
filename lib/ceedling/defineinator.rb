@@ -39,11 +39,14 @@ class Defineinator
     elsif defines.is_a?(Hash)
       @config_matchinator.validate_matchers(hash:defines, section:@section, context:context)
 
-      return @config_matchinator.matches?(
+      arg_hash = {
         hash: defines,
         filepath: filepath,
         section: @section,
-        context: context)
+        context: context
+      }
+
+      return @config_matchinator.matches?(**arg_hash)
     end
 
     # Handle unexpected config element type

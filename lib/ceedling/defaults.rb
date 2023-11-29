@@ -340,6 +340,7 @@ DEFAULT_CEEDLING_CONFIG = {
     ],
 
     :defines => {
+      :use_test_definition => false,
       :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
       :preprocess => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
       :release => [],

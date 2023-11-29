@@ -95,6 +95,8 @@
     - -:test/support
   :source:
     - src/**
+  :include:
+    - src/** # In simple projects, this entry often duplicates :source
   :support:
     - test/support
   :libraries: []
@@ -362,8 +364,12 @@
 #       :background_exec: :auto
 #       :optional: FALSE
 # #These tools can be filled out when command_hooks plugin is enabled
+#   :pre_mock_preprocess
+#   :post_mock_preprocess
 #   :pre_mock_generate
 #   :post_mock_generate
+#   :pre_runner_preprocess
+#   :post_runner_preprocess
 #   :pre_runner_generate
 #   :post_runner_generate
 #   :pre_compile_execute
@@ -377,4 +383,5 @@
 #   :post_release
 #   :pre_build
 #   :post_build
+#   :post_error
 ...
