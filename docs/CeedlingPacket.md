@@ -25,7 +25,7 @@ shines at running unit test suites.
    - `ceedling clobber 'verbosity[4]' test:all gcov:all release`
 1. [All your Ceedling project file options][quick-start-5]
 
-[quick-start-1]: #ceedling-installation--set-up)
+[quick-start-1]: #ceedling-installation--set-up
 [quick-start-2]: #commented-sample-test-file
 [quick-start-3]: #simple-sample-project-file
 [quick-start-4]: #now-what-how-do-i-make-it-go
@@ -2100,7 +2100,7 @@ and needs.
 
 **Default**: `[]` (empty)
 
-### `:defines` ↳ `:cexception`
+#### `:defines` ↳ `:cexception`
 
 This project configuration entry adds symbols used to configure CException's features in 
 its source and header files at compile time.
@@ -2119,7 +2119,7 @@ these symbols to be added to a build of CException (see link referenced earlier 
 
 **Default**: `[]` (empty)
 
-### `:defines` ↳ `:<plugin context>`
+#### `:defines` ↳ `:<plugin context>`
 
 Some advanced plugins make use of build contexts as well. For instance, the Ceeding 
 Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
