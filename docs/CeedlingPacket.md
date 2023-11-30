@@ -22,7 +22,7 @@ shines at running unit test suites.
     Ceedling tasks go like this:
    - `ceedling test:all` or,
    - `ceedling release` or, if you fancy,
-   - `ceedling clobber 'verbosity[4]' test:all gcov:all release`
+   - `ceedling clobber verbosity:obnoxious test:all gcov:all release`
 1. [All your Ceedling project file options][quick-start-5]
 
 [quick-start-1]: #ceedling-installation--set-up
@@ -723,6 +723,18 @@ Ceedling (more on this later).
   The verbosity task must precede all tasks in the command line list for which
   output is desired to be   seen. Verbosity settings are generally most 
   meaningful in conjunction with test and release tasks.
+
+  Alternatively, you can use the name of each level, according to the
+  following map:
+
+  | Numerical    | Named               |
+  |--------------|---------------------|
+  | verbosity[0] | verbosity:silent    |
+  | verbosity[1] | verbosity:errors    |
+  | verbosity[2] | verbosity:warnings  |
+  | verbosity[3] | verbosity:normal    |
+  | verbosity[4] | verbosity:obnoxious |
+  | verbosity[5] | verbosity:debug     |
 
 * `ceedling summary`:
 
@@ -1503,31 +1515,38 @@ internally - thus leading to unexpected behavior without warning.
 ```
 
 * `:use_backtrace_gdb_reporter`
-  Set this value to true if you project use gcc compiler and you want to collect
-  backtrace from test runners which fail with **Segmentation fault** error.
-  The .fail files will contain testsuite with information, which test failed.
-  Backtrace is fully integrated with **junit_tests_report** plugin.
+  When a test file runs into a **Segmentation Fault**, the test executable 
+  immediately crashes and further details aren't collected. By default, Ceedling
+  reports a single failure for the entire file, specifying that it segfaulted. 
+  If you are running gcc or clang (llvm), then there is an option to get more
+  detail!
+
+  Set `:use_backtrace_gdb_reporter` to `true` and a segfault will trigger Ceedling to 
+  collect backtrace data from test runners. It will then run each test in the
+  faulted test file individually, collecting the pass/fail results as normal, and
+  providing further default on the test that actually faulted.
 
   **Default**: FALSE
 
   **Note:**
 
-    The configuration can be combined together with
+    The configuration option requires that it be combined with the following:
     
     ``` yaml
     :test_runner:
         :cmdline_args: true
     ```
 
-    After setting **cmdline_args** to **true**, the debuger will execute each test
-    case from crashing test file separately. The exclude and include test_case patterns will
-    be applied, to filter execution of test cases.
+    If a test segfaults when `cmdline_args` has be set to `true`, the debugger will execute 
+    each test independently in order to determine which test(s) cause the segfault. Other 
+    tests will be reported as normal.
 
-    The .gcno and .gcda files will be generated and section of the code under test case
-    causing segmetation fault will be omitted from Coverage Report.
+    When enabled, .gcno and .gcda files will be generated automatically and the section of the 
+    code under test case causing the segmetation fault will be omitted from Coverage Report.
 
-    The default debugger (**gdb**)[https://www.sourceware.org/gdb/] can be switch to any other
-    via setting new configuration under tool node in project.yml. At default set to:
+    The default debugger (gdb)[https://www.sourceware.org/gdb/] can be switched to other
+    debug engines via setting a new configuration under the tool node in project.yml. 
+    By default, this tool is set as follows:
 
     ```yaml
       :tools:
@@ -1541,10 +1560,8 @@ internally - thus leading to unexpected behavior without warning.
             - --args
     ```
     
-    Important. The debugger which will collect segmentation fault should run in:
-
-    - background
-    - with option to enable pass to executable binary additional arguments
+    It is important that the debugging tool should be run as a background task, and with the
+    option to pass additional arguments to the test executable.
 
 ## `:release_build` Configuring a release build
 
