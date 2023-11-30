@@ -842,8 +842,10 @@ some control over what directories are searched and in what order.
 
 ## Configuring Your Header File Search Paths
 
-Ceedling **must** be told where to find header files. Without search
-path knowledge, mocks cannot be generated, and code cannot be compiled.
+Unless your project is relying exclusively on `extern` statements and
+uses no mocks for testing, Ceedling _**must**_ be told where to find 
+header files. Without search path knowledge, mocks cannot be generated, 
+and code cannot be compiled.
 
 Ceedling provides two mechanisms for configuring header file 
 search paths:
@@ -1647,20 +1649,29 @@ the various path-related documentation sections.
 
 * <h3><code>:paths</code> ↳ <code>:include</code></h3>
 
-  This is a separate set of paths that specify locations to look for
-  header files. If your header files are intermixed with source files,
-  you must duplicate those paths here.
+  See these two important discussions to fully understand your options
+  for header file search paths:
 
-  In its simplest use, an include paths configuration can be exhaustive.
+  * [Configuring Your Header File Search Paths][header-file-search-paths]
+  * [`TEST_INCLUDE_PATH(...)` build directive macro][test-include-path-macro]
+
+  [header-file-search-paths]: #configuring-your-header-file-search-paths
+  [test-include-path-macro]: 
+
+  This set of paths specifies the locations of your header files. If 
+  your header files are intermixed with source files, you must duplicate 
+  some or all of your `:paths` ↳ `:source` entries here.
+
+  In its simplest use, your include paths list can be exhaustive.
   That is, you list all path locations where your project's header files
-  reside.
+  reside in this configuration list.
 
   However, if you have a complex project or many, many include paths that 
-  create problematically long search paths at the command line, you may 
-  treat your `:paths` ↳ `:include` list as a base, common list and 
-  complement it with use of the `TEST_INCLUDE_PATH(...)` build directive 
-  macro in your test files. See the discussion of this build directive
-  macro for more on this.
+  create problematically long search paths at the compilation command 
+  line, you may treat your `:paths` ↳ `:include` list as a base, common 
+  list. Having established that base list, you can then extend it on a 
+  test-by-test basis with use of the `TEST_INCLUDE_PATH(...)` build 
+  directive macro in your test files.
 
   **Default**: `[]` (empty)
 
@@ -1776,7 +1787,7 @@ See example below.
     - -:project/source/os/generated  # Subtract os/generated directory from expansion of preceding glob
                                      # `+:` is merely syntactic sugar to complement `-:`
 
-# :include:                          # Defaults to empty. If left empty, necessitates exhaustive use of 
+# :include: []                       # Defaults to empty. If left empty, necessitates exhaustive use of 
                                      # TEST_INCLUDE_PATH(...) build directive macro in all test files.
                                      # See discussion of header search paths in Ceedling conventions
                                      # section.
@@ -2290,7 +2301,7 @@ wildcard matching.
 Ceedling allows you to pull in specific libraries for release and test builds with a 
 few levels of support.
 
-* <h3><code>:libraries</code> ↳ <code>:test</code>
+* <h3><code>:libraries</code> ↳ <code>:test</code></h3>
 
   Libraries that should be injected into your test builds when linking occurs.
   
@@ -2302,7 +2313,7 @@ few levels of support.
   
   **Default**: `[]` (empty)
 
-* <h3><code>:libraries</code> ↳ <code>:release</code>
+* <h3><code>:libraries</code> ↳ <code>:release</code></h3>
 
   Libraries that should be injected into your release build when linking occurs.
   
@@ -2316,7 +2327,7 @@ few levels of support.
   
   **Default**: `[]` (empty)
 
-* <h3><code>:libraries</code> ↳ <code>:system</code>
+* <h3><code>:libraries</code> ↳ <code>:system</code></h3>
 
   Libraries listed here will be injected into releases and tests.
   
@@ -3046,8 +3057,10 @@ test results from all test fixtures executed.
 
 ## Overview of Build Directive Macros
 
-Ceedling supports a small number of build directive macros. By placing 
-these macros in your test files, you may control aspects of an 
+Ceedling supports a small number of build directive macros. At present,
+these macros are only for use in test files.
+
+By placing these macros in your test files, you may control aspects of an 
 individual test executable's build from within the test file itself.
 
 These macros are actually defined in Unity, but they evaluate to empty 
@@ -3090,15 +3103,20 @@ void setUp(void) {
 ### `TEST_INCLUDE_PATH()` Purpose
 
 The `TEST_INCLUDE_PATH()` build directive allows a header search path to
-be injected into the build of a test executable.
+be injected into the build of an individual test executable.
 
 This is only an additive customization. The path will be added to the 
 base/common path list speified by `:paths`  ↳ `:include` in the project 
-file. If no list is specified in the project file, calls to
-`TEST_INCLUDE_PATH()` will comprise the entire header search path list.
+file. If no list is specified in the project file, `TEST_INCLUDE_PATH()` 
+entries will comprise the entire header search path list.
 
-Note that at least one search path entry — however formed — is necessary
-for every test executable.
+Unless you have a pretty funky C project, at least one search path entry
+— however formed — is necessary for every test executable.
+
+Please see [Configuring Your Header File Search Paths][header-file-search-paths]
+for an overview of Ceedling's conventions on header file search paths.
+
+[header-file-search-paths]: #configuring-your-header-file-search-paths
 
 ### `TEST_INCLUDE_PATH()` Example
 
