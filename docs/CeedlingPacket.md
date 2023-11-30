@@ -158,7 +158,7 @@ ahead and build your final binary release artifact for you as well.
 That said, Ceedling is more powerful as a unit test build environment 
 than it is a general purpose release build environment. Complicated 
 projects including separate bootloaders or multiple library builds, 
-etc. are not necessarily its strong suit (but the `[subprojects]` 
+etc. are not necessarily its strong suit (but the [`subprojects`] 
 plugin can accomplish quite a bit here).
 
 [subprojects]: ../plugins/subprojects/README.md
@@ -262,7 +262,7 @@ up your return call trace.
   project as seamlessly as possible.
 
 * YAML support is included with Ruby. It requires no special installation
-  or configuration. If your project file contains properly formmated YAML
+  or configuration. If your project file contains properly formatted YAML
   with the recognized names and options (see later sections), you are good 
   to go.
 
@@ -398,8 +398,8 @@ to be reported to the developer at the command line.
 
 ## Incidentally, Ceedling comes with example projects
 
-If you run Ceedling without a project file, you can also generate entire 
-example projects.
+If you run Ceedling without a project file (that is, from a working directory 
+with no project file present), you can generate entire example projects.
 
 - `ceedling examples` to list available example projects
 - `ceedling example <project> [destination]` to generate the 
@@ -499,7 +499,7 @@ are completed once, only step 3 is needed for each new project.
 ## Grab Bag of Ceedling Notes
 
 1. Certain advanced features of Ceedling rely on `gcc` and `cpp`
-   as preprocessing tools. In most linux systems, these tools
+   as preprocessing tools. In most Linux systems, these tools
    are already available. For Windows environments, we recommend
    the [MinGW project](http://www.mingw.org/) (Minimalist
    GNU for Windows). This represents an optional, additional
@@ -640,7 +640,7 @@ Ceedling (more on this later).
 
   **Test case matching notes**
 
-    Test case matching is on substrings. `--test_case=configure` matches on
+    Test case matching is on sub-strings. `--test_case=configure` matches on
     the test cases including the word _configure_, naturally. 
     `--test_case=gpio` would match all three test cases.
 
@@ -667,7 +667,7 @@ Ceedling (more on this later).
 
   **Test case exclusion matching notes**
 
-    Exclude matching follows the same substring logic as discussed in the
+    Exclude matching follows the same sub-string logic as discussed in the
     preceding section.
 
 * `ceedling release`:
@@ -696,15 +696,16 @@ Ceedling (more on this later).
   a bunch of files. Try `ceedling module:create[Poodles,mch]` for example!
 
   The module generator has several options you can configure.
-  F.e. Generating the source/header/test file in a subdirectory (by adding <Path> when calling `module:create`).
-  For more info, refer to the [Module Generator][#module-generator] section.
+  F.e. Generating the source/header/test file in a sub-directory (by adding 
+  <Path> when calling `module:create`). For more info, refer to the 
+  [Module Generator][#module-generator] section.
 
 * `ceedling module:stub[Filename]`:
 * `ceedling module:stub[<Path:>Filename]`:
 
   So what happens if you've created your API in your header (maybe even using
   TDD to do so?) and now you need to start to implement the corresponding C
-  module? Why not get a head start by using `ceedilng module:stub[headername]`
+  module? Why not get a head start by using `ceedling module:stub[headername]`
   to automatically create a function skeleton for every function declared in
   that header? Better yet, you can call this again whenever you add new functions
   to that header to add just the new functions, leaving the old ones alone!
@@ -886,7 +887,7 @@ source file(s) into a single, monolithic test fixture executable.
 
 ### Test File Naming Convention
 
-Ceedling recgonizes test files by a naming convention — a (configurable)
+Ceedling recognizes test files by a naming convention — a (configurable)
 prefix such as "`test_`" at the beginning of the file name with the same 
 file extension as used by your C source files. See the configuration options
 and defaults in the documentation for the `:project` and `:extension`
@@ -1024,8 +1025,8 @@ In its default configuration, Ceedling produces an exit code of `1`:
 
  * On any build error and immediately terminates upon that build 
    error.
- * On any test case failure (but runs the build to completion and
-   shuts down normally).
+ * On any test case failure but runs the build to completion and
+   shuts down normally.
 
 This behavior can be especially handy in Continuous Integration 
 environments where you typically want an automated CI build to break 
@@ -1035,11 +1036,11 @@ If this exit code convention for test failures does not work for you,
 no problem-o. You may be of the mind that running a test suite to 
 completion should yield a successful exit code (even if tests failed).
 Add the following at the top-level of your project file (i.e. all the 
-way to the left -- not nested) to force Ceedling to finish a build 
+way to the left — not nested) to force Ceedling to finish a build 
 with an exit code of 0 even upon test case failures.
 
 ```yaml
-# Ceedling wiil terminate with happy `exit(0)` even if test cases fail
+# Ceedling will terminate with happy `exit(0)` even if test cases fail
 :graceful_fail: true
 ```
 
@@ -1051,16 +1052,16 @@ could have a successful build but failing tests.
 ### Notes on Unity Test Executable Exit Codes
 
 Ceedling works by collecting multiple Unity test executables together 
-into a test suite ([more here][#anatomy-of-a-test-suite]).
+into a test suite ([more here](#anatomy-of-a-test-suite).
 
 A Unity test executable's exit code is the number of failed tests. An
-exit code of 0 means all tests passed while anything larger than zero
+exit code of `0` means all tests passed while anything larger than zero
 is the number of test failures.
 
 Because of platform limitations on how big an exit code number can be
 and because of the logical complexities of distinguishing test failure
 counts from build errors or plugin problems, Ceedling conforms to a
-much simpler exit code convention than Unity: 0 = 🙂 while 1 = ☹️.
+much simpler exit code convention than Unity: `0` = 🙂 while `1` = ☹️.
 
 <br/>
 
@@ -1070,7 +1071,7 @@ If you jumped ahead to this section but do not follow some of the
 lingo here, please jump back to an [earlier section for definitions
 and helpful links][helpful-definitions].
 
-[helpful-definitions]: #hold-on-back-up-ruby-rake-yaml-unity-c-mock-c-exception
+[helpful-definitions]: #hold-on-back-up-ruby-rake-yaml-unity-cmock-cexception
 
 ## An overview of how Ceedling supports, well, its supporting frameworks
 
@@ -1152,7 +1153,7 @@ in YAML that are driving you bonkers.
 #endif
 ```
 
-### Routing Unity's report output
+### Routing Unity’s report output
 
 Unity defaults to using `putchar()` from C's standard library to 
 display test results.
@@ -1269,7 +1270,7 @@ for this. A few highlights from that reference page:
 * YAML streams are encoded using the set of printable Unicode
   characters, either in UTF-8 or UTF-16.
 
-* Whitespace indentation is used to denote structure; however,
+* White space indentation is used to denote structure; however,
   tab characters are never allowed as indentation.
 
 * Comments begin with the number sign (`#`), can start anywhere
@@ -1325,7 +1326,7 @@ for this. A few highlights from that reference page:
   line and column number pointing into the project file.
 
 * Certain advanced features rely on gcc and cpp as preprocessing
-  tools. In most linux systems, these tools are already available.
+  tools. In most Linux systems, these tools are already available.
   For Windows environments, we recommend the [mingw] project
   (Minimalist GNU for Windows).
 
@@ -1471,7 +1472,7 @@ internally - thus leading to unexpected behavior without warning.
   than a science. A special value of `:auto` instructs Ceedling to 
   query the host system's number of virtual cores. To this value it 
   adds a constant of 4. This is often a good value sufficient to "max
-  out" available resources without overloading availble resources.
+  out" available resources without overloading available resources.
 
   `:compile_threads` is used for all release build steps and all test
   suite build steps except for running the test executables that make
@@ -1485,11 +1486,12 @@ internally - thus leading to unexpected behavior without warning.
   `:compile_threads` with one exception.
 
   `test_threads:` specifically controls the number of threads used to
-  run the test executables comprising a test suite. Why the 
-  distinction from `:compile_threads`? Some test suite builds rely not
-  on native executables but simulators running cross-compiled code.
-  Some simulators are limted to running only a single instance at a 
-  time. Thus, with this and the previous setting, it becomes possible 
+  run the test executables comprising a test suite.
+
+  Why the distinction from `:compile_threads`? Some test suite builds 
+  rely not on native executables but simulators running cross-compiled 
+  code. Some simulators are limited to running only a single instance at 
+  a time. Thus, with this and the previous setting, it becomes possible 
   to parallelize nearly all of a test suite build while still respecting
   the limits of certain simulators depended upon by test executables.
 
@@ -1526,12 +1528,12 @@ internally - thus leading to unexpected behavior without warning.
         :cmdline_args: true
     ```
 
-    After setting **cmdline_args** to **true**, the debuger will execute each test
+    After setting **cmdline_args** to **true**, the debugger will execute each test
     case from crashing test file separately. The exclude and include test_case patterns will
     be applied, to filter execution of test cases.
 
     The .gcno and .gcda files will be generated and section of the code under test case
-    causing segmetation fault will be omitted from Coverage Report.
+    causing segmentation fault will be omitted from Coverage Report.
 
     The default debugger (**gdb**)[https://www.sourceware.org/gdb/] can be switch to any other
     via setting new configuration under tool node in project.yml. At default set to:
@@ -1721,7 +1723,7 @@ the various path-related documentation sections.
      section for more).
   1. The default is addition to the named search list (more on this
      in the examples).
-  1. Subtractive paths are possible and useful. See the dcoumentation
+  1. Subtractive paths are possible and useful. See the documentation
      below.
   1. Path order beneath a subsection (e.g. `:paths` ↳ `:include`) is 
      preserved when the list is iterated internally or passed to a tool.
@@ -1754,7 +1756,7 @@ Globs are super duper helpful when you have many paths to list. But,
 what if a single glob gets you 20 nested paths, but you actually want
 to exclude 2 of those paths?
 
-Must you revert to listing all 18 paths individualy? No, my friend,
+Must you revert to listing all 18 paths individually? No, my friend,
 we've got you. Behold, subtractive paths.
 
 Put simply, with an optional preceding decorator `-:`, you can 
@@ -1952,7 +1954,7 @@ Ceedling uses path lists and wildcard matching against filename extensions to co
 
   Binary executable to be loaded and executed upon target hardware
 
-  **Default**: .exe or .out (Win or linux)
+  **Default**: .exe or .out (Win or Linux)
 
 * `:testpass`:
 
@@ -1989,7 +1991,7 @@ These default tool configurations are a one-size-fits-all approach. If you need 
 the command line symbols for individual tests or a release build, the `:defines` section 
 allows you to easily do so.
 
-Particularly in testing, symbol defitions in the compilation command line are often needed:
+Particularly in testing, symbol definitions in the compilation command line are often needed:
 
 1. You may wish to control aspects of your test suite. Conditional compilation statements
    can control which test cases execute in which circumstances. (Preprocessing must be 
@@ -1997,7 +1999,7 @@ Particularly in testing, symbol defitions in the compilation command line are of
 
 1. Testing means isolating the source code under test. This can leave certain symbols 
    unset when source files are compiled in isolation. Adding symbol definitions in your
-   Ceedling prject file for such cases is one way to meet this need.
+   Ceedling project file for such cases is one way to meet this need.
 
 Entries in `:defines` modify the command lines for compilers used at build time. In the
 default case, symbols listed beneath `:defines` become `-D<symbol>` arguments.
@@ -2131,7 +2133,7 @@ matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
 
 * <h3><code>:defines</code> ↳ <code>:&lt;plugin context&gt;</code>
 
-  Some advanced plugins make use of build contexts as well. For instance, the Ceeding 
+  Some advanced plugins make use of build contexts as well. For instance, the Ceedling 
   Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
   that take advantage of Ceedling's internal mechanisms, you can add to those tools'
   compilation symbols in the same manner as the built-in contexts.
@@ -2179,7 +2181,7 @@ builds that match file name criteria. Matchers match on test file names only, an
 specified symbols are added to the build step for all files that are components of 
 matched test executables.
 
-In short, for intance, this means your compilation of _TestA_ can have different 
+In short, for instance, this means your compilation of _TestA_ can have different 
 symbols than compilation of _TestB_. Those symbols will be applied to every C file 
 that is compiled as part those individual test executable builds. Thus, in fact, with 
 separate test files unit testing the same source C file, you may exercise different 
@@ -2196,7 +2198,7 @@ enabled.
 
 ```yaml
 # Imagine three test files all testing aspects of a single source file Comms.c with 
-# different features enabled via condtional compilation.
+# different features enabled via conditional compilation.
 :defines:
   :test:
     # Tests for FeatureX configuration
@@ -2254,7 +2256,7 @@ test executables:
 * _test_Model_: `-DA -DCHOO -DBLESS_YOU`
 
 The simple `:defines` list format remains available for the `:test` context. The YAML 
-blurb below is equivalent to the wilcard matcher above. Of course, this format is 
+blurb below is equivalent to the wildcard matcher above. Of course, this format is 
 limited in that it applies symbols to the compilation of all C files for all test 
 executables.
 
@@ -2337,7 +2339,7 @@ few levels of support.
   Libraries listed here will be injected into releases and tests.
   
   These libraries are assumed to be findable by the configured linker tool, should need
-  no path help, and can be specfied by common linker shorthand for libraries.
+  no path help, and can be specified by common linker shorthand for libraries.
   
   For example, specifying `m` will include the math library per the gcc convention. The
   file itself on a Unix-like system will be `libm` and the gcc command line argument 
@@ -2374,7 +2376,7 @@ few levels of support.
   :release:
     - release/comms.lib   # Imagined production communication library
   :system:
-    - math          # Add system math library to test & relase builds 
+    - math          # Add system math library to test & release builds 
   :flag: -Lib=${1}  # This linker does not follow the gcc convention
 ```
 
@@ -2488,7 +2490,7 @@ flags list format cannot be mixed for `:flags` ↳ `:test`.
 
 * <h3><code>:flags</code> ↳ <code>:&lt;plugin context&gt;</code></h3>
 
-  Some advanced plugins make use of build contexts as well. For instance, the Ceeding 
+  Some advanced plugins make use of build contexts as well. For instance, the Ceedling 
   Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
   that take advantage of Ceedling's internal mechanisms, you can add to those tools'
   flags in the same manner as the built-in contexts and operations.
@@ -2502,10 +2504,10 @@ illustrates simple YAML lists for flags.
 :flags:
   :release:
     :compile:
-      - -std=c99  # Add `-stad=c99` to compilation of all C files in the release build
+      - -std=c99  # Add `-std=c99` to compilation of all C files in the release build
   :test:
     :compile:
-      - -std=c99  # Add `-stad=c99` to the compilation of all C files in all test executables
+      - -std=c99  # Add `-std=c99` to the compilation of all C files in all test executables
 ```
 
 Given the YAML blurb above, when test or release compilation occurs, the flag specifying 
@@ -2523,7 +2525,7 @@ file name criteria. Matchers match on test file names only, and the specified fl
 are added to the build step for all files that are components of matched test 
 executables.
 
-In short, for intance, this means your compilation of _TestA_ can have different flags
+In short, for instance, this means your compilation of _TestA_ can have different flags
 than compilation of _TestB_. And, in fact, those flags will be applied to every C file
 that is compiled as part those individual test executable builds.
 
@@ -2573,7 +2575,7 @@ test executables:
 * _test_Model_: `-foo -Wall -🏴‍☠️`
 
 The simple `:flags` list format remains available for the `:test` context. The YAML 
-blurb below is equivalent to the wilcard matcher above. Of course, this format is 
+blurb below is equivalent to the wildcard matcher above. Of course, this format is 
 limited in that it applies flags to all C files for all test executables.
 
 ```yaml
@@ -2660,7 +2662,7 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
 
 * `:includes`:
 
-  If `:cmock` ↳ `:unity_helper` set, pre-populated with unity_helper file
+  If `:cmock` ↳ `:unity_helper` set, prepopulated with unity_helper file
   name (no path).
 
   The `:cmock` ↳ `:includes` list works identically to the plugins list
@@ -2799,7 +2801,7 @@ provides two kinds of inline Ruby execution and a notation for
 populating elements with dynamically gathered values within the build
 environment.
 
-#### Tool element suntime substitution: Inline Ruby execution
+#### Tool element runtime substitution: Inline Ruby execution
 
 In-line Ruby execution works similarly to that demonstrated for the
 `:environment` section except that substitution occurs as the tool is
@@ -2826,7 +2828,7 @@ executed and not at the time the configuration file is first scanned.
   Ceedling feature to insert Ruby code that iterates those paths and
   escapes those spaces in the array as used by the tool of this example.
 
-#### Tool element suntime substitution: Notational substitution
+#### Tool element runtime substitution: Notational substitution
 
 A Ceedling tool's other form of dynamic substitution relies on a `$`
 notation. These `$` operators can exist anywhere in a string and can be
@@ -2905,8 +2907,8 @@ decorated in any way needed. To use a literal `$`, escape it as `\\$`.
 
 * The built-in preprocessing tools _can_ be overridden with 
   non-gcc equivalents. However, this is highly impractical to do
-  as preprocessing featurs are highly dependent on the 
-  iodiosyncracies and features of the gcc toolchain.
+  as preprocessing features are highly dependent on the 
+  idiosyncrasies and features of the gcc toolchain.
 
 #### Example Test Compiler Tooling
 
@@ -3111,7 +3113,7 @@ The `TEST_INCLUDE_PATH()` build directive allows a header search path to
 be injected into the build of an individual test executable.
 
 This is only an additive customization. The path will be added to the 
-base/common path list speified by `:paths`  ↳ `:include` in the project 
+base/common path list specified by `:paths`  ↳ `:include` in the project 
 file. If no list is specified in the project file, `TEST_INCLUDE_PATH()` 
 entries will comprise the entire header search path list.
 
@@ -3281,7 +3283,7 @@ By default, the module_generator will generate your files in lowercase.
 1. mydriver.h
 1. test_mydriver.c
 
-You can configure the module_generator to use a differect naming mechanism through the project.yml:
+You can configure the module_generator to use a different naming mechanism through the project.yml:
 ```yaml
 :module_generator:
   :naming: "camel"
@@ -3310,7 +3312,7 @@ Using the command **ceedling module:create[foo]** it creates the source module a
 
 It would be the same for **:tst:** and **:inc:** adding its respective options.
 
-* Defining an external file with boileplate code:
+* Defining an external file with boilerplate code:
 
 ```yaml
 :module_generator:
