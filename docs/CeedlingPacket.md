@@ -158,10 +158,9 @@ ahead and build your final binary release artifact for you as well.
 That said, Ceedling is more powerful as a unit test build environment 
 than it is a general purpose release build environment. Complicated 
 projects including separate bootloaders or multiple library builds, 
-etc. are not necessarily its strong suit (but the [`subprojects`] 
-plugin can accomplish quite a bit here).
-
-[subprojects]: ../plugins/subprojects/README.md
+etc. are not necessarily its strong suit (but the 
+[`subprojects`](../plugins/subprojects/README.md) plugin can 
+accomplish quite a bit here).
 
 It's quite common and entirely workable to host Ceedling and your 
 test suite alongside your existing release build setup. That is, you 
@@ -2147,7 +2146,7 @@ matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
   Any non ASCII characters (e.g. Unicode) are replaced by underscores as are any 
   non-alphanumeric characters. Underscores and dashes are preserved. The symbol name
   is wrapped in underscores unless they already exist in the leading and trailing
-  positions. Example: _test_123abc-xyz😵.c_ → `_TEST_123ABC-XYZ_`.
+  positions. Example: _test_123abc-xyz😵.c_ ➡️ `_TEST_123ABC-XYZ_`.
 
   **Default**: False
 
