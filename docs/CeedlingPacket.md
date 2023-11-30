@@ -1656,7 +1656,7 @@ the various path-related documentation sections.
   * [`TEST_INCLUDE_PATH(...)` build directive macro][test-include-path-macro]
 
   [header-file-search-paths]: #configuring-your-header-file-search-paths
-  [test-include-path-macro]: 
+  [test-include-path-macro]: #test_include_path
 
   This set of paths specifies the locations of your header files. If 
   your header files are intermixed with source files, you must duplicate 
@@ -2481,7 +2481,7 @@ flags list format cannot be mixed for `:flags` ↳ `:test`.
   
   **Default**: `[]` (empty)
 
-* <h3><code>:flags</code> ↳ <code>:&lt;plugin context&gt;</code>
+* <h3><code>:flags</code> ↳ <code>:&lt;plugin context&gt;</code></h3>
 
   Some advanced plugins make use of build contexts as well. For instance, the Ceeding 
   Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
