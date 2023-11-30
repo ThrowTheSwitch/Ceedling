@@ -1625,7 +1625,7 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-* <h3>`:paths` ↳ `:source`</h3>
+* <h3><code>:paths</code> ↳ <code>:source</code></h3>
 
   All C files containing release code (code to be tested)
 
@@ -1634,7 +1634,7 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-* <h3>`:paths` ↳ `:support`</h3>
+* <h3><code>:paths</code> ↳ <code>:support</code></h3>
 
   Any C files you might need to aid your unit testing. For example, on
   occasion, you may need to create a header file containing a subset of
@@ -1645,7 +1645,7 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-* <h3>`:paths` ↳ `:include`</h3>
+* <h3><code>:paths</code> ↳ <code>:include</code></h3>
 
   This is a separate set of paths that specify locations to look for
   header files. If your header files are intermixed with source files,
@@ -1664,7 +1664,7 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-* <h3>`:paths` ↳ `:test_toolchain_include`</h3>
+* <h3><code>:paths</code> ↳ <code>:test_toolchain_include</code></h3>
 
   System header files needed by the test toolchain - should your
   compiler be unable to find them, finds the wrong system include search
@@ -1683,13 +1683,13 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-* <h3>`:paths` ↳ `:libraries`</h3>
+* <h3><code>:paths</code> ↳ <code>:libraries</code></h3>
 
   Library search paths. See `:libraries` section.
 
   **Default**: `[]` (empty)
 
-* <h3><code>:paths</code> ↳ <code>:\<custom\></code></h3>
+* <h3><code>:paths</code> ↳ <code>:&lt;custom&gt;</code></h3>
 
   Any paths you specify for custom list. List is available to tool
   configurations and/or plugins. Note a distinction – the preceding names
@@ -1760,9 +1760,11 @@ See example below.
   :source:              
     - project/source/*    # Glob expansion yields all subdirectories of depth 1 plus parent directory
     - project/lib         # Single path
+
   :include:
     - project/source/inc  # Include paths are subdirectory of source
     - project/lib         # Header files intermixed with library code
+
   :test:                
     - project/**/test?    # Glob expansion yields any subdirectory found anywhere in the project that
                           # begins with "test" and contains 5 characters
@@ -1774,8 +1776,10 @@ See example below.
     - -:project/source/os/generated  # Subtract os/generated directory from expansion of preceding glob
                                      # `+:` is merely syntactic sugar to complement `-:`
 
- #:include:                          # Defaults to empty--necessitates exhaustive use of 
-                                     # TEST_INCLUDE_PATH(...) build directive macro within each test files
+# :include:                          # Defaults to empty. If left empty, necessitates exhaustive use of 
+                                     # TEST_INCLUDE_PATH(...) build directive macro in all test files.
+                                     # See discussion of header search paths in Ceedling conventions
+                                     # section.
 
   :test:                             
     - project/test/bootloader        # Explicit, single search paths (searched in the order specified)
@@ -1803,41 +1807,41 @@ Note that all path grammar documented in the project file `:paths` section
 applies to `:files` path entries - albeit at the file path level and not
 the directory level.
 
-### `:files` ↳ `:test`
+* <h3><code>:files</code> ↳ <code>:test</code></h3>
 
-Modify the collection of unit test C files.
+  Modify the collection of unit test C files.
+  
+  **Default**: `[]` (empty)
 
-**Default**: `[]` (empty)
+* <h3><code>:files</code> ↳ <code>:source</code></h3>
 
-### `:files` ↳ `:source`:
+  Modify the collection of all source files used in unit test builds and release builds.
+  
+  **Default**: `[]` (empty)
 
-Modify the collection of all source files used in unit test builds and release builds.
+* <h3><code>:files</code> ↳ <code>:assembly</code></h3>
 
-**Default**: `[]` (empty)
+  Modify the (optional) collection of assembly files used in release builds.
+  
+  **Default**: `[]` (empty)
 
-### `:files` ↳ `:assembly`:
+* <h3><code>:files</code> ↳ <code>:include</code></h3>
 
-Modify the (optional) collection of assembly files used in release builds.
+  Modify the collection of all source header files used in unit test builds (e.g. for mocking) and release builds.
+  
+  **Default**: `[]` (empty)
 
-**Default**: `[]` (empty)
+* <h3><code>:files</code> ↳ <code>:support</code></h3>
 
-### `:files` ↳ `:include`:
+  Modify the collection of supporting C files available to unit tests builds.
+  
+  **Default**: `[]` (empty)
 
-Modify the collection of all source header files used in unit test builds (e.g. for mocking) and release builds.
+* <h3><code>:files</code> ↳ <code>:libraries</code></h3>
 
-**Default**: `[]` (empty)
-
-### `:files` ↳ `:support`:
-
-Modify the collection of supporting C files available to unit tests builds.
-
-**Default**: `[]` (empty)
-
-### `:files` ↳ `:libraries`:
-
-Add a collection of library paths to be included when linking.
-
-**Default**: `[]` (empty)
+  Add a collection of library paths to be included when linking.
+  
+  **Default**: `[]` (empty)
 
 ### Example `:files` YAML blurb
 
@@ -2022,99 +2026,99 @@ Specifically in the `:test` context you also have the option to create test file
 that create symbol definitions for some subset of your test build. Note that file 
 matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
 
-#### `:defines` ↳ `:release`
+* <h3><code>:defines</code> ↳ <code>:release</code></h3>
 
-This project configuration entry adds the items of a simple YAML list as symbols to 
-the compilation of every C file in a release build.
+  This project configuration entry adds the items of a simple YAML list as symbols to 
+  the compilation of every C file in a release build.
+  
+  **Default**: `[]` (empty)
 
-**Default**: `[]` (empty)
+* <h3><code>:defines</code> ↳ <code>:preprocess</code></h3>
 
-#### `:defines` ↳ `:preprocess`
+  This project configuration entry adds the specified items as symbols to any needed 
+  preprocessing of components in a test executable's build. (Preprocessing must be enabled, 
+  `:project` ↳ `:use_test_preprocessor`.)
+  
+  Preprocessing here refers to handling macros, conditional includes, etc. in header files 
+  that are mocked and in complex test files before runners are generated from them.
+  
+  Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus symbol list. Both are documented below.
+  
+  _Note:_ Left unspecified, `:preprocess` symbols default to be identical to `:test` 
+  symbols. Override this behavior by adding `:defines` ↳ `:preprocess` flags. If you want 
+  no additional flags for preprocessing regardless of `test` symbols, simply specify an 
+  empty list `[]`.
+  
+  **Default**: `[]` (empty)
 
-This project configuration entry adds the specified items as symbols to any needed 
-preprocessing of components in a test executable's build. (Preprocessing must be enabled, 
-`:project` ↳ `:use_test_preprocessor`.)
+* <h3><code>:defines</code> ↳ <code>:test</code></h3>
 
-Preprocessing here refers to handling macros, conditional includes, etc. in header files 
-that are mocked and in complex test files before runners are generated from them.
+  This project configuration entry adds the specified items as symbols to compilation of C 
+  components in a test executable's build.
+  
+  Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus symbol list. Both are documented below.
+  
+  **Default**: `[]` (empty)
 
-Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
-YAML key plus symbol list. Both are documented below.
+* <h3><code>:defines</code> ↳ <code>:unity</code></h3>
 
-_Note:_ Left unspecified, `:preprocess` symbols default to be identical to `:test` 
-symbols. Override this behavior by adding `:defines` ↳ `:preprocess` flags. If you want 
-no additional flags for preprocessing regardless of `test` symbols, simply specify an 
-empty list `[]`.
+  This project configuration entry adds symbols used to configure Unity's features in its 
+  source and header files at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a Unity C source file is compiled.
+  
+  No symbols must be set unless Unity's defaults are inappropriate for your environment 
+  and needs.
+  
+  **Default**: `[]` (empty)
 
-**Default**: `[]` (empty)
+* <h3><code>:defines</code> ↳ <code>:cmock</code></h3>
 
-#### `:defines` ↳ `:test`
+  This project configuration entry adds symbols used to configure CMock's C code features 
+  in its source and header files at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a CMock C source file is compiled.
+  
+  No symbols must be set unless CMock's defaults are inappropriate for your environment 
+  and needs.
+  
+  **Default**: `[]` (empty)
 
-This project configuration entry adds the specified items as symbols to compilation of C 
-components in a test executable's build.
+* <h3><code>:defines</code> ↳ <code>:cexception</code></h3>
 
-Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
-YAML key plus symbol list. Both are documented below.
+  This project configuration entry adds symbols used to configure CException's features in 
+  its source and header files at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a CException C source file is compiled.
+  
+  No symbols must be set unless CException's defaults are inappropriate for your 
+  environment and needs.
+  
+  Note CException must be enabled for it to be added to a release or test build and for 
+  these symbols to be added to a build of CException (see link referenced earlier for more).
+  
+  **Default**: `[]` (empty)
 
-**Default**: `[]` (empty)
+* <h3><code>:defines</code> ↳ <code>:&lt;plugin context&gt;</code>
 
-#### `:defines` ↳ `:unity`
-
-This project configuration entry adds symbols used to configure Unity's features in its 
-source and header files at compile time.
-
-See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
-configuring and making use of these frameworks in your build.
-
-To manage overall command line length, these symbols are only added to compilation when
-a Unity C source file is compiled.
-
-No symbols must be set unless Unity's defaults are inappropriate for your environment 
-and needs.
-
-**Default**: `[]` (empty)
-
-#### `:defines` ↳ `:cmock`
-
-This project configuration entry adds symbols used to configure CMock's C code features 
-in its source and header files at compile time.
-
-See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
-configuring and making use of these frameworks in your build.
-
-To manage overall command line length, these symbols are only added to compilation when
-a CMock C source file is compiled.
-
-No symbols must be set unless CMock's defaults are inappropriate for your environment 
-and needs.
-
-**Default**: `[]` (empty)
-
-#### `:defines` ↳ `:cexception`
-
-This project configuration entry adds symbols used to configure CException's features in 
-its source and header files at compile time.
-
-See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
-configuring and making use of these frameworks in your build.
-
-To manage overall command line length, these symbols are only added to compilation when
-a CException C source file is compiled.
-
-No symbols must be set unless CException's defaults are inappropriate for your 
-environment and needs.
-
-Note CException must be enabled for it to be added to a release or test build and for 
-these symbols to be added to a build of CException (see link referenced earlier for more).
-
-**Default**: `[]` (empty)
-
-#### `:defines` ↳ `:<plugin context>`
-
-Some advanced plugins make use of build contexts as well. For instance, the Ceeding 
-Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
-that take advantage of Ceedling's internal mechanisms, you can add to those tools'
-compilation symbols in the same manner as the built-in contexts.
+  Some advanced plugins make use of build contexts as well. For instance, the Ceeding 
+  Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
+  that take advantage of Ceedling's internal mechanisms, you can add to those tools'
+  compilation symbols in the same manner as the built-in contexts.
 
 ### `:defines` options
 
@@ -2286,44 +2290,44 @@ wildcard matching.
 Ceedling allows you to pull in specific libraries for release and test builds with a 
 few levels of support.
 
-### `:libraries` ↳ `:test`
+* <h3><code>:libraries</code> ↳ <code>:test</code>
 
-Libraries that should be injected into your test builds when linking occurs.
+  Libraries that should be injected into your test builds when linking occurs.
+  
+  These can be specified as naked library names or with relative paths if search paths
+  are specified with `:paths` ↳ `:libraries`. Otherwise, absolute paths may be used
+  here.
+  
+  These library files **must** exist when tests build.
+  
+  **Default**: `[]` (empty)
 
-These can be specified as naked library names or with relative paths if search paths
-are specified with `:paths` ↳ `:libraries`. Otherwise, absolute paths may be used
-here.
+* <h3><code>:libraries</code> ↳ <code>:release</code>
 
-These library files **must** exist when tests build.
+  Libraries that should be injected into your release build when linking occurs.
+  
+  These can be specified as naked library names or with relative paths if search paths
+  are specified with `:paths` ↳ `:libraries`. Otherwise, absolute paths may be used
+  here.
+  
+  These library files **must** exist when the release build occurs **unless** you 
+  are using the _subprojects_ plugin. In that case, the plugin will attempt to build 
+  the needed library for you as a dependency.
+  
+  **Default**: `[]` (empty)
 
-**Default**: `[]` (empty)
+* <h3><code>:libraries</code> ↳ <code>:system</code>
 
-### `:libraries` ↳ `:release`
-
-Libraries that should be injected into your release build when linking occurs.
-
-These can be specified as naked library names or with relative paths if search paths
-are specified with `:paths` ↳ `:libraries`. Otherwise, absolute paths may be used
-here.
-
-These library files **must** exist when the release build occurs **unless** you 
-are using the _subprojects_ plugin. In that case, the plugin will attempt to build 
-the needed library for you as a dependency.
-
-**Default**: `[]` (empty)
-
-### `:libraries` ↳ `:system`
-
-Libraries listed here will be injected into releases and tests.
-
-These libraries are assumed to be findable by the configured linker tool, should need
-no path help, and can be specfied by common linker shorthand for libraries.
-
-For example, specifying `m` will include the math library per the gcc convention. The
-file itself on a Unix-like system will be `libm` and the gcc command line argument 
-will be `-lm`.
-
-**Default**: `[]` (empty)
+  Libraries listed here will be injected into releases and tests.
+  
+  These libraries are assumed to be findable by the configured linker tool, should need
+  no path help, and can be specfied by common linker shorthand for libraries.
+  
+  For example, specifying `m` will include the math library per the gcc convention. The
+  file itself on a Unix-like system will be `libm` and the gcc command line argument 
+  will be `-lm`.
+  
+  **Default**: `[]` (empty)
 
 ### `:libraries` options
 
@@ -2413,65 +2417,65 @@ Specifically in the `:test` context you also have the option to create test file
 that apply flags to some subset of your test build. Note that file matchers and the simpler
 flags list format cannot be mixed for `:flags` ↳ `:test`.
 
-#### `:flags` ↳ `:release` ↳ `:compile`
+* <h3><code>:flags</code> ↳ <code>:release</code> ↳ <code>:compile</code></h3>
 
-This project configuration entry adds the items of a simple YAML list as flags to 
-compilation of every C file in a release build.
+  This project configuration entry adds the items of a simple YAML list as flags to 
+  compilation of every C file in a release build.
+  
+  **Default**: `[]` (empty)
 
-**Default**: `[]` (empty)
+* <h3><code>:flags</code> ↳ <code>:release</code> ↳ <code>:link</code></h3>
 
-#### `:flags` ↳ `:release` ↳ `:link`
+  This project configuration entry adds the items of a simple YAML list as flags to 
+  the link step of a release build artifact.
+  
+  **Default**: `[]` (empty)
 
-This project configuration entry adds the items of a simple YAML list as flags to 
-the link step of a release build artifact.
+* <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:preprocess</code></h3>
 
-**Default**: `[]` (empty)
+  This project configuration entry adds the specified items as flags to any needed 
+  preprocessing of components in a test executable's build. (Preprocessing must be enabled, 
+  `:project` ↳ `:use_test_preprocessor`.)
+  
+  Preprocessing here refers to handling macros, conditional includes, etc. in header files 
+  that are mocked and in complex test files before runners are generated from them.
+  
+  Flags may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus flag list. Both are documented below.
+  
+  _Note:_ Left unspecified, `:preprocess` flags default to behaving identically to `:compile` 
+  flags. Override this behavior by adding `:test` ↳ `:preprocess` flags. If you want no 
+  additional flags for preprocessing regardless of test compilation flags, simply specify 
+  an empty list `[]`.
+  
+  **Default**: `[]` (empty)
 
-#### `:flags` ↳ `:test` ↳ `:preprocess`
+* <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:compile</code></h3>
 
-This project configuration entry adds the specified items as flags to any needed 
-preprocessing of components in a test executable's build. (Preprocessing must be enabled, 
-`:project` ↳ `:use_test_preprocessor`.)
+  This project configuration entry adds the specified items as flags to compilation of C 
+  components in a test executable's build.
+  
+  Flags may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus flag list. Both are documented below.
+  
+  **Default**: `[]` (empty)
 
-Preprocessing here refers to handling macros, conditional includes, etc. in header files 
-that are mocked and in complex test files before runners are generated from them.
+* <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:link</code></h3>
 
-Flags may be represented in a simple YAML list or with a more sophisticated file matcher
-YAML key plus flag list. Both are documented below.
+  This project configuration entry adds the specified items as flags to the link step of 
+  test executables.
+  
+  Flags may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus flag list. Both are documented below.
+  
+  **Default**: `[]` (empty)
 
-_Note:_ Left unspecified, `:preprocess` flags default to behaving identically to `:compile` 
-flags. Override this behavior by adding `:test` ↳ `:preprocess` flags. If you want no 
-additional flags for preprocessing regardless of test compilation flags, simply specify 
-an empty list `[]`.
+* <h3><code>:flags</code> ↳ <code>:&lt;plugin context&gt;</code>
 
-**Default**: `[]` (empty)
-
-#### `:flags` ↳ `:test` ↳ `:compile`
-
-This project configuration entry adds the specified items as flags to compilation of C 
-components in a test executable's build.
-
-Flags may be represented in a simple YAML list or with a more sophisticated file matcher
-YAML key plus flag list. Both are documented below.
-
-**Default**: `[]` (empty)
-
-#### `:flags` ↳ `:test` ↳ `:link`
-
-This project configuration entry adds the specified items as flags to the link step of 
-test executables.
-
-Flags may be represented in a simple YAML list or with a more sophisticated file matcher
-YAML key plus flag list. Both are documented below.
-
-**Default**: `[]` (empty)
-
-#### `:flags` ↳ `:<plugin context>`
-
-Some advanced plugins make use of build contexts as well. For instance, the Ceeding 
-Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
-that take advantage of Ceedling's internal mechanisms, you can add to those tools'
-flags in the same manner as the built-in contexts and operations.
+  Some advanced plugins make use of build contexts as well. For instance, the Ceeding 
+  Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
+  that take advantage of Ceedling's internal mechanisms, you can add to those tools'
+  flags in the same manner as the built-in contexts and operations.
 
 ### Simple `:flags` configuration
 
