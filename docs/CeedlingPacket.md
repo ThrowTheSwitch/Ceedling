@@ -1618,7 +1618,7 @@ per line.
 Examples that illustrate the many `:paths` entry features follow all
 the various path-related documentation sections.
 
-* <h3><code>`:paths`</code> ↳ <code>`:test`</code></h3>
+* <h3><code>:paths</code> ↳ <code>:test</code></h3>
 
   All C files containing unit test code. Note: this is one of the
   handful of configuration values that must be set for a test suite.
@@ -1677,7 +1677,7 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-* <h3><code>:paths</code>code> ↳ <code>:release_toolchain_include</code></h3>
+* <h3><code>:paths</code> ↳ <code>:release_toolchain_include</code></h3>
 
   Same as preceding albeit related to the release toolchain.
 
@@ -1689,7 +1689,7 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-* <h3>`:paths` ↳ `:<custom>`</h3>
+* <h3><code>:paths</code> ↳ <code>:\<custom\></code></h3>
 
   Any paths you specify for custom list. List is available to tool
   configurations and/or plugins. Note a distinction – the preceding names
