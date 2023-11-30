@@ -1343,7 +1343,7 @@ for this. A few highlights from that reference page:
   string expansion (see `:environment` setting below for further
   explanation of string expansion).
 
-## Let’s Be Careful Out There ##
+## Let’s Be Careful Out There
 
 Ceedling performs validation of the values you set in your 
 configuration file (this assumes your YAML is correct and will 
@@ -1618,14 +1618,14 @@ per line.
 Examples that illustrate the many `:paths` entry features follow all
 the various path-related documentation sections.
 
-### `:paths` ↳ `:test`
+* <h3>`:paths` ↳ `:test`</h3>
 
   All C files containing unit test code. Note: this is one of the
   handful of configuration values that must be set for a test suite.
 
   **Default**: `[]` (empty)
 
-### `:paths` ↳ `:source`
+* <h3>`:paths` ↳ `:source`</h3>
 
   All C files containing release code (code to be tested)
 
@@ -1634,7 +1634,7 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-### `:paths` ↳ `:support`
+* <h3>`:paths` ↳ `:support`</h3>
 
   Any C files you might need to aid your unit testing. For example, on
   occasion, you may need to create a header file containing a subset of
@@ -1645,7 +1645,7 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-### `:paths` ↳ `:include`
+* <h3>`:paths` ↳ `:include`</h3>
 
   This is a separate set of paths that specify locations to look for
   header files. If your header files are intermixed with source files,
@@ -1664,7 +1664,7 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-### `:paths` ↳ `:test_toolchain_include`
+* <h3>`:paths` ↳ `:test_toolchain_include`</h3>
 
   System header files needed by the test toolchain - should your
   compiler be unable to find them, finds the wrong system include search
@@ -1677,19 +1677,19 @@ the various path-related documentation sections.
 
   **Default**: `[]` (empty)
 
-### `:paths` ↳ `:release_toolchain_include`
+* <h3>`:paths` ↳ `:release_toolchain_include`</h3>
 
   Same as preceding albeit related to the release toolchain.
 
   **Default**: `[]` (empty)
 
-### `:paths` ↳ `:libraries`
+* <h3>`:paths` ↳ `:libraries`</h3>
 
   Library search paths. See `:libraries` section.
 
   **Default**: `[]` (empty)
 
-### `:paths` ↳ `:<custom>`
+* <h3>`:paths` ↳ `:<custom>`</h3>
 
   Any paths you specify for custom list. List is available to tool
   configurations and/or plugins. Note a distinction – the preceding names
@@ -1720,27 +1720,17 @@ Ceedling globs operate just as Ruby globs except that they are
 limited to matching directories and not files. Glob operators
 include the following `*`, `**`, `?`, `[-]`, `{,}`.
 
-* `*`:
-
-  All subdirectories of depth 1 below the parent path and including the
+* `*`: All subdirectories of depth 1 below the parent path and including the
   parent path
 
-* `**`:
-
-  All subdirectories recursively discovered below the parent path and
+* `**`: All subdirectories recursively discovered below the parent path and
   including the parent path
 
-* `?`:
+* `?`: Single alphanumeric character wildcard
 
-  Single alphanumeric character wildcard
+* `[x-y]`: Single alphanumeric character as found in the specified range
 
-* `[x-y]`:
-
-  Single alphanumeric character as found in the specified range
-
-* `{x,y}`:
-
-  Single alphanumeric character from the specified list
+* `{x,y}`: Single alphanumeric character from the specified list
 
 ### Subtractive `:paths` entries
 
