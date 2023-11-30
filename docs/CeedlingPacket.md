@@ -1007,7 +1007,7 @@ recognize and list build artifacts for retrieval / download.
 ### Errors vs. Failures
 
 Ceedling will run a specified build until an **_error_**. An error 
-refers to build step encountering an unrecoverable problem. Files 
+refers to a build step encountering an unrecoverable problem. Files 
 not found, nonexistent paths, compilation errors, missing symbols, 
 plugin exceptions, etc. are all errors that will cause Ceedling 
 to immediately end a build.
@@ -1020,18 +1020,23 @@ all test case statistics.
 
 ### Ceedling Exit Codes
 
-In its default configuration, Ceedling will terminate with an 
-exit code of 1 on any build error _and_ will end with an exit code of
-1 upon any test case failure. This behavior can be especially handy 
-in Continuous Integration environments where you want an automated 
-CI build to break upon build errors or test failures.
+In its default configuration, Ceedling produces an exit code of `1`:
 
-If this convention on test failures does not work for you, no 
-problem-o. You may be of the mind that running a test suite to 
+ * On any build error and immediately terminates upon that build 
+   error.
+ * On any test case failure (but runs the build to completion and
+   shuts down normally).
+
+This behavior can be especially handy in Continuous Integration 
+environments where you typically want an automated CI build to break 
+upon either build errors or test failures.
+
+If this exit code convention for test failures does not work for you, 
+no problem-o. You may be of the mind that running a test suite to 
 completion should yield a successful exit code (even if tests failed).
-Add the following at the top-level of your project file (i.e. not 
-nested ) to force Ceedling to finish
-a build with an exit code of 0 even upon test case failures.
+Add the following at the top-level of your project file (i.e. all the 
+way to the left -- not nested) to force Ceedling to finish a build 
+with an exit code of 0 even upon test case failures.
 
 ```yaml
 # Ceedling wiil terminate with happy `exit(0)` even if test cases fail
