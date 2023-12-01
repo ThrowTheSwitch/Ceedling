@@ -62,11 +62,7 @@ describe "Ceedling" do
               expect(@output).to match(/Model\.c Lines executed:/i)
               # there are more, but this is a good place to stop.
 
-              @output = `bundle exec ruby -S ceedling utils:gcov`
-              expect(@output).to match(/For now, creating only an HtmlBasic report\./)
-              expect(@output).to match(/Creating (?:a )?gcov (?:results)?(?:HTML)? report(?:\(s\))? in 'build\/artifacts\/gcov'\.\.\. Done/)
               expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
-
             end
           end
         end

@@ -174,7 +174,6 @@ module GcovTestCases
         expect(output).to match(/ceedling gcov:\*/i)
         expect(output).to match(/ceedling gcov:all/i)
         expect(output).to match(/ceedling gcov:delta/i)
-        expect(output).to match(/ceedling utils:gcov/i)
       end
     end
   end
@@ -188,7 +187,6 @@ module GcovTestCases
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
         output = `bundle exec ruby -S ceedling gcov:all`
-        output = `bundle exec ruby -S ceedling utils:gcov`
         expect(output).to match(/Creating gcov results report\(s\) in 'build\/artifacts\/gcov'\.\.\. Done/)
         expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
       end
@@ -208,8 +206,6 @@ module GcovTestCases
 
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        gcov_html_report = `bundle exec ruby -S ceedling utils:gcov 2>&1`
-        expect($?.exitstatus).to match(0)
         expect(output).to match(/Segmentation fault/i)
         expect(output).to match(/Unit test failures./)
         expect(File.exist?('./build/gcov/results/test_example_file_sigsegv.fail'))
@@ -240,8 +236,6 @@ module GcovTestCases
 
         output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        gcov_html_report = `bundle exec ruby -S ceedling utils:gcov 2>&1`
-        expect($?.exitstatus).to match(0)
         expect(output).to match(/Segmentation fault/i)
         expect(output).to match(/Unit test failures./)
         expect(File.exist?('./build/gcov/results/test_example_file_sigsegv.fail'))
@@ -279,8 +273,6 @@ module GcovTestCases
         File.write('test/test_example_file_sigsegv.c', updated_test_file.join("\n"), mode: 'w')
 
         output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_will_fail 2>&1`
-        expect($?.exitstatus).to match(0)
-        gcov_html_report = `bundle exec ruby -S ceedling utils:gcov 2>&1`
         expect($?.exitstatus).to match(0)
         expect(File.exist?('./build/gcov/results/test_example_file_sigsegv.pass'))
         expect(output).to match(/TESTED:\s+2/)
