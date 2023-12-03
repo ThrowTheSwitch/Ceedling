@@ -15,15 +15,44 @@ Ceedling is a fancypants build system that greatly simplifies building
 C projects. While it can certainly build release targets, it absolutely 
 shines at running unit test suites.
 
-1. [Installation][quick-start-1].
-1. [Sample test code file + Example Ceedling projects][quick-start-2].
-1. [Simple Ceedling project file][quick-start-3].
-1. [Ceedling at the command line][quick-start-4].
-    Ceedling tasks go like this:
-   - `ceedling test:all` or,
-   - `ceedling release` or, if you fancy,
-   - `ceedling clobber verbosity:obnoxious test:all gcov:all release`
-1. [All your Ceedling project file options][quick-start-5]
+## Steps
+
+1. Install Ceedling
+1. Create a project
+   1. Use Ceedling to generate an example project, or
+   1. Add a Ceedling project file to the root of an existing project, or
+   1. Create a project from scratch:
+      1. Create a project directory
+      1. Add source code and optionally test code however you'd like it organized
+      1. Create a Ceedling project file in the root of your project directory
+1. Run Ceedling tasks from the working directory of your project
+
+Ceedling requires a command line C toolchain be available in your path. It's 
+flexible enough to work with most anything on any platform. By default, Ceedling 
+is ready to work with [GCC] out of the box (we recommend the [MinGW] project 
+on Windows).
+
+A common build strategy with tooling other than GCC is to use your target 
+toolchain for release builds (with or without Ceedling) but rely on Ceedling + 
+GCC for test builds (more on all this [here][packet-section-2]).
+
+[GCC]: https://gcc.gnu.org
+
+## Ceedling Tasks
+
+Once you have Ceedling installed and a project file, Ceedling tasks go like this:
+
+* `ceedling test:all`, or
+* `ceedling release`, or, if you fancy,
+* `ceedling clobber verbosity:obnoxious test:all gcov:all release`
+
+## Quick Start Documentation
+
+* [Installation][quick-start-1]
+* [Sample test code file + Example Ceedling projects][quick-start-2]
+* [Simple Ceedling project file][quick-start-3]
+* [Ceedling at the command line][quick-start-4]
+* [All your Ceedling project file options][quick-start-5]
 
 [quick-start-1]: #ceedling-installation--set-up
 [quick-start-2]: #commented-sample-test-file
@@ -39,32 +68,85 @@ shines at running unit test suites.
 
 Building test suites in C requires much more scaffolding than for
 a release build. As such, much of Ceedling's documentation is concerned
-with test builds. But, release build documentation is here too.
+with test builds. But, release build documentation is here too. We promise.
 It's just all mixed together.
 
-1. [Ceedling, a C Build System for All Your Mad Scientisting Needs][packet-section-1]
-1. [Ceedling, Unity, and CMock’s Testing Abilities][packet-section-2]
-1. [Anatomy of a Test Suite][packet-section-3]
-1. [Ceedling Installation & Set Up][packet-section-4]
-1. [Now What? How Do I Make It _GO_?][packet-section-5]
-1. [Important Conventions & Behaviors][packet-section-6]
-1. [Using Unity, CMock & CException][packet-section-7]
-1. [The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-8]
-1. [Build Directive Macros][packet-section-9]
-1. [Global Collections][packet-section-10]
-1. [Module Generator][packet-section-11]
+1. **[Ceedling, a C Build System for All Your Mad Scientisting Needs][packet-section-1]**
+
+   This section provides lots of background, definitions, and links for Ceedling
+   and its bundled frameworks. It also presents a very simple, example Ceedling
+   project file.
+
+1. **[Ceedling, Unity, and CMock’s Testing Abilities][packet-section-2]**
+
+   This section speaks to the philosophy of and practical options for unit testing
+   code in a variety of scenarios.
+
+1. **[Anatomy of a Test Suite][packet-section-3]**
+
+   This documentation explains how a unit test grows up to become a test suite.
+
+1. **[Commented Sample Test File][packet-section-4]**
+
+   This sample test file illustrates how to create test cases as well as many of the
+   conventions that Ceedling relies on to do its work. There's also a brief 
+   discussion of what gets compiled and linked to create an executable test.
+
+1. **[Ceedling Installation & Set Up][packet-section-5]**
+
+   This one is pretty self explanatory.
+
+1. **[Now What? How Do I Make It _GO_?][packet-section-6]**
+
+   Ceedling's many command line tasks and some of the rules about using them.
+
+1. **[Important Conventions & Behaviors][packet-section-7]**
+
+   Much of what Ceedling accomplishes — particularly in testing — is by convention. 
+   Code and files structured in certain ways trigger sophisticated Ceedling features. 
+
+1. **[Using Unity, CMock & CException][packet-sectnion-8]**
+
+   Not only does Ceedling direct the overall build of your code, it also links 
+   together several key tools and frameworks. Those can require configuration of 
+   their own. Ceedling facilitates this.
+
+1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-9]**
+
+   This is the exhaustive documentation for all of Ceedling's project file 
+   configuration options.
+
+1. **[Build Directive Macros][packet-section-10]**
+
+   These code macros can help you accomplish your build goals When Ceedling's 
+   conventions aren't enough.
+
+1. **[Global Collections][packet-section-11]**
+
+   Ceedling is built in Ruby. Collections are globally available Ruby lists of paths,
+   files, and more that can be useful for advanced customization of a Ceedling project 
+   file or in creating plugins.
+
+1. **[Module Generator][packet-section-12]**
+
+   A pattern emerges in day-to-day unit testing, especially in the practice of Test-
+   Driven Development. Again and again, one needs a triplet of a source file, header 
+   file, and test file, scaffolded in such a way that they refer to one another.
+   Module Generator allows you to save precious minutes by creating these templated
+   files for you.
 
 [packet-section-1]:  #ceedling-a-c-build-system-for-all-your-mad-scientisting-needs
 [packet-section-2]:  #ceedling-unity-and-c-mocks-testing-abilities
 [packet-section-3]:  #anatomy-of-a-test-suite
-[packet-section-4]:  #ceedling-installation--set-up
-[packet-section-5]:  #now-what-how-do-i-make-it-go
-[packet-section-6]:  #important-conventions--behaviors
-[packet-section-7]:  #using-unity-cmock--cexception
-[packet-section-8]:  #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
-[packet-section-9]:  #build-directive-macros
-[packet-section-10]: #global-collections
-[packet-section-11]: #module-generator
+[packet-section-4]:  #commented-sample-test-file
+[packet-section-5]:  #ceedling-installation--set-up
+[packet-section-6]:  #now-what-how-do-i-make-it-go
+[packet-section-7]:  #important-conventions--behaviors
+[packet-section-8]:  #using-unity-cmock--cexception
+[packet-section-9]:  #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
+[packet-section-10]: #build-directive-macros
+[packet-section-11]: #global-collections
+[packet-section-12]: #module-generator
 
 ---
 
@@ -718,23 +800,26 @@ Ceedling (more on this later).
 
 * `ceedling verbosity[x] <tasks...>`:
 
-  Change the default verbosity level. `[x]` ranges from 0 (quiet) to 4
-  (obnoxious) with 5 reserved for debugging output. Level 3 is the default. 
-  The verbosity task must precede all tasks in the command line list for which
-  output is desired to be   seen. Verbosity settings are generally most 
-  meaningful in conjunction with test and release tasks.
+  Change default verbosity level. `[x]` ranges from `0` (quiet) to `4`
+  (obnoxious) with `5` reserved for debugging output. Level `3` is the 
+  default. 
+  
+  The verbosity task must precede all tasks in the command line task list 
+  for which output is desired to be seen. Verbosity settings are generally 
+  most meaningful in conjunction with test and release tasks.
 
-  Alternatively, you can use the name of each level, according to the
-  following map:
+* `ceedling verbosity:<level> <tasks...>`:
 
-  | Numerical    | Named               |
-  |--------------|---------------------|
-  | verbosity[0] | verbosity:silent    |
-  | verbosity[1] | verbosity:errors    |
-  | verbosity[2] | verbosity:warnings  |
-  | verbosity[3] | verbosity:normal    |
-  | verbosity[4] | verbosity:obnoxious |
-  | verbosity[5] | verbosity:debug     |
+  Alternative verbosity task scheme using the name of each level.
+
+  | Numeric Level | Named Level         |
+  |---------------|---------------------|
+  | verbosity[0]  | verbosity:silent    |
+  | verbosity[1]  | verbosity:errors    |
+  | verbosity[2]  | verbosity:warnings  |
+  | verbosity[3]  | verbosity:normal    |
+  | verbosity[4]  | verbosity:obnoxious |
+  | verbosity[5]  | verbosity:debug     |
 
 * `ceedling summary`:
 
@@ -1336,9 +1421,9 @@ for this. A few highlights from that reference page:
   is parsed. This is usually accompanied by a complaint with
   line and column number pointing into the project file.
 
-* Certain advanced features rely on gcc and cpp as preprocessing
+* Certain advanced features rely on `gcc` and `cpp` as preprocessing
   tools. In most Linux systems, these tools are already available.
-  For Windows environments, we recommend the [mingw] project
+  For Windows environments, we recommend the [MinGW] project
   (Minimalist GNU for Windows).
 
 * Ceedling is primarily meant as a build tool to support automated
@@ -1351,7 +1436,7 @@ for this. A few highlights from that reference page:
   Ceedling's abilities. See the Ceedling plugin [subprojects] for
   extending release build abilities.
 
-[mingw]: http://www.mingw.org/
+[MinGW]: http://www.mingw.org/
 
 ## Conventions of Ceedling-specific YAML
 
@@ -1408,12 +1493,12 @@ internally - thus leading to unexpected behavior without warning.
 
   Ceedling and CMock are advanced tools with sophisticated parsers.
   However, they do not include entire C language preprocessors.
-  Consequently, with this option enabled, Ceedling will use gcc's
+  Consequently, with this option enabled, Ceedling will use `gcc`'s
   preprocessing mode and the cpp preprocessor tool to strip down /
   expand test files and headers to their applicable content which can
   then be processed by Ceedling and CMock.
 
-  With this option enabled, the gcc & cpp tools must exist in an
+  With this option enabled, the `gcc` & `cpp` tools must exist in an
   accessible system search path and test runner files are always
   regenerated.
 
@@ -1452,7 +1537,7 @@ internally - thus leading to unexpected behavior without warning.
 
   When enabled, a release Rake task is exposed. This configuration
   option requires a corresponding release compiler and linker to be
-  defined (gcc is used as the default).
+  defined (`gcc` is used as the default).
 
   Ceedling is primarily concerned with facilitating the complicated 
   mechanics of automating unit tests. The same mechanisms are easily 
@@ -1526,7 +1611,7 @@ internally - thus leading to unexpected behavior without warning.
   When a test file runs into a **Segmentation Fault**, the test executable 
   immediately crashes and further details aren't collected. By default, Ceedling
   reports a single failure for the entire file, specifying that it segfaulted. 
-  If you are running gcc or clang (llvm), then there is an option to get more
+  If you are running `gcc` or Clang (LLVM), then there is an option to get more
   detail!
 
   Set `:use_backtrace_gdb_reporter` to `true` and a segfault will trigger Ceedling to 
@@ -1707,7 +1792,7 @@ the various path-related documentation sections.
   Note that if you configure your own toolchain in the `:tools` section,
   this search path is largely meaningless to you. However, this is a
   convenient way to control the system include path should you rely on
-  the default gcc tools.
+  the default [GCC] tools.
 
   **Default**: `[]` (empty)
 
@@ -1986,7 +2071,7 @@ Ceedling uses path lists and wildcard matching against filename extensions to co
 
 * `:dependencies`:
 
-  File containing make-style dependency rules created by gcc preprocessor
+  File containing make-style dependency rules created by the `gcc` preprocessor
 
   **Default**: .d
 
@@ -2357,8 +2442,8 @@ few levels of support.
   These libraries are assumed to be findable by the configured linker tool, should need
   no path help, and can be specified by common linker shorthand for libraries.
   
-  For example, specifying `m` will include the math library per the gcc convention. The
-  file itself on a Unix-like system will be `libm` and the gcc command line argument 
+  For example, specifying `m` will include the math library per the GCC convention. The
+  file itself on a Unix-like system will be `libm` and the `gcc` command line argument 
   will be `-lm`.
   
   **Default**: `[]` (empty)
@@ -2369,7 +2454,7 @@ few levels of support.
 
   Command line argument format for specifying a library.
 
-  **Default**: `-l${1}` (gcc format)
+  **Default**: `-l${1}` (GCC format)
 
 * `:path_flag`:
 
@@ -2377,7 +2462,7 @@ few levels of support.
 
   Library search paths may be added to your project with `:paths` ↳ `:libraries`.
 
-  **Default**: `-L "${1}”` (gcc format)
+  **Default**: `-L "${1}”` (GCC format)
 
 ### `:libraries` example with YAML blurb
 
@@ -2400,8 +2485,8 @@ few levels of support.
 
 * If you've specified your own link step, you are going to want to add `${4}` to your 
   argument list in the position where library files should be added to the command line. 
-  For gcc, this is often the very end. Other tools may vary. See the `:tools` section
-  for more.
+  For `gcc`, this is often at the very end. Other tools may vary. See the `:tools` 
+  section for more.
 
 ## `:flags` Configure preprocessing, compilation & linking command line flags
 
@@ -2867,7 +2952,7 @@ decorated in any way needed. To use a literal `$`, escape it as `\\$`.
   path of the resulting object file. For a linker `${1}` will be an array
   of object files to link, and `${2}` will be the resulting binary
   executable. For an executable test fixture `${1}` is either the binary
-  executable itself (when using a local toolchain such as gcc) or a
+  executable itself (when using a local toolchain such as GCC) or a
   binary input file given to a simulator in its arguments.
 
 ### Example `:tools` YAML blurb
@@ -2922,9 +3007,9 @@ decorated in any way needed. To use a literal `$`, escape it as `\\$`.
   might go unseen in all the output scrolling past in a terminal.
 
 * The built-in preprocessing tools _can_ be overridden with 
-  non-gcc equivalents. However, this is highly impractical to do
+  non-GCC equivalents. However, this is highly impractical to do
   as preprocessing features are highly dependent on the 
-  idiosyncrasies and features of the gcc toolchain.
+  idiosyncrasies and features of the GCC toolchain.
 
 #### Example Test Compiler Tooling
 
