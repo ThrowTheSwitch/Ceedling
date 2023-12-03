@@ -105,7 +105,7 @@ It's just all mixed together.
    Much of what Ceedling accomplishes — particularly in testing — is by convention. 
    Code and files structured in certain ways trigger sophisticated Ceedling features. 
 
-1. **[Using Unity, CMock & CException][packet-sectnion-8]**
+1. **[Using Unity, CMock & CException][packet-section-8]**
 
    Not only does Ceedling direct the overall build of your code, it also links 
    together several key tools and frameworks. Those can require configuration of 
