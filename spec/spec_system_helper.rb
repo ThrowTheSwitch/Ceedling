@@ -587,7 +587,8 @@ module CeedlingTestCases
 
         # add module path to project file
         settings = { :paths => { :test => [ "myPonies/test" ],
-                                 :source => [ "myPonies/src" ]
+                                 :source => [ "myPonies/src" ],
+                                 :include => [ "myPonies/src" ]
                                }
                    }
         add_project_settings("project.yml", settings)

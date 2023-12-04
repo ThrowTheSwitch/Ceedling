@@ -19,14 +19,13 @@ class UnityUtils
     # Refering to Unity implementation of the parser implemented in the unit.c :
     #
     # case 'l': /* list tests */
-    # case 'n': /* include tests with name including this string */
-    # case 'f': /* an alias for -n */
+    # case 'f': /* filter tests with name including this string */
     # case 'q': /* quiet */
     # case 'v': /* verbose */
     # case 'x': /* exclude tests with name including this string */
     @arg_option_map =
       {
-        'test_case' => 'n',
+        'test_case' => 'f',
         'list_test_cases' => 'l',
         'run_tests_verbose' => 'v',
         'exclude_test_case' => 'x'
