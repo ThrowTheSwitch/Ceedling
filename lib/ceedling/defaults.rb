@@ -343,10 +343,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :use_test_definition => false,
       :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
       :preprocess => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
-      :release => [],
-      :unity => [],
-      :cmock => [],
-      :cexception => []
+      :release => []
     },
 
     :flags => {
@@ -378,16 +375,19 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :unity => {
-      :vendor_path => CEEDLING_VENDOR
+      :vendor_path => CEEDLING_VENDOR,
+      :defines => []
     },
 
     :cmock => {
       :vendor_path => CEEDLING_VENDOR,
-      :includes => []
+      :includes => [],
+      :defines => []
     },
 
     :cexception => {
-      :vendor_path => CEEDLING_VENDOR
+      :vendor_path => CEEDLING_VENDOR,
+      :defines => []
     },
 
     :test_runner => {

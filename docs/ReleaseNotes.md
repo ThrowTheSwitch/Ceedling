@@ -196,12 +196,12 @@ To better support per-test-executable configurations, the format of `:defines` h
 
 In brief:
 
-1. A more logically named hierarchy differentiates `#define`s for test preprocessing, test compilation, and release compilation. The new format also allows a cleaner organization of `#define`s for configuration of tools like Unity.
-1. Previously, `#define`s could be specified for a specific C file by name, but these `#define`s were only applied when compiling that specific file. Further, this matching was only against a file's full name. Now, pattern matching is also an option against test file names (only test file names) and the configured `#define`s are applied to each C file that comprises a test executable.
+1. A more logically named hierarchy differentiates `#define`s for test preprocessing, test compilation, and release compilation.
+1. Previously, compilation symbols could be specified for a specific C file by name, but these symbols were only defined when compiling that specific file. Further, this matching was only against a file's full name. Now, pattern matching is also an option against test file names (_only_ test file names) and the configured symbols are applied in compilation of each C file that comprises a test executable.
 
 ### Format change for `:flags` in the project file
 
-To better support per-test-executable configurations, the format and function of `[flags]` has changed somewhat. See the [official documentation](CeedlingPacket.md) for specifics.
+To better support per-test-executable configurations, the format and function of `:flags` has changed somewhat. See the [official documentation](CeedlingPacket.md) for specifics.
 
 In brief:
 
@@ -215,46 +215,6 @@ The previously undocumented `TEST_FILE()` build directive macro (#796) available
 ### Build output directory structure
 
 Differentiating components of the same name that are a part of multiple test executables built with differing configurations has required further subdirectories in the build directory structure. Generated mocks, compiled object files, linked executables, and preprocessed output all end up one directory deeper than in previous versions of Ceedling. In each case, these files are found inside a subdirectory named for their containing test.
-
-#### Tool `:defines`
-
-In previous versions of Ceedling, one option for configuring compiled elements of vendor tools was to specify their `#define`s in that tool's project file configuration section. In conjunction with the general improvements to handling `#define`s, vendor tools' `#define`s now live in the top-level `:defines` area of the project configuration.
-
-Note that to preserve some measure of backwards compatibility, Ceedling inserts a copy of a vendor tool's `#define` list into its top-level config.
-
-Example of the old way:
-
-```yaml
-:unity:
-  :defines:
-    - UNITY_EXCLUDE_STDINT_H
-    - UNITY_EXCLUDE_LIMITS_H
-    - UNITY_EXCLUDE_SIZEOF
-    - UNITY_INCLUDE_DOUBLE
-
-:cmock:
-  :defines:
-    - CMOCK_MEM_STATIC
-    - CMOCK_MEM_ALIGN=2
-```
-
-Example of the new way:
-
-```yaml
-:defines:
-  :release:
-    ... # Empty snippet
-  :test:
-    ... # Empty snippet
-  :unity:
-    - UNITY_EXCLUDE_STDINT_H
-    - UNITY_EXCLUDE_LIMITS_H
-    - UNITY_EXCLUDE_SIZEOF
-    - UNITY_INCLUDE_DOUBLE
-  :cmock:
-    - CMOCK_MEM_STATIC
-    - CMOCK_MEM_ALIGN=2
-```
 
 ### Changes to global collections
 

@@ -60,28 +60,11 @@ class TestInvokerHelper
     # If this context exists ([:defines][context]), use it. Otherwise, default to test context.
     context = TEST_SYM unless @defineinator.defines_defined?( context:context )
 
-    defines = []
-
-    # Optionally add a #define symbol that is the test file's sanitized/converted name
-    if @configurator.defines_use_test_definition
-      # Get filename with no path or extension
-      test_def = File.basename(filepath, '.*').strip
-      # Replace any non-ASCII characters with underscores
-      test_def = test_def.encode("ASCII", "UTF-8", invalid: :replace, undef: :replace, replace: "_")
-      # Replace all non-alphanumeric characters (including spaces/punctuation but excluding dashes and underscores) with underscores
-      test_def.gsub!(/[^0-9a-z_-]/i, '_')
-      # Convert to all caps
-      test_def.upcase!
-      # Add leading and trailiing underscores unless they already exist
-      test_def = test_def.start_with?('_') ? test_def : ('_' + test_def)
-      test_def = test_def.end_with?('_') ? test_def : (test_def + '_')
-
-      # Add the test filename as a #define symbol to the array
-      defines << test_def
-    end
+    defines = @defineinator.generate_test_definition( filepath:filepath )
+    defines += @defineinator.defines( subkey:context, filepath:filepath )
 
     # Defines for the test file
-    return defines + @defineinator.defines( context:context, filepath:filepath )
+    return defines
   end
 
   def tailor_defines(filepath:, defines:)
@@ -89,24 +72,24 @@ class TestInvokerHelper
 
     # Unity defines
     if filepath == File.join(PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE)
-      _defines += @defineinator.defines( context:UNITY_SYM )
+      _defines += @defineinator.defines( topkey:UNITY_SYM, subkey: :defines )
 
     # CMock defines
     elsif @configurator.project_use_mocks and 
           (filepath == File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE))
-      _defines += @defineinator.defines( context:CMOCK_SYM )
+      _defines += @defineinator.defines( topkey:CMOCK_SYM, subkey: :defines )
 
     # CException defines
     elsif @configurator.project_use_exceptions and 
           (filepath == File.join(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE))
-      _defines += @defineinator.defines( context:CEXCEPTION_SYM )
+      _defines += @defineinator.defines( topkey:CEXCEPTION_SYM, subkey: :defines )
 
     # Support files defines
     elsif (@configurator.collection_all_support.include?(filepath))
       _defines = defines
-      _defines += @defineinator.defines( context:UNITY_SYM )
-      _defines += @defineinator.defines( context:CMOCK_SYM ) if @configurator.project_use_mocks
-      _defines += @defineinator.defines( context:CEXCEPTION_SYM ) if @configurator.project_use_exceptions
+      _defines += @defineinator.defines( topkey:UNITY_SYM, subkey: :defines )
+      _defines += @defineinator.defines( topkey:CMOCK_SYM, subkey: :defines ) if @configurator.project_use_mocks
+      _defines += @defineinator.defines( topkey:CEXCEPTION_SYM, subkey: :defines ) if @configurator.project_use_exceptions
     end
 
     # Not a vendor file, return original defines
@@ -158,7 +141,7 @@ class TestInvokerHelper
 
   def preprocess_defines(test_defines:, filepath:)
     # Preprocessing defines for the test file
-    preprocessing_defines = @defineinator.defines( context:PREPROCESS_SYM, filepath:filepath )
+    preprocessing_defines = @defineinator.defines( subkey:PREPROCESS_SYM, filepath:filepath )
 
     # If no preprocessing defines are present, default to the test compilation defines
     return (preprocessing_defines.empty? ? test_defines : preprocessing_defines)

@@ -114,7 +114,8 @@ It's just all mixed together.
 1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-9]**
 
    This is the exhaustive documentation for all of Ceedling's project file 
-   configuration options.
+   configuration options — from project paths to command line tools to plugins and
+   much, much more.
 
 1. **[Build Directive Macros][packet-section-10]**
 
@@ -1196,16 +1197,16 @@ documentation.
 ## Unity Configuration
 
 Unity is wholly compiled C code. As such, its configuration is entirely 
-controlled by a variety of `#define` symbols. These can be configured
-in Ceedling's `:defines` ↳ `:unity` project settings.
+controlled by a variety of compilation symbols. These can be configured
+in Ceedling's `:unity` project settings.
 
 ### Example Unity configurations
 
 #### Itty bitty processor & toolchain with limited test execution options
 
 ```yaml
-:defines:
-  :unity:
+:unity:
+  :defines:
     - UNITY_INT_WIDTH=16   # 16 bit processor without support for 32 bit instructions
     - UNITY_EXCLUDE_FLOAT  # No floating point unit
 ```
@@ -1213,8 +1214,8 @@ in Ceedling's `:defines` ↳ `:unity` project settings.
 #### Great big gorilla processor that grunts and scratches
 
 ```yaml
-:defines:
-  :unity:
+:unity:
+  :defines:
     - UNITY_SUPPORT_64                    # Big memory, big counters, big registers
     - UNITY_LINE_TYPE=\"unsigned int\"    # Apparently, we're writing lengthy test files,
     - UNITY_COUNTER_TYPE=\"unsigned int\" # and we've got a ton of test cases in those test files
@@ -1224,13 +1225,13 @@ in Ceedling's `:defines` ↳ `:unity` project settings.
 #### Example Unity configuration header file
 
 Sometimes, you may want to funnel all Unity configuration options into a 
-header file rather than organize a lengthy `:defines` ↳ `:unity` list. Perhaps your
-`#define` symbol definitions include characters needing escape sequences
-in YAML that are driving you bonkers.
+header file rather than organize a lengthy `:unity` ↳ `:defines` list. Perhaps your
+symbol definitions include characters needing escape sequences in YAML that are 
+driving you bonkers.
 
 ```yaml
-:defines:
-  :unity:
+:unity:
+  :defines:
     - UNITY_INCLUDE_CONFIG_H
 ```
 
@@ -1268,7 +1269,7 @@ very well. Consult your toolchain and shell documentation.
 If redefining the function and macros breaks your command line 
 compilation, all necessary options and functionality can be defined in 
 `unity_config.h`. Unity will need the `UNITY_INCLUDE_CONFIG_H` symbol in the
-`:defines` list of your Ceedling project file (see example above).
+`:unity` ↳ `:defines` list of your Ceedling project file (see example above).
 
 ## CMock Configuration
 
@@ -1299,7 +1300,7 @@ section within Ceedling's project file.
 
 Like Unity and CException, CMock's C components are configured at 
 compilation with symbols managed in your Ceedling project file's 
-`:defines` ↳ `:cmock` section.
+`:cmock` ↳ `:defines` section.
 
 ### Example CMock configurations
 
@@ -1308,14 +1309,12 @@ compilation with symbols managed in your Ceedling project file's
   # Shown for completeness -- CMock enabled by default in Ceedling
   :use_mocks: TRUE
 
-:defines:
-  :cmock:
-    # Memory alignment (packing) on 16 bit boundaries
-    - CMOCK_MEM_ALIGN=1
-
 :cmock:
   :when_no_prototypes: :warn
   :enforce_strict_ordering: TRUE
+  :defines:
+    # Memory alignment (packing) on 16 bit boundaries
+    - CMOCK_MEM_ALIGN=1
   :plugins:
     - :ignore
   :treat_as:
@@ -1330,7 +1329,7 @@ compilation with symbols managed in your Ceedling project file's
 
 Like Unity, CException is wholly compiled C code. As such, its 
 configuration is entirely controlled by a variety of `#define` symbols. 
-These can be configured in Ceedling's `:defines` ↳ `:cexception` project 
+These can be configured in Ceedling's `:cexception` ↳ `:defines` project 
 settings.
 
 Unlike Unity which is always available in test builds and CMock that 
@@ -1344,8 +1343,8 @@ if you wish to use it in your project.
   # Enable CException for both test and release builds
   :use_exceptions: TRUE
 
-:defines:
-  :cexception:
+:cexception:
+  :defines:
     # Possible exception codes of -127 to +127 
     - CEXCEPTION_T='signed char'
 
@@ -1682,13 +1681,16 @@ internally - thus leading to unexpected behavior without warning.
   directory the output of the release linker and (optionally) a map
   file. Many toolchains produce other important output files as well.
   Adding a file path to this list will cause Ceedling to copy that file
-  to the artifacts directory. The artifacts directory is helpful for
-  organizing important build output files and provides a central place
-  for tools such as Continuous Integration servers to point to build
-  output. Selectively copying files prevents incidental build cruft from
-  needlessly appearing in the artifacts directory. Note that inline Ruby
-  string replacement is available in the artifacts paths (see discussion
-  in the `:environment` section).
+  to the artifacts directory.
+
+  The artifacts directory is helpful for organizing important build 
+  output files and provides a central place for tools such as Continuous 
+  Integration servers to point to build output. Selectively copying 
+  files prevents incidental build cruft from needlessly appearing in the 
+  artifacts directory.
+
+  Note that inline Ruby string replacement is available in the artifacts 
+  paths (see discussion in the `:environment` section).
 
   **Default**: `[]` (empty)
 
@@ -2178,57 +2180,6 @@ matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
   
   Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
   YAML key plus symbol list. Both are documented below.
-  
-  **Default**: `[]` (empty)
-
-* <h3><code>:defines</code> ↳ <code>:unity</code></h3>
-
-  This project configuration entry adds symbols used to configure Unity's features in its 
-  source and header files at compile time.
-  
-  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
-  configuring and making use of these frameworks in your build.
-  
-  To manage overall command line length, these symbols are only added to compilation when
-  a Unity C source file is compiled.
-  
-  No symbols must be set unless Unity's defaults are inappropriate for your environment 
-  and needs.
-  
-  **Default**: `[]` (empty)
-
-* <h3><code>:defines</code> ↳ <code>:cmock</code></h3>
-
-  This project configuration entry adds symbols used to configure CMock's C code features 
-  in its source and header files at compile time.
-  
-  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
-  configuring and making use of these frameworks in your build.
-  
-  To manage overall command line length, these symbols are only added to compilation when
-  a CMock C source file is compiled.
-  
-  No symbols must be set unless CMock's defaults are inappropriate for your environment 
-  and needs.
-  
-  **Default**: `[]` (empty)
-
-* <h3><code>:defines</code> ↳ <code>:cexception</code></h3>
-
-  This project configuration entry adds symbols used to configure CException's features in 
-  its source and header files at compile time.
-  
-  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
-  configuring and making use of these frameworks in your build.
-  
-  To manage overall command line length, these symbols are only added to compilation when
-  a CException C source file is compiled.
-  
-  No symbols must be set unless CException's defaults are inappropriate for your 
-  environment and needs.
-  
-  Note CException must be enabled for it to be added to a release or test build and for 
-  these symbols to be added to a build of CException (see link referenced earlier for more).
   
   **Default**: `[]` (empty)
 
@@ -2727,6 +2678,27 @@ Using hashes:
   :configB: path/to/another/config.yml
 ```
 
+## `:cexception` Configure CException’s features
+
+* `:defines`:
+
+  List of symbols used to configure CException's features in its source and header files 
+  at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a CException C source file is compiled.
+  
+  No symbols must be set unless CException's defaults are inappropriate for your 
+  environment and needs.
+  
+  Note CException must be enabled for it to be added to a release or test build and for 
+  these symbols to be added to a build of CException (see link referenced earlier for more).
+  
+  **Default**: `[]` (empty)
+
 ## `:cmock` Configure CMock’s code generation & compilation
 
 Ceedling sets values for a subset of CMock settings. All CMock
@@ -2734,7 +2706,10 @@ options are available to be set, but only those options set by
 Ceedling in an automated fashion are documented below. See CMock
 documentation.
 
-Ceedling sets values for a subset of CMock settings. All CMock options are available to be set, but only those options set by Ceedling in an automated fashion are documented below. See CMock documentation.
+Ceedling sets values for a subset of CMock settings. All CMock 
+options are available to be set, but only those options set by 
+Ceedling in an automated fashion are documented below. 
+See [CMock] documentation.
 
 * `:enforce_strict_ordering`:
 
@@ -2751,6 +2726,22 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
 * `:verbosity`:
 
   If not set, defaults to Ceedling's verbosity level
+
+* `:defines`:
+
+  Adds list of symbols used to configure CMock's C code features in its source and header 
+  files at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a CMock C source file is compiled.
+  
+  No symbols must be set unless CMock's defaults are inappropriate for your environment 
+  and needs.
+  
+  **Default**: `[]` (empty)
 
 * `:plugins`:
 
@@ -2770,15 +2761,38 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
   above with regard to adding additional files to be inserted within
   mocks as #include statements.
 
+### Notes on Ceedling’s nudges for CMock strict ordering
+
 The last four settings above are directly tied to other Ceedling
-settings; hence, why they are listed and explained here. The
-first setting above, `:enforce_strict_ordering`, defaults
-to FALSE within CMock. It is set to TRUE by default in Ceedling
-as our way of encouraging you to use strict ordering. It's a teeny
-bit more expensive in terms of code generated, test execution
-time, and complication in deciphering test failures. However,
-it's good practice. And, of course, you can always disable it
-by overriding the value in the Ceedling YAML configuration file.
+settings; hence, why they are listed and explained here.
+
+The first setting above, `:enforce_strict_ordering`, defaults
+to `FALSE` within CMock. However, it is set to `TRUE` by default 
+in Ceedling as our way of encouraging you to use strict ordering.
+
+Strict ordering is teeny bit more expensive in terms of code 
+generated, test execution time, and complication in deciphering 
+test failures. However, it's good practice. And, of course, you 
+can always disable it by overriding the value in the Ceedling 
+project configuration file.
+
+## `:unity` Configure Unity’s features
+
+* `:defines`:
+
+  Adds list of symbols used to configure Unity's features in its source and header files
+  at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a Unity C source file is compiled.
+  
+  No symbols must be set unless Unity's defaults are inappropriate for your environment 
+  and needs.
+  
+  **Default**: `[]` (empty)
 
 ## `:tools` Configuring command line tools used for build steps
 
