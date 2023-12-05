@@ -29,7 +29,7 @@ class FileWrapper
   end
 
   def directory_listing(glob)
-    return Dir.glob(glob, File::FNM_PATHNAME)
+    return Dir.glob(glob, File::FNM_PATHNAME).sort
   end
 
   def rm_f(filepath, options={})
@@ -63,6 +63,8 @@ class FileWrapper
   end
 
   def write(filepath, contents, flags='w')
+    directory = File.dirname(filepath)
+    FileUtils.mkdir_p(directory)
     File.open(filepath, flags) do |file|
       file.write(contents)
     end

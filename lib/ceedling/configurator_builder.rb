@@ -316,7 +316,8 @@ class ConfiguratorBuilder
       in_hash[:collection_paths_include]
 
     paths.each do |path|
-      all_headers.include( File.join(path, "**/*#{in_hash[:extension_header]}") )
+      # Do not search in subdirectories. If this is wanted, the user will use foo/** in project.yml
+      all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
     end
 
     @file_system_utils.revise_file_list( all_headers, in_hash[:files_include] )

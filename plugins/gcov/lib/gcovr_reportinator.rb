@@ -336,7 +336,7 @@ class GcovrReportinator
 
   # Returns true if the given report type is enabled, otherwise returns false.
   def is_report_enabled(opts, report_type)
-    return !(opts.nil?) && !(opts[:gcov_reports].nil?) && (opts[:gcov_reports].map(&:upcase).include? report_type.upcase)
+    return !(opts.nil?) && !(opts[:gcov_reports].nil?) && (opts[:gcov_reports].compact.map(&:upcase).include? report_type.upcase)
   end
 
 end

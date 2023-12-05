@@ -4,10 +4,19 @@ require 'erb'
 
 class YamlWrapper
 
+  def load_options()
+    yaml_version = YAML::VERSION[0].to_i  # Extract major version number of YAML
+    if yaml_version > 3
+      { aliases: true }
+    else
+      { }
+    end
+  end
+
   def load(filepath)
     source = ERB.new(File.read(filepath)).result
     begin
-      return YAML.load(source, aliases: true)
+      return YAML.load(source, **load_options)
     rescue ArgumentError
       return YAML.load(source)
     end
@@ -15,7 +24,7 @@ class YamlWrapper
 
   def load_string(source)
     begin
-      return YAML.load(source, aliases: true)
+      return YAML.load(source, **load_options)
     rescue ArgumentError
       return YAML.load(source)
     end
