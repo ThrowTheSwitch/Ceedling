@@ -63,6 +63,8 @@ class FileWrapper
   end
 
   def write(filepath, contents, flags='w')
+    directory = File.dirname(filepath)
+    FileUtils.mkdir_p(directory)
     File.open(filepath, flags) do |file|
       file.write(contents)
     end
