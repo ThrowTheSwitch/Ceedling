@@ -481,7 +481,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Since a test explodes, we return error here
-        expect(output).to match(/ERROR: Ceedling Failed/)
+        expect(output).to match(/(?:ERROR: Ceedling Failed)|(?:Ceedling could not complete the build because of errors)/)
       end
     end
   end
@@ -829,7 +829,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling module:create[unicorns] 2>&1`
         expect($?.exitstatus).to match(1)
-        expect(output).to match(/ERROR: Ceedling Failed/)
+        expect(output).to match(/(?:ERROR: Ceedling Failed)|(?:Ceedling could not complete the build because of errors)/)
       end
     end
   end
@@ -843,7 +843,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns] 2>&1`
         expect($?.exitstatus).to match(1)
-        expect(output).to match(/ERROR: Ceedling Failed/)
+        expect(output).to match(/(?:ERROR: Ceedling Failed)|(?:Ceedling could not complete the build because of errors)/)
       end
     end
   end
