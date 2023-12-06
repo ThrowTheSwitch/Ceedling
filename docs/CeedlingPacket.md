@@ -15,15 +15,44 @@ Ceedling is a fancypants build system that greatly simplifies building
 C projects. While it can certainly build release targets, it absolutely 
 shines at running unit test suites.
 
-1. [Installation][quick-start-1].
-1. [Sample test code file + Example Ceedling projects][quick-start-2].
-1. [Simple Ceedling project file][quick-start-3].
-1. [Ceedling at the command line][quick-start-4].
-    Ceedling tasks go like this:
-   - `ceedling test:all` or,
-   - `ceedling release` or, if you fancy,
-   - `ceedling clobber verbosity:obnoxious test:all gcov:all release`
-1. [All your Ceedling project file options][quick-start-5]
+## Steps
+
+1. Install Ceedling
+1. Create a project
+   1. Use Ceedling to generate an example project, or
+   1. Add a Ceedling project file to the root of an existing project, or
+   1. Create a project from scratch:
+      1. Create a project directory
+      1. Add source code and optionally test code however you'd like it organized
+      1. Create a Ceedling project file in the root of your project directory
+1. Run Ceedling tasks from the working directory of your project
+
+Ceedling requires a command line C toolchain be available in your path. It's 
+flexible enough to work with most anything on any platform. By default, Ceedling 
+is ready to work with [GCC] out of the box (we recommend the [MinGW] project 
+on Windows).
+
+A common build strategy with tooling other than GCC is to use your target 
+toolchain for release builds (with or without Ceedling) but rely on Ceedling + 
+GCC for test builds (more on all this [here][packet-section-2]).
+
+[GCC]: https://gcc.gnu.org
+
+## Ceedling Tasks
+
+Once you have Ceedling installed and a project file, Ceedling tasks go like this:
+
+* `ceedling test:all`, or
+* `ceedling release`, or, if you fancy,
+* `ceedling clobber verbosity:obnoxious test:all gcov:all release`
+
+## Quick Start Documentation
+
+* [Installation][quick-start-1]
+* [Sample test code file + Example Ceedling projects][quick-start-2]
+* [Simple Ceedling project file][quick-start-3]
+* [Ceedling at the command line][quick-start-4]
+* [All your Ceedling project file options][quick-start-5]
 
 [quick-start-1]: #ceedling-installation--set-up
 [quick-start-2]: #commented-sample-test-file
@@ -39,32 +68,86 @@ shines at running unit test suites.
 
 Building test suites in C requires much more scaffolding than for
 a release build. As such, much of Ceedling's documentation is concerned
-with test builds. But, release build documentation is here too.
+with test builds. But, release build documentation is here too. We promise.
 It's just all mixed together.
 
-1. [Ceedling, a C Build System for All Your Mad Scientisting Needs][packet-section-1]
-1. [Ceedling, Unity, and CMock’s Testing Abilities][packet-section-2]
-1. [Anatomy of a Test Suite][packet-section-3]
-1. [Ceedling Installation & Set Up][packet-section-4]
-1. [Now What? How Do I Make It _GO_?][packet-section-5]
-1. [Important Conventions & Behaviors][packet-section-6]
-1. [Using Unity, CMock & CException][packet-section-7]
-1. [The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-8]
-1. [Build Directive Macros][packet-section-9]
-1. [Global Collections][packet-section-10]
-1. [Module Generator][packet-section-11]
+1. **[Ceedling, a C Build System for All Your Mad Scientisting Needs][packet-section-1]**
+
+   This section provides lots of background, definitions, and links for Ceedling
+   and its bundled frameworks. It also presents a very simple, example Ceedling
+   project file.
+
+1. **[Ceedling, Unity, and CMock’s Testing Abilities][packet-section-2]**
+
+   This section speaks to the philosophy of and practical options for unit testing
+   code in a variety of scenarios.
+
+1. **[Anatomy of a Test Suite][packet-section-3]**
+
+   This documentation explains how a unit test grows up to become a test suite.
+
+1. **[Commented Sample Test File][packet-section-4]**
+
+   This sample test file illustrates how to create test cases as well as many of the
+   conventions that Ceedling relies on to do its work. There's also a brief 
+   discussion of what gets compiled and linked to create an executable test.
+
+1. **[Ceedling Installation & Set Up][packet-section-5]**
+
+   This one is pretty self explanatory.
+
+1. **[Now What? How Do I Make It _GO_?][packet-section-6]**
+
+   Ceedling's many command line tasks and some of the rules about using them.
+
+1. **[Important Conventions & Behaviors][packet-section-7]**
+
+   Much of what Ceedling accomplishes — particularly in testing — is by convention. 
+   Code and files structured in certain ways trigger sophisticated Ceedling features. 
+
+1. **[Using Unity, CMock & CException][packet-section-8]**
+
+   Not only does Ceedling direct the overall build of your code, it also links 
+   together several key tools and frameworks. Those can require configuration of 
+   their own. Ceedling facilitates this.
+
+1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-9]**
+
+   This is the exhaustive documentation for all of Ceedling's project file 
+   configuration options — from project paths to command line tools to plugins and
+   much, much more.
+
+1. **[Build Directive Macros][packet-section-10]**
+
+   These code macros can help you accomplish your build goals When Ceedling's 
+   conventions aren't enough.
+
+1. **[Global Collections][packet-section-11]**
+
+   Ceedling is built in Ruby. Collections are globally available Ruby lists of paths,
+   files, and more that can be useful for advanced customization of a Ceedling project 
+   file or in creating plugins.
+
+1. **[Module Generator][packet-section-12]**
+
+   A pattern emerges in day-to-day unit testing, especially in the practice of Test-
+   Driven Development. Again and again, one needs a triplet of a source file, header 
+   file, and test file, scaffolded in such a way that they refer to one another.
+   Module Generator allows you to save precious minutes by creating these templated
+   files for you.
 
 [packet-section-1]:  #ceedling-a-c-build-system-for-all-your-mad-scientisting-needs
 [packet-section-2]:  #ceedling-unity-and-c-mocks-testing-abilities
 [packet-section-3]:  #anatomy-of-a-test-suite
-[packet-section-4]:  #ceedling-installation--set-up
-[packet-section-5]:  #now-what-how-do-i-make-it-go
-[packet-section-6]:  #important-conventions--behaviors
-[packet-section-7]:  #using-unity-cmock--cexception
-[packet-section-8]:  #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
-[packet-section-9]:  #build-directive-macros
-[packet-section-10]: #global-collections
-[packet-section-11]: #module-generator
+[packet-section-4]:  #commented-sample-test-file
+[packet-section-5]:  #ceedling-installation--set-up
+[packet-section-6]:  #now-what-how-do-i-make-it-go
+[packet-section-7]:  #important-conventions--behaviors
+[packet-section-8]:  #using-unity-cmock--cexception
+[packet-section-9]:  #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
+[packet-section-10]: #build-directive-macros
+[packet-section-11]: #global-collections
+[packet-section-12]: #module-generator
 
 ---
 
@@ -718,23 +801,26 @@ Ceedling (more on this later).
 
 * `ceedling verbosity[x] <tasks...>`:
 
-  Change the default verbosity level. `[x]` ranges from 0 (quiet) to 4
-  (obnoxious) with 5 reserved for debugging output. Level 3 is the default. 
-  The verbosity task must precede all tasks in the command line list for which
-  output is desired to be   seen. Verbosity settings are generally most 
-  meaningful in conjunction with test and release tasks.
+  Change default verbosity level. `[x]` ranges from `0` (quiet) to `4`
+  (obnoxious) with `5` reserved for debugging output. Level `3` is the 
+  default. 
+  
+  The verbosity task must precede all tasks in the command line task list 
+  for which output is desired to be seen. Verbosity settings are generally 
+  most meaningful in conjunction with test and release tasks.
 
-  Alternatively, you can use the name of each level, according to the
-  following map:
+* `ceedling verbosity:<level> <tasks...>`:
 
-  | Numerical    | Named               |
-  |--------------|---------------------|
-  | verbosity[0] | verbosity:silent    |
-  | verbosity[1] | verbosity:errors    |
-  | verbosity[2] | verbosity:warnings  |
-  | verbosity[3] | verbosity:normal    |
-  | verbosity[4] | verbosity:obnoxious |
-  | verbosity[5] | verbosity:debug     |
+  Alternative verbosity task scheme using the name of each level.
+
+  | Numeric Level | Named Level         |
+  |---------------|---------------------|
+  | verbosity[0]  | verbosity:silent    |
+  | verbosity[1]  | verbosity:errors    |
+  | verbosity[2]  | verbosity:warnings  |
+  | verbosity[3]  | verbosity:normal    |
+  | verbosity[4]  | verbosity:obnoxious |
+  | verbosity[5]  | verbosity:debug     |
 
 * `ceedling summary`:
 
@@ -1111,16 +1197,16 @@ documentation.
 ## Unity Configuration
 
 Unity is wholly compiled C code. As such, its configuration is entirely 
-controlled by a variety of `#define` symbols. These can be configured
-in Ceedling's `:defines` ↳ `:unity` project settings.
+controlled by a variety of compilation symbols. These can be configured
+in Ceedling's `:unity` project settings.
 
 ### Example Unity configurations
 
 #### Itty bitty processor & toolchain with limited test execution options
 
 ```yaml
-:defines:
-  :unity:
+:unity:
+  :defines:
     - UNITY_INT_WIDTH=16   # 16 bit processor without support for 32 bit instructions
     - UNITY_EXCLUDE_FLOAT  # No floating point unit
 ```
@@ -1128,8 +1214,8 @@ in Ceedling's `:defines` ↳ `:unity` project settings.
 #### Great big gorilla processor that grunts and scratches
 
 ```yaml
-:defines:
-  :unity:
+:unity:
+  :defines:
     - UNITY_SUPPORT_64                    # Big memory, big counters, big registers
     - UNITY_LINE_TYPE=\"unsigned int\"    # Apparently, we're writing lengthy test files,
     - UNITY_COUNTER_TYPE=\"unsigned int\" # and we've got a ton of test cases in those test files
@@ -1139,13 +1225,13 @@ in Ceedling's `:defines` ↳ `:unity` project settings.
 #### Example Unity configuration header file
 
 Sometimes, you may want to funnel all Unity configuration options into a 
-header file rather than organize a lengthy `:defines` ↳ `:unity` list. Perhaps your
-`#define` symbol definitions include characters needing escape sequences
-in YAML that are driving you bonkers.
+header file rather than organize a lengthy `:unity` ↳ `:defines` list. Perhaps your
+symbol definitions include characters needing escape sequences in YAML that are 
+driving you bonkers.
 
 ```yaml
-:defines:
-  :unity:
+:unity:
+  :defines:
     - UNITY_INCLUDE_CONFIG_H
 ```
 
@@ -1183,7 +1269,7 @@ very well. Consult your toolchain and shell documentation.
 If redefining the function and macros breaks your command line 
 compilation, all necessary options and functionality can be defined in 
 `unity_config.h`. Unity will need the `UNITY_INCLUDE_CONFIG_H` symbol in the
-`:defines` list of your Ceedling project file (see example above).
+`:unity` ↳ `:defines` list of your Ceedling project file (see example above).
 
 ## CMock Configuration
 
@@ -1214,7 +1300,7 @@ section within Ceedling's project file.
 
 Like Unity and CException, CMock's C components are configured at 
 compilation with symbols managed in your Ceedling project file's 
-`:defines` ↳ `:cmock` section.
+`:cmock` ↳ `:defines` section.
 
 ### Example CMock configurations
 
@@ -1223,14 +1309,12 @@ compilation with symbols managed in your Ceedling project file's
   # Shown for completeness -- CMock enabled by default in Ceedling
   :use_mocks: TRUE
 
-:defines:
-  :cmock:
-    # Memory alignment (packing) on 16 bit boundaries
-    - CMOCK_MEM_ALIGN=1
-
 :cmock:
   :when_no_prototypes: :warn
   :enforce_strict_ordering: TRUE
+  :defines:
+    # Memory alignment (packing) on 16 bit boundaries
+    - CMOCK_MEM_ALIGN=1
   :plugins:
     - :ignore
   :treat_as:
@@ -1245,7 +1329,7 @@ compilation with symbols managed in your Ceedling project file's
 
 Like Unity, CException is wholly compiled C code. As such, its 
 configuration is entirely controlled by a variety of `#define` symbols. 
-These can be configured in Ceedling's `:defines` ↳ `:cexception` project 
+These can be configured in Ceedling's `:cexception` ↳ `:defines` project 
 settings.
 
 Unlike Unity which is always available in test builds and CMock that 
@@ -1259,8 +1343,8 @@ if you wish to use it in your project.
   # Enable CException for both test and release builds
   :use_exceptions: TRUE
 
-:defines:
-  :cexception:
+:cexception:
+  :defines:
     # Possible exception codes of -127 to +127 
     - CEXCEPTION_T='signed char'
 
@@ -1336,9 +1420,9 @@ for this. A few highlights from that reference page:
   is parsed. This is usually accompanied by a complaint with
   line and column number pointing into the project file.
 
-* Certain advanced features rely on gcc and cpp as preprocessing
+* Certain advanced features rely on `gcc` and `cpp` as preprocessing
   tools. In most Linux systems, these tools are already available.
-  For Windows environments, we recommend the [mingw] project
+  For Windows environments, we recommend the [MinGW] project
   (Minimalist GNU for Windows).
 
 * Ceedling is primarily meant as a build tool to support automated
@@ -1351,7 +1435,7 @@ for this. A few highlights from that reference page:
   Ceedling's abilities. See the Ceedling plugin [subprojects] for
   extending release build abilities.
 
-[mingw]: http://www.mingw.org/
+[MinGW]: http://www.mingw.org/
 
 ## Conventions of Ceedling-specific YAML
 
@@ -1408,12 +1492,12 @@ internally - thus leading to unexpected behavior without warning.
 
   Ceedling and CMock are advanced tools with sophisticated parsers.
   However, they do not include entire C language preprocessors.
-  Consequently, with this option enabled, Ceedling will use gcc's
+  Consequently, with this option enabled, Ceedling will use `gcc`'s
   preprocessing mode and the cpp preprocessor tool to strip down /
   expand test files and headers to their applicable content which can
   then be processed by Ceedling and CMock.
 
-  With this option enabled, the gcc & cpp tools must exist in an
+  With this option enabled, the `gcc` & `cpp` tools must exist in an
   accessible system search path and test runner files are always
   regenerated.
 
@@ -1452,7 +1536,7 @@ internally - thus leading to unexpected behavior without warning.
 
   When enabled, a release Rake task is exposed. This configuration
   option requires a corresponding release compiler and linker to be
-  defined (gcc is used as the default).
+  defined (`gcc` is used as the default).
 
   Ceedling is primarily concerned with facilitating the complicated 
   mechanics of automating unit tests. The same mechanisms are easily 
@@ -1526,7 +1610,7 @@ internally - thus leading to unexpected behavior without warning.
   When a test file runs into a **Segmentation Fault**, the test executable 
   immediately crashes and further details aren't collected. By default, Ceedling
   reports a single failure for the entire file, specifying that it segfaulted. 
-  If you are running gcc or clang (llvm), then there is an option to get more
+  If you are running `gcc` or Clang (LLVM), then there is an option to get more
   detail!
 
   Set `:use_backtrace_gdb_reporter` to `true` and a segfault will trigger Ceedling to 
@@ -1597,13 +1681,16 @@ internally - thus leading to unexpected behavior without warning.
   directory the output of the release linker and (optionally) a map
   file. Many toolchains produce other important output files as well.
   Adding a file path to this list will cause Ceedling to copy that file
-  to the artifacts directory. The artifacts directory is helpful for
-  organizing important build output files and provides a central place
-  for tools such as Continuous Integration servers to point to build
-  output. Selectively copying files prevents incidental build cruft from
-  needlessly appearing in the artifacts directory. Note that inline Ruby
-  string replacement is available in the artifacts paths (see discussion
-  in the `:environment` section).
+  to the artifacts directory.
+
+  The artifacts directory is helpful for organizing important build 
+  output files and provides a central place for tools such as Continuous 
+  Integration servers to point to build output. Selectively copying 
+  files prevents incidental build cruft from needlessly appearing in the 
+  artifacts directory.
+
+  Note that inline Ruby string replacement is available in the artifacts 
+  paths (see discussion in the `:environment` section).
 
   **Default**: `[]` (empty)
 
@@ -1707,7 +1794,7 @@ the various path-related documentation sections.
   Note that if you configure your own toolchain in the `:tools` section,
   this search path is largely meaningless to you. However, this is a
   convenient way to control the system include path should you rely on
-  the default gcc tools.
+  the default [GCC] tools.
 
   **Default**: `[]` (empty)
 
@@ -1986,7 +2073,7 @@ Ceedling uses path lists and wildcard matching against filename extensions to co
 
 * `:dependencies`:
 
-  File containing make-style dependency rules created by gcc preprocessor
+  File containing make-style dependency rules created by the `gcc` preprocessor
 
   **Default**: .d
 
@@ -2093,57 +2180,6 @@ matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
   
   Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
   YAML key plus symbol list. Both are documented below.
-  
-  **Default**: `[]` (empty)
-
-* <h3><code>:defines</code> ↳ <code>:unity</code></h3>
-
-  This project configuration entry adds symbols used to configure Unity's features in its 
-  source and header files at compile time.
-  
-  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
-  configuring and making use of these frameworks in your build.
-  
-  To manage overall command line length, these symbols are only added to compilation when
-  a Unity C source file is compiled.
-  
-  No symbols must be set unless Unity's defaults are inappropriate for your environment 
-  and needs.
-  
-  **Default**: `[]` (empty)
-
-* <h3><code>:defines</code> ↳ <code>:cmock</code></h3>
-
-  This project configuration entry adds symbols used to configure CMock's C code features 
-  in its source and header files at compile time.
-  
-  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
-  configuring and making use of these frameworks in your build.
-  
-  To manage overall command line length, these symbols are only added to compilation when
-  a CMock C source file is compiled.
-  
-  No symbols must be set unless CMock's defaults are inappropriate for your environment 
-  and needs.
-  
-  **Default**: `[]` (empty)
-
-* <h3><code>:defines</code> ↳ <code>:cexception</code></h3>
-
-  This project configuration entry adds symbols used to configure CException's features in 
-  its source and header files at compile time.
-  
-  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
-  configuring and making use of these frameworks in your build.
-  
-  To manage overall command line length, these symbols are only added to compilation when
-  a CException C source file is compiled.
-  
-  No symbols must be set unless CException's defaults are inappropriate for your 
-  environment and needs.
-  
-  Note CException must be enabled for it to be added to a release or test build and for 
-  these symbols to be added to a build of CException (see link referenced earlier for more).
   
   **Default**: `[]` (empty)
 
@@ -2357,8 +2393,8 @@ few levels of support.
   These libraries are assumed to be findable by the configured linker tool, should need
   no path help, and can be specified by common linker shorthand for libraries.
   
-  For example, specifying `m` will include the math library per the gcc convention. The
-  file itself on a Unix-like system will be `libm` and the gcc command line argument 
+  For example, specifying `m` will include the math library per the GCC convention. The
+  file itself on a Unix-like system will be `libm` and the `gcc` command line argument 
   will be `-lm`.
   
   **Default**: `[]` (empty)
@@ -2369,7 +2405,7 @@ few levels of support.
 
   Command line argument format for specifying a library.
 
-  **Default**: `-l${1}` (gcc format)
+  **Default**: `-l${1}` (GCC format)
 
 * `:path_flag`:
 
@@ -2377,7 +2413,7 @@ few levels of support.
 
   Library search paths may be added to your project with `:paths` ↳ `:libraries`.
 
-  **Default**: `-L "${1}”` (gcc format)
+  **Default**: `-L "${1}”` (GCC format)
 
 ### `:libraries` example with YAML blurb
 
@@ -2400,8 +2436,8 @@ few levels of support.
 
 * If you've specified your own link step, you are going to want to add `${4}` to your 
   argument list in the position where library files should be added to the command line. 
-  For gcc, this is often the very end. Other tools may vary. See the `:tools` section
-  for more.
+  For `gcc`, this is often at the very end. Other tools may vary. See the `:tools` 
+  section for more.
 
 ## `:flags` Configure preprocessing, compilation & linking command line flags
 
@@ -2642,6 +2678,27 @@ Using hashes:
   :configB: path/to/another/config.yml
 ```
 
+## `:cexception` Configure CException’s features
+
+* `:defines`:
+
+  List of symbols used to configure CException's features in its source and header files 
+  at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a CException C source file is compiled.
+  
+  No symbols must be set unless CException's defaults are inappropriate for your 
+  environment and needs.
+  
+  Note CException must be enabled for it to be added to a release or test build and for 
+  these symbols to be added to a build of CException (see link referenced earlier for more).
+  
+  **Default**: `[]` (empty)
+
 ## `:cmock` Configure CMock’s code generation & compilation
 
 Ceedling sets values for a subset of CMock settings. All CMock
@@ -2649,7 +2706,10 @@ options are available to be set, but only those options set by
 Ceedling in an automated fashion are documented below. See CMock
 documentation.
 
-Ceedling sets values for a subset of CMock settings. All CMock options are available to be set, but only those options set by Ceedling in an automated fashion are documented below. See CMock documentation.
+Ceedling sets values for a subset of CMock settings. All CMock 
+options are available to be set, but only those options set by 
+Ceedling in an automated fashion are documented below. 
+See [CMock] documentation.
 
 * `:enforce_strict_ordering`:
 
@@ -2666,6 +2726,22 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
 * `:verbosity`:
 
   If not set, defaults to Ceedling's verbosity level
+
+* `:defines`:
+
+  Adds list of symbols used to configure CMock's C code features in its source and header 
+  files at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a CMock C source file is compiled.
+  
+  No symbols must be set unless CMock's defaults are inappropriate for your environment 
+  and needs.
+  
+  **Default**: `[]` (empty)
 
 * `:plugins`:
 
@@ -2685,15 +2761,38 @@ Ceedling sets values for a subset of CMock settings. All CMock options are avail
   above with regard to adding additional files to be inserted within
   mocks as #include statements.
 
+### Notes on Ceedling’s nudges for CMock strict ordering
+
 The last four settings above are directly tied to other Ceedling
-settings; hence, why they are listed and explained here. The
-first setting above, `:enforce_strict_ordering`, defaults
-to FALSE within CMock. It is set to TRUE by default in Ceedling
-as our way of encouraging you to use strict ordering. It's a teeny
-bit more expensive in terms of code generated, test execution
-time, and complication in deciphering test failures. However,
-it's good practice. And, of course, you can always disable it
-by overriding the value in the Ceedling YAML configuration file.
+settings; hence, why they are listed and explained here.
+
+The first setting above, `:enforce_strict_ordering`, defaults
+to `FALSE` within CMock. However, it is set to `TRUE` by default 
+in Ceedling as our way of encouraging you to use strict ordering.
+
+Strict ordering is teeny bit more expensive in terms of code 
+generated, test execution time, and complication in deciphering 
+test failures. However, it's good practice. And, of course, you 
+can always disable it by overriding the value in the Ceedling 
+project configuration file.
+
+## `:unity` Configure Unity’s features
+
+* `:defines`:
+
+  Adds list of symbols used to configure Unity's features in its source and header files
+  at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a Unity C source file is compiled.
+  
+  No symbols must be set unless Unity's defaults are inappropriate for your environment 
+  and needs.
+  
+  **Default**: `[]` (empty)
 
 ## `:tools` Configuring command line tools used for build steps
 
@@ -2867,7 +2966,7 @@ decorated in any way needed. To use a literal `$`, escape it as `\\$`.
   path of the resulting object file. For a linker `${1}` will be an array
   of object files to link, and `${2}` will be the resulting binary
   executable. For an executable test fixture `${1}` is either the binary
-  executable itself (when using a local toolchain such as gcc) or a
+  executable itself (when using a local toolchain such as GCC) or a
   binary input file given to a simulator in its arguments.
 
 ### Example `:tools` YAML blurb
@@ -2922,9 +3021,9 @@ decorated in any way needed. To use a literal `$`, escape it as `\\$`.
   might go unseen in all the output scrolling past in a terminal.
 
 * The built-in preprocessing tools _can_ be overridden with 
-  non-gcc equivalents. However, this is highly impractical to do
+  non-GCC equivalents. However, this is highly impractical to do
   as preprocessing features are highly dependent on the 
-  idiosyncrasies and features of the gcc toolchain.
+  idiosyncrasies and features of the GCC toolchain.
 
 #### Example Test Compiler Tooling
 

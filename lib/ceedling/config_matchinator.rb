@@ -12,69 +12,69 @@ class ConfigMatchinator
 
   constructor :configurator, :streaminator
 
-  def config_include?(section:, context:, operation:nil)
+  def config_include?(primary:, secondary:, tertiary:nil)
     # Create configurator accessor method
-    accessor = (section.to_s + '_' + context.to_s).to_sym
+    accessor = (primary.to_s + '_' + secondary.to_s).to_sym
 
-    # If no entry in configuration for context in this section, bail out
+    # If no entry in configuration for secondary in primary, bail out
     return false if not @configurator.respond_to?( accessor )
 
-    # If operation undefined, we've progressed as far as we need and already know the config is present
-    return true if operation.nil?
+    # If tertiary undefined, we've progressed as far as we need and already know the config is present
+    return true if tertiary.nil?
 
     # Get element associated with this context
     elem = @configurator.send( accessor )
 
-    # If [section][context] is a simple array
+    # If [primary][secondary] is a simple array
     if elem.is_a?(Array)
-      # A list instead of a hash, means [operation] is not present
+      # A list instead of a hash, means [tertiary] is not present
       return false
 
-    # If [section][context] is a hash
+    # If [primary][secondary] is a hash
     elsif elem.is_a?(Hash)
-      return elem.include?( operation )
+      return elem.include?( tertiary )
     end
 
-    # Otherwise, [section][context] is something that cannot contain an [operation] sub-hash
+    # Otherwise, [primary][secondary] is something that cannot contain a [tertiary] sub-hash
     return false
   end
 
-  def get_config(section:, context:, operation:nil)
+  def get_config(primary:, secondary:, tertiary:nil)
     # Create configurator accessor method
-    accessor = (section.to_s + '_' + context.to_s).to_sym
+    accessor = (primary.to_s + '_' + secondary.to_s).to_sym
 
-    # If no entry in configuration for context in this section, bail out
+    # If no entry in configuration for secondary in primary, bail out
     return nil if not @configurator.respond_to?( accessor )
 
-    # Get config element associated with this context
+    # Get config element associated with this secondary
     elem = @configurator.send( accessor )
 
-    # If [section][context] is a simple array
+    # If [primary][secondary] is a simple array
     if elem.class == Array
-      # If no operation specified, then a simple array makes sense
-      return elem if operation.nil?
+      # If no tertiary specified, then a simple array makes sense
+      return elem if tertiary.nil?
 
-      # Otherwise, if an operation is specified but we have an array, go boom
-      error = "ERROR: [#{section}][#{context}] present in project configuration but does not contain [#{operation}]."
+      # Otherwise, if an tertiary is specified but we have an array, go boom
+      error = "ERROR: [#{primary}][#{secondary}] present in project configuration but does not contain [#{tertiary}]."
       raise CeedlingException.new(error)
 
-    # If [section][context] is a hash
+    # If [primary][secondary] is a hash
     elsif elem.class == Hash
-      if not operation.nil?
-        # Bail out if we're looking for an [operation] sub-hash, but it's not present
-        return nil if not elem.include?( operation )
+      if not tertiary.nil?
+        # Bail out if we're looking for an [tertiary] sub-hash, but it's not present
+        return nil if not elem.include?( tertiary )
 
-        # Return array or hash at operation
-        return elem[operation]
+        # Return array or hash at tertiary
+        return elem[tertiary]
 
-      # If operation is not being queried, but we have a hash, return the hash
+      # If tertiary is not being queried, but we have a hash, return the hash
       else
         return elem
       end
 
-    # If [section][context] is nothing we expect--something other than an array or hash
+    # If [primary][secondary] is nothing we expect--something other than an array or hash
     else
-      error = "ERROR: [#{section}][#{context}] in project configuration is neither a list nor hash."
+      error = "ERROR: [#{primary}][#{secondary}] in project configuration is neither a list nor hash."
       raise CeedlingException.new(error)
     end
 

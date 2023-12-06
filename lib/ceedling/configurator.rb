@@ -135,15 +135,6 @@ class Configurator
   end
 
 
-  def copy_vendor_defines(config)
-    # NOTE: To maintain any backwards compatibility following a refactoring of :defines: handling,
-    #       copy top-level vendor defines into the respective tool areas.
-    config[UNITY_SYM].store(:defines, config[:defines][UNITY_SYM])
-    config[CMOCK_SYM].store(:defines, config[:defines][CMOCK_SYM])
-    config[CEXCEPTION_SYM].store(:defines, config[:defines][CEXCEPTION_SYM])
-  end
-
-
   def get_runner_config
     return @runner_config.clone
   end
