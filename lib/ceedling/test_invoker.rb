@@ -363,9 +363,6 @@ class TestInvoker
     filepath = testable[:filepath]
     flags = testable[:compile_flags]
 
-    # Tailor defines--remove duplicates and reduce list to only those needed by vendor / support file compilation
-    defines = @helper.tailor_defines(defines:testable[:compile_defines], filepath:source)
-
     # Tailor search path--remove duplicates and reduce list to only those needed by vendor / support file compilation
     search_paths = @helper.tailor_search_paths(search_paths:testable[:search_paths], filepath:source)
 

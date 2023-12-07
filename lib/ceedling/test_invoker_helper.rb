@@ -13,7 +13,8 @@ class TestInvokerHelper
               :file_finder,
               :file_path_utils,
               :file_wrapper,
-              :generator
+              :generator,
+              :unity_utils
 
   def setup
     # Alias for brevity
@@ -63,41 +64,19 @@ class TestInvokerHelper
     defines = @defineinator.generate_test_definition( filepath:filepath )
     defines += @defineinator.defines( subkey:context, filepath:filepath )
 
-    # Defines for the test file
-    return defines
-  end
-
-  def tailor_defines(filepath:, defines:)
-    _defines = []
-
     # Unity defines
-    if filepath == File.join(PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE)
-      _defines += @defineinator.defines( topkey:UNITY_SYM, subkey: :defines )
+    defines += @defineinator.defines( topkey:UNITY_SYM, subkey: :defines )
 
     # CMock defines
-    elsif @configurator.project_use_mocks and 
-          (filepath == File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE))
-      _defines += @defineinator.defines( topkey:CMOCK_SYM, subkey: :defines )
+    defines += @defineinator.defines( topkey:CMOCK_SYM, subkey: :defines )
 
     # CException defines
-    elsif @configurator.project_use_exceptions and 
-          (filepath == File.join(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE))
-      _defines += @defineinator.defines( topkey:CEXCEPTION_SYM, subkey: :defines )
+    defines += @defineinator.defines( topkey:CEXCEPTION_SYM, subkey: :defines )
 
-    # Support files defines
-    elsif (@configurator.collection_all_support.include?(filepath))
-      _defines = defines
-      _defines += @defineinator.defines( topkey:UNITY_SYM, subkey: :defines )
-      _defines += @defineinator.defines( topkey:CMOCK_SYM, subkey: :defines ) if @configurator.project_use_mocks
-      _defines += @defineinator.defines( topkey:CEXCEPTION_SYM, subkey: :defines ) if @configurator.project_use_exceptions
-    end
+    # Injected defines (based on other settings)
+    defines += unity_utils.update_defines_if_args_enables
 
-    # Not a vendor file, return original defines
-    if _defines.length == 0
-      return defines
-    end
-
-    return _defines.uniq
+    return defines.uniq
   end
 
   def tailor_search_paths(filepath:, search_paths:)

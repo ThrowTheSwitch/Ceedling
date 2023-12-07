@@ -96,8 +96,8 @@ class UnityUtils
   # compile unity with enabled cmd line arguments
   #
   # @return [Array] - empty if cmdline_args is not set
-  def self.update_defines_if_args_enables(in_hash)
-    in_hash[:test_runner_cmdline_args] ? ['UNITY_USE_COMMAND_LINE_ARGS'] : []
+  def self.update_defines_if_args_enables()
+    @configurator.project_config_hash[:test_runner_cmdline_args] ? ['UNITY_USE_COMMAND_LINE_ARGS'] : []
   end
 
   # Print on output console warning about lack of support for single test run
