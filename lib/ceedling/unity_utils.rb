@@ -96,7 +96,7 @@ class UnityUtils
   # compile unity with enabled cmd line arguments
   #
   # @return [Array] - empty if cmdline_args is not set
-  def self.update_defines_if_args_enables()
+  def grab_additional_defines_based_on_configuration()
     @configurator.project_config_hash[:test_runner_cmdline_args] ? ['UNITY_USE_COMMAND_LINE_ARGS'] : []
   end
 
