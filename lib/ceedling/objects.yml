@@ -17,10 +17,6 @@ system_wrapper:
 
 reportinator:
 
-unity_utils:
-  compose:
-    - configurator
-    
 rake_utils:
   compose:
     - rake_wrapper
@@ -345,6 +341,7 @@ test_invoker_helper:
     - file_path_utils
     - file_wrapper
     - generator
+    - unity_utils
 
 release_invoker:
   compose:
