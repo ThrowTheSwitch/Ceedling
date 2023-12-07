@@ -74,7 +74,7 @@ class TestInvokerHelper
     defines += @defineinator.defines( topkey:CEXCEPTION_SYM, subkey: :defines )
 
     # Injected defines (based on other settings)
-    defines += unity_utils.update_defines_if_args_enables
+    defines += @unity_utils.update_defines_if_args_enables
 
     return defines.uniq
   end
