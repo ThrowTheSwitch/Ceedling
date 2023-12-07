@@ -17,6 +17,8 @@ system_wrapper:
 
 reportinator:
 
+unity_helper:
+
 rake_utils:
   compose:
     - rake_wrapper
