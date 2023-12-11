@@ -54,12 +54,12 @@ describe "Ceedling" do
               expect(@output).to match(/TESTED:\s+47/)
               expect(@output).to match(/PASSED:\s+47/)
 
-              expect(@output).to match(/AdcConductor\.c Lines executed:/i)
-              expect(@output).to match(/AdcHardware\.c Lines executed:/i)
-              expect(@output).to match(/AdcModel\.c Lines executed:/i)
-              expect(@output).to match(/Executor\.c Lines executed:/i)
-              expect(@output).to match(/Main\.c Lines executed:/i)
-              expect(@output).to match(/Model\.c Lines executed:/i)
+              expect(@output).to match(/AdcConductor\.c \| Lines executed:/i)
+              expect(@output).to match(/AdcHardware\.c \| Lines executed:/i)
+              expect(@output).to match(/AdcModel\.c \| Lines executed:/i)
+              expect(@output).to match(/Executor\.c \| Lines executed:/i)
+              expect(@output).to match(/Main\.c \| Lines executed:/i)
+              expect(@output).to match(/Model\.c \| Lines executed:/i)
               # there are more, but this is a good place to stop.
 
               expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true

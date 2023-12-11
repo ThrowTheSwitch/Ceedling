@@ -216,7 +216,7 @@ module GcovTestCases
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:50.00% of 4/)
 
-        expect(gcov_html_report).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\. Done/)
+        expect(output).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\. Done/)
         expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
       end
     end
@@ -246,7 +246,7 @@ module GcovTestCases
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:0.00% of 4/)
 
-        expect(gcov_html_report).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\. Done/)
+        expect(output).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\. Done/)
         expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
       end
     end
@@ -280,7 +280,7 @@ module GcovTestCases
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:100.00% of 4/)
 
-        expect(gcov_html_report).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\. Done/)
+        expect(output).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\. Done/)
         expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
       end
     end
