@@ -25,7 +25,7 @@ void test_BlinkTask_should_toggle_led(void)
     BlinkTask();
 
     /* Verify test results */
-    TEST_ASSERT_EQUAL(0x20, PORTB);
+    TEST_ASSERT_EQUAL_HEX8(0x20, PORTB);
 }
 void test_BlinkTask_should_toggle_led_LOW(void)
 {
@@ -38,5 +38,5 @@ void test_BlinkTask_should_toggle_led_LOW(void)
     BlinkTask();
 
     /* Verify test results */
-    TEST_ASSERT_EQUAL(0, PORTB);
+    TEST_ASSERT_EQUAL_HEX8(0, PORTB);
 }

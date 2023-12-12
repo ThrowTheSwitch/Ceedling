@@ -23,7 +23,7 @@ void test_Configure_should_setup_timer_and_port(void)
     Configure();
 
     /* Verify test results */
-    TEST_ASSERT_EQUAL(3, TCCR0B);
-    TEST_ASSERT_EQUAL(1, TIMSK0);
-    TEST_ASSERT_EQUAL(0x20, DDRB);
+    TEST_ASSERT_EQUAL_INT(3, TCCR0B);
+    TEST_ASSERT_EQUAL_INT(1, TIMSK0);
+    TEST_ASSERT_EQUAL_INT(0x20, DDRB);
 }

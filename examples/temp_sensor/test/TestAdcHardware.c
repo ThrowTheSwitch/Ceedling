@@ -40,5 +40,5 @@ void testGetSampleShouldDelegateToAdcTemperatureSensor(void)
   Adc_ReadTemperatureSensor_ExpectAndReturn(847);
 
   sample = AdcHardware_GetSample();
-  TEST_ASSERT_EQUAL(847, sample);
+  TEST_ASSERT_EQUAL_INT(847, sample);
 }

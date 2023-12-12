@@ -19,7 +19,7 @@ void testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSettin
   uint8 dummyRegisterSetting = 17;
   UsartModel_CalculateBaudRateRegisterSetting_ExpectAndReturn(MASTER_CLOCK, USART0_BAUDRATE, dummyRegisterSetting);
 
-  TEST_ASSERT_EQUAL(dummyRegisterSetting, UsartModel_GetBaudRateRegisterSetting());
+  TEST_ASSERT_EQUAL_UINT8(dummyRegisterSetting, UsartModel_GetBaudRateRegisterSetting());
 }
 
 void testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately(void)

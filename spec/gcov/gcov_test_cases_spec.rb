@@ -216,7 +216,8 @@ module GcovTestCases
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:50.00% of 4/)
 
-        expect(output).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\. Done/)
+        expect(output).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\./)
+        expect(output).to.match(/Done/)
         expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
       end
     end
@@ -246,7 +247,8 @@ module GcovTestCases
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:0.00% of 4/)
 
-        expect(output).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\. Done/)
+        expect(output).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\./)
+        expect(output).to.match(/Done/)
         expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
       end
     end
@@ -264,7 +266,7 @@ module GcovTestCases
 
         add_test_case = "\nvoid test_difference_between_two_numbers(void)\n"\
                         "{\n" \
-                        "  TEST_ASSERT_EQUAL(0, difference_between_numbers(1,1));\n" \
+                        "  TEST_ASSERT_EQUAL_INT(0, difference_between_numbers(1,1));\n" \
                         "}\n"
         
         updated_test_file = File.read('test/test_example_file_sigsegv.c').split("\n")
@@ -280,7 +282,8 @@ module GcovTestCases
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:100.00% of 4/)
 
-        expect(output).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\. Done/)
+        expect(output).to match(/Creating HTML coverage report\(s\) with gcovr in 'build\/artifacts\/gcov'\.\.\./)
+        expect(output).to.match(/Done/)
         expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
       end
     end

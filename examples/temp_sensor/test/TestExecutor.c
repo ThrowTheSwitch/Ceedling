@@ -32,5 +32,5 @@ void testRunShouldCallRunForEachConductorAndReturnTrueAlways(void)
   TimerConductor_Run_Expect();
   AdcConductor_Run_Expect();
 
-  TEST_ASSERT_EQUAL(TRUE, Executor_Run());
+  TEST_ASSERT_TRUE(Executor_Run());
 }

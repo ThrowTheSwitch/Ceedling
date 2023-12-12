@@ -412,7 +412,7 @@ module CeedlingTestCases
         add_project_settings("project.yml", settings)
 
         output = `bundle exec ruby -S ceedling 2>&1`
-        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect($?.exitstatus).to match(0) # Since a test either passes or is ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
@@ -496,7 +496,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file_with_mock.c"), 'test/'
 
         output = `bundle exec ruby -S ceedling 2>&1`
-        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect($?.exitstatus).to match(0) # Since a test either passed or was ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
@@ -549,7 +549,7 @@ module CeedlingTestCases
         expect(output).to match(/ceedling summary/i)
         expect(output).to match(/ceedling test:\*/i)
         expect(output).to match(/ceedling test:all/i)
-        expect(output).to match(/ceedling test:delta/i)
+        #expect(output).to match(/ceedling test:delta/i) #feature temporarily removed
         expect(output).to match(/ceedling version/i)
       end
     end
