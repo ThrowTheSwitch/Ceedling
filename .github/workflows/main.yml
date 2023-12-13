@@ -93,6 +93,7 @@ jobs:
   # Job: Automatic Minor Releases
   auto-release:
     name: "Automatic Minor Releases"
+    needs: [unit-tests]
     runs-on: ubuntu-latest
     strategy:
       matrix:
