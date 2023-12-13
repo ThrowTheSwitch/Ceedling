@@ -22,7 +22,7 @@ class SystemUtils
   # Checks the system shell to see if it a tcsh shell.
   def tcsh_shell?
     # once run a single time, return state determined at that execution
-    return @tcsh_shell if not @tcsh_shell.nil?
+    return @tcsh_shell unless @tcsh_shell.nil?
   
     result = @system_wrapper.shell_backticks(command:'echo $version')
 

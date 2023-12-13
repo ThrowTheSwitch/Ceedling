@@ -350,7 +350,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_unity_printf.c"), 'test/'
         settings = { :unity => { :defines => [ "UNITY_INCLUDE_PRINT_FORMATTED" ] },
-                     :defines => { :test_example_file_unity_printf => [ "TEST" ] }
+                     :defines => { :test => { :example_file_unity_printf => [ "TEST" ] } }
                    }
         add_project_settings("project.yml", settings)
 
@@ -364,23 +364,24 @@ module CeedlingTestCases
     end
   end
 
-  def can_test_projects_with_enabled_auto_link_deep_deependency_with_success
-    @c.with_context do
-      Dir.chdir @proj_name do
-        FileUtils.copy_entry test_asset_path("auto_link_deep_dependencies/src/"), 'src/'
-        FileUtils.cp_r test_asset_path("auto_link_deep_dependencies/test/."), 'test/'
-        settings = { :project => { :auto_link_deep_dependencies => true } }
-        add_project_settings("project.yml", settings)
+  #TODO: feature temporarily disabled
+  # def can_test_projects_with_enabled_auto_link_deep_deependency_with_success
+  #   @c.with_context do
+  #     Dir.chdir @proj_name do
+  #       FileUtils.copy_entry test_asset_path("auto_link_deep_dependencies/src/"), 'src/'
+  #       FileUtils.cp_r test_asset_path("auto_link_deep_dependencies/test/."), 'test/'
+  #       settings = { :project => { :auto_link_deep_dependencies => true } }
+  #       add_project_settings("project.yml", settings)
 
-        output = `bundle exec ruby -S ceedling 2>&1`
-        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
-        expect(output).to match(/TESTED:\s+\d/)
-        expect(output).to match(/PASSED:\s+\d/)
-        expect(output).to match(/FAILED:\s+\d/)
-        expect(output).to match(/IGNORED:\s+\d/)
-      end
-    end
-  end
+  #       output = `bundle exec ruby -S ceedling 2>&1`
+  #       expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+  #       expect(output).to match(/TESTED:\s+\d/)
+  #       expect(output).to match(/PASSED:\s+\d/)
+  #       expect(output).to match(/FAILED:\s+\d/)
+  #       expect(output).to match(/IGNORED:\s+\d/)
+  #     end
+  #   end
+  # end
 
   def can_test_projects_with_enabled_preprocessor_directives_with_success
     @c.with_context do
@@ -405,9 +406,9 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         FileUtils.copy_entry test_asset_path("tests_with_defines/src/"), 'src/'
         FileUtils.cp_r test_asset_path("tests_with_defines/test/."), 'test/'
-        settings = { :defines => { :test => [ "STANDARD_CONFIG" ],
+        settings = { :defines => { :test => { :* => [ "STANDARD_CONFIG" ],
                                    :test_adc_hardware_special => [ "TEST", "SPECIFIC_CONFIG" ],
-                                 }
+                                 } }
                    }
         add_project_settings("project.yml", settings)
 
