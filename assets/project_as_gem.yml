@@ -7,7 +7,6 @@
   # optional features. If you don't need them, keep them turned off for performance
   :use_mocks: TRUE
   :use_test_preprocessor: TRUE
-  :use_preprocessor_directives: FALSE
   :use_deep_dependencies: FALSE
   :use_auxiliary_dependencies: TRUE
   :use_backtrace_gdb_reporter: FALSE

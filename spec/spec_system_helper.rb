@@ -29,10 +29,11 @@ def convert_slashes(path)
   end
 end
 
-def add_project_settings(project_file_path, settings)
+def add_project_settings(project_file_path, settings, show_final=false)
   yaml_wrapper = YamlWrapper.new
   project_hash = yaml_wrapper.load(project_file_path)
-  project_hash.deep_merge(settings)
+  project_hash.deep_merge!(settings)
+  puts "\n\n#{project_hash.to_yaml}\n\n" if show_final
   yaml_wrapper.dump(project_file_path, project_hash)
 end
 
@@ -364,33 +365,14 @@ module CeedlingTestCases
     end
   end
 
-  #TODO: feature temporarily disabled
-  # def can_test_projects_with_enabled_auto_link_deep_deependency_with_success
-  #   @c.with_context do
-  #     Dir.chdir @proj_name do
-  #       FileUtils.copy_entry test_asset_path("auto_link_deep_dependencies/src/"), 'src/'
-  #       FileUtils.cp_r test_asset_path("auto_link_deep_dependencies/test/."), 'test/'
-  #       settings = { :project => { :auto_link_deep_dependencies => true } }
-  #       add_project_settings("project.yml", settings)
-
-  #       output = `bundle exec ruby -S ceedling 2>&1`
-  #       expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
-  #       expect(output).to match(/TESTED:\s+\d/)
-  #       expect(output).to match(/PASSED:\s+\d/)
-  #       expect(output).to match(/FAILED:\s+\d/)
-  #       expect(output).to match(/IGNORED:\s+\d/)
-  #     end
-  #   end
-  # end
-
-  def can_test_projects_with_enabled_preprocessor_directives_with_success
+  def can_test_projects_with_enabled_auto_link_deep_deependency_with_success
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
-        settings = { :project => { :use_preprocessor_directives => true },
-                     :unity => { :use_param_tests => true }
-                   }
+        FileUtils.copy_entry test_asset_path("auto_link_deep_dependencies/src/"), 'src/'
+        FileUtils.cp_r test_asset_path("auto_link_deep_dependencies/test/."), 'test/'
+        settings = { :project => { :auto_link_deep_dependencies => true } }
         add_project_settings("project.yml", settings)
+
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
@@ -406,7 +388,7 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         FileUtils.copy_entry test_asset_path("tests_with_defines/src/"), 'src/'
         FileUtils.cp_r test_asset_path("tests_with_defines/test/."), 'test/'
-        settings = { :defines => { :test => { :* => [ "STANDARD_CONFIG" ],
+        settings = { :defines => { :test => { '*' => [ "TEST", "STANDARD_CONFIG" ],
                                    'test_adc_hardware_special.c' => [ "TEST", "SPECIFIC_CONFIG" ],
                                  } }
                    }

@@ -245,7 +245,10 @@ class TestInvoker
           test_core          = test_sources + details[:mock_list]
 
           # When we have a mock and an include for the same file, the mock wins
-          #test_core.delete_if {|v| details[:mock_list].include?("#{CMOCK_MOCK_PREFIX}#{File.basename(v,'.*')}#{CMOCK_MOCK_SUFFIX}#{EXTENSION_SOURCE}")}
+          test_core.delete_if do |v| 
+            mock_of_this_file = "#{@configurator.cmock_mock_prefix}#{File.basename(v,'.*')}"
+            details[:mock_list].include?(mock_of_this_file)
+          end
           
           # CMock + Unity + CException
           test_frameworks    = @helper.collect_test_framework_sources
