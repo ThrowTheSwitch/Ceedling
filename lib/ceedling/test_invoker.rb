@@ -243,8 +243,13 @@ class TestInvoker
           # Source files referenced by conventions or specified by build directives in a test file
           test_sources       = @test_invoker_helper.extract_sources( details[:filepath] )
           test_core          = test_sources + details[:mock_list]
+
+          # When we have a mock and an include for the same file, the mock wins
+          test_core.delete_if {|v| details[:mock_list].include?("#{CMOCK_MOCK_PREFIX}#{File.basename(v,'.*')}#{CMOCK_MOCK_SUFFIX}#{EXTENSION_SOURCE}")}
+          
           # CMock + Unity + CException
           test_frameworks    = @helper.collect_test_framework_sources
+          
           # Extra suport source files (e.g. microcontroller startup code needed by simulator)
           test_support       = @configurator.collection_all_support
 

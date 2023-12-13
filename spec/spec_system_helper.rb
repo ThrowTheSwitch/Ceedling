@@ -407,7 +407,7 @@ module CeedlingTestCases
         FileUtils.copy_entry test_asset_path("tests_with_defines/src/"), 'src/'
         FileUtils.cp_r test_asset_path("tests_with_defines/test/."), 'test/'
         settings = { :defines => { :test => { :* => [ "STANDARD_CONFIG" ],
-                                   :test_adc_hardware_special => [ "TEST", "SPECIFIC_CONFIG" ],
+                                   'test_adc_hardware_special.c' => [ "TEST", "SPECIFIC_CONFIG" ],
                                  } }
                    }
         add_project_settings("project.yml", settings)
