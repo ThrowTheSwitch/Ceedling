@@ -2136,8 +2136,8 @@ Advanced handling for test builds only:
       - ...
 ```
 
-A context is the build context you want to modify — `:test` or `:release`. Some plugins
-also hook into `:defines` with their own context.
+A context is the build context you want to modify — `:test` or `:release`. Plugins
+can also hook into `:defines` with their own context.
 
 You specify the symbols you want to add to a build step beneath a `:<context>`. In many 
 cases this is a simple YAML list of strings that will become symbols defined in a 
@@ -2183,7 +2183,7 @@ matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
   
   **Default**: `[]` (empty)
 
-* <h3><code>:defines</code> ↳ <code>:&lt;plugin context&gt;</code>
+* <h3><code>:defines</code> ↳ <code>:&lt;plugin context&gt;</code></h3>
 
   Some advanced plugins make use of build contexts as well. For instance, the Ceedling 
   Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
@@ -2279,7 +2279,7 @@ This example illustrates each of the test file name matcher types.
       - A                  
     :Model:                   # Substring: Add '-DCHOO' for compilation of all files of any test with 'Model' in its name
       - CHOO
-    :M(ain|odel):             #     Regex: Add '-DBLESS_YOU' for all files of any test with 'Main' or 'Model' in its name
+    :/M(ain|odel)/:           #     Regex: Add '-DBLESS_YOU' for all files of any test with 'Main' or 'Model' in its name
       - BLESS_YOU
 ```
 
@@ -2289,13 +2289,9 @@ These matchers are available:
 
 1. Wildcard (`*`) — Matches all tests.
 1. Substring — Matches on part of a test filename (up to all of it, including full path).
-1. Regex — Matches test file names against a regular expression.
+1. Regex (`/.../`) — Matches test file names against a regular expression.
 
 Note that substring filename matching is case sensitive.
-
-The list above is also the order in which matcher keys in the YAML are evaluated. As 
-soon as any match is made on a test file name, the evaluation down the list for that
-test file ends.
 
 Symbols by matcher are cumulative. This means the symbols from more than one matcher 
 can be applied to compilation for the components of any one test executable.
@@ -2317,6 +2313,42 @@ executables.
   :test:
     - A   # Equivalent to wildcard '*' test file matching
 ```
+
+#### Distinguishing similar or identical filenames with `:defines` per-test matchers
+
+You may find yourself needing to distinguish test files with the same name or test 
+files with names whose base naming is identical.
+
+Of course, identical test filenames have a natural distinguishing feature in their 
+containing directory paths. Files of the same name can only exist in different
+directories. As such, your matching must include the path.
+
+```yaml
+:defines:
+  :test:
+    :hardware/test_startup:  # Match any test names beginning with 'test_startup' in hardware/ directory
+      - A                  
+    :network/test_startup:   # Match any test names beginning with 'test_startup' in network/ directory
+      - B
+```
+
+It's common in C file naming to use the same base name for multiple files. Given the
+following example list, care must be given to matcher construction to single out
+test_comm_startup.c.
+
+* tests/test_comm_hw.c
+* tests/test_comm_startup.c
+* tests/test_comm_startup_timers.c
+
+```yaml
+:defines:
+  :test:
+    :test_comm_startup.c: # Full filename with extension distinguishes this file test_comm_startup_timers.c
+      - FOO
+```
+
+The preceding examples use substring matching, but, regular expression matching
+could also be appropriate.
 
 #### Using YAML anchors & aliases for complex testing scenarios with `:defines`
 
@@ -2473,7 +2505,7 @@ Advanced flags handling for test builds only:
         - ...
 ```
 
-A context is the build context you want to modify — `:test` or `:release`. Some plugins
+A context is the build context you want to modify — `:test` or `:release`. Plugins can
 also hook into `:flags` with their own context.
 
 An operation is the build step you wish to modify — `:preprocess`, `:compile`, or `:link`.
@@ -2594,7 +2626,7 @@ basic ideas of test file name matching.
         - -foo                  
       :Model:                   # Substring: Add '-Wall' for all files of any test with 'Model' in its name
         - -Wall
-      :M(ain|odel):             #     Regex: Add 🏴‍☠️ flag for all files of any test with 'Main' or 'Model' in its name
+      :/M(ain|odel)/:           #     Regex: Add 🏴‍☠️ flag for all files of any test with 'Main' or 'Model' in its name
         - -🏴‍☠️
     :link:
       :tests/comm/TestUsart.c:  # Substring: Add '--bar --baz' to the link step of the TestUsart executable
@@ -2608,13 +2640,9 @@ These matchers are available:
 
 1. Wildcard (`*`) — Matches all tests.
 1. Substring — Matches on part of a test filename (up to all of it, including full path).
-1. Regex — Matches test file names against a regular expression.
+1. Regex (`/.../`) — Matches test file names against a regular expression.
 
 Note that substring filename matching is case sensitive.
-
-The list above is also the order in which matcher keys in the YAML are evaluated. As 
-soon as any match is made on a test file name, the evaluation down the list for that
-test file ends.
 
 Flags by matcher are cumulative. This means the flags from more than one matcher can be 
 applied to an operation on any one test executable.
@@ -2636,6 +2664,44 @@ limited in that it applies flags to all C files for all test executables.
     :compile:  # Equivalent to wildcard '*' test file matching
       - -foo
 ```
+
+#### Distinguishing similar or identical filenames with `:flags` per-test matchers
+
+You may find yourself needing to distinguish test files with the same name or test 
+files with names whose base naming is identical.
+
+Of course, identical test filenames have a natural distinguishing feature in their 
+containing directory paths. Files of the same name can only exist in different
+directories. As such, your matching must include the path.
+
+```yaml
+:flags:
+  :test:
+    :compile:
+      :hardware/test_startup:  # Match any test names beginning with 'test_startup' in hardware/ directory
+        - A                  
+      :network/test_startup:   # Match any test names beginning with 'test_startup' in network/ directory
+        - B
+```
+
+It's common in C file naming to use the same base name for multiple files. Given the
+following example list, care must be given to matcher construction to single out
+test_comm_startup.c.
+
+* tests/test_comm_hw.c
+* tests/test_comm_startup.c
+* tests/test_comm_startup_timers.c
+
+```yaml
+:flags:
+  :test:
+    :compile:
+      :test_comm_startup.c: # Full filename with extension distinguishes this file test_comm_startup_timers.c
+        - FOO
+```
+
+The preceding examples use substring matching, but, regular expression matching
+could also be appropriate.
 
 #### Using YAML anchors & aliases for complex testing scenarios with `:flags`
 

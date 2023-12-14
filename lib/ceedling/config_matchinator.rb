@@ -55,7 +55,7 @@ class ConfigMatchinator
       return elem if tertiary.nil?
 
       # Otherwise, if an tertiary is specified but we have an array, go boom
-      error = "ERROR: [#{primary}][#{secondary}] present in project configuration but does not contain [#{tertiary}]."
+      error = "ERROR: :#{primary} ↳ :#{secondary} present in project configuration but does not contain :#{tertiary}."
       raise CeedlingException.new(error)
 
     # If [primary][secondary] is a hash
@@ -74,7 +74,7 @@ class ConfigMatchinator
 
     # If [primary][secondary] is nothing we expect--something other than an array or hash
     else
-      error = "ERROR: [#{primary}][#{secondary}] in project configuration is neither a list nor hash."
+      error = "ERROR: :#{primary} ↳ :#{secondary} in project configuration is neither a list nor hash."
       raise CeedlingException.new(error)
     end
 
@@ -85,8 +85,8 @@ class ConfigMatchinator
     # Look for matcher keys with missing values
     hash.each do |k, v|
       if v == nil
-        operation = operation.nil? ? '' : "[#{operation}]"
-        error = "ERROR: Missing list of values for [#{section}][#{context}]#{operation}[#{k}] matcher in project configuration."
+        path = matcher_path(section:section, context:context, operation:operation)
+        error = "ERROR: Missing list of values for [#{path}↳ '#{k}' matcher in project configuration."
         raise CeedlingException.new(error)
       end
     end
@@ -98,56 +98,94 @@ class ConfigMatchinator
 
     # Sanity check
     if filepath.nil?
-      error = "ERROR: [#{section}][#{context}]#{operation} > '#{matcher}' matching provided nil #{filepath}"
+      path = matcher_path(section:section, context:context, operation:operation)
+      error = "ERROR: #{path}↳ #{matcher} matching provided nil #{filepath}"
       raise CeedlingException.new(error)
     end
 
     # Iterate through every hash touple [matcher key, values array]
-    # In prioritized order match test filepath against each matcher key...
-    #  1. Wildcard
-    #  2. Any filepath matching
-    #  3. Regex
-    #
-    # Wildcard and filepath matching can look like valid regexes, so they must be evaluated first.
+    # In prioritized order match test filepath against each matcher key.
+    # This order matches on special patterns first to ensure no funny business with simple substring matching 
+    #  1. Wildcard (*)
+    #  2. Regex (/.../)
+    #  3. Any filepath matching (substring matching)
     #
     # Each element of the collected _values array will be an array of values.
 
     hash.each do |matcher, values|
+      mtached = false
+      _matcher = matcher.to_s.strip
+
       # 1. Try wildcard matching -- return values for every test filepath if '*' is found in values matching key
-      if ('*' == matcher.to_s.strip)
-        _values += values
+      if ('*' == _matcher)
+        matched = true
 
-      # 2. Try filepath literal matching (including substring matching) with each values matching key
-      elsif (filepath.include?(matcher.to_s.strip))
-        _values += values
-
-      # 3. Try regular expression matching against all values matching keys that are regexes (ignore if not a valid regex)
-      # Note: We use logical AND here so that we get a meaningful fall-through to the else reporting condition.
+      # 2. Try regular expression matching against all values matching keys that are regexes (ignore if not a valid regex)
+      # Note: We use logical AND here so that we get a meaningful fall-through condition.
       #       Nesting the actual regex matching beneath validity checking improperly catches unmatched regexes
-      elsif (regex?(matcher.to_s.strip)) and (!(filepath =~ /#{matcher.to_s.strip}/).nil?)
-        _values += values
+      elsif (regex?(_matcher)) and (!(form_regex(_matcher).match(filepath)).nil?)
+        matched = true
 
-      else
-        operation = operation.nil? ? '' : "[#{operation}]"
-        @streaminator.stderr_puts("NOTICE: [#{section}][#{context}]#{operation} > '#{matcher}' did not match #{filepath}", Verbosity::DEBUG)
+      # 3. Try filepath literal matching (including substring matching) with each values matching key
+      elsif (filepath.include?(_matcher))
+        matched = true
       end        
+
+      if matched
+        _values += values
+        matched_notice(section:section, context:context, operation:operation, matcher:_matcher, filepath:filepath)
+      else # No match
+        path = matcher_path(section:section, context:context, operation:operation)
+        @streaminator.stderr_puts("#{path}↳ #{matcher} did not match #{filepath}", Verbosity::DEBUG)
+      end
     end
 
     return _values.flatten # Flatten to handle YAML aliases
   end
 
+  ### Private ###
+
   private
 
+  def matched_notice(section:, context:, operation:, matcher:, filepath:)
+    path = matcher_path(section:section, context:context, operation:operation)
+    @streaminator.stdout_puts("#{path}↳ #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
+  end
+
+  def matcher_path(section:, context:, operation:)
+    path = ":#{section} ↳ :#{context} "
+
+    if !operation.nil?
+      return path + "↳ :#{operation} "
+    end
+
+    return path
+  end
+
+  # Assumes expr is a string and has been stripped
   def regex?(expr)
     valid = true
 
+    if !expr.start_with?('/')
+      return false
+    end
+
+    if !expr.end_with? ('/')
+      return false
+    end
+
     begin
-      Regexp.new(expr)
+      Regexp.new(expr[1..-2])
     rescue RegexpError
       valid = false
     end
 
     return valid
+  end
+
+  # Assumes expr is /.../
+  def form_regex(expr)
+    return Regexp.new(expr[1..-2])
   end
 
 end
