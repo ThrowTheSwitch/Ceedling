@@ -54,7 +54,7 @@ The previously undocumented build directive macro `TEST_FILE(...)` has been rena
 
 #### Preprocessing improvements
 
-Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling's long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release.
+Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing (expanding macros in test files and header files to be mocked) is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling's long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release.
 
 #### Documentation
 
@@ -65,6 +65,7 @@ Many of the plugins have received documentation updates as well.
 ### Small Deal Highlights 🥉
 
 - Effort has been invested across the project to improve error messages, exception handling, and exit code processing. Noisy backtraces have been relegated to the verbosity level of DEBUG as <insert higher power> intended.
+- The historically unwieldy `verbosity` command line task now comes in two flavors. The original recipe numeric parameterized version (e.g. `[4]`) exist as is. The new extra crispy recipe includes — funny enough — verbose task names `verbosity:silent`, `verbosity:errors`, `verbosity:complain`, `verbosity:normal`, `verbosity:obnoxious`, `verbosity:debug`. 
 - This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake's design assumptions hamper building the sorts of features Ceedling's users want, Rake's command line structure creates a messy user experience for a full application built around it, and Rake's quirks cause maintenance challenges. Particularly for test suites, much of Ceedling's (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
 - This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 0.32 release. Future releases will have far shorter notes.
 
@@ -153,13 +154,21 @@ One powerful new feature is the ability to test the same source file built diffe
 
 ### Preprocessing improvements
 
-… Issues #806, #796
+Issues #806, #796
+
+Preprocessing refers to expanding macros and other related code file text manipulations often needed in sophisticated projects before key test suite generation steps. Without (optional) preprocessing, generating test funners from test files and generating mocks from header files lead to all manner of build shenanigans.
+
+The preprocessing needed by Ceedling for sophisticated projects has always been a difficult feature to implement. The most significant reason is simply that there is no readily available cross-platform C code preprocessing tool that provides Ceedling everything it needs to do its job. Even gcc's `cpp` preprocessor tool comes up short. Over time Ceedling's attempt at preprocessing grew more brittle and complicated as community contribturs attempted to fix it or cause it to work properly with other new features.
+
+This release of Ceedling stripped the feature back to basics and largely rewrote it within the context of the new build pipeline. Complicated regular expressions and Ruby-generated temporary files have been eliminated. Instead, Ceedling now blends two reports from gcc' `cpp` tool and complements this with additional context. In addition, preprocessing now occurs at the right moments in the overall build pipeline.
+
+While this new approach is not 100% foolproof, it is far more robust and far simpler than previous attempts. Other new Ceedling features should be able to address shortcomings in edge cases.
 
 ### Improvements and bug fixes for gcov plugin
 
-1. Compilation with coverage now only occurs for the source files under test and no longer for all C files (.e.g. unity.c, mocks, and test files).
+1. Compilation with coverage now only occurs for the source files under test and no longer for all C files (i.e. coverage for unity.c, mocks, and test files that is meaningless noise has been eliminated).
 1. Coverage statistics printed to the console after `gcov:` test task runs now only concern the source files exercised instead of all source files.
-1. Coverage reports are now automatically generated after `gcov:` test tasks are executed. This behvaior can be disabled with a new configuration option (a separate task is made available). See the [gcov plugin's documentation](plugins/gcov/README.md).
+1. Coverage reports are now automatically generated after `gcov:` test tasks are executed. This behvaior can be disabled with a new configuration option (a separate task is made available as well). See the [gcov plugin's documentation](plugins/gcov/README.md).
 
 ### Bug fixes for command line tasks `files:include` and `files:support`
 
