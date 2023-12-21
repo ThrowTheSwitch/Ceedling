@@ -145,15 +145,16 @@ class Gcov < Plugin
           next
         end
 
-        # Source filepath from gcov coverage results
+        # Source filepath to be extracted from gcov coverage results via regex
         _source = ''
 
         # Extract (relative) filepath from results and expand to absolute path
         matches = results.match(/File\s+'(.+)'/m)
         if matches.nil? or matches.length() != 2
-          msg = "ERROR: Could not extract filepath from gcov results for #{source} component of #{test}"
+          msg = "ERROR: Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
           @ceedling[:streaminator].stderr_puts( msg, Verbosity::DEBUG )
         else
+          # Expand to full path from likely partial path to ensure correct matches on source component within gcov results
           _source = File.expand_path(matches[1])
         end
 
