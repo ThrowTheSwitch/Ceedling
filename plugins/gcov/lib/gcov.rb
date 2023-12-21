@@ -145,16 +145,28 @@ class Gcov < Plugin
           next
         end
 
-        # If results include intended source, extract details from console
-        if results =~ /(File\s+'#{Regexp.escape(source)}'.+$)/m
-          # Reformat from first line as filename banner to each line labeled with the filename
+        # Source filepath from gcov coverage results
+        _source = ''
+
+        # Extract (relative) filepath from results and expand to absolute path
+        matches = results.match(/File\s+'(.+)'/m)
+        if matches.nil? or matches.length() != 2
+          msg = "ERROR: Could not extract filepath from gcov results for #{source} component of #{test}"
+          @ceedling[:streaminator].stderr_puts( msg, Verbosity::DEBUG )
+        else
+          _source = File.expand_path(matches[1])
+        end
+
+        # If gcov results include intended source (comparing absolute paths), report coverage details summaries
+        if _source == File.expand_path(source)
+          # Reformat from first line as filename banner to each line of statistics labeled with the filename
           # Only extract the first four lines of the console report (to avoid spidering coverage reports through libs, etc.)
-          report = Regexp.last_match(1).lines.to_a[1..4].map { |line| filename + ' | ' + line }.join('')
+          report = results.lines.to_a[1..4].map { |line| filename + ' | ' + line }.join('')
           @ceedling[:streaminator].stdout_puts(report + "\n")
         
-        # Otherwise, no coverage results were found
+        # Otherwise, found no coverage results
         else
-          msg = "ERROR: Could not find coverage results for #{source} component of #{test}"
+          msg = "WARNING: Found no coverage results for #{test}::#{File.basename(source)}"
           @ceedling[:streaminator].stderr_puts( msg, Verbosity::NORMAL )
         end
       end
