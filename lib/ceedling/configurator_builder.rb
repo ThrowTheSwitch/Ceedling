@@ -138,8 +138,6 @@ class ConfiguratorBuilder
       [:project_release_artifacts_path,         File.join(project_build_artifacts_root, RELEASE_BASE_PATH), in_hash[:project_release_build] ],
       [:project_release_build_cache_path,       File.join(project_build_release_root, 'cache'),             in_hash[:project_release_build] ],
       [:project_release_build_output_path,      File.join(project_build_release_root, 'out'),               in_hash[:project_release_build] ],
-      [:project_release_build_output_asm_path,  File.join(project_build_release_root, 'out', 'asm'),        in_hash[:project_release_build] ],
-      [:project_release_build_output_c_path,    File.join(project_build_release_root, 'out', 'c'),          in_hash[:project_release_build] ],
       [:project_release_dependencies_path,      File.join(project_build_release_root, 'dependencies'),      in_hash[:project_release_build] ],
 
       [:project_log_path,   File.join(in_hash[:project_build_root], 'logs'), true ],
@@ -314,6 +312,9 @@ class ConfiguratorBuilder
 
     @file_system_utils.revise_file_list( all_tests, in_hash[:files_test] )
 
+    # Resolve FileList patterns & revisions into full list of filepaths
+    all_tests.resolve()
+
     return {:collection_all_tests => all_tests}
   end
 
@@ -336,12 +337,16 @@ class ConfiguratorBuilder
     # Also add files that we are explicitly adding via :files:assembly: section
     @file_system_utils.revise_file_list( all_assembly, in_hash[:files_assembly] )
 
+    # Resolve FileList patterns & revisions into full list of filepaths
+    all_assembly.resolve()
+
     return {:collection_all_assembly => all_assembly}
   end
 
 
   def collect_source(in_hash)
     all_source = @file_wrapper.instantiate_file_list
+
     in_hash[:collection_paths_source].each do |path|
       if File.exist?(path) and not File.directory?(path)
         all_source.include( path )
@@ -349,7 +354,11 @@ class ConfiguratorBuilder
         all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
       end
     end
+
     @file_system_utils.revise_file_list( all_source, in_hash[:files_source] )
+
+    # Resolve FileList patterns & revisions into full list of filepaths
+    all_source.resolve()
 
     return {:collection_all_source => all_source}
   end
@@ -369,57 +378,71 @@ class ConfiguratorBuilder
 
     @file_system_utils.revise_file_list( all_headers, in_hash[:files_include] )
 
+    # Resolve FileList patterns & revisions into full list of filepaths
+    all_headers.resolve()
+
     return {:collection_all_headers => all_headers}
   end
 
 
-  def collect_release_existing_compilation_input(in_hash)
+  def collect_release_build_input(in_hash)
     release_input = @file_wrapper.instantiate_file_list
 
-    paths =
-      in_hash[:collection_paths_source] +
-      in_hash[:collection_paths_include]
+    paths = []
+    paths << in_hash[:project_build_vendor_cexception_path] if (in_hash[:project_use_exceptions])
 
-    paths << File.join(in_hash[:cexception_vendor_path], CEXCEPTION_LIB_PATH) if (in_hash[:project_use_exceptions])
-
+    # Collect vendor framework code files
     paths.each do |path|
-      release_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
+      release_input.include( File.join(path, '*' + EXTENSION_CORE_SOURCE) )
+    end
+
+    # Collect source files
+    in_hash[:collection_paths_source].each do |path|
       if File.exist?(path) and not File.directory?(path)
         release_input.include( path )
       else
         release_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
+        release_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:release_build_use_assembly]
       end
     end
 
     @file_system_utils.revise_file_list( release_input, in_hash[:files_source] )
     @file_system_utils.revise_file_list( release_input, in_hash[:files_include] )
-    # finding assembly files handled explicitly through other means
+    @file_system_utils.revise_file_list( release_input, in_hash[:files_assembly] ) if in_hash[:release_build_use_assembly]
 
-    return {:collection_release_existing_compilation_input => release_input}
+    # Resolve FileList patterns & revisions into full list of filepaths
+    release_input.resolve()
+
+    return {:collection_release_build_input => release_input}
   end
 
 
-  def collect_all_existing_compilation_input(in_hash)
+  def collect_existing_test_build_input(in_hash)
     all_input = @file_wrapper.instantiate_file_list
 
-    paths =
-      in_hash[:collection_paths_test] +
-      in_hash[:collection_paths_support] +
-      in_hash[:collection_paths_source] +
-      in_hash[:collection_paths_include]
-
     # Vendor paths for frameworks
+    paths = []
     paths << in_hash[:project_build_vendor_unity_path]
     paths << in_hash[:project_build_vendor_cexception_path] if (in_hash[:project_use_exceptions])
     paths << in_hash[:project_build_vendor_cmock_path]      if (in_hash[:project_use_mocks])
 
+    # Collect vendor framework code files
     paths.each do |path|
-      all_input.include( File.join(path, "*#{in_hash[:extension_header]}") )
+      all_input.include( File.join(path, '*' + EXTENSION_CORE_SOURCE) )
+    end
+
+    paths =
+      in_hash[:collection_paths_test] +
+      in_hash[:collection_paths_support] +
+      in_hash[:collection_paths_source]
+
+    # Collect code files
+    paths.each do |path|
       if File.exist?(path) and not File.directory?(path)
         all_input.include( path )
       else
         all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
-        all_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
+        all_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
       end
     end
 
@@ -427,9 +450,12 @@ class ConfiguratorBuilder
     @file_system_utils.revise_file_list( all_input, in_hash[:files_support] )
     @file_system_utils.revise_file_list( all_input, in_hash[:files_source] )
     @file_system_utils.revise_file_list( all_input, in_hash[:files_include] )
-    # finding assembly files handled explicitly through other means
+    @file_system_utils.revise_file_list( all_input, in_hash[:files_assembly] ) if in_hash[:test_build_use_assembly]
 
-    return {:collection_all_existing_compilation_input => all_input}
+    # Resolve FileList patterns & revisions into full list of filepaths
+    all_input.resolve()
+
+    return {:collection_existing_test_build_input => all_input}
   end
 
 
@@ -449,6 +475,9 @@ class ConfiguratorBuilder
 
     @file_system_utils.revise_file_list( support, in_hash[:files_support] )
 
+    # Resolve FileList patterns & revisions into full list of filepaths
+    support.resolve()
+
     support.each { |file| sources << file }
 
     # create object files from all the sources
@@ -461,6 +490,37 @@ class ConfiguratorBuilder
              :collection_test_fixture_extra_link_objects => objects
            }
   end
+
+
+  # .c files without path
+  def collect_vendor_framework_sources(in_hash)
+    sources = []
+    filelist = @file_wrapper.instantiate_file_list()
+
+    # Vendor paths for frameworks
+    paths = []
+    paths << in_hash[:project_build_vendor_unity_path]
+    paths << in_hash[:project_build_vendor_cexception_path] if (in_hash[:project_use_exceptions])
+    paths << in_hash[:project_build_vendor_cmock_path]      if (in_hash[:project_use_mocks])
+
+    # Collect vendor framework code files
+    paths.each do |path|
+      filelist.include( File.join(path, '*' + EXTENSION_CORE_SOURCE) )
+    end
+
+    # Resolve FileList patterns & revisions into full list of filepaths
+    filelist.resolve()
+
+    # Extract just source file names
+    filelist.each do |filepath|
+      sources << File.basename(filepath)
+    end
+
+    return {:collection_vendor_framework_sources => sources}
+  end
+
+
+  ### Private ###
 
   private
 

@@ -240,7 +240,7 @@ describe PreprocessinatorIncludesHandler do
   #     expect(@configurator).to receive(:tools_test_includes_preprocessor).exactly(3).times
   #     expect(@file_wrapper).to receive(:read).and_return("").exactly(3).times
   #     expect(@file_wrapper).to receive(:write).exactly(3).times
-  #     expect(@file_finder).to receive(:find_compilation_input_file).and_return("assets\example_file.c")
+  #     expect(@file_finder).to receive(:find_build_input_file).and_return("assets\example_file.c")
   #     expect(@tool_executor).to receive(:build_command_line).and_return({:line => "", :options => ""}).exactly(3).times
   #     expect(@file_path_utils).to receive(:form_temp_path).and_return("_test_DUMMY.c")
   #     expect(@file_path_utils).to receive(:form_temp_path).and_return("assets\_example_file.h")

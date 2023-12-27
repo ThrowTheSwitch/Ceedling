@@ -1,5 +1,6 @@
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'
+require 'rake'
 
 class Generator
 
@@ -303,7 +304,8 @@ class Generator
         shell_result = @debugger_utils.gdb_output_collector(shell_result)
       else
         # Otherwise, call a segfault a single failure so it shows up in the report
-        shell_result[:output] = "#{File.basename(@file_finder.find_compilation_input_file(executable))}:1:test_Unknown:FAIL:Segmentation Fault" 
+        source = File.basename(executable).ext(@configurator.extension_source)
+        shell_result[:output] = "#{source}:1:test_Unknown:FAIL:Segmentation Fault" 
         shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
         shell_result[:exit_code] = 1
       end

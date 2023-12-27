@@ -12,7 +12,7 @@ PLUGINS_BULLSEYE_LIB_PATH = 'C:\\tools\\BullseyeCoverage\\lib' if not defined?(P
 
 rule(/#{BULLSEYE_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
        proc do |task_name|
-         @ceedling[:file_finder].find_compilation_input_file(task_name)
+         @ceedling[:file_finder].find_build_input_file(filepath: task_name, context: BULLSEYE_SYM)
        end
      ]) do |object|
 
@@ -55,7 +55,7 @@ end
 
 rule(/#{BULLSEYE_DEPENDENCIES_PATH}\/#{'.+\\'+EXTENSION_DEPENDENCIES}$/ => [
        proc do |task_name|
-         @ceedling[:file_finder].find_compilation_input_file(task_name)
+         @ceedling[:file_finder].find_build_input_file(filepath: task_name, context: BULLSEYE_SYM)
        end
      ]) do |dep|
   @ceedling[:generator].generate_dependencies_file(

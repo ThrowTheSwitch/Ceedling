@@ -31,9 +31,10 @@ end
 
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
 
-EXTENSION_WIN_EXE    = '.exe'
-EXTENSION_NONWIN_EXE = '.out'
-
+EXTENSION_WIN_EXE     = '.exe'
+EXTENSION_NONWIN_EXE  = '.out'
+# Vendor frameworks, generated mocks, generated runners are always .c files
+EXTENSION_CORE_SOURCE = '.c' 
 
 PREPROCESS_SYM = :preprocess
 

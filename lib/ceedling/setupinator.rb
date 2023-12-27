@@ -43,7 +43,6 @@ class Setupinator
     end
     
     @ceedling[:plugin_reportinator].set_system_objects( @ceedling )
-    @ceedling[:file_finder].prepare_search_sources
     @ceedling[:loginator].setup_log_filepath
     @ceedling[:project_config_manager].config_hash = config_hash
   end

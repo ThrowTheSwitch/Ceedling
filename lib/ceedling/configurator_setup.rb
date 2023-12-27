@@ -38,10 +38,11 @@ class ConfiguratorSetup
     flattened_config.merge!(@configurator_builder.collect_assembly(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_source(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_headers(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_release_existing_compilation_input(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_all_existing_compilation_input(flattened_config))
+    flattened_config.merge!(@configurator_builder.collect_release_build_input(flattened_config))
+    flattened_config.merge!(@configurator_builder.collect_existing_test_build_input(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_release_artifact_extra_link_objects(flattened_config))
     flattened_config.merge!(@configurator_builder.collect_test_fixture_extra_link_objects(flattened_config))
+    flattened_config.merge!(@configurator_builder.collect_vendor_framework_sources(flattened_config))
 
     return flattened_config
   end

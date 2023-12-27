@@ -67,7 +67,7 @@ end
 # list files & file counts discovered at load time
 namespace :files do
 
-  categories = ['tests', 'source', 'assembly', 'include', 'support']
+  categories = ['tests', 'source', 'assembly', 'headers', 'support']
 
   categories.each do |category|
     desc "List all collected #{category.chomp('s')} files."

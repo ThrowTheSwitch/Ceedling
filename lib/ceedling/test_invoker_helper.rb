@@ -30,14 +30,29 @@ class TestInvokerHelper
   def validate_build_directive_source_files(test:, filepath:)
     sources = @test_context_extractor.lookup_build_directive_sources_list(filepath)
 
+    ext_message = @configurator.extension_source
+    if @configurator.test_build_use_assembly
+      ext_message += " or #{@configurator.extension_assembly}"
+    end
+
     sources.each do |source|
-      ext = @configurator.extension_source
-      unless @file_wrapper.extname(source) == ext
-        error = "File '#{source}' specified with #{UNITY_TEST_SOURCE_FILE}() in #{test} is not a #{ext} source file"
+      valid_extension = true
+
+      # Only C files in test build
+      if not @configurator.test_build_use_assembly
+        valid_extension = false if @file_wrapper.extname(source) != @configurator.extension_source      
+      # C and assembly files in test build
+      else
+        ext = @file_wrapper.extname(source)
+        valid_extension = false if (ext != @configurator.extension_assembly) and (ext != @configurator.extension_source)
+      end
+
+      if not valid_extension
+        error = "File '#{source}' specified with #{UNITY_TEST_SOURCE_FILE}() in #{test} is not a #{ext_message} source file"
         raise CeedlingException.new(error)
       end
 
-      if @file_finder.find_compilation_input_file(source, :ignore).nil?
+      if @file_finder.find_build_input_file(filepath: source, complain: :ignore, context: TEST_SYM).nil?
         error = "File '#{source}' specified with #{UNITY_TEST_SOURCE_FILE}() in #{test} cannot be found in the source file collection"
         raise CeedlingException.new(error)
       end
@@ -153,25 +168,13 @@ class TestInvokerHelper
     return sources
   end
 
-  def process_deep_dependencies(files)
-    return if (not @configurator.project_use_deep_dependencies)
-
-    dependencies_list = @file_path_utils.form_test_dependencies_filelist( files ).uniq
-
-    if @configurator.project_generate_deep_dependencies
-      @task_invoker.invoke_test_dependencies_files( dependencies_list )
-    end
-
-    yield( dependencies_list ) if block_given?
-  end
-  
   def extract_sources(test_filepath)
     sources = []
 
     # Get any additional source files specified by TEST_SOURCE_FILE() in test file
     _sources = @test_context_extractor.lookup_build_directive_sources_list(test_filepath)
     _sources.each do |source|
-      sources << @file_finder.find_compilation_input_file(source, :ignore)
+      sources << @file_finder.find_build_input_file(filepath: source, complain: :ignore, context: TEST_SYM)
     end
 
     # Get all #include .h files from test file so we can find any source files by convention
@@ -179,7 +182,7 @@ class TestInvokerHelper
     includes.each do |include|
       next if File.basename(include) == UNITY_H_FILE # Ignore Unity in this list
       next if File.basename(include).start_with?(CMOCK_MOCK_PREFIX) # Ignore mocks in this list
-      sources << @file_finder.find_compilation_input_file(include, :ignore)
+      sources << @file_finder.find_build_input_file(filepath: include, complain: :ignore, context: TEST_SYM)
     end
 
     # Remove any nil or duplicate entries in list
@@ -207,7 +210,7 @@ class TestInvokerHelper
 
   def generate_objects_now(object_list, context, options)
     @batchinator.exec(workload: :compile, things: object_list) do |object|
-      src = @file_finder.find_compilation_input_file(object)
+      src = @file_finder.find_build_input_file(filepath: object, context: TEST_SYM)
       if (File.basename(src) =~ /#{EXTENSION_SOURCE}$/)
         @generator.generate_object_file(
           options[:test_compiler],
@@ -258,28 +261,35 @@ class TestInvokerHelper
         lib_args,
         lib_paths )
     rescue ShellExecutionException => ex
-      notice =    "\n" +
-                  "NOTICE: Ceedling assumes header files correspond to source files. A test file directs its\n" +
-                  "build with #include statemetns--which code files to compile and link into the executable.\n\n" +
-                  "If the linker reports missing symbols, the following may be to blame:\n" +
-                  "  1. This test lacks #include header statements corresponding to needed source files.\n" +
-                  "  2. Project file paths omit source files corresponding to #include statements in this test.\n" +
-                  "  3. Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n"
+      if ex.shell_result[:output] =~ /symbol/i
+        notice =    "NOTICE: If the linker reports missing symbols, the following may be to blame:\n" +
+                    "  1. This test lacks #include statements corresponding to needed source files (see note below).\n" +
+                    "  2. Project file paths omit source files corresponding to #include statements in this test.\n" +
+                    "  3. Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n" +
+                    "  4. Your project is attempting to mix C++ and C file extensions (not supported).\n"
+        if (@configurator.project_use_mocks)
+          notice += "  5. This test does not #include needed mocks (that triggers their generation).\n"
+        end
 
-      if (@configurator.project_use_mocks)
-        notice += "  4. This test does not #include needed mocks (that triggers their generation).\n\n"
-      else
-        notice += "\n"
+        notice +=   "\n"
+        notice +=   "NOTE: A test file directs the build of a test executable with #include statemetns:\n" +
+                    "  * By convention, Ceedling assumes header filenames correspond to source filenames.\n" +
+                    "  * Which code files to compile and link are determined by #include statements.\n"
+        if (@configurator.project_use_mocks)
+          notice += "  * An #include statement convention directs the generation of mocks from header files.\n"
+        end
+
+        notice +=   "\n"
+        notice +=   "OPTIONS:\n" +
+                    "  1. Doublecheck this test's #include statements.\n" +
+                    "  2. Simplify complex macros or fully specify symbols for this test in :project ↳ :defines.\n" +
+                    "  3. If no header file corresponds to the needed source file, use the #{UNITY_TEST_SOURCE_FILE}()\n" +
+                    "     build diective macro in this test to inject a source file into the build.\n\n" +
+                    "See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.\n\n"
+
+        # Print helpful notice
+        @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
       end
-
-      notice +=   "OPTIONS:\n" +
-                  "  1. Doublecheck this test's #include statements.\n" +
-                  "  2. Simplify complex macros or fully specify symbols for this test in [:project][:defines].\n" +
-                  "  3. If no header file corresponds to the needed source file, use the #{UNITY_TEST_SOURCE_FILE}()\n" +
-                  "     build diective macro in this test to inject a source file into the build.\n\n"
-
-      # Print helpful notice
-      @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
 
       # Re-raise the exception
       raise ex

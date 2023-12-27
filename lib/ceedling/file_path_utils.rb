@@ -85,31 +85,20 @@ class FilePathUtils
     return File.join( @configurator.project_release_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies) )
   end
 
-  def form_release_build_c_object_filepath(filepath)
-    return File.join( @configurator.project_release_build_output_c_path, File.basename(filepath).ext(@configurator.extension_object) )
+  def form_release_build_objects_filelist(files)
+    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_build_output_path}/%n#{@configurator.extension_object}")
   end
 
-  def form_release_build_asm_object_filepath(filepath)
-    return File.join( @configurator.project_release_build_output_asm_path, File.basename(filepath).ext(@configurator.extension_object) )
-  end
-
-  def form_release_build_c_objects_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_build_output_c_path}/%n#{@configurator.extension_object}")
-  end
-
-  def form_release_build_asm_objects_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_build_output_asm_path}/%n#{@configurator.extension_object}")
-  end
-
-  def form_release_build_c_list_filepath(filepath)
-    return File.join( @configurator.project_release_build_output_c_path, File.basename(filepath).ext(@configurator.extension_list) )
+  def form_release_build_list_filepath(filepath)
+    return File.join( @configurator.project_release_build_output_path, File.basename(filepath).ext(@configurator.extension_list) )
   end
 
   def form_release_dependencies_filelist(files)
     return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_dependencies_path}/%n#{@configurator.extension_dependencies}")
   end
 
-  ### tests ###
+  ### Tests ###
+
   def form_test_build_cache_path(filepath)
     return File.join( @configurator.project_test_build_cache_path, File.basename(filepath) )
   end
@@ -127,23 +116,11 @@ class FilePathUtils
   end
 
   def form_runner_filepath_from_test(filepath)
-    return File.join( @configurator.project_test_runners_path, File.basename(filepath, @configurator.extension_source)) + @configurator.test_runner_file_suffix + @configurator.extension_source
+    return File.join( @configurator.project_test_runners_path, File.basename(filepath, @configurator.extension_source)) + @configurator.test_runner_file_suffix + EXTENSION_CORE_SOURCE
   end
 
   def form_test_filepath_from_runner(filepath)
     return filepath.sub(/#{TEST_RUNNER_FILE_SUFFIX}/, '')
-  end
-
-  def form_runner_object_filepath_from_test(filepath)
-    return (form_test_build_c_object_filepath(filepath)).sub(/(#{@configurator.extension_object})$/, "#{@configurator.test_runner_file_suffix}\\1")
-  end
-
-  def form_test_build_c_object_filepath(filepath)
-    return File.join( @configurator.project_test_build_output_c_path, File.basename(filepath).ext(@configurator.extension_object) )
-  end
-
-  def form_test_build_asm_object_filepath(filepath)
-    return File.join( @configurator.project_test_build_output_asm_path, File.basename(filepath).ext(@configurator.extension_object) )
   end
 
   def form_test_executable_filepath(build_output_path, filepath)

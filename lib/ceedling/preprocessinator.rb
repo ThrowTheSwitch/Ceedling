@@ -176,7 +176,6 @@ class Preprocessinator
     includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
     includes = []
-
     if @file_wrapper.newer?(includes_list_filepath, filepath)
       msg = @reportinator.generate_module_progress(
         operation: "Loading #include statement listing file for",

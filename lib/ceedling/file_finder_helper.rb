@@ -7,23 +7,17 @@ class FileFinderHelper
   constructor :streaminator
   
   
-  def find_file_in_collection(file_name, file_list, complain, original_filepath="")
-    file_to_find = nil
-    
+  def find_file_in_collection(filename, file_list, complain, original_filepath="")
     # search our collection for the specified base filename
-    matches = file_list.find_all {|v| File.basename(v) == file_name }
+    matches = file_list.find_all {|v| File.basename(v) == filename }
     case matches.length 
       when 0 
-        matches = file_list.find_all {|v| v =~ /(?:\\|\/|^)#{file_name}$/i}
+        matches = file_list.find_all {|v| v =~ /(?:\\|\/|^)#{filename}$/i}
         if (matches.length > 0)
-          blow_up(file_name, "However, a filename having different capitalization was found: '#{matches[0]}'.")
+          blow_up(filename, "However, a filename having different capitalization was found: '#{matches[0]}'.")
         end
 
-        case (complain)
-          when :error then blow_up(file_name) 
-          when :warn  then gripe(file_name)
-          #when :ignore then      
-        end
+        return handle_missing_file(filename, complain)
       when 1
         return matches[0]
       else
@@ -43,17 +37,33 @@ class FileFinderHelper
         end
         return matches[best_match_index]
     end
+
+    return nil
   end
 
+  def handle_missing_file(filename, complain)
+    case (complain)
+      when :error then blow_up(filename) 
+      when :warn
+        gripe(filename)
+        return nil
+      when :ignore then return nil
+    end
+
+    return nil
+  end
+
+  ### Private ###
+
   private
-  
-  def blow_up(file_name, extra_message="")
-    error = ["ERROR: Found no file '#{file_name}' in search paths.", extra_message].join(' ').strip
+
+  def blow_up(filename, extra_message="")
+    error = ["ERROR: Found no file #{filename} in search paths.", extra_message].join(' ').strip
     raise CeedlingException.new(error)
   end
-  
-  def gripe(file_name, extra_message="")
-    warning = ["WARNING: Found no file '#{file_name}' in search paths.", extra_message].join(' ').strip
+    
+  def gripe(filename, extra_message="")
+    warning = ["WARNING: Found no file #{filename} in search paths.", extra_message].join(' ').strip
     @streaminator.stderr_puts(warning + extra_message, Verbosity::COMPLAIN)
   end
 

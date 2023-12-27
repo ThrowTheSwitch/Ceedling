@@ -94,6 +94,7 @@ class TestInvoker
 
           search_paths       = @helper.search_paths( filepath, details[:name] )
           compile_flags      = @helper.flags( context:context, operation:OPERATION_COMPILE_SYM, filepath:filepath )
+          assembler_flags    = @helper.flags( context:context, operation:OPERATION_ASSEMBLE_SYM, filepath:filepath )
           link_flags         = @helper.flags( context:context, operation:OPERATION_LINK_SYM, filepath:filepath )
           compile_defines    = @helper.compile_defines( context:context, filepath:filepath )
           preprocess_defines = @helper.preprocess_defines( test_defines: compile_defines, filepath:filepath )
@@ -103,6 +104,7 @@ class TestInvoker
           @lock.synchronize do
             details[:search_paths] = search_paths
             details[:compile_flags] = compile_flags
+            details[:assembler_flags] = assembler_flags
             details[:link_flags] = link_flags
             details[:compile_defines] = compile_defines
             details[:preprocess_defines] = preprocess_defines
@@ -300,7 +302,7 @@ class TestInvoker
         end
       end
 
-      # Create Final Tests And/Or Executable Links
+      # Create test binary
       @batchinator.build_step("Building Test Executables") do
         lib_args = @helper.convert_libraries_to_arguments()
         lib_paths = @helper.get_library_paths_to_arguments()
@@ -366,30 +368,54 @@ class TestInvoker
     return (@testables[_test])[:sources]
   end
 
-  def compile_test_component(tool:TOOLS_TEST_COMPILER, context:TEST_SYM, test:, source:, object:, msg:nil)
+  def compile_test_component(tool:, context:TEST_SYM, test:, source:, object:, msg:nil)
     testable = @testables[test]
     filepath = testable[:filepath]
-    flags = testable[:compile_flags]
     defines = testable[:compile_defines]
 
     # Tailor search path--remove duplicates and reduce list to only those needed by vendor / support file compilation
     search_paths = @helper.tailor_search_paths(search_paths:testable[:search_paths], filepath:source)
 
-    arg_hash = {
-      tool:         tool,
-      module_name:  test,
-      context:      context,
-      source:       source,
-      object:       object,
-      search_paths: search_paths,
-      flags:        flags,
-      defines:      defines,
-      list:         @file_path_utils.form_test_build_list_filepath( object ),
-      dependencies: @file_path_utils.form_test_dependencies_filepath( object ),
-      msg:          msg
-    }
+    # C files (user-configured extension or core framework file extensions)
+    if @file_wrapper.extname(source) != @configurator.extension_assembly
+      flags = testable[:compile_flags]
 
-    @generator.generate_object_file_c(**arg_hash)
+      arg_hash = {
+        tool:         tool,
+        module_name:  test,
+        context:      context,
+        source:       source,
+        object:       object,
+        search_paths: search_paths,
+        flags:        flags,
+        defines:      defines,
+        list:         @file_path_utils.form_test_build_list_filepath( object ),
+        dependencies: @file_path_utils.form_test_dependencies_filepath( object ),
+        msg:          msg
+      }
+
+      @generator.generate_object_file_c(**arg_hash)
+
+    # Assembly files
+    elsif @configurator.test_build_use_assembly
+      flags = testable[:assembler_flags]
+
+      arg_hash = {
+        tool:         tool,
+        module_name:  test,
+        context:      context,
+        source:       source,
+        object:       object,
+        search_paths: search_paths,
+        flags:        flags,
+        defines:      defines, # Generally ignored by assemblers
+        list:         @file_path_utils.form_test_build_list_filepath( object ),
+        dependencies: @file_path_utils.form_test_dependencies_filepath( object ),
+        msg:          msg
+      }
+
+      @generator.generate_object_file_asm(**arg_hash)
+    end
   end
 
   private

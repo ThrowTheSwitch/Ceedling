@@ -3,21 +3,23 @@
 rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       _, object = (task_name.split('+'))
-      @ceedling[:file_finder].find_compilation_input_file(object)
+      @ceedling[:file_finder].find_build_input_file(filepath: object, context: TEST_SYM)
     end
   ]) do |target|
     test, object = (target.name.split('+'))
 
-    if (File.basename(target.source) =~ /#{EXTENSION_SOURCE}$/)
-      @ceedling[:test_invoker].compile_test_component(test: test.to_sym, source: target.source, object: object)
-    elsif (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
-      @ceedling[:generator].generate_object_file(
-        TOOLS_TEST_ASSEMBLER,
-        OPERATION_ASSEMBLE_SYM,
-        TEST_SYM,
-        object.source,
-        object.name )
+    tool = TOOLS_TEST_COMPILER
+
+    if @ceedling[:file_wrapper].extname(target.source) == EXTENSION_ASSEMBLY
+      tool = TOOLS_TEST_ASSEMBLER
     end
+
+    @ceedling[:test_invoker].compile_test_component(
+      tool: tool,
+      test: test.to_sym,
+      source: target.source,
+      object: object
+    )
   end
 
 namespace TEST_SYM do

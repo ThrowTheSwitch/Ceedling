@@ -226,9 +226,6 @@ class Dependencies < Plugin
         end
       end
     end
-
-    # Make all these updated files findable by Ceedling
-    @ceedling[:file_finder].prepare_search_sources()
   end
 end
 

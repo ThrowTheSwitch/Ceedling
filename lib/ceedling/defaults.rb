@@ -27,6 +27,21 @@ DEFAULT_TEST_COMPILER_TOOL = {
     ].freeze
   }
 
+DEFAULT_TEST_ASSEMBLER_TOOL = {
+  :executable => ENV['AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['AS'].split[0],
+  :name => 'default_test_assembler'.freeze,
+  :stderr_redirect => StdErrRedirect::NONE.freeze,
+  :optional => false.freeze,
+  :arguments => [
+    ENV['AS'].nil? ? "" : ENV['AS'].split[1..-1],
+    ENV['ASFLAGS'].nil? ? "" : ENV['ASFLAGS'].split,
+    "-I\"${3}\"".freeze, # Search paths
+    "-D\"${4}\"".freeze, # Defines (FYI--allowed with GNU assembler but ignored)
+    "\"${1}\"".freeze,
+    "-o \"${2}\"".freeze,
+    ].freeze
+  }
+
 DEFAULT_TEST_LINKER_TOOL = {
   :executable => ENV['CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CCLD'].split[0],
   :name => 'default_test_linker'.freeze,
@@ -68,6 +83,7 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
     "-D\"${2}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
     '-nostdinc'.freeze,      # Ignore standard include paths
+    "-x c".freeze,           # Force C language
     "\"${1}\"".freeze
     ].freeze
   }
@@ -88,6 +104,7 @@ DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
     "-D\"${3}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
     '-nostdinc'.freeze,      # Ignore standard include paths
+    "-x c".freeze,           # Force C language
     "\"${1}\"".freeze
     ].freeze
   }
@@ -105,6 +122,7 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
     "-D\"${3}\"".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
     # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
+    "-x c".freeze,           # Force C language
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
     ].freeze
@@ -122,6 +140,7 @@ DEFAULT_TEST_FILE_PREPROCESSOR_DIRECTIVES_TOOL = {
     "-DGNU_COMPILER".freeze,
     '-fdirectives-only'.freeze,
     # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
+    "-x c".freeze,           # Force C language
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
     ].freeze
@@ -151,6 +170,7 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
     MD_FLAG.freeze,
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
+    "-x c".freeze, # Force C language
     "-c \"${1}\"".freeze,
     # '-nostdinc'.freeze,
     ].freeze
@@ -175,6 +195,7 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
     MD_FLAG.freeze,
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
+    "-x c".freeze, # Force C language
     "-c \"${1}\"".freeze,
     # '-nostdinc'.freeze,
     ].freeze
@@ -257,6 +278,12 @@ DEFAULT_TOOLS_TEST = {
     }
   }
 
+DEFAULT_TOOLS_TEST_ASSEMBLER = {
+  :tools => {
+    :test_assembler => DEFAULT_TEST_ASSEMBLER_TOOL,
+    }
+  }
+
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
     :test_shallow_includes_preprocessor => DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL,
@@ -271,7 +298,6 @@ DEFAULT_TOOLS_TEST_DEPENDENCIES = {
     :test_dependencies_generator => DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL,
     }
   }
-
 
 DEFAULT_TOOLS_RELEASE = {
   :tools => {
@@ -312,8 +338,12 @@ DEFAULT_CEEDLING_CONFIG = {
     :release_build => {
       # :output is set while building configuration -- allows smart default system-dependent file extension handling
       :use_assembly => false,
-      :artifacts => [],
+      :artifacts => []
     },
+
+    :test_build => {
+       :use_assembly => false
+     },
 
     :paths => {
       :test => [],    # Must be populated by user
@@ -400,9 +430,10 @@ DEFAULT_CEEDLING_CONFIG = {
 
     # empty argument lists for default tools
     # (these can be overridden in project file to add arguments to tools without totally redefining tools)
-    :test_compiler => { :arguments => [] },
-    :test_linker   => { :arguments => [] },
-    :test_fixture  => {
+    :test_compiler  => { :arguments => [] },
+    :test_assembler => { :arguments => [] },
+    :test_linker    => { :arguments => [] },
+    :test_fixture   => {
       :arguments => [],
       :link_objects => [], # compiled object files to always be linked in (e.g. cmock.o if using mocks)
     },

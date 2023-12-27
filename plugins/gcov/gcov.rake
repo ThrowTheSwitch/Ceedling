@@ -16,7 +16,7 @@ CLOBBER.include(File.join(GCOV_BUILD_PATH, '**/*'))
 rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
     proc do |task_name|
       _, object = (task_name.split('+'))
-      @ceedling[:file_finder].find_compilation_input_file(object)
+      @ceedling[:file_finder].find_build_input_file(filepath: object, context: GCOV_SYM)
     end
   ]) do |target|
     test, object = (target.name.split('+'))

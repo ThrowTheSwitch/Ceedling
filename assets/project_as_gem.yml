@@ -7,7 +7,6 @@
   # optional features. If you don't need them, keep them turned off for performance
   :use_mocks: TRUE
   :use_test_preprocessor: TRUE
-  :use_deep_dependencies: FALSE
   :use_auxiliary_dependencies: TRUE
   :use_backtrace_gdb_reporter: FALSE
 
@@ -36,14 +35,12 @@
 # further details to configure the way Ceedling handles test code
 :test_build:
   :use_assembly: FALSE
-  :toolchain_include: []
 
 # further details to configure the way Ceedling handles release code
 :release_build:
   :output: MyApp.out
   :use_assembly: FALSE
   :artifacts: []
-  :toolchain_include: []
 
 # Plugins are optional Ceedling features which can be enabled. Ceedling supports
 # a variety of plugins which may effect the way things are compiled, reported, 

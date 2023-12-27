@@ -66,6 +66,9 @@ Once you have Ceedling installed and a project file, Ceedling tasks go like this
 
 # Contents
 
+(Be sure to review **[breaking changes](BreakingChanges.md)** if you are working with
+a new release of Ceedling.)
+
 Building test suites in C requires much more scaffolding than for
 a release build. As such, much of Ceedling's documentation is concerned
 with test builds. But, release build documentation is here too. We promise.
@@ -659,7 +662,7 @@ Ceedling (more on this later).
 
   List all files and file counts collected from the relevant search
   paths specified by the `:paths` entries of your YAML config file. The
-  files:assembly task will only be available if assembly support is
+  `files:assembly` task will only be available if assembly support is
   enabled in the `:release_build` section of your configuration file.
 
 * `ceedling options:*`:
@@ -1466,6 +1469,10 @@ internally - thus leading to unexpected behavior without warning.
 
 ## `:project`: Global project settings
 
+**_Note:_** In future versions of Ceedling, test and release build 
+settings presently organized beneath `:project` will be renamed and 
+migrated to the `:test_build` and `:release_build` sections.
+
 * `:build_root`
 
   Top level directory into which generated path structure and files are
@@ -1655,7 +1662,42 @@ internally - thus leading to unexpected behavior without warning.
     It is important that the debugging tool should be run as a background task, and with the
     option to pass additional arguments to the test executable.
 
+## `:test_build` Configuring a test build
+
+**_Note:_** In future versions of Ceedling, test-related settings presently 
+organized beneath `:project` will be renamed and migrated to this section.
+
+* `:use_assembly`
+
+  This option causes Ceedling to enable an assembler tool and collect a
+  list of assembly file sources for use in a test suite build.
+
+  The default assembler is the GNU tool `as`; it may be overridden in 
+  the `:tools` section.
+
+  In order to inject assembly code into the build of a test executable,
+  two conditions must be true:
+
+  1. The assembly files must be visible to Ceedling by way of `:paths` and
+  `:extension` settings for assembly files.
+  1. Ceedling must be told into which test executable build to insert a
+  given assembly file. The easiest way to do so is with the 
+  `TEST_SOURCE_FILE()` build directive macro (documented in a later section).
+
+  **Default**: FALSE
+
+### Example `:test_build` YAML blurb
+
+```yaml
+:test_build:
+  :use_assembly: TRUE
+```
+
 ## `:release_build` Configuring a release build
+
+**_Note:_** In future versions of Ceedling, release build-related settings 
+presently organized beneath `:project` will be renamed and migrated to 
+this section.
 
 * `:output`
 
@@ -1668,10 +1710,14 @@ internally - thus leading to unexpected behavior without warning.
 
 * `:use_assembly`
 
-  If assembly code is present in the source tree, this option causes
-  Ceedling to create appropriate build directories and use an assembler
-  tool (default is the GNU tool as - override available in the `:tools`
-  section.
+  This option causes Ceedling to enable an assembler tool and add any 
+  assembly code present in the project to the release artifact's build.
+
+  The default assembler is the GNU tool `as`; it may be overridden 
+  in the `:tools` section.
+
+  The assembly files must be visible to Ceedling by way of `:paths` and
+  `:extension` settings for assembly files.
 
   **Default**: FALSE
 
@@ -2043,7 +2089,7 @@ Ceedling uses path lists and wildcard matching against filename extensions to co
 
 * `:assembly`:
 
-  Assembly files (contents wholly assembly instructions)
+  Assembly files (contents wholly assembler instructions)
 
   **Default**: .s
 
@@ -2508,8 +2554,13 @@ Advanced flags handling for test builds only:
 A context is the build context you want to modify — `:test` or `:release`. Plugins can
 also hook into `:flags` with their own context.
 
-An operation is the build step you wish to modify — `:preprocess`, `:compile`, or `:link`.
-(The `:preprocess` operation is only available in the `:test` context.)
+An operation is the build step you wish to modify — `:preprocess`, `:compile`, `:assemble`, 
+or `:link`.
+
+* The `:preprocess` operation is only available in the `:test` context.
+* The `:assemble` operation is only available within the `:test` or `:release` contexts if 
+  assembly support has been enabled in `:test_build` or `:release_build`, respectively, and
+  assembly files are a part of the project.
 
 You specify the flags you want to add to a build step beneath `:<context>` ↳ `:<operation>`.
 In many cases this is a simple YAML list of strings that will become flags in a tool's 
@@ -3158,7 +3209,7 @@ own scripts and tools to Ceedling build steps.
 
 * `:load_paths`:
 
-  Base paths to search for plugin subdirectories or extra ruby functionality
+  Base paths to search for plugin subdirectories or extra Ruby functionality
 
   **Default**: `[]` (empty)
 
@@ -3267,6 +3318,10 @@ The Ceedling convention of compiling and linking any C file that
 corresponds in name to an `#include`d header file does not always work.
 The alternative of `#include`ing a source file directly is ugly and can
 cause other problems.
+
+`TEST_SOURCE_FILE()` is also likely the best method for adding an assembly 
+file to the build of a given test executable — if assembly support is
+enabled for test builds.
 
 ### `TEST_SOURCE_FILE()` Example
 
