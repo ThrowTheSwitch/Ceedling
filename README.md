@@ -31,11 +31,11 @@ Ceedling is also extensible with a simple plugin mechanism.
 
 # 📚 Documentation
 
-[Usage help](docs/CeedlingPacket.md), [release notes](docs/ReleaseNotes.md), [breaking changes](docs/BreakingChanges.md), a variety of guides, and much more exists in [docs/](docs/).
+[Usage help](docs/CeedlingPacket.md) (a.k.a. _Ceedling Packet_), [release notes](docs/ReleaseNotes.md), [breaking changes](docs/BreakingChanges.md), a variety of guides, and much more exists in [docs/](docs/).
 
 # ⭐️ Getting Started
 
-**👀 See the _Quick Start_ section in the in Ceedling's core documentation, _[CeedlingPacket](docs/CeedlingPacket.md)_.**
+**👀 See the _[Quick Start](docs/CeedlingPacket.md#quick-start)_ section in Ceedling’s core documentation, _Ceedling Packet_.**
 
 ## The Basics
 
