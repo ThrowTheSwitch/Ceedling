@@ -312,9 +312,6 @@ class ConfiguratorBuilder
 
     @file_system_utils.revise_file_list( all_tests, in_hash[:files_test] )
 
-    # Resolve FileList patterns & revisions into full list of filepaths
-    all_tests.resolve()
-
     return {:collection_all_tests => all_tests}
   end
 
@@ -337,9 +334,6 @@ class ConfiguratorBuilder
     # Also add files that we are explicitly adding via :files:assembly: section
     @file_system_utils.revise_file_list( all_assembly, in_hash[:files_assembly] )
 
-    # Resolve FileList patterns & revisions into full list of filepaths
-    all_assembly.resolve()
-
     return {:collection_all_assembly => all_assembly}
   end
 
@@ -350,15 +344,12 @@ class ConfiguratorBuilder
     in_hash[:collection_paths_source].each do |path|
       if File.exist?(path) and not File.directory?(path)
         all_source.include( path )
-      else
+      elsif File.directory?(path)
         all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
       end
     end
 
     @file_system_utils.revise_file_list( all_source, in_hash[:files_source] )
-
-    # Resolve FileList patterns & revisions into full list of filepaths
-    all_source.resolve()
 
     return {:collection_all_source => all_source}
   end
@@ -377,9 +368,6 @@ class ConfiguratorBuilder
     end
 
     @file_system_utils.revise_file_list( all_headers, in_hash[:files_include] )
-
-    # Resolve FileList patterns & revisions into full list of filepaths
-    all_headers.resolve()
 
     return {:collection_all_headers => all_headers}
   end
@@ -400,23 +388,20 @@ class ConfiguratorBuilder
     in_hash[:collection_paths_source].each do |path|
       if File.exist?(path) and not File.directory?(path)
         release_input.include( path )
-      else
+      elsif File.directory?(path)
         release_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
         release_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:release_build_use_assembly]
       end
     end
 
     @file_system_utils.revise_file_list( release_input, in_hash[:files_source] )
-    @file_system_utils.revise_file_list( release_input, in_hash[:files_include] )
     @file_system_utils.revise_file_list( release_input, in_hash[:files_assembly] ) if in_hash[:release_build_use_assembly]
-
-    # Resolve FileList patterns & revisions into full list of filepaths
-    release_input.resolve()
 
     return {:collection_release_build_input => release_input}
   end
 
 
+  # Collect all test build code that exists in the configured paths (runners and mocks are handled at build time)
   def collect_existing_test_build_input(in_hash)
     all_input = @file_wrapper.instantiate_file_list
 
@@ -438,22 +423,14 @@ class ConfiguratorBuilder
 
     # Collect code files
     paths.each do |path|
-      if File.exist?(path) and not File.directory?(path)
-        all_input.include( path )
-      else
-        all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
-        all_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
-      end
+      all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
+      all_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
     end
 
     @file_system_utils.revise_file_list( all_input, in_hash[:files_test] )
     @file_system_utils.revise_file_list( all_input, in_hash[:files_support] )
     @file_system_utils.revise_file_list( all_input, in_hash[:files_source] )
-    @file_system_utils.revise_file_list( all_input, in_hash[:files_include] )
     @file_system_utils.revise_file_list( all_input, in_hash[:files_assembly] ) if in_hash[:test_build_use_assembly]
-
-    # Resolve FileList patterns & revisions into full list of filepaths
-    all_input.resolve()
 
     return {:collection_existing_test_build_input => all_input}
   end
@@ -475,7 +452,7 @@ class ConfiguratorBuilder
 
     @file_system_utils.revise_file_list( support, in_hash[:files_support] )
 
-    # Resolve FileList patterns & revisions into full list of filepaths
+    # Ensure FileList patterns & revisions are resolved into full list of filepaths
     support.resolve()
 
     support.each { |file| sources << file }
@@ -508,7 +485,7 @@ class ConfiguratorBuilder
       filelist.include( File.join(path, '*' + EXTENSION_CORE_SOURCE) )
     end
 
-    # Resolve FileList patterns & revisions into full list of filepaths
+    # Ensure FileList patterns & revisions are resolved into full list of filepaths
     filelist.resolve()
 
     # Extract just source file names

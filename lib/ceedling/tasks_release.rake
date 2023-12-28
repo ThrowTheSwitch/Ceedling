@@ -10,6 +10,10 @@ task RELEASE_SYM => [:directories] do
   begin
     @ceedling[:plugin_manager].pre_release
 
+    # FileList-based collections are not thread safe.
+    # Force file pattern resolution before any FileList first accesses inside concurrent threads.
+    @ceedling[:configurator].resolve_collections()
+
     core_objects  = []
     extra_objects = @ceedling[:file_path_utils].form_release_build_objects_filelist( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
 

@@ -394,6 +394,22 @@ class Configurator
   end
 
 
+  # Many of Configurator's dynamically attached collections are Rake FileLists.
+  # Rake FileLists are not thread safe with respect to resolving patterns into specific file lists.
+  # Unless forced, file patterns are resolved upon first access.
+  # This method forces resolving and can be called in the build process at a moment after
+  # file creation operations are complete but before first access inside a thread.
+  def resolve_collections()
+    collections = self.methods.select { |m| m =~ /^collection_/ }
+    collections.each do |collection|
+      ref = self.send(collection.to_sym)
+      if ref.class == FileList
+        ref.resolve()
+      end
+    end
+  end
+
+
   def insert_rake_plugins(plugins)
     plugins.each do |plugin|
       @project_config_hash[:project_rakefile_component_files] << plugin
