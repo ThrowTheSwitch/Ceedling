@@ -1,6 +1,6 @@
-# 🌱 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
+# Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-⦿ **Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
+🌱 **Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
 release artifact but is especially adept at building test suites.**
 
 Ceedling works the way developers want to work. It is entirely command-line driven.
@@ -59,7 +59,7 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 # ⭐️ Getting Started
 
-See the 👀 **_[Quick Start](docs/CeedlingPacket.md#quick-start)_ section** in Ceedling’s core documentation, _Ceedling Packet_.
+👀 See the **_[Quick Start](docs/CeedlingPacket.md#quick-start)_** section in Ceedling’s core documentation, _Ceedling Packet_.
 
 ## The basics
 
@@ -128,7 +128,7 @@ CException that come with it.
  > gem update ceedling
 ```
 
-## Documentation
+## Installing local documentation
 
 Are you just getting started with Ceedling? Maybe you'd like your
 project to be installed with some of its handy [documentation](docs/)? 
