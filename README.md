@@ -1,4 +1,4 @@
-# Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
+# 🌱 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
 Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
 release artifact but is especially adept at building test suites.
@@ -29,18 +29,18 @@ Ceedling is also extensible with a simple plugin mechanism.
 [CException]: https://github.com/throwtheswitch/cexception
 [tdd]: http://en.wikipedia.org/wiki/Test-driven_development
 
-# Documentation
+# 📚 Documentation
 
 [Usage help](docs/CeedlingPacket.md), [release notes](docs/ReleaseNotes.md), [breaking changes](docs/BreakingChanges.md), a variety of guides, and much more exists in [docs/](docs/).
 
-# Getting Started
+# ⭐️ Getting Started
 
-**👀 See the _Quick Start_ guide in [CeedlingPacket](docs/CeedlingPacket.md).**
+**👀 See the _Quick Start_ section in the in Ceedling's core documentation, _[CeedlingPacket](docs/CeedlingPacket.md)_.**
 
 ## The Basics
 
-1. Install Ruby. (Only Ruby 3+ supported.)
-1. Install Ceedling. (All other frameworks are included.)
+1. Install [Ruby]. (Only Ruby 3+ supported.)
+1. Install Ceedling. (All supporting frameworks are included.)
    ```shell
    > gem install ceedling
    ```
@@ -66,6 +66,8 @@ Example super-duper simple Ceedling configuration file:
   :include:
     - inc/**
 ```
+
+[Ruby]: https://www.ruby-lang.org/
 
 ## Creating A Project
 
@@ -94,8 +96,8 @@ CException that come with it.
 ## Documentation
 
 Are you just getting started with Ceedling? Maybe you'd like your
-project to be installed with some of its handy documentation? No problem!
-You can do this when you create a new project.
+project to be installed with some of its handy [documentation](docs/)? 
+No problem! You can do this when you create a new project.
 
 ```shell
  > ceedling new --docs MyAwesomeProject
@@ -149,7 +151,7 @@ file for you by adding `--gitignore` to your `new` call.
  > ceedling new --gitignore YourNewProjectName
 ```
 
-# Ceedling Development
+# 💻 Ceedling Development
 
 ## Alternate installation
 
@@ -186,14 +188,16 @@ Gemfile.lock.
 
 Ceedling uses [RSpec] for its tests.
 
-To run all tests:
+To run all tests run the following from the root of your local 
+Ceedling repository.
 
 ```shell
  > bundle exec rake
 ```
 
 To run individual test files and perform other tasks, use the 
-available Rake tasks. List those task like this:
+available Rake tasks. From the root of your local Ceedling repo,
+list those task like this:
 
 ```shell
  > rake -T
