@@ -1,6 +1,6 @@
 # 🌱 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-**Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
+ **Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
 release artifact but is especially adept at building test suites.**
 
 Ceedling works the way developers want to work. It is entirely command-line driven.
@@ -29,15 +29,35 @@ Ceedling is also extensible with a simple plugin mechanism.
 [CException]: https://github.com/throwtheswitch/cexception
 [tdd]: http://en.wikipedia.org/wiki/Test-driven_development
 
-# 📚 Documentation
+# 📚 Documentation & Learning
 
-[Usage help](docs/CeedlingPacket.md) (a.k.a. _Ceedling Packet_), [release notes](docs/ReleaseNotes.md), [breaking changes](docs/BreakingChanges.md), a variety of guides, and much more exists in [docs/](docs/).
+## Ceedling docs
+
+[Usage help][ceedling-packet] (a.k.a. _Ceedling Packet_), [release notes][release-notes], [breaking changes][breaking-changes], a variety of guides, and much more exists in [docs/](docs/).
+
+## Online tutorial
+
+Matt Chernosky’s [detailed tutorial][tutorial] demonstrates using Ceedling to build a full project and C test suite. As the tutorial is a number of years old, the content is a bit out-of-date. That said, it provides an excellent overview of a real project.
+
+## Library and courses
+
+[ThrowTheSwitch.org][TTS] provides a small but useful [library of resources][library] and links to two paid courses, _[Dr. Surly’s School for Mad Scientists][courses]_, that provide in-depth training on writing C unit tests and using Unity, CMock, and Ceedling to do so. 
+
+[ceedling-packet]: docs/CeedlingPacket.md
+[release-notes]: docs/ReleaseNotes.md
+[breaking-changes]: docs/BreakingChanges.md
+[TTS]: https://throwtheswitch.org
+[tutorial]: http://www.electronvector.com/blog/add-unit-tests-to-your-current-project-with-ceedling
+[library]: http://www.throwtheswitch.org/library
+[courses]: http://www.throwtheswitch.org/dr-surlys-school
 
 # ⭐️ Getting Started
 
-**👀 See the _[Quick Start](docs/CeedlingPacket.md#quick-start)_ section in Ceedling’s core documentation, _Ceedling Packet_.**
+**See the 👀_[Quick Start](docs/CeedlingPacket.md#quick-start)_ section in Ceedling’s core documentation, _Ceedling Packet_.**
 
-## The Basics
+## The basics
+
+### Direct installation
 
 1. Install [Ruby]. (Only Ruby 3+ supported.)
 1. Install Ceedling. (All supporting frameworks are included.)
@@ -51,7 +71,16 @@ Ceedling is also extensible with a simple plugin mechanism.
    > ceedling test:all release
    ```
 
-Example super-duper simple Ceedling configuration file:
+### Docker image
+
+A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling, the GCC toolchain, and some helper scripts is also available. A Docker container is portable, well managed, and an alternative to a local installation of Ceedling.
+
+The Ceedling Docker image is early in its lifecycle and due for significant updates and improvements. Check its documentation for version information, status, and supported platforms.
+
+[docker-image]: https://hub.docker.com/r/throwtheswitch/madsciencelab
+
+
+### Example super-duper simple Ceedling configuration file
 
 ```yaml
 :project:
@@ -69,7 +98,7 @@ Example super-duper simple Ceedling configuration file:
 
 [Ruby]: https://www.ruby-lang.org/
 
-## Creating A Project
+## Creating a project
 
 Creating a project with Ceedling is easy. Simply tell Ceedling the
 name of the project, and it will create a directory with that name
@@ -103,12 +132,12 @@ No problem! You can do this when you create a new project.
  > ceedling new --docs MyAwesomeProject
 ```
 
-## Attaching a Ceedling Version to Your Project
+## Attaching a Ceedling version to your project
 
 Ceedling can be installed as a globally available Ruby gem. Ceedling can 
 also deploy all of its guts into your project instead. This allows it to 
 be used without worrying about external dependencies. More importantly, 
-you don't have to worry about Ceedling changing outside of your project 
+you don’t have to worry about Ceedling changing outside of your project 
 just because you updated your gems. No need to worry about changes in 
 Unity or CMock breaking your build in the future.
 
@@ -142,7 +171,7 @@ can prevent Ceedling from updating your project file by adding
  > ceedling upgrade --local --no_configs YourSweetProject
 ```
 
-## Git Integration
+## Git integration
 
 Are you using Git? You might want Ceedling to create a `.gitignore` 
 file for you by adding `--gitignore` to your `new` call.
@@ -167,14 +196,14 @@ plugins via git submodules. A simple clone may not pull in the latest
 and greatest.
 
 The `bundle` tool ensures you have all needed Ruby gems installed. If 
-Bundler isn't installed on your system or you run into problems, you 
+Bundler isn’t installed on your system or you run into problems, you 
 might have to install it:
 
 ```shell
  > sudo gem install bundler
 ```
 
-If you run into trouble running bundler and get messages like _can't 
+If you run into trouble running bundler and get messages like _can’t 
 find gem bundler (>= 0.a) with executable bundle 
 (Gem::GemNotFoundException)_, you may need to install a different 
 version of Bundler. For this please reference the version in the 
