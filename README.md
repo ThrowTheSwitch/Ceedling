@@ -1,7 +1,7 @@
 # 🌱 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
-release artifact but is especially adept at building test suites.
+**Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
+release artifact but is especially adept at building test suites.**
 
 Ceedling works the way developers want to work. It is entirely command-line driven.
 All generated and framework code is easy to see and understand. Its features
