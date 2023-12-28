@@ -32,7 +32,7 @@ Ceedling 0.32 introduces a new build pipeline that batches build steps breadth-f
 
 In previous versions of Ceedling each test executable was built with essentially the same global configuration. In the case of `#define`s and tool command line flags, individual files could be handled differently, but configuring Ceedling for doing so for all the files in any one test executable was tedious and error prone.
 
-Now Ceedling builds each test executable as a mini project where header file search paths, compilation `#define`s, and tool flags can be specified per test executable. That is, each file that ultimately comprises a test executable is handled with the same configuration as the other files that make up that test executable.
+Now Ceedling builds each test executable as a mini project where header file search paths, compilation `#define` symbols, and tool flags can be specified per test executable. That is, each file that ultimately comprises a test executable is handled with the same configuration as the other files that make up that test executable.
 
 Now you can have tests with quite different configurations and behaviors. Two tests need different mocks of the same header file? No problem. You want to test the same source file two different ways? We got you.
 
@@ -61,6 +61,8 @@ Ceedling has been around for a number of years and has had the benefit of many c
 The [Ceedling user guide](CeedlingPacket.md) has been significantly revised and expanded. We will expand it further in future releases and eventually break it up into multiple documents or migrate it to a full documentation management system.
 
 Many of the plugins have received documentation updates as well.
+
+There's more to be done, but Ceedling's documentation is more complete and accurate than it's ever been.
 
 ### Small Deal Highlights 🥉
 

@@ -397,8 +397,10 @@ class Configurator
   # Many of Configurator's dynamically attached collections are Rake FileLists.
   # Rake FileLists are not thread safe with respect to resolving patterns into specific file lists.
   # Unless forced, file patterns are resolved upon first access.
-  # This method forces resolving and can be called in the build process at a moment after
-  # file creation operations are complete but before first access inside a thread.
+  # This method forces resolving of all FileList-based collections and can be called in the build 
+  # process at a moment after any file creation operations are complete but before first access 
+  # inside a thread.
+  # TODO: Remove this once a thread-safe version of FileList has been brought into the project.
   def resolve_collections()
     collections = self.methods.select { |m| m =~ /^collection_/ }
     collections.each do |collection|

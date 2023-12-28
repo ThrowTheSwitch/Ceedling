@@ -36,6 +36,7 @@ class TestInvoker
     begin
       # FileList-based collections are not thread safe.
       # Force file pattern resolution before any FileList first accesses inside concurrent threads.
+      # TODO: Remove this once a thread-safe version of FileList has been brought into the project.
       @configurator.resolve_collections()
 
       # Begin fleshing out the testables data structure

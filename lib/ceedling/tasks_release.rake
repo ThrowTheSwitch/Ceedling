@@ -12,6 +12,7 @@ task RELEASE_SYM => [:directories] do
 
     # FileList-based collections are not thread safe.
     # Force file pattern resolution before any FileList first accesses inside concurrent threads.
+    # TODO: Remove this once a thread-safe version of FileList has been brought into the project.
     @ceedling[:configurator].resolve_collections()
 
     core_objects  = []
