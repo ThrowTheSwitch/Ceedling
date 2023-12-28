@@ -1,6 +1,6 @@
 # 🌱 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
- **Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
+⦿ **Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
 release artifact but is especially adept at building test suites.**
 
 Ceedling works the way developers want to work. It is entirely command-line driven.
@@ -8,19 +8,20 @@ All generated and framework code is easy to see and understand. Its features
 cater to low-level embedded development as well as enterprise-level software 
 systems.
 
-Ceedling is the glue for bringing together three other awesome open-source 
-projects you can’t live without if you‘re creating awesomeness in the C language.
+Ceedling is also a suite of tools. It is the glue for bringing together three 
+other awesome open-source projects you can’t live without if you‘re creating 
+awesomeness in the C language.
 
-1. [Unity], an xUnit-style test framework.
-1. [CMock], a code generating, function mocking kit for interaction-based testing.
-1. [CException], a framework for adding simple exception handling to C projects
+1. **[Unity]**, an xUnit-style test framework.
+1. **[CMock]**, a code generating, function mocking kit for interaction-based testing.
+1. **[CException]**, a framework for adding simple exception handling to C projects
    in the style of higher-order programming languages.
 
 In its simplest form, Ceedling can build and test an entire project from just a
 few lines in a project configuration file.
 
 Because it handles all the nitty-gritty of rebuilds and becuase of Unity and CMock,
-Ceedling makes TDD ([Test-Driven Development][tdd]) in C a breeze.
+Ceedling makes [Test-Driven Development][tdd] in C a breeze.
 
 Ceedling is also extensible with a simple plugin mechanism.
 
@@ -33,31 +34,36 @@ Ceedling is also extensible with a simple plugin mechanism.
 
 ## Ceedling docs
 
-[Usage help][ceedling-packet] (a.k.a. _Ceedling Packet_), [release notes][release-notes], [breaking changes][breaking-changes], a variety of guides, and much more exists in [docs/](docs/).
-
-## Online tutorial
-
-Matt Chernosky’s [detailed tutorial][tutorial] demonstrates using Ceedling to build a full project and C test suite. As the tutorial is a number of years old, the content is a bit out-of-date. That said, it provides an excellent overview of a real project.
+**[Usage help][ceedling-packet]** (a.k.a. _Ceedling Packet_), **[release notes][release-notes]**, **[breaking changes][breaking-changes]**, a variety of guides, and much more exists in **[docs/](docs/)**.
 
 ## Library and courses
 
-[ThrowTheSwitch.org][TTS] provides a small but useful [library of resources][library] and links to two paid courses, _[Dr. Surly’s School for Mad Scientists][courses]_, that provide in-depth training on writing C unit tests and using Unity, CMock, and Ceedling to do so. 
+[ThrowTheSwitch.org][TTS]:
+
+* Provides a small but useful **[library of resources and guides][library]** on testing and using the Ceedling suite of tools.
+* Discusses your **[options for running a test suite][running-options]**, particularly in the context of embedded systems.
+* Links to paid courses, **_[Dr. Surly’s School for Mad Scientists][courses]_**, that provide in-depth training on creating C unit tests and using Unity, CMock, and Ceedling to do so.
+
+## Online tutorial
+
+Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling to build a C project with test suite. As the tutorial is a number of years old, the content is a bit out of date. That said, it provides an excellent overview of a real project.
 
 [ceedling-packet]: docs/CeedlingPacket.md
 [release-notes]: docs/ReleaseNotes.md
 [breaking-changes]: docs/BreakingChanges.md
 [TTS]: https://throwtheswitch.org
-[tutorial]: http://www.electronvector.com/blog/add-unit-tests-to-your-current-project-with-ceedling
 [library]: http://www.throwtheswitch.org/library
+[running-options]: http://www.throwtheswitch.org/build/which
 [courses]: http://www.throwtheswitch.org/dr-surlys-school
+[tutorial]: http://www.electronvector.com/blog/add-unit-tests-to-your-current-project-with-ceedling
 
 # ⭐️ Getting Started
 
-**See the 👀_[Quick Start](docs/CeedlingPacket.md#quick-start)_ section in Ceedling’s core documentation, _Ceedling Packet_.**
+See the 👀 **_[Quick Start](docs/CeedlingPacket.md#quick-start)_ section** in Ceedling’s core documentation, _Ceedling Packet_.
 
 ## The basics
 
-### Direct installation
+### Local installation
 
 1. Install [Ruby]. (Only Ruby 3+ supported.)
 1. Install Ceedling. (All supporting frameworks are included.)
@@ -73,7 +79,7 @@ Matt Chernosky’s [detailed tutorial][tutorial] demonstrates using Ceedling to 
 
 ### Docker image
 
-A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling, the GCC toolchain, and some helper scripts is also available. A Docker container is portable, well managed, and an alternative to a local installation of Ceedling.
+A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling, the GCC toolchain, and some helper scripts is also available. A Docker container is a self-containe, portable, well managed, alternative to a local installation of Ceedling.
 
 The Ceedling Docker image is early in its lifecycle and due for significant updates and improvements. Check its documentation for version information, status, and supported platforms.
 
