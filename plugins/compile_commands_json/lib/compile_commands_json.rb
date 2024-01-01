@@ -5,20 +5,20 @@ require 'json'
 class CompileCommandsJson < Plugin
   def setup
     @fullpath = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, "compile_commands.json")
-    @database = if (File.exist?(@fullpath) && File.size(@fullpath) > 0)
-                  JSON.parse( File.read(@fullpath) )
-                else
-                  []
-                end
+    @database = []
+    if (File.exist?(@fullpath) && File.size(@fullpath) > 0)
+      @database = JSON.parse( File.read(@fullpath) )
+    end
   end
 
   def post_compile_execute(arg_hash)
 
-    # Create the new Entry
+    # Create new Entry from compilation
     value = {
-      "directory" => Dir.pwd,
+      "directory" => Dir.pwd, # TODO: Replace with Ceedling project root when it exists
+      "file" => arg_hash[:source],
       "command" => arg_hash[:shell_command],
-      "file" => arg_hash[:source]
+      "output" => arg_hash[:object]
     }
 
     # Determine if we're updating an existing file description or adding a new one
@@ -29,7 +29,7 @@ class CompileCommandsJson < Plugin
       @database << value
     end
 
-    # Update the Actual compile_commands.json file
+    # Rewrite the compile_commands.json file
     File.open(@fullpath,'w') {|f| f << JSON.pretty_generate(@database)}
   end
 end
