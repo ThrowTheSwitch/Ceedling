@@ -1,4 +1,4 @@
-# Ceedling Gcov Plugin
+# Ceedling Plugin: Gcov
 
 # Plugin Overview
 
