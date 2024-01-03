@@ -85,9 +85,10 @@ It's just all mixed together.
    This section speaks to the philosophy of and practical options for unit testing
    code in a variety of scenarios.
 
-1. **[Anatomy of a Test Suite][packet-section-3]**
+1. **[How Does a Test Case Even Work?][packet-section-3]**
 
-   This documentation explains how a unit test grows up to become a test suite.
+   A brief overview of what a test case is and several simple examples illustrating
+   how test cases work.
 
 1. **[Commented Sample Test File][packet-section-4]**
 
@@ -95,43 +96,47 @@ It's just all mixed together.
    conventions that Ceedling relies on to do its work. There's also a brief 
    discussion of what gets compiled and linked to create an executable test.
 
-1. **[Ceedling Installation & Set Up][packet-section-5]**
+1. **[Anatomy of a Test Suite][packet-section-5]**
+
+   This documentation explains how a unit test grows up to become a test suite.
+
+1. **[Ceedling Installation & Set Up][packet-section-6]**
 
    This one is pretty self explanatory.
 
-1. **[Now What? How Do I Make It _GO_?][packet-section-6]**
+1. **[Now What? How Do I Make It _GO_?][packet-section-7]**
 
    Ceedling's many command line tasks and some of the rules about using them.
 
-1. **[Important Conventions & Behaviors][packet-section-7]**
+1. **[Important Conventions & Behaviors][packet-section-8]**
 
    Much of what Ceedling accomplishes — particularly in testing — is by convention. 
    Code and files structured in certain ways trigger sophisticated Ceedling features. 
 
-1. **[Using Unity, CMock & CException][packet-section-8]**
+1. **[Using Unity, CMock & CException][packet-section-9]**
 
    Not only does Ceedling direct the overall build of your code, it also links 
    together several key tools and frameworks. Those can require configuration of 
    their own. Ceedling facilitates this.
 
-1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-9]**
+1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-10]**
 
    This is the exhaustive documentation for all of Ceedling's project file 
    configuration options — from project paths to command line tools to plugins and
    much, much more.
 
-1. **[Build Directive Macros][packet-section-10]**
+1. **[Build Directive Macros][packet-section-11]**
 
    These code macros can help you accomplish your build goals When Ceedling's 
    conventions aren't enough.
 
-1. **[Global Collections][packet-section-11]**
+1. **[Global Collections][packet-section-12]**
 
    Ceedling is built in Ruby. Collections are globally available Ruby lists of paths,
    files, and more that can be useful for advanced customization of a Ceedling project 
    file or in creating plugins.
 
-1. **[Module Generator][packet-section-12]**
+1. **[Module Generator][packet-section-13]**
 
    A pattern emerges in day-to-day unit testing, especially in the practice of Test-
    Driven Development. Again and again, one needs a triplet of a source file, header 
@@ -141,16 +146,17 @@ It's just all mixed together.
 
 [packet-section-1]:  #ceedling-a-c-build-system-for-all-your-mad-scientisting-needs
 [packet-section-2]:  #ceedling-unity-and-c-mocks-testing-abilities
-[packet-section-3]:  #anatomy-of-a-test-suite
+[packet-section-3]:  #how-does-a-test-case-even-work
 [packet-section-4]:  #commented-sample-test-file
-[packet-section-5]:  #ceedling-installation--set-up
-[packet-section-6]:  #now-what-how-do-i-make-it-go
-[packet-section-7]:  #important-conventions--behaviors
-[packet-section-8]:  #using-unity-cmock--cexception
-[packet-section-9]:  #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
-[packet-section-10]: #build-directive-macros
-[packet-section-11]: #global-collections
-[packet-section-12]: #module-generator
+[packet-section-5]:  #anatomy-of-a-test-suite
+[packet-section-6]:  #ceedling-installation--set-up
+[packet-section-7]:  #now-what-how-do-i-make-it-go
+[packet-section-8]:  #important-conventions--behaviors
+[packet-section-9]:  #using-unity-cmock--cexception
+[packet-section-10]: #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
+[packet-section-11]: #build-directive-macros
+[packet-section-12]: #global-collections
+[packet-section-13]: #module-generator
 
 ---
 
@@ -397,6 +403,177 @@ item listed below.
 
 <br/>
 
+# How Does a Test Case Even Work?
+
+## Behold assertions
+
+In its simplest form, a test case is just a C function with no 
+parameters and no return value that packages up logical assertions. 
+If no assertions fail, the test case passes. Technically, an empty
+test case function is a passing test.
+
+Ceedling relies on the [Unity] project for its unit test framework
+(i.e. the thing that provides assertions and counts up passing
+and failing tests).
+
+### Super simple passing test case
+
+```c
+#include "unity.h"
+
+void test_case(void) {
+   TEST_ASSERT_TRUE( (1 == 1) );
+}
+```
+
+### Super simple failing test case
+
+```c
+#include "unity.h"
+
+void test_some_other_case(void) {
+   TEST_ASSERT_TRUE( (1 == 1) );
+}
+```
+
+### Realistic simple test cases
+
+In reality, we're probably not testing the value of an integer 
+against itself. Instead, we're calling functions in our source code
+and making assertions against return values.
+
+```c
+#include "unity.h"
+#include "my_math.h"
+
+void test_some_sums(void) {
+   TEST_ASSERT_EQUALS(   5, mySum(  2,   3) );
+   TEST_ASSERT_EQUALS(   6, mySum(  0,   6) );
+   TEST_ASSERT_EQUALS( -12, mySum( 20, -32) );
+}
+```
+
+If an assertion fails, the test case fails. As soon as an assertion
+fails, execution within that test case stops.
+
+Multiple test cases can live in the same test file. When all the
+test cases are run, their results are tallied into simple pass
+and fail metrics with a bit of metadata for failing test cases such 
+as line numbers and names of test cases.
+
+### Sample test case output
+
+Successful test suite run:
+
+```
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  49
+PASSED:  49
+FAILED:   0
+IGNORED:  0
+```
+
+A test suite with a failing test:
+
+```
+-------------------
+FAILED TEST SUMMARY
+-------------------
+[test/TestModel.c]
+  Test: testInitShouldCallSchedulerAndTemperatureFilterInit
+  At line (21): "Function TaskScheduler_Init. Called more times than expected."
+
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  49
+PASSED:  48
+FAILED:   1
+IGNORED:  0
+```
+
+### Advanced test cases with mocks
+
+Often you want to test not just what a function returns but how
+it interacts with other functions.
+
+The simple test cases above work well at the "edges" of a 
+codebase (libraries, state management, etc.). But, in the messy 
+middle of your code, code calls other code. One way to handle this
+is with mock functions.
+
+Mock functions are generated code that has the same interface
+as the real code the mocks replace. Mocked functions allow you 
+to control how it behaves and wrap up assertions with a higher
+level idea of expectations.
+
+You can write your own mocks. But, it's generally better to rely
+on something else to do it for you. Ceedling uses the [CMock] 
+framework to perform mocking for you.
+
+Here's some sample code you might want to test:
+
+```c
+#include "other_code.h"
+
+void doTheThingYo(mode_t input) {
+   mode_t result = processMode(input);
+   if (result == MODE_3) {
+      setOutput(OUTPUT_F);
+   }
+   else {
+      setOutput(OUTPUT_D);
+   } 
+}
+```
+
+Here's what test cases using mocks for that code could look like:
+
+```c
+#include "mock_other_code.h"
+
+void test_doTheThingYo_should_enableOutputF(void) {
+   // Mocks
+   processMode_ExecptAndReturn(MODE_1, MODE_3);
+   setOutput_Expect(OUTPUT_F);
+
+   // Function under test
+   doTheThingYo(MODE_1);
+}
+
+void test_doTheThingYo_should_enableOutputD(void) {
+   // Mocks
+   processMode_ExecptAndReturn(MODE_2, MODE_4);
+   setOutput_Expect(OUTPUT_D);
+
+   // Function under test
+   doTheThingYo(MODE_2);
+}
+```
+
+Remember, the generated mock code you can't see here has a 
+whole bunch of smarts and Unity assertions inside it.
+
+### That was the basics, but you’ll need more
+
+For more on the assertions and mocking shown above, consult the 
+documentation for [Unity] and [CMock] or the resources in
+Ceedling's [README][/README.md]
+
+Ceedling, Unity, and CMock rely on a variety of
+[conventions to make your life easier][conventions-and-behaviors].
+Read up on these to understand how to build up test cases
+and test suites.
+
+Also take a look at the very next sections for more examples
+and details on how everything fits together.
+
+[conventions-and-behaviors]: #important-conventions--behaviors
+
+<br/>
+
 # Commented Sample Test File
 
 **Here is a beautiful test file to help get you started…**
@@ -418,9 +595,6 @@ The sample test file below demonstrates the following:
    `TEST_SOURCE_FILE("more.c")`.
 1. Creating two test cases with mock expectations and Unity
    assertions.
-
-For more on the assertions and mocks shown, consult the 
-documentation for [Unity] and [CMock].
 
 All other conventions and features are documented in the sections
 that follow.
@@ -496,6 +670,13 @@ with no project file present), you can generate entire example projects.
 
 A Ceedling test suite is composed of one or more individual test executables.
 
+The [Unity] project provides the actual framework for test case assertions 
+and unit test sucess/failure accounting. If mocks are enabled, [CMock] builds 
+on Unity to generate mock functions from source header files with expectation
+test accounting. Ceedling is the glue that combines these frameworks, your
+project's toolchain, and your source code into a collection of test 
+executables you can run as a singular suite.
+
 ## What is a test executable?
 
 Put simply, in a Ceedling test suite, each test file becomes a test executable.
@@ -512,7 +693,7 @@ a final test executable.
 * A test C code file (`test_foo.c`).
 * A generated test runner C code file (`test_foo_runner.c`). `main()` is located
   in the runner.
-* If using mocking:
+* If using mocks:
    * `cmock.c`
    * One more mock C code files generated from source header files (`mock_bar.c`)
 
@@ -530,7 +711,7 @@ For several reasons:
 
 ## Ceedling’s role in your test suite
 
-A test executable is not all that hard to create by hand, but it can tedious,
+A test executable is not all that hard to create by hand, but it can be tedious,
 repetitive, and error-prone.
 
 What Ceedling provides is an ability to perform the process repeatedly and simply 
