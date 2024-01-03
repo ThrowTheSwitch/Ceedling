@@ -224,7 +224,7 @@ class Gcov < Plugin
         )
       
       if exec[:result].nil?
-        raise CeedlingException.new("ERROR: gcov report generation tool `#{utility_name}` not installed.")
+        raise CeedlingException.new("gcov report generation tool `#{utility_name}` not installed.")
       end
     end
 

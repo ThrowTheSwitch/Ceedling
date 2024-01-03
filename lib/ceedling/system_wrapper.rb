@@ -73,10 +73,10 @@ class SystemWrapper
 
     if verbose
       # Allow console output
-      result = system( command, *args)
+      result = system( command, *args )
     else
       # Shush the console output
-      result = system( command, *args, [:out, :err] => File::NULL)
+      result = system( command, *args, [:out, :err] => File::NULL )
     end
 
     $exit_code = ($?.exitstatus).freeze if boom

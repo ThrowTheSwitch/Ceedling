@@ -106,7 +106,7 @@ class ConfiguratorValidator
 
     # skip everything if we've got an argument replacement pattern
     return true if (filepath =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
-    
+
     # if there's no path included, verify file exists somewhere in system search paths
     if (not filepath.include?('/'))
       exists = false
@@ -128,7 +128,10 @@ class ConfiguratorValidator
       
       if (not exists)
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
-        @stream_wrapper.stderr_puts("ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist in system search paths.") 
+        @stream_wrapper.stderr_puts(
+          "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist in system search paths.",
+          Verbosity::COMPLAIN
+        )
         return false        
       end
       
@@ -136,7 +139,10 @@ class ConfiguratorValidator
     else
       if (not @file_wrapper.exist?(filepath))
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
-        @stream_wrapper.stderr_puts("ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk.") 
+        @stream_wrapper.stderr_puts(
+          "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk.",
+          Verbosity::COMPLAIN
+        )
         return false
       end      
     end
