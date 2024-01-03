@@ -2865,9 +2865,9 @@ See [CMock] documentation.
   To add to the list Ceedling provides CMock, simply add `:cmock` ↳ `:plugins` 
   to your configuration and specify your desired additional plugins.
 
-  Each of the plugins have their own additional documentation.
+  See [CMock's documentation][cmock-docs] to understand plugin options.
 
-  TODO: Add a list of plugins with links to their READMEs
+  [cmock-docs]: https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMock_Summary.md
 
 * `:includes`:
 
@@ -3200,24 +3200,28 @@ Notes on test fixture tooling example:
 
 See the [guide][custom-plugins] for how to create custom plugins.
 
-Many Ceedling users find that the handy-dandy [Command Hooks plugin][command-hooks-plugin]
+Ceedling includes a number of built-in plugins. See the collection
+in [plugins/][ceedling-plugins]. Each subdirectory includes a README that 
+documents the capabilities and configuration options. 
+
+Many users find that the handy-dandy [Command Hooks plugin][command-hooks-plugin]
 is often enough to meet their needs. This plugin allows you to connect your
 own scripts and tools to Ceedling build steps.
 
 [custom-plugins]: CeedlingCustomPlugins.md
+[ceedling-plugins]: plugins/
 [command-hooks-plugin]: plugins/command_hooks/README.md
 
 * `:load_paths`:
 
-  Base paths to search for plugin subdirectories or extra Ruby functionality
+  Base paths to search for plugin subdirectories or extra Ruby functionality.
 
   **Default**: `[]` (empty)
 
 * `:enabled`:
 
   List of plugins to be used - a plugin's name is identical to the
-  subdirectory that contains it (and the name of certain files within
-  that subdirectory)
+  subdirectory that contains it.
 
   **Default**: `[]` (empty)
 
@@ -3232,12 +3236,12 @@ test results from all test fixtures executed.
 ```yaml
 :plugins:
   :load_paths:
-    - project/tools/ceedling/plugins  #home to your collection of plugin directories
-    - project/support                 #maybe home to some ruby code your custom plugins share
+    - project/tools/ceedling/plugins  # Home to your collection of plugin directories.
+    - project/support                 # Maybe home to some ruby code your custom plugins share.
   :enabled:
-    - stdout_pretty_tests_report      #nice test results at your command line
-    - our_custom_code_metrics_report  #maybe you needed line count and complexity metrics, so you
-                                      #created a plugin to scan all your code and collect that info
+    - stdout_pretty_tests_report      # Nice test results at your command line.
+    - our_custom_code_metrics_report  # Maybe you needed line count and complexity metrics, so you
+                                      # created a plugin to scan all your code and collect that info.
 ```
 
 * `:stdout_pretty_tests_report`:
@@ -3384,65 +3388,156 @@ void setUp(void) {
 
 # Global Collections
 
-TODO: Revise list and explain utility.
+Collections are Ruby arrays and Rake FileLists (that act like 
+arrays). Ceedling did work to populate and assemble these by
+processing the project file, using internal knowledge, 
+expanding path globs, etc. at startup.
 
-`COLLECTION_` indicates that Ceedling did some work to assemble
-  the list. For instance, expanding path globs, combining multiple
-  path globs into a convenient summation, etc.
+Collections are globally available Ruby constants. These 
+constants are documented below. Collections are also available
+via accessors on the `Configurator` object (same names but all
+lower case methods).
 
-* `COLLECTION_PATHS_TEST`:
+Global collections are typically used in Rakefiles, plugins, 
+and Ruby scripts where the contents tend to be especially 
+handy for crafting custom functionality.
 
-  All test paths
+Once upon a time collections were a core component of Ceedling.
+As the tool has grown in sophistication and as many of its 
+features now operate per test executable, the utility of and
+number of collections has dwindled. Previously, nearly all
+Ceedling actions happened in bulk and with the same 
+collections used for all tasks. This is no longer true.
 
-* `COLLECTION_PATHS_SOURCE`:
+* `COLLECTION_PROJECT_OPTIONS`:
 
-  All source paths
+  All project option files with path found in the configured 
+  options paths having the configured YAML file extension.
+
+* `COLLECTION_ALL_TESTS`:
+
+  All files with path found in the configured test paths 
+  having the configured source file extension. 
+
+* `COLLECTION_ALL_ASSEMBLY`:
+
+  All files with path found in the configured source and 
+  test support paths having the configured assembly file 
+  extension. 
+
+* `COLLECTION_ALL_SOURCE`:
+
+  All files with path found in the configured source paths 
+  having the configured source file extension. 
+
+* `COLLECTION_ALL_HEADERS`:
+
+  All files with path found in the configured include, 
+  support, and test paths having the configured header file 
+  extension. 
+
+* `COLLECTION_ALL_SUPPORT`:
+
+  All files with path found in the configured test support 
+  paths having the configured source file extension. 
 
 * `COLLECTION_PATHS_INCLUDE`:
 
-  All include paths
+  All configured include paths.
+
+* `COLLECTION_PATHS_SOURCE`:
+
+  All configured source paths.
 
 * `COLLECTION_PATHS_SUPPORT`:
 
-  All test support paths
+  All configured support paths.
+
+* `COLLECTION_PATHS_TEST`:
+
+  All configured test paths.
 
 * `COLLECTION_PATHS_SOURCE_AND_INCLUDE`:
 
-  All source and include paths
+  All configured source and include paths.
 
 * `COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR`:
 
-  All source and include paths + applicable vendor paths (e.g.
-  CException's source path if exceptions enabled)
-
-* `COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE`:
-
-  All test toolchain include paths
+  All configured source and include paths plus applicable 
+  vendor paths (Unity's source path plus CMock and 
+  CException's source paths if mocks and exceptions are 
+  enabled).
 
 * `COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE`:
 
-  All test, source, and include paths
+  All configured test, support, source, and include paths.
 
 * `COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR`:
 
-  All test, source, include, and applicable vendor paths (e.g. Unity's
-  source path plus CMock and CException's source paths if mocks and
-  exceptions are enabled)
+  All test, support, source, include, and applicable 
+  vendor paths (Unity's source path plus CMock and 
+  CException's source paths if mocks and exceptions are 
+  enabled).
 
 * `COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE`:
 
-  All release toolchain include paths
+  All configured release toolchain include paths.
 
-* `COLLECTION_DEFINES_TEST_AND_VENDOR`:
+* `COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE`:
 
-  All symbols specified in `:defines` ↳ `:test` + symbols defined for
-  enabled vendor tools - e.g. `:unity` ↳ `:defines`, `:cmock` ↳ `:defines`,
-  and `:cexception` ↳ `:defines`
+  All configured test toolchain include paths.
 
-* `COLLECTION_DEFINES_RELEASE_AND_VENDOR`:
+* `COLLECTION_PATHS_VENDOR`:
 
-  All symbols specified in `:defines` ↳ `:release` plus symbols defined by
-  `:cexception` ↳ `:defines` if exceptions are enabled
+  Unity's source path plus CMock and CException's source 
+  paths if mocks and exceptions are enabled.
+
+* `COLLECTION_VENDOR_FRAMEWORK_SOURCES`:
+
+  Unity plus CMock, and CException's .c filenames (without 
+  paths) if mocks and exceptions are enabled.
+
+* `COLLECTION_RELEASE_BUILD_INPUT`:
+
+   * All files with path found in the configured source 
+     paths having the configured source file extension.
+   * If exceptions are enabled, the source files for 
+     CException.
+   * If assembly support is enabled, all assembly files 
+     found in the configured paths having the configured 
+     assembly file extension.
+
+* `COLLECTION_EXISTING_TEST_BUILD_INPUT`:
+
+   * All files with path found in the configured source 
+     paths having the configured source file extension.
+   * All files with path found in the configured test 
+     paths having the configured source file extension.
+   * Unity's source files.
+   * If exceptions are enabled, the source files for 
+     CException.
+   * If mocks are enabled, the C source files for CMock.
+   * If assembly support is enabled, all assembly files 
+     found in the configured paths having the configured 
+     assembly file extension.
+
+  This collection does not include .c files generated by 
+  Ceedling and its supporting frameworks at build time 
+  (e.g. test runners and mocks). Further, this collection 
+  does not include source files added to a test 
+  executable's build list with the `TEST_SOURCE_FILE()` 
+  build directive macro.
+
+* `COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS`:
+
+  If exceptions are enabled, CException's .c filenames 
+  (without paths) remapped to configured object file 
+  extension.
+
+* `COLLECTION_TEST_FIXTURE_EXTRA_LINK_OBJECTS`:
+
+  All test support source filenames (without paths) 
+  remapped to configured object file extension.
 
 <br/>
 
