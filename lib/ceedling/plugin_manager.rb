@@ -100,9 +100,24 @@ class PluginManager
   end
 
   def execute_plugins(method, *args)
+    handlers = 0
+
+    @plugin_objects.each do |plugin|
+      handlers += 1 if plugin.respond_to?(method) 
+    end
+
+    if handlers > 0
+      heading = @reportinator.generate_heading( "Plugins (#{handlers}) > :#{method}" )
+      @streaminator.stdout_puts(heading, Verbosity::OBNOXIOUS)
+    end
+
     @plugin_objects.each do |plugin|
       begin
-        plugin.send(method, *args) if plugin.respond_to?(method)
+        if plugin.respond_to?(method)
+          message = @reportinator.generate_progress( " + #{plugin.name}" )
+          @streaminator.stdout_puts(message, Verbosity::OBNOXIOUS)
+          plugin.send(method, *args)
+        end
       rescue
         @streaminator.stderr_puts("Exception raised in plugin: #{plugin.name}, in method #{method}")
         raise
