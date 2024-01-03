@@ -2,7 +2,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** December 26, 2023
+**Date:** January 3, 2024
 
 <br/>
 
@@ -67,6 +67,7 @@ There's more to be done, but Ceedling's documentation is more complete and accur
 ### Small Deal Highlights 🥉
 
 - Effort has been invested across the project to improve error messages, exception handling, and exit code processing. Noisy backtraces have been relegated to the verbosity level of DEBUG as <insert higher power> intended.
+- A variety of small improvements and fixes have been made throughout the plugin system and to many plugins.
 - The historically unwieldy `verbosity` command line task now comes in two flavors. The original recipe numeric parameterized version (e.g. `[4]`) exist as is. The new extra crispy recipe includes — funny enough — verbose task names `verbosity:silent`, `verbosity:errors`, `verbosity:complain`, `verbosity:normal`, `verbosity:obnoxious`, `verbosity:debug`. 
 - This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake's design assumptions hamper building the sorts of features Ceedling's users want, Rake's command line structure creates a messy user experience for a full application built around it, and Rake's quirks cause maintenance challenges. Particularly for test suites, much of Ceedling's (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
 - This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 0.32 release. Future releases will have far shorter notes.
@@ -124,7 +125,7 @@ Enabling this speedup requires either or both of two simple configuration settin
 
 ### `TEST_INCLUDE_PATH(...)` & `TEST_SOURCE_FILE(...)`
 
-Issue #743
+Issue [#743](/issues/743)
 
 Using what we are calling build directive macros, you can now provide Ceedling certain configuration details from inside a test file.
 
@@ -140,7 +141,7 @@ In short, `TEST_SOURCE_FILE()` allows you to be explicit as to which source C fi
 
 ### More better `:flags` handling
 
-Issue #43
+Issue [#43](/issues/43)
 
 Each test executable is now built as a mini project. Using improved `:flags` handling and an updated section format within Ceedling's project file, you have much better options for specifying flags presented to the various tools within your build, particulary within test builds.
 
@@ -156,7 +157,7 @@ One powerful new feature is the ability to test the same source file built diffe
 
 ### Preprocessing improvements
 
-Issues #806, #796
+Issues [#806](/issues/806), [#796](/issues/796)
 
 Preprocessing refers to expanding macros and other related code file text manipulations often needed in sophisticated projects before key test suite generation steps. Without (optional) preprocessing, generating test funners from test files and generating mocks from header files lead to all manner of build shenanigans.
 
@@ -165,6 +166,11 @@ The preprocessing needed by Ceedling for sophisticated projects has always been 
 This release of Ceedling stripped the feature back to basics and largely rewrote it within the context of the new build pipeline. Complicated regular expressions and Ruby-generated temporary files have been eliminated. Instead, Ceedling now blends two reports from gcc' `cpp` tool and complements this with additional context. In addition, preprocessing now occurs at the right moments in the overall build pipeline.
 
 While this new approach is not 100% foolproof, it is far more robust and far simpler than previous attempts. Other new Ceedling features should be able to address shortcomings in edge cases.
+
+### Plugin system improvements
+
+1. The plugin subsystem has incorporated logging to trace plugin activities at high verbosity levels.
+1. Additional events have been added for test preprocessing steps (the popular and useful [`command_hooks` plugin](plugins/command_hooks/README.md) has been updated accordingly).
 
 ### Improvements and bug fixes for gcov plugin
 
@@ -176,15 +182,29 @@ While this new approach is not 100% foolproof, it is far more robust and far sim
 
 Longstanding bugs produced duplicate and sometimes incorrect lists of header files. Similarly, support file lists were not properly expanded from globs. Both of these problems have been fixed. The `files:header` command line task has replaced the `files:include` task.
 
+### Improvements and bug fixes for `compile_commands_json` plugin
+
+1. The plugin creates a compilation database that distinguishes the same code file compiled multiple times with different configurations as part of the new test suite build structure.
+1. Documentation has been greatly revised.
+
+### Improvements and bug fixes for `beep` plugin
+
+1. Additional sound tools — `:tput`, `:beep`, and `:say` — have been added for more platform sound output options and fun.
+1. Documentation has been greatly revised.
+1. The plugin more properly uses looging and system shell calls.
+1. Small bugs in using `echo` and the ASCII bell character have been fixed.
+
 ### JUnit, XML & JSON test report plugins bug fix
 
-When used with other plugins, the these test reporting plugins' generated report could end up in a location within `build/artifacts/` that was inconsistent and confusing. This has been fixed.
+When used with other plugins, these test reporting plugins' generated report could end up in a location within `build/artifacts/` that was inconsistent and confusing. This has been fixed.
 
 ### Dashed filename handling bug fix
 
 In certain combinations of Ceedling features, a dash in a C filename could cause Ceedling to exit with an exception (Issue #780). This has been fixed.
 
 ### Source filename extension handling bug fix
+
+Issue [#110](/issues/110)
 
 Ceedling has long had the ability to configure a source filename extension other than `.c` (`:extension` ↳ `:source`). However, in most circumstances this ability would lead to broken builds. Regardless of user-provided source files and filename extenion settings, Ceedling's supporting frameworks — Unity, CMock, and CException — all have `.c` file components. Ceedling also generates mocks and test runners with `.c` filename extensions regardless of any filename extension setting. Changing the source filename extension would cause Ceedling to miss its own core source files. This has been fixed. 
 
@@ -194,9 +214,9 @@ Ceedling has long had the ability to configure a source filename extension other
 
 1. The new internal pipeline that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. The speed gains due to parallelization more than make up for this. Future releases will concentrate on optimizing away duplication of build steps.
 1. While header file search paths are now customizable per executable, this currently only applies to the search paths the compiler uses. Distinguishing test files or header files of the same name in different directories for test runner and mock generation respectively continues to rely on educated guesses in Ceedling code.
-1. Any path for a C file specified with `TEST_SOURCE_FILE(...)` is in relation to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, many of your `TEST_SOURCE_FILE(...)` may need to be updated. A more flexible and dynamic approach to path handling will come in a future update.
+1. Any path for a C file specified with `TEST_SOURCE_FILE(...)` is in relation to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, many of your `TEST_SOURCE_FILE(...)` calls may need to be updated. A more flexible and dynamic approach to path handling will come in a future update.
 1. Fake Function Framework support in place of CMock mock generation is currently broken.
-1. The gcov plugin has been updated and improved, but its counterpart, the [Bullseye plugin](plugins/bullseye/README.md), is not presently functional.
+1. The gcov plugin has been updated and improved, but its proprietary counterpart, the [Bullseye plugin](plugins/bullseye/README.md), is not presently functional.
 
 <br/>
 
@@ -206,7 +226,7 @@ Ceedling has long had the ability to configure a source filename extension other
 
 You may have heard that Ruby is actually only single-threaded or may know of its Global Interpreter Lock (GIL) that prevents parallel execution. To oversimplify a complicated subject, the Ruby implementations most commonly used to run Ceedling afford concurrency and true parallelism speedups but only in certain circumstances. It so happens that these circumstances are precisely the workload that Ceedling manages.
 
-“Mainstream” Ruby implementations—not JRuby, for example—offer the following that Ceedling takes advantage of:
+“Mainstream” Ruby implementations — not JRuby, for example — offer the following that Ceedling takes advantage of:
 
 #### Native thread context switching on I/O operations
 
@@ -218,7 +238,7 @@ When a native thread blocks for I/O, Ruby allows the OS scheduler to context swi
 
 Ruby's process spawning abilities have always mapped directly to OS capabilities. When a processor has multiple cores available, the OS tends to spread multiple child processes across those cores in true parallel execution.
 
-Much of Ceedling's workload is executing a tool—such as a compiler—in a child process. With multiple threads enabled, each thread can spawn a child process for a build tool used by a build step. These child processes can be spread across multiple cores in true parallel execution.
+Much of Ceedling's workload is executing a tool — such as a compiler — in a child process. With multiple threads enabled, each thread can spawn a child process for a build tool used by a build step. These child processes can be spread across multiple cores in true parallel execution.
 
 <br/>
 
