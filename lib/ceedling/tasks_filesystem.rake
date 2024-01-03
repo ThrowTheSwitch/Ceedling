@@ -75,7 +75,8 @@ namespace :files do
       files_list = Object.const_get("COLLECTION_ALL_#{category.upcase}")
       puts "#{category.chomp('s').capitalize} files:"
       files_list.sort.each { |filepath| puts " - #{filepath}" }
-      puts "file count: #{files_list.size}"
+      puts "File count: #{files_list.size}"
+      puts "Note: This list sourced only from your project file, not from any build directive macros in test files."
     end
   end
 
