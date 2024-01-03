@@ -1,23 +1,49 @@
 BEEP_TOOLS = {
+
+  # Most generic beep option across all platforms -- echo the ASCII bell character
   :bell => {
-    :executable => 'echo'.freeze,
+    :executable => 'echo'.freeze,                     # Using `echo` shell command / command line application
     :name => 'default_beep_bell'.freeze,
-    :stderr_redirect => StdErrRedirect::NONE.freeze,
-      :optional => false.freeze,
     :arguments => [
-      *('-ne'.freeze unless SystemWrapper.windows?),
-      "\x07".freeze
+      *('-n'.freeze unless SystemWrapper.windows?),   # No trailing newline for Unix-style echo (argument omitted on Windows)
+      "\x07".freeze                                   # Unprintable ASCII bell character, escaped in Ruby string
     ].freeze
   }.freeze,
-  :speaker_test => {
-    :executable => 'speaker-test'.freeze,
-    :name => 'default_beep_speaker_test'.freeze,
-    :stderr_redirect => StdErrRedirect::NONE.freeze,
-      :optional => false.freeze,
+
+  # Terminal put the bell character on Unix-derived platforms
+  :tput => {
+    :executable => 'tput'.freeze,                     # `tput` command line application
+    :name => 'default_beep_tput'.freeze,
     :arguments => [
-      - '-t sine'.freeze,
-      - '-f 1000'.freeze,
-      - '-l 1'.freeze
+      "bel".freeze                                    # `tput` argument for bell character (named 'bel' in ASCII standard)
     ].freeze
-  }.freeze
+  }.freeze,
+
+  # Old but widely available `beep` tone generator package for Unix-derived platforms (not macOS) 
+  :beep => {
+    :executable => 'beep'.freeze,                     # `beep` command line application
+    :name => 'default_beep_beep'.freeze,
+    :arguments => [].freeze                           # Default beep (no arguments)
+  }.freeze,
+  
+  # Widely available tone generator package for Unix-derived platforms (not macOS)
+  :speaker_test => {
+    :executable => 'speaker-test'.freeze,             # `speaker-test` command line application
+    :name => 'default_beep_speaker_test'.freeze,
+    :arguments => [                                   # 1000 hz sine wave frequency
+      '-t sine'.freeze,
+      '-f 1000'.freeze,
+      '-l 1'.freeze
+    ].freeze
+  }.freeze,
+
+  # macOS text to speech
+  :say => {
+    :executable => 'say'.freeze,                      # macOS `say` command line application
+    :name => 'default_beep_say'.freeze,
+    :arguments => [
+      "\"${1}\""                                      # Replacement argument for text
+    ].freeze
+  }.freeze,
+
 }.freeze
