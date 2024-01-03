@@ -130,7 +130,7 @@ class ConfiguratorValidator
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
         @stream_wrapper.stderr_puts(
           "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist in system search paths.",
-          Verbosity::COMPLAIN
+          Verbosity::ERRORS
         )
         return false        
       end
@@ -141,7 +141,7 @@ class ConfiguratorValidator
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
         @stream_wrapper.stderr_puts(
           "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk.",
-          Verbosity::COMPLAIN
+          Verbosity::ERRORS
         )
         return false
       end      
