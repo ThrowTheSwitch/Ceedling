@@ -302,13 +302,6 @@
 #       :stderr_redirect: :auto
 #       :background_exec: :auto
 #       :optional: FALSE
-#     :file_preprocessor_directives: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
 #     :dependencies_generator: 
 #       :executable:
 #       :arguments: []
@@ -345,21 +338,28 @@
 #       :stderr_redirect: :auto
 #       :background_exec: :auto
 #       :optional: FALSE
-# #These tools can be filled out when command_hooks plugin is enabled
-#   :pre_mock_generate
-#   :post_mock_generate
-#   :pre_runner_generate
-#   :post_runner_generate
-#   :pre_compile_execute
-#   :post_compile_execute
-#   :pre_link_execute
-#   :post_link_execute
-#   :pre_test_fixture_execute
-#   :pre_test
-#   :post_test
-#   :pre_release
-#   :post_release
-#   :pre_build
-#   :post_build
+# # The following tools can be defined and will run upon the named events when the `command_hooks` plugin is enabled
+#   :pre_mock_preprocess:
+#   :post_mock_preprocess:
+#   :pre_test_preprocess:
+#   :post_test_preprocess:
+#   :pre_mock_generate:
+#   :post_mock_generate:
+#   :pre_runner_generate:
+#   :post_runner_generate:
+#   :pre_compile_execute:
+#   :post_compile_execute:
+#   :pre_link_execute:
+#   :post_link_execute:
+#   :pre_test_fixture_execute:
+#   :post_test_fixture_execute:
+#   :pre_test:
+#   :post_test:
+#   :pre_release:
+#   :post_release:
+#   :pre_build:
+#   :post_build:
+#   :post_error:
+
 ...
 
