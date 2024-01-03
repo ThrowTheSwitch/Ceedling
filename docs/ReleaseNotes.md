@@ -112,6 +112,12 @@ In future revisions of Ceedling, support for `TEST_CASE()` and `TEST_RANGE()` wh
 
 Background task execution for tool configurations (`:background_exec`) has been deprecated. This option was one of Ceedling's earliest features attempting to speed up builds within the constraints of relying on Rake. This feature has rarely, if ever, been used in practice, and other, better options exist to manage any scenario that might motivate a background task.
 
+#### Removed `colour_report` plugin
+
+Colored build output and test results in your terminal is glorious. Long ago the `colour_report` plugin provided this. It was a simple plugin that hooked into Ceedling in a somewhat messy way. Its approach to coloring output was also fairly brittle. It long ago stopped coloring build output as intended. It has been removed.
+
+Ceedling's logging will eventually be updated to rely on a proper logging library. This will provide a number of important features along with greater speed and stability for the tool as a whole. This will also be the opportunity to add robust terminal text coloring support.
+
 <br/>
 
 
@@ -125,7 +131,7 @@ Enabling this speedup requires either or both of two simple configuration settin
 
 ### `TEST_INCLUDE_PATH(...)` & `TEST_SOURCE_FILE(...)`
 
-Issue [#743](/issues/743)
+Issue [#743](https://github.com/ThrowTheSwitch/Ceedling/issues/743)
 
 Using what we are calling build directive macros, you can now provide Ceedling certain configuration details from inside a test file.
 
@@ -141,7 +147,7 @@ In short, `TEST_SOURCE_FILE()` allows you to be explicit as to which source C fi
 
 ### More better `:flags` handling
 
-Issue [#43](/issues/43)
+Issue [#43](https://github.com/ThrowTheSwitch/Ceedling/issues/43)
 
 Each test executable is now built as a mini project. Using improved `:flags` handling and an updated section format within Ceedling's project file, you have much better options for specifying flags presented to the various tools within your build, particulary within test builds.
 
@@ -157,7 +163,7 @@ One powerful new feature is the ability to test the same source file built diffe
 
 ### Preprocessing improvements
 
-Issues [#806](/issues/806), [#796](/issues/796)
+Issues [#806](https://github.com/ThrowTheSwitch/Ceedling/issues/806) + [#796](https://github.com/ThrowTheSwitch/Ceedling/issues/796)
 
 Preprocessing refers to expanding macros and other related code file text manipulations often needed in sophisticated projects before key test suite generation steps. Without (optional) preprocessing, generating test funners from test files and generating mocks from header files lead to all manner of build shenanigans.
 
@@ -200,11 +206,13 @@ When used with other plugins, these test reporting plugins' generated report cou
 
 ### Dashed filename handling bug fix
 
-In certain combinations of Ceedling features, a dash in a C filename could cause Ceedling to exit with an exception (Issue #780). This has been fixed.
+Issue [#780](https://github.com/ThrowTheSwitch/Ceedling/issues/780)
+
+In certain combinations of Ceedling features, a dash in a C filename could cause Ceedling to exit with an exception. This has been fixed.
 
 ### Source filename extension handling bug fix
 
-Issue [#110](/issues/110)
+Issue [#110](https://github.com/ThrowTheSwitch/Ceedling/issues/110)
 
 Ceedling has long had the ability to configure a source filename extension other than `.c` (`:extension` ↳ `:source`). However, in most circumstances this ability would lead to broken builds. Regardless of user-provided source files and filename extenion settings, Ceedling's supporting frameworks — Unity, CMock, and CException — all have `.c` file components. Ceedling also generates mocks and test runners with `.c` filename extensions regardless of any filename extension setting. Changing the source filename extension would cause Ceedling to miss its own core source files. This has been fixed. 
 
