@@ -230,7 +230,7 @@ class ConfiguratorBuilder
     options = []
 
     in_hash[:project_options_paths].each do |path|
-      options << @file_wrapper.directory_listing( File.join(path, '*.yml') )
+      options << @file_wrapper.directory_listing( File.join(path, '*' + in_hash[:extension_yaml]) )
     end
 
     return {
