@@ -323,12 +323,12 @@ for even the very minimalist of processors.
 
 [CMock] is a tool written in Ruby able to generate entire
 [mock functions][mocks] in C code from a given C header file. Mock
-functions are invaluable in [interaction-based unit testing][ibut].
+functions are invaluable in [interaction-based unit testing][interaction-based-tests].
 CMock's generated C code uses Unity.
 
 [CMock]: http://github.com/ThrowTheSwitch/CMock
 [mocks]: http://en.wikipedia.org/wiki/Mock_object
-[ibut]: http://martinfowler.com/articles/mocksArentStubs.html
+[interaction-based-tests]: http://martinfowler.com/articles/mocksArentStubs.html
 
 ### CException
 
@@ -410,11 +410,19 @@ item listed below.
 In its simplest form, a test case is just a C function with no 
 parameters and no return value that packages up logical assertions. 
 If no assertions fail, the test case passes. Technically, an empty
-test case function is a passing test.
+test case function is a passing test since there can be no failing
+assertions.
 
 Ceedling relies on the [Unity] project for its unit test framework
 (i.e. the thing that provides assertions and counts up passing
 and failing tests).
+
+An assertion is simply a logical comparison of expected and actual
+values. Unity provides a wide variety of different assertions to 
+cover just about any scenario you might encounter. Getting 
+assertions right is actually a bit tricky. Unity does all that 
+hard work for you and has been thoroughly tested itself and battle
+hardened through use by many, many developers.
 
 ### Super simple passing test case
 
@@ -431,14 +439,14 @@ void test_case(void) {
 ```c
 #include "unity.h"
 
-void test_some_other_case(void) {
-   TEST_ASSERT_TRUE( (1 == 1) );
+void test_a_different_case(void) {
+   TEST_ASSERT_TRUE( (1 == 2) );
 }
 ```
 
-### Realistic simple test cases
+### Realistic simple test case
 
-In reality, we're probably not testing the value of an integer 
+In reality, we're probably not testing the static value of an integer 
 against itself. Instead, we're calling functions in our source code
 and making assertions against return values.
 
@@ -460,6 +468,9 @@ Multiple test cases can live in the same test file. When all the
 test cases are run, their results are tallied into simple pass
 and fail metrics with a bit of metadata for failing test cases such 
 as line numbers and names of test cases.
+
+Ceedling and Unity work together to both automatically run your test
+cases and tally up all the results.
 
 ### Sample test case output
 
@@ -483,7 +494,7 @@ FAILED TEST SUMMARY
 -------------------
 [test/TestModel.c]
   Test: testInitShouldCallSchedulerAndTemperatureFilterInit
-  At line (21): "Function TaskScheduler_Init. Called more times than expected."
+  At line (21): "Function TaskScheduler_Init() called more times than expected."
 
 --------------------
 OVERALL TEST SUMMARY
@@ -500,17 +511,23 @@ Often you want to test not just what a function returns but how
 it interacts with other functions.
 
 The simple test cases above work well at the "edges" of a 
-codebase (libraries, state management, etc.). But, in the messy 
-middle of your code, code calls other code. One way to handle this
-is with mock functions.
+codebase (libraries, state management, some kinds of I/O, etc.). 
+But, in the messy middle of your code, code calls other code. 
+One way to handle testing this is with [mock functions][mocks] and
+[interaction-based testing][interaction-based-tests].
 
-Mock functions are generated code that has the same interface
-as the real code the mocks replace. Mocked functions allow you 
-to control how it behaves and wrap up assertions with a higher
-level idea of expectations.
+Mock functions are functions with the same interface as the real 
+code the mocks replace. A mocked function allows you to control 
+how it behaves and wrap up assertions within a higher level idea 
+of expectations.
 
-You can write your own mocks. But, it's generally better to rely
-on something else to do it for you. Ceedling uses the [CMock] 
+What is meant by an expectation? Well… We _expect_ a certain 
+function is called with certain arguments and that it will return
+certain values. With the appropriate code inside a mocked function 
+all of this can be managed and checked.
+
+You can write your own mocks, of course. But, it's generally better 
+to rely on something else to do it for you. Ceedling uses the [CMock] 
 framework to perform mocking for you.
 
 Here's some sample code you might want to test:
@@ -529,14 +546,15 @@ void doTheThingYo(mode_t input) {
 }
 ```
 
-Here's what test cases using mocks for that code could look like:
+And, here's what test cases using mocks for that code could look 
+like:
 
 ```c
 #include "mock_other_code.h"
 
 void test_doTheThingYo_should_enableOutputF(void) {
    // Mocks
-   processMode_ExecptAndReturn(MODE_1, MODE_3);
+   processMode_ExpectAndReturn(MODE_1, MODE_3);
    setOutput_Expect(OUTPUT_F);
 
    // Function under test
@@ -545,7 +563,7 @@ void test_doTheThingYo_should_enableOutputF(void) {
 
 void test_doTheThingYo_should_enableOutputD(void) {
    // Mocks
-   processMode_ExecptAndReturn(MODE_2, MODE_4);
+   processMode_ExpectAndReturn(MODE_2, MODE_4);
    setOutput_Expect(OUTPUT_D);
 
    // Function under test
@@ -553,14 +571,16 @@ void test_doTheThingYo_should_enableOutputD(void) {
 }
 ```
 
-Remember, the generated mock code you can't see here has a 
-whole bunch of smarts and Unity assertions inside it.
+Remember, the generated mock code you can't see here has a whole bunch 
+of smarts and Unity assertions inside it. CMock scans header files and
+then generates mocks (C code) from the function signatures it finds in
+those header files. It's kinda magical.
 
 ### That was the basics, but you’ll need more
 
 For more on the assertions and mocking shown above, consult the 
 documentation for [Unity] and [CMock] or the resources in
-Ceedling's [README][/README.md]
+Ceedling's [README][/README.md].
 
 Ceedling, Unity, and CMock rely on a variety of
 [conventions to make your life easier][conventions-and-behaviors].
@@ -707,7 +727,8 @@ For several reasons:
 * This allows the same release code to be built differently under different
   testing scenarios. Think of how different `#define`s, compiler flags, and
   linked libraries might come in handy for different tests of the same 
-  release C code.
+  release C code. One source file can be built and tested in different ways
+  with multiple test files.
 
 ## Ceedling’s role in your test suite
 
@@ -836,7 +857,7 @@ Ceedling (more on this later).
   specified in the `:paths` section of your config file.
 
 * `ceedling files:assembly`
-* `ceedling files:include`
+* `ceedling files:header`
 * `ceedling files:source`
 * `ceedling files:support`
 * `ceedling files:test`
