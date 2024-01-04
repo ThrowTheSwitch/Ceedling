@@ -83,7 +83,7 @@ Together, these changes may cause you to think that Ceedling is running steps ou
 
 <br/>
 
-### 👋 Deprecated / Temporarily Removed Abilities
+### 👋 Deprecated or Temporarily Removed Abilities
 
 #### Test suite smart rebuilds
 
@@ -117,6 +117,16 @@ Background task execution for tool configurations (`:background_exec`) has been 
 Colored build output and test results in your terminal is glorious. Long ago the `colour_report` plugin provided this. It was a simple plugin that hooked into Ceedling in a somewhat messy way. Its approach to coloring output was also fairly brittle. It long ago stopped coloring build output as intended. It has been removed.
 
 Ceedling's logging will eventually be updated to rely on a proper logging library. This will provide a number of important features along with greater speed and stability for the tool as a whole. This will also be the opportunity to add robust terminal text coloring support.
+
+#### Fake Function Framework (FFF) temporarily disabled
+
+Fake Function Framework (FFF) support in place of CMock mock generation is currently broken and the plugin has been disabled.
+
+The FFF plugin is deeply dependent on the previous build pipeline and Ceedling's dependence on Rake. Without an all-new plugin structure and Rake fully removed, FFF cannot be made to work in Ceedling's current transitional state.
+
+#### Bullseye Plugin temporarily disabled
+
+The gcov plugin has been updated and improved, but its proprietary counterpart, the [Bullseye](https://www.bullseye.com) plugin, is not presently functional. The needed fixes and updates require a software license that we do not (yet) have.
 
 <br/>
 
@@ -223,8 +233,6 @@ Ceedling has long had the ability to configure a source filename extension other
 1. The new internal pipeline that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. The speed gains due to parallelization more than make up for this. Future releases will concentrate on optimizing away duplication of build steps.
 1. While header file search paths are now customizable per executable, this currently only applies to the search paths the compiler uses. Distinguishing test files or header files of the same name in different directories for test runner and mock generation respectively continues to rely on educated guesses in Ceedling code.
 1. Any path for a C file specified with `TEST_SOURCE_FILE(...)` is in relation to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, many of your `TEST_SOURCE_FILE(...)` calls may need to be updated. A more flexible and dynamic approach to path handling will come in a future update.
-1. Fake Function Framework support in place of CMock mock generation is currently broken.
-1. The gcov plugin has been updated and improved, but its proprietary counterpart, the [Bullseye plugin](plugins/bullseye/README.md), is not presently functional.
 
 <br/>
 
