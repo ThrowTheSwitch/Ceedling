@@ -80,12 +80,20 @@ class Gcov < Plugin
   end
 
   def summary
-    result_list = @ceedling[:file_path_utils].form_pass_results_filelist(GCOV_RESULTS_PATH, COLLECTION_ALL_TESTS)
+    # Build up the list of passing results from all tests
+    result_list = @ceedling[:file_path_utils].form_pass_results_filelist(
+      GCOV_RESULTS_PATH,
+      COLLECTION_ALL_TESTS
+    )
 
-    # Get test results for only those tests in our configuration and for those only tests with results on disk
     hash = {
       header: GCOV_ROOT_NAME.upcase,
-      results: @ceedling[:plugin_reportinator].assemble_test_results(result_list, boom: false)
+      # Collect all existing test results (success or failing) in the filesystem,
+      # limited to our test collection
+      :results => @ceedling[:plugin_reportinator].assemble_test_results(
+        result_list,
+        {:boom => false}
+      )
     }
 
     @ceedling[:plugin_reportinator].run_test_results_report(hash)
