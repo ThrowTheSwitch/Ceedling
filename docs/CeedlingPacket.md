@@ -793,7 +793,7 @@ are completed once, only step 3 is needed for each new project.
    setup / installation step to complement the list above. Upon
    installing MinGW ensure your system path is updated or set
    `:environment` ↳ `:path` in your project file (see
-   environment section later in this document).
+   `:environment` section later in this document).
 
 1. To use a project file name other than the default `project.yml`
    or place the project file in a directory other than the one
@@ -2226,49 +2226,48 @@ the directory level.
 
 ## `:environment:` Insert environment variables into shells running tools
 
-Ceedling creates environment variables from any key / value
-pairs in the environment section. Keys become an environment
-variable name in uppercase. The values are strings assigned
-to those environment variables. These value strings are either
-simple string values in YAML or the concatenation of a YAML array.
+Ceedling creates environment variables from any key / value pairs in the 
+environment section. Keys become an environment variable name in uppercase. The
+values are strings assigned to those environment variables. These value strings 
+are either simple string values in YAML or the concatenation of a YAML array
+of strings.
 
-Ceedling is able to execute inline Ruby string substitution
-code to set environment variables. This evaluation occurs when
-the project file is first processed for any environment pair's
-value string including the Ruby string substitution pattern
-`#{…}`. Note that environment value strings that _begin_ with
-this pattern should always be enclosed in quotes. YAML defaults
-to processing unquoted text as a string; quoting text is optional.
-If an environment pair's value string begins with the Ruby string
-substitution pattern, YAML will interpret the string as a Ruby
-comment (because of the `#`). Enclosing each environment value
-string in quotes is a safe practice.
+Ceedling is able to execute inline Ruby string substitution code to set 
+environment variables. This evaluation occurs when the project file is first 
+processed for any environment pair's value string including the Ruby string 
+substitution pattern `#{…}`. Note that environment value entries including this
+pattern should always be enclosed in quotes. YAML defaults to processing 
+unquoted text as a string; quoting text is optional. If an environment entry's 
+value string includes the Ruby string substitution pattern, YAML will interpret 
+the string as a YAML comment (because of the `#`). Enclosing each environment 
+entry value string in quotes is a safe practice.
 
-`:environment` entries are processed in the configured order
-(later entries can reference earlier entries).
+`:environment` entries are processed in the configured order (later entries 
+can reference earlier entries).
 
-### Special case: PATH handling
+### Special case: `PATH` handling
 
-In the specific case of specifying an environment key named `:path`,
-an array of string values will be concatenated with the appropriate
-platform-specific path separation character (i.e. `:` on Unix-variants,
-`;` on Windows).
+In the specific case of specifying an environment key named `:path`, an array 
+of string values will be concatenated with the appropriate platform-specific 
+path separation character (i.e. `:` on Unix-variants, `;` on Windows).
 
-All other instances of environment keys assigned a value of a
-YAML array use simple concatenation.
+All other instances of environment keys assigned a value of a YAML array use 
+simple concatenation.
 
 ### Example `:environment` YAML blurb
 
 ```yaml
 :environment:
-  - :license_server: gizmo.intranet        #LICENSE_SERVER set with value "gizmo.intranet"
-  - :license: "#{`license.exe`}"           #LICENSE set to string generated from shelling out to
-                                           #execute license.exe; note use of enclosing quotes
+  - :license_server: gizmo.intranet        # LICENSE_SERVER set with value "gizmo.intranet"
+  - :license: "#{`license.exe`}"           # LICENSE set to string generated from shelling out to
+                                           # xecute license.exe; note use of enclosing quotes to
+                                           # prevent a YAML comment.
 
-  - :path:                                 #concatenated with path separator (see special case above)
-     - Tools/gizmo/bin                     #prepend existing PATH with gizmo path
-     - "#{ENV['PATH']}"                    #pattern #{…} triggers ruby evaluation string substitution
-                                           #note: value string must be quoted because of '#'
+  - :path:                                 # Concatenated with path separator (see special case above)
+     - Tools/gizmo/bin                     # Prepend existing PATH with gizmo path
+     - "#{ENV['PATH']}"                    # Pattern #{…} triggers ruby evaluation string substitution
+                                           # Note: value string must be quoted because of '#' to 
+                                           # prevent a YAML comment.
 
   - :logfile: system/logs/thingamabob.log  #LOGFILE set with path for a log file
 ```
@@ -3113,6 +3112,10 @@ project configuration file.
   
   **Default**: `[]` (empty)
 
+## `:test_runner` Configure test runner generation
+
+TODO: ...
+
 ## `:tools` Configuring command line tools used for build steps
 
 Ceedling requires a variety of tools to work its magic. By default,
@@ -3241,14 +3244,13 @@ In-line Ruby execution works similarly to that demonstrated for the
 `:environment` section except that substitution occurs as the tool is
 executed and not at the time the configuration file is first scanned.
 
-* `#{...}`:
+* `"#{...}"`:
 
   Ruby string substitution pattern wherein the containing string is
   expanded to include the string generated by Ruby code between the
   braces. Multiple instances of this expansion can occur within a single
   tool element entry string. Note that if this string substitution
-  pattern occurs at the very beginning of a string in the YAML
-  configuration the entire string should be enclosed in quotes (see the
+  pattern is used the entire string should be enclosed in quotes (see the
   `:environment` section for further explanation on this point).
 
 * `{...}`:

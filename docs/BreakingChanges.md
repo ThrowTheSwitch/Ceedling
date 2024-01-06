@@ -3,9 +3,9 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** December 26, 2023
+**Date:** January 5, 2024
 
-## Explicit `:paths` ↳ `:include` entries in the project file
+# Explicit `:paths` ↳ `:include` entries in the project file
 
 The `:paths` ↳ `:include` entries in the project file must now be explicit and complete.
 
@@ -18,40 +18,64 @@ This behavior is no more. Why? For two interrelated reasons.
 
 Using 0.32 Ceedling with older project files can lead to errors when generating mocks or compiler errors on finding header files. Add all paths to the `:paths` ↳ `:include` project file entry to fix this problem.
 
-## Format change for `:defines` in the project file
+# Format change for `:defines` in the project file
 
 To better support per-test-executable configurations, the format of `:defines` has changed. See the [official documentation](CeedlingPacket.md) for specifics.
 
 In brief:
 
 1. A more logically named hierarchy differentiates `#define`s for test preprocessing, test compilation, and release compilation.
-1. Previously, compilation symbols could be specified for a specific C file by name, but these symbols were only defined when compiling that specific file. Further, this matching was only against a file's full name. Now, pattern matching is also an option against test file names (_only_ test file names) and the configured symbols are applied in compilation of each C file that comprises a test executable.
+1. Previously, compilation symbols could be specified for a specific C file by name, but these symbols were only defined when compiling that specific file. Further, this matching was only against a file's full name. Now, pattern matching is also an option.
+1. Filename matching for test compilation symbols happens against _only test file names_. More importantly, the configured symbols are applied in compilation of each C file that comprises a test executable. Each test executable is treated as a mini-project.
 
-## Format change for `:flags` in the project file
+# Format change for `:flags` in the project file
 
 To better support per-test-executable configurations, the format and function of `:flags` has changed somewhat. See the [official documentation](CeedlingPacket.md) for specifics.
 
 In brief:
 
-1. All matching of file names is limited to test files. For any test file that matches, the specified flags are added to the named build step for all files that comprise that test executable. Previously, matching was against individual files, and flags were applied as such.
-1. The format of the `:flags` configuration section is largely the same as in previous versions of Ceedling. The behavior of the matching rules is slightly different with more matching options.
+1. The format of the `:flags` configuration section is largely the same as in previous versions of Ceedling. However, the behavior of the matching rules is slightly different with more matching options.
+1. Within the `:flags` ↳ `:test` context, all matching of file names is now limited to *_test files_*. For any test file name that matches, the specified flags are added to the named build step for _all files that comprise that test executable_. Previously, matching was against individual files (source, test, whatever), and flags were applied to only operations on that single file. Now, all files part of a test executable build get the same treatment as a mini-project.
 
-## `TEST_FILE()` ➡️ `TEST_SOURCE_FILE()`
+Flags specified for release builds are applied to all files in the release build.
+
+# `TEST_FILE()` ➡️ `TEST_SOURCE_FILE()`
 
 The previously undocumented `TEST_FILE()` build directive macro (#796) available within test files has been renamed and is now officially documented. See earlier section on this.
 
-## Build output directory structure changes
+# Quoted executables in tool definitions
 
-### Test builds
+While unusual, some executables have names with spaces. This is more common on Windows than Unix derivatives, particularly with proprietary compiler toolchains.
+
+Originally, Ceedling would automatically add quotes around an executable containing a space when it built a full command line before passing it to a command shell.
+
+This automagical help can break tools in certain contexts. For example, script-based executables in many Linux shells do not work (e.g. `"python path/script.py" --arg`).
+
+Automatic quoting has been removed. If you need a quoted executable, simply explicitly include quotes in the appropriate string for your executable (this can occur in multiple locations throughout a Ceedling project). An example of a YAML tool defition follows:
+
+```yaml
+:tools:
+  :funky_compiler:
+    :executable: \"Code Cranker\"
+```
+
+# Build output directory structure changes
+
+## Test builds
 
 Each test is now treated as its own mini-project. Differentiating components of the same name that are a part of multiple test executables required further subdirectories in the build directory structure. Generated mocks, compiled object files, linked executables, and preprocessed output all end up one directory deeper than in previous versions of Ceedling. In each case, these files are found inside a subdirectory named for their containing test.
 
-### Release builds
+## Release builds
 
 Release build object files were previously segregated by their source. The release build output directory had subdirectories `c/` and `asm/`. These subdirectories are no longer in use.
 
-## Changes to global collections
+# Changes to global constants & accessors
 
-Some global “collections” that were previously key elements of Ceedling have changed or gone away as the build pipeline is now able to process a configuration for each individual test executable in favor of for the entire suite.
+Some global constant “collections” that were previously key elements of Ceedling have changed or gone away as the build pipeline is now able to process a configuration for each individual test executable in favor of for the entire suite.
 
-- TODO: List collections
+Similarly, various global constant project file accessors have changed, specifically the values within the configuration file they point to as various configuration sections have changed format (examples above).
+
+See the [official documentation](CeedlingPacket.md) on global constants & accessors for updated lists and information.
+
+
+

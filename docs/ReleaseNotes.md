@@ -2,7 +2,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** January 3, 2024
+**Date:** January 4, 2024
 
 <br/>
 
@@ -94,7 +94,7 @@ These project configuration options related to smart builds are no longer recogn
   - `:generate_deep_dependencies`
   - `:auto_link_deep_dependencies`
 
-In future revisions of Ceedling, smart rebuilds will be brought back (without relying on Rake).
+In future revisions of Ceedling, smart rebuilds will be brought back (without relying on Rake) and without a list of possibly conflicting configuation options to control related features.
 
 Note that release builds do retain a fair amount of smart rebuild capabilities. Release builds continue to rely on Rake (for now).
 
@@ -108,7 +108,7 @@ The project configuration option `:use_preprocessor_directives` is no longer rec
 
 In future revisions of Ceedling, support for `TEST_CASE()` and `TEST_RANGE()` when preprocessing is enabled will be brought back.
 
-#### Background task execution
+#### Removed background task execution
 
 Background task execution for tool configurations (`:background_exec`) has been deprecated. This option was one of Ceedling's earliest features attempting to speed up builds within the constraints of relying on Rake. This feature has rarely, if ever, been used in practice, and other, better options exist to manage any scenario that might motivate a background task.
 
