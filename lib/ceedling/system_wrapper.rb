@@ -43,19 +43,35 @@ class SystemWrapper
   end
 
   def shell_capture3(command:, boom:false) 
+    # Beginning with later versions of Ruby2, simple exit codes were replaced
+    # by the more capable and robust Process::Status.
+    # Parts of Process::Status's behavior is similar to an integer exit code in
+    # some operations but not all.
+    exit_code = 0
     begin
-      stdout, stderr, status = Open3.capture3(command)
+      # Run the command but absorb any exceptions and capture error info instead
+      stdout, stderr, status = Open3.capture3( command )
     rescue => err
       stderr = err
-      status = -1
+      exit_code = -1
     end
-    $exit_code = status.freeze if boom
-    if (status != 0)
-      stdout += stderr
-    end
+
+    # If boom, then capture the actual exit code, otherwise leave it as zero
+    # as though execution succeeded
+    exit_code = status.exitstatus.freeze if boom
+
+    # (Re)set the system exit code
+    $exit_code = exit_code
+
     return {
-      :output    => stdout.freeze,
-      :exit_code => status.freeze
+      # Combine stdout & stderr streams for complete output
+      :output    => (stdout + stderr).freeze,
+      
+      # Relay full Process::Status
+      :status    => status.freeze,
+      
+      # Provide simple exit code accessor
+      :exit_code => exit_code.freeze
     }
   end
 
