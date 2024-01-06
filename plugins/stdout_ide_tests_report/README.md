@@ -1,6 +1,6 @@
 # Ceedling Plugin: IDE Tests Report
 
-# Overview
+# Plugin Overview
 
 This plugin is intended to be used in place of the more commonly used "pretty" 
 test report plugin. Like its sibling, this plugin ollects raw test results from

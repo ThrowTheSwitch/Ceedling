@@ -1,7 +1,7 @@
 warnings-report
 ===============
 
-## Overview
+## Plugin Overview
 
 The warnings_report captures all warnings throughout the build process
 and collects them into a single report at the end of execution. It places all

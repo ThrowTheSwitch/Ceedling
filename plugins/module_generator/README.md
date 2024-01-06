@@ -1,7 +1,7 @@
 ceedling-module-generator
 =========================
 
-## Overview
+## Plugin Overview
 
 The module_generator plugin adds a pair of new commands to Ceedling, allowing
 you to make or remove modules according to predefined templates. WIth a single call,

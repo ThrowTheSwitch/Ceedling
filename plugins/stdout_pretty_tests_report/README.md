@@ -1,6 +1,6 @@
 # Ceedling Plugin: Pretty Tests Report
 
-# Overview
+# Plugin Overview
 
 This plugin is intended to be the default option for formatting a test suites
 results when displayed at the console. It collects raw test results from the 

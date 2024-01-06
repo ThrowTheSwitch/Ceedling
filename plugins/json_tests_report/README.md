@@ -1,7 +1,7 @@
 json_tests_report
 =================
 
-## Overview
+## Plugin Overview
 
 The json_tests_report plugin creates a JSON file of test results, which is 
 handy for Continuous Integration build servers or as input into other 

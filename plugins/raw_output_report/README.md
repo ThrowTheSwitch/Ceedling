@@ -1,7 +1,7 @@
 ceedling-raw-output-report
 ==========================
 
-## Overview
+## Plugin Overview
 
 The raw-output-report allows you to capture all the output from the called
 tools in a single document, so you can trace back through it later. This is

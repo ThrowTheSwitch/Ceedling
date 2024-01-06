@@ -1,7 +1,7 @@
 junit_tests_report
 ====================
 
-## Overview
+## Plugin Overview
 
 The junit_tests_report plugin creates an XML file of test results in JUnit
 format, which is handy for Continuous Integration build servers or as input

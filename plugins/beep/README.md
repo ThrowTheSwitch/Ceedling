@@ -1,6 +1,6 @@
 # Ceedling Plugin: Beep
 
-# Overview
+# Plugin Overview
 
 This plugin simply beeps at the end of a build.
 

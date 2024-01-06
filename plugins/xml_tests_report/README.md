@@ -1,7 +1,7 @@
 xml_tests_report
 ================
 
-## Overview
+## Plugin Overview
 
 The xml_tests_report plugin creates an XML file of test results in xUnit
 format, which is handy for Continuous Integration build servers or as input
