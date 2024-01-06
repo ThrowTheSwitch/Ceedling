@@ -22,6 +22,15 @@ require 'ceedling/constants'
 require 'ceedling/target_loader'
 require 'deep_merge'
 
+def boom_handler(ex)
+  $stderr.puts("#{ex.class} ==> #{ex.message}")
+  if @ceedling[:configurator].project_debug
+    $stderr.puts("Backtrace ==>")
+    $stderr.puts(ex.backtrace)
+  end
+  abort # Rake's abort
+end
+
 # Top-level exception handling for any otherwise un-handled exceptions, particularly around startup
 begin
   # construct all our objects
@@ -71,13 +80,7 @@ begin
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 rescue StandardError => e
-  $stderr.puts("#{e.class} ==> #{e.message}")
-  if @ceedling[:configurator].project_debug
-    $stderr.puts("Backtrace ==>")
-    $stderr.puts(e.backtrace)
-  end
-
-  abort # Rake's abort
+  boom_handler(e)
 end
 
 # End block always executed following rake run
@@ -93,13 +96,20 @@ END {
 
   # Only perform these final steps if we got here without runtime exceptions or errors
   if (@ceedling[:application].build_succeeded?)
-    # tell all our plugins the build is done and process results
-    @ceedling[:plugin_manager].post_build
-    @ceedling[:plugin_manager].print_plugin_failures
-    exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
+    # Tell all our plugins the build is done and process results
+    begin
+      @ceedling[:plugin_manager].post_build
+      @ceedling[:plugin_manager].print_plugin_failures
+      exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
+    rescue => ex
+      boom_handler(ex)
+    end
   else
     puts("\nCeedling could not complete the build because of errors.")
-    @ceedling[:plugin_manager].post_error
-    exit(1)
+    begin
+      @ceedling[:plugin_manager].post_error
+    rescue => ex
+      boom_handler(ex)
+    end
   end
 }
