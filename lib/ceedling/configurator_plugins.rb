@@ -117,7 +117,7 @@ class ConfiguratorPlugins
       if path = plugin_paths[(plugin + '_path').to_sym]
         default_path = File.join(path, "config", "defaults_#{plugin}.rb")
         if @file_wrapper.exist?(default_path)
-          @system_wrapper.require_file( "defaults_#{plugin}.rb")
+          @system_wrapper.require_file( "defaults_#{plugin}.rb" )
 
           object = eval("get_default_config()")
           defaults_hash << object
