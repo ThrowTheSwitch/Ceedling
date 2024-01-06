@@ -177,11 +177,16 @@ class TestInvokerHelper
       sources << @file_finder.find_build_input_file(filepath: source, complain: :ignore, context: TEST_SYM)
     end
 
+    _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename(filepath).ext(EXTENSION_HEADER) }
+
     # Get all #include .h files from test file so we can find any source files by convention
     includes = @test_context_extractor.lookup_header_includes_list(test_filepath)
     includes.each do |include|
-      next if File.basename(include) == UNITY_H_FILE # Ignore Unity in this list
-      next if File.basename(include).start_with?(CMOCK_MOCK_PREFIX) # Ignore mocks in this list
+      _basename = File.basename(include)
+      next if _basename == UNITY_H_FILE                # Ignore Unity in this list
+      next if _basename.start_with?(CMOCK_MOCK_PREFIX) # Ignore mocks in this list
+      next if _support_headers.include?(_basename)     # Ignore any sources in our support files list
+
       sources << @file_finder.find_build_input_file(filepath: include, complain: :ignore, context: TEST_SYM)
     end
 
