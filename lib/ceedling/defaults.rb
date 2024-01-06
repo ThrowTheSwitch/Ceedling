@@ -7,7 +7,7 @@ CEEDLING_VENDOR = File.expand_path(File.dirname(__FILE__) + '/../../vendor') unl
 CEEDLING_PLUGINS = [] unless defined? CEEDLING_PLUGINS
 
 DEFAULT_TEST_COMPILER_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
+  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
   :name => 'default_test_compiler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -28,7 +28,7 @@ DEFAULT_TEST_COMPILER_TOOL = {
   }
 
 DEFAULT_TEST_ASSEMBLER_TOOL = {
-  :executable => ENV['AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['AS'].split[0],
+  :executable => ENV['AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['AS'],
   :name => 'default_test_assembler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -43,7 +43,7 @@ DEFAULT_TEST_ASSEMBLER_TOOL = {
   }
 
 DEFAULT_TEST_LINKER_TOOL = {
-  :executable => ENV['CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CCLD'].split[0],
+  :executable => ENV['CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CCLD'],
   :name => 'default_test_linker'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -69,7 +69,7 @@ DEFAULT_TEST_FIXTURE_TOOL = {
   }
 
 DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
+  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
   :name => 'default_test_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -89,7 +89,7 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
   }
 
 DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
+  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
   :name => 'default_test_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -110,7 +110,7 @@ DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
   }
 
 DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
+  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
   :name => 'default_test_file_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -154,7 +154,7 @@ else
 end
 
 DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
+  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
   :name => 'default_test_dependencies_generator'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -177,7 +177,7 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   }
 
 DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
+  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
   :name => 'default_release_dependencies_generator'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -202,7 +202,7 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   }
 
 DEFAULT_RELEASE_COMPILER_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'].split[0],
+  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
   :name => 'default_release_compiler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -222,7 +222,7 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
   }
 
 DEFAULT_RELEASE_ASSEMBLER_TOOL = {
-  :executable => ENV['AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['AS'].split[0],
+  :executable => ENV['AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['AS'],
   :name => 'default_release_assembler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
@@ -237,7 +237,7 @@ DEFAULT_RELEASE_ASSEMBLER_TOOL = {
   }
 
 DEFAULT_RELEASE_LINKER_TOOL = {
-  :executable => ENV['CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CCLD'].split[0],
+  :executable => ENV['CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CCLD'],
   :name => 'default_release_linker'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
