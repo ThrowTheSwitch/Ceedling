@@ -450,6 +450,14 @@ class ConfiguratorBuilder
     sources = []
     support = @file_wrapper.instantiate_file_list()
 
+    paths = in_hash[:collection_paths_support]
+
+    # Collect code files
+    paths.each do |path|
+      support.include( File.join(path, "*#{in_hash[:extension_source]}") )
+      support.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
+    end
+
     @file_system_utils.revise_file_list( support, in_hash[:files_support] )
 
     # Ensure FileList patterns & revisions are resolved into full list of filepaths
@@ -457,10 +465,10 @@ class ConfiguratorBuilder
 
     support.each { |file| sources << file }
 
-    # create object files from all the sources
+    # Create object files from all the sources
     objects = sources.map { |file| File.basename(file) }
 
-    # no build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
+    # No build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
     objects.map! { |object| object.ext(in_hash[:extension_object]) }
 
     return { :collection_all_support => sources,
