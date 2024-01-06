@@ -15,12 +15,13 @@ class ToolExecutor
     command[:name] = tool_config[:name]
     command[:executable] = tool_config[:executable]
 
-    # basic premise is to iterate top to bottom through arguments using '$' as
-    #  a string replacement indicator to expand globals or inline yaml arrays
-    #  into command line arguments via substitution strings
-    # executable must be quoted if it includes spaces (common on windows)
-    executable = @tool_executor_helper.osify_path_separators( expandify_element(tool_config[:name], tool_config[:executable], *args) )
-    executable = "\"#{executable}\"" if executable.include?(' ')
+    # Basic premise is to iterate top to bottom through arguments using '$' as
+    # a string replacement indicator to expand globals or inline yaml arrays
+    # into command line arguments via substitution strings.
+    executable = @tool_executor_helper.osify_path_separators(
+      expandify_element(tool_config[:name], tool_config[:executable], *args)
+    )
+
     command[:line] = [
       executable,
       extra_params.join(' ').strip,

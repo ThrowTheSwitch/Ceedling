@@ -3208,22 +3208,32 @@ tools.
 
 ### Tool configurable elements:
 
-1. `:executable` - Command line executable (required)
+1. `:executable` - Command line executable (required).
 
-2. `:arguments` - List of command line arguments and substitutions 
-    (required)
+    If an executable contains a space (e.g. `Code Cruncher`), and the shell 
+    executing the command line generated from the tool definition needs the 
+    name quoted, add escaped quotes in the YAML:
 
-3. `:name` - Simple name (i.e. "nickname") of tool beyond its
+    ```yaml
+    :tools:
+      :test_compiler:
+        :executable: \"Code Cruncher\"
+    ```
+
+1. `:arguments` - List (array of strings) of command line arguments and 
+    substitutions (required).
+
+1. `:name` - Simple name (i.e. "nickname") of tool beyond its
    executable name. This is optional. If not explicitly set 
    then Ceedling will form a name from the tool's YAML entry.
 
-4. `:stderr_redirect` - Control of capturing `$stderr` messages
+1. `:stderr_redirect` - Control of capturing `$stderr` messages
    {`:none`, `:auto`, `:win`, `:unix`, `:tcsh`}.
    Defaults to `:none` if unspecified. Create a custom entry by
    specifying a simple string instead of any of the available
    symbols.
 
-5. `:optional` - By default a tool is required for operation, which
+1. `:optional` - By default a tool is required for operation, which
    means tests will be aborted if the tool is not present. However,
    you can set this to `true` if it's not needed for testing (e.g.
    as part of a plugin).
@@ -3419,6 +3429,9 @@ own scripts and tools to Ceedling build steps.
 * `:load_paths`:
 
   Base paths to search for plugin subdirectories or extra Ruby functionality.
+
+  Regardless of setting, Ceedling separately maintains the load path for it
+  built-in plugins.
 
   **Default**: `[]` (empty)
 
