@@ -72,9 +72,12 @@ class Configurator
   # Set up essential flattened config
   # (In case YAML validation failure prevents flattening of config into configurator accessors)
   def set_debug(config)
-    if config[:project][:debug]
+    if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG) or (config[:project][:debug])
       eval("def project_debug() return true end", binding())
       eval("def project_verbosity() return Verbosity::DEBUG end", binding())
+    else
+      eval("def project_debug() return false end", binding())
+      eval("def project_verbosity() return Verbosity::NORMAL end", binding())      
     end
   end
 
@@ -263,6 +266,7 @@ class Configurator
           item.replace( @system_wrapper.module_eval( item ) )
         end
       end
+
       hash[key] = items.join( interstitial )
 
       @system_wrapper.env_set( key.to_s.upcase, hash[key] )

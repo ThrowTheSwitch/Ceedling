@@ -277,14 +277,14 @@ else
     :list_tasks => false
   }
 
-  #guess that we need a special script file first if it exists
+  # Guess that we need a special script file first if it exists
   if (platform == :mswin)
     options[:pretest] = File.exist?("#{ platform }_setup.bat") ? "#{ platform }_setup.bat" : nil
   else
     options[:pretest] = File.exist?("#{ platform }_setup.sh") ? "source #{ platform }_setup.sh" : nil
   end
 
-  #merge in project settings if they can be found here
+  # Merge in project settings if they can be found here
   yaml_options = YamlWrapper.new.load(main_filepath)
   if (yaml_options[:paths])
     options[:add_path] = yaml_options[:paths][:tools] || []
@@ -321,7 +321,11 @@ else
     end
   end
 
-  #add to the path
+  # Set global debug const before Configurator processes it so it's available before Configurator is
+  # Configurator will redefine this (to the same value)
+  PROJECT_DEBUG = options[:args].any? {|option| option.casecmp('verbosity:debug') == 0}
+
+  # Add to the path
   if (options[:add_path] && !options[:add_path].empty?)
     path = ENV["PATH"]
     options[:add_path].each do |p|
@@ -345,7 +349,7 @@ else
 
   Rake.application.standard_exception_handling do
     if options[:list_tasks]
-      # Display helpful task list when requested. This required us to dig into Rake internals a bit
+      # Display helpful task list when requested. (This required digging into Rake internals a bit.)
       Rake.application.define_singleton_method(:name=) {|n| @name = n}
       Rake.application.name = 'ceedling'
       Rake.application.options.show_tasks = :tasks
