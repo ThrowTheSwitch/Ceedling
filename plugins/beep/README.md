@@ -67,14 +67,54 @@ The following options are fixed. At present, this plugin does not expose customi
 
   [say]: https://ss64.com/mac/say.html
 
-## Example beep configurations in YAML
+## Adding arguments to a beep tool
 
-In fact, this is the default configuration (and need not be duplicated in your project file).
+Each of the sound options above map to a command line tool that Ceedling executes.
+
+The `:beep`, `:speaker_test`, and `:say` tools can accept additional command line arguments to modify their behavior and sound ouput.
+
+The `:speaker_test` tool is preconfigured with its `-t`, `-f`, and `-l` arguments to generate a 1 second 1000 Hz sine wave. Any additional arguments added through configuration will follow these (and could conflict).
+
+To add additional arguments, a feature of Ceedling's project file handling allows you to merge a partial tool definition with tools already fully defined.
 
 ```yaml
+:tools_beep_<sound option>: # Fill in <sound option> as from the list above
+  :arguments:
+    - ...                   # Add any aguments as a list of strings
+```
+
+## Example beep configurations in YAML
+
+Enabling the plugin and event handlers with beep tool selections:
+
+```yaml
+:plugins:
+  :enabled:
+    - beep
+
+# The following is the default configuration.
+# It is shown for completeness, but it need not be duplicated in your project file 
+# if the default settings work for you.
 :beep:
   :on_done: :bell
   :on_error: :bell
+```
+
+Adding an argument to a beep tool:
+
+```yaml
+:plugins:
+  :enabled:
+    - beep
+
+:beep:
+  :on_done: :say # Choose the macOS `say` tool for build done events
+                 # `:bell` remains the default for :on_error:
+
+:tools_beep_say:
+  :arguments:
+    - -v daniel  # Change `say` command line to use Daniel voice
+
 ```
 
 # Notes
