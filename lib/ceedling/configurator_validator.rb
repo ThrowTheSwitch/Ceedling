@@ -95,19 +95,19 @@ class ConfiguratorValidator
     return true
   end
 
-  # walk into config hash. verify specified file exists.
+  # Walk into config hash and verify specified file exists
   def validate_executable_filepath(config, *keys)
     exe_extension = config[:extension][:executable]
     hash          = retrieve_value(config, keys)
     filepath      = hash[:value]
 
-    # return early if we couldn't walk into hash and find a value
+    # Return early if we couldn't walk into hash and find a value
     return false if (filepath.nil?)
 
-    # skip everything if we've got an argument replacement pattern
+    # Skip everything if we've got an argument replacement pattern
     return true if (filepath =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
 
-    # if there's no path included, verify file exists somewhere in system search paths
+    # If there's no path included, verify file exists somewhere in system search paths
     if (not filepath.include?('/'))
       exists = false
       
@@ -127,21 +127,19 @@ class ConfiguratorValidator
       end
       
       if (not exists)
-        # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
+        # No verbosity level (no @streaminator) since this is low level error & verbosity handling depends on self-referential configurator
         @stream_wrapper.stderr_puts(
-          "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist in system search paths.",
-          Verbosity::ERRORS
+          "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])} => `#{filepath}` does not exist in system search paths."
         )
         return false        
       end
       
-    # if there is a path included, check that explicit filepath exists
+    # If there is a path included, check that explicit filepath exists
     else
       if (not @file_wrapper.exist?(filepath))
-        # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
+        # No verbosity level (no @streaminator) since this is low level error & verbosity handling depends on self-referential configurator
         @stream_wrapper.stderr_puts(
-          "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk.",
-          Verbosity::ERRORS
+          "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])} => `#{filepath}` does not exist on disk."
         )
         return false
       end      
@@ -155,7 +153,7 @@ class ConfiguratorValidator
     if (redirect.class == Symbol)
       # map constants and force to array of strings for runtime universality across ruby versions
       if (not StdErrRedirect.constants.map{|constant| constant.to_s}.include?(redirect.to_s.upcase))
-        error = "ERROR: [:#{tools}][:#{tool}][:stderr_redirect][:#{redirect}] is not a recognized option " +
+        error = "ERROR: :#{tools}  ↳ :#{tool}  ↳ :stderr_redirect => :#{redirect} is not a recognized option " +
                 "{#{StdErrRedirect.constants.map{|constant| ':' + constant.to_s.downcase}.join(', ')}}."
         @stream_wrapper.stderr_puts(error) 
         return false        
@@ -191,9 +189,9 @@ class ConfiguratorValidator
 
   def format_key_sequence(keys, depth)
     walked_keys    = keys.slice(0, depth)
-    formatted_keys = walked_keys.map{|key| "[:#{key}]"}
+    formatted_keys = walked_keys.map{|key| ":#{key}"}
     
-    return formatted_keys.join
+    return formatted_keys.join(" ↳ ")
   end
   
 end
