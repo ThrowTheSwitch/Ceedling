@@ -396,7 +396,7 @@ end
 
 Define methods to be called before (`pre_test()`) and after (`post_test()`)
 each test build pipeline (configure, preprocess, compile, link, run,
-get results, etc.)
+get results, etc.) execution.
 
 **Arguments**:
 
@@ -419,8 +419,8 @@ end
 #### Release Build
 
 Define methods to be called before (`pre_release()`) and after (`post_release()`)
-each test build pipeline (configure, preprocess, compile, link, run,
-get results, etc.)
+each release build pipeline (configure, preprocess, compile, link, run,
+get results, etc.) execution.
 
 **Arguments**: None.
 
@@ -480,6 +480,7 @@ end
 
 Define method to be called when invoking the `summary` task,
 i.e.: `ceedling summary`.
+
 May be used to print the plugin results of the last build.
 
 **Arguments**: None.
