@@ -22,11 +22,11 @@ require 'ceedling/constants'
 require 'ceedling/target_loader'
 require 'deep_merge'
 
-def boom_handler(ex)
-  $stderr.puts("#{ex.class} ==> #{ex.message}")
-  if @ceedling[:configurator].project_debug
+def boom_handler(exception:, debug:)
+  $stderr.puts("#{exception.class} ==> #{exception.message}")
+  if debug
     $stderr.puts("Backtrace ==>")
-    $stderr.puts(ex.backtrace)
+    $stderr.puts(exception.backtrace)
   end
   abort # Rake's abort
 end
@@ -56,8 +56,9 @@ begin
 
   @ceedling[:setupinator].do_setup( project_config )
 
-  # Configure Ruby's default reporting for Thread exceptions.
+  # Configure high-level verbosity
   unless @ceedling[:configurator].project_debug
+    # Configure Ruby's default reporting for Thread exceptions.
     # In Ceedling's case thread scenarios will fall into these buckets:
     #  1. Jobs shut down cleanly
     #  2. Jobs shut down at garbage collected after a build step terminates with an error
@@ -80,7 +81,7 @@ begin
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 rescue StandardError => e
-  boom_handler(e)
+  boom_handler(exception:e, debug:@ceedling[:configurator].project_debug)
 end
 
 # End block always executed following rake run
@@ -88,7 +89,7 @@ END {
   $stdout.flush unless $stdout.nil?
   $stderr.flush unless $stderr.nil?
 
-  # cache our input configurations to use in comparison upon next execution
+  # Cache our input configurations to use in comparison upon next execution
   @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash )    if (@ceedling[:task_invoker].test_invoked?)
   @ceedling[:cacheinator].cache_release_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].release_invoked?)
 
@@ -102,14 +103,14 @@ END {
       @ceedling[:plugin_manager].print_plugin_failures
       exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
     rescue => ex
-      boom_handler(ex)
+      boom_handler(exception:ex, debug:@ceedling[:configurator].project_debug)
     end
   else
     puts("\nCeedling could not complete the build because of errors.")
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex
-      boom_handler(ex)
+      boom_handler(exception:ex, debug:@ceedling[:configurator].project_debug)
     end
   end
 }
