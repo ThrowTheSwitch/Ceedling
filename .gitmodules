@@ -13,3 +13,6 @@
 [submodule "plugins/fake_function_framework"]
 	path = plugins/fake_function_framework
 	url = https://github.com/ElectronVector/fake_function_framework.git
+[submodule "plugins/cppcheck"]
+	path = plugins/cppcheck
+	url = https://github.com/deltalejo/ceedling-cppcheck-plugin.git
