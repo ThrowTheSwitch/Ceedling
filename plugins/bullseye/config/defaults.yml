@@ -49,7 +49,6 @@
       - '"${1}"'
   :bullseye_browser:
     :executable: CoverageBrowser
-    :background_exec: :auto
     :optional: TRUE
     :arguments:
       - '"$"': ENVIRONMENT_COVFILE

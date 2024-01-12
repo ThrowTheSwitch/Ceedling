@@ -265,49 +265,42 @@
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #     :linker: 
 #       :executable:
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #     :assembler: 
 #       :executable:
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #     :fixture: 
 #       :executable:
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #     :includes_preprocessor: 
 #       :executable:
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #     :file_preprocessor: 
 #       :executable:
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #     :dependencies_generator: 
 #       :executable:
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #   :release:
 #     :compiler: 
@@ -315,28 +308,24 @@
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #     :linker: 
 #       :executable:
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #     :assembler: 
 #       :executable:
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 #     :dependencies_generator: 
 #       :executable:
 #       :arguments: []
 #       :name: 
 #       :stderr_redirect: :auto
-#       :background_exec: :auto
 #       :optional: FALSE
 # # The following tools can be defined and will run upon the named events when the `command_hooks` plugin is enabled
 #   :pre_mock_preprocess:
