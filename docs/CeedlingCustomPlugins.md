@@ -112,7 +112,7 @@ everything to run project's tasks.
 It can be used to perform additional project configuration or, as its name
 suggests, to setup your plugin before it goes into its duties.
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -124,22 +124,29 @@ end
 
 #### Mock Preprocessing
 
-_Note: Ceedling v0.32_
-
 When mocks and preprocessing are enabled, define methods to be called before
 (`pre_mock_preprocess()`) and after (`post_mock_preprocess()`) each header file
 to be mocked is preprocessed.
 
 **Arguments**:
 
-- `arg_hash`:
-  ```ruby
-  {
-    
-  }
-  ```
+```yaml
+arg_hash:
+  :header_file:
+    Path of the header file being mocked.
+  :preprocessed_header_file:
+    Path of preprocessed header file.
+  :test:
+    Name of test file being build.
+  :flags:
+    Extra compiler flags for current test build.
+  :include_paths: include_paths
+    Include search directories for current test build.
+  :defines:
+    Preprocessor macros defined for current test build.
+```
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -147,7 +154,7 @@ class PluginName < Plugin
     # ...
   end
   
-  def post_mock_preprocess(args_hash)
+  def post_mock_preprocess(arg_hash)
     # ...
   end
 end
@@ -155,22 +162,29 @@ end
 
 #### Test Preprocessing
 
-_Note: Ceedling v0.32_
-
 When preprocessing is enabled, define methods to be called before
 (`pre_test_preprocess()`) and after (`post_test_preprocess()`) each test file is
 preprocessed.
 
 **Arguments**:
 
-- `arg_hash`:
-  ```ruby
-  {
-    
-  }
-  ```
+```yaml
+arg_hash:
+  :test_file:
+    Path of test file being build.
+  :preprocessed_header_file:
+    Path of preprocessed test file.
+  :test:
+    Name of test file being build.
+  :flags:
+    Extra compiler flags for current test build.
+  :include_paths: include_paths
+    Include search directories for current test build.
+  :defines:
+    Preprocessor macros defined for current test build.
+```
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -191,18 +205,20 @@ When mocks are enabled, define methods to be called before
 
 **Arguments**:
 
-- `arg_hash`:
-  ```ruby
-  {
-    # Path of the header file being mocked.
-    :header_file => "<header file being mocked>",
-    # Additional context passed by the calling function.
-    # Ceedling passes the 'test' symbol.
-    :context => TEST_SYM
-  }
-  ```
+```yaml
+arg_hash:
+  :header_file:
+    Path of the header file being mocked.
+  :test:
+    Name of test file being build.
+  :context:
+    Additional context passed by the calling function.
+    Ceedling passes the 'test' symbol.
+  :output_path:
+    Path where mock source files are saved.
+```
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -210,7 +226,7 @@ class PluginName < Plugin
     # ...
   end
   
-  def post_mock_generate(args_hash)
+  def post_mock_generate(arg_hash)
     # ...
   end
 end
@@ -223,20 +239,20 @@ Define methods to be called before (`pre_runner_generate()`) and after
 
 **Arguments**:
 
-- `arg_hash`:
-  ```ruby
-  {
-    # Additional context passed by the calling function.
-    # Ceedling passes the 'test' symbol.
-    :context => TEST_SYM,
-    # Path of the tests source file.
-    :test_file => "<tests source file>",
-    # Path of the tests runner file.
-    :runner_file => "<tests runner source file>"
-  }
-  ```
+```yaml
+arg_hash:
+  :context:
+    Additional context passed by the calling function.
+    Ceedling passes the 'test' symbol.
+  :test_file:
+    Path of test file being build.
+  :input_file:
+    Path of preprocessed test file.
+  :runner_file:
+    Path of test runner file.
+```
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -244,7 +260,7 @@ class PluginName < Plugin
     # ...
   end
   
-  def post_runner_generate(args_hash)
+  def post_runner_generate(arg_hash)
     # ...
   end
 end
@@ -257,35 +273,46 @@ Define methods to be called before (`pre_compile_execute()`) and after
 
 **Arguments**:
 
-- `arg_hash`:
-  ```ruby
-  {
-    # Hash holding compiler tool properties.
-    :tool => {
-      :executable => "<tool executable>",
-      :name => "<tool name>",
-      :stderr_redirect => StdErrRedirect::NONE,
-      :optional => false,
-      :arguments => [],
-    },
-    # Symbol of the operation being performed, i.e.: compile, assemble or link
-    :operation => OPERATION_COMPILE_SYM,
-    # Additional context passed by the calling function.
-    # Ceedling passes a symbol according to the build type.
-    # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
-    :context => TEST_SYM,
-    # Path of the input source file. e.g.: .c file
-    :source => "<source file>",
-    # Path of the output object file. e.g.: .o file
-    :object => "<object file>",
-    # Path of the listing file. e.g.: .lst file
-    :list => "<listing file>",
-    # Path of the dependencies file. e.g.: .d file
-    :dependencies => "<dependencies file>"
-  }
-  ```
+```yaml
+arg_hash:
+  # Hash holding compiler tool properties.
+  :tool:
+    :executable: Tool executable.
+    :name: Tool name.
+    :stderr_redirect: Which stderr redirect mechanism the tool uses.
+    :optional: Wether tool is optional or not.
+    :arguments: Arguments with which tool was called.
+  :module_name:
+    Source filename as module name.
+    i.e. File basename.
+  :operation:
+    Symbol of the operation being performed.
+    e.g. compile, assemble or link.
+  :context:
+    Additional context passed by the calling function.
+    Ceedling passes a symbol according to the build type.
+    e.g. 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
+  :source:
+    Path of the input source file.
+    e.g. .c file
+  :object:
+    Path of the output object file.
+    e.g. .o file
+  :search_paths:
+    Include search directories for current test build.
+  :flags:
+    Extra compiler flags for current test build.
+  :defines:
+    Preprocessor macros defined for current test build.
+  :list:
+    Path of the listing file.
+    e.g. .lst file
+  :dependencies:
+    Path of the dependencies file.
+    e.g. .d file
+```
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -293,7 +320,7 @@ class PluginName < Plugin
     # ...
   end
   
-  def post_compile_execute(args_hash)
+  def post_compile_execute(arg_hash)
     # ...
   end
 end
@@ -306,35 +333,37 @@ Define methods to be called before (`pre_link_execute()`) and after
 
 **Arguments**:
 
-- `arg_hash`:
-  ```ruby
-  {
-    # Hash holding linker tool properties.
-    :tool => {
-      :executable => "<tool executable>",
-      :name => "<tool name>",
-      :stderr_redirect => StdErrRedirect::NONE,
-      :optional => false,
-      :arguments => [],
-    },
-    # Additional context passed by the calling function.
-    # Ceedling passes a symbol according to the build type.
-    # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
-    :context => TEST_SYM,
-    # List of object files paths being linked. e.g.: .o files
-    :objects => [],
-    # Path of the output file. e.g.: .out file
-    :executable => "<executable file>",
-    # Path of the map file. e.g.: .map file
-    :map => "<map file>",
-    # List of libraries to link. e.g.: the ones passed to the linker with -l
-    :libraries => [],
-    # List of libraries paths. e.g.: the ones passed to the linker with -L
-    :libpaths => []
-  }
-  ```
+```yaml
+arg_hash:
+  # Hash holding linker tool properties.
+  :tool:
+    :executable: Tool executable.
+    :name: Tool name.
+    :stderr_redirect: Which stderr redirect mechanism the tool uses.
+    :optional: Wether tool is optional or not.
+    :arguments: Arguments with which tool was called.
+  :context:
+    Additional context passed by the calling function.
+    Ceedling passes a symbol according to the build type.
+    e.g. 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
+  :objects:
+    List of object files paths being linked.
+    e.g. .o files
+  :executable:
+    Path of the output file.
+    e.g. .out file
+  :map:
+    Path of the map file.
+    e.g. .map file
+  :libraries:
+    List of libraries to link.
+    e.g. the ones passed to the linker with -l
+  :libpaths:
+    List of libraries paths.
+    e.g. the ones passed to the linker with -L
+```
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -342,7 +371,7 @@ class PluginName < Plugin
     # ...
   end
   
-  def post_link_execute(args_hash)
+  def post_link_execute(arg_hash)
     # ...
   end
 end
@@ -356,29 +385,28 @@ fixture.
 
 **Arguments**:
 
-- `arg_hash`:
-  ```ruby
-  {
-    # Hash holding execution tool properties.
-    :tool => {
-      :executable => "<tool executable>",
-      :name => "<tool name>",
-      :stderr_redirect => StdErrRedirect::NONE,
-      :optional => false,
-      :arguments => [],
-    },
-    # Additional context passed by the calling function.
-    # Ceedling passes a symbol according to the build type.
-    # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
-    :context => TEST_SYM,
-    # Path to the tests executable file. e.g.: .out file
-    :executable => "<executable file>",
-    # Path to the tests result file. e.g.: .pass/.fail file
-    :result_file => "<result file>"
-  }
-  ```
+```yaml
+arg_hash:
+  # Hash holding execution tool properties.
+  :tool:
+    :executable: Tool executable.
+    :name: Tool name.
+    :stderr_redirect: Which stderr redirect mechanism the tool uses.
+    :optional: Wether tool is optional or not.
+    :arguments: Arguments with which tool was called.
+  :context:
+    Additional context passed by the calling function.
+    Ceedling passes a symbol according to the build type.
+    e.g. 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
+  :executable:
+    Path to the tests executable file.
+    e.g. .out file
+  :result_file:
+    Path to the tests result file.
+    e.g. .pass/.fail file
+```
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -386,7 +414,7 @@ class PluginName < Plugin
     # ...
   end
   
-  def post_test_fixture_execute(args_hash)
+  def post_test_fixture_execute(arg_hash)
     # ...
   end
 end
@@ -400,9 +428,11 @@ get results, etc.) execution.
 
 **Arguments**:
 
-- `test`: Path of the test source file being processed.
+```yaml
+test: Path of the test source file being processed.
+```
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -424,7 +454,7 @@ get results, etc.) execution.
 
 **Arguments**: None.
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -445,7 +475,7 @@ Ceedling executes a task.
 
 **Arguments**: None.
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -466,7 +496,7 @@ terminates.
 
 **Arguments**: None.
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
@@ -485,7 +515,7 @@ May be used to print the plugin results of the last build.
 
 **Arguments**: None.
 
-**Example**:
+**Stubs**:
 
 ```ruby
 class PluginName < Plugin
