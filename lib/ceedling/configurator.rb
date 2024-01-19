@@ -69,16 +69,15 @@ class Configurator
   end
 
 
-  # Set up essential flattened config
-  # (In case YAML validation failure prevents flattening of config into configurator accessors)
+  # Set up essential flattened config related to debug verbosity
+  # (In case YAML validation failures that might want debug verbosity prevent 
+  # flattening of config into configurator accessors)
   def set_debug(config)
     if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG) or (config[:project][:debug])
       eval("def project_debug() return true end", binding())
       eval("def project_verbosity() return Verbosity::DEBUG end", binding())
-    else
-      eval("def project_debug() return false end", binding())
-      eval("def project_verbosity() return Verbosity::NORMAL end", binding())      
     end
+    # Otherwise allow Configurator to create these accessors normally
   end
 
 
@@ -375,7 +374,7 @@ class Configurator
   end
 
 
-  # add to constants and accessors as post build step
+  # Add to constants and accessors as post build step
   def build_supplement(config_base, config_more)
     # merge in our post-build additions to base configuration hash
     config_base.deep_merge!( config_more )
