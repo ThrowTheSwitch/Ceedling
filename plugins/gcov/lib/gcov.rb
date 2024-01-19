@@ -38,8 +38,11 @@ class Gcov < Plugin
     tool = TOOLS_TEST_COMPILER
     msg = nil
 
+    # Handle assembly file that comes through
+    if File.extname(source) == EXTENSION_ASSEMBLY
+      tool = TOOLS_TEST_ASSEMBLER
     # If a source file (not unity, mocks, etc.) is to be compiled use code coverage compiler
-    if @ceedling[:configurator].collection_all_source.to_a.include?(source)
+    elsif @ceedling[:configurator].collection_all_source.include?(source)
       tool = TOOLS_GCOV_COMPILER
       msg = "Compiling #{File.basename(source)} with coverage..."
     end
@@ -157,7 +160,7 @@ class Gcov < Plugin
                    )
 
         # Do not raise an exception if `gcov` terminates with a non-zero exit code, just note it and move on.
-        # Recent releases of `gcov` has become more strict and vocal about errors and exit codes.
+        # Recent releases of `gcov` have become more strict and vocal about errors and exit codes.
         command[:options][:boom] = false
 
         # Run the gcov tool and collect the raw coverage report
