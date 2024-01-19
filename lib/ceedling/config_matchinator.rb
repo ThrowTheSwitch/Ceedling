@@ -106,9 +106,10 @@ class ConfigMatchinator
     # Iterate through every hash touple [matcher key, values array]
     # In prioritized order match test filepath against each matcher key.
     # This order matches on special patterns first to ensure no funny business with simple substring matching 
-    #  1. Wildcard (*)
+    #  1. All files wildcard ('*')
     #  2. Regex (/.../)
-    #  3. Any filepath matching (substring matching)
+    #  3. Wildcard filepath matching (e.g. 'name*')
+    #  4. Any filepath matching (substring matching)
     #
     # Each element of the collected _values array will be an array of values.
 
@@ -116,17 +117,26 @@ class ConfigMatchinator
       mtached = false
       _matcher = matcher.to_s.strip
 
-      # 1. Try wildcard matching -- return values for every test filepath if '*' is found in values matching key
+      # 1. Try gross wildcard matching -- return values for all test filepaths if '*' is the matching key
       if ('*' == _matcher)
         matched = true
 
       # 2. Try regular expression matching against all values matching keys that are regexes (ignore if not a valid regex)
-      # Note: We use logical AND here so that we get a meaningful fall-through condition.
-      #       Nesting the actual regex matching beneath validity checking improperly catches unmatched regexes
+      #    Note: We use logical AND here so that we get a meaningful fall-through condition.
+      #          Nesting the actual regex matching beneath validity checking improperly catches unmatched regexes
       elsif (regex?(_matcher)) and (!(form_regex(_matcher).match(filepath)).nil?)
         matched = true
 
-      # 3. Try filepath literal matching (including substring matching) with each values matching key
+      # 3. Try wildcard matching -- return values for any test filepath that matches with '*' expansion
+      #    Treat matcher as a regex:
+      #      1. Escape any regex characters (e.g. '-')
+      #      2. Convert any now escaped '\*'s into '.*'
+      #      3. Match filepath against regex-ified matcher
+      elsif (filepath =~ /#{Regexp.escape(matcher).gsub('\*', '.*')}/)
+        matched = true
+
+      # 4. Try filepath literal matching (including substring matching) with each matching key
+      #    Note: (3) will do this if the matcher key lacks a '*', but this is a just-in-case backup
       elsif (filepath.include?(_matcher))
         matched = true
       end        
