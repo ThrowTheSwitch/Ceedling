@@ -15,6 +15,8 @@ yaml_wrapper:
 
 system_wrapper:
 
+config_walkinator:
+
 reportinator:
 
 rake_utils:
@@ -83,6 +85,13 @@ tool_executor_helper:
     - system_utils
     - system_wrapper
 
+tool_validator:
+  compose:
+    - file_wrapper
+    - stream_wrapper
+    - system_wrapper
+    - reportinator
+
 configurator:
   compose:
     - configurator_setup
@@ -106,9 +115,12 @@ configurator_plugins:
 
 configurator_validator:
   compose:
+    - config_walkinator
     - file_wrapper
     - stream_wrapper
     - system_wrapper
+    - reportinator
+    - tool_validator
 
 configurator_builder:
   compose:
@@ -134,8 +146,6 @@ streaminator:
 streaminator_helper:
 
 setupinator:
-
-plugin_builder:
 
 plugin_manager:
   compose:
@@ -309,7 +319,6 @@ build_batchinator:
     - configurator
     - streaminator
     - reportinator
-
 
 test_invoker:
   compose:

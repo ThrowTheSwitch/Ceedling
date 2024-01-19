@@ -99,16 +99,13 @@ class ConfiguratorSetup
   end
 
   def validate_tools(config)
-    validation = []
+    valid = true
 
-    config[:tools].keys.sort.each do |key|
-      validation << @configurator_validator.exists?(config, :tools, key, :executable)
-      validation << @configurator_validator.validate_executable_filepath(config, :tools, key, :executable) if (not config[:tools][key][:optional])
-      validation << @configurator_validator.validate_tool_stderr_redirect(config, :tools, key)
+    config[:tools].keys.sort.each do |tool|
+      valid &= @configurator_validator.validate_tool(config, tool)
     end
 
-    return false if (validation.include?(false))
-    return true
+    return valid
   end
 
   def validate_threads(config)
@@ -159,7 +156,7 @@ class ConfiguratorSetup
       Set.new( @configurator_plugins.script_plugins )
 
     missing_plugins.each do |plugin|
-      @stream_wrapper.stderr_puts("ERROR: Ceedling plugin '#{plugin}' contains no rake or ruby class entry point. (Misspelled or missing files?)")
+      @stream_wrapper.stderr_puts("ERROR: Ceedling plugin '#{plugin}' contains no rake or Ruby class entry point. (Misspelled or missing files?)")
     end
 
     return ( (missing_plugins.size > 0) ? false : true )

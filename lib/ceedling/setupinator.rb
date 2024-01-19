@@ -31,12 +31,13 @@ class Setupinator
     @ceedling[:configurator].eval_paths( config_hash )
     @ceedling[:configurator].standardize_paths( config_hash )
     @ceedling[:configurator].validate( config_hash )
+    # Partially flatten config + build Configurator accessors and globals
     @ceedling[:configurator].build( config_hash, :environment )
 
     @ceedling[:configurator].insert_rake_plugins( @ceedling[:configurator].rake_plugins )
     @ceedling[:configurator].tools_supplement_arguments( config_hash )
     
-    # merge in any environment variables plugins specify, after the main build
+    # Merge in any environment variables that plugins specify after the main build
     @ceedling[:plugin_manager].load_plugin_scripts( @ceedling[:configurator].script_plugins, @ceedling ) do |env|
       @ceedling[:configurator].eval_environment_variables( env )
       @ceedling[:configurator].build_supplement( config_hash, env )

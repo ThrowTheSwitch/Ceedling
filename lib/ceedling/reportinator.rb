@@ -42,4 +42,12 @@ class Reportinator
     return generate_progress("#{operation} #{label}#{filename}")
   end
 
+  def generate_config_walk(keys, depth=0)
+    # :key ↳ :key ↳ :key
+
+    _keys = keys.clone
+    _keys = _keys.slice(0, depth) if depth > 0
+    return _keys.map{|key| ":#{key}"}.join(' ↳ ')
+  end
+
 end

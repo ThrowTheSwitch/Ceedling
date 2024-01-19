@@ -1,31 +1,30 @@
 require 'rubygems'
 require 'rake' # for ext()
 require 'ceedling/constants'
-require 'ceedling/tool_executor'    # for argument replacement pattern
 require 'ceedling/file_path_utils'  # for glob handling class methods
 
 
 class ConfiguratorValidator
   
-  constructor :file_wrapper, :stream_wrapper, :system_wrapper
+  constructor :config_walkinator, :file_wrapper, :stream_wrapper, :system_wrapper, :reportinator, :tool_validator
 
-  # walk into config hash verify existence of data at key depth
+  # Walk into config hash verify existence of data at key depth
   def exists?(config, *keys)
-    hash  = retrieve_value(config, keys)
+    hash  = @config_walkinator.fetch_value( config, *keys )
     exist = !hash[:value].nil?
 
     if (not exist)
       # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
-      @stream_wrapper.stderr_puts("ERROR: Required config file entry #{format_key_sequence(keys, hash[:depth])} does not exist.")    
+      walk = @reportinator.generate_config_walk( keys, hash[:depth] )
+      @stream_wrapper.stderr_puts("ERROR: Required config file entry #{walk} does not exist.")    
     end
     
     return exist
   end
 
-
-  # walk into config hash. verify directory path(s) at given key depth
+  # Walk into config hash. verify directory path(s) at given key depth
   def validate_path_list(config, *keys)
-    hash = retrieve_value(config, keys)
+    hash = @config_walkinator.fetch_value( config, *keys )
     list = hash[:value]
 
     # return early if we couldn't walk into hash and find a value
@@ -44,7 +43,8 @@ class ConfiguratorValidator
       
       if (not @file_wrapper.exist?(base_path))
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
-        @stream_wrapper.stderr_puts("ERROR: Config path #{format_key_sequence(keys, hash[:depth])}['#{base_path}'] does not exist on disk.") 
+        walk = @reportinator.generate_config_walk( keys, hash[:depth] )
+        @stream_wrapper.stderr_puts("ERROR: Config path #{walk}['#{base_path}'] does not exist on disk.") 
         exist = false
       end 
     end
@@ -52,24 +52,24 @@ class ConfiguratorValidator
     return exist
   end
 
-  
-  # simple path verification
+  # Simple path verification
   def validate_filepath_simple(path, *keys)
     validate_path = path
     
     if (not @file_wrapper.exist?(validate_path))
       # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
-      @stream_wrapper.stderr_puts("ERROR: Config path '#{validate_path}' associated with #{format_key_sequence(keys, keys.size)} does not exist on disk.") 
+      walk = @reportinator.generate_config_walk( keys, keys.size )
+      @stream_wrapper.stderr_puts("ERROR: Config path '#{validate_path}' associated with #{walk} does not exist on disk.") 
       return false
     end 
     
     return true
   end
  
-  # walk into config hash. verify specified file exists.
+  # Walk into config hash. verify specified file exists.
   def validate_filepath(config, *keys)
-    hash          = retrieve_value(config, keys)
-    filepath      = hash[:value]
+    hash     = @config_walkinator.fetch_value( config, *keys )
+    filepath = hash[:value]
 
     # return early if we couldn't walk into hash and find a value
     return false if (filepath.nil?)
@@ -83,115 +83,33 @@ class ConfiguratorValidator
       if GENERATED_DIR_PATH.include?(filepath)      
         # we already made this directory before let's make it again.
         FileUtils.mkdir_p File.join(File.dirname(__FILE__), filepath)
-        @stream_wrapper.stderr_puts("WARNING: Generated filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk. Recreating") 
+        walk = @reportinator.generate_config_walk( keys, hash[:depth] )
+        @stream_wrapper.stderr_puts("WARNING: Generated filepath #{walk} => '#{filepath}' does not exist on disk. Recreating") 
  
       else
         # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
-        @stream_wrapper.stderr_puts("ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])}['#{filepath}'] does not exist on disk.")
+        walk = @reportinator.generate_config_walk( keys, hash[:depth] )
+        @stream_wrapper.stderr_puts("ERROR: Config filepath #{walk} => '#{filepath}' does not exist on disk.")
         return false
       end
     end      
 
     return true
   end
-
-  # Walk into config hash and verify specified file exists
-  def validate_executable_filepath(config, *keys)
-    exe_extension = config[:extension][:executable]
-    hash          = retrieve_value(config, keys)
-    filepath      = hash[:value]
-
-    # Return early if we couldn't walk into hash and find a value
-    return false if (filepath.nil?)
-
-    # Skip everything if we've got an argument replacement pattern
-    return true if (filepath =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
-
-    # If there's no path included, verify file exists somewhere in system search paths
-    if (not filepath.include?('/'))
-      exists = false
-      
-      @system_wrapper.search_paths.each do |path|
-        if (@file_wrapper.exist?( File.join(path, filepath)) )
-          exists = true
-          break
-        end
-        
-        if (@file_wrapper.exist?( (File.join(path, filepath)).ext( exe_extension ) ))
-          exists = true
-          break
-        elsif (@system_wrapper.windows? and @file_wrapper.exist?( (File.join(path, filepath)).ext( EXTENSION_WIN_EXE ) ))
-          exists = true
-          break
-        end
-      end
-      
-      if (not exists)
-        # No verbosity level (no @streaminator) since this is low level error & verbosity handling depends on self-referential configurator
-        @stream_wrapper.stderr_puts(
-          "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])} => `#{filepath}` does not exist in system search paths."
-        )
-        return false        
-      end
-      
-    # If there is a path included, check that explicit filepath exists
-    else
-      if (not @file_wrapper.exist?(filepath))
-        # No verbosity level (no @streaminator) since this is low level error & verbosity handling depends on self-referential configurator
-        @stream_wrapper.stderr_puts(
-          "ERROR: Config filepath #{format_key_sequence(keys, hash[:depth])} => `#{filepath}` does not exist on disk."
-        )
-        return false
-      end      
-    end
-
-    return true
-  end
   
-  def validate_tool_stderr_redirect(config, tools, tool)
-    redirect = config[tools][tool][:stderr_redirect]
-    if (redirect.class == Symbol)
-      # map constants and force to array of strings for runtime universality across ruby versions
-      if (not StdErrRedirect.constants.map{|constant| constant.to_s}.include?(redirect.to_s.upcase))
-        error = "ERROR: :#{tools}  ↳ :#{tool}  ↳ :stderr_redirect => :#{redirect} is not a recognized option " +
-                "{#{StdErrRedirect.constants.map{|constant| ':' + constant.to_s.downcase}.join(', ')}}."
-        @stream_wrapper.stderr_puts(error) 
-        return false        
-      end
-    end
-    
-    return true
-  end
-  
-  private #########################################
-  
-  
-  def retrieve_value(config, keys)
-    value = nil
-    hash  = config
-    depth = 0
+  def validate_tool(config, key)
+    # Get tool
+    walk = [:tools, key]
+    hash = @config_walkinator.fetch_value( config, *walk )
 
-    # walk into hash & extract value at requested key sequence
-    keys.each do |symbol|
-      depth += 1
-      if (not hash[symbol].nil?)
-        hash  = hash[symbol]
-        value = hash
-      else
-        value = nil
-        break
-      end
-    end
-    
-    return {:value => value, :depth => depth}
+    arg_hash = {
+      tool: hash[:value],
+      name: @reportinator.generate_config_walk( walk ),
+      extension: config[:extension][:executable],
+      respect_optional: true
+    }
+  
+    return @tool_validator.validate( **arg_hash )
   end
 
-
-  def format_key_sequence(keys, depth)
-    walked_keys    = keys.slice(0, depth)
-    formatted_keys = walked_keys.map{|key| ":#{key}"}
-    
-    return formatted_keys.join(" ↳ ")
-  end
-  
 end
