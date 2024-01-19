@@ -36,7 +36,7 @@ DEFAULT_TEST_ASSEMBLER_TOOL = {
     ENV['AS'].nil? ? "" : ENV['AS'].split[1..-1],
     ENV['ASFLAGS'].nil? ? "" : ENV['ASFLAGS'].split,
     "-I\"${3}\"".freeze, # Search paths
-    "-D\"${4}\"".freeze, # Defines (FYI--allowed with GNU assembler but ignored)
+    # Anny defines (${4}) are not included since GNU assembler ignores them
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     ].freeze
