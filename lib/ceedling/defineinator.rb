@@ -66,8 +66,8 @@ class Defineinator
       # Replace any non-ASCII characters with underscores
       test_def = test_def.encode("ASCII", "UTF-8", invalid: :replace, undef: :replace, replace: "_")
 
-      # Replace all non-alphanumeric characters (including spaces/punctuation but excluding dashes and underscores) with underscores
-      test_def.gsub!(/[^0-9a-z_-]/i, '_')
+      # Replace all non-alphanumeric characters (including spaces/punctuation but excluding underscores) with underscores
+      test_def.gsub!(/[^0-9a-z_]/i, '_')
 
       # Convert to all caps
       test_def.upcase!
