@@ -29,10 +29,10 @@ class ToolValidator
     exists = false
     error = ''
 
-    filepath = tool[:executable]
+    executable = tool[:executable]
 
     # Handle a missing :executable
-    if (filepath.nil?)
+    if (executable.nil? or executable.empty?)
       error = "#{name} is missing :executable in its configuration."
       if !boom
         @stream_wrapper.stderr_puts( 'ERROR: ' + error )
@@ -42,28 +42,39 @@ class ToolValidator
       raise CeedlingException.new(error)
     end
 
-    # If optional tool, don't bother to check if executable is legit
+    # If tool is optional and we're respecting that, don't bother to check if executable is legit
     return true if tool[:optional] and respect_optional
 
     # Skip everything if we've got an argument replacement pattern in :executable
     # (Allow executable to be validated by shell at run time)
-    return true if (filepath =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
+    return true if (executable =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
+
+    # Extract the executable (including optional filepath) apart from any additional arguments
+    # Be mindful of legal quote enclosures (e.g. `"Code Cruncher" foo bar`)
+    executable.strip!
+    if (matched = executable.match(/^"(.+)"/))
+      # If the regex matched, extract contents of match group within parens
+      executable = matched[1]
+    else
+      # Otherwise grab first token before arguments
+      executable = executable.split(' ')[0]
+    end
 
     # If no path included, verify file exists in system search paths
-    if (not filepath.include?('/'))      
+    if (not executable.include?('/'))      
 
       # Iterate over search paths
       @system_wrapper.search_paths.each do |path|
         # File exists as named
-        if (@file_wrapper.exist?( File.join(path, filepath)) )
+        if (@file_wrapper.exist?( File.join(path, executable)) )
           exists = true
           break
         # File exists with executable file extension
-        elsif (@file_wrapper.exist?( (File.join(path, filepath)).ext( extension ) ))
+        elsif (@file_wrapper.exist?( (File.join(path, executable)).ext( extension ) ))
           exists = true
           break
         # We're on Windows and file exists with .exe file extension
-        elsif (@system_wrapper.windows? and @file_wrapper.exist?( (File.join(path, filepath)).ext( EXTENSION_WIN_EXE ) ))
+        elsif (@system_wrapper.windows? and @file_wrapper.exist?( (File.join(path, executable)).ext( EXTENSION_WIN_EXE ) ))
           exists = true
           break
         end
@@ -74,7 +85,7 @@ class ToolValidator
       
     # If there is a path included, check that explicit filepath exists
     else
-      if @file_wrapper.exist?(filepath)
+      if @file_wrapper.exist?( executable )
         exists = true
       else
         # Construct end of error message
@@ -83,7 +94,7 @@ class ToolValidator
     end
 
     if !exists
-      error = "#{name} ↳ :executable => `#{filepath}` " + error
+      error = "#{name} ↳ :executable => `#{executable}` " + error
     end
 
     # Raise exception if executable can't be found and boom is set
