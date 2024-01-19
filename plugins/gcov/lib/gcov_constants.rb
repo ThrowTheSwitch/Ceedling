@@ -11,17 +11,14 @@ GCOV_BUILD_OUTPUT_PATH          = File.join(GCOV_BUILD_PATH, "out")
 GCOV_RESULTS_PATH               = File.join(GCOV_BUILD_PATH, "results")
 GCOV_DEPENDENCIES_PATH          = File.join(GCOV_BUILD_PATH, "dependencies")
 GCOV_ARTIFACTS_PATH             = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, GCOV_ROOT_NAME)
-GCOV_REPORT_GENERATOR_PATH      = File.join(GCOV_ARTIFACTS_PATH, "ReportGenerator")
 
-GCOV_ARTIFACTS_FILE_HTML        = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageResults.html")
-GCOV_ARTIFACTS_FILE_COBERTURA   = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageCobertura.xml")
-GCOV_ARTIFACTS_FILE_SONARQUBE   = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverageSonarQube.xml")
-GCOV_ARTIFACTS_FILE_JSON        = File.join(GCOV_ARTIFACTS_PATH, "GcovCoverage.json")
+GCOV_REPORT_GENERATOR_ARTIFACTS_PATH  = File.join(GCOV_ARTIFACTS_PATH, "ReportGenerator")
+GCOV_GCOVR_ARTIFACTS_PATH             = File.join(GCOV_ARTIFACTS_PATH, "gcovr")
 
-GCOV_FILTER_EXCLUDE_PATHS       = ['vendor', 'build', 'test', 'lib']
-
-# gcovr supports regular expressions.
-GCOV_FILTER_EXCLUDE = GCOV_FILTER_EXCLUDE_PATHS.map{|path| '^'.concat(*path).concat('.*')}.join('|')
+GCOV_GCOVR_ARTIFACTS_FILE_HTML        = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageResults.html")
+GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA   = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageCobertura.xml")
+GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE   = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageSonarQube.xml")
+GCOV_GCOVR_ARTIFACTS_FILE_JSON        = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverage.json")
 
 TOOL_COLLECTION_GCOV_TASKS = {
   :test_compiler  => TOOLS_GCOV_COMPILER,
@@ -31,12 +28,9 @@ TOOL_COLLECTION_GCOV_TASKS = {
 }
 
 # Report Creation Utilities
-UTILITY_NAME_GCOVR = "gcovr"
-UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
-UTILITY_NAMES = [UTILITY_NAME_GCOVR, UTILITY_NAME_REPORT_GENERATOR]
-
-# ReportGenerator supports text with wildcard characters.
-GCOV_REPORT_GENERATOR_FILE_FILTERS = GCOV_FILTER_EXCLUDE_PATHS.map{|path| File.join('-.', *path, '*')}.join(';')
+GCOV_UTILITY_NAME_GCOVR = "gcovr"
+GCOV_UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
+GCOV_UTILITY_NAMES = [GCOV_UTILITY_NAME_GCOVR, GCOV_UTILITY_NAME_REPORT_GENERATOR]
 
 # Report Types
 class ReportTypes

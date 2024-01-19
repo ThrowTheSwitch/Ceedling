@@ -1,48 +1,62 @@
 require 'benchmark'
 require 'reportinator_helper'
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 class ReportGeneratorReportinator
 
+  attr_reader :artifacts_path
+
   def initialize(system_objects)
+    @artifacts_path = GCOV_REPORT_GENERATOR_ARTIFACTS_PATH
     @ceedling = system_objects
     @reportinator_helper = ReportinatorHelper.new(system_objects)
+
+    # Validate the `reportgenerator` tool since it's used to generate reports
+    @ceedling[:tool_validator].validate( 
+      tool: TOOLS_GCOV_REPORTGENERATOR_REPORT,
+      extension: EXTENSION_EXECUTABLE,
+      boom: true
+    )
+
+    # Validate the `gcov` report tool since it's used to generate .gcov files processed by `reportgenerator`
+    # Note: This gcov tool is a different configuration than the gcov tool used for coverage summaries
+    @ceedling[:tool_validator].validate(
+      tool: TOOLS_GCOV_REPORT,
+      extension: EXTENSION_EXECUTABLE,
+      boom: true
+    )
   end
 
 
   # Generate the ReportGenerator report(s) specified in the options.
-  def make_reports(opts)
+  def generate_reports(opts)
     shell_result = nil
     total_time = Benchmark.realtime do
       rg_opts = get_opts(opts)
 
-      msg = @ceedling[:reportinator].generate_progress("Creating #{opts[:gcov_reports].join(', ')} coverage report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_PATH}'")
-      @ceedling[:streaminator].stdout_puts("\n" + msg, Verbosity::NORMAL)
+      msg = @ceedling[:reportinator].generate_progress("Creating #{opts[:gcov_reports].join(', ')} coverage report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}'")
+      @ceedling[:streaminator].stdout_puts( "\n" + msg )
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.
       for gcov_file in Dir.glob("*.gcov")
         File.delete(gcov_file)
       end
 
-      # Use a custom gcov executable, if specified.
-      GCOV_TOOL_CONFIG[:executable] = rg_opts[:gcov_executable] unless rg_opts[:gcov_executable].nil?
-
       gcno_exclude_str = ""
 
       # Avoid running gcov on custom specified .gcno files.
-      if !(rg_opts.nil?) && !(rg_opts[:gcov_exclude].nil?) && !(rg_opts[:gcov_exclude].empty?)
-        for gcno_exclude_expression in rg_opts[:gcov_exclude]
-          if !(gcno_exclude_expression.nil?) && !(gcno_exclude_expression.empty?)
-            # We want to filter .gcno files, not .gcov files.
-            # We will generate .gcov files from .gcno files.
-            gcno_exclude_expression = gcno_exclude_expression.chomp("\\.gcov")
-            gcno_exclude_expression = gcno_exclude_expression.chomp(".gcov")
-            # The .gcno extension will be added later as we create the regex.
-            gcno_exclude_expression = gcno_exclude_expression.chomp("\\.gcno")
-            gcno_exclude_expression = gcno_exclude_expression.chomp(".gcno")
-            # Append the custom expression.
-            gcno_exclude_str += "|#{gcno_exclude_expression}"
-          end
+      for gcno_exclude_expression in rg_opts[:gcov_exclude]
+        if !(gcno_exclude_expression.nil?) && !(gcno_exclude_expression.empty?)
+          # We want to filter .gcno files, not .gcov files.
+          # We will generate .gcov files from .gcno files.
+          gcno_exclude_expression = gcno_exclude_expression.chomp("\\.gcov")
+          gcno_exclude_expression = gcno_exclude_expression.chomp(".gcov")
+          # The .gcno extension will be added later as we create the regex.
+          gcno_exclude_expression = gcno_exclude_expression.chomp("\\.gcno")
+          gcno_exclude_expression = gcno_exclude_expression.chomp(".gcno")
+          # Append the custom expression.
+          gcno_exclude_str += "|#{gcno_exclude_expression}"
         end
       end
 
@@ -63,15 +77,22 @@ class ReportGeneratorReportinator
         args = args_builder(opts)
 
         # Generate the report(s).
-        shell_result = run(args)
+        begin
+          shell_result = run(args)
+        rescue ShellExecutionException => ex
+          shell_result = ex.shell_result
+          # Re-raise
+          raise ex
+        ensure
+          # Cleanup .gcov files.
+          for gcov_file in Dir.glob("*.gcov")
+            File.delete(gcov_file)
+          end          
+        end
       else
-        @ceedling[:streaminator].stdout_puts("\nWARNING: No matching .gcno coverage files found.", Verbosity::NORMAL)
+        @ceedling[:streaminator].stdout_puts("\nWARNING: No matching .gcno coverage files found.", Verbosity::COMPLAIN)
       end
 
-      # Cleanup .gcov files.
-      for gcov_file in Dir.glob("*.gcov")
-        File.delete(gcov_file)
-      end
     end
 
     if shell_result
@@ -108,9 +129,6 @@ class ReportGeneratorReportinator
 
   REPORT_GENERATOR_SETTING_PREFIX = "gcov_report_generator"
 
-  # Deep clone the gcov tool config, so we can modify it locally if specified via options.
-  GCOV_TOOL_CONFIG = Marshal.load(Marshal.dump(TOOLS_GCOV_GCOV_POST_REPORT))
-
   # Build the ReportGenerator arguments.
   def args_builder(opts)
     rg_opts = get_opts(opts)
@@ -118,52 +136,42 @@ class ReportGeneratorReportinator
 
     args = ""
     args += "\"-reports:*.gcov\" "
-    args += "\"-targetdir:\"#{GCOV_REPORT_GENERATOR_PATH}\"\" "
+    args += "\"-targetdir:\"#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}\"\" "
 
     # Build the report types argument.
-    if !(opts.nil?) && !(opts[:gcov_reports].nil?) && !(opts[:gcov_reports].empty?)
-      args += "\"-reporttypes:"
+    args += "\"-reporttypes:"
 
-      for report_type in opts[:gcov_reports]
-        rg_report_type = REPORT_TYPE_TO_REPORT_GENERATOR_REPORT_NAME[report_type.upcase]
-        if !(rg_report_type.nil?)
-          args += rg_report_type + ";"
-          report_type_count = report_type_count + 1
-        end
+    for report_type in opts[:gcov_reports]
+      rg_report_type = REPORT_TYPE_TO_REPORT_GENERATOR_REPORT_NAME[report_type.upcase]
+      if !(rg_report_type.nil?)
+        args += rg_report_type + ";"
+        report_type_count = report_type_count + 1
       end
-
-      # Removing trailing ';' after the last report type.
-      args = args.chomp(";")
-
-      # Append a space separator after the report type.
-      args += "\" "
     end
+
+    # Removing trailing ';' after the last report type.
+    args = args.chomp(";")
+
+    # Append a space separator after the report type.
+    args += "\" "
 
     # Build the source directories argument.
-    args += "\"-sourcedirs:.;"
-    if !(opts[:collection_paths_source].nil?)
-      args += opts[:collection_paths_source].join(';')
-    end
-    args = args.chomp(";")
-    args += "\" "
+    args += "\"-sourcedirs:.;#{opts[:collection_paths_source].join(';')}\" "
 
     args += "\"-historydir:#{rg_opts[:history_directory]}\" " unless rg_opts[:history_directory].nil?
     args += "\"-plugins:#{rg_opts[:plugins]}\" " unless rg_opts[:plugins].nil?
     args += "\"-assemblyfilters:#{rg_opts[:assembly_filters]}\" " unless rg_opts[:assembly_filters].nil?
     args += "\"-classfilters:#{rg_opts[:class_filters]}\" " unless rg_opts[:class_filters].nil?
-    file_filters = rg_opts[:file_filters] || @ceedling[:tool_executor_helper].osify_path_separators(GCOV_REPORT_GENERATOR_FILE_FILTERS)
-    args += "\"-filefilters:#{file_filters}\" "
-    args += "\"-verbosity:#{rg_opts[:verbosity] || "Warning"}\" "
+    args += "\"-filefilters:#{rg_opts[:file_filters]}\" " unless rg_opts[:file_filters].nil?
+    args += "\"-verbosity:#{rg_opts[:verbosity]}\" " unless rg_opts[:verbosity].nil?
     args += "\"-tag:#{rg_opts[:tag]}\" " unless rg_opts[:tag].nil?
     args += "\"settings:createSubdirectoryForAllReportTypes=true\" " unless report_type_count <= 1
     args += "\"settings:numberOfReportsParsedInParallel=#{rg_opts[:num_parallel_threads]}\" " unless rg_opts[:num_parallel_threads].nil?
     args += "\"settings:numberOfReportsMergedInParallel=#{rg_opts[:num_parallel_threads]}\" " unless rg_opts[:num_parallel_threads].nil?
 
     # Append custom arguments.
-    if !(rg_opts[:custom_args].nil?) && !(rg_opts[:custom_args].empty?)
-      for custom_arg in rg_opts[:custom_args]
-        args += "\"#{custom_arg}\" " unless custom_arg.nil? || custom_arg.empty?
-      end
+    for custom_arg in rg_opts[:custom_args]
+      args += "\"#{custom_arg}\" " unless custom_arg.nil? || custom_arg.empty?
     end
 
     return args
@@ -172,13 +180,13 @@ class ReportGeneratorReportinator
 
   # Get the ReportGenerator options from the project options.
   def get_opts(opts)
-    return opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym] || {}
+    return opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym]
   end
 
 
   # Run ReportGenerator with the given arguments.
   def run(args)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORTGENERATOR_POST_REPORT, [], args)
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORTGENERATOR_REPORT, [], args)
     @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     return @ceedling[:tool_executor].exec( command )
@@ -187,7 +195,7 @@ class ReportGeneratorReportinator
 
   # Run gcov with the given arguments.
   def run_gcov(args)
-    command = @ceedling[:tool_executor].build_command_line(GCOV_TOOL_CONFIG, [], args)
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, [], args)
     @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     return @ceedling[:tool_executor].exec( command )

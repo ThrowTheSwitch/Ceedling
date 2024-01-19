@@ -8,7 +8,7 @@ directory(GCOV_DEPENDENCIES_PATH)
 
 CLEAN.include(File.join(GCOV_BUILD_OUTPUT_PATH, '*'))
 CLEAN.include(File.join(GCOV_RESULTS_PATH, '*'))
-CLEAN.include(File.join(GCOV_ARTIFACTS_PATH, '*'))
+CLEAN.include(File.join(GCOV_ARTIFACTS_PATH, '**/*'))
 CLEAN.include(File.join(GCOV_DEPENDENCIES_PATH, '*'))
 
 CLOBBER.include(File.join(GCOV_BUILD_PATH, '**/*'))
@@ -30,9 +30,7 @@ namespace GCOV_SYM do
 
   desc 'Run code coverage for all tests'
   task all: [:test_deps] do
-    @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
     @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS)
-    @ceedling[:configurator].restore_config
   end
 
   desc 'Run single test w/ coverage ([*] test or source file name, no path).'
@@ -53,9 +51,7 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
       @ceedling[:test_invoker].setup_and_invoke(tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
-      @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
     end
@@ -70,16 +66,13 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
       @ceedling[:test_invoker].setup_and_invoke(tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
-      @ceedling[:configurator].restore_config
     else
       @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
     end
   end
 
-  # use a rule to increase efficiency for large projects
-  # gcov test tasks by regex
+  # Use a rule to increase efficiency for large projects -- gcov test tasks by regex
   rule(/^#{GCOV_TASK_ROOT}\S+$/ => [
          proc do |task_name|
            test = task_name.sub(/#{GCOV_TASK_ROOT}/, '')
@@ -88,20 +81,16 @@ namespace GCOV_SYM do
          end
        ]) do |test|
     @ceedling[:rake_wrapper][:test_deps].invoke
-    @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
     @ceedling[:test_invoker].setup_and_invoke(tests:[test.source], context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS)
-    @ceedling[:configurator].restore_config
   end
 end
 
-# If gcov config enables separate report generation task, create the task
-if @ceedling[GCOV_SYM].automatic_reporting_disabled?
+# If gcov config enables dedicated report generation task, create the task
+if not @ceedling[GCOV_SYM].automatic_reporting_enabled?
 namespace GCOV_REPORT_NAMESPACE_SYM do
   desc "Generate reports from coverage results (Note: a #{GCOV_SYM}: task must be executed first)"
   task GCOV_SYM do
-    @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
     @ceedling[:gcov].generate_coverage_reports()
-    @ceedling[:configurator].restore_config
   end
 end
 end
