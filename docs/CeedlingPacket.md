@@ -1954,18 +1954,24 @@ this section.
 
 ## Project `:paths` configuration
 
-**Collections of paths for build tools and collecting files**
+**Paths for build tools and building file collections**
 
-These configuration settings control search paths for test code files,
-source code files, header files, and (optionally) assembly files as well
-as enable Ceedling to build key internal collections of files that map
-to the tasks it executes.
+Ceedling relies on file collections to do its work. These file collections are
+automagically assembled from various paths, globs, wildcards, and file
+extensions.
 
-All of the configuration subsections that follow default to empty lists.
-In YAML, list items can be comma separated within brackets or organized
-per line with a dash. An empty list can only be denoted as `[]`. 
-Typically, you will see Ceedling project files use lists broken up 
-per line.
+Entries in `:paths` help created directory-based bulk file collections. The
+`:files` configuration section is available for filepath-oriented tailoring of
+these buk file collections.
+
+Entries in `:paths` control search paths for test code files, source code files,
+header files, and (optionally) assembly files as well as enable Ceedling to
+build key internal collections of files that map to the tasks it executes.
+
+All of the configuration subsections that follow default to empty lists. In
+YAML, list items can be comma separated within brackets or organized per line
+with a dash. An empty list can only be denoted as `[]`. Typically, you will see
+Ceedling project files use lists broken up per line.
 
 ```yaml
 :paths:
@@ -2166,15 +2172,21 @@ your settings. (`*` is shorthand for `test`, `source`, `include`, etc.)
 
 ## `:files` Modify file collections
 
-Ceedling relies on file collections automagically assembled
-from paths, globs, and file extensions.
+**File listings for tailoring file collections**
 
-On occasion you may need to remove from or add individual files to file 
-collections assembled from paths plus file extension matching.
+Ceedling relies on file collections to do its work. These file collections are
+automagically assembled from various paths, globs, wildcards, and file
+extensions.
 
-Note that all path grammar documented in the project file `:paths` section 
-applies to `:files` path entries - albeit at the file path level and not
-the directory level.
+Entries in `:files` accomplish filepath-oriented tailoring of the bulk directory
+listings performed by `:paths` entries.
+
+On occasion you may need to remove from or add individual files to Ceedling's
+file collections assembled from directory paths plus file extension matching.
+
+Note that all path grammar documented in the project file `:paths` section
+applies to `:files` path entries - albeit at the file path level and not the
+directory level.
 
 * <h3><code>:files</code> ↳ <code>:test</code></h3>
 
@@ -2374,7 +2386,7 @@ General case:
     - ...
 ```
 
-Advanced handling for test builds only:
+Advanced matching for test build handling only:
 ```yaml
 :defines:
   :test:
@@ -2528,32 +2540,43 @@ This example illustrates each of the test file name matcher types.
       - CHOO
     :/M(ain|odel)/:           #     Regex: Add '-DBLESS_YOU' for all files of any test with 'Main' or 'Model' in its name
       - BLESS_YOU
+    :Comms*Model:             #  Wildcard: Add '-DTHANKS' for all files of any test that have zero or more characters
+      - THANKS                #            between 'Comms' and 'Model'
 ```
 
 #### Using `:defines` per-test matchers
 
 These matchers are available:
 
-1. Wildcard (`*`) — Matches all tests.
-1. Substring — Matches on part of a test filename (up to all of it, including full path).
+1. Wildcard (`*`) 
+   1. If specified in isolation, matches all tests.
+   1. If specified within a string, matches any test filename with that 
+      wildcard expansion.
+1. Substring — Matches on part of a test filename (up to all of it, including 
+   full path).
 1. Regex (`/.../`) — Matches test file names against a regular expression.
 
-Note that substring filename matching is case sensitive.
+Notes:
+* Substring filename matching is case sensitive.
+* Wildcard matching is effectively a simplified form of regex. That is, multiple
+  approaches to matching can match the same filename.
 
-Symbols by matcher are cumulative. This means the symbols from more than one matcher 
-can be applied to compilation for the components of any one test executable.
+Symbols by matcher are cumulative. This means the symbols from more than one
+matcher can be applied to compilation for the components of any one test
+executable.
 
-Referencing the example above, here are the extra compilation symbols for a handful of 
-test executables:
+Referencing the example above, here are the extra compilation symbols for a
+handful of test executables:
 
 * _test_Something_: `-DA`
 * _test_Main_: `-DA -DBLESS_YOU`
 * _test_Model_: `-DA -DCHOO -DBLESS_YOU`
+* _test_CommsSerialModel_: `-DA -DCHOO -DBLESS_YOU -DTHANKS`
 
-The simple `:defines` list format remains available for the `:test` context. The YAML 
-blurb below is equivalent to the wildcard matcher above. Of course, this format is 
-limited in that it applies symbols to the compilation of all C files for all test 
-executables.
+The simple `:defines` list format remains available for the `:test` context. The
+YAML blurb below is equivalent to the plain wildcard matcher above. Of course,
+this format is limited in that it applies symbols to the compilation of all C
+files for all test executables.
 
 ```yaml
 :defines:
@@ -2742,7 +2765,7 @@ General case:
       - ...
 ```
 
-Advanced flags handling for test builds only:
+Advanced matching for test build handling only:
 ```yaml
 :flags:
   :test:
@@ -2880,6 +2903,9 @@ basic ideas of test file name matching.
         - -Wall
       :/M(ain|odel)/:           #     Regex: Add 🏴‍☠️ flag for all files of any test with 'Main' or 'Model' in its name
         - -🏴‍☠️
+      :Comms*Model:
+        - --freak               #  Wildcard: Add your `--freak` flag for all files of any test name with zero or more
+                                #            characters between 'Comms' and 'Model'
     :link:
       :tests/comm/TestUsart.c:  # Substring: Add '--bar --baz' to the link step of the TestUsart executable
         - --bar
@@ -2890,11 +2916,18 @@ basic ideas of test file name matching.
 
 These matchers are available:
 
-1. Wildcard (`*`) — Matches all tests.
-1. Substring — Matches on part of a test filename (up to all of it, including full path).
+1. Wildcard (`*`)
+   1. If specified in isolation, matches all tests.
+   1. If specified within a string, matches any test filename with that 
+      wildcard expansion.
+1. Substring — Matches on part of a test filename (up to all of it, including
+   full path).
 1. Regex (`/.../`) — Matches test file names against a regular expression.
 
-Note that substring filename matching is case sensitive.
+Notes:
+* Substring filename matching is case sensitive.
+* Wildcard matching is effectively a simplified form of regex. That is, 
+  multiple approaches to matching can match the same filename.
 
 Flags by matcher are cumulative. This means the flags from more than one matcher can be 
 applied to an operation on any one test executable.
@@ -2905,9 +2938,10 @@ test executables:
 * _test_Something_: `-foo`
 * _test_Main_: `-foo -🏴‍☠️`
 * _test_Model_: `-foo -Wall -🏴‍☠️`
+* _test_CommsSerialModel_: `-foo -Wall -🏴‍☠️ --freak`
 
 The simple `:flags` list format remains available for the `:test` context. The YAML 
-blurb below is equivalent to the wildcard matcher above. Of course, this format is 
+blurb below is equivalent to the plain wildcard matcher above. Of course, this format is 
 limited in that it applies flags to all C files for all test executables.
 
 ```yaml
@@ -3118,12 +3152,11 @@ TODO: ...
 
 ## `:tools` Configuring command line tools used for build steps
 
-Ceedling requires a variety of tools to work its magic. By default,
-the GNU toolchain (`gcc`, `cpp`, `as`) are configured and ready for
-use with no additions to the project configuration YAML file.
-However, as most work will require a project-specific toolchain,
-Ceedling provides a generic means for specifying / overriding
-tools.
+Ceedling requires a variety of tools to work its magic. By default, the GNU 
+toolchain (`gcc`, `cpp`, `as`) are configured and ready for use with no 
+additions to the project configuration YAML file. However, as most work will 
+require a project-specific toolchain, Ceedling provides a generic means for 
+specifying / overriding tools.
 
 * `:test_compiler`:
 
@@ -3210,9 +3243,9 @@ tools.
 
 1. `:executable` - Command line executable (required).
 
-    If an executable contains a space (e.g. `Code Cruncher`), and the shell 
-    executing the command line generated from the tool definition needs the 
-    name quoted, add escaped quotes in the YAML:
+    Note: If an executable contains a space (e.g. `Code Cruncher`), and the 
+    shell executing the command line generated from the tool definition needs 
+    the name quoted, add escaped quotes in the YAML:
 
     ```yaml
     :tools:
@@ -3230,7 +3263,7 @@ tools.
 1. `:stderr_redirect` - Control of capturing `$stderr` messages
    {`:none`, `:auto`, `:win`, `:unix`, `:tcsh`}.
    Defaults to `:none` if unspecified. Create a custom entry by
-   specifying a simple string instead of any of the available
+   specifying a simple string instead of any of the recognized
    symbols.
 
 1. `:optional` - By default a tool is required for operation, which
@@ -3240,39 +3273,40 @@ tools.
 
 ### Tool element runtime substitution
 
-To accomplish useful work on multiple files, a configured tool will most
-often require that some number of its arguments or even the executable
-itself change for each run. Consequently, every tool's argument list and
-executable field possess two means for substitution at runtime. Ceedling
-provides two kinds of inline Ruby execution and a notation for
-populating elements with dynamically gathered values within the build
-environment.
+To accomplish useful work on multiple files, a configured tool will most often
+require that some number of its arguments or even the executable itself change
+for each run. Consequently, every tool's argument list and executable field
+possess two means for substitution at runtime. Ceedling provides two kinds of
+inline Ruby execution and a notation for populating elements with dynamically
+gathered values within the build environment.
 
 #### Tool element runtime substitution: Inline Ruby execution
 
 In-line Ruby execution works similarly to that demonstrated for the
-`:environment` section except that substitution occurs as the tool is
-executed and not at the time the configuration file is first scanned.
+`:environment` section except that substitution occurs as the tool is executed
+and not at the time the configuration file is first scanned.
 
 * `"#{...}"`:
 
-  Ruby string substitution pattern wherein the containing string is
-  expanded to include the string generated by Ruby code between the
-  braces. Multiple instances of this expansion can occur within a single
-  tool element entry string. Note that if this string substitution
-  pattern is used the entire string should be enclosed in quotes (see the
-  `:environment` section for further explanation on this point).
+  Ruby string substitution pattern wherein the containing string is expanded to
+  include the string generated by Ruby code between the braces. Multiple
+  instances of this expansion can occur within a single tool element entry
+  string.
+
+  Note: If this string substitution pattern is used, the entire string should be
+  enclosed in quotes (see the `:environment` section for further explanation on
+  this point).
 
 * `{...}`:
 
-  If an entire tool element string is enclosed with braces, it signifies
-  that Ceedling should execute the Ruby code contained within those
-  braces. Say you have a collection of paths on disk and some of those
-  paths include spaces. Further suppose that a single tool that must use
-  those paths requires those spaces to be escaped, but all other uses of
-  those paths requires the paths to remain unchanged. You could use this
-  Ceedling feature to insert Ruby code that iterates those paths and
-  escapes those spaces in the array as used by the tool of this example.
+  If an entire tool element string is enclosed with braces, it signifies that
+  Ceedling should execute the Ruby code contained within those braces. Say you
+  have a collection of paths on disk and some of those paths include spaces.
+  Further suppose that a single tool that must use those paths requires those
+  spaces to be escaped, but all other uses of those paths requires the paths to
+  remain unchanged. You could use this Ceedling feature to insert Ruby code
+  that iterates those paths and escapes those spaces in the array as used by
+  the tool of this example.
 
 #### Tool element runtime substitution: Notational substitution
 

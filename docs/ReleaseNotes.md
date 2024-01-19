@@ -128,8 +128,13 @@ The FFF plugin is deeply dependent on the previous build pipeline and Ceedling's
 
 The gcov plugin has been updated and improved, but its proprietary counterpart, the [Bullseye](https://www.bullseye.com) plugin, is not presently functional. The needed fixes and updates require a software license that we do not (yet) have.
 
-<br/>
+#### Gcov Plugin's support for deprecated features removed
 
+The configuration format for the `gcovr` utility changed when support for the `reportgenerator` utility was added. A format that accomodated a more uniform and common layout was adopted. However, support for the older, deprecated `gcvor`-only configuration was maintained. This support for the deprecated `gcvor` configuration format has been removed.
+
+Please consult the [gcov plugin's documentation](plugins/gcov/README.md) to update any old-style `gcovr` configurations.
+
+<br/>
 
 ## 🌟 New Features
 
@@ -146,6 +151,9 @@ Issue [#743](https://github.com/ThrowTheSwitch/Ceedling/issues/743)
 Using what we are calling build directive macros, you can now provide Ceedling certain configuration details from inside a test file.
 
 See the [documentation](CeedlingPacket.md) discussion on include paths, Ceedling conventions, and these macros to understand all the details.
+
+_Note:_ Ceedling is not yet capable of preserving build directive macros through preprocessing of test files. If, for example, you wrap these macros in
+        conditional compilation preprocessing statements, they will not work as you expect.
 
 #### `TEST_INCLUDE_PATH(...)` 
 
@@ -190,9 +198,15 @@ While this new approach is not 100% foolproof, it is far more robust and far sim
 
 ### Improvements and bug fixes for gcov plugin
 
+Issues ...
+
+1. Documentation has been significantly updated including a _Troubleshooting_ for common issues.
 1. Compilation with coverage now only occurs for the source files under test and no longer for all C files (i.e. coverage for unity.c, mocks, and test files that is meaningless noise has been eliminated).
-1. Coverage statistics printed to the console after `gcov:` test task runs now only concern the source files exercised instead of all source files.
-1. Coverage reports are now automatically generated after `gcov:` test tasks are executed. This behvaior can be disabled with a new configuration option (a separate task is made available as well). See the [gcov plugin's documentation](plugins/gcov/README.md).
+1. Coverage summaries printed to the console after `gcov:` test task runs now only concern the source files exercised instead of all source files. A final coverage tally has been restored.
+1. Coverage summaries can now be disabled.
+1. Coverage reports are now automatically generated after `gcov:` test tasks are executed. This behvaior can be disabled with a new configuration option. When enabled, a separate task is made available to trigger report generation.
+
+See the [gcov plugin's documentation](plugins/gcov/README.md).
 
 ### Bug fixes for command line tasks `files:header` and `files:support`
 

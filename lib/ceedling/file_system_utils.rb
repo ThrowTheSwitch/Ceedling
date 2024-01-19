@@ -58,12 +58,12 @@ class FileSystemUtils
   end
 
 
-  # given a file list, add to it or remove from it
+  # Given a file list, add to it or remove from it considering +: / -: aggregation operators
   def revise_file_list(list, revisions)
     revisions.each do |revision|
-      # include or exclude file or glob to file list
-      file = FilePathUtils.extract_path_no_aggregation_operators( revision )
-      FilePathUtils.add_path?(revision) ? list.include(file) : list.exclude(file)
+      # Include or exclude filepath or file glob to file list
+      path = FilePathUtils.extract_path_no_aggregation_operators( revision )
+      FilePathUtils.add_path?(revision) ? list.include(path) : list.exclude(path)
     end
   end
 

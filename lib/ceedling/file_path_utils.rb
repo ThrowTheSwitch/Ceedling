@@ -66,8 +66,8 @@ class FilePathUtils
     return path.sub(/^(\+|-):/, '')
   end
 
-  # all the globs that may be in a path string work fine with one exception;
-  # to recurse through all subdirectories, the glob is dir/**/** but our paths use
+  # All the globs that may be in a path string work fine with one exception.
+  # To recurse through all subdirectories, the glob is dir/**/** but our paths use
   # convention of only dir/**
   def self.reform_glob(path)
     return path if (path =~ /\/\*\*$/).nil?
