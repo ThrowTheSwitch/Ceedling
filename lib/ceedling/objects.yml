@@ -209,6 +209,7 @@ config_matchinator:
   compose:
     - configurator
     - streaminator
+    - reportinator
 
 flaginator:
   compose:

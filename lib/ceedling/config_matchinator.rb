@@ -10,7 +10,7 @@ require 'ceedling/exceptions'
 
 class ConfigMatchinator
 
-  constructor :configurator, :streaminator
+  constructor :configurator, :streaminator, :reportinator
 
   def config_include?(primary:, secondary:, tertiary:nil)
     # Create configurator accessor method
@@ -85,8 +85,8 @@ class ConfigMatchinator
     # Look for matcher keys with missing values
     hash.each do |k, v|
       if v == nil
-        path = matcher_path(section:section, context:context, operation:operation)
-        error = "ERROR: Missing list of values for [#{path}↳ '#{k}' matcher in project configuration."
+        path = generate_matcher_path(section, context, operation)
+        error = "ERROR: Missing list of values for [#{path} ↳ '#{k}' matcher in project configuration."
         raise CeedlingException.new(error)
       end
     end
@@ -98,8 +98,8 @@ class ConfigMatchinator
 
     # Sanity check
     if filepath.nil?
-      path = matcher_path(section:section, context:context, operation:operation)
-      error = "ERROR: #{path}↳ #{matcher} matching provided nil #{filepath}"
+      path = generate_matcher_path(section, context, operation)
+      error = "ERROR: #{path} ↳ #{matcher} matching provided nil #{filepath}"
       raise CeedlingException.new(error)
     end
 
@@ -145,8 +145,8 @@ class ConfigMatchinator
         _values += values
         matched_notice(section:section, context:context, operation:operation, matcher:_matcher, filepath:filepath)
       else # No match
-        path = matcher_path(section:section, context:context, operation:operation)
-        @streaminator.stderr_puts("#{path}↳ #{matcher} did not match #{filepath}", Verbosity::DEBUG)
+        path = generate_matcher_path(section, context, operation)
+        @streaminator.stderr_puts("#{path} ↳ `#{matcher}` did not match #{filepath}", Verbosity::DEBUG)
       end
     end
 
@@ -158,18 +158,12 @@ class ConfigMatchinator
   private
 
   def matched_notice(section:, context:, operation:, matcher:, filepath:)
-    path = matcher_path(section:section, context:context, operation:operation)
-    @streaminator.stdout_puts("#{path}↳ #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
+    path = generate_matcher_path(section, context, operation)
+    @streaminator.stdout_puts("#{path} ↳ #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
   end
 
-  def matcher_path(section:, context:, operation:)
-    path = ":#{section} ↳ :#{context} "
-
-    if !operation.nil?
-      return path + "↳ :#{operation} "
-    end
-
-    return path
+  def generate_matcher_path(*keys)
+    return @reportinator.generate_config_walk(keys)
   end
 
   # Assumes expr is a string and has been stripped

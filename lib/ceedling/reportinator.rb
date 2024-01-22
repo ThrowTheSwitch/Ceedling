@@ -47,6 +47,7 @@ class Reportinator
 
     _keys = keys.clone
     _keys = _keys.slice(0, depth) if depth > 0
+    _keys.reject! { |key| key.nil? }
     return _keys.map{|key| ":#{key}"}.join(' ↳ ')
   end
 
