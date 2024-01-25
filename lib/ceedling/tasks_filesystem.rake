@@ -56,9 +56,11 @@ namespace :paths do
     desc "List all collected #{name} paths." if standard_paths.include?(name)
     task(name.to_sym) do
       path_list = Object.const_get("COLLECTION_PATHS_#{name.upcase}")
-      puts "#{name.capitalize} paths:"
-      path_list.sort.each {|path| puts " - #{path}" }
-      puts "path count: #{path_list.size}"
+      puts "#{name.capitalize} paths:#{' None' if path_list.size == 0}"
+      if path_list.size > 0
+        path_list.sort.each {|path| puts " - #{path}" }
+        puts "path count: #{path_list.size}"
+      end
     end
   end
 end
@@ -73,10 +75,12 @@ namespace :files do
     desc "List all collected #{category.chomp('s')} files."
     task(category.chomp('s').to_sym) do
       files_list = Object.const_get("COLLECTION_ALL_#{category.upcase}")
-      puts "#{category.chomp('s').capitalize} files:"
-      files_list.sort.each { |filepath| puts " - #{filepath}" }
-      puts "File count: #{files_list.size}"
-      puts "Note: This list sourced only from your project file, not from any build directive macros in test files."
+      puts "#{category.chomp('s').capitalize} files:#{' None' if files_list.size == 0}"
+      if files_list.size > 0
+        files_list.sort.each { |filepath| puts " - #{filepath}" }
+        puts "File count: #{files_list.size}"
+        puts "Note: This list sourced only from your project file, not from any build directive macros in test files."
+      end
     end
   end
 
