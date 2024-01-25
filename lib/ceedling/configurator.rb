@@ -274,11 +274,13 @@ class Configurator
 
 
   def eval_paths(config)
-    # [:plugins]:[load_paths] already handled
+    # :plugins ↳ :load_paths already handled
 
-    paths = [ # individual paths that don't follow convention processed below
+    # Individual paths that don't follow convention processed here
+    paths = [
       config[:project][:build_root],
-      config[:release_build][:artifacts]]
+      config[:release_build][:artifacts]
+    ]
 
     eval_path_list( paths )
 
@@ -286,8 +288,8 @@ class Configurator
 
     config[:files].each_pair { |collection, files| eval_path_list( files ) }
 
-    # all other paths at secondary hash key level processed by convention:
-    # ex. [:toplevel][:foo_path] & [:toplevel][:bar_paths] are evaluated
+    # All other paths at secondary hash key level processed by convention (`_path`):
+    # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are evaluated
     config.each_pair { |parent, child| eval_path_list( collect_path_list( child ) ) }
   end
 
@@ -302,7 +304,7 @@ class Configurator
     paths.flatten.each { |path| FilePathUtils::standardize( path ) }
 
     config[:paths].each_pair do |collection, paths|
-      # ensure that list is an array (i.e. handle case of list being a single string,
+      # Ensure that list is an array (i.e. handle case of list being a single string,
       # or a multidimensional array)
       config[:paths][collection] = [paths].flatten.map{|path| FilePathUtils::standardize( path )}
     end
@@ -311,8 +313,8 @@ class Configurator
 
     config[:tools].each_pair { |tool, config| FilePathUtils::standardize( config[:executable] ) if (config.include? :executable) }
 
-    # all other paths at secondary hash key level processed by convention:
-    # ex. [:toplevel][:foo_path] & [:toplevel][:bar_paths] are standardized
+    # All other paths at secondary hash key level processed by convention (`_path`):
+    # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are standardized
     config.each_pair do |parent, child|
       collect_path_list( child ).each { |path| FilePathUtils::standardize( path ) }
     end
