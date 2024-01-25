@@ -8,7 +8,7 @@ require 'ceedling/constants'       # for Verbosity constants class & base file p
 
 class ConfiguratorBuilder
 
-  constructor :file_system_utils, :file_wrapper, :system_wrapper
+  constructor :file_path_collection_utils, :file_wrapper, :system_wrapper
 
 
   def build_global_constant(elem, value)
@@ -250,10 +250,7 @@ class ConfiguratorBuilder
 
     path_keys.each do |key|
       _collection = "collection_#{key}".to_sym
-      out_hash[_collection] = @file_system_utils.collect_paths( 
-        key.to_s.split('_'),
-        in_hash[key]
-      )
+      out_hash[_collection] = @file_path_collection_utils.collect_paths( in_hash[key] )
     end
 
     return out_hash
@@ -313,7 +310,7 @@ class ConfiguratorBuilder
       all_tests.include( File.join(path, "#{in_hash[:project_test_file_prefix]}*#{in_hash[:extension_source]}") )
     end
 
-    @file_system_utils.revise_file_list( all_tests, in_hash[:files_test] )
+    @file_path_collection_utils.revise_filelist( all_tests, in_hash[:files_test] )
 
     return {:collection_all_tests => all_tests}
   end
@@ -335,7 +332,7 @@ class ConfiguratorBuilder
     end
 
     # Also add files that we are explicitly adding via :files:assembly: section
-    @file_system_utils.revise_file_list( all_assembly, in_hash[:files_assembly] )
+    @file_path_collection_utils.revise_filelist( all_assembly, in_hash[:files_assembly] )
 
     return {:collection_all_assembly => all_assembly}
   end
@@ -348,7 +345,7 @@ class ConfiguratorBuilder
       all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
     end
 
-    @file_system_utils.revise_file_list( all_source, in_hash[:files_source] )
+    @file_path_collection_utils.revise_filelist( all_source, in_hash[:files_source] )
 
     return {:collection_all_source => all_source}
   end
@@ -366,7 +363,7 @@ class ConfiguratorBuilder
       all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
     end
 
-    @file_system_utils.revise_file_list( all_headers, in_hash[:files_include] )
+    @file_path_collection_utils.revise_filelist( all_headers, in_hash[:files_include] )
 
     return {:collection_all_headers => all_headers}
   end
@@ -389,8 +386,8 @@ class ConfiguratorBuilder
       release_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:release_build_use_assembly]
     end
 
-    @file_system_utils.revise_file_list( release_input, in_hash[:files_source] )
-    @file_system_utils.revise_file_list( release_input, in_hash[:files_assembly] ) if in_hash[:release_build_use_assembly]
+    @file_path_collection_utils.revise_filelist( release_input, in_hash[:files_source] )
+    @file_path_collection_utils.revise_filelist( release_input, in_hash[:files_assembly] ) if in_hash[:release_build_use_assembly]
 
     return {:collection_release_build_input => release_input}
   end
@@ -422,10 +419,10 @@ class ConfiguratorBuilder
       all_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
     end
 
-    @file_system_utils.revise_file_list( all_input, in_hash[:files_test] )
-    @file_system_utils.revise_file_list( all_input, in_hash[:files_support] )
-    @file_system_utils.revise_file_list( all_input, in_hash[:files_source] )
-    @file_system_utils.revise_file_list( all_input, in_hash[:files_assembly] ) if in_hash[:test_build_use_assembly]
+    @file_path_collection_utils.revise_filelist( all_input, in_hash[:files_test] )
+    @file_path_collection_utils.revise_filelist( all_input, in_hash[:files_support] )
+    @file_path_collection_utils.revise_filelist( all_input, in_hash[:files_source] )
+    @file_path_collection_utils.revise_filelist( all_input, in_hash[:files_assembly] ) if in_hash[:test_build_use_assembly]
 
     return {:collection_existing_test_build_input => all_input}
   end
@@ -453,7 +450,7 @@ class ConfiguratorBuilder
       support.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
     end
 
-    @file_system_utils.revise_file_list( support, in_hash[:files_support] )
+    @file_path_collection_utils.revise_filelist( support, in_hash[:files_support] )
 
     # Ensure FileList patterns & revisions are resolved into full list of filepaths
     support.resolve()

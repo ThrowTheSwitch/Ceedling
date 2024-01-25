@@ -35,9 +35,11 @@ class FilePathUtils
   # Extract path from between optional aggregation modifiers 
   # and up to last path separator before glob specifiers.
   # Examples:
-  #  - '+:foo/bar/baz/' => 'foo/bar/baz'
-  #  - 'foo/bar/ba?'    => 'foo/bar'
-  #  - 'foo/bar/baz/'   => 'foo/bar/baz'
+  #  - '+:foo/bar/baz/'       => 'foo/bar/baz'
+  #  - 'foo/bar/ba?'          => 'foo/bar'
+  #  - 'foo/bar/baz/'         => 'foo/bar/baz'
+  #  - 'foo/bar/baz/file.x'   => 'foo/bar/baz/file.x'
+  #  - 'foo/bar/baz/file*.x'  => 'foo/bar/baz'
   def self.no_decorators(path)
     path = self.no_aggregation_decorators(path)
 
@@ -65,12 +67,12 @@ class FilePathUtils
 
   # Return whether the given path is to be aggregated (no aggregation modifier defaults to same as +:)
   def self.add_path?(path)
-    return !path.start_with?('-:')
+    return !path.strip.start_with?('-:')
   end
 
   # Get path (and glob) lopping off optional +: / -: prefixed aggregation modifiers
   def self.no_aggregation_decorators(path)
-    return path.strip.sub(/^(\+|-):/, '')
+    return path.sub(/^(\+|-):/, '').strip()
   end
 
   # To recurse through all subdirectories, the RUby glob is <dir>/**/**, but our paths use

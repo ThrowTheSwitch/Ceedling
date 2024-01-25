@@ -74,28 +74,33 @@ class ConfiguratorSetup
   end
 
   def validate_paths(config)
-    validation = []
+    valid = true
 
     if config[:cmock][:unity_helper]
       config[:cmock][:unity_helper].each do |path|
-        validation << @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper ) 
+        valid &= @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper ) 
       end
     end
 
     config[:project][:options_paths].each do |path|
-      validation << @configurator_validator.validate_filepath_simple( path, :project, :options_paths )
+      valid &= @configurator_validator.validate_filepath_simple( path, :project, :options_paths )
     end
 
     config[:plugins][:load_paths].each do |path|
-      validation << @configurator_validator.validate_filepath_simple( path, :plugins, :load_paths )
+      valid &= @configurator_validator.validate_filepath_simple( path, :plugins, :load_paths )
     end
 
     config[:paths].keys.sort.each do |key|
-      validation << @configurator_validator.validate_path_list(config, :paths, key)
+      valid &= @configurator_validator.validate_path_list(config, :paths, key)
+      valid &= @configurator_validator.validate_paths_entries(config, key)
     end
 
-    return false if (validation.include?(false))
-    return true
+    config[:files].keys.sort.each do |key|
+      valid &= @configurator_validator.validate_path_list(config, :files, key)
+      valid &= @configurator_validator.validate_files_entries(config, key)
+    end
+
+    return valid
   end
 
   def validate_tools(config)
@@ -109,7 +114,7 @@ class ConfiguratorSetup
   end
 
   def validate_threads(config)
-    validate = true
+    valid = true
 
     compile_threads = config[:project][:compile_threads]
     test_threads = config[:project][:test_threads]
@@ -118,35 +123,35 @@ class ConfiguratorSetup
     when Integer
       if compile_threads < 1
         @stream_wrapper.stderr_puts("ERROR: [:project][:compile_threads] must be greater than 0")
-        validate = false
+        valid = false
       end
     when Symbol
       if compile_threads != :auto
         @stream_wrapper.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto") 
-        validate = false
+        valid = false
       end
     else
       @stream_wrapper.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto") 
-      validate = false
+      valid = false
     end
 
     case test_threads
     when Integer
       if test_threads < 1
         @stream_wrapper.stderr_puts("ERROR: [:project][:test_threads] must be greater than 0")
-        validate = false
+        valid = false
       end
     when Symbol
       if test_threads != :auto
         @stream_wrapper.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto") 
-        validate = false
+        valid = false
       end
     else
       @stream_wrapper.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto") 
-      validate = false
+      valid = false
     end
 
-    return validate
+    return valid
   end
 
   def validate_plugins(config)

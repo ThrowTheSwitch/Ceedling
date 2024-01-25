@@ -273,33 +273,39 @@ class Configurator
   end
 
 
+  # Eval config path lists (convert strings to array of size 1) and handle any Ruby string replacement
   def eval_paths(config)
     # :plugins ↳ :load_paths already handled
 
-    # Individual paths that don't follow convention processed here
-    paths = [
-      config[:project][:build_root],
-      config[:release_build][:artifacts]
-    ]
+    eval_path_entries( config[:project][:build_root] )
+    eval_path_entries( config[:release_build][:artifacts] )
 
-    eval_path_list( paths )
+    config[:paths].each_pair do |entry, paths|
+      # :paths sub-entries (e.g. :test) could be a single string -> make array
+      reform_path_entries_as_lists( config[:paths], entry, paths )
+      eval_path_entries( paths )
+    end
 
-    config[:paths].each_pair { |collection, paths| eval_path_list( paths ) }
-
-    config[:files].each_pair { |collection, files| eval_path_list( files ) }
+    config[:files].each_pair do |entry, files|
+      # :files sub-entries (e.g. :test) could be a single string -> make array
+      reform_path_entries_as_lists( config[:files], entry, files )
+      eval_path_entries( files )
+    end
 
     # All other paths at secondary hash key level processed by convention (`_path`):
     # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are evaluated
-    config.each_pair { |parent, child| eval_path_list( collect_path_list( child ) ) }
+    config.each_pair { |_, child| eval_path_entries( collect_path_list( child ) ) }
   end
 
 
   def standardize_paths(config)
     # [:plugins]:[load_paths] already handled
 
-    paths = [ # individual paths that don't follow convention processed below
+    # Individual paths that don't follow convention processed here
+    paths = [
       config[:project][:build_root],
-      config[:release_build][:artifacts]] # cmock path in case it was explicitly set in config
+      config[:release_build][:artifacts]
+    ]
 
     paths.flatten.each { |path| FilePathUtils::standardize( path ) }
 
@@ -309,13 +315,13 @@ class Configurator
       config[:paths][collection] = [paths].flatten.map{|path| FilePathUtils::standardize( path )}
     end
 
-    config[:files].each_pair { |collection, files| files.each{ |path| FilePathUtils::standardize( path ) } }
+    config[:files].each_pair { |_, files| files.each{ |path| FilePathUtils::standardize( path ) } }
 
-    config[:tools].each_pair { |tool, config| FilePathUtils::standardize( config[:executable] ) if (config.include? :executable) }
+    config[:tools].each_pair { |_, config| FilePathUtils::standardize( config[:executable] ) if (config.include? :executable) }
 
     # All other paths at secondary hash key level processed by convention (`_path`):
     # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are standardized
-    config.each_pair do |parent, child|
+    config.each_pair do |_, child|
       collect_path_list( child ).each { |path| FilePathUtils::standardize( path ) }
     end
   end
@@ -427,18 +433,27 @@ class Configurator
 
   private
 
+  def reform_path_entries_as_lists( container, entry, value )
+    container[entry] = [value]  if value.kind_of?( String )
+  end
+
   def collect_path_list( container )
     paths = []
     container.each_key { |key| paths << container[key] if (key.to_s =~ /_path(s)?$/) } if (container.class == Hash)
     return paths.flatten
   end
 
-  def eval_path_list( paths )
-    if paths.kind_of?(Array)
-      paths = Array.new(paths)
+  def eval_path_entries( container )
+    paths = []
+
+    case(container)
+    when Array then paths = Array.new( container ).flatten()
+    when String then paths << container
+    else
+      return
     end
 
-    paths.flatten.each do |path|
+    paths.each do |path|
       path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
     end
   end
