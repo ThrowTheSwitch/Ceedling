@@ -27,7 +27,7 @@ class ConfiguratorValidator
     hash = @config_walkinator.fetch_value( config, *keys )
     list = hash[:value]
 
-    # return early if we couldn't walk into hash and find a value
+    # Return early if we couldn't walk into hash and find a value
     return false if (list.nil?)
 
     path_list = []
@@ -39,12 +39,14 @@ class ConfiguratorValidator
     end
     
     path_list.each do |path|
-      base_path = FilePathUtils::extract_path(path) # lop off add/subtract notation & glob specifiers
+      base_path = FilePathUtils::no_decorators(path) # Lop off add/subtract notation & glob specifiers
       
+      next if base_path.empty?
+
       if (not @file_wrapper.exist?(base_path))
-        # no verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
+        # No verbosity checking since this is lowest level anyhow & verbosity checking depends on configurator
         walk = @reportinator.generate_config_walk( keys, hash[:depth] )
-        @stream_wrapper.stderr_puts("ERROR: Config path #{walk}['#{base_path}'] does not exist on disk.") 
+        @stream_wrapper.stderr_puts("ERROR: Config path #{walk} => '#{base_path}' does not exist on disk.") 
         exist = false
       end 
     end

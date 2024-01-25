@@ -33,7 +33,10 @@ file_path_utils:
     - file_wrapper
 
 file_system_utils:
-  compose: file_wrapper
+  compose:
+    - file_wrapper
+    - stream_wrapper
+    - reportinator
 
 project_file_loader:
   compose:

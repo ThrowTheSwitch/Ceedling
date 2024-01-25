@@ -248,9 +248,12 @@ class ConfiguratorBuilder
       path_keys << key
     end
 
-    # sorted to provide assured order of traversal in test calls on mocks
-    path_keys.sort.each do |key|
-      out_hash["collection_#{key}".to_sym] = @file_system_utils.collect_paths( in_hash[key] )
+    path_keys.each do |key|
+      _collection = "collection_#{key}".to_sym
+      out_hash[_collection] = @file_system_utils.collect_paths( 
+        key.to_s.split('_'),
+        in_hash[key]
+      )
     end
 
     return out_hash
@@ -261,7 +264,7 @@ class ConfiguratorBuilder
     return {
       :collection_paths_source_and_include =>
         ( in_hash[:collection_paths_source] +
-          in_hash[:collection_paths_include] ).select {|x| File.directory?(x)}
+          in_hash[:collection_paths_include] )
       }
   end
 
@@ -281,10 +284,10 @@ class ConfiguratorBuilder
   def collect_test_support_source_include_paths(in_hash)
     return {
       :collection_paths_test_support_source_include =>
-        (in_hash[:collection_paths_test] +
-        in_hash[:collection_paths_support] +
-        in_hash[:collection_paths_source] +
-        in_hash[:collection_paths_include] ).select {|x| File.directory?(x)}
+        ( in_hash[:collection_paths_test] +
+          in_hash[:collection_paths_support] +
+          in_hash[:collection_paths_source] +
+          in_hash[:collection_paths_include] )
       }
   end
 
@@ -342,11 +345,7 @@ class ConfiguratorBuilder
     all_source = @file_wrapper.instantiate_file_list
 
     in_hash[:collection_paths_source].each do |path|
-      if File.exist?(path) and not File.directory?(path)
-        all_source.include( path )
-      elsif File.directory?(path)
-        all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
-      end
+      all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
     end
 
     @file_system_utils.revise_file_list( all_source, in_hash[:files_source] )
@@ -386,12 +385,8 @@ class ConfiguratorBuilder
 
     # Collect source files
     in_hash[:collection_paths_source].each do |path|
-      if File.exist?(path) and not File.directory?(path)
-        release_input.include( path )
-      elsif File.directory?(path)
-        release_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
-        release_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:release_build_use_assembly]
-      end
+      release_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
+      release_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:release_build_use_assembly]
     end
 
     @file_system_utils.revise_file_list( release_input, in_hash[:files_source] )

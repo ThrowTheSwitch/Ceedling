@@ -1,6 +1,5 @@
-require 'rubygems'
-require 'rake'
 require 'set'
+require 'pathname'
 require 'fileutils'
 require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
@@ -8,53 +7,88 @@ require 'ceedling/exceptions'
 
 class FileSystemUtils
   
-  constructor :file_wrapper
+  constructor :file_wrapper, :stream_wrapper, :reportinator
 
-  # build up path list from input of one or more strings or arrays of (+/-) paths & globs
-  def collect_paths(*paths)
-    raw   = []  # all paths and globs
-    plus  = Set.new # all paths to expand and add
-    minus = Set.new # all paths to remove from plus set
+  def setup()
+    # TODO: Update Dir.pwd() to use a project root once it has been figured out
+    @working_dir_path = Pathname.new( Dir.pwd() )
+  end
+
+  # Build up a path list from one or more strings or arrays of (+:/-:) simple paths & globs
+  def collect_paths(walk, paths)
+    # Create label for project file section 
+    walk = @reportinator.generate_config_walk(walk)
+
+    raw   = [] # All paths (with aggregation decorators and globs)
+    plus  = Set.new # All real, expanded directory paths to add
+    minus = Set.new # All real, expanded paths to exclude
     
-    # assemble all globs and simple paths, reforming our glob notation to ruby globs
-    paths.each do |paths_container|
-      case (paths_container)
-        when String then raw << (FilePathUtils::reform_glob(paths_container))
-        when Array  then paths_container.each {|path| raw << (FilePathUtils::reform_glob(path))}
-        else raise CeedlingException.new("Do not know how to handle paths container #{paths_container.class}")
+    # Assemble all globs and simple paths, reforming our glob notation to ruby globs
+    paths.each do |container|
+      case (container)
+      when String then raw << container
+      when Array  then container.each {|path| raw << path }
+      else
+        error = "Cannot handle `#{container.class}` container at #{walk} (must be string or array)"
+        raise CeedlingException.new( error )
       end
     end
 
-    # iterate through each path and glob
+    # Iterate each path possibly decorated with aggregation modifiers and/or containing glob characters
     raw.each do |path|
+      dirs = [] # Working list for evaluated directory paths
     
-      dirs = []  # container for only (expanded) paths
-    
-      # if a glob, expand it and slurp up all non-file paths
-      if path.include?('*')
-        # grab base directory only if globs are snug up to final path separator
-        if (path =~ /\/\*+$/)
-          dirs << FilePathUtils.extract_path(path)
-        end
-        
-        # grab expanded sub-directory globs
-        expanded = @file_wrapper.directory_listing( FilePathUtils.extract_path_no_aggregation_operators(path) )
-        expanded.each do |entry|
-          dirs << entry if @file_wrapper.directory?(entry)
-        end
-        
-      # else just grab simple path
-      # note: we could just run this through glob expansion but such an
-      #       approach doesn't handle a path not yet on disk)
-      else
-        dirs << FilePathUtils.extract_path_no_aggregation_operators(path)
+      # Get path stripped of any +:/-: aggregation modifier
+      _path = FilePathUtils.no_aggregation_decorators( path )
+
+      if @file_wrapper.exist?( _path ) and !@file_wrapper.directory?( _path )
+        # Path is a simple filepath (not a directory)
+        warning = "Warning: #{walk} => '#{_path}' is a filepath and will be ignored (:paths is directory-oriented while :files is file-oriented)"
+        @stream_wrapper.stderr_puts( warning )
+
+        next # Skip to next path
+      end
+
+      # Expand paths using Ruby's Dir.glob()
+      #  - A simple path will yield that path
+      #  - A path glob will expand to one or more paths
+      _reformed = FilePathUtils::reform_subdirectory_glob( _path )
+      @file_wrapper.directory_listing( _reformed ).each do |entry|
+        # For each result, add it to the working list *if* it's a directory
+        dirs << entry if @file_wrapper.directory?(entry)
       end
       
-      # add dirs to the appropriate set based on path aggregation modifier if present
-      FilePathUtils.add_path?(path) ? plus.merge(dirs) : minus.merge(dirs)
+      # Path did not work -- must be malformed glob or glob referencing path that does not exist.
+      # An earlier validation step ensures no nonexistent simple directory paths are in these results.
+      if dirs.empty?
+        error = "#{walk} => '#{_path}' yielded no directories -- glob is malformed or directories do not exist"
+        raise CeedlingException.new( error )
+      end
+
+      # For recursive directory glob at end of a path, collect parent directories too.
+      # Our reursive glob convention includes parent directories (unlike Ruby's glob).
+      if path.end_with?('/**')
+        parents = []
+        dirs.each {|dir| parents << File.join(dir, '..')}
+        dirs += parents
+      end
+
+      # Based on aggregation modifiers, add entries to plus and minus hashes.
+      # Associate full, absolute paths with glob listing results so we can later ensure logical paths equate.
+      # './<path>' is logically equivalent to '<path>' but is not equivalent as strings.
+      # Because plus and minus are hashes, each insertion eliminates any duplicate keys.
+      dirs.each do |dir|
+        abs_path = File.expand_path( dir )
+        FilePathUtils.add_path?( path ) ? plus << abs_path : minus << abs_path
+      end
     end
 
-    return (plus - minus).to_a.uniq.sort
+    paths = (plus - minus).to_a
+    paths.map! do |path|
+      (Pathname.new( path ).relative_path_from( @working_dir_path )).to_s()
+    end
+
+    return paths.sort()
   end
 
 
@@ -62,7 +96,7 @@ class FileSystemUtils
   def revise_file_list(list, revisions)
     revisions.each do |revision|
       # Include or exclude filepath or file glob to file list
-      path = FilePathUtils.extract_path_no_aggregation_operators( revision )
+      path = FilePathUtils.no_aggregation_decorators( revision )
       FilePathUtils.add_path?(revision) ? list.include(path) : list.exclude(path)
     end
   end
