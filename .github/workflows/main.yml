@@ -90,6 +90,13 @@ jobs:
           ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
           cd ../..
 
+      # Run FFF Example
+      - name: Run Tests On FFF Plugin
+        run: |
+          cd plugins/fff
+          rake
+          cd ../..
+
   # Job: Automatic Minor Releases
   auto-release:
     name: "Automatic Minor Releases"
