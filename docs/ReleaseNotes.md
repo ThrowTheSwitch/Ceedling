@@ -71,6 +71,7 @@ There's more to be done, but Ceedling's documentation is more complete and accur
 - The historically unwieldy `verbosity` command line task now comes in two flavors. The original recipe numeric parameterized version (e.g. `[4]`) exist as is. The new extra crispy recipe includes — funny enough — verbose task names `verbosity:silent`, `verbosity:errors`, `verbosity:complain`, `verbosity:normal`, `verbosity:obnoxious`, `verbosity:debug`. 
 - This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake's design assumptions hamper building the sorts of features Ceedling's users want, Rake's command line structure creates a messy user experience for a full application built around it, and Rake's quirks cause maintenance challenges. Particularly for test suites, much of Ceedling's (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
 - This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 0.32 release. Future releases will have far shorter notes.
+- The `fake_function_framework` plugin has been renamed simply `fff`
 
 ### Important Changes in Behavior to Be Aware Of 🚨
 
@@ -117,12 +118,6 @@ Background task execution for tool configurations (`:background_exec`) has been 
 Colored build output and test results in your terminal is glorious. Long ago the `colour_report` plugin provided this. It was a simple plugin that hooked into Ceedling in a somewhat messy way. Its approach to coloring output was also fairly brittle. It long ago stopped coloring build output as intended. It has been removed.
 
 Ceedling's logging will eventually be updated to rely on a proper logging library. This will provide a number of important features along with greater speed and stability for the tool as a whole. This will also be the opportunity to add robust terminal text coloring support.
-
-#### Fake Function Framework (FFF) temporarily disabled
-
-Fake Function Framework (FFF) support in place of CMock mock generation is currently broken and the plugin has been disabled.
-
-The FFF plugin is deeply dependent on the previous build pipeline and Ceedling's dependence on Rake. Without an all-new plugin structure and Rake fully removed, FFF cannot be made to work in Ceedling's current transitional state.
 
 #### Bullseye Plugin temporarily disabled
 

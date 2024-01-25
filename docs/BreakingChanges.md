@@ -77,5 +77,9 @@ Similarly, various global constant project file accessors have changed, specific
 
 See the [official documentation](CeedlingPacket.md) on global constants & accessors for updated lists and information.
 
+# Plugin Name Changes
 
+The following plugin names will need to be updated in the `:plugins` section of your `project.yml` file.
+
+ - The plugin previously called `fake_function_framework` is now simply called `fff`. 
 
