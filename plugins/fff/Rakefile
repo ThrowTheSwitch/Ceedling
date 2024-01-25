@@ -11,8 +11,8 @@ end
 desc "Run integration test on example"
 task :integration_test do
     chdir("./examples/fff_example") do
-        sh "rake clobber"
-        sh "rake test:all"
+        sh "ceedling clobber"
+        sh "ceedling test:all"
     end
 end
 

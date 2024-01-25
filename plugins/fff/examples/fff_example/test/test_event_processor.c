@@ -10,6 +10,7 @@ void setUp (void)
 void tearDown (void)
 {
 }
+
 /*
     Test that a single function was called.
 */
@@ -59,7 +60,6 @@ test_whenTheVolumeKnobIsMaxed_thenVolumeDisplayIsSetTo11(void)
 /*
     Test a sequence of calls.
 */
-
 void
 test_whenTheModeSelectButtonIsPressed_thenTheDisplayModeIsCycled(void)
 {
@@ -97,24 +97,21 @@ test_givenTheDisplayHasAnError_whenTheDeviceIsPoweredOn_thenTheDisplayIsPoweredD
 }
 
 /*
-	Mock a sequence of calls with return values.
-*/
-
-/*
     Mocking a function with a value returned by reference.
 */
+void return_mock_value(char * entry, int length)
+{
+    const char mockedEntry[] = "sleep";
+    if (length > strlen(mockedEntry))
+    {
+        strncpy(entry, mockedEntry, length);
+    }
+}
+
 void
 test_givenTheUserHasTypedSleep_whenItIsTimeToCheckTheKeyboard_theDisplayIsPoweredDown(void)
 {
     // Given
-    char mockedEntry[] = "sleep";
-    void return_mock_value(char * entry, int length)
-    {
-        if (length > strlen(mockedEntry))
-        {
-            strncpy(entry, mockedEntry, length);
-        }
-    }
     display_getKeyboardEntry_fake.custom_fake = return_mock_value;
 
     // When
@@ -129,16 +126,17 @@ test_givenTheUserHasTypedSleep_whenItIsTimeToCheckTheKeyboard_theDisplayIsPowere
 /*
     Mock a function with a function pointer parameter.
 */
+void(*registeredCallback)(void) = 0;
+void mock_display_updateData(int data, void(*callback)(void))
+{
+    //Save the callback function.
+    registeredCallback = callback;
+}
+
 void
 test_givenNewDataIsAvailable_whenTheDisplayHasUpdated_thenTheEventIsComplete(void)
 {
     // A mock function for capturing the callback handler function pointer.
-    void(*registeredCallback)(void) = 0;
-    void mock_display_updateData(int data, void(*callback)(void))
-    {
-        //Save the callback function.
-        registeredCallback = callback;
-    }
     display_updateData_fake.custom_fake = mock_display_updateData;
 
     // Given

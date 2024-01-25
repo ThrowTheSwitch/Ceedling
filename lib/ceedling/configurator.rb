@@ -212,6 +212,15 @@ class Configurator
 
     config_plugins.each do |plugin|
       plugin_config = @yaml_wrapper.load(plugin)
+
+      #special handling for plugin paths
+      if (plugin_config.include? :paths)
+        plugin_config[:paths].update(plugin_config[:paths]) do |k,v| 
+          plugin_path = plugin.match(/(.*)[\/]config[\/]\w+\.yml/)[1]
+          v.map {|vv| vv.gsub!(/\$PLUGIN_PATH/,plugin_path) }
+        end
+      end
+
       config.deep_merge(plugin_config)
     end
 

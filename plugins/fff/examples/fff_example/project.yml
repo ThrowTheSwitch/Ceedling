@@ -1,7 +1,7 @@
 ---
 :project:
   # how to use ceedling. If you're not sure, leave this as `gem` and `?`
-  :which_ceedling: ../../../../
+  :which_ceedling: ../../../..
   :ceedling_version: '?'
 
   # optional features. If you don't need them, keep them turned off for performance
@@ -72,7 +72,7 @@
   :source:
     - src/**
   :include:
-    - src/** # In simple projects, this entry often duplicates :source
+    - src/**
   :libraries: []
 
 # You can even specify specific files to add or remove from your test

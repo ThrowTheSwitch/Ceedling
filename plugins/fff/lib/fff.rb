@@ -1,21 +1,13 @@
 require 'ceedling/plugin'
 require 'fff_mock_generator'
 
-class FakeFunctionFramework < Plugin
+class Fff < Plugin
 
   # Set up Ceedling to use this plugin.
   def setup
     # Get the location of this plugin.
     @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
     puts "Using fake function framework (fff)..."
-
-    # Switch out the CMock Generator with one that generates FFF code instead
-    alias RealCMockGenerator CMockGenerator
-    alias CMockGenerator FffMockGeneratorForCMock
-
-    # Add the path to fff.h to the include paths.
-    COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR << "#{@plugin_root}/vendor/fff"
-    COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR << "#{@plugin_root}/src"
   end
 
   def post_runner_generate(arg_hash)
@@ -30,9 +22,9 @@ class FakeFunctionFramework < Plugin
     end
   end
 
-end # class FakeFunctionFramework
+end # class Fff
 
-class FffMockGeneratorForCMock
+class FffCMockWrapper
 
     def initialize(options=nil)
     @cm_config      = CMockConfig.new(options)
@@ -52,11 +44,11 @@ class FffMockGeneratorForCMock
     end
   end
 
-  def generate_mock (header_file_to_mock)
+  def generate_mock(header_file_to_mock, folder=nil)
       module_name = File.basename(header_file_to_mock, '.h')
       puts "Creating mock for #{module_name}..." unless @silent
       mock_name = @cm_config.mock_prefix + module_name + @cm_config.mock_suffix
-      mock_path = @cm_config.mock_path
+      mock_path = @cm_config.mock_path + (folder.nil? ? '' : File.join(folder,''))
       if @cm_config.subdir
           # If a subdirectory has been configured, append it to the mock path.
           mock_path = "#{mock_path}/#{@cm_config.subdir}"
@@ -86,3 +78,8 @@ class FffMockGeneratorForCMock
   end
 
 end
+
+# Switch out the CMock with FFF Mock Generator
+require "cmock"
+RealCMock = CMock
+CMock = FffCMockWrapper
