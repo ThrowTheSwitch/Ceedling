@@ -104,13 +104,17 @@ END {
       exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
     rescue => ex
       boom_handler(exception:ex, debug:@ceedling[:configurator].project_debug)
+      exit(1)
     end
+    exit(0)
   else
     puts("\nCeedling could not complete the build because of errors.")
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex
       boom_handler(exception:ex, debug:@ceedling[:configurator].project_debug)
+    ensure
+      exit(1)
     end
   end
 }
