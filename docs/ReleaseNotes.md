@@ -67,6 +67,7 @@ There's more to be done, but Ceedling's documentation is more complete and accur
 ### Small Deal Highlights 🥉
 
 - Effort has been invested across the project to improve error messages, exception handling, and exit code processing. Noisy backtraces have been relegated to the verbosity level of DEBUG as <insert higher power> intended.
+- Logical ambiguity and functional bugs within `:paths` and `:files` configuration handling have been resolved along with updated documentation.
 - A variety of small improvements and fixes have been made throughout the plugin system and to many plugins.
 - The historically unwieldy `verbosity` command line task now comes in two flavors. The original recipe numeric parameterized version (e.g. `[4]`) exist as is. The new extra crispy recipe includes — funny enough — verbose task names `verbosity:silent`, `verbosity:errors`, `verbosity:complain`, `verbosity:normal`, `verbosity:obnoxious`, `verbosity:debug`. 
 - This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake's design assumptions hamper building the sorts of features Ceedling's users want, Rake's command line structure creates a messy user experience for a full application built around it, and Rake's quirks cause maintenance challenges. Particularly for test suites, much of Ceedling's (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
@@ -190,6 +191,18 @@ The preprocessing needed by Ceedling for sophisticated projects has always been 
 This release of Ceedling stripped the feature back to basics and largely rewrote it within the context of the new build pipeline. Complicated regular expressions and Ruby-generated temporary files have been eliminated. Instead, Ceedling now blends two reports from gcc' `cpp` tool and complements this with additional context. In addition, preprocessing now occurs at the right moments in the overall build pipeline.
 
 While this new approach is not 100% foolproof, it is far more robust and far simpler than previous attempts. Other new Ceedling features should be able to address shortcomings in edge cases.
+
+### `:paths` and `:files` handling bug fixes and clarification
+
+Most project configurations are relatively simple, and Ceedling's features for collecting paths worked fine enough. However, bugs and ambiguities lurked. Further, insufficient validation left users resorting to old fashioned trial-and-error troubleshooting.
+
+Much glorious filepath and pathfile handling now abounds:
+
+* The purpose and use of `:paths` and `:files` has been clarified in both code and documentation. `:paths` are directory-oriented while `:files` are filepath-oriented.
+* [Documentation](CeedlingPacket.md) is now accurate and complete.
+* Path handling edge cases have been properly resolved (`./foo/bar` is the same as `foo/bar` but was not always processed as such).
+* Matching globs were advertised in the documentation (erroneously, incidentally) but lacked full programmatic support.
+* Ceedling now tells you if your matching patterns don't work. Unfortunately, all Ceedling can determine is if a particular pattern yielded 0 results.
 
 ### Plugin system improvements
 
