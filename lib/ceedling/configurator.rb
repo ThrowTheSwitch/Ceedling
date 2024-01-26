@@ -69,15 +69,25 @@ class Configurator
   end
 
 
-  # Set up essential flattened config related to debug verbosity
-  # (In case YAML validation failures that might want debug verbosity prevent 
-  # flattening of config into configurator accessors)
-  def set_debug(config)
+  # Set up essential flattened config related to verbosity.
+  # We do this because early config validation failures may need access to verbosity,
+  # but the accessors won't be available until after configuration is validated.
+  def set_verbosity(config)
+    # PROJECT_VERBOSITY and PROJECT_DEBUG were set at command line processing 
+    # before Ceedling is even loaded.
+
     if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG) or (config[:project][:debug])
       eval("def project_debug() return true end", binding())
-      eval("def project_verbosity() return Verbosity::DEBUG end", binding())
+    else
+      eval("def project_debug() return false end", binding())      
     end
-    # Otherwise allow Configurator to create these accessors normally
+
+    if !!defined?(PROJECT_VERBOSITY)
+      eval("def project_verbosity() return #{PROJECT_VERBOSITY} end", binding())
+    end
+
+    # Configurator will try to create these accessors automatically but will silently 
+    # fail if they already exist.
   end
 
 

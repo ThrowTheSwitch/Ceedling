@@ -2,6 +2,9 @@ require 'ceedling/constants'
 require 'ceedling/file_path_utils'
 require 'ceedling/version'
 
+# Set Rake verbosity using global constant verbosity set before Rake is loaded
+verbose(PROJECT_VERBOSITY >= Verbosity::OBNOXIOUS)
+
 desc "Display build environment version info."
 task :version do
   puts "   Ceedling:: #{Ceedling::Version::CEEDLING}"
@@ -10,39 +13,27 @@ task :version do
   puts " CException:: #{Ceedling::Version::CEXCEPTION}"
 end
 
-desc "Set verbose output (silent:[#{Verbosity::SILENT}] - obnoxious:[#{Verbosity::OBNOXIOUS}])."
+desc "Set verbose output (silent:[#{Verbosity::SILENT}] - debug:[#{Verbosity::DEBUG}])."
 task :verbosity, :level do |t, args|
-  verbosity_level = args.level.to_i
+  # Setting verbosity has been moved to command line processing before Rake.
+  # This Rake task just scaffolds a do-nothing task that command line scanning processes.
 
-  @ceedling[:configurator].project_verbosity = verbosity_level
+  level = args.level.to_i
 
-  # Control rake's verbosity with new setting
-  verbose( ((verbosity_level >= Verbosity::OBNOXIOUS) ? true : false) )
-
-  if verbosity_level == Verbosity::DEBUG
-    @ceedling[:configurator].project_debug = true
+  if level < Verbosity::SILENT or level > Verbosity::DEBUG
+    puts("WARNING: Verbosity level #{level} is outside of the recognized range [#{Verbosity::SILENT}-#{Verbosity::DEBUG}]")
   end
 end
 
 namespace :verbosity do 
-  VERBOSITY_OPTIONS = { 
-    :silent    => Verbosity::SILENT,
-    :errors    => Verbosity::ERRORS,
-    :warnings  => Verbosity::COMPLAIN,
-    :normal    => Verbosity::NORMAL,
-    :obnoxious => Verbosity::OBNOXIOUS,
-    :debug     => Verbosity::DEBUG,
-  }
-  VERBOSITY_OPTIONS.each_pair do |key, val|
-    task key do 
-      @ceedling[:configurator].project_verbosity = val
-      @ceedling[:configurator].project_debug = true if (val == Verbosity::DEBUG)
-      verbose(val >= Verbosity::OBNOXIOUS)
-    end
-  end
+  # Setting verbosity has been moved to command line processing before Rake.
+  # These Rake tasks just scaffold do-nothing tasks that command line scanning processes.
+  VERBOSITY_OPTIONS.each_pair { |key, _| task key }
+
+  # Offer a handy list of verbosity levels
   task :list do 
     VERBOSITY_OPTIONS.keys.each do |key|
-      puts "verbosity:#{key}"
+      puts " - verbosity:#{key}"
     end
   end
 end
