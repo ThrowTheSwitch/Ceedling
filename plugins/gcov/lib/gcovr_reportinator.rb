@@ -282,7 +282,6 @@ class GcovrReportinator
   # Run gcovr with the given arguments
   def run(opts, args, boom)
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], args)
-    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     shell_result = nil
 
@@ -308,7 +307,6 @@ class GcovrReportinator
 
     msg = @ceedling[:reportinator].generate_progress("Collecting gcovr version for conditional feature handling")
     @ceedling[:streaminator].stdout_puts(msg, Verbosity::OBNOXIOUS)
-    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     shell_result = @ceedling[:tool_executor].exec( command )
     version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)

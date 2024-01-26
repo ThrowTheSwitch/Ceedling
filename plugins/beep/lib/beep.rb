@@ -55,7 +55,6 @@ class Beep < Plugin
       [],
       ["ceedling build done"]) # Only used by tools with `${1}` replacement argument
 
-    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     # Verbosity is enabled to allow shell output (primarily for sake of the bell character)
     @ceedling[:system_wrapper].shell_system( command: command[:line], verbose: true )
@@ -67,7 +66,6 @@ class Beep < Plugin
       [],
       ["ceedling build error"]) # Only used by tools with `${1}` replacement argument
 
-    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     # Verbosity is enabled to allow shell output (primarily for sake of the bell character)
     @ceedling[:system_wrapper].shell_system( command: command[:line], verbose: true )

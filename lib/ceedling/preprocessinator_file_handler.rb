@@ -17,7 +17,6 @@ class PreprocessinatorFileHandler
     
     @tool_executor.exec( command )
 
-    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
 
@@ -70,7 +69,6 @@ class PreprocessinatorFileHandler
     
     @tool_executor.exec( command )
 
-    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
 
