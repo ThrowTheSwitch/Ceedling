@@ -59,7 +59,7 @@ namespace :paths do
       puts "#{name.capitalize} paths:#{' None' if path_list.size == 0}"
       if path_list.size > 0
         path_list.sort.each {|path| puts " - #{path}" }
-        puts "path count: #{path_list.size}"
+        puts "Path count: #{path_list.size}"
       end
     end
   end

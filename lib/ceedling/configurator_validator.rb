@@ -86,6 +86,10 @@ class ConfiguratorValidator
         dirs << entry if @file_wrapper.directory?(entry)
       end
       
+      # Handle edge case of subdirectories glob but not subdirectories
+      # (Containing parent directory will still exist)
+      next if dirs.empty? and _path =~ /\/\*{1,2}$/
+
       # Path did not work -- must be malformed glob or glob referencing path that does not exist.
       # (An earlier step validates all simple directory paths).
       if dirs.empty?

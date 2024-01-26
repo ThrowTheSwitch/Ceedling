@@ -2151,14 +2151,17 @@ _Note:_ Ceedling standardizes paths for you. Internally, all paths use forward
 
 ```yaml
 :paths:
+  # All <dirs>/*.<source extension> => test/release compilation input
   :source:
     - project/src/            # Resulting source list has just two relative directory paths
     - project/aux             # (Traversal goes no deeper than these simple paths)
 
-  :include:
+  # All <dirs> => compilation search paths + mock search paths
+  :include:                   # All <dirs> => compilation input
     - project/src/inc         # Include paths are subdirectory of src/
     - /usr/local/include/foo  # Header files for a prebuilt library at fully qualified path
 
+  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
   :test:                
     - ../tests                # Tests have parent directory above working directory
 ```
@@ -2317,8 +2320,9 @@ See examples below.
 
 ```yaml
 :paths:
-   :source:
-      - src/**
+  # All <dirs>/*.<source extension> => test/release compilation input
+  :source:
+    - src/**
 
 :files:
   :source:
@@ -2330,15 +2334,24 @@ See examples below.
 
 ```yaml
 :paths:
-   :test:
-      - test/**
+  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
+  :test:
+     - test/**
 
 :files:
   :test:
-    - -:test/*{A,a}nalog*.c  # Remove test files at depth 1 beneath test/ with 'analog' 
-                             # in their names.
-    - -:test/**/*Model.c     # Remove every test file anywhere beneath test/ whose 
-                             # name ends with 'Model'.
+    # Remove every test file anywhere beneath test/ whose name ends with 'Model'. 
+    # String replacement inserts a global constant that is the file extension for 
+    # a C file. This is an anchor for the end of the filename and automaticlly 
+    # uses file extension settings.
+    - "-:test/**/*Model#{EXTENSION_SOURCE}"
+
+    # Remove test files at depth 1 beneath test/ with 'analog' anywhere in their names.
+    - -:test/*{A,a}nalog*
+
+    # Remove test files at depth 1 beneath test/ that are of an “F series”
+    # test collection FAxxxx, FBxxxx, and FCxxxx where 'x' is any character.
+    - -:test/F[A-C]????
 ```
 
 ## `:environment:` Insert environment variables into shells running tools

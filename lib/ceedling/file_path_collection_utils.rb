@@ -42,17 +42,23 @@ class FilePathCollectionUtils
       
       # For recursive directory glob at end of a path, collect parent directories too.
       # Ceedling's recursive glob convention includes parent directories (unlike Ruby's glob).
-      if path.end_with?('/**')
+      if path.end_with?('/**') or path.end_with?('/*')
         parents = []
+        
         dirs.each {|dir| parents << File.join(dir, '..')}
+
+        # Handle edge case of subdirectory glob but no subdirectories and therefore no parents
+        # (Containing parent directory still exists)
+        parents << FilePathUtils.no_decorators( _path ) if dirs.empty?
+
         dirs += parents
       end
 
       # Based on aggregation modifiers, add entries to plus and minus sets.
-      # Use full, absolute paths to ensure logical paths are compared.
+      # Use full, absolute paths to ensure logical paths are compared properly.
       # './<path>' is logically equivalent to '<path>' but is not equivalent as strings.
       # Because plus and minus are sets, each insertion eliminates any duplicates
-      # (such as parents added above).
+      # (such as the parent directories for each directory as added above).
       dirs.each do |dir|
         abs_path = File.expand_path( dir )
         if FilePathUtils.add_path?( path )
