@@ -50,6 +50,7 @@ end
 desc "Enable logging"
 task :logging do
   @ceedling[:configurator].project_logging = true
+  @ceedling[:loginator].project_logging = true
 end
 
 # Non-advertised debug task

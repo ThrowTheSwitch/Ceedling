@@ -5,7 +5,7 @@ class ProjectFileLoader
 
   attr_reader :main_file, :user_file
 
-  constructor :yaml_wrapper, :stream_wrapper, :system_wrapper, :file_wrapper
+  constructor :yaml_wrapper, :streaminator, :system_wrapper, :file_wrapper
 
   def setup
     @main_file = nil
@@ -47,9 +47,7 @@ class ProjectFileLoader
     elsif (@file_wrapper.exist?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE))
       @main_project_filepath = DEFAULT_CEEDLING_MAIN_PROJECT_FILE
     else
-      # no verbosity checking since this is lowest level reporting anyhow &
-      # verbosity checking depends on configurator which in turns needs this class (circular dependency)
-      @stream_wrapper.stderr_puts('Found no Ceedling project file (*.yml)')
+      @streaminator.stderr_puts( 'ERROR: Found no Ceedling project file (*.yml)', Verbosity::ERRORS )
       raise
     end
 

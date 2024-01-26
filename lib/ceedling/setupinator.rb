@@ -44,11 +44,36 @@ class Setupinator
     end
     
     @ceedling[:plugin_reportinator].set_system_objects( @ceedling )
-    @ceedling[:loginator].setup_log_filepath
+    @ceedling[:loginator].project_log_filepath = form_log_filepath()
     @ceedling[:project_config_manager].config_hash = config_hash
   end
 
   def reset_defaults(config_hash)
     @ceedling[:configurator].reset_defaults( config_hash )
   end
+
+### Private
+
+private
+
+  def form_log_filepath()
+    # Various project files and options files can combine to create different configurations.
+    # Different configurations means different behaviors.
+    # As these variations are easy to run from the command line, a resulting log file 
+    # should differentiate its context.
+    # We do this by concatenating config/options names into a log filename.
+
+    config_files = []
+
+    config_files << @ceedling[:project_file_loader].main_file
+    config_files << @ceedling[:project_file_loader].user_file
+    config_files += @ceedling[:project_config_manager].options_files
+    config_files.compact! # Remove empties
+    
+    # Drop component file name extensions and smoosh together with underscores
+    log_name = config_files.map{ |file| file.ext('') }.join( '_' )
+
+    return File.join( @ceedling[:configurator].project_log_path, log_name.ext('.log') )
+  end
+
 end
