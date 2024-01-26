@@ -62,7 +62,7 @@ describe "Ceedling" do
               expect(@output).to match(/Model\.c \| Lines executed:/i)
               # there are more, but this is a good place to stop.
 
-              expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
+              expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
             end
           end
         end

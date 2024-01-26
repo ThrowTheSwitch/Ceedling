@@ -1956,17 +1956,15 @@ this section.
 
 **Paths for build tools and building file collections**
 
-Ceedling relies on file collections to do its work. These file collections are
-automagically assembled from various paths, globs, wildcards, and file
-extensions.
+Ceedling relies on various path and file collections to do its work. File
+collections are automagically assembled from paths, matching globs / wildcards,
+and file extensions (see project configuration `:extension`).
 
-Entries in `:paths` help created directory-based bulk file collections. The
+Entries in `:paths` help create directory-based bulk file collections. The
 `:files` configuration section is available for filepath-oriented tailoring of
 these buk file collections.
 
-Entries in `:paths` control search paths for test code files, source code files,
-header files, and (optionally) assembly files as well as enable Ceedling to
-build key internal collections of files that map to the tasks it executes.
+Entries in `:paths` ↳ `:include` also specify search paths for header files.
 
 All of the configuration subsections that follow default to empty lists. In
 YAML, list items can be comma separated within brackets or organized per line
@@ -2016,8 +2014,8 @@ the various path-related documentation sections.
   See these two important discussions to fully understand your options
   for header file search paths:
 
-  * [Configuring Your Header File Search Paths][header-file-search-paths]
-  * [`TEST_INCLUDE_PATH(...)` build directive macro][test-include-path-macro]
+   * [Configuring Your Header File Search Paths][header-file-search-paths]
+   * [`TEST_INCLUDE_PATH(...)` build directive macro][test-include-path-macro]
 
   [header-file-search-paths]: #configuring-your-header-file-search-paths
   [test-include-path-macro]: #test_include_path
@@ -2074,119 +2072,158 @@ the various path-related documentation sections.
 
 ### `:paths` configuration options & notes
 
-  1. A path can be absolute or relative.
-  1. A path can include a glob operator (more on this below).
-  1. A path can use inline Ruby string replacement (see `:environment`
-     section for more).
-  1. The default is addition to the named search list (more on this
-     in the examples).
-  1. Subtractive paths are possible and useful. See the documentation
-     below.
-  1. Path order beneath a subsection (e.g. `:paths` ↳ `:include`) is 
-     preserved when the list is iterated internally or passed to a tool.
+1. A path can be absolute (fully qualified) or relative.
+1. A path can include a glob matcher (more on this below).
+1. A path can use inline Ruby string replacement (see `:environment` section 
+   for more).
+1. Subtractive paths are possible and useful. See the documentation below.
+1. Path order beneath a subsection (e.g. `:paths` ↳ `:include`) is preserved 
+   when the list is iterated internally or passed to a tool.
 
 ### `:paths` Globs
 
-[Globs](http://ruby.about.com/od/beginningruby/a/dir2.htm)
-as used by Ceedling are wildcards for specifying directories
-without the need to list each and every required search path.
+Globs are effectively fancy wildcards. They are not as capable as full regular
+expressions but are easier to use. Various OSs and programming languages
+implement them differently.
 
-Ceedling globs operate just as Ruby globs except that they are
-limited to matching directories and not files. Glob operators
-include the following `*`, `**`, `?`, `[-]`, `{,}`.
+For a quick overview, see this [tutorial][globs-tutorial].
 
-* `*`: All subdirectories of depth 1 below the parent path and including the
-  parent path
+Ceedling supports globs so you can specify patterns of directories without the
+need to list each and every required path.
 
-* `**`: All subdirectories recursively discovered below the parent path and
-  including the parent path
+Ceedling `:paths` globs operate similarlry to [Ruby globs][ruby-globs] except
+that they are limited to matching directories within `:paths` entries and not
+also files. In addition, Ceedling adds a useful convention with certain uses of
+the `*` and `**` operators.
 
-* `?`: Single alphanumeric character wildcard
+Glob operators include the following: `*`, `**`, `?`, `[-]`, `{,}`.
 
-* `[x-y]`: Single alphanumeric character as found in the specified range
+* `*`
+   * When used within a character string, `*` is simply a standard wildcard.
+   * When used after a path separator, `/*` matches all subdirectories of depth 1
+     below the parent path, not including the parent path.
+* `**`: All subdirectories recursively discovered below the parent path, not
+  including the parent path. This pattern only makes sense after a path
+  separator `/**`.
+* `?`: Single alphanumeric character wildcard.
+* `[x-y]`: Single alphanumeric character as found in the specified range.
+* `{x, y, ...}`: Matching any of the comma-separated patterns. Two or more 
+  patterns may be listed within the brackets. Patterns may be specific 
+  character sequences or other glob operators.
 
-* `{x,y}`: Single alphanumeric character from the specified list
+Special conventions:
+
+* If a globified path ends with `/*` or `/**`, the resulting list of directories
+  also includes the parent directory.
+
+See the example `:paths` YAML blurb section.
+
+[globs-tutotrial]: http://ruby.about.com/od/beginningruby/a/dir2.htm
+[ruby-globs]: https://ruby-doc.org/core-3.0.0/Dir.html#method-c-glob
 
 ### Subtractive `:paths` entries
 
-Globs are super duper helpful when you have many paths to list. But,
-what if a single glob gets you 20 nested paths, but you actually want
-to exclude 2 of those paths?
+Globs are super duper helpful when you have many paths to list. But, what if a
+single glob gets you 20 nested paths, but you actually want to exclude 2 of
+those paths?
 
-Must you revert to listing all 18 paths individually? No, my friend,
-we've got you. Behold, subtractive paths.
+Must you revert to listing all 18 paths individually? No, my friend, we've got
+you. Behold, subtractive paths.
 
-Put simply, with an optional preceding decorator `-:`, you can 
-instruct Ceedling to remove certain paths from a collection after it
-builds that collection.
+Put simply, with an optional preceding decorator `-:`, you can instruct Ceedling
+to remove certain directory paths from a collection after it builds that
+collection.
 
-By default, paths are additive. For pretty alignment in your YAML, 
-you may also use `+:`, but strictly speaking, it's not necessary.
+By default, paths are additive. For pretty alignment in your YAML, you may also
+use `+:`, but strictly speaking, it's not necessary.
 
-Subtractive paths may be explicit, single paths or globs just like
-any other path entry.
+Subtractive paths may be simple paths or globs just like any other path entry.
 
-See example below.
+See examples below.
 
 ### Example `:paths` YAML blurbs
+
+_Note:_ Ceedling standardizes paths for you. Internally, all paths use forward
+ slash `/` path separators (including on Windows), and Ceedling cleans up
+ trailing path separators to be consistent internally.
+
+#### Simple `:paths` entries
+
+```yaml
+:paths:
+  # All <dirs>/*.<source extension> => test/release compilation input
+  :source:
+    - project/src/            # Resulting source list has just two relative directory paths
+    - project/aux             # (Traversal goes no deeper than these simple paths)
+
+  # All <dirs> => compilation search paths + mock search paths
+  :include:                   # All <dirs> => compilation input
+    - project/src/inc         # Include paths are subdirectory of src/
+    - /usr/local/include/foo  # Header files for a prebuilt library at fully qualified path
+
+  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
+  :test:                
+    - ../tests                # Tests have parent directory above working directory
+```
+
+#### Common `:paths` globs with subtractive path entries
 
 ```yaml
 :paths:
   :source:              
-    - project/source/*    # Glob expansion yields all subdirectories of depth 1 plus parent directory
-    - project/lib         # Single path
+    - +:project/src/**    # Recursive glob yields all subdirectories of any depth plus src/
+    - -:project/src/exp   # Exclude experimental code in exp/ from release or test builds
+                          # `+:` is decoration for pretty alignment; only `-:` changes a list
 
   :include:
-    - project/source/inc  # Include paths are subdirectory of source
-    - project/lib         # Header files intermixed with library code
-
-  :test:                
-    - project/**/test?    # Glob expansion yields any subdirectory found anywhere in the project that
-                          # begins with "test" and contains 5 characters
+    - +:project/src/**/inc   # Include every subdirectory inc/ beneath src/
+    - -:project/src/exp/inc  # Remove header files subdirectory for experimental code
 ```
+
+#### Advanced `:paths` entries with globs and string expansion
+
 ```yaml
 :paths:
-  :source:                           
-    - +:project/source/**            # All subdirectories recursively discovered plus parent directory
-    - -:project/source/os/generated  # Subtract os/generated directory from expansion of preceding glob
-                                     # `+:` is merely syntactic sugar to complement `-:`
-
-# :include: []                       # Defaults to empty. If left empty, necessitates exhaustive use of 
-                                     # TEST_INCLUDE_PATH(...) build directive macro in all test files.
-                                     # See discussion of header search paths in Ceedling conventions
-                                     # section.
-
   :test:                             
-    - project/test/bootloader        # Explicit, single search paths (searched in the order specified)
-    - project/test/application
-    - project/test/utilities
+    - test/**/f???             # Every 4 character “f-series" subdirectory beneath test/
 
-  :my_things:                        # Custom path list
-    - "#{PROJECT_ROOT}/other"        # Inline Ruby string expansion of a global constant
+  :my_things:                  # Custom path list
+    - "#{PROJECT_ROOT}/other"  # Inline Ruby string expansion using Ceedling global constant
 ```
 
-Globs and inline Ruby string expansion can require trial and
-error to arrive at your intended results. Use the `ceedling paths:*`
-command line tasks — documented in a preceding section — to verify
-your settings. (`*` is shorthand for `test`, `source`, `include`, etc.)
+```yaml
+:paths:
+  :test:                             
+    - test/{foo,b*,xyz}  # Path list will include test/foo/, test/xyz/, and any subdirectories 
+                         # beneath test/ beginning with 'b', including just test/b/
+```
+
+Globs and inline Ruby string expansion can require trial and error to arrive at
+your intended results. Ceedling provides as much validation of paths as is 
+practical.
+
+Use the `ceedling paths:*` and `ceedling files:*` command line tasks —
+documented in a preceding section — to verify your settings. (Here `*` is
+shorthand for `test`, `source`, `include`, etc. Confusing? Sorry.)
 
 ## `:files` Modify file collections
 
 **File listings for tailoring file collections**
 
 Ceedling relies on file collections to do its work. These file collections are
-automagically assembled from various paths, globs, wildcards, and file
-extensions.
+automagically assembled from paths, matching globs / wildcards, and file
+extensions (see project configuration `:extension`).
 
-Entries in `:files` accomplish filepath-oriented tailoring of the bulk directory
-listings performed by `:paths` entries.
+Entries in `:files` accomplish filepath-oriented tailoring of the bulk file
+collections created from `:paths` directory listings and filename pattern
+matching.
 
 On occasion you may need to remove from or add individual files to Ceedling's
-file collections assembled from directory paths plus file extension matching.
+file collections.
 
-Note that all path grammar documented in the project file `:paths` section
-applies to `:files` path entries - albeit at the file path level and not the
-directory level.
+The path grammar documented in the `:paths` configuration section largely
+applies to `:files` path entries - albeit with regard to filepaths and not
+directory paths. The `:files` grammar and YAML examples are documented below.
 
 * <h3><code>:files</code> ↳ <code>:test</code></h3>
 
@@ -2224,16 +2261,97 @@ directory level.
   
   **Default**: `[]` (empty)
 
-### Example `:files` YAML blurb
+### `:files` configuration options & notes
+
+1. A path can be absolute (fully qualified) or relative.
+1. A path can include a glob matcher (more on this below).
+1. A path can use inline Ruby string replacement (see `:environment` section 
+   for more).
+1. Subtractive paths prepended with a `-:` decorator are possible and useful. 
+   See the documentation below.
+
+### `:files` Globs
+
+Globs are effectively fancy wildcards. They are not as capable as full regular
+expressions but are easier to use. Various OSs and programming languages
+implement them differently.
+
+For a quick overview, see this [tutorial][globs-tutorial].
+
+Ceedling supports globs so you can specify patterns of files as well as simple,
+ordinary filepaths.
+
+Ceedling `:files` globs operate identically to [Ruby globs][ruby-globs] except
+that they ignore directory paths. Only filepaths are recognized.
+
+Glob operators include the following: `*`, `**`, `?`, `[-]`, `{,}`.
+
+* `*`
+   * When used within a character string, `*` is simply a standard wildcard.
+   * When used after a path separator, `/*` matches all subdirectories of depth
+     1 below the parent path, not including the parent path.
+* `**`: All subdirectories recursively discovered below the parent path, not
+  including the parent path. This pattern only makes sense after a path
+  separator `/**`.
+* `?`: Single alphanumeric character wildcard.
+* `[x-y]`: Single alphanumeric character as found in the specified range.
+* `{x, y, ...}`: Matching any of the comma-separated patterns. Two or more
+  patterns may be listed within the brackets. Patterns may be specific
+  character sequences or other glob operators.
+
+### Subtractive `:files` entries
+
+Tailoring a file collection includes adding to it but also subtracting from it.
+
+Put simply, with an optional preceding decorator `-:`, you can instruct Ceedling
+to remove certain file paths from a collection after it builds that
+collection.
+
+By default, paths are additive. For pretty alignment in your YAML, you may also
+use `+:`, but strictly speaking, it's not necessary.
+
+Subtractive paths may be simple paths or globs just like any other path entry.
+
+See examples below.
+
+### Example `:files` YAML blurbs
+
+#### Simple `:files` tailoring
 
 ```yaml
+:paths:
+  # All <dirs>/*.<source extension> => test/release compilation input
+  :source:
+    - src/**
+
 :files:
   :source:
-    - callbacks/comm.c        # Add single file (default is additive)
-    - +:callbacks/comm*.c     # Add all comm files matching glob pattern
-    - -:source/board/atm134.c # Remove this board code
+    - +:callbacks/serial_comm.c  # Add source code outside src/
+    - -:src/board/atm134.c       # Remove board code
+```
+
+#### Advanced `:files` tailoring
+
+```yaml
+:paths:
+  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
   :test:
-    - -:test/io/test_output_manager.c # Remove unit tests from test build
+     - test/**
+
+:files:
+  :test:
+    # Remove every test file anywhere beneath test/ whose name ends with 'Model'. 
+    # String replacement inserts a global constant that is the file extension for 
+    # a C file. This is an anchor for the end of the filename and automaticlly 
+    # uses file extension settings.
+    - "-:test/**/*Model#{EXTENSION_SOURCE}"
+
+    # Remove test files at depth 1 beneath test/ with 'analog' anywhere in their names.
+    - -:test/*{A,a}nalog*
+
+    # Remove test files at depth 1 beneath test/ that are of an “F series”
+    # test collection FAxxxx, FBxxxx, and FCxxxx where 'x' is any character.
+    - -:test/F[A-C]????
 ```
 
 ## `:environment:` Insert environment variables into shells running tools

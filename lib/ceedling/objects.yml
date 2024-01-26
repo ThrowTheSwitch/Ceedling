@@ -32,8 +32,9 @@ file_path_utils:
     - configurator
     - file_wrapper
 
-file_system_utils:
-  compose: file_wrapper
+file_path_collection_utils:
+  compose:
+    - file_wrapper
 
 project_file_loader:
   compose:
@@ -124,7 +125,7 @@ configurator_validator:
 
 configurator_builder:
   compose:
-    - file_system_utils
+    - file_path_collection_utils
     - file_wrapper
     - system_wrapper
 
