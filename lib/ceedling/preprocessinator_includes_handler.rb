@@ -179,7 +179,6 @@ class PreprocessinatorIncludesHandler
         defines
         )
 
-    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     command[:options][:boom] = false # Assume errors and do not raise an exception
     shell_result = @tool_executor.exec( command )
@@ -279,7 +278,6 @@ class PreprocessinatorIncludesHandler
     # Redirect -H output to STDERR to STDOUT so we can access it in the execution results
     command[:options][:stderr_redirect] = StdErrRedirect::AUTO
 
-    @streaminator.stdout_puts( "Command: #{command}", Verbosity::DEBUG )
 
     shell_result = @tool_executor.exec( command )
 

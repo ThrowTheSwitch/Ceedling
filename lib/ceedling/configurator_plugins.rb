@@ -2,7 +2,8 @@ require 'ceedling/constants'
 
 class ConfiguratorPlugins
 
-  constructor :stream_wrapper, :file_wrapper, :system_wrapper
+  constructor :file_wrapper, :system_wrapper
+
   attr_reader :rake_plugins, :script_plugins
 
   def setup

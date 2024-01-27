@@ -39,7 +39,7 @@ file_path_collection_utils:
 project_file_loader:
   compose:
     - yaml_wrapper
-    - stream_wrapper
+    - streaminator
     - system_wrapper
     - file_wrapper
 
@@ -56,7 +56,6 @@ debugger_utils:
 project_config_manager:
   compose:
     - cacheinator
-    - configurator
     - yaml_wrapper
     - file_wrapper
 
@@ -89,7 +88,7 @@ tool_executor_helper:
 tool_validator:
   compose:
     - file_wrapper
-    - stream_wrapper
+    - streaminator
     - system_wrapper
     - reportinator
 
@@ -106,11 +105,10 @@ configurator_setup:
     - configurator_builder
     - configurator_validator
     - configurator_plugins
-    - stream_wrapper
+    - streaminator
 
 configurator_plugins:
   compose:
-    - stream_wrapper
     - file_wrapper
     - system_wrapper
 
@@ -118,7 +116,7 @@ configurator_validator:
   compose:
     - config_walkinator
     - file_wrapper
-    - stream_wrapper
+    - streaminator
     - system_wrapper
     - reportinator
     - tool_validator
@@ -131,9 +129,6 @@ configurator_builder:
 
 loginator:
   compose:
-    - configurator
-    - project_file_loader
-    - project_config_manager
     - file_wrapper
     - system_wrapper
 
@@ -172,7 +167,7 @@ plugin_reportinator_helper:
     - file_wrapper
 
 verbosinator:
-  compose: configurator
+  # compose: configurator
 
 file_finder:
   compose:

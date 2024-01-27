@@ -8,6 +8,14 @@ class Verbosity
   DEBUG       = 5  # special extra verbose output for hardcore debugging
 end
 
+VERBOSITY_OPTIONS = { 
+  :silent    => Verbosity::SILENT,
+  :errors    => Verbosity::ERRORS,
+  :warnings  => Verbosity::COMPLAIN,
+  :normal    => Verbosity::NORMAL,
+  :obnoxious => Verbosity::OBNOXIOUS,
+  :debug     => Verbosity::DEBUG,
+}.freeze()
 
 class TestResultsSanityChecks
   NONE      = 0  # no sanity checking of test results

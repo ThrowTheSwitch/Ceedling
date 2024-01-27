@@ -187,7 +187,6 @@ class ReportGeneratorReportinator
   # Run ReportGenerator with the given arguments.
   def run(args)
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORTGENERATOR_REPORT, [], args)
-    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     return @ceedling[:tool_executor].exec( command )
   end
@@ -196,7 +195,6 @@ class ReportGeneratorReportinator
   # Run gcov with the given arguments.
   def run_gcov(args)
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, [], args)
-    @ceedling[:streaminator].stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     return @ceedling[:tool_executor].exec( command )
   end

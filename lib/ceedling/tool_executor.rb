@@ -29,8 +29,10 @@ class ToolExecutor
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     command[:options] = {
-      :stderr_redirect => @tool_executor_helper.stderr_redirection(tool_config, @configurator.project_logging)
+      :stderr_redirect => @tool_executor_helper.stderr_redirection( tool_config, @configurator.project_logging )
       }
+
+    @streaminator.stdout_puts( "Command: #{command}", Verbosity::DEBUG )
 
     return command
   end
