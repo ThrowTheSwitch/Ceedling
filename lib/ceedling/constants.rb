@@ -8,6 +8,14 @@ class Verbosity
   DEBUG       = 5  # special extra verbose output for hardcore debugging
 end
 
+VERBOSITY_OPTIONS = { 
+  :silent    => Verbosity::SILENT,
+  :errors    => Verbosity::ERRORS,
+  :warnings  => Verbosity::COMPLAIN,
+  :normal    => Verbosity::NORMAL,
+  :obnoxious => Verbosity::OBNOXIOUS,
+  :debug     => Verbosity::DEBUG,
+}.freeze()
 
 class TestResultsSanityChecks
   NONE      = 0  # no sanity checking of test results
@@ -85,6 +93,8 @@ OPERATION_ASSEMBLE_SYM = :assemble unless defined?(OPERATION_ASSEMBLE_SYM)
 OPERATION_LINK_SYM     = :link     unless defined?(OPERATION_LINK_SYM)
 
 
+# Match presence of any glob pattern characters
+GLOB_PATTERN = /[\*\?\{\}\[\]]/
 RUBY_STRING_REPLACEMENT_PATTERN = /#\{.+\}/
 RUBY_EVAL_REPLACEMENT_PATTERN   = /^\{(.+)\}$/
 TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN = /(\$\{(\d+)\})/

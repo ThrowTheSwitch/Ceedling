@@ -150,7 +150,6 @@ class Generator
         arg_hash[:defines]
       )
 
-    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     begin
       shell_result = @tool_executor.exec( command )
@@ -215,7 +214,6 @@ class Generator
         arg_hash[:dependencies]
       )
 
-    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     begin
       shell_result = @tool_executor.exec( command )
@@ -256,7 +254,6 @@ class Generator
         arg_hash[:libraries],
         arg_hash[:libpaths]
       )
-    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     begin
       shell_result = @tool_executor.exec( command )
@@ -286,7 +283,6 @@ class Generator
 
     # Apply additional test case filters 
     command[:line] += @unity_utils.collect_test_runner_additional_args
-    @streaminator.stdout_puts("Command: #{command}", Verbosity::DEBUG)
 
     # Enable collecting GCOV results even when segmenatation fault is appearing
     # The gcda and gcno files will be generated for a test cases which doesn't

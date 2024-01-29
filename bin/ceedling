@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-#these are always used
+# Always used
 require 'rubygems'
 require 'fileutils'
 
@@ -248,7 +248,8 @@ unless (project_found)
 
 #===================================== We Have A Project Already ================================================
 else
-  require File.join(here,"lib","ceedling","yaml_wrapper.rb")
+  require File.join(here, "lib", "ceedling", "yaml_wrapper.rb")
+  require File.join(here, "lib", "ceedling", "constants.rb")
   require 'rbconfig'
 
   #determine platform
@@ -321,9 +322,41 @@ else
     end
   end
 
-  # Set global debug const before Configurator processes it so it's available before Configurator is
-  # Configurator will redefine this (to the same value)
-  PROJECT_DEBUG = options[:args].any? {|option| option.casecmp('verbosity:debug') == 0}
+  # Set global consts for verbosoty and debug from command line.
+  # By moving this up before Rake tasks are processed, 
+  # logging and other startup features are decoupled from Rake and Configurator instantiation.
+  verbosity = Verbosity::NORMAL
+
+  # Iterate through all command line options, and process any verbosity arguments
+  options[:args].each do |option|
+    _option = option.downcase()
+    next if not _option.start_with?( 'verbosity' )
+
+    # Process verbosity as string names `verbosity:<level>`
+    if matches = _option.match(/verbosity:(\w+)/)
+      # Get level string and convert to symbol
+      _verbosity = matches[1].to_sym
+      # Look up in verbosity hash
+      _verbosity = VERBOSITY_OPTIONS[_verbosity]
+      # If it's nil, there was a typo (empty Rake task will handle this)
+      verbosity = _verbosity if not _verbosity.nil?
+      break
+    end
+
+    # Process verbosity as a Rake numeric argument `verbosity[#]`
+    if matches = _option.match(/verbosity\[([0-5])\]/)
+      verbosity = matches[1].to_i
+      break
+    end    
+  end
+
+  # Set global const and freeze
+  PROJECT_VERBOSITY = verbosity
+  PROJECT_VERBOSITY.freeze()
+
+  # Set global const and freeze
+  PROJECT_DEBUG = (PROJECT_VERBOSITY == Verbosity::DEBUG)
+  PROJECT_DEBUG.freeze()
 
   # Add to the path
   if (options[:add_path] && !options[:add_path].empty?)

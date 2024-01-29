@@ -1,5 +1,6 @@
+require 'ceedling/constants'
 
-# add sort-ability to symbol so we can order keys array in hash for test-ability
+# Add sort-ability to symbol so we can order keys array in hash for test-ability
 class Symbol
   include Comparable
 
@@ -11,7 +12,7 @@ end
 
 class ConfiguratorSetup
 
-  constructor :configurator_builder, :configurator_validator, :configurator_plugins, :stream_wrapper
+  constructor :configurator_builder, :configurator_validator, :configurator_plugins, :streaminator
 
 
   def build_project_config(config, flattened_config)
@@ -74,28 +75,33 @@ class ConfiguratorSetup
   end
 
   def validate_paths(config)
-    validation = []
+    valid = true
 
     if config[:cmock][:unity_helper]
       config[:cmock][:unity_helper].each do |path|
-        validation << @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper ) 
+        valid &= @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper ) 
       end
     end
 
     config[:project][:options_paths].each do |path|
-      validation << @configurator_validator.validate_filepath_simple( path, :project, :options_paths )
+      valid &= @configurator_validator.validate_filepath_simple( path, :project, :options_paths )
     end
 
     config[:plugins][:load_paths].each do |path|
-      validation << @configurator_validator.validate_filepath_simple( path, :plugins, :load_paths )
+      valid &= @configurator_validator.validate_filepath_simple( path, :plugins, :load_paths )
     end
 
     config[:paths].keys.sort.each do |key|
-      validation << @configurator_validator.validate_path_list(config, :paths, key)
+      valid &= @configurator_validator.validate_path_list(config, :paths, key)
+      valid &= @configurator_validator.validate_paths_entries(config, key)
     end
 
-    return false if (validation.include?(false))
-    return true
+    config[:files].keys.sort.each do |key|
+      valid &= @configurator_validator.validate_path_list(config, :files, key)
+      valid &= @configurator_validator.validate_files_entries(config, key)
+    end
+
+    return valid
   end
 
   def validate_tools(config)
@@ -109,7 +115,7 @@ class ConfiguratorSetup
   end
 
   def validate_threads(config)
-    validate = true
+    valid = true
 
     compile_threads = config[:project][:compile_threads]
     test_threads = config[:project][:test_threads]
@@ -117,36 +123,36 @@ class ConfiguratorSetup
     case compile_threads
     when Integer
       if compile_threads < 1
-        @stream_wrapper.stderr_puts("ERROR: [:project][:compile_threads] must be greater than 0")
-        validate = false
+        @streaminator.stderr_puts("ERROR: [:project][:compile_threads] must be greater than 0", Verbosity::ERRORS)
+        valid = false
       end
     when Symbol
       if compile_threads != :auto
-        @stream_wrapper.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto") 
-        validate = false
+        @streaminator.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+        valid = false
       end
     else
-      @stream_wrapper.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto") 
-      validate = false
+      @streaminator.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+      valid = false
     end
 
     case test_threads
     when Integer
       if test_threads < 1
-        @stream_wrapper.stderr_puts("ERROR: [:project][:test_threads] must be greater than 0")
-        validate = false
+        @streaminator.stderr_puts("ERROR: [:project][:test_threads] must be greater than 0", Verbosity::ERRORS)
+        valid = false
       end
     when Symbol
       if test_threads != :auto
-        @stream_wrapper.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto") 
-        validate = false
+        @streaminator.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+        valid = false
       end
     else
-      @stream_wrapper.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto") 
-      validate = false
+      @streaminator.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+      valid = false
     end
 
-    return validate
+    return valid
   end
 
   def validate_plugins(config)
@@ -156,7 +162,7 @@ class ConfiguratorSetup
       Set.new( @configurator_plugins.script_plugins )
 
     missing_plugins.each do |plugin|
-      @stream_wrapper.stderr_puts("ERROR: Ceedling plugin '#{plugin}' contains no rake or Ruby class entry point. (Misspelled or missing files?)")
+      @streaminator.stderr_puts("ERROR: Ceedling plugin '#{plugin}' contains no rake or Ruby class entry point. (Misspelled or missing files?)", Verbosity::ERRORS)
     end
 
     return ( (missing_plugins.size > 0) ? false : true )

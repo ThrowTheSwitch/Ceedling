@@ -1,10 +1,10 @@
+require 'ceedling/constants'
 
 class Verbosinator
 
-  constructor :configurator
-
   def should_output?(level)
-    return (level <= @configurator.project_verbosity)
+    # Rely on global constant created at early stages of command line processing
+    return (level <= PROJECT_VERBOSITY)
   end
 
 end

@@ -81,7 +81,7 @@ class Dependencies < Plugin
 
   def get_include_directories_for_dependency(deplib)
     paths = (deplib[:artifacts][:includes] || []).map {|path| File.join(get_artifact_path(deplib), path)}
-    @ceedling[:file_system_utils].collect_paths(paths)
+    @ceedling[:file_path_collection_utils].collect_paths(paths)
   end
 
   def set_env_if_required(lib_path)
