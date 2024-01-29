@@ -332,6 +332,7 @@ class TestInvoker
           begin
             arg_hash = {
               context:    context,
+              test:       details[:filepath],
               executable: details[:executable],
               result:     details[:results_pass],
               options:    options              

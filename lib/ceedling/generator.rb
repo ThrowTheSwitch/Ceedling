@@ -267,8 +267,8 @@ class Generator
     end
   end
 
-  def generate_test_results(tool:, context:, executable:, result:)
-    arg_hash = {:tool => tool, :context => context, :executable => executable, :result_file => result}
+  def generate_test_results(tool:, context:, test:, executable:, result:)
+    arg_hash = {:tool => tool, :context => context, :test => test, :executable => executable, :result_file => result}
     @plugin_manager.pre_test_fixture_execute(arg_hash)
 
     msg = @reportinator.generate_progress("Running #{File.basename(arg_hash[:executable])}")
