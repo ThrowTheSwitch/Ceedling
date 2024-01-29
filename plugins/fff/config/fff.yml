@@ -1,0 +1,6 @@
+---
+:paths:
+  :support:
+    - $PLUGIN_PATH/src 
+    - $PLUGIN_PATH/vendor/fff
+...
