@@ -3,7 +3,9 @@ require 'ceedling/file_path_utils'
 require 'ceedling/version'
 
 # Set Rake verbosity using global constant verbosity set before Rake is loaded
-verbose(PROJECT_VERBOSITY >= Verbosity::OBNOXIOUS)
+if !!defined?(PROJECT_VERBOSITY)
+  verbose(PROJECT_VERBOSITY >= Verbosity::OBNOXIOUS)
+end
 
 desc "Display build environment version info."
 task :version do
