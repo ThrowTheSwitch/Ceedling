@@ -21,10 +21,10 @@ class DebuggerUtils
   def configure_debugger(command)
     # Make a clone of clean command hash
     # for further calls done for collecting segmentation fault
-    if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] &&
+    if @configurator.project_config_hash[:project_use_backtrace] &&
        @configurator.project_config_hash[:test_runner_cmdline_args]
       @command_line = command.clone
-    elsif @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+    elsif @configurator.project_config_hash[:project_use_backtrace]
       # If command_lines are not enabled, do not clone but create reference to command
       # line
       @command_line = command
@@ -39,8 +39,8 @@ class DebuggerUtils
   # @return [String, #output] - output from binary execution
   # @return [Float, #time] - time execution of the binary file
   def collect_cmd_output_with_gdb(command, cmd, test_case=nil)
-    gdb_file_name = @configurator.project_config_hash[:tools_backtrace_settings][:executable]
-    gdb_extra_args = @configurator.project_config_hash[:tools_backtrace_settings][:arguments]
+    gdb_file_name = @configurator.project_config_hash[:tools_backtrace_reporter][:executable]
+    gdb_extra_args = @configurator.project_config_hash[:tools_backtrace_reporter][:arguments]
     gdb_extra_args = gdb_extra_args.join(' ')
 
     gdb_exec_cmd = command.clone 
@@ -86,12 +86,12 @@ class DebuggerUtils
   #
   # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
   def enable_gcov_with_gdb_and_cmdargs(command)
-    if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] &&
+    if @configurator.project_config_hash[:project_use_backtrace] &&
        @configurator.project_config_hash[:test_runner_cmdline_args]
-       command[:options][:stderr_redirect] = if [:none, StdErrRedirect::NONE].include? @configurator.project_config_hash[:tools_backtrace_settings][:stderr_redirect]
+       command[:options][:stderr_redirect] = if [:none, StdErrRedirect::NONE].include? @configurator.project_config_hash[:tools_backtrace_reporter][:stderr_redirect]
                                                DEFAULT_BACKTRACE_TOOL[:stderr_redirect]
                                              else
-                                               @configurator.project_config_hash[:tools_backtrace_settings][:stderr_redirect]
+                                               @configurator.project_config_hash[:tools_backtrace_reporter][:stderr_redirect]
                                              end
     end
   end
@@ -188,7 +188,7 @@ class DebuggerUtils
   # @param(String, #text) - string containing flatten output log
   # @return [String, #output] - output with restored new line character
   def restore_new_line_character_in_flatten_log(text)
-    if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] &&
+    if @configurator.project_config_hash[:project_use_backtrace] &&
        @configurator.project_config_hash[:test_runner_cmdline_args]
       text = text.gsub(@new_line_tag, "\n")
     end
@@ -200,7 +200,7 @@ class DebuggerUtils
   # @param(String, #text) - string containing flatten output log
   # @return [String, #output] - output with restored colon character
   def restore_colon_character_in_flatten_log(text)
-    if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter] &&
+    if @configurator.project_config_hash[:project_use_backtrace] &&
        @configurator.project_config_hash[:test_runner_cmdline_args]
       text = text.gsub(@colon_tag, ':')
     end

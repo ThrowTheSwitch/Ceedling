@@ -23,7 +23,7 @@ class GeneratorTestResults
       results[:counts][:ignored] = $3.to_i
       results[:counts][:passed] = (results[:counts][:total] - results[:counts][:failed] - results[:counts][:ignored])
     else
-      if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+      if @configurator.project_config_hash[:project_use_backtrace]
         # Accessing this code block we expect failure during test execution
         # which should be connected with SIGSEGV
         results[:counts][:total] = 1   # Set to one as the amount of test is unknown in segfault, and one of the test is failing
@@ -64,7 +64,7 @@ class GeneratorTestResults
         results[:failures] << elements[0]
         results[:stdout] << elements[1] if (!elements[1].nil?)
       else # collect up all other
-        if !@configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+        if !@configurator.project_config_hash[:project_use_backtrace]
           results[:stdout] << line.chomp
         end
       end
@@ -104,7 +104,7 @@ class GeneratorTestResults
 
     if (line =~ stdout_regex)
       stdout = $1.clone
-      unless @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+      unless @configurator.project_config_hash[:project_use_backtrace]
         line.sub!(/#{Regexp.escape(stdout)}/, '')
       end
     end

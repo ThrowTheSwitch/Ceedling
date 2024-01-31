@@ -255,8 +255,8 @@ DEFAULT_RELEASE_LINKER_TOOL = {
   }
 
 DEFAULT_BACKTRACE_TOOL = {
-  :executable => FilePathUtils.os_executable_ext('gdb').freeze,
-  :name => 'default_backtrace_settings'.freeze,
+  :executable => ENV['GDB'].nil? ? FilePathUtils.os_executable_ext('gdb').freeze : ENV['GDB'],
+  :name => 'default_backtrace_reporter'.freeze,
   :stderr_redirect => StdErrRedirect::AUTO.freeze,
   :optional => true.freeze,
   :arguments => [
@@ -274,7 +274,7 @@ DEFAULT_TOOLS_TEST = {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
     :test_linker   => DEFAULT_TEST_LINKER_TOOL,
     :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
-    :backtrace_settings => DEFAULT_BACKTRACE_TOOL,
+    :backtrace_reporter => DEFAULT_BACKTRACE_TOOL,
     }
   }
 
@@ -331,7 +331,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :test_file_prefix => 'test_',
       :options_paths => [],
       :release_build => false,
-      :use_backtrace_gdb_reporter => false,
+      :use_backtrace => false,
       :debug => false
     },
 
