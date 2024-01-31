@@ -9,6 +9,15 @@ class Setupinator
     @config_hash = {}
   end
 
+
+  # Override to prevent exception handling from walking & stringifying the object variables.
+  # Object variables are gigantic and produce a flood of output.
+  def inspect
+    # TODO: When identifying information is added to constructor, insert it into `inspect()` string
+    return Setupinator.name
+  end
+
+
   def load_project_files
     @ceedling[:project_file_loader].find_project_files
     return @ceedling[:project_file_loader].load_project_config

@@ -152,7 +152,7 @@ class ConfiguratorValidator
     return true
   end
    
-  def validate_tool(config, key)
+  def validate_tool(config:, key:, respect_optional:true)
     # Get tool
     walk = [:tools, key]
     hash = @config_walkinator.fetch_value( config, *walk )
@@ -161,7 +161,7 @@ class ConfiguratorValidator
       tool: hash[:value],
       name: @reportinator.generate_config_walk( walk ),
       extension: config[:extension][:executable],
-      respect_optional: true
+      respect_optional: respect_optional
     }
   
     return @tool_validator.validate( **arg_hash )

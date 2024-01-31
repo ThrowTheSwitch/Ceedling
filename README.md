@@ -13,7 +13,8 @@ other awesome open-source projects you can’t live without if you‘re creating
 awesomeness in the C language.
 
 1. **[Unity]**, an xUnit-style test framework.
-1. **[CMock]**, a code generating, function mocking kit for interaction-based testing.
+1. **[CMock]**, a code generating, [function mocking & stubbing][test-doubles] kit 
+   for interaction-based testing<sup>†</sup>sup>.
 1. **[CException]**, a framework for adding simple exception handling to C projects
    in the style of higher-order programming languages.
 
@@ -25,10 +26,16 @@ Ceedling makes [Test-Driven Development][tdd] in C a breeze.
 
 Ceedling is also extensible with a simple plugin mechanism.
 
+<sup>†</sup>sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
+[fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
+
 [Unity]: https://github.com/throwtheswitch/unity
 [CMock]: https://github.com/throwtheswitch/cmock
 [CException]: https://github.com/throwtheswitch/cexception
 [tdd]: http://en.wikipedia.org/wiki/Test-driven_development
+[test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
+[FFF]: https://github.com/meekrosoft/fff
+[FFF-plugin]: https://github.com/ElectronVector/fake_function_framework
 
 # 📚 Documentation & Learning
 

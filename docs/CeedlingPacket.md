@@ -1815,14 +1815,14 @@ migrated to the `:test_build` and `:release_build` sections.
   :compile_threads: :auto
 ```
 
-* `:use_backtrace_gdb_reporter`
+* `:use_backtrace`
   When a test file runs into a **Segmentation Fault**, the test executable 
   immediately crashes and further details aren't collected. By default, Ceedling
   reports a single failure for the entire file, specifying that it segfaulted. 
   If you are running `gcc` or Clang (LLVM), then there is an option to get more
   detail!
 
-  Set `:use_backtrace_gdb_reporter` to `true` and a segfault will trigger Ceedling to 
+  Set `:use_backtrace` to `true` and a segfault will trigger Ceedling to 
   collect backtrace data from test runners. It will then run each test in the
   faulted test file individually, collecting the pass/fail results as normal, and
   providing further default on the test that actually faulted.
@@ -1851,7 +1851,7 @@ migrated to the `:test_build` and `:release_build` sections.
 
     ```yaml
       :tools:
-        :backtrace_settings:
+        :backtrace_reporter:
           :executable: gdb
           :arguments:
             - -q

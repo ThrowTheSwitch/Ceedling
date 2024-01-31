@@ -301,12 +301,14 @@ class TestInvokerHelper
     end
   end
 
-  def run_fixture_now(context:, executable:, result:, options:)
+  def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, options:)
     @generator.generate_test_results(
-      tool:       options[:test_fixture], 
-      context:    context,
-      executable: executable, 
-      result:     result)
+      tool:          options[:test_fixture], 
+      context:       context,
+      test_name:     test_name,
+      test_filepath: test_filepath,
+      executable:    executable, 
+      result:        result)
   end
   
 end

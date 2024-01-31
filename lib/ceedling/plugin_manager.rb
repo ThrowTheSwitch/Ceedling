@@ -76,7 +76,7 @@ class PluginManager
 
   def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
   def post_test_fixture_execute(arg_hash)
-    # special arbitration: raw test results are printed or taken over by plugins handling the job
+    # Special arbitration: Raw test results are printed or taken over by plugins handling the job
     @streaminator.stdout_puts(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
     execute_plugins(:post_test_fixture_execute, arg_hash)
   end
@@ -119,7 +119,7 @@ class PluginManager
           plugin.send(method, *args)
         end
       rescue
-        @streaminator.stderr_puts("Exception raised in plugin: #{plugin.name}, in method #{method}")
+        @streaminator.stderr_puts("Exception raised in plugin `#{plugin.name}` within build hook :#{method}")
         raise
       end
     end

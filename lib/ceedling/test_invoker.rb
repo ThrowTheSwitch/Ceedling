@@ -331,15 +331,18 @@ class TestInvoker
         @batchinator.exec(workload: :test, things: @testables) do |_, details|
           begin
             arg_hash = {
-              context:    context,
-              executable: details[:executable],
-              result:     details[:results_pass],
-              options:    options              
+              context:        context,
+              test_name:      details[:name],
+              test_filepath:  details[:filepath],
+              executable:     details[:executable],
+              result:         details[:results_pass],
+              options:        options              
             }
 
             @test_invoker_helper.run_fixture_now(**arg_hash)
-          rescue => e
-            raise e # Re-raise
+          # Handle exceptions so we can ensure post_test() is called.
+          # A lone `ensure` includes an implicit rescuing of StandardError 
+          # with the exception continuing up the call trace.
           ensure
             @plugin_manager.post_test( details[:filepath] )
           end

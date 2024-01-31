@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'rake'            # for ext() method
+require 'rake'                     # for ext() method
 require 'ceedling/file_path_utils' # for class methods
 require 'ceedling/defaults'
 require 'ceedling/constants'       # for Verbosity constants class & base file paths
@@ -24,6 +24,7 @@ class ConfiguratorBuilder
     # Create global constant
     Object.module_eval("#{formatted_key} = value")
   end
+
 
   def build_global_constants(config)
     config.each_pair do |key, value|

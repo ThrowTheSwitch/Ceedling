@@ -1,0 +1,5 @@
+---
+:teamcity:
+  # Override to FALSE in user, local project options to prevent CI $stdout messages
+  :build: TRUE
+...

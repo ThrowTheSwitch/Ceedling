@@ -15,6 +15,14 @@ class ConfiguratorSetup
   constructor :configurator_builder, :configurator_validator, :configurator_plugins, :streaminator
 
 
+  # Override to prevent exception handling from walking & stringifying the object variables.
+  # Object variables are gigantic and produce a flood of output.
+  def inspect
+    # TODO: When identifying information is added to constructor, insert it into `inspect()` string
+    return ConfiguratorSetup.name
+  end
+
+
   def build_project_config(config, flattened_config)
     ### flesh out config
     @configurator_builder.cleanup(flattened_config)
@@ -108,7 +116,16 @@ class ConfiguratorSetup
     valid = true
 
     config[:tools].keys.sort.each do |tool|
-      valid &= @configurator_validator.validate_tool(config, tool)
+      valid &= @configurator_validator.validate_tool( config:config, key:tool )
+    end
+
+    use_backtrace = config[:project][:use_backtrace]
+    if use_backtrace
+      valid &= @configurator_validator.validate_tool(
+        config:config,
+        key: :backtrace_reporter,
+        respect_optional: !use_backtrace # If enabled, force validation of tool
+      )
     end
 
     return valid

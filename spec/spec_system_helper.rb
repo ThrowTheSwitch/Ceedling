@@ -884,7 +884,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -904,7 +904,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
         @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
@@ -929,7 +929,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
         @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all --test_case=test_add_numbers_will_fail 2>&1`
@@ -954,7 +954,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace_gdb_reporter, 'TRUE')
+        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
         @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all --exclude_test_case=add_numbers_adds_numbers 2>&1`
