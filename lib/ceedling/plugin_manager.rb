@@ -119,7 +119,7 @@ class PluginManager
           plugin.send(method, *args)
         end
       rescue
-        @streaminator.stderr_puts("Exception raised in plugin: #{plugin.name}, in method #{method}")
+        @streaminator.stderr_puts("Exception raised in plugin `#{plugin.name}` within build hook :#{method}")
         raise
       end
     end
