@@ -49,13 +49,13 @@ describe FileFinderHelper do
       end
 
       it 'outputs a complaint if complain is warn' do
-        msg = 'WARNING: Found no file d.c in search paths.'
+        msg = 'WARNING: Found no file `d.c` in search paths.'
         expect(@streaminator).to receive(:stderr_puts).with(msg, Verbosity::COMPLAIN)
         @ff_helper.find_file_in_collection('d.c', FILE_LIST, :warn)
       end
 
       it 'outputs and raises an error if  complain is error' do
-        msg = 'ERROR: Found no file d.c in search paths.'
+        msg = 'ERROR: Found no file `d.c` in search paths.'
         allow(@streaminator).to receive(:stderr_puts).with(msg, Verbosity::ERRORS) do
           expect{@ff_helper.find_file_in_collection('d.c', FILE_LIST, :warn)}.to raise_error
         end

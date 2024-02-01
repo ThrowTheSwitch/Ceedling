@@ -59,12 +59,12 @@ class FileFinderHelper
   private
 
   def blow_up(filename, extra_message="")
-    error = ["ERROR: Found no file #{filename} in search paths.", extra_message].join(' ').strip
+    error = ["ERROR: Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
     raise CeedlingException.new(error)
   end
     
   def gripe(filename, extra_message="")
-    warning = ["WARNING: Found no file #{filename} in search paths.", extra_message].join(' ').strip
+    warning = ["WARNING: Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
     @streaminator.stderr_puts(warning + extra_message, Verbosity::COMPLAIN)
   end
 
