@@ -311,9 +311,10 @@ class ConfiguratorBuilder
       all_tests.include( File.join(path, "#{in_hash[:project_test_file_prefix]}*#{in_hash[:extension_source]}") )
     end
 
-    @file_path_collection_utils.revise_filelist( all_tests, in_hash[:files_test] )
-
-    return {:collection_all_tests => all_tests}
+    return {
+      # Add / subtract files via :files ↳ :test
+      :collection_all_tests => @file_path_collection_utils.revise_filelist( all_tests, in_hash[:files_test] )
+    }
   end
 
 
@@ -332,10 +333,11 @@ class ConfiguratorBuilder
       all_assembly.include( File.join(path, "*#{in_hash[:extension_assembly]}") )
     end
 
-    # Also add files that we are explicitly adding via :files:assembly: section
-    @file_path_collection_utils.revise_filelist( all_assembly, in_hash[:files_assembly] )
+    return {
+      # Add / subtract files via :files ↳ :assembly
+      :collection_all_assembly => @file_path_collection_utils.revise_filelist( all_assembly, in_hash[:files_assembly] )
+    }
 
-    return {:collection_all_assembly => all_assembly}
   end
 
 
@@ -346,9 +348,10 @@ class ConfiguratorBuilder
       all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
     end
 
-    @file_path_collection_utils.revise_filelist( all_source, in_hash[:files_source] )
-
-    return {:collection_all_source => all_source}
+    return {
+      # Add / subtract files via :files ↳ :source
+      :collection_all_source => @file_path_collection_utils.revise_filelist( all_source, in_hash[:files_source] )
+    }
   end
 
 
@@ -364,9 +367,10 @@ class ConfiguratorBuilder
       all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
     end
 
-    @file_path_collection_utils.revise_filelist( all_headers, in_hash[:files_include] )
-
-    return {:collection_all_headers => all_headers}
+    return {
+      # Add / subtract files via :files ↳ :include
+      :collection_all_headers => @file_path_collection_utils.revise_filelist( all_headers, in_hash[:files_include] )
+    }
   end
 
 
@@ -387,10 +391,13 @@ class ConfiguratorBuilder
       release_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:release_build_use_assembly]
     end
 
-    @file_path_collection_utils.revise_filelist( release_input, in_hash[:files_source] )
-    @file_path_collection_utils.revise_filelist( release_input, in_hash[:files_assembly] ) if in_hash[:release_build_use_assembly]
+    # Add / subtract files via :files ↳ :source & :files ↳ :assembly
+    revisions =  in_hash[:files_source]
+    revisions += in_hash[:files_assembly] if in_hash[:release_build_use_assembly]
 
-    return {:collection_release_build_input => release_input}
+    return {
+      :collection_release_build_input => @file_path_collection_utils.revise_filelist( release_input, revisions )
+    }
   end
 
 
@@ -420,12 +427,15 @@ class ConfiguratorBuilder
       all_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
     end
 
-    @file_path_collection_utils.revise_filelist( all_input, in_hash[:files_test] )
-    @file_path_collection_utils.revise_filelist( all_input, in_hash[:files_support] )
-    @file_path_collection_utils.revise_filelist( all_input, in_hash[:files_source] )
-    @file_path_collection_utils.revise_filelist( all_input, in_hash[:files_assembly] ) if in_hash[:test_build_use_assembly]
+    # Add / subtract files via :files entries
+    revisions =  in_hash[:files_test]
+    revisions += in_hash[:files_support]
+    revisions += in_hash[:files_source]
+    revisions += in_hash[:files_assembly] if in_hash[:test_build_use_assembly]
 
-    return {:collection_existing_test_build_input => all_input}
+    return {
+      :collection_existing_test_build_input => @file_path_collection_utils.revise_filelist( all_input, revisions )
+    }
   end
 
 
@@ -451,10 +461,7 @@ class ConfiguratorBuilder
       support.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
     end
 
-    @file_path_collection_utils.revise_filelist( support, in_hash[:files_support] )
-
-    # Ensure FileList patterns & revisions are resolved into full list of filepaths
-    support.resolve()
+    support = @file_path_collection_utils.revise_filelist( support, in_hash[:files_support] )
 
     support.each { |file| sources << file }
 
@@ -464,9 +471,10 @@ class ConfiguratorBuilder
     # No build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
     objects.map! { |object| object.ext(in_hash[:extension_object]) }
 
-    return { :collection_all_support => sources,
-             :collection_test_fixture_extra_link_objects => objects
-           }
+    return { 
+      :collection_all_support => sources,
+      :collection_test_fixture_extra_link_objects => objects
+    }
   end
 
 
@@ -476,10 +484,7 @@ class ConfiguratorBuilder
     filelist = @file_wrapper.instantiate_file_list()
 
     # Vendor paths for frameworks
-    paths = []
-    paths << in_hash[:project_build_vendor_unity_path]
-    paths << in_hash[:project_build_vendor_cexception_path] if (in_hash[:project_use_exceptions])
-    paths << in_hash[:project_build_vendor_cmock_path]      if (in_hash[:project_use_mocks])
+    paths = get_vendor_paths(in_hash)
 
     # Collect vendor framework code files
     paths.each do |path|
@@ -488,6 +493,8 @@ class ConfiguratorBuilder
 
     # Ensure FileList patterns & revisions are resolved into full list of filepaths
     filelist.resolve()
+
+    puts(filelist)
 
     # Extract just source file names
     filelist.each do |filepath|

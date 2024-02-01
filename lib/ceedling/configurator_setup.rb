@@ -72,6 +72,7 @@ class ConfiguratorSetup
     return true
   end
 
+
   def validate_required_section_values(config)
     validation = []
     validation << @configurator_validator.exists?(config, :project, :build_root)
@@ -81,6 +82,7 @@ class ConfiguratorSetup
     return false if (validation.include?(false))
     return true
   end
+
 
   def validate_paths(config)
     valid = true

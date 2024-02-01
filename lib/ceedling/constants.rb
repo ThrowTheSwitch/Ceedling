@@ -23,7 +23,6 @@ class TestResultsSanityChecks
   THOROUGH  = 2  # perform checks that require inside knowledge of system workings
 end
 
-
 class StdErrRedirect
   NONE = :none
   AUTO = :auto
@@ -31,7 +30,6 @@ class StdErrRedirect
   UNIX = :unix
   TCSH = :tcsh
 end
-
 
 unless defined?(PROJECT_ROOT)
   PROJECT_ROOT = Dir.pwd()

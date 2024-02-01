@@ -1,7 +1,6 @@
 require 'set'
 require 'pathname'
 require 'fileutils'
-require 'rake'
 require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
 
@@ -81,18 +80,49 @@ class FilePathCollectionUtils
   end
 
 
-  # Given a file list, add to it or remove from it considering (+:/-:) aggregation operators
+  # Given a file list, add to it or remove from it considering (+:/-:) aggregation operators.
+  # Rake's FileList does not robustly handle relative filepaths and patterns.
+  # So, we rebuild the FileList ourselves and return it.
+  # TODO: Replace FileList with our own, better version.
   def revise_filelist(list, revisions)
+    plus  = Set.new # All real, expanded directory paths to add
+    minus = Set.new # All real, expanded paths to exclude
+    
+    # Build base plus set for revised path
+    list.each do |path|
+      # Start with expanding all list entries to absolute paths
+      plus << File.expand_path( path )
+    end
+
     revisions.each do |revision|
-      # Include or exclude revision in file list
+      # Include or exclude revisions in file list
       path = FilePathUtils.no_aggregation_decorators( revision )
       
+      # Working list of revisions
+      filepaths = []
+
+      # Expand path by pattern as needed and add only filepaths to working list
+      @file_wrapper.directory_listing( path ).each do |entry|
+        filepaths << File.expand_path( entry ) if !@file_wrapper.directory?( entry )
+      end
+
+      # Handle +: / -: revisions
       if FilePathUtils.add_path?( revision )
-        list.include(path)
+        plus.merge( filepaths )
       else
-        list.exclude(path)
+        minus.merge( filepaths )
       end
     end
+
+    # Use Set subtraction operator to remove any excluded paths
+    paths = (plus - minus).to_a
+
+    paths.map! do |path|
+      # Reform path from full absolute to nice, neat relative path instead
+      (Pathname.new( path ).relative_path_from( @working_dir_path )).to_s()
+    end
+
+    return FileList.new( paths )
   end
 
 end
