@@ -353,35 +353,47 @@ class Configurator
 
 
   def validate(config)
-    # collect felonies and go straight to jail
-    raise CeedlingException.new("ERROR: Ceedling configuration failed validation") if (not @configurator_setup.validate_required_sections( config ))
+    # Collect felonies and go straight to jail
+    if (not @configurator_setup.validate_required_sections( config ))
+      raise CeedlingException.new("ERROR: Ceedling configuration failed validation")
+    end
 
-    # collect all misdemeanors, everybody on probation
-    blotter = []
-    blotter << @configurator_setup.validate_required_section_values( config )
-    blotter << @configurator_setup.validate_paths( config )
-    blotter << @configurator_setup.validate_tools( config )
-    blotter << @configurator_setup.validate_threads( config )
-    blotter << @configurator_setup.validate_plugins( config )
+    # Collect all misdemeanors, everybody on probation
+    blotter = true
+    blotter &= @configurator_setup.validate_required_section_values( config )
+    blotter &= @configurator_setup.validate_paths( config )
+    blotter &= @configurator_setup.validate_tools( config )
+    blotter &= @configurator_setup.validate_threads( config )
+    blotter &= @configurator_setup.validate_plugins( config )
 
-    raise CeedlingException.new("ERROR: Ceedling configuration failed validation") if (blotter.include?( false ))
+    if !blotter
+      raise CeedlingException.new("ERROR: Ceedling configuration failed validation")
+    end
   end
 
 
-  # create constants and accessors (attached to this object) from given hash
+  # Create constants and accessors (attached to this object) from given hash
   def build(config, *keys)
-    # create flattened & expanded configuration hash
-    built_config = @configurator_setup.build_project_config( config, @configurator_builder.flattenify( config ) )
+    flattened_config = @configurator_builder.flattenify( config )
 
-    @project_config_hash = built_config.clone
+    @configurator_setup.build_project_config( flattened_config )
+
+    @configurator_setup.build_directory_structure( flattened_config )
+
+    # Copy Unity, CMock, CException into vendor directory within build directory
+    @configurator_setup.vendor_frameworks( flattened_config )
+
+    @configurator_setup.build_project_collections( flattened_config )
+
+    @project_config_hash = flattened_config.clone
     store_config()
 
-    @configurator_setup.build_constants_and_accessors(built_config, binding())
+    @configurator_setup.build_constants_and_accessors( flattened_config, binding() )
 
-    # top-level keys disappear when we flatten, so create global constants & accessors to any specified keys
+    # Top-level keys disappear when we flatten, so create global constants & accessors to any specified keys
     keys.each do |key|
       hash = { key => config[key] }
-      @configurator_setup.build_constants_and_accessors(hash, binding())
+      @configurator_setup.build_constants_and_accessors( hash, binding() )
     end
   end
 
@@ -426,24 +438,6 @@ class Configurator
     config_more.keys.each do |key|
       hash = { key => config_base[key] }
       @configurator_setup.build_constants_and_accessors(hash, binding())
-    end
-  end
-
-
-  # Many of Configurator's dynamically attached collections are Rake FileLists.
-  # Rake FileLists are not thread safe with respect to resolving patterns into specific file lists.
-  # Unless forced, file patterns are resolved upon first access.
-  # This method forces resolving of all FileList-based collections and can be called in the build 
-  # process at a moment after any file creation operations are complete but before first access 
-  # inside a thread.
-  # TODO: Remove this once a thread-safe version of FileList has been brought into the project.
-  def resolve_collections()
-    collections = self.methods.select { |m| m =~ /^collection_/ }
-    collections.each do |collection|
-      ref = self.send(collection.to_sym)
-      if ref.class == FileList
-        ref.resolve()
-      end
     end
   end
 

@@ -1,26 +1,6 @@
 require 'ceedling/constants'
 
-task :test_deps => [:directories] do
-  # Copy Unity C files into build/vendor directory structure
-  @ceedling[:file_wrapper].cp_r(
-    # '/.' to cause cp_r to copy directory contents
-    File.join( UNITY_VENDOR_PATH, UNITY_LIB_PATH, '/.' ),
-    PROJECT_BUILD_VENDOR_UNITY_PATH )
-
-  # Copy CMock C files into build/vendor directory structure
-  @ceedling[:file_wrapper].cp_r(
-    # '/.' to cause cp_r to copy directory contents
-    File.join( CMOCK_VENDOR_PATH, CMOCK_LIB_PATH, '/.' ),
-    PROJECT_BUILD_VENDOR_CMOCK_PATH ) if PROJECT_USE_MOCKS
-
-  # Copy CException C files into build/vendor directory structure
-  @ceedling[:file_wrapper].cp_r(
-    # '/.' to cause cp_r to copy directory contents
-    File.join( CEXCEPTION_VENDOR_PATH, CEXCEPTION_LIB_PATH, '/.' ),
-    PROJECT_BUILD_VENDOR_CEXCEPTION_PATH ) if PROJECT_USE_EXCEPTIONS
-end
-
-task :test => [:test_deps] do
+task :test => [:directories] do
   Rake.application['test:all'].invoke
 end
 
@@ -34,7 +14,7 @@ namespace TEST_SYM do
   }
 
   desc "Run all unit tests (also just 'test' works)."
-  task :all => [:test_deps] do
+  task :all => [:directories] do
     @ceedling[:test_invoker].setup_and_invoke(
       tests:COLLECTION_ALL_TESTS,
       options:{:force_run => true, :build_only => false}.merge(TOOL_COLLECTION_TEST_TASKS))
@@ -50,12 +30,12 @@ namespace TEST_SYM do
   end
 
   desc "Just build tests without running."
-  task :build_only => [:test_deps] do
+  task :build_only => [:directories] do
     @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, options:{:build_only => true}.merge(TOOL_COLLECTION_TEST_TASKS))
   end
 
   desc "Run tests by matching regular expression pattern."
-  task :pattern, [:regex] => [:test_deps] do |t, args|
+  task :pattern, [:regex] => [:directories] do |t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each { |test| matches << test if (test =~ /#{args.regex}/) }
@@ -68,7 +48,7 @@ namespace TEST_SYM do
   end
 
   desc "Run tests whose test path contains [dir] or [dir] substring."
-  task :path, [:dir] => [:test_deps] do |t, args|
+  task :path, [:dir] => [:directories] do |t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each { |test| matches << test if File.dirname(test).include?(args.dir.gsub(/\\/, '/')) }

@@ -106,6 +106,7 @@ configurator_setup:
     - configurator_validator
     - configurator_plugins
     - streaminator
+    - file_wrapper
 
 configurator_plugins:
   compose:

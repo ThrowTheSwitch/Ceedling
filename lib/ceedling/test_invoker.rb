@@ -34,11 +34,6 @@ class TestInvoker
   def setup_and_invoke(tests:, context:TEST_SYM, options:{})
     # Wrap everything in an exception handler
     begin
-      # FileList-based collections are not thread safe.
-      # Force file pattern resolution before any FileList first accesses inside concurrent threads.
-      # TODO: Remove this once a thread-safe version of FileList has been brought into the project.
-      @configurator.resolve_collections()
-
       # Begin fleshing out the testables data structure
       @batchinator.build_step("Preparing Build Paths", heading: false) do
         results_path = File.join( @configurator.project_build_root, context.to_s, 'results' )

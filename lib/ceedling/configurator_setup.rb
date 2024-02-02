@@ -12,7 +12,7 @@ end
 
 class ConfiguratorSetup
 
-  constructor :configurator_builder, :configurator_validator, :configurator_plugins, :streaminator
+  constructor :configurator_builder, :configurator_validator, :configurator_plugins, :streaminator, :file_wrapper
 
 
   # Override to prevent exception handling from walking & stringifying the object variables.
@@ -23,35 +23,70 @@ class ConfiguratorSetup
   end
 
 
-  def build_project_config(config, flattened_config)
+  def build_project_config(flattened_config)
     ### flesh out config
-    @configurator_builder.cleanup(flattened_config)
-    @configurator_builder.set_exception_handling(flattened_config)
+    @configurator_builder.cleanup( flattened_config )
+    @configurator_builder.set_exception_handling( flattened_config )
 
     ### add to hash values we build up from configuration & file system contents
-    flattened_config.merge!(@configurator_builder.set_build_paths(flattened_config))
-    flattened_config.merge!(@configurator_builder.set_rakefile_components(flattened_config))
-    flattened_config.merge!(@configurator_builder.set_release_target(flattened_config))
-    flattened_config.merge!(@configurator_builder.set_build_thread_counts(flattened_config))    
-    flattened_config.merge!(@configurator_builder.collect_project_options(flattened_config))
+    flattened_config.merge!( @configurator_builder.set_build_paths( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.set_rakefile_components( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.set_release_target( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.set_build_thread_counts( flattened_config ) )
 
+    return flattened_config
+  end
+
+  def build_directory_structure(flattened_config)
+    flattened_config[:project_build_paths].each do |path|
+      puts(path)
+      @file_wrapper.mkdir( path )
+    end
+  end
+
+  def vendor_frameworks(flattened_config)
+    # Copy Unity C files into build/vendor directory structure
+    @file_wrapper.cp_r(
+      # '/.' to cause cp_r to copy directory contents
+      File.join( flattened_config[:unity_vendor_path], UNITY_LIB_PATH, '/.' ),
+      flattened_config[:project_build_vendor_unity_path]
+    )
+
+    # Copy CMock C files into build/vendor directory structure
+    @file_wrapper.cp_r(
+      # '/.' to cause cp_r to copy directory contents
+      File.join( flattened_config[:cmock_vendor_path], CMOCK_LIB_PATH, '/.' ),
+      flattened_config[:project_build_vendor_cmock_path]
+    ) if flattened_config[:project_use_mocks]
+
+    # Copy CException C files into build/vendor directory structure
+    @file_wrapper.cp_r(
+      # '/.' to cause cp_r to copy directory contents
+      File.join( flattened_config[:cexception_vendor_path], CEXCEPTION_LIB_PATH, '/.' ),
+      flattened_config[:project_build_vendor_cexception_path]
+    ) if flattened_config[:project_use_exceptions]
+  end
+
+  def build_project_collections(flattened_config)
+    flattened_config.merge!( @configurator_builder.collect_project_options( flattened_config ) ) 
+ 
     ### iterate through all entries in paths section and expand any & all globs to actual paths
-    flattened_config.merge!(@configurator_builder.expand_all_path_globs(flattened_config))
+    flattened_config.merge!( @configurator_builder.expand_all_path_globs( flattened_config ) )
 
-    flattened_config.merge!(@configurator_builder.collect_vendor_paths(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_source_and_include_paths(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_source_include_vendor_paths(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_test_support_source_include_paths(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_test_support_source_include_vendor_paths(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_tests(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_assembly(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_source(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_headers(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_release_build_input(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_existing_test_build_input(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_release_artifact_extra_link_objects(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_test_fixture_extra_link_objects(flattened_config))
-    flattened_config.merge!(@configurator_builder.collect_vendor_framework_sources(flattened_config))
+    flattened_config.merge!( @configurator_builder.collect_vendor_paths( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_source_and_include_paths( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_source_include_vendor_paths( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_test_support_source_include_paths( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_test_support_source_include_vendor_paths( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_tests( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_assembly( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_source( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_headers( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_release_build_input( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_existing_test_build_input( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_release_artifact_extra_link_objects( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_test_fixture_extra_link_objects( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_vendor_framework_sources( flattened_config ) )
 
     return flattened_config
   end

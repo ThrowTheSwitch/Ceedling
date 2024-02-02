@@ -51,7 +51,9 @@ task :directories => PROJECT_BUILD_PATHS
 # list paths discovered at load time
 namespace :paths do
   standard_paths = ['test', 'source', 'include', 'support']
+
   paths = @ceedling[:setupinator].config_hash[:paths].keys.map{|n| n.to_s.downcase}
+  
   paths.each do |name|
     desc "List all collected #{name} paths." if standard_paths.include?(name)
     task(name.to_sym) do
@@ -68,7 +70,6 @@ end
 
 # list files & file counts discovered at load time
 namespace :files do
-
   categories = ['tests', 'source', 'assembly', 'headers', 'support']
 
   categories.each do |category|

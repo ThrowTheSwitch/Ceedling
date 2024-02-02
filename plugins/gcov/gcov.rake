@@ -29,7 +29,7 @@ task directories: [GCOV_BUILD_OUTPUT_PATH, GCOV_RESULTS_PATH, GCOV_DEPENDENCIES_
 namespace GCOV_SYM do
 
   desc 'Run code coverage for all tests'
-  task all: [:test_deps] do
+  task all: [:directories] do
     @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS)
   end
 
@@ -43,7 +43,7 @@ namespace GCOV_SYM do
   end
 
   desc 'Run tests by matching regular expression pattern.'
-  task :pattern, [:regex] => [:test_deps] do |_t, args|
+  task :pattern, [:regex] => [:directories] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each do |test|
@@ -58,7 +58,7 @@ namespace GCOV_SYM do
   end
 
   desc 'Run tests whose test path contains [dir] or [dir] substring.'
-  task :path, [:dir] => [:test_deps] do |_t, args|
+  task :path, [:dir] => [:directories] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each do |test|
@@ -80,7 +80,7 @@ namespace GCOV_SYM do
            @ceedling[:file_finder].find_test_from_file_path(test)
          end
        ]) do |test|
-    @ceedling[:rake_wrapper][:test_deps].invoke
+    @ceedling[:rake_wrapper][:directories].invoke
     @ceedling[:test_invoker].setup_and_invoke(tests:[test.source], context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS)
   end
 end

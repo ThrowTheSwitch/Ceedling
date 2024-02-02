@@ -48,7 +48,6 @@ end
 
 # Non-advertised debug task
 task :debug do
-  Rake::Task[:verbosity].invoke(Verbosity::DEBUG)
   Rake.application.options.trace = true
 end
 
