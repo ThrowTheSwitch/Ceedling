@@ -1,0 +1,10 @@
+---
+:test_suite_reporter:
+  :reports: []
+  :junit:
+    :filename: test_suite_report_junit.xml
+  :xunit:
+    :filename: test_suite_report_xunit.xml
+  :json:
+    :filename: test_suite_report.json
+...
