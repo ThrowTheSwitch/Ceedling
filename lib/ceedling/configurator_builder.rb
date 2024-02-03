@@ -494,8 +494,6 @@ class ConfiguratorBuilder
     # Ensure FileList patterns & revisions are resolved into full list of filepaths
     filelist.resolve()
 
-    puts(filelist)
-
     # Extract just source file names
     filelist.each do |filepath|
       sources << File.basename(filepath)

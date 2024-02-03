@@ -39,7 +39,6 @@ class ConfiguratorSetup
 
   def build_directory_structure(flattened_config)
     flattened_config[:project_build_paths].each do |path|
-      puts(path)
       @file_wrapper.mkdir( path )
     end
   end
