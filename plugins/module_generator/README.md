@@ -4,7 +4,7 @@ ceedling-module-generator
 ## Plugin Overview
 
 The module_generator plugin adds a pair of new commands to Ceedling, allowing
-you to make or remove modules according to predefined templates. WIth a single call,
+you to make or remove modules according to predefined templates. With a single call,
 Ceedling can generate a source, header, and test file for a new module. If given a
 pattern, it can even create a series of submodules to support specific design patterns.
 Finally, it can just as easily remove related modules, avoiding the need to delete
@@ -82,7 +82,7 @@ by adding to the `:includes` array. For example:
 ### Boilerplates
 
 You can specify the actual boilerplate used for each of your files. This is the handy place to
-put that corporate copyright notice (or maybe a copyleft notice, if that's your perference?)
+put that corporate copyright notice (or maybe a copyleft notice, if that's your preference?)
 
 ```
 :module_generator:
