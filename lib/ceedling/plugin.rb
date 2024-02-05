@@ -13,7 +13,7 @@ class Plugin
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Plugin's object variables are gigantic and produce a flood of output.
   def inspect
-    return Plugin.name
+    return this.class.name
   end
 
   def setup; end

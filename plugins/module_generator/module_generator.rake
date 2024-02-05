@@ -10,6 +10,7 @@ namespace :module do
       p = files.delete(pat)
       optz[:pattern] = p unless p.nil?
     end
+
     files.each do |v|
       module_root_path, module_name = v.split(module_root_separator, 2)
       if module_name

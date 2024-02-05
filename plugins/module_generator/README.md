@@ -33,6 +33,8 @@ In this example, we'd create 9 files total: 3 headers, 3 source files, and 3 tes
 files would be named `SecretLairModel`, `SecretLairConductor`, and `SecretLairHardware`. Isn't
 that nice?
 
+But what if I don't want it to place my new files in the default location?
+
 Similarly, you can create stubs for all functions in a header file just by making a single call
 to your handy `stub` feature, like this:
 
@@ -84,13 +86,26 @@ by adding to the `:includes` array. For example:
 You can specify the actual boilerplate used for each of your files. This is the handy place to
 put that corporate copyright notice (or maybe a copyleft notice, if that's your preference?)
 
+Notice there is a separate template for source files, include files, and test files. Also, 
+your boilerplates can optionally contain `%1$s` which will inject the filename into that spot.
+
 ```
 :module_generator:
-  :boilerplates: |
-    /***************************
-    * This file is Awesome.    *
-    * That is All.             *
-    ***************************/
+  :boilerplates: 
+    :src: |
+      /***************************
+      * %1$s
+      * This file is Awesome.
+      * That is All.
+      ***************************/
+    :inc: |
+      /***************************
+      * Header. Woo.             *
+      ***************************/
+    :tst: |
+      /***************************
+      * My Awesome Test For %1$s
+      ***************************/
 ```
 
 ### Test Defines

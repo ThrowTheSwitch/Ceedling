@@ -19,9 +19,8 @@ class ConfiguratorSetup
   # Object variables are gigantic and produce a flood of output.
   def inspect
     # TODO: When identifying information is added to constructor, insert it into `inspect()` string
-    return ConfiguratorSetup.name
+    return this.class.name
   end
-
 
   def build_project_config(flattened_config)
     ### flesh out config

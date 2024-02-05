@@ -58,6 +58,17 @@ class ModuleGenerator < Plugin
       unity_generator_options[:paths_tst] = [ 'test' ]
     end
 
+    # Flatten if necessary
+    if (unity_generator_options[:paths_src].class == Hash)
+      unity_generator_options[:paths_src] = unity_generator_options[:paths_src].values.flatten
+    end
+    if (unity_generator_options[:paths_inc].class == Hash)
+      unity_generator_options[:paths_inc] = unity_generator_options[:paths_inc].values.flatten
+    end
+    if (unity_generator_options[:paths_tst].class == Hash)
+      unity_generator_options[:paths_tst] = unity_generator_options[:paths_tst].values.flatten
+    end
+
     # Read Boilerplate template file.
     if (defined? MODULE_GENERATOR_BOILERPLATE_FILES)
 
@@ -76,7 +87,7 @@ class ModuleGenerator < Plugin
       end
     end
 
-    # CHeck if using "create[<module_root>:<module_name>]" optional paths from command line.
+    # Check if using "create[<module_root>:<module_name>]" optional paths from command line.
     if optz[:module_root_path].to_s.empty?
       # No path specified. Use the first of each list because we have nothing else to base it on
       unity_generator_options[:skeleton_path] = unity_generator_options[:paths_src][0]

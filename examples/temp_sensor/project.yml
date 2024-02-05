@@ -214,7 +214,10 @@
 #   :includes:
 #     :tst: []
 #     :src: []:module_generator:
-#   :boilerplates: ""
+#   :boilerplates: 
+#     :src: ""
+#     :inc: ""
+#     :tst: ""
 
 # :dependencies:
 #   :libraries:
