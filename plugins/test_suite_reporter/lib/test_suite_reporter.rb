@@ -9,10 +9,10 @@ class TestSuiteReporter < Plugin
     config = @ceedling[:setupinator].config_hash
     @config = config[:test_suite_reporter]
     
-    # Get reports list
+    # Get list of enabled reports
     reports = @config[:reports]
 
-    # Hash: Report name => Reporter object
+    # Array of Reporter subclass objects
     @reporters = load_reporters( reports, @config )
 
     # Disable this plugin if no reports configured
@@ -45,6 +45,9 @@ class TestSuiteReporter < Plugin
     # Do nothing if no results were generated (e.g. not a test build)
     return if @results.empty?
 
+    msg = @reportinator.generate_heading( "Running Test Suite Reports" )
+    @streaminator.stdout_puts( msg )
+
     # For each configured reporter, generate a test suite report per test context
     @reporters.each do |reporter|
       @results.each do |context, results_filepaths|
@@ -53,12 +56,15 @@ class TestSuiteReporter < Plugin
 
         filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
 
-        msg = @reportinator.generate_progress( "Generating tests report artifact #{filepath}" )
+        msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
         @streaminator.stdout_puts( msg )
 
         reporter.write( filepath: filepath, results: _results )
       end
     end
+
+  # White space at command line after progress messages
+  @streaminator.stdout_puts( '' )
   end
 
   ### Private
@@ -68,19 +74,27 @@ class TestSuiteReporter < Plugin
   def load_reporters(reports, config)
     reporters = []
 
-    # For each report name string, dynamically load the corresponding class
+    # For each report name string in configuration, dynamically load the corresponding 
+    # Reporter subclass by convention
+
+    # The steps below limit the set up complexity that would otherwise be
+    # required of a user's custom Reporter subclass
     reports.each do |report|
-      # The steps below limit the set up complexity that would otherwise be
-      # required of a user's custom derived Reporter subclass
+      # Enforce lowercase convention internally
+      report = report.downcase()
 
-      # Load each reporter object dynamically by convention
-      require "scripts/#{report}_tests_reporter.rb"
+      # Convert report configuration name 'foo_bar' to 'FooBarTestReporter' class name
+      #  1. Convert 'x_Y' (snake case) to camel case ('xY')
+      #  2. Capitalize first character of config name and add rest of class name
+      _reporter = report.gsub(/_./) {|match| match.upcase().delete('_') }
+      _reporter = _reporter[0].capitalize() + _reporter[1..-1] + 'TestsReporter'
 
-      # Dynamically instantiate reporter subclass
-      reporter = eval( "#{report.capitalize()}TestsReporter.new()" )
+      # Load each Reporter sublcass Ruby file dynamically by convention
+      # For custom user subclasses, requires directoy in :plugins ↳ :load_paths
+      require "#{report}_tests_reporter"
 
-      # Set internal name
-      reporter.handle = report.to_sym
+      # Dynamically instantiate Reporter subclass object
+      reporter = eval( "#{_reporter}.new(handle: :#{report})" )
 
       # Inject configuration
       reporter.config = config[report.to_sym] 
@@ -88,9 +102,10 @@ class TestSuiteReporter < Plugin
       # Inject utilty object
       reporter.config_walkinator = @ceedling[:config_walkinator]
 
-      # Perform Reporter set up
+      # Perform Reporter sublcass set up
       reporter.setup()
 
+      # Add new object to our internal list
       reporters << reporter
     end
 

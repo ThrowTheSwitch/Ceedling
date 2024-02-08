@@ -1,0 +1,264 @@
+# Ceedling Plugin: Test Suite Reporter
+
+Generate one or more readymade test suite reports or create your own.
+
+# Plugin Overview
+
+Test reports are handy for all sorts of reasons. Various build and reporting tools are able to generate, visualize, or otherwise process results encoded in handy container formats including JSON and XML.
+
+This plugin generates one or more of up to three available test suite report formats:
+
+1. JSON
+1. CppUnit XML
+1. JUnit XML
+
+This plugin generates reports after test builds, storing them in the project `artifacts/` build path.
+
+With a limited amount of Ruby code, you can also add your own report generation without creating an entire Ceedling plugin.
+
+# _User Beware_
+
+Test reports, particularly of the xUnit variety, often lack well managed standards or even much documentation at all. Different revisions of the formats exist as do different flavors of the same version produced by different tools.
+
+If a test report produced by this plugin does not work for your needs or is not recognized by your report processing tool of choice, well, sadly, this is not all that uncommon. You have at least two options:
+
+1. Use a script or other tool to post-process the report into a format that works for you. You might be surprised how many of these hacks are commonly necessary and exist peppered throughout online forums. You can incorporate any such post-processing step by enabling the `command_hooks` Ceedling plugin (lower in the plugin list than this plugin) and configuring a Ceedling tool to run the needed transformation.
+1. Use Ceedling's abilities plus features of this plugin (documented below) to generate your own test report with a minimal amount of Ruby code.
+
+# Setup
+
+Enable the plugin in your project.yml by adding `test_suite_reporter` to the list of enabled plugins.
+
+```yaml
+:plugins:
+  :enabled:
+    - test_suite_reporter
+```
+
+All generated reports are written to `<build root>/artifacts/<context>`. Your Ceedling project file specifies `<build root>`. Your build's context defaults to `test`. Certain other plugins (e.g. `gcov`) provide a different context for test builds, gnerally named after themselves. That is, for example, if this plugin is used in conjunction with a coverage build, the reports will end up in a subdirectory other than `test/` such as `gcov/`.
+
+# Configuration
+
+Enable the reports you wish to generate — `json`, `junit`, and/or `cppunit` — within the `:test_suite_reporter` ↳ `:reports` configuration list.
+
+```yaml
+:test_suite_reporter:
+  # Any one or all three of the following...
+  :reports:
+    - json
+    - junit
+    - cppunit
+```
+
+Each report is written to a default filename within `<build root>/artifacts/<context>`:
+
+* JSON: _tests_report.json_
+* JUnit XML: _junit_tests_report.xml_
+* CppUnit XML: _cppunit_tests_report.xml_
+
+To change the output filename, specify it with the `:filename` key beneath the relevant report within the `:test_suite_reporter` configuration block:
+
+```yaml
+:test_suite_reporter:
+  # Replace <report> with one of the available options above.
+  # Each report can have its own sub-configuration block.
+  :reports:
+    - <report>
+  :<report>:
+    :filename: 'more_better_filename.ext'
+```
+
+# Built-in Reports
+
+## Execution duration values
+
+Some test reporting formats include the execution time (duration) for aspects of a test suite run. Various granularities exist from the total time for all tests to the time of each suite (per the relevant defition of a suite) to the time required to run individual test cases. See _CeedlingPacket_ for the details.
+
+Ceedling automatically gathers all the relevant duractions. In fact, Ceedling itself performs the needed timing and arithmetric in all cases, except one. Individual test case exection time tracking requires a configuration option for Unity (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values and make them available to reports.
+
+To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation symbols in your Ceedling project file:
+
+```yaml
+:unity:
+  :defines:
+    - UNITY_INCLUDE_EXEC_TIME
+```
+
+_Note:_ Most test cases are short, and most computers are fast. As such, test case execution time is often reported as 0 milliseconds as CPU execution time remains in the microseconds range.
+
+## JSON Format
+
+[JSON] is “a lightweight data-interchange format.” JSON serializes common data structures into a human readable form. The format has several pros, including the ability for entirely different programming languages to ingest JSON and recreate these data structures. As such, this makes JSON a good report generation option as the result can be easily programmatically manipulated and put to use.
+
+Something like XML is a general purpose structure for, well, structuring data. XML has enough formality that XML formats can be validated with general purpose tools plus much more. JSON is much more flexible but rather tied to the data it encodes. Small changes to a data structure can have big impacts.
+
+The JSON this plugin generates has an ad hoc format unique to Ceedling — though any other test framework outputting test results in JSON may look fairly similar.
+
+### Example JSON configuration YAML
+
+```yaml
+:plugins:
+  :enabled:
+    - test_suite_reporter
+
+:test_suite_reporter:
+  :reports:
+    - json
+  # Default filename shown for completeness
+  # `:json` block only needed to override default
+  :json:
+    :filename: tests_report.json
+```
+
+[JSON]: https://www.json.org/
+
+### Example JSON test report
+
+In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored.
+
+```json
+{
+  "FailedTests": [
+    {
+      "file": "test/TestUsartModel.c",
+      "test": "testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately",
+      "line": 25,
+      "message": "Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected."
+    }
+  ],
+  "PassedTests": [
+    {
+      "file": "test/TestUsartModel.c",
+      "test": "testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting"
+    },
+    {
+      "file": "test/TestUsartModel.c",
+      "test": "testShouldReturnErrorMessageUponInvalidTemperatureValue"
+    }
+  ],
+  "IgnoredTests": [
+    {
+      "file": "test/TestUsartModel.c",
+      "test": "testShouldReturnWakeupMessage"
+    }
+  ],
+  "Summary": {
+    "total_tests": 4,
+    "passed": 2,
+    "ignored": 1,
+    "failures": 1
+  }
+}
+```
+
+## JUnit XML Format
+
+[JUnit] holds a certain position among testing tools. While it is an xUnit-style framework specific to unit testing Java, it has influenced how Continuous Integration build tools operate, and its [XML report format][junit-xml-format] has become something of a general-purpose defacto standard for test reports. The JUnit XML format has been revised in various ways over time but generally has more available documentation than some other formats.
+
+[JUnit]: https://junit.org/
+[junit-xml-format]: https://docs.getxray.app/display/XRAY/Taking+advantage+of+JUnit+XML+reports
+
+### Example JUnit configuration YAML
+
+```yaml
+:plugins:
+  :enabled:
+    - test_suite_reporter
+
+:test_suite_reporter:
+  :reports:
+    - junit
+  # Default filename shown for completeness
+  # `:junit` block only needed to override default
+  :junit:
+    :filename: junit_tests_report.xml
+```
+
+### Example JUnit test report
+
+In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored (a.k.a. “skipped” in JUnit lingo).
+
+In mapping a Ceedling test suite to JUnit convetions, a Ceedling test file becomes a JUnit test suite.
+
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<testsuites tests="4" failures="1" time="0.331">
+  <testsuite name="test/TestUsartModel" tests="4" failures="1" skipped="1" errors="0" time="0.331">
+    <testcase name="testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting" time="0.000"/>
+    <testcase name="testShouldReturnErrorMessageUponInvalidTemperatureValue" time="0.000"/>
+    <testcase name="testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately" time="0.000">
+      <failure message="Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected." />
+    </testcase>
+    <testcase name="testShouldReturnWakeupMessage" time="0.000">
+      <skipped />
+    </testcase>
+  </testsuite>
+</testsuites>
+
+```
+
+## CppUnit XML Format
+
+[CppUnit] is an xUnit-style port of the JUnit framework to C/C++. Documentation for its XML test report is scattered and not easily linked.
+
+[CppUnit]: https://freedesktop.org/wiki/Software/cppunit/
+
+### Example CppUnit configuration YAML
+
+```yaml
+:plugins:
+  :enabled:
+    - test_suite_reporter
+
+:test_suite_reporter:
+  :reports:
+    - cppunit
+  # Default filename shown for completeness
+  # `:cppunit` block only needed to override default
+  :cppunit:
+    :filename: cppunit_tests_report.xml
+```
+
+### Example CppUnit test report
+
+In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored.
+
+In mapping a Ceedling test suite to CppUnit convetions, a CppUnit test name is the concatenation of a Ceedling test filename and a test case function name. As such, a test filename will appear in the report a number of times equal to the number of test cases it holds. Test IDs are merely an incrementing count useful to uniquely identifying tests by number; no ordering or convention is enforced in generating them.
+
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<TestRun>
+  <FailedTests>
+    <Test id="1">
+      <Name>test/TestUsartModel.c::testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately</Name>
+      <FailureType>Assertion</FailureType>
+      <Location>
+        <File>test/TestUsartModel.c</File>
+        <Line>25</Line>
+      </Location>
+      <Message>Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected.</Message>
+    </Test>
+  </FailedTests>
+  <SuccessfulTests>
+    <Test id="2">
+      <Name>test/TestUsartModel.c::testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting</Name>
+    </Test>
+    <Test id="3">
+      <Name>test/TestUsartModel.c::testShouldReturnErrorMessageUponInvalidTemperatureValue</Name>
+    </Test>
+  </SuccessfulTests>
+  <IgnoredTests>
+    <Test id="4">
+      <Name>test/TestUsartModel.c::testShouldReturnWakeupMessage</Name>
+    </Test>
+  </IgnoredTests>
+  <Statistics>
+    <Tests>4</Tests>
+    <Ignores>1</Ignores>
+    <FailuresTotal>1</FailuresTotal>
+    <Errors>0</Errors>
+    <Failures>1</Failures>
+  </Statistics>
+</TestRun>
+
+```

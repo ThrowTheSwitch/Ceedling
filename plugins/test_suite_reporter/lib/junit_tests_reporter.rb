@@ -3,7 +3,7 @@ require 'reporter'
 class JunitTestsReporter < Reporter
 
   def setup()
-    super( default_filename: 'junit_report.xml' )
+    super( default_filename: 'junit_tests_report.xml' )
   end
 
   def header(results:, stream:)

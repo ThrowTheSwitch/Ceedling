@@ -4,7 +4,7 @@ require 'reporter'
 class JsonTestsReporter < Reporter
 
   def setup()
-    super( default_filename: 'suite_report.json' )
+    super( default_filename: 'tests_report.json' )
   end
 
   def body(results:, stream:)

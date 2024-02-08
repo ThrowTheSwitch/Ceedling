@@ -19,6 +19,9 @@ class Reportinator
   #
   #
   def generate_banner(message, width=nil)
+    # ---------
+    # <Message>
+    # ---------
     dash_count = ((width.nil?) ? message.strip.length : width)
     return "#{'-' * dash_count}\n#{message}\n#{'-' * dash_count}\n"
   end

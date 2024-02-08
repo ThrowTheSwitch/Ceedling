@@ -208,29 +208,29 @@ class Configurator
 
 
   def find_and_merge_plugins(config)
-    # plugins must be loaded before generic path evaluation & magic that happen later;
-    # perform path magic here as discrete step
+    # Plugins must be loaded before generic path evaluation & magic that happen later;
+    # perform path magic here as discrete step.
     config[:plugins][:load_paths].each do |path|
-      path.replace(@system_wrapper.module_eval(path)) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      path.replace( @system_wrapper.module_eval(path) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
       FilePathUtils::standardize(path)
     end
 
-    config[:plugins][:load_paths] << FilePathUtils::standardize(Ceedling.load_path)
+    config[:plugins][:load_paths] << FilePathUtils::standardize( Ceedling.load_path )
     config[:plugins][:load_paths].uniq!
 
-    paths_hash = @configurator_plugins.add_load_paths(config)
+    paths_hash = @configurator_plugins.process_aux_load_paths(config)
 
-    @rake_plugins   = @configurator_plugins.find_rake_plugins(config, paths_hash)
-    @script_plugins = @configurator_plugins.find_script_plugins(config, paths_hash)
-    config_plugins  = @configurator_plugins.find_config_plugins(config, paths_hash)
-    plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults(config, paths_hash)
-    plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults(config, paths_hash)
+    @rake_plugins   = @configurator_plugins.find_rake_plugins( config, paths_hash )
+    @script_plugins = @configurator_plugins.find_script_plugins( config, paths_hash )
+    config_plugins  = @configurator_plugins.find_config_plugins( config, paths_hash )
+    plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash )
+    plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
 
     config_plugins.each do |plugin|
-      plugin_config = @yaml_wrapper.load(plugin)
+      plugin_config = @yaml_wrapper.load( plugin )
 
-      #special handling for plugin paths
-      if (plugin_config.include? :paths)
+      # Special handling for plugin paths
+      if (plugin_config.include?( :paths ))
         plugin_config[:paths].update(plugin_config[:paths]) do |k,v| 
           plugin_path = plugin.match(/(.*)[\/]config[\/]\w+\.yml/)[1]
           v.map {|vv| File.expand_path(vv.gsub!(/\$PLUGIN_PATH/,plugin_path)) }

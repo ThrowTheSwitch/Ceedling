@@ -5,29 +5,19 @@ class Reporter
   attr_writer :config_walkinator
 
   # Setup value injection
-  attr_writer :handle, :config
+  attr_writer :config
 
   # Publicly accessible filename for the resulting report
   attr_reader :filename
 
-  def initialize()
-    # Safe default value in case a user custom subclass forgets to call setup()
-    # FooBarReporter => foo_bar.report
-    
-    # Start with class name
-    @filename = self.class.name.dup()
+  def initialize(handle:)
+    @handle = handle
 
-    # Remove 'Reporter' from end of class name
-    @filename.chomp!( 'Reporter' )
-
-    # Replace each capital letter with _lowercase ('A' => '_a')
-    @filename.gsub!( /([A-Z])/ ) {|match| '_' + match.downcase()}
-
-    # Remove leading underscore
-    @filename.gsub!( /^_/, '')
-
-    # Add a file extension
-    @filename += '.report'
+    # Safe default filename in case user's custom subclass forgets to call 
+    # setup() with a default filename.
+    # If the report is named 'foo_bar' in project configuration, the 
+    # fallback filename is 'foo_bar.report'
+    @filename = "#{handle}.report"
   end
 
   def setup(default_filename:)

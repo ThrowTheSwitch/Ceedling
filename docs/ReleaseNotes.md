@@ -232,9 +232,11 @@ Longstanding bugs produced duplicate and sometimes incorrect lists of header fil
 1. The plugin more properly uses looging and system shell calls.
 1. Small bugs in using `echo` and the ASCII bell character have been fixed.
 
-### JUnit, XML & JSON test report plugins bug fix
+### JUnit, XML & JSON test report plugins: Bug fixes and consolidation
 
 When used with other plugins, these test reporting plugins' generated report could end up in a location within `build/artifacts/` that was inconsistent and confusing. This has been fixed.
+
+All three discrete plugins have been superseded by a single plugin, `test_suite_reporter`, able to generate all 3 test reports as well as custom report formats with a small amount of ruby code (i.e. not an entire Ceedling plugun). The report format of the previously independent `xml_tests_report` plugin was renamed to `CppUnit` as this is the specific test reporting format `test_suite_reporter` outputs.
 
 ### Dashed filename handling bug fix
 
