@@ -1,6 +1,6 @@
-require 'reporter'
+require 'tests_reporter'
 
-class CppunitTestsReporter < Reporter
+class CppunitTestsReporter < TestsReporter
 
   def setup()
     super( default_filename: 'cppunit_tests_report.xml' )
@@ -69,7 +69,7 @@ class CppunitTestsReporter < Reporter
 
     results.each do |result|
       result[:collection].each do |item|
-    filename = result[:source][:file]
+        filename = result[:source][:file]
         stream.puts( "    <Test id=\"#{@test_counter}\">" )
         stream.puts( "      <Name>#{filename}::#{item[:test]}</Name>" )
         stream.puts( "    </Test>" )

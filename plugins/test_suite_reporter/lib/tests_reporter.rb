@@ -1,5 +1,5 @@
 
-class Reporter
+class TestsReporter
 
   # Dependency injection
   attr_writer :config_walkinator

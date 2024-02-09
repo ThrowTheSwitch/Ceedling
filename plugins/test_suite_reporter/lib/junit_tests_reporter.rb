@@ -1,6 +1,6 @@
-require 'reporter'
+require 'tests_reporter'
 
-class JunitTestsReporter < Reporter
+class JunitTestsReporter < TestsReporter
 
   def setup()
     super( default_filename: 'junit_tests_report.xml' )

@@ -1,7 +1,7 @@
 require 'json'
-require 'reporter'
+require 'tests_reporter'
 
-class JsonTestsReporter < Reporter
+class JsonTestsReporter < TestsReporter
 
   def setup()
     super( default_filename: 'tests_report.json' )
