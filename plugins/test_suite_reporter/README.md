@@ -9,8 +9,8 @@ Test reports are handy for all sorts of reasons. Various build and reporting too
 This plugin generates one or more of up to three available test suite report formats:
 
 1. JSON
-1. CppUnit XML
 1. JUnit XML
+1. CppUnit XML
 
 This plugin generates reports after test builds, storing them in your project `artifacts/` build path.
 
@@ -74,7 +74,7 @@ To change the output filename, specify it with the `:filename` key beneath the r
 
 Some test reporting formats include the execution time (duration) for aspects of a test suite run. Various granularities exist from the total time for all tests to the time of each suite (per the relevant defition of a suite) to the time required to run individual test cases. See _CeedlingPacket_ for the details on time duration values.
 
-Ceedling automatically gathers all the relevant durations. In fact, Ceedling itself performs the needed timing and arithmetric in all cases, except one. Individual test case exection time tracking is a Unity feature specifically (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values and make them available to reports.
+Ceedling automatically gathers all the relevant durations. In fact, Ceedling itself performs the needed timing and arithmetric in all cases, except one. Individual test case exection time tracking is specifically a [Unity] feature (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values and make them available to reports.
 
 To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation symbols in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest.
 
@@ -86,13 +86,15 @@ To enable test case duration measurements, they must be enabled as a Unity compi
 
 _Note:_ Most test cases are quite short, and most computers are quite fast. As such, test case execution time is often reported as 0 milliseconds as the CPU execution time for a test case typically remains in the microseconds range.
 
+[Unity]: https://github.com/ThrowTheSwitch/Unity
+
 ## JSON Format
 
 [JSON] is “a lightweight data-interchange format.” JSON serializes common data structures into a human readable form. The format has several pros, including the ability for entirely different programming languages to ingest JSON and recreate these data structures. As such, this makes JSON a good report generation option as the result can be easily programmatically manipulated and put to use.
 
 Something like XML is a general purpose structure for, well, structuring data. XML has enough formality that XML formats can be validated with general purpose tools plus much more. JSON is much more flexible but rather tied to the data it encodes. Small changes to a data structure can have big impacts.
 
-The JSON this plugin generates has an ad hoc format unique to Ceedling — though any other test framework outputting test results in JSON may look fairly similar.
+The JSON this plugin generates uses an ad hoc set of data structures following no standard — though any other test framework outputting test results in JSON may look fairly similar.
 
 ### Example JSON configuration YAML
 
@@ -153,7 +155,7 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
 
 ## JUnit XML Format
 
-[JUnit] holds a certain position among testing tools. While it is an xUnit-style framework specific to unit testing Java, it has influenced how Continuous Integration build tools operate, and its [XML report format][junit-xml-format] has become something of a defacto standard for test reports in any language. The JUnit XML format has been revised in various ways over time but generally has more available documentation than some other formats.
+[JUnit] holds a certain position among testing tools. While it is an xUnit-style framework specific to unit testing Java, it has influenced how Continuous Integration build tools operate, and its [JUnit XML report format][junit-xml-format] has become something of a defacto standard for test reports in any language. The JUnit XML format has been revised in various ways over time but generally has more available documentation than some other formats.
 
 [JUnit]: https://junit.org/
 [junit-xml-format]: https://docs.getxray.app/display/XRAY/Taking+advantage+of+JUnit+XML+reports
@@ -271,7 +273,7 @@ Creating your own report requires three steps:
 1. Create a Ruby file in the directory from (1) per instructions that follow.
 1. Enable your new report in your `:test_suite_reporter` Ceedling configuration.
 
-## Configuration
+## Custom report configuration
 
 Configuration steps, (1) and (3) above, are documented by example below. Conventions simplify the Ruby programming and require certain naming rules that extend into your project configuration.
 
@@ -287,20 +289,22 @@ Configuration steps, (1) and (3) above, are documented by example below. Convent
     - fancy_shmancy         # Your custom report must follow naming rules (below)
 ```
 
-## TestReporter Ruby code
+## Custom `TestsReporter` Ruby code
 
 To create a custom report, here's what you gotta do:
 
-1. Create a Ruby file in your configured additional load path named `<custom_report>_tests_reporter.rb`. `<custom_report>` should be in lower case and use underscores if you wish to seperate words.
+1. Create a Ruby file in your configured additional load path named `<custom_report>_tests_reporter.rb`. `<custom_report>` should be in lower case and use underscores if you wish to seperate words (i.e. snakecase).
 1. The Ruby code itself must subclass an existing plugin class, `TestsReporter`.
-1. Your new subclass must be named `<CustomReport>TestsReporter` where `<CustomReport>` is the camelcase name of your filename from (1).
-1. Fill out up to four methods:
+1. Your new subclass must be named `<CustomReport>TestsReporter` where `<CustomReport>` is the camelcase version of your report name from (1).
+1. Fill out up to four methods in your custom `TestsReporter` subclass:
    * `setup()`
    * `header()` (optional)
    * `body()`
    * `footer()` (optional)
 
-Overriding the default name of your report and accessing `:test_suite_reporter` configuration information will happen for your custom report just as it does for the built-in reports. In fact, apart from the custom load path, the built-in reports documented above use the same mechanisms as a custom report. These Ruby files can and should be used as references.
+Overriding the default filename of your custom report happens just as it does for the built-in reports. In fact, apart from the custom load path, the built-in reports documented above use the same mechanisms as a custom report. These Ruby files can and should be used as references.
+
+You may access `:test_suite_reporter` configuration for your custom report using a handy utility method documented in a later section.
 
 ### Sample `TestReporter` custom subclass
 
@@ -365,7 +369,7 @@ end
 
 ### Test results structure
 
-See _CeedlingPacket_ for documentation of the test results data structure and built-in `TestsReports` plugin subclasses for examples of its use.
+See _CeedlingPacket_ for documentation of the test results data structure (`results` method arguments in above sample code) and built-in `TestsReports` plugin subclasses for examples of its use.
 
 ### `TestsReporter` utility methods
 
@@ -375,7 +379,7 @@ You may call this private method of the parent class `TestReporters` from your c
 
 This method automatically indexes into `:test_suite_reporter` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns nil. Otherwise, it returns the hash, list, string, boolean, or numeric value at the specified key depth.
 
-`fetch_config_value(*keys)` expects an argument list of keys and only accesses keys beneath `:test_suite_reporter` ↳ `:<custom_report>`.
+`fetch_config_value(*keys)` expects a list of keys and only accesses configuration beneath `:test_suite_reporter` ↳ `:<custom_report>`.
 
 Example configuration:
 
@@ -390,7 +394,7 @@ test_suite_reporter:
         - '/Bar$/'
 ```
 
-Example calls:
+Example calls from within `FancyShmancyTestsReporter`:
 
 * `fetch_config_value( :standardize, :names )` ➡️ `true`
 * `fetch_config_value( :standardize, :filters )` ➡️ `['/^Foo/', '/Bar$/']`
