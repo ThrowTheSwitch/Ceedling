@@ -20,7 +20,61 @@ require 'diy'
 require 'constructor'
 require 'ceedling/constants'
 require 'ceedling/target_loader'
+require 'ceedling/system_wrapper'
 require 'deep_merge'
+
+def log_build_time(start_time_s, end_time_s)
+  return if start_time_s.nil?
+
+  # Calculate duration as integer milliseconds
+  duration_ms = ((end_time_s - start_time_s) * 1000).to_i
+
+  # Collect human readable time string tidbits
+  duration = []
+
+  # Singular / plural whole days
+  if duration_ms >= DurationCounts::DAY_MS
+    days = duration_ms / DurationCounts::DAY_MS
+    duration << "#{days} day#{'s' if days > 1}"
+    duration_ms -= (days * DurationCounts::DAY_MS)
+    # End duration string if remainder is less than 1 second (e.g. no 2 days 13 milliseconds)
+    duration_ms = 0 if duration_ms < 1000
+  end
+
+  # Singular / plural whole hours
+  if duration_ms >= DurationCounts::HOUR_MS
+    hours = duration_ms / DurationCounts::HOUR_MS
+    duration << "#{hours} hour#{'s' if hours > 1}"
+    duration_ms -= (hours * DurationCounts::HOUR_MS)
+    # End duration string if remainder is less than 1 second (e.g. no 2 days 13 milliseconds)
+    duration_ms = 0 if duration_ms < 1000
+  end
+
+  # Singular / plural whole minutes
+  if duration_ms >= DurationCounts::MINUTE_MS
+    minutes = duration_ms / DurationCounts::MINUTE_MS
+    duration << "#{minutes} minute#{'s' if minutes > 1}"
+    duration_ms -= (minutes * DurationCounts::MINUTE_MS)
+    # End duration string if remainder is less than 1 second (e.g. no 2 days 13 milliseconds)
+    duration_ms = 0 if duration_ms < 1000
+  end
+
+  # Plural fractional seconds (rounded)
+  if duration_ms >= DurationCounts::SECOND_MS
+    seconds = (duration_ms.to_f() / 1000.0).round(2)
+    duration << "#{seconds} seconds"
+    # End duration string
+    duration_ms = 0
+  end
+
+  # Singular / plural whole milliseconds (only if orginal duration less than 1 second)
+  if duration_ms > 0
+    duration << "#{duration_ms} millisecond#{'s' if duration_ms > 1}"
+  end
+
+  # Print concatenation of all duration strings
+  puts( "Ceedling build completed in #{duration.join(' ')}" )
+end
 
 def boom_handler(exception:, debug:)
   $stderr.puts("#{exception.class} ==> #{exception.message}")
@@ -30,6 +84,9 @@ def boom_handler(exception:, debug:)
   end
   abort # Rake's abort
 end
+
+# Exists in external scope
+start_time = nil
 
 # Top-level exception handling for any otherwise un-handled exceptions, particularly around startup
 begin
@@ -57,7 +114,7 @@ begin
   @ceedling[:setupinator].do_setup( project_config )
 
   # Configure high-level verbosity
-  unless @ceedling[:configurator].project_debug
+  unless defined?(PROJECT_DEBUG) and PROJECT_DEBUG
     # Configure Ruby's default reporting for Thread exceptions.
     # In Ceedling's case thread scenarios will fall into these buckets:
     #  1. Jobs shut down cleanly
@@ -75,13 +132,16 @@ begin
     Rake.application.options.suppress_backtrace_pattern = /.*/
   end
 
+  # Redefine start_time with actual timestamp before build begins
+  start_time = SystemWrapper.time_stopwatch_s()
+
   # tell all our plugins we're about to do something
   @ceedling[:plugin_manager].pre_build
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 rescue StandardError => e
-  boom_handler(exception:e, debug:@ceedling[:configurator].project_debug)
+  boom_handler( exception:e, debug:PROJECT_DEBUG )
 end
 
 # End block always executed following rake run
@@ -101,18 +161,21 @@ END {
     begin
       @ceedling[:plugin_manager].post_build
       @ceedling[:plugin_manager].print_plugin_failures
+      log_build_time( start_time, SystemWrapper.time_stopwatch_s() )
       exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
     rescue => ex
-      boom_handler(exception:ex, debug:@ceedling[:configurator].project_debug)
+      log_build_time( start_time, SystemWrapper.time_stopwatch_s() )
+      boom_handler( exception:ex, debug:PROJECT_DEBUG )
       exit(1)
     end
+
     exit(0)
   else
     puts("\nCeedling could not complete the build because of errors.")
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex
-      boom_handler(exception:ex, debug:@ceedling[:configurator].project_debug)
+      boom_handler( exception:ex, debug:PROJECT_DEBUG )
     ensure
       exit(1)
     end

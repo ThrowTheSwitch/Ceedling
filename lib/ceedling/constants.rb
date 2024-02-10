@@ -17,6 +17,13 @@ VERBOSITY_OPTIONS = {
   :debug     => Verbosity::DEBUG,
 }.freeze()
 
+class DurationCounts
+  DAY_MS     = (24 * 60 * 60 * 1000)
+  HOUR_MS    =      (60 * 60 * 1000)
+  MINUTE_MS  =           (60 * 1000)
+  SECOND_MS  =                (1000)
+end
+
 class TestResultsSanityChecks
   NONE      = 0  # no sanity checking of test results
   NORMAL    = 1  # perform non-problematic checks
