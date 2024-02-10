@@ -324,9 +324,7 @@ class Configurator
 
 
   def standardize_paths(config)
-    # [:plugins]:[load_paths] already handled
-
-    # Individual paths that don't follow convention processed here
+    # Individual paths that don't follow `_path` convention processed here
     paths = [
       config[:project][:build_root],
       config[:release_build][:artifacts]
@@ -458,8 +456,14 @@ class Configurator
 
   def collect_path_list( container )
     paths = []
-    container.each_key { |key| paths << container[key] if (key.to_s =~ /_path(s)?$/) } if (container.class == Hash)
-    return paths.flatten
+
+    if (container.class == Hash)
+      container.each_key do |key|
+        paths << container[key] if (key.to_s =~ /_path(s)?$/)
+      end
+    end
+    
+    return paths.flatten()
   end
 
   def eval_path_entries( container )
