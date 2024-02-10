@@ -367,21 +367,21 @@ class FancyShmancyTestsReporter < TestsReporter
 end
 ```
 
-### Test results structure
+### Test results data structure
 
-See _CeedlingPacket_ for documentation of the test results data structure (`results` method arguments in above sample code) and built-in `TestsReports` plugin subclasses for examples of its use.
+See _CeedlingPacket_ for documentation of the test results data structure (`results` method arguments in above sample code) and this plugin's built-in `TestsReports` subclasses for examples of its use.
 
 ### `TestsReporter` utility methods
 
-#### `fetch_config_value(*keys)`
+#### Configuration access: `fetch_config_value(*keys)`
 
-You may call this private method of the parent class `TestReporters` from your custom subclass to retrieve configuration entries.
+You may call the private method `fetch_config_value(*keys)` of the parent class `TestReporters` from your custom subclass to retrieve configuration entries.
 
 This method automatically indexes into `:test_suite_reporter` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns nil. Otherwise, it returns the hash, list, string, boolean, or numeric value at the specified key depth.
 
 `fetch_config_value(*keys)` expects a list of keys and only accesses configuration beneath `:test_suite_reporter` ↳ `:<custom_report>`.
 
-Example configuration:
+##### Example _FancyShmancy_ configuration + `TestsReporter` access calls
 
 ```yaml
 test_suite_reporter:
@@ -394,8 +394,12 @@ test_suite_reporter:
         - '/Bar$/'
 ```
 
-Example calls from within `FancyShmancyTestsReporter`:
+```ruby
+# Calls from within FancyShmancyTestsReporter
 
-* `fetch_config_value( :standardize, :names )` ➡️ `true`
-* `fetch_config_value( :standardize, :filters )` ➡️ `['/^Foo/', '/Bar$/']`
-* `fetch_config_value( :does, :not, :exist )` ➡️ `nil`
+fetch_config_value( :standardize, :names ) => true
+
+fetch_config_value( :standardize, :filters ) => ['/^Foo/', '/Bar$/']
+
+fetch_config_value( :does, :not, :exist ) => nil
+```

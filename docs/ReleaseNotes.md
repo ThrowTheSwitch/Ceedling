@@ -2,7 +2,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** January 4, 2024
+**Date:** February 9, 2024
 
 <br/>
 
@@ -204,7 +204,7 @@ Much glorious filepath and pathfile handling now abounds:
 1. The plugin subsystem has incorporated logging to trace plugin activities at high verbosity levels.
 1. Additional events have been added for test preprocessing steps (the popular and useful [`command_hooks` plugin](plugins/command_hooks/README.md) has been updated accordingly).
 
-### Improvements and bug fixes for gcov plugin
+### Improvements and bug fixes for `gcov` plugin
 
 Issues ...
 
@@ -236,7 +236,15 @@ Longstanding bugs produced duplicate and sometimes incorrect lists of header fil
 
 When used with other plugins, these test reporting plugins' generated report could end up in a location within `build/artifacts/` that was inconsistent and confusing. This has been fixed.
 
-All three discrete plugins have been superseded by a single plugin, `test_suite_reporter`, able to generate all 3 test reports as well as custom report formats with a small amount of ruby code (i.e. not an entire Ceedling plugun). The report format of the previously independent `xml_tests_report` plugin was renamed to `CppUnit` as this is the specific test reporting format `test_suite_reporter` outputs.
+The three previously discrete plugins listed below have been consolidated into a single new plugin, `test_suite_reporter`:
+
+1. `junit_tests_report`
+1. `json_tests_report`
+1. `xml_tests_report`
+
+`test_suite_reporter` is able to generate all 3 reports of the plugins it replaces as well as generate custom report formats with a small amount of user-written Ruby code (i.e. not an entire Ceedling plugun).
+
+The report format of the previously independent `xml_tests_report` plugin has been renamed from _XML_ in all instances to _CppUnit_ as this is the specific test reporting format the former plugin and new `test_suite_reporter` plugin outputs.
 
 ### Dashed filename handling bug fix
 

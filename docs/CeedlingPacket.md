@@ -321,13 +321,18 @@ for even the very minimalist of processors.
 
 ### CMock
 
-[CMock] is a tool written in Ruby able to generate entire
-[mock functions][mocks] in C code from a given C header file. Mock
-functions are invaluable in [interaction-based unit testing][interaction-based-tests].
-CMock's generated C code uses Unity.
+[CMock]<sup>†</sup> is a tool written in Ruby able to generate[function mocks &
+stubs][test-doubles] in C code from a given C header file. Mock functions are
+invaluable in [interaction-based unit testing]
+[interaction-based-tests]. CMock's generated C code uses Unity.
+
+<sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
+[fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
 
 [CMock]: http://github.com/ThrowTheSwitch/CMock
-[mocks]: http://en.wikipedia.org/wiki/Mock_object
+[test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
+[FFF]: https://github.com/meekrosoft/fff
+[FFF-plugin]: https://github.com/ElectronVector/fake_function_framework
 [interaction-based-tests]: http://martinfowler.com/articles/mocksArentStubs.html
 
 ### CException
@@ -3582,7 +3587,7 @@ own scripts and tools to Ceedling build steps.
 
   Base paths to search for plugin subdirectories or extra Ruby functionality.
 
-  Regardless of setting, Ceedling separately maintains the load path for it
+  Regardless of setting, Ceedling separately maintains the load path for its
   built-in plugins.
 
   **Default**: `[]` (empty)
