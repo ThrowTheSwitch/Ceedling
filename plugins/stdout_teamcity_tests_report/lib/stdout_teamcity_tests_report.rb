@@ -59,18 +59,25 @@ class StdoutTeamcityTestsReport < Plugin
     duration_ms = results[:total_time] * 1000.0
     avg_duration = (duration_ms / [1, results[:counts][:passed] + results[:counts][:failed]].max).round
 
+    context = arg_hash[:context]
+
     # Handle test case successes within the test executable
     results[:successes].each do |success|
+      filepath = File.join( success[:source][:dirname], File.basename( success[:source][:basename], '.*' ) )
+
+      # puts(success)
       success[:collection].each do |test|
         _test = test[:test]
 
+        # Create Java-like name per TeamCity convention `package_or_namespace.ClassName.TestName`
+        #  ==> `context.TestFilepath.TestCaseName`
         teamcity_service_message(
-          "testStarted name='#{_test}'",
+          "testStarted name='#{context}.#{filepath}.#{_test}'",
           flowId
         )
 
         teamcity_service_message(
-          "testFinished name='#{_test}' duration='#{avg_duration}'",
+          "testFinished name='#{context}.#{filepath}.#{_test}' duration='#{avg_duration}'",
           flowId
         )
       end
@@ -79,36 +86,41 @@ class StdoutTeamcityTestsReport < Plugin
     # Handle test case failures within the test executable
     results[:failures].each do |failure|
       failure[:collection].each do |test|
+        filepath = File.join( failure[:source][:dirname], File.basename( failure[:source][:basename], '.*' ) )
+
         _test = test[:test]
         _message = test[:message]
 
         teamcity_service_message(
-          "testStarted name='#{_test}'",
+          "testStarted name='#{context}.#{filepath}.#{_test}'",
           flowId
         )
 
+        # Create Java-like name per TeamCity convention `package_or_namespace.ClassName.TestName`
+        #  ==> `context.TestFilepath.TestCaseName`
         _message = 
-          "testFailed name='#{_test}' " + 
+          "testFailed name='#{context}.#{filepath}.#{_test}' " + 
           "message='#{escape(_message)}' " +
           "details='File: #{failure[:source][:file]} Line: #{test[:line]}'"
 
         teamcity_service_message( _message, flowId )
 
         teamcity_service_message(
-          "testFinished name='#{_test}' duration='#{avg_duration}'",
+          "testFinished name='#{context}.#{filepath}.#{_test}' duration='#{avg_duration}'",
           flowId
         )
       end
     end
 
     # Handle ignored tests
-    results[:ignores].each do |failure|
-      failure[:collection].each do |test|
+    results[:ignores].each do |ignored|
+      ignored[:collection].each do |test|
+        filepath = File.join( ignored[:source][:dirname], File.basename( ignored[:source][:basename], '.*' ) )
         _test = test[:test]
 
-        service_message = "testIgnored name='#{_test}'"
+        service_message = "testIgnored name='#{context}.#{filepath}.#{_test}'"
 
-        teamcity_service_message( service_message )
+        teamcity_service_message( service_message, flowId )
       end
     end
 
