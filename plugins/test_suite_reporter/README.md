@@ -377,11 +377,11 @@ See _CeedlingPacket_ for documentation of the test results data structure (`resu
 
 You may call the private method `fetch_config_value(*keys)` of the parent class `TestReporters` from your custom subclass to retrieve configuration entries.
 
-This method automatically indexes into `:test_suite_reporter` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns nil. Otherwise, it returns the hash, list, string, boolean, or numeric value at the specified key depth.
+This method automatically indexes into `:test_suite_reporter` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns `nil`. Otherwise, it returns the hash, list, string, boolean, or numeric value for the specified key walk into your report's configuration.
 
 `fetch_config_value(*keys)` expects a list of keys and only accesses configuration beneath `:test_suite_reporter` ↳ `:<custom_report>`.
 
-##### Example _FancyShmancy_ configuration + `TestsReporter` access calls
+##### Example _FancyShmancy_ configuration + `TestsReporter.fetch_config_value()` calls
 
 ```yaml
 test_suite_reporter:
