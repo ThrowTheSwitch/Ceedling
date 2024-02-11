@@ -35,7 +35,7 @@ Enable the plugin in your Ceedling project file by adding `test_suite_reporter` 
     - test_suite_reporter
 ```
 
-All generated reports are written to `<build root>/artifacts/<context>`. Your Ceedling project file specifies `<build root>` as a required entry for any build. Your build's context defaults to `test`. Certain other plugins (e.g. `gcov`) provide a different context for test builds, gnerally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than `test/`, `gcov/`.
+All generated reports are written to `<build root>/artifacts/<context>`. Your Ceedling project file specifies `<build root>` as a required entry for any build. Your build's context defaults to `test`. Certain other test build plugins (e.g. GCov) provide a different context (e.g. `gcov`) for test builds, generally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than `test/`, `gcov/`.
 
 # Configuration
 
