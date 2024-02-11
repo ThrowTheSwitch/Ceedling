@@ -48,15 +48,9 @@ class ModuleGenerator < Plugin
     }
 
     # Add our lookup paths to this, based on overall project configuration
-    if @project_config.include? :paths
-      unity_generator_options[:paths_src] = @project_config[:paths][:source]  || [ 'src' ]
-      unity_generator_options[:paths_inc] = @project_config[:paths][:include] || @project_config[:paths][:source] || [ 'src' ]
-      unity_generator_options[:paths_tst] = @project_config[:paths][:test]    || [ 'test' ]
-    else
-      unity_generator_options[:paths_src] = [ 'src' ]
-      unity_generator_options[:paths_inc] = [ 'src' ]
-      unity_generator_options[:paths_tst] = [ 'test' ]
-    end
+    unity_generator_options[:paths_src] = @project_config[:collection_paths_source]  || [ 'src' ]
+    unity_generator_options[:paths_inc] = @project_config[:collection_paths_include] || @project_config[:collection_paths_source] || [ 'src' ]
+    unity_generator_options[:paths_tst] = @project_config[:collection_paths_test]    || [ 'test' ]
 
     # Flatten if necessary
     if (unity_generator_options[:paths_src].class == Hash)
@@ -96,10 +90,10 @@ class ModuleGenerator < Plugin
       unity_generator_options[:path_tst] = unity_generator_options[:paths_tst][0]
     else
       # A path was specified. Do our best to determine which is the best choice based on this information
-      unity_generator_options[:skeleton_path] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:path_src], :ignore) || unity_generator_options[:paths_src][0]
-      unity_generator_options[:path_src] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:path_src], :ignore) || unity_generator_options[:paths_src][0]
-      unity_generator_options[:path_inc] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:path_inc], :ignore) || unity_generator_options[:paths_inc][0]
-      unity_generator_options[:path_tst] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:path_tst], :ignore) || unity_generator_options[:paths_tst][0]
+      unity_generator_options[:skeleton_path] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_src], :ignore) || unity_generator_options[:paths_src][0]
+      unity_generator_options[:path_src] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_src], :ignore) || unity_generator_options[:paths_src][0]
+      unity_generator_options[:path_inc] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_inc], :ignore) || unity_generator_options[:paths_inc][0]
+      unity_generator_options[:path_tst] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_tst], :ignore) || unity_generator_options[:paths_tst][0]
     end
 
     return unity_generator_options

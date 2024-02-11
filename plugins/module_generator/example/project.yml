@@ -86,8 +86,8 @@
 # see documentation for the many options for specifying this.
 :paths:
   :test:
-    - +:t/**
     - +:sub/t
+    - +:t/**
   :source:
     - s/**
     - sub/s
@@ -173,6 +173,11 @@
   :project_root: ./
   :naming: :snake #options: :bumpy, :camel, :caps, or :snake
   :boilerplates: 
-    :src: ""
-    :inc: ""
-    :tst: ""
+    :src: "/* MAY THE SOURCE BE WITH YOU */"
+    :inc: |
+      /* ==================================
+      |  It's important to make everyone
+      |  feel included, particularly in 
+      |  when making important decisions.
+      ===================================*/
+    :tst: "// Don't Test Me, Sir."

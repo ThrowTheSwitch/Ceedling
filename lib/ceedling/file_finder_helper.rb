@@ -44,8 +44,9 @@ class FileFinderHelper
 
   def find_best_path_in_collection(pathname, path_list, complain)
     # search our collection for the specified exact path
-    return pathname if path_list.include? pathname
-    
+    raise "No path list provided for search" if path_list.nil?
+    return pathname if path_list.include?(pathname)
+
     # Determine the closest match by looking for matching path segments, especially paths ENDING the same
     best_match_index = 0
     best_match_value = 0
@@ -60,7 +61,7 @@ class FileFinderHelper
         best_match_value = num 
       end
     end
-    return matches[best_match_index]
+    return path_list[best_match_index]
   end
 
   def handle_missing_file(filename, complain)

@@ -1,4 +1,7 @@
 :module_generator:
   :project_root: ./
-  :source_root: src/
-  :test_root: test/
+  :naming: :snake #options: :bumpy, :camel, :caps, or :snake
+  :boilerplates: 
+    :src: ""
+    :inc: ""
+    :tst: ""
