@@ -5,7 +5,7 @@ describe 'Ceedling' do
   context 'location' do
     it 'should return the location of the ceedling gem directory' do
       # create test state/variables
-      ceedling_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
+      ceedling_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       # mocks/stubs/expected calls
       # execute method
       location = Ceedling.location
@@ -17,7 +17,7 @@ describe 'Ceedling' do
   context 'load_path' do
     it 'should return the location of the plugins directory' do
       # create test state/variables
-      load_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
+      load_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       load_path = File.join( load_path, 'plugins' )
       # mocks/stubs/expected calls
       # execute method
@@ -30,7 +30,7 @@ describe 'Ceedling' do
   context 'rakefile' do
     it 'should return the location of the ceedling rakefile' do
       # create test state/variables
-      rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
+      rakefile_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
       # execute method
@@ -44,7 +44,7 @@ describe 'Ceedling' do
     it 'should load the project with the default yaml file' do
       # create test state/variables
       ENV.delete('CEEDLING_MAIN_PROJECT_FILE')
-      rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
+      rakefile_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
       expect(Ceedling).to receive(:load).with(rakefile_path)
@@ -57,7 +57,7 @@ describe 'Ceedling' do
     it 'should load the project with the specified yaml file' do
       # create test state/variables
       ENV.delete('CEEDLING_MAIN_PROJECT_FILE')
-      rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
+      rakefile_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
       expect(Ceedling).to receive(:load).with(rakefile_path)
@@ -70,7 +70,7 @@ describe 'Ceedling' do
     it 'should load the project with the yaml file specified by the existing environment variable' do
       # create test state/variables
       ENV['CEEDLING_MAIN_PROJECT_FILE'] = './bar.yml'
-      rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
+      rakefile_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
       expect(Ceedling).to receive(:load).with(rakefile_path)
@@ -85,7 +85,7 @@ describe 'Ceedling' do
       DEFAULT_CEEDLING_CONFIG[:plugins][:enabled].clear()
       DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].clear()
       spec_double = double('spec-double')
-      rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
+      rakefile_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
       expect(Gem::Specification).to receive(:find_by_name).with('ceedling-foo').and_return(spec_double)
@@ -104,7 +104,7 @@ describe 'Ceedling' do
       Object.send(:remove_const, :PROJECT_ROOT)
       DEFAULT_CEEDLING_CONFIG[:plugins][:enabled].clear()
       DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].clear()
-      rakefile_path = File.join(File.dirname(__FILE__), '..').gsub('spec','lib')
+      rakefile_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
       expect(Ceedling).to receive(:load).with(rakefile_path)
