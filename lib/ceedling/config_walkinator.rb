@@ -6,7 +6,7 @@ class ConfigWalkinator
     depth = 0
 
     # walk into hash & extract value at requested key sequence
-    keys.each do |symbol|
+    keys.each { |symbol|
       depth += 1
       if (not hash[symbol].nil?)
         hash  = hash[symbol]
@@ -15,7 +15,7 @@ class ConfigWalkinator
         value = nil
         break
       end
-    end
+    } if !hash.nil?
     
     return {:value => value, :depth => depth}
   end

@@ -7,7 +7,8 @@ module Ceedling
   # === Return
   # _String_ - The location where the gem lives.
   def self.location
-    File.join( File.dirname(__FILE__), '..')
+    # Ensure parent path traversal is expanded away
+    File.absolute_path( File.join( File.dirname(__FILE__), '..') )
   end
 
   ##

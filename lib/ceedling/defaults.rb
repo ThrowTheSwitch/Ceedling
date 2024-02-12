@@ -447,8 +447,8 @@ DEFAULT_CEEDLING_CONFIG = {
     :release_dependencies_generator => { :arguments => [] },
 
     :plugins => {
-      :load_paths => CEEDLING_PLUGINS,
-      :enabled => [],
+      :load_paths => [],
+      :enabled => CEEDLING_PLUGINS,
     }
   }.freeze
 

@@ -9,6 +9,16 @@ class SystemWrapper
     return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
   end
 
+  def self.time_stopwatch_s
+    # Wall clock time that can be adjusted for a variety of reasons and lead to
+    # unexpected negative durations -- only option on Windows.
+    return Time.now() if SystemWrapper.windows?
+
+    # On Posix systems, this time value is a steadily increasing count from
+    # a known system event (usually restart) and is more better
+    return Process.clock_gettime( Process::CLOCK_MONOTONIC, :float_second )
+  end
+
   # class method so as to be mockable for tests
   def windows?
     return SystemWrapper.windows?

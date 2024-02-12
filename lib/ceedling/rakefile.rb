@@ -20,7 +20,20 @@ require 'diy'
 require 'constructor'
 require 'ceedling/constants'
 require 'ceedling/target_loader'
+require 'ceedling/system_wrapper'
+require 'ceedling/reportinator'
 require 'deep_merge'
+
+def log_runtime(run, start_time_s, end_time_s)
+  return if !defined?(PROJECT_VERBOSITY)
+  return if (PROJECT_VERBOSITY < Verbosity::ERRORS)
+
+  duration = Reportinator.generate_duration( start_time_s: start_time_s, end_time_s: end_time_s )
+
+  return if duration.empty?
+
+  puts( "\nCeedling #{run} completed in #{duration}" )
+end
 
 def boom_handler(exception:, debug:)
   $stderr.puts("#{exception.class} ==> #{exception.message}")
@@ -31,8 +44,14 @@ def boom_handler(exception:, debug:)
   abort # Rake's abort
 end
 
+# Exists in external scope
+start_time = nil
+
 # Top-level exception handling for any otherwise un-handled exceptions, particularly around startup
 begin
+  # Redefine start_time with actual timestamp before set up begins
+  start_time = SystemWrapper.time_stopwatch_s()
+
   # construct all our objects
   # ensure load path contains all libraries needed first
   lib_ceedling_load_path_temp = File.join(CEEDLING_LIB, 'ceedling')
@@ -56,8 +75,10 @@ begin
 
   @ceedling[:setupinator].do_setup( project_config )
 
+  log_runtime( 'set up', start_time, SystemWrapper.time_stopwatch_s() )
+
   # Configure high-level verbosity
-  unless @ceedling[:configurator].project_debug
+  unless defined?(PROJECT_DEBUG) and PROJECT_DEBUG
     # Configure Ruby's default reporting for Thread exceptions.
     # In Ceedling's case thread scenarios will fall into these buckets:
     #  1. Jobs shut down cleanly
@@ -75,13 +96,16 @@ begin
     Rake.application.options.suppress_backtrace_pattern = /.*/
   end
 
+  # Reset start_time before operations begins
+  start_time = SystemWrapper.time_stopwatch_s()
+
   # tell all our plugins we're about to do something
   @ceedling[:plugin_manager].pre_build
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 rescue StandardError => e
-  boom_handler(exception:e, debug:@ceedling[:configurator].project_debug)
+  boom_handler( exception:e, debug:PROJECT_DEBUG )
 end
 
 # End block always executed following rake run
@@ -101,18 +125,21 @@ END {
     begin
       @ceedling[:plugin_manager].post_build
       @ceedling[:plugin_manager].print_plugin_failures
+      log_runtime( 'operations', start_time, SystemWrapper.time_stopwatch_s() )
       exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
     rescue => ex
-      boom_handler(exception:ex, debug:@ceedling[:configurator].project_debug)
+      log_runtime( 'operations', start_time, SystemWrapper.time_stopwatch_s() )
+      boom_handler( exception:ex, debug:PROJECT_DEBUG )
       exit(1)
     end
+
     exit(0)
   else
-    puts("\nCeedling could not complete the build because of errors.")
+    puts("\nCeedling could not complete operations because of errors.")
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex
-      boom_handler(exception:ex, debug:@ceedling[:configurator].project_debug)
+      boom_handler( exception:ex, debug:PROJECT_DEBUG )
     ensure
       exit(1)
     end

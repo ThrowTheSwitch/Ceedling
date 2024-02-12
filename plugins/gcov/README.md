@@ -76,8 +76,8 @@ An optional setting documented below disables automatic report generation,
 providing a separate Ceedling task instead. Reports can then be generated
 on demand after test suite runs.
 
-[gcovr] https://www.gcovr.com/
-[ReportGenerator] https://reportgenerator.io
+[gcovr]: https://www.gcovr.com/
+[ReportGenerator]: https://reportgenerator.io
 
 # Important Notes on Coverage Summaries vs. Coverage Reports
 
@@ -382,7 +382,12 @@ Reports are configured with:
 1. General or common options for each report generation utility
 1. Specific options for types of report per each report generation utility
 
-These are detailed in the sections that follow.
+These are detailed in the sections that follow. See the 
+[GCovr User Guide][gcovr-user-guide] and the 
+[ReportGenerator Wiki][report-generator-wiki] for full details.
+
+[gcovr-user-guide]: https://www.gcovr.com/en/stable/guide.html
+[report-generator-wiki]: https://github.com/danielpalme/ReportGenerator/wiki
 
 ```yaml
 :gcov:
@@ -824,7 +829,3 @@ taken from the [Gcovr User Guide][gcovr-user-guide] and the
 [ReportGenerator Wiki][report-generator-wiki].
 
 The text is repeated here to provide as useful documenation as possible.
-
-[gcovr-user-guide]: https://www.gcovr.com/en/stable/guide.html
-[report-generator-wiki]: https://github.com/danielpalme/ReportGenerator/wiki
-

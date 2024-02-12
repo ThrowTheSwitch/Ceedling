@@ -20,9 +20,16 @@ class ConfiguratorPlugins
   end
 
 
-  def add_load_paths(config)
+  def process_aux_load_paths(config)
     plugin_paths = {}
 
+    # Add any load path to Ruby's load path collection
+    config[:plugins][:load_paths].each do |path|
+      @system_wrapper.add_load_path( path )
+    end
+
+    # If a load path contains an actual Ceedling plugin, load its 
+    # subdirectories by convention
     config[:plugins][:enabled].each do |plugin|
       config[:plugins][:load_paths].each do |root|
         path = File.join(root, plugin)
