@@ -130,19 +130,17 @@ It's just all mixed together.
    These code macros can help you accomplish your build goals When Ceedling's 
    conventions aren't enough.
 
-1. **[Global Collections][packet-section-12]**
+1. **[Ceedling Plugins][packet-section-12]**
+
+   Ceedling is extensible. It includes a number of built-in plugins for code coverage,
+   test report generation, continuous integration reporting, test file scaffolding 
+   generation, sophisticated release builds, and more.
+
+1. **[Global Collections][packet-section-13]**
 
    Ceedling is built in Ruby. Collections are globally available Ruby lists of paths,
    files, and more that can be useful for advanced customization of a Ceedling project 
    file or in creating plugins.
-
-1. **[Module Generator][packet-section-13]**
-
-   A pattern emerges in day-to-day unit testing, especially in the practice of Test-
-   Driven Development. Again and again, one needs a triplet of a source file, header 
-   file, and test file, scaffolded in such a way that they refer to one another.
-   Module Generator allows you to save precious minutes by creating these templated
-   files for you.
 
 [packet-section-1]:  #ceedling-a-c-build-system-for-all-your-mad-scientisting-needs
 [packet-section-2]:  #ceedling-unity-and-c-mocks-testing-abilities
@@ -155,8 +153,8 @@ It's just all mixed together.
 [packet-section-9]:  #using-unity-cmock--cexception
 [packet-section-10]: #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
 [packet-section-11]: #build-directive-macros
-[packet-section-12]: #global-collections
-[packet-section-13]: #module-generator
+[packet-section-12]: #ceedling-plugins
+[packet-section-13]: #global-collections
 
 ---
 
@@ -3569,15 +3567,17 @@ Notes on test fixture tooling example:
 
 ## `:plugins` Ceedling extensions
 
-See the [guide][custom-plugins] for how to create custom plugins.
+See the section below dedicated to plugins for more information. This section
+pertains to enabling plugins in your project configuration.
 
-Ceedling includes a number of built-in plugins. See the collection
-in [plugins/][ceedling-plugins]. Each subdirectory includes a README that 
-documents the capabilities and configuration options. 
+Ceedling includes a number of built-in plugins. See the collection in [plugins/]
+[ceedling-plugins] or the dedicated documentation section below. Each
+subdirectory includes a _README_ that documents the capabilities and
+configuration options. 
 
-Many users find that the handy-dandy [Command Hooks plugin][command-hooks-plugin]
-is often enough to meet their needs. This plugin allows you to connect your
-own scripts and tools to Ceedling build steps.
+_Note_: Many users find that the handy-dandy [Command Hooks plugin]
+ [command-hooks-plugin] is often enough to meet their needs. This plugin allows
+ you to connect your own scripts and tools to Ceedling build steps.
 
 [custom-plugins]: CeedlingCustomPlugins.md
 [ceedling-plugins]: plugins/
@@ -3587,8 +3587,9 @@ own scripts and tools to Ceedling build steps.
 
   Base paths to search for plugin subdirectories or extra Ruby functionality.
 
-  Regardless of setting, Ceedling separately maintains the load path for its
-  built-in plugins.
+  Ceedling maintains the Ruby load path for its built-in plugins. This list of
+  paths allows you to add your own directories for custom plugins or simpler
+  Ruby files referenced by your Ceedling configuration options elsewhere.
 
   **Default**: `[]` (empty)
 
@@ -3601,9 +3602,10 @@ own scripts and tools to Ceedling build steps.
 
 Plugins can provide a variety of added functionality to Ceedling. In
 general use, it's assumed that at least one reporting plugin will be
-used to format test results. However, if no reporting plugins are
-specified, Ceedling will print to `$stdout` the (quite readable) raw
-test results from all test fixtures executed.
+used to format test results (usually `stdout_pretty_tests_report`).
+
+If no reporting plugins are specified, Ceedling will print to `$stdout` the
+(quite readable) raw test results from all test fixtures executed.
 
 ### Example `:plugins` YAML blurb
 
@@ -3611,62 +3613,14 @@ test results from all test fixtures executed.
 :plugins:
   :load_paths:
     - project/tools/ceedling/plugins  # Home to your collection of plugin directories.
-    - project/support                 # Maybe home to some ruby code your custom plugins share.
+    - project/support                 # Home to some ruby code your custom plugins share.
   :enabled:
     - stdout_pretty_tests_report      # Nice test results at your command line.
-    - our_custom_code_metrics_report  # Maybe you needed line count and complexity metrics, so you
-                                      # created a plugin to scan all your code and collect that info.
+    - our_custom_code_metrics_report  # You created a plugin to scan all code to collect 
+                                      # line counts and complexity metrics. Its name is a
+                                      # subdirectory beneath the first `:load_path` entry.
+
 ```
-
-* `:stdout_pretty_tests_report`:
-
-  Prints to `$stdout` a well-formatted list of ignored and failed tests,
-  final test counts, and any extraneous output (e.g. printf statements
-  or simulator memory errors) collected from executing the test
-  fixtures. Meant to be used with runs at the command line.
-
-* `:stdout_ide_tests_report`:
-
-  Prints to `$stdout` simple test results formatted such that an IDE
-  executing test-related Rake tasks can recognize file paths and line
-  numbers in test failures, etc. Thus, you can click a test result in
-  your IDE's execution window and jump to the failure (or ignored test)
-  in your test file (obviously meant to be used with an [IDE like
-  Eclipse][ide], etc).
-
-  [ide]: http://throwtheswitch.org/white-papers/using-with-ides.html
-
-* `:xml_tests_report`:
-
-  Creates an XML file of test results in the xUnit format (handy for
-  Continuous Integration build servers or as input to other reporting
-  tools). Produces a file report.xml in <build root>/artifacts/tests.
-
-* `:bullseye`:
-
-  Adds additional Rake tasks to execute tests with the commercial code
-  coverage tool provided by [Bullseye][]. See readme.txt inside the bullseye
-  plugin directory for configuration and use instructions. Note:
-  Bullseye only works with certain compilers and linkers (healthy list
-  of supported toolchains though).
-
-  [bullseye]: http://www.bullseye.com
-
-* `:gcov`:
-
-  Adds additional Rake tasks to execute tests with the GNU code coverage
-  tool [gcov][]. See readme.txt inside the gcov directory for configuration
-  and use instructions. Only works with GNU compiler and linker.
-
-  [gcov]: http://gcc.gnu.org/onlinedocs/gcc/Gcov.html
-
-* `:warnings_report`:
-
-  Scans compiler and linker `$stdout` / `$stderr` output for the word
-  'warning' (case insensitive). All code warnings (or tool warnings) are
-  logged to a file warnings.log in the appropriate `<build
-  root>/artifacts` directory (e.g. test/ for test tasks, `release/` for a
-  release build, or even `bullseye/` for bullseye runs).
 
 <br/>
 
@@ -3757,6 +3711,206 @@ void setUp(void) {
 
 // ...
 ```
+
+<br/>
+
+# Ceedling Plugins
+
+Ceedling includes a number of built-in plugins. See the collection in [plugins/]
+[ceedling-plugins]. Each subdirectory includes a _README_ that documents the
+capabilities and configuration options. A list of plugins with summaries 
+follows below.
+
+Many users find that the handy-dandy [Command Hooks plugin]
+[command-hooks-plugin] is often enough to meet their needs. This plugin allows
+you to connect your own scripts and tools to Ceedling build steps.
+
+You can create your own plugins. See the [guide][custom-plugins] for how to
+create custom plugins.
+
+[custom-plugins]: CeedlingCustomPlugins.md
+[ceedling-plugins]: plugins/
+[command-hooks-plugin]: plugins/command_hooks/README.md
+
+### Example `:plugins` YAML blurb
+
+```yaml
+:plugins:
+  :load_paths:
+    - project/tools/ceedling/plugins  # Home to your collection of plugin directories.
+    - project/support                 # Maybe home to some ruby code your custom plugins share.
+  :enabled:
+    - stdout_pretty_tests_report      # Nice test results at your command line.
+    - our_custom_code_metrics_report  # Maybe you needed line count and complexity metrics, so you
+                                      # created a plugin to scan all your code and collect that info.
+```
+
+* `:stdout_pretty_tests_report`:
+
+  Prints to `$stdout` a well-formatted list of ignored and failed tests,
+  final test counts, and any extraneous output (e.g. printf statements
+  or simulator memory errors) collected from executing the test
+  fixtures. Meant to be used with runs at the command line.
+
+* `:stdout_ide_tests_report`:
+
+  Prints to `$stdout` simple test results formatted such that an IDE
+  executing test-related Rake tasks can recognize file paths and line
+  numbers in test failures, etc. Thus, you can click a test result in
+  your IDE's execution window and jump to the failure (or ignored test)
+  in your test file (obviously meant to be used with an [IDE like
+  Eclipse][ide], etc).
+
+  [ide]: http://throwtheswitch.org/white-papers/using-with-ides.html
+
+* `:xml_tests_report`:
+
+  Creates an XML file of test results in the xUnit format (handy for
+  Continuous Integration build servers or as input to other reporting
+  tools). Produces a file report.xml in <build root>/artifacts/tests.
+
+* `:bullseye`:
+
+  Adds additional Rake tasks to execute tests with the commercial code
+  coverage tool provided by [Bullseye][]. See readme.txt inside the bullseye
+  plugin directory for configuration and use instructions. Note:
+  Bullseye only works with certain compilers and linkers (healthy list
+  of supported toolchains though).
+
+  [bullseye]: http://www.bullseye.com
+
+* `:gcov`:
+
+  Adds additional Rake tasks to execute tests with the GNU code coverage
+  tool [gcov][]. See readme.txt inside the gcov directory for configuration
+  and use instructions. Only works with GNU compiler and linker.
+
+  [gcov]: http://gcc.gnu.org/onlinedocs/gcc/Gcov.html
+
+* `:warnings_report`:
+
+  Scans compiler and linker `$stdout` / `$stderr` output for the word
+  'warning' (case insensitive). All code warnings (or tool warnings) are
+  logged to a file warnings.log in the appropriate `<build
+  root>/artifacts` directory (e.g. test/ for test tasks, `release/` for a
+  release build, or even `bullseye/` for bullseye runs).
+
+## Ceedling Plugin: Module Generator
+
+A pattern emerges in day-to-day unit testing, especially in the practice of
+Test- Driven Development. Again and again, one needs a triplet of a source
+file, header file, and test file — scaffolded in such a way that they refer to
+one another. Module Generator allows you to save precious minutes by creating
+these templated files for you.
+
+### Module Generator directory structure
+
+The default configuration for directory/project structure is:
+```yaml
+:module_generator:
+  :project_root: ./
+  :source_root: src/
+  :test_root: test/
+```
+
+You can change these variables in your project.yml file to comply with your project's directory structure.
+
+If you call `ceedling module:create`, it will create three files:
+
+1. A source file in the source_root
+1. A header file in the source_root
+1. A test file in the test_root
+
+If you want your header file to be in another location, you can 
+specify the `:inc_root:` in your project.yml file:
+
+```yaml
+:module_generator:
+  :inc_root: inc/
+```
+
+The module_generator will then create the header file in your defined `:inc_root:`.
+By default, `:inc_root:` is not defined so the module generator will use `:source_root`.
+
+Sometimes, your project cannot be divided into a single src, inc, and test folder. You 
+have several directories with sources/…, something like this, for example:
+
+```
+<project_root>
+ - myDriver
+   - src
+   - inc
+   - test
+ - myOtherDriver
+   - src
+   - inc
+   - test
+ - ...
+```
+
+Don't worry, you don't have to manually create the source/header/test files.
+The module generator can accept a path to create a source_root/inc_root/test_root 
+folder with your files: `ceedling module:create[<module_root_path>:<module_name>]`
+
+F.e., applied to the above project structure:
+`ceedling module:create[myOtherDriver:driver]`
+
+This will make the module_generator run in the subdirectory 'myOtherDriver' and generate the module files
+for you in that directory. So, this command will generate the following files:
+
+1. A source file 'driver.c' in <project_root>/myOtherDriver/<source_root>
+1. A header file 'driver.h' in <project_root>/myOtherDriver/<source_root> (or <inc_root> if specified)
+1. A test file 'test_driver.c' in <project_root>/myOtherDriver/<test_root>
+
+### Module generator naming
+
+By default, the module_generator will generate your files in lowercase.
+`ceedling module:create[mydriver]` and `ceedling module:create[myDriver]`(note the uppercase) will generate the same files:
+
+1. mydriver.c
+1. mydriver.h
+1. test_mydriver.c
+
+You can configure the module_generator to use a different naming mechanism through the project.yml:
+```yaml
+:module_generator:
+  :naming: "camel"
+```
+There are other possibilities as well (bumpy, camel, snake, caps).
+Refer to the unity module generator for more info (the unity module generator is used under the hood by module_generator).
+
+### Module generator boilerplate header
+
+There are two ways of adding a boilerplate header comment to your generated files:
+
+* With a defined string in the project.yml file:
+
+```yaml
+:module_generator:
+  :boilerplates:
+    :src: '/* This is Boilerplate code. */'
+```
+
+Using the command **ceedling module:create[foo]** it creates the source module as follows:
+
+```c
+/* This is Boilerplate code. */
+#include "foo.h"
+```
+
+It would be the same for **:tst:** and **:inc:** adding its respective options.
+
+* Defining an external file with boilerplate code:
+
+```yaml
+:module_generator:
+  :boilerplate_files:
+    :src: '<template_folder>\src_boilerplate.txt'
+    :inc: '<template_folder>\inc_boilerplate.txt'
+    :tst: '<template_folder>\tst_boilerplate.txt'
+```
+
+For whatever file names in whichever folder you desire.
 
 <br/>
 
@@ -3914,117 +4068,3 @@ collections used for all tasks. This is no longer true.
   remapped to configured object file extension.
 
 <br/>
-
-# Module Generator
-
-Ceedling includes a plugin called module_generator that will create a source, header and test file for you.
-There are several possibilities to configure this plugin through your project.yml to suit your project's needs.
-
-## Module Generator directory structure
-
-The default configuration for directory/project structure is:
-```yaml
-:module_generator:
-  :project_root: ./
-  :source_root: src/
-  :test_root: test/
-```
-
-You can change these variables in your project.yml file to comply with your project's directory structure.
-
-If you call `ceedling module:create`, it will create three files:
-
-1. A source file in the source_root
-1. A header file in the source_root
-1. A test file in the test_root
-
-If you want your header file to be in another location, you can 
-specify the `:inc_root:` in your project.yml file:
-
-```yaml
-:module_generator:
-  :inc_root: inc/
-```
-
-The module_generator will then create the header file in your defined `:inc_root:`.
-By default, `:inc_root:` is not defined so the module generator will use `:source_root`.
-
-Sometimes, your project cannot be divided into a single src, inc, and test folder. You 
-have several directories with sources/…, something like this, for example:
-
-```
-<project_root>
- - myDriver
-   - src
-   - inc
-   - test
- - myOtherDriver
-   - src
-   - inc
-   - test
- - ...
-```
-
-Don't worry, you don't have to manually create the source/header/test files.
-The module generator can accept a path to create a source_root/inc_root/test_root 
-folder with your files: `ceedling module:create[<module_root_path>:<module_name>]`
-
-F.e., applied to the above project structure:
-`ceedling module:create[myOtherDriver:driver]`
-
-This will make the module_generator run in the subdirectory 'myOtherDriver' and generate the module files
-for you in that directory. So, this command will generate the following files:
-
-1. A source file 'driver.c' in <project_root>/myOtherDriver/<source_root>
-1. A header file 'driver.h' in <project_root>/myOtherDriver/<source_root> (or <inc_root> if specified)
-1. A test file 'test_driver.c' in <project_root>/myOtherDriver/<test_root>
-
-## Module generator naming
-
-By default, the module_generator will generate your files in lowercase.
-`ceedling module:create[mydriver]` and `ceedling module:create[myDriver]`(note the uppercase) will generate the same files:
-
-1. mydriver.c
-1. mydriver.h
-1. test_mydriver.c
-
-You can configure the module_generator to use a different naming mechanism through the project.yml:
-```yaml
-:module_generator:
-  :naming: "camel"
-```
-There are other possibilities as well (bumpy, camel, snake, caps).
-Refer to the unity module generator for more info (the unity module generator is used under the hood by module_generator).
-
-## Module generator boilerplate header
-
-There are two ways of adding a boilerplate header comment to your generated files:
-
-* With a defined string in the project.yml file:
-
-```yaml
-:module_generator:
-  :boilerplates:
-    :src: '/* This is Boilerplate code. */'
-```
-
-Using the command **ceedling module:create[foo]** it creates the source module as follows:
-
-```c
-/* This is Boilerplate code. */
-#include "foo.h"
-```
-
-It would be the same for **:tst:** and **:inc:** adding its respective options.
-
-* Defining an external file with boilerplate code:
-
-```yaml
-:module_generator:
-  :boilerplate_files:
-    :src: '<template_folder>\src_boilerplate.txt'
-    :inc: '<template_folder>\inc_boilerplate.txt'
-    :tst: '<template_folder>\tst_boilerplate.txt'
-```
-
-For whatever file names in whichever folder you desire.
