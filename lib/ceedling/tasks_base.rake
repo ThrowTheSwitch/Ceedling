@@ -5,6 +5,10 @@ require 'ceedling/version'
 # Set Rake verbosity using global constant verbosity set before Rake is loaded
 if !!defined?(PROJECT_VERBOSITY)
   verbose(PROJECT_VERBOSITY >= Verbosity::OBNOXIOUS)
+  if PROJECT_VERBOSITY >= Verbosity::OBNOXIOUS
+    Rake.application.options.silent = false
+    Rake.application.options.suppress_backtrace_pattern = nil
+  end
 end
 
 desc "Display build environment version info."
@@ -17,10 +21,13 @@ end
 
 desc "Set verbose output (silent:[#{Verbosity::SILENT}] - debug:[#{Verbosity::DEBUG}])."
 task :verbosity, :level do |t, args|
-  # Setting verbosity has been moved to command line processing before Rake.
-  # This Rake task just scaffolds a do-nothing task that command line scanning processes.
-
+  # Most of setting verbosity has been moved to command line processing before Rake.
   level = args.level.to_i
+
+  if level >= Verbosity::OBNOXIOUS
+    Rake.application.options.silent = false
+    Rake.application.options.suppress_backtrace_pattern = nil
+  end
 
   if level < Verbosity::SILENT or level > Verbosity::DEBUG
     puts("WARNING: Verbosity level #{level} is outside of the recognized range [#{Verbosity::SILENT}-#{Verbosity::DEBUG}]")
@@ -28,9 +35,15 @@ task :verbosity, :level do |t, args|
 end
 
 namespace :verbosity do 
-  # Setting verbosity has been moved to command line processing before Rake.
-  # These Rake tasks just scaffold do-nothing tasks that command line scanning processes.
-  VERBOSITY_OPTIONS.each_pair { |key, _| task key }
+  # Most of setting verbosity has been moved to command line processing before Rake.
+  VERBOSITY_OPTIONS.each_pair do |key, val| 
+    task key do
+      if val >= Verbosity::OBNOXIOUS
+        Rake.application.options.silent = false
+        Rake.application.options.suppress_backtrace_pattern = nil
+      end
+    end
+  end
 
   # Offer a handy list of verbosity levels
   task :list do 

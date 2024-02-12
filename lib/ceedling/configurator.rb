@@ -38,7 +38,7 @@ class Configurator
   # Object variables are gigantic and produce a flood of output.
   def inspect
     # TODO: When identifying information is added to constructor, insert it into `inspect()` string
-    return Configurator.name
+    return this.class.name
   end
 
   def replace_flattened_config(config)
