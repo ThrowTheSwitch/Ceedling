@@ -450,7 +450,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Since a test explodes, we return error here
-        expect(output).to match(/(?:ERROR: Ceedling Failed)|(?:Ceedling could not complete the build because of errors)/)
+        expect(output).to match(/(?:ERROR: Ceedling Failed)|(?:Ceedling could not complete operations because of errors)/)
       end
     end
   end
