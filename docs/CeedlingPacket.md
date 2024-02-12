@@ -319,13 +319,13 @@ for even the very minimalist of processors.
 
 ### CMock
 
-[CMock]<sup>†</sup> is a tool written in Ruby able to generate [function mocks &
-stubs][test-doubles] in C code from a given C header file. Mock functions are
-invaluable in [interaction-based unit testing]
-[interaction-based-tests]. CMock's generated C code uses Unity.
+[CMock]<sup>†</sup> is a tool written in Ruby able to generate [function mocks & stubs][test-doubles] 
+in C code from a given C header file. Mock functions are invaluable in 
+[interaction-based unit testing][interaction-based-tests].
+CMock's generated C code uses Unity.
 
 <sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports
-[FFF], _Fake Function Framework_, for[fake functions][test-doubles] as an
+[FFF], _Fake Function Framework_, for [fake functions][test-doubles] as an
 alternative to CMock’s mocks and stubs.
 
 [CMock]: http://github.com/ThrowTheSwitch/CMock
@@ -3829,8 +3829,8 @@ these templated files for you with convenient command line tasks.
 
 ### Ceedling plugin `fff`
 
-The Fake Function Framework, [FFF], is an alternative approach to [test doubles]
-[test-doubles] than that used by CMock.
+The Fake Function Framework, [FFF], is an alternative approach to [test doubles][test-doubles] 
+than that used by CMock.
 
 [This plugin][FFF-plugin] replaces Ceedling generation of CMock-based mocks and
 stubs in your tests with FFF-generated fake functions instead.
@@ -3919,11 +3919,10 @@ release build target.
 
 ### Ceedling plugin `compile_commands_json`
 
-[This plugin][compile_commands_json] create a [JSON Compilation Database]
-[json-compilation-database]. This file is useful to [any code editor or IDE]
-[lsp-tools] that implements syntax highlighting, etc. by way of the LLVM
-project's [`clangd`][clangd] Language Server Protocol conformant language
-server.
+[This plugin][compile_commands_json] create a [JSON Compilation Database][json-compilation-database]. 
+This file is useful to [any code editor or IDE][lsp-tools] that implements 
+syntax highlighting, etc. by way of the LLVM project's [`clangd`][clangd] 
+Language Server Protocol conformant language server.
 
 [compile_commands_json]: ../plugins/compile_commands_json
 [lsp-tools]: https://microsoft.github.io/language-server-protocol/implementors/tools/
