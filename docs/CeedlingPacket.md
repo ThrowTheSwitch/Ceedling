@@ -3830,12 +3830,14 @@ Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for
 
 ### Ceedling plugin `beep`
 
-[This plugin][../plugins/beep] provides a simple audio notice when a test build completes suite
+[This plugin][beep-plugin] provides a simple audio notice when a test build completes suite
 execution or fails due to a build error. It is intended to support developers
 running time-consuming test suites locally (i.e. in the background).
 
 The plugin provides a variety of options for emitting audio notificiations on
 various desktop platforms.
+
+[beep-plugin]: ../plugins/beep
 
 ### Ceedling plugin `bullseye`
 
