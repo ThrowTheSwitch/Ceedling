@@ -319,13 +319,14 @@ for even the very minimalist of processors.
 
 ### CMock
 
-[CMock]<sup>†</sup> is a tool written in Ruby able to generate[function mocks &
+[CMock]<sup>†</sup> is a tool written in Ruby able to generate [function mocks &
 stubs][test-doubles] in C code from a given C header file. Mock functions are
 invaluable in [interaction-based unit testing]
 [interaction-based-tests]. CMock's generated C code uses Unity.
 
-<sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
-[fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
+<sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports
+[FFF], _Fake Function Framework_, for[fake functions][test-doubles] as an
+alternative to CMock’s mocks and stubs.
 
 [CMock]: http://github.com/ThrowTheSwitch/CMock
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
@@ -3716,201 +3717,186 @@ void setUp(void) {
 
 # Ceedling Plugins
 
-Ceedling includes a number of built-in plugins. See the collection in [plugins/]
-[ceedling-plugins]. Each subdirectory includes a _README_ that documents the
-capabilities and configuration options. A list of plugins with summaries 
-follows below.
+Ceedling includes a number of plugins. See the collection of built-in [plugins/]
+[ceedling-plugins] or consult the list with summaries and links to
+documentation in the subsection that follows. Each plugin subdirectory includes
+full documentation of its capabilities and configuration options.
+
+To enable built-in plugins or your own custom plugins, see the documentation for
+the `:plugins` section in Ceedling project configuation options.
 
 Many users find that the handy-dandy [Command Hooks plugin]
 [command-hooks-plugin] is often enough to meet their needs. This plugin allows
 you to connect your own scripts and tools to Ceedling build steps.
 
-You can create your own plugins. See the [guide][custom-plugins] for how to
-create custom plugins.
+As mentioned, you can create your own plugins. See the [guide]
+[custom-plugins] for how to create custom plugins.
 
 [custom-plugins]: CeedlingCustomPlugins.md
 [ceedling-plugins]: plugins/
 [command-hooks-plugin]: plugins/command_hooks/README.md
 
-### Example `:plugins` YAML blurb
+## Ceedling's built-in plugins, a directory
 
-```yaml
-:plugins:
-  :load_paths:
-    - project/tools/ceedling/plugins  # Home to your collection of plugin directories.
-    - project/support                 # Maybe home to some ruby code your custom plugins share.
-  :enabled:
-    - stdout_pretty_tests_report      # Nice test results at your command line.
-    - our_custom_code_metrics_report  # Maybe you needed line count and complexity metrics, so you
-                                      # created a plugin to scan all your code and collect that info.
-```
+### Ceedling plugin `stdout_pretty_tests_report`
 
-* `:stdout_pretty_tests_report`:
+This plugin is meant to tbe the default for printing test results to the
+console. Without it, readable test results are still produced but are not
+nicely formatted and summarized.
 
-  Prints to `$stdout` a well-formatted list of ignored and failed tests,
-  final test counts, and any extraneous output (e.g. printf statements
-  or simulator memory errors) collected from executing the test
-  fixtures. Meant to be used with runs at the command line.
+Plugin output includes a well-formatted list of summary statistics, ignored and
+failed tests, and any extraneous output (e.g. `printf()` statements or
+simulator memory errors) collected from executing the test fixtures.
 
-* `:stdout_ide_tests_report`:
+Alternatives to this plugin are:
+ 
+ * `stdout_ide_tests_report`
+ * `stdout_gtestlike_tests_report`
 
-  Prints to `$stdout` simple test results formatted such that an IDE
-  executing test-related Rake tasks can recognize file paths and line
-  numbers in test failures, etc. Thus, you can click a test result in
-  your IDE's execution window and jump to the failure (or ignored test)
-  in your test file (obviously meant to be used with an [IDE like
-  Eclipse][ide], etc).
+Both of the above write to the console test results with a format that is useful
+to IDEs generally in the case of the former, and GTest-aware reporting tools in
+the case of the latter.
 
-  [ide]: http://throwtheswitch.org/white-papers/using-with-ides.html
+### Ceedling plugin `stdout_ide_tests_report`
 
-* `:xml_tests_report`:
+This plugin prints to the console test results formatted similarly to
+`stdout_pretty_tests_report` with one key difference. This plugin's output is
+formatted such that an IDE executing Ceedling tasks can recognize file paths
+and line numbers in test failures, etc.
 
-  Creates an XML file of test results in the xUnit format (handy for
-  Continuous Integration build servers or as input to other reporting
-  tools). Produces a file report.xml in <build root>/artifacts/tests.
+This plugin's formatting is often recognized in an IDE's build window and
+automatically linked for file navigation. With such output, you can select a
+test result in your IDE's execution window and jump to the failure (or ignored
+test) in your test file (more on using [IDEs] with Ceedling, Unity, and
+CMock).
 
-* `:bullseye`:
+If enabled, this plugin should be used in place of `stdout_pretty_tests_report`.
 
-  Adds additional Rake tasks to execute tests with the commercial code
-  coverage tool provided by [Bullseye][]. See readme.txt inside the bullseye
-  plugin directory for configuration and use instructions. Note:
-  Bullseye only works with certain compilers and linkers (healthy list
-  of supported toolchains though).
+[IDEs]: https://www.throwtheswitch.org/ide
 
-  [bullseye]: http://www.bullseye.com
+### Ceedling plugin `stdout_teamcity_tests_report`
 
-* `:gcov`:
+[TeamCity] is one of the original Continuous Integration server products.
 
-  Adds additional Rake tasks to execute tests with the GNU code coverage
-  tool [gcov][]. See readme.txt inside the gcov directory for configuration
-  and use instructions. Only works with GNU compiler and linker.
+This plugin processes test results into TeamCity service messages printed to the
+console. TeamCity's service messages are unique to the product and allow the CI
+server to extract build steps, test results, and more from software builds if
+present.
 
-  [gcov]: http://gcc.gnu.org/onlinedocs/gcc/Gcov.html
+The output of this plugin is useful in actual CI builds but is unhelpful in
+local developer builds. See the plugin's documentation for options to enable
+this plugin only in CI builds and not in local builds.
 
-* `:warnings_report`:
+[TeamCity]: https://jetbrains.com/teamcity
 
-  Scans compiler and linker `$stdout` / `$stderr` output for the word
-  'warning' (case insensitive). All code warnings (or tool warnings) are
-  logged to a file warnings.log in the appropriate `<build
-  root>/artifacts` directory (e.g. test/ for test tasks, `release/` for a
-  release build, or even `bullseye/` for bullseye runs).
+### Ceedling plugin `stdout_gtestlike_tests_report`
 
-## Ceedling Plugin: Module Generator
+This plugin collects test results and prints them to the console in a format
+that mimics [Google Test's output][gtest-sample-output]. Google Test output is
+both human readable and recognized by a variety of reporting tools, IDEs, and
+Continuous Integration servers.
+
+If enabled, this plugin should be used in place of
+`stdout_pretty_tests_report`.
+
+[gtest-sample-output]:
+https://subscription.packtpub.com/book/programming/9781800208988/11/ch11lvl1sec31/controlling-output-with-google-test
+
+### Ceedling plugin `command_hooks`
+
+This plugin provides a simple means for connecting Ceedling's build events to
+Ceedling tool entries you define in your project configuration (see `:tools`
+documentation). In this way you can easily connect your own scripts or command
+line utilities to build steps without creating an entire custom plugin.
+
+### Ceedling plugin `module_generator`
 
 A pattern emerges in day-to-day unit testing, especially in the practice of
 Test- Driven Development. Again and again, one needs a triplet of a source
 file, header file, and test file — scaffolded in such a way that they refer to
-one another. Module Generator allows you to save precious minutes by creating
-these templated files for you.
+one another.
 
-### Module Generator directory structure
+This plugin allows you to save precious minutes by creating these templated
+files for you with convenient command line tasks.
 
-The default configuration for directory/project structure is:
-```yaml
-:module_generator:
-  :project_root: ./
-  :source_root: src/
-  :test_root: test/
-```
+### Ceedling plugin `fff`
 
-You can change these variables in your project.yml file to comply with your project's directory structure.
+The Fake Function Framework, [FFF], is an alternative approach to [test doubles][test-doubles] than that used by CMock.
 
-If you call `ceedling module:create`, it will create three files:
+[This plugin][FFF-plugin] replaces Ceedling generation of CMock-based mocks and stubs in your tests with FFF-generated fake functions instead.
 
-1. A source file in the source_root
-1. A header file in the source_root
-1. A test file in the test_root
+Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
+[fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
 
-If you want your header file to be in another location, you can 
-specify the `:inc_root:` in your project.yml file:
+### Ceedling plugin `beep`
 
-```yaml
-:module_generator:
-  :inc_root: inc/
-```
+[This plugin][../plugins/beep] provides a simple audio notice when a test build completes suite
+execution or fails due to a build error. It is intended to support developers
+running time-consuming test suites locally (i.e. in the background).
 
-The module_generator will then create the header file in your defined `:inc_root:`.
-By default, `:inc_root:` is not defined so the module generator will use `:source_root`.
+The plugin provides a variety of options for emitting audio notificiations on
+various desktop platforms.
 
-Sometimes, your project cannot be divided into a single src, inc, and test folder. You 
-have several directories with sources/…, something like this, for example:
+### Ceedling plugin `bullseye`
 
-```
-<project_root>
- - myDriver
-   - src
-   - inc
-   - test
- - myOtherDriver
-   - src
-   - inc
-   - test
- - ...
-```
+This plugin adds additional Ceedling tasks to execute tests with code coverage
+instrumentation provided by the commercial code coverage tool provided by
+[Bullseye]. The Bullseye tool provides visualization and report generation from
+the coverage results produced by an instrumented test suite.
 
-Don't worry, you don't have to manually create the source/header/test files.
-The module generator can accept a path to create a source_root/inc_root/test_root 
-folder with your files: `ceedling module:create[<module_root_path>:<module_name>]`
+[bullseye]: http://www.bullseye.com
 
-F.e., applied to the above project structure:
-`ceedling module:create[myOtherDriver:driver]`
+### Ceedling plugin `gcov`
 
-This will make the module_generator run in the subdirectory 'myOtherDriver' and generate the module files
-for you in that directory. So, this command will generate the following files:
+This plugin adds additional Ceedling tasks to execute tests with GNU code
+coverage instrumentation. Coverage reports of various sorts can be generated
+from the coverage results produced by an instrumented test suite.
 
-1. A source file 'driver.c' in <project_root>/myOtherDriver/<source_root>
-1. A header file 'driver.h' in <project_root>/myOtherDriver/<source_root> (or <inc_root> if specified)
-1. A test file 'test_driver.c' in <project_root>/myOtherDriver/<test_root>
+This plugin manages the use of up to three coverage reporting tools. The GNU
+[gcov] tool provides simple coverage statitics to the console as well as to the
+other supported reporting tools. Optional Python-based [GCovr] and .Net-based
+[ReportGenerator] produce fancy coverage reports in XML, JSON, HTML, etc.
+formats.
 
-### Module generator naming
+[gcov]: http://gcc.gnu.org/onlinedocs/gcc/Gcov.html
+[GCovr]: https://www.gcovr.com/
+[ReportGenerator]: https://reportgenerator.io
 
-By default, the module_generator will generate your files in lowercase.
-`ceedling module:create[mydriver]` and `ceedling module:create[myDriver]`(note the uppercase) will generate the same files:
+### Ceedling plugin `test_suite_reporter`
 
-1. mydriver.c
-1. mydriver.h
-1. test_mydriver.c
+This plugin produces any or all of three useful test suite reports in JSON,
+JUnit, or CppUnit format. It further provides a mechanism for users to create
+their own custom reports with a small amount of custom Ruby rather than a full
+plugin.
 
-You can configure the module_generator to use a different naming mechanism through the project.yml:
-```yaml
-:module_generator:
-  :naming: "camel"
-```
-There are other possibilities as well (bumpy, camel, snake, caps).
-Refer to the unity module generator for more info (the unity module generator is used under the hood by module_generator).
+### Ceedling plugin `warnings_report`
 
-### Module generator boilerplate header
+This plugin scans the output of build tools for console warning notices and
+produces a simple text file that collects all such warning messages.
 
-There are two ways of adding a boilerplate header comment to your generated files:
+### Ceedling plugin `raw_output_report`
 
-* With a defined string in the project.yml file:
+This plugin captures to a simple text file every command line executed by build
+tools. This can be helpful to debugging build problems or understanding how
+test suites are built and run at a nitty-gritty level.
 
-```yaml
-:module_generator:
-  :boilerplates:
-    :src: '/* This is Boilerplate code. */'
-```
+### Ceedling plugin `subprojects`
 
-Using the command **ceedling module:create[foo]** it creates the source module as follows:
+This plugin supports subproject release builds of static libraries. It manages
+differing sets of compiler flags and linker flags that fit the needs of
+different library builds.
 
-```c
-/* This is Boilerplate code. */
-#include "foo.h"
-```
+### Ceedling plugin `dependencies`
 
-It would be the same for **:tst:** and **:inc:** adding its respective options.
+This plugin manages release build dependencies including fetching those dependencies and calling a given dependenc's build process. Ultimately, this plugin generates the components needed by your Ceedling release build target.
 
-* Defining an external file with boilerplate code:
+### Ceedling plugin `compile_commands_json`
 
-```yaml
-:module_generator:
-  :boilerplate_files:
-    :src: '<template_folder>\src_boilerplate.txt'
-    :inc: '<template_folder>\inc_boilerplate.txt'
-    :tst: '<template_folder>\tst_boilerplate.txt'
-```
+This plugin create a [JSON Compilation Database][json-compilation-database]. This file is useful to [any code editor or IDE][lsp-tools] that implements syntax highlighting, etc. by way of the LLVM project's `clangd` Language Server Protocol conformant language server.
 
-For whatever file names in whichever folder you desire.
+[lsp-tools]: https://microsoft.github.io/language-server-protocol/implementors/tools/
+[clangd]: https://clangd.llvm.org
+[json-compilation-database]: https://clang.llvm.org/docs/JSONCompilationDatabase.html
 
 <br/>
 
