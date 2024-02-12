@@ -331,7 +331,7 @@ alternative to CMock’s mocks and stubs.
 [CMock]: http://github.com/ThrowTheSwitch/CMock
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
-[FFF-plugin]: https://github.com/ElectronVector/fake_function_framework
+[FFF-plugin]: ../plugins/fff
 [interaction-based-tests]: http://martinfowler.com/articles/mocksArentStubs.html
 
 ### CException
@@ -3577,12 +3577,12 @@ subdirectory includes a _README_ that documents the capabilities and
 configuration options. 
 
 _Note_: Many users find that the handy-dandy [Command Hooks plugin]
- [command-hooks-plugin] is often enough to meet their needs. This plugin allows
+ [command-hooks] is often enough to meet their needs. This plugin allows
  you to connect your own scripts and tools to Ceedling build steps.
 
 [custom-plugins]: CeedlingCustomPlugins.md
-[ceedling-plugins]: plugins/
-[command-hooks-plugin]: plugins/command_hooks/README.md
+[ceedling-plugins]: ../plugins/
+[command-hooks]: ../plugins/command_hooks/
 
 * `:load_paths`:
 
@@ -3726,23 +3726,21 @@ To enable built-in plugins or your own custom plugins, see the documentation for
 the `:plugins` section in Ceedling project configuation options.
 
 Many users find that the handy-dandy [Command Hooks plugin]
-[command-hooks-plugin] is often enough to meet their needs. This plugin allows
+[command-hooks] is often enough to meet their needs. This plugin allows
 you to connect your own scripts and tools to Ceedling build steps.
 
 As mentioned, you can create your own plugins. See the [guide]
 [custom-plugins] for how to create custom plugins.
 
-[custom-plugins]: CeedlingCustomPlugins.md
-[ceedling-plugins]: plugins/
-[command-hooks-plugin]: plugins/command_hooks/README.md
+[//]: # (Links in this section already defined above)
 
 ## Ceedling's built-in plugins, a directory
 
 ### Ceedling plugin `stdout_pretty_tests_report`
 
-This plugin is meant to tbe the default for printing test results to the
-console. Without it, readable test results are still produced but are not
-nicely formatted and summarized.
+[This plugin][stdout_pretty_tests_report] is meant to tbe the default for
+printing test results to the console. Without it, readable test results are
+still produced but are not nicely formatted and summarized.
 
 Plugin output includes a well-formatted list of summary statistics, ignored and
 failed tests, and any extraneous output (e.g. `printf()` statements or
@@ -3757,12 +3755,14 @@ Both of the above write to the console test results with a format that is useful
 to IDEs generally in the case of the former, and GTest-aware reporting tools in
 the case of the latter.
 
+[stdout_pretty_tests_report]: ../plugins/stdout_pretty_tests_report
+
 ### Ceedling plugin `stdout_ide_tests_report`
 
-This plugin prints to the console test results formatted similarly to
-`stdout_pretty_tests_report` with one key difference. This plugin's output is
-formatted such that an IDE executing Ceedling tasks can recognize file paths
-and line numbers in test failures, etc.
+[This plugin][stdout_ide_tests_report] prints to the console test results
+formatted similarly to `stdout_pretty_tests_report` with one key difference.
+This plugin's output is formatted such that an IDE executing Ceedling tasks can
+recognize file paths and line numbers in test failures, etc.
 
 This plugin's formatting is often recognized in an IDE's build window and
 automatically linked for file navigation. With such output, you can select a
@@ -3772,42 +3772,48 @@ CMock).
 
 If enabled, this plugin should be used in place of `stdout_pretty_tests_report`.
 
+[stdout_ide_tests_report]: ../plugins/stdout_ide_tests_report
+
 [IDEs]: https://www.throwtheswitch.org/ide
 
 ### Ceedling plugin `stdout_teamcity_tests_report`
 
 [TeamCity] is one of the original Continuous Integration server products.
 
-This plugin processes test results into TeamCity service messages printed to the
-console. TeamCity's service messages are unique to the product and allow the CI
-server to extract build steps, test results, and more from software builds if
-present.
+[This plugin][stdout_teamcity_tests_report] processes test results into TeamCity
+service messages printed to the console. TeamCity's service messages are unique
+to the product and allow the CI server to extract build steps, test results,
+and more from software builds if present.
 
 The output of this plugin is useful in actual CI builds but is unhelpful in
 local developer builds. See the plugin's documentation for options to enable
 this plugin only in CI builds and not in local builds.
 
 [TeamCity]: https://jetbrains.com/teamcity
+[stdout_teamcity_tests_report]: ../plugins/stdout_teamcity_tests_report
 
 ### Ceedling plugin `stdout_gtestlike_tests_report`
 
-This plugin collects test results and prints them to the console in a format
-that mimics [Google Test's output][gtest-sample-output]. Google Test output is
-both human readable and recognized by a variety of reporting tools, IDEs, and
-Continuous Integration servers.
+[This plugin][stdout_gtestlike_tests_report] collects test results and prints
+them to the console in a format that mimics [Google Test's output]
+[gtest-sample-output]. Google Test output is both human readable and recognized
+by a variety of reporting tools, IDEs, and Continuous Integration servers.
 
 If enabled, this plugin should be used in place of
 `stdout_pretty_tests_report`.
 
 [gtest-sample-output]:
 https://subscription.packtpub.com/book/programming/9781800208988/11/ch11lvl1sec31/controlling-output-with-google-test
+[stdout_gtestlike_tests_report]: ../plugins/stdout_gtestlike_tests_report
 
 ### Ceedling plugin `command_hooks`
 
-This plugin provides a simple means for connecting Ceedling's build events to
+[This plugin][command-hooks] provides a simple means for connecting Ceedling's build events to
 Ceedling tool entries you define in your project configuration (see `:tools`
 documentation). In this way you can easily connect your own scripts or command
 line utilities to build steps without creating an entire custom plugin.
+
+[//]: # (Links defined in a previous section)
 
 ### Ceedling plugin `module_generator`
 
@@ -3816,41 +3822,45 @@ Test- Driven Development. Again and again, one needs a triplet of a source
 file, header file, and test file — scaffolded in such a way that they refer to
 one another.
 
-This plugin allows you to save precious minutes by creating these templated
-files for you with convenient command line tasks.
+[This plugin][module_generator] allows you to save precious minutes by creating
+these templated files for you with convenient command line tasks.
+
+[module_generator]: ../plugins/module_generator
 
 ### Ceedling plugin `fff`
 
-The Fake Function Framework, [FFF], is an alternative approach to [test doubles][test-doubles] than that used by CMock.
+The Fake Function Framework, [FFF], is an alternative approach to [test doubles]
+[test-doubles] than that used by CMock.
 
-[This plugin][FFF-plugin] replaces Ceedling generation of CMock-based mocks and stubs in your tests with FFF-generated fake functions instead.
+[This plugin][FFF-plugin] replaces Ceedling generation of CMock-based mocks and
+stubs in your tests with FFF-generated fake functions instead.
 
-Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
-[fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
+[//]: # (FFF links are defined up in an introductory section explaining CMock)
 
 ### Ceedling plugin `beep`
 
-[This plugin][beep-plugin] provides a simple audio notice when a test build completes suite
+[This plugin][beep] provides a simple audio notice when a test build completes suite
 execution or fails due to a build error. It is intended to support developers
 running time-consuming test suites locally (i.e. in the background).
 
 The plugin provides a variety of options for emitting audio notificiations on
 various desktop platforms.
 
-[beep-plugin]: ../plugins/beep
+[beep]: ../plugins/beep
 
 ### Ceedling plugin `bullseye`
 
-This plugin adds additional Ceedling tasks to execute tests with code coverage
-instrumentation provided by the commercial code coverage tool provided by
-[Bullseye]. The Bullseye tool provides visualization and report generation from
-the coverage results produced by an instrumented test suite.
+[This plugin][bullseye-plugin] adds additional Ceedling tasks to execute tests
+with code coverage instrumentation provided by the commercial code coverage
+tool provided by[Bullseye]. The Bullseye tool provides visualization and report
+generation from the coverage results produced by an instrumented test suite.
 
 [bullseye]: http://www.bullseye.com
+[bullseye-plugin]: ../plugins/bullseye
 
 ### Ceedling plugin `gcov`
 
-This plugin adds additional Ceedling tasks to execute tests with GNU code
+[This plugin][gcov-plugin] adds additional Ceedling tasks to execute tests with GNU code
 coverage instrumentation. Coverage reports of various sorts can be generated
 from the coverage results produced by an instrumented test suite.
 
@@ -3860,42 +3870,62 @@ other supported reporting tools. Optional Python-based [GCovr] and .Net-based
 [ReportGenerator] produce fancy coverage reports in XML, JSON, HTML, etc.
 formats.
 
+[gcov-plugin]: ../plugins/gcov
 [gcov]: http://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 [GCovr]: https://www.gcovr.com/
 [ReportGenerator]: https://reportgenerator.io
 
 ### Ceedling plugin `test_suite_reporter`
 
-This plugin produces any or all of three useful test suite reports in JSON,
-JUnit, or CppUnit format. It further provides a mechanism for users to create
-their own custom reports with a small amount of custom Ruby rather than a full
-plugin.
+[This plugin][test_suite_reporter] produces any or all of three useful test
+suite reports in JSON, JUnit, or CppUnit format. It further provides a
+mechanism for users to create their own custom reports with a small amount of
+custom Ruby rather than a full plugin.
+
+[test_suite_reporter]: ../plugins/test_suite_reporter
 
 ### Ceedling plugin `warnings_report`
 
-This plugin scans the output of build tools for console warning notices and
-produces a simple text file that collects all such warning messages.
+[This plugin][warnings_report] scans the output of build tools for console
+warning notices and produces a simple text file that collects all such warning
+messages.
+
+[warnings_report]: ../plugins/warnings_report
 
 ### Ceedling plugin `raw_output_report`
 
-This plugin captures to a simple text file every command line executed by build
-tools. This can be helpful to debugging build problems or understanding how
-test suites are built and run at a nitty-gritty level.
+[This plugin][raw_output_report] captures to a simple text file every command
+line executed by build tools. This can be helpful to debugging build problems
+or understanding how test suites are built and run at a nitty-gritty level.
+
+[raw_output_report]: ../plugins/raw_output_report
 
 ### Ceedling plugin `subprojects`
 
-This plugin supports subproject release builds of static libraries. It manages
-differing sets of compiler flags and linker flags that fit the needs of
-different library builds.
+[This plugin][subprojects] supports subproject release builds of static
+libraries. It manages differing sets of compiler flags and linker flags that
+fit the needs of different library builds.
+
+[subprojects]: ../plugins/subprojects
 
 ### Ceedling plugin `dependencies`
 
-This plugin manages release build dependencies including fetching those dependencies and calling a given dependenc's build process. Ultimately, this plugin generates the components needed by your Ceedling release build target.
+[This plugin][dependencies] manages release build dependencies including
+fetching those dependencies and calling a given dependenc's build process.
+Ultimately, this plugin generates the components needed by your Ceedling
+release build target.
+
+[dependencies]: ../plugins/dependencies
 
 ### Ceedling plugin `compile_commands_json`
 
-This plugin create a [JSON Compilation Database][json-compilation-database]. This file is useful to [any code editor or IDE][lsp-tools] that implements syntax highlighting, etc. by way of the LLVM project's `clangd` Language Server Protocol conformant language server.
+[This plugin][compile_commands_json] create a [JSON Compilation Database]
+[json-compilation-database]. This file is useful to [any code editor or IDE]
+[lsp-tools] that implements syntax highlighting, etc. by way of the LLVM
+project's [`clangd`][clangd] Language Server Protocol conformant language
+server.
 
+[compile_commands_json]: ../plugins/compile_commands_json
 [lsp-tools]: https://microsoft.github.io/language-server-protocol/implementors/tools/
 [clangd]: https://clangd.llvm.org
 [json-compilation-database]: https://clang.llvm.org/docs/JSONCompilationDatabase.html
