@@ -24,10 +24,19 @@ class ModuleGenerator < Plugin
   end
 
   def stub_from_header(module_name, optz={})
-    require "cmock.rb" #From CMock
+
+    # grab our own reference to the main configuration hash
+    @project_config = @ceedling[:configurator].project_config_hash
+
+    # load CMock to be used for stubbing here.
+    require "cmock.rb"
+
+    # generate skeleton file
     stuboptz = divine_options(optz)
-    pathname = optz[:path_inc] || optz[:path_src] || "src"
-    filename = File.expand_path(optz[:module_root_path], File.join(pathname, module_name + ".h"))
+    stuboptz[:subdir] = nil
+    stuboptz[:mock_path] = stuboptz[:path_src]
+    filename = File.join(stuboptz[:path_inc], module_name + ".h")
+    puts stuboptz.to_yaml
     CMock.new(stuboptz).setup_skeletons(filename)
   end
 

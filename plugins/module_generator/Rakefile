@@ -11,6 +11,10 @@ def prep_test
   FileUtils.mkdir_p "./sub/t"
 end
 
+def prep_stub(num)
+  FileUtils.cp_r("../assets/stubby#{num}.h","./i/stubby.h")
+end
+
 def assert_file_exist(path)
   if File.exist?(path)
     puts "File #{path} exists."
@@ -64,6 +68,15 @@ def call_destroy(cmd)
     raise "Received error when destroying:\n#{retval}"
   else
     puts "Destroyed #{cmd}"
+  end
+end
+
+def call_stub(cmd)
+  retval = `ceedling module:stub[#{cmd}]`
+  if retval.match? /Error/i
+    raise "Received error when stubbing:\n#{retval}"
+  else
+    puts "Stubbed #{cmd}"
   end
 end
 
@@ -140,6 +153,31 @@ task :integration_test do
     assert_file_not_exist("i/rev/c_file.h")
     assert_file_not_exist("t/rev/test_c_file.c")
     assert_test_run_contains("No tests executed")
+
+    # Verify stubbing functionality can make a new source file
+    puts "\nVerifying Stubbing:"
+    prep_stub(1)
+    call_stub("i:stubby")
+    assert_file_contains("s/stubby.c","void shorty")
+
+    # Verify stubbing functionality can update a source file
+    puts "\nVerifying Stub Updating:"
+    prep_stub(2)
+    call_stub("i:stubby")
+    assert_file_contains("s/stubby.c","void shorty")
+    assert_file_contains("s/stubby.c","void shrimpy")
+    assert_file_contains("s/stubby.c","int tiny")
+
+    # Make sure that we can destroy modules properly even when the
+    # entire set doesn't exist
+    puts "\nVerifying Partial Destroy:"
+    call_destroy("i:stubby")
+    assert_file_not_exist("s/stubby.c")
+    assert_file_not_exist("i/stubby.h")
+    prep_test
+
+    puts "\nPASSES MODULE SELF-TESTS"
+
   end
 end
 
