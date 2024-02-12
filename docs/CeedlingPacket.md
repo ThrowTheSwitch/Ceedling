@@ -3717,20 +3717,20 @@ void setUp(void) {
 
 # Ceedling Plugins
 
-Ceedling includes a number of plugins. See the collection of built-in [plugins/]
-[ceedling-plugins] or consult the list with summaries and links to
-documentation in the subsection that follows. Each plugin subdirectory includes
-full documentation of its capabilities and configuration options.
+Ceedling includes a number of plugins. See the collection of built-in [plugins/][ceedling-plugins] 
+or consult the list with summaries and links to documentation in the subsection 
+that follows. Each plugin subdirectory includes full documentation of its 
+capabilities and configuration options.
 
 To enable built-in plugins or your own custom plugins, see the documentation for
 the `:plugins` section in Ceedling project configuation options.
 
-Many users find that the handy-dandy [Command Hooks plugin]
-[command-hooks] is often enough to meet their needs. This plugin allows
-you to connect your own scripts and tools to Ceedling build steps.
+Many users find that the handy-dandy [Command Hooks plugin][command-hooks] 
+is often enough to meet their needs. This plugin allows you to connect your own
+scripts and tools to Ceedling build steps.
 
-As mentioned, you can create your own plugins. See the [guide]
-[custom-plugins] for how to create custom plugins.
+As mentioned, you can create your own plugins. See the [guide][custom-plugins] 
+for how to create custom plugins.
 
 [//]: # (Links in this section already defined above)
 
@@ -3795,8 +3795,8 @@ this plugin only in CI builds and not in local builds.
 ### Ceedling plugin `stdout_gtestlike_tests_report`
 
 [This plugin][stdout_gtestlike_tests_report] collects test results and prints
-them to the console in a format that mimics [Google Test's output]
-[gtest-sample-output]. Google Test output is both human readable and recognized
+them to the console in a format that mimics [Google Test's output][gtest-sample-output]. 
+Google Test output is both human readable and recognized
 by a variety of reporting tools, IDEs, and Continuous Integration servers.
 
 If enabled, this plugin should be used in place of
@@ -3852,7 +3852,7 @@ various desktop platforms.
 
 [This plugin][bullseye-plugin] adds additional Ceedling tasks to execute tests
 with code coverage instrumentation provided by the commercial code coverage
-tool provided by[Bullseye]. The Bullseye tool provides visualization and report
+tool provided by [Bullseye]. The Bullseye tool provides visualization and report
 generation from the coverage results produced by an instrumented test suite.
 
 [bullseye]: http://www.bullseye.com
