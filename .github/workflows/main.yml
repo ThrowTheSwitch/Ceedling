@@ -90,10 +90,17 @@ jobs:
           ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
           cd ../..
 
-      # Run FFF Example
+      # Run FFF Plugin Tests
       - name: Run Tests On FFF Plugin
         run: |
           cd plugins/fff
+          rake
+          cd ../..
+
+      # Run Module Generator Plugin Tests
+      - name: Run Tests On Module Generator Plugin
+        run: |
+          cd plugins/module_generator
           rake
           cd ../..
 
