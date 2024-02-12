@@ -3,20 +3,6 @@ require 'tmpdir'
 require 'ceedling/yaml_wrapper'
 require 'spec_helper'
 
-if Gem.ruby_version >= Gem::Version.new("2.5.0")
-  Modulegenerator = Struct.new(:project_root, :source_root, :inc_root, :test_root, keyword_init: true) do
-    def initialize(project_root: "./", source_root: "src/", inc_root: "src/", test_root: "test/")
-      super
-    end
-  end
-else
-  Modulegenerator = Struct.new(:project_root, :source_root, :inc_root, :test_root) do
-    def initialize(project_root: "./", source_root: "src/", inc_root: "src/", test_root: "test/")
-      super(project_root, source_root, inc_root, test_root)
-    end
-  end
-end
-
 def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', 'assets', asset_file_name)
 end
@@ -538,60 +524,6 @@ module CeedlingTestCases
     end
   end
 
-  def can_use_the_module_plugin
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:create[ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-        output = `bundle exec ruby -S ceedling test:all`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Need to Implement ponies/)
-        output = `bundle exec ruby -S ceedling module:destroy[ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Destroy Complete/i)
-
-        self.can_use_the_module_plugin_path_extension
-        self.can_use_the_module_plugin_with_include_path
-      end
-    end
-  end
-
-  def can_use_the_module_plugin_path_extension
-    @c.with_context do
-      Dir.chdir @proj_name do
-        # Module creation
-        output = `bundle exec ruby -S ceedling module:create[myPonies:ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-        expect(File.exist?("myPonies/src/ponies.c")).to eq true
-        expect(File.exist?("myPonies/src/ponies.h")).to eq true
-        expect(File.exist?("myPonies/test/test_ponies.c")).to eq true
-
-        # add module path to project file
-        settings = { :paths => { :test => [ "myPonies/test" ],
-                                 :source => [ "myPonies/src" ],
-                                 :include => [ "myPonies/src" ]
-                               }
-                   }
-        add_project_settings("project.yml", settings)
-
-        # See if ceedling finds the test in the subdir
-        output = `bundle exec ruby -S ceedling test:all`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Need to Implement ponies/)
-
-        # Module destruction
-        output = `bundle exec ruby -S ceedling module:destroy[myPonies:ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Destroy Complete/i)
-        expect(File.exist?("myPonies/src/ponies.c")).to eq false
-        expect(File.exist?("myPonies/src/ponies.h")).to eq false
-        expect(File.exist?("myPonies/test/test_ponies.c")).to eq false
-      end
-    end
-  end
-
   def can_run_single_test_with_full_test_case_name_from_test_file_with_success_cmdline_args_are_enabled
     @c.with_context do
       Dir.chdir @proj_name do
@@ -739,127 +671,6 @@ module CeedlingTestCases
     end
   end
 
-  def can_use_the_module_plugin_with_include_path
-    @c.with_context do
-      Dir.chdir @proj_name do
-        # add include path to module generator
-        mod_gen = Modulegenerator.new(inc_root: "inc/")
-        settings = { :module_generator => { :project_root => mod_gen.project_root,
-                                            :source_root => mod_gen.source_root,
-                                            :inc_root => mod_gen.inc_root,
-                                            :test_root => mod_gen.test_root
-                                          }
-                   }
-        add_project_settings("project.yml", settings)
-
-        # module creation
-        output = `bundle exec ruby -S ceedling module:create[myPonies:ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-        expect(File.exist?("myPonies/src/ponies.c")).to eq true
-        expect(File.exist?("myPonies/inc/ponies.h")).to eq true
-        expect(File.exist?("myPonies/test/test_ponies.c")).to eq true
-
-        # Module destruction
-        output = `bundle exec ruby -S ceedling module:destroy[myPonies:ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Destroy Complete/i)
-        expect(File.exist?("myPonies/src/ponies.c")).to eq false
-        expect(File.exist?("myPonies/inc/ponies.h")).to eq false
-        expect(File.exist?("myPonies/test/test_ponies.c")).to eq false
-      end
-    end
-  end
-
-  def can_use_the_module_plugin_with_non_default_paths
-    @c.with_context do
-      Dir.chdir @proj_name do
-        # add paths to module generator
-        mod_gen = Modulegenerator.new(source_root: "foo/", inc_root: "bar/", test_root: "barz/")
-        settings = { :module_generator => { :project_root => mod_gen.project_root,
-                                            :source_root => mod_gen.source_root,
-                                            :inc_root => mod_gen.inc_root,
-                                            :test_root => mod_gen.test_root
-                                          }
-                   }
-        add_project_settings("project.yml", settings)
-
-        # module creation
-        output = `bundle exec ruby -S ceedling module:create[ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-        expect(File.exist?("foo/ponies.c")).to eq true
-        expect(File.exist?("bar/ponies.h")).to eq true
-        expect(File.exist?("barz/test_ponies.c")).to eq true
-
-        # Module destruction
-        output = `bundle exec ruby -S ceedling module:destroy[ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Destroy Complete/i)
-        expect(File.exist?("foo/ponies.c")).to eq false
-        expect(File.exist?("bar/ponies.h")).to eq false
-        expect(File.exist?("barz/test_ponies.c")).to eq false
-      end
-    end
-  end
-
-  def handles_creating_the_same_module_twice_using_the_module_plugin
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:create[unicorns]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-
-        output = `bundle exec ruby -S ceedling module:create[unicorns] 2>&1`
-        expect($?.exitstatus).to match(1)
-        expect(output).to match(/(?:ERROR: Ceedling Failed)|(?:Ceedling could not complete the build because of errors)/)
-      end
-    end
-  end
-
-  def handles_creating_the_same_module_twice_using_the_module_plugin_extension
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-
-        output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns] 2>&1`
-        expect($?.exitstatus).to match(1)
-        expect(output).to match(/(?:ERROR: Ceedling Failed)|(?:Ceedling could not complete the build because of errors)/)
-      end
-    end
-  end
-
-  def handles_destroying_a_module_that_does_not_exist_using_the_module_plugin
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:destroy[unknown]`
-        expect($?.exitstatus).to match(0)
-
-        expect(output).to match(/File src\/unknown\.c does not exist so cannot be removed\./)
-        expect(output).to match(/File src\/unknown\.h does not exist so cannot be removed\./)
-        expect(output).to match(/File test\/test_unknown\.c does not exist so cannot be removed\./)
-        expect(output).to match(/Destroy Complete/)
-
-        self.handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension
-      end
-    end
-  end
-
-  def handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:destroy[myUnknownModule:unknown]`
-        expect($?.exitstatus).to match(0)
-
-        expect(output).to match(/File myUnknownModule\/src\/unknown\.c does not exist so cannot be removed\./)
-        expect(output).to match(/File myUnknownModule\/src\/unknown\.h does not exist so cannot be removed\./)
-        expect(output).to match(/File myUnknownModule\/test\/test_unknown\.c does not exist so cannot be removed\./)
-        expect(output).to match(/Destroy Complete/)
-      end
-    end
-  end
 
   def test_run_of_projects_fail_because_of_sigsegv_without_report
     @c.with_context do

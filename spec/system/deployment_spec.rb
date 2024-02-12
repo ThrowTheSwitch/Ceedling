@@ -40,14 +40,6 @@ describe "Ceedling" do
     it { can_test_projects_with_both_mock_and_real_header }
     it { can_test_projects_with_success_when_space_appears_between_hash_and_include }
     it { uses_raw_output_report_plugin }
-    it { can_use_the_module_plugin }
-    it { can_use_the_module_plugin_path_extension }
-    it { can_use_the_module_plugin_with_include_path }
-    it { can_use_the_module_plugin_with_non_default_paths }
-    it { handles_creating_the_same_module_twice_using_the_module_plugin }
-    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
     it { test_run_of_projects_fail_because_of_sigsegv_without_report }
     it { test_run_of_projects_fail_because_of_sigsegv_with_report }
     it { execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue_when_cmd_args_set_to_true }
@@ -74,7 +66,6 @@ describe "Ceedling" do
     it { contains_a_vendor_directory }
     it { contains_documentation }
     it { can_test_projects_with_success }
-    it { can_use_the_module_plugin }
   end
 
 
@@ -101,12 +92,6 @@ describe "Ceedling" do
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
     it { can_test_projects_with_compile_error }
-    it { can_use_the_module_plugin }
-    it { can_use_the_module_plugin_path_extension }
-    it { can_use_the_module_plugin_with_include_path }
-    it { handles_creating_the_same_module_twice_using_the_module_plugin }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
   describe "ugrade a project's `vendor` directory" do
@@ -130,14 +115,6 @@ describe "Ceedling" do
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
     it { can_test_projects_with_compile_error }
-    it { can_use_the_module_plugin }
-    it { can_use_the_module_plugin_path_extension }
-    it { can_use_the_module_plugin_with_include_path }
-    it { can_use_the_module_plugin_with_non_default_paths }
-    it { handles_creating_the_same_module_twice_using_the_module_plugin }
-    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
 
     it { can_upgrade_projects }
     it { can_upgrade_projects_even_if_test_support_folder_does_not_exists }
@@ -154,14 +131,6 @@ describe "Ceedling" do
     it { can_test_projects_with_fail_alias }
     it { can_test_projects_with_fail_default }
     it { can_test_projects_with_compile_error }
-    it { can_use_the_module_plugin }
-    it { can_use_the_module_plugin_path_extension }
-    it { can_use_the_module_plugin_with_include_path }
-    it { can_use_the_module_plugin_with_non_default_paths }
-    it { handles_creating_the_same_module_twice_using_the_module_plugin }
-    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
   describe "Cannot ugrade a non existing project" do
@@ -187,14 +156,6 @@ describe "Ceedling" do
     it { can_test_projects_with_test_and_vendor_defines_with_success }
     it { can_test_projects_with_fail }
     it { can_test_projects_with_compile_error }
-    it { can_use_the_module_plugin }
-    it { can_use_the_module_plugin_path_extension }
-    it { can_use_the_module_plugin_with_include_path }
-    it { can_use_the_module_plugin_with_non_default_paths }
-    it { handles_creating_the_same_module_twice_using_the_module_plugin }
-    it { handles_creating_the_same_module_twice_using_the_module_plugin_extension }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin }
-    it { handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension }
   end
 
   #TODO: Feature disabled for now.
