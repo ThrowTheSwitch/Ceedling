@@ -4,44 +4,73 @@ This guide walks you through the process of creating custom plugins for
 [Ceedling](https://github.com/ThrowTheSwitch/Ceedling).
 
 It is assumed that the reader has a working installation of Ceedling and some
-basic usage experience, *i.e.* project creation/configuration and task running.
+basic usage experience, *i.e.* project creation/configuration and running tasks.
 
-Some experience with Ruby and Rake will be helpful but not required.
-You can learn the basics as you go, and for more complex tasks, you can browse
-the internet and/or ask your preferred AI powered code generation tool ;).
+Some experience with Ruby and Rake will be helpful but not absolutely required.
+You can learn the basics as you go — often by looking at other, existing 
+Ceedling plugins or simply searching for code examples online.
 
-## Table of Contents
-- [Introduction](#introduction)
+## Contents
+
+- [Overview](#overview)
 - [Ceedling Plugin Architecture](#ceedling-plugin-architecture)
   - [Configuration](#configuration)
   - [Script](#script)
   - [Rake Tasks](#rake-tasks)
 
-## Introduction
+---
 
-Ceedling plugins are a way to extend Ceedling without modifying its core code.
-They are implemented in Ruby programming language and are loaded by Ceedling at
-runtime.
+# Overview
+
+Ceedling plugins extend Ceedling without modifying its core code. They are
+implemented in YAML and the Ruby programming language and are loaded by 
+Ceedling at runtime.
+
 Plugins provide the ability to customize the behavior of Ceedling at various
-stages like preprocessing, compiling, linking, building, testing, and reporting.
-They are configured and enabled from within the project's YAML configuration
-file.
+stages of a build — preprocessing, compiling, linking, building, testing, and
+reporting.
 
-## Ceedling Plugin Architecture
+See _[CeedlingPacket](CeedlingPacket.md)_ for basic details of operation
+(`:plugins` configuration section) and for a directory of built-in plugins.
 
-Ceedling provides 3 ways in which its behavior can be customized through a
-plugin. Each strategy is implemented in a specific source file.
+# Plugin Conventions
 
-### Configuration
+Plugins are enabled and configured from within a Ceedling project's YAML
+configuration file.
 
-Provide configuration values for the project. Values are defined inside a `.yml`
+Plugins must be organized in a folder named after the
+plugin located in a Ruby load path.
+
+# Ceedling Plugin Architecture
+
+Ceedling provides 3 options to customize its behavior through a plugin. Each
+strategy is implemented with source files conforming to location and naming
+conventions. These approaches can be combined.
+
+1. Configuration (YAML & Ruby)
+1. `Plugin` subclass (Ruby)
+1. Rake tasks (Ruby)
+
+# Plugin Architecture Option 1: Configuration
+
+The configuration option, surprisingly enough, provides configuration values. These plugin configuration values can supplement or override project configuration values. More often than not this option is used to provide configuration to the programmatic `Plugin` subclass option.
+
+## Configuration 
+
+`<plugin-name>/config/defaults.yml`
+
+...
+
+## Configuration
+
+`<plugin-name>/config/<plugin-name>.yml`
+
+Values are defined inside a `.yml`
 file and they are merged with the loaded project configuration.
 
 To implement this strategy, add the file `<plugin-name>.yml` to the `config`
 folder of your plugin source root and add content as apropriate, just like it is
 done with the `project.yml` file.
-
-##### **`config/<plugin-name>.yml`**
 
 ```yaml
 ---
@@ -54,7 +83,14 @@ done with the `project.yml` file.
 ...
 ```
 
-### Script
+## Configuration, Programmatic
+
+`<plugin-name>/config/defaults_<plugin-name>.rb`
+
+...
+
+
+# Plugin Architecture Option 2: `Plugin` Subclass
 
 Perform some custom actions at various stages of the build process.
 
@@ -64,7 +100,7 @@ for your plugin that inherits from Ceedling's plugin base class.
 
 The `<plugin-name>.rb` file might look like this:
 
-##### **`lib/<plugin-name>.rb`**
+## `lib/<plugin-name>.rb`
 
 ```ruby
 require 'ceedling/plugin'
@@ -90,7 +126,7 @@ folder to allow organizing better the plugin source code.
 The derived plugin class can define some methods which will be called by
 Ceedling automatically at predefined stages of the build process.
 
-#### `setup`
+## `Plugin` method `setup()`
 
 This method is called as part of the project setup stage, that is when Ceedling
 is loading project configuration files and setting up everything to run
@@ -98,7 +134,7 @@ project's tasks.
 It can be used to perform additional project configuration or, as its name
 suggests, to setup your plugin for subsequent runs.
 
-#### `pre_mock_generate(arg_hash)` and `post_mock_generate(arg_hash)`
+## `Plugin` hook methods `pre_mock_generate(arg_hash)` and `post_mock_generate(arg_hash)`
 
 These methods are called before and after execution of mock generation tool
 respectively.
@@ -115,7 +151,7 @@ arg_hash = {
 }
 ```
 
-#### `pre_runner_generate(arg_hash)` and `post_runner_generate(arg_hash)`
+## `Plugin` hook methods `pre_runner_generate(arg_hash)` and `post_runner_generate(arg_hash)`
 
 These methods are called before and after execution of the Unity's test runner
 generator tool respectively.
@@ -134,7 +170,7 @@ arg_hash = {
 }
 ```
 
-#### `pre_compile_execute(arg_hash)` and `post_compile_execute(arg_hash)`
+## `Plugin` hook methods `pre_compile_execute(arg_hash)` and `post_compile_execute(arg_hash)`
 
 These methods are called before and after source file compilation respectively.
 
@@ -168,7 +204,7 @@ arg_hash = {
 }
 ```
 
-#### `pre_link_execute(arg_hash)` and `post_link_execute(arg_hash)`
+## `Plugin` hook methods `pre_link_execute(arg_hash)` and `post_link_execute(arg_hash)`
 
 These methods are called before and after linking the executable file
 respectively.
@@ -203,7 +239,7 @@ arg_hash = {
 }
 ```
 
-#### `pre_test_fixture_execute(arg_hash)` and `post_test_fixture_execute(arg_hash)`
+## `Plugin` hook methods `pre_test_fixture_execute(arg_hash)` and `post_test_fixture_execute(arg_hash)`
 
 These methods are called before and after running the tests executable file
 respectively.
@@ -232,7 +268,7 @@ arg_hash = {
 }
 ```
 
-#### `pre_test(test)` and `post_test(test)`
+## `Plugin` hook methods `pre_test(test)` and `post_test(test)`
 
 These methods are called before and after performing all steps needed to run a
 test file respectively, i.e. configure, preprocess, compile, link, run, get
@@ -241,26 +277,26 @@ results, etc.
 The argument `test` corresponds to the path of the test source file being
 processed.
 
-#### `pre_release` and `post_release`
+## `Plugin` hook methods `pre_release()` and `post_release()`
 
 These methods are called before and after performing all steps needed to run the
 release task respectively, i.e. configure, preprocess, compile, link, etc.
 
-#### `pre_build` and `post_build`
+## `Plugin` hook methods `pre_build` and `post_build`
 
 These methods are called before and after executing any ceedling task
 respectively. e.g: test, release, coverage, etc.
 
-#### `post_error`
+## `Plugin` hook methods `post_error()`
 
 This method is called in case an error happens during project build process.
 
-#### `summary`
+## `Plugin` hook methods `summary()`
 
 This method is called when onvoking the `summary` task, i.e.: `ceedling summary`.
 The idea is that the method prints the results of the last build.
 
-### Rake Tasks
+# Plugin Architecture Option 3: Rake Tasks
 
 Add custom Rake tasks to your project that can be run with
 `ceedling <custom_task>`.
@@ -268,7 +304,7 @@ Add custom Rake tasks to your project that can be run with
 To implement this strategy, add the file `<plugin-name>.rake` to the plugin
 source root folder and define your rake tasks inside. e.g.:
 
-##### **`<plugin-name>.rake`**
+## `<plugin-name>.rake`
 
 ```ruby
 # Only tasks with description are listed by ceedling -T
