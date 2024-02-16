@@ -43,7 +43,7 @@ While Ceedling can build your release artifact, its claim to fame is building an
 
 ## First, we start with a serving of source code to be tested…
 
-Snippets of two source files follow.
+Tastes of two source files follow.
 
 ### Recipe.c
 
@@ -103,14 +103,14 @@ bool_t Baking_PreheatOven(float setTempF, duration_t timeout) {
 
 ## Next, a sprinkle of unit test code…
 
-Some of what Ceedling does is by naming conventions. See Ceedling’s [documentation](#--documentation--learning) for much more on this.
+Some of what Ceedling does is by naming conventions. See Ceedling’s [documentation](#-documentation--learning) for much more on this.
 
 ### TestRecipe.c
 
 ```c
-#include "unity.h"   // Unit test framework
-#include "Recipe.h"  // By convention, Recipe.c included in TestRecipe executable build
-#include "Kitchen.h" // By convention, Kitchen.c (not shown) included in TestRecipe executable
+#include "unity.h"   // Unity, unit test framework
+#include "Recipe.h"  // By convention, Recipe.c is part of TestRecipe executable build
+#include "Kitchen.h" // By convention, Kitchen.c (not shown) is part of TestRecipe executable build
 
 char recipe[100];
 
@@ -150,10 +150,10 @@ void test_Recipe_BuildSpiceListTsp_shouldFailIfTooManySpices(void) {
 Let’s flavor our test code with a dash of mocks as well…
 
 ```c
-#include "unity.h"    // Unit test framework
-#include "Baking.h"   // By convention, Baking.c included in TestBaking executable build
-#include "MockOven.h" // By convention, mock .h/.c code generated from Oven.h
-#include "MockTime.h" // By convention, mock .h/.c code generated from Time.h
+#include "unity.h"    // Unity, unit test framework
+#include "Baking.h"   // By convention, Baking.c is part of TestBaking executable build
+#include "MockOven.h" // By convention, mock .h/.c code generated from Oven.h by CMock
+#include "MockTime.h" // By convention, mock .h/.c code generated from Time.h by CMock
 
 // 🚫 This test will fail! Find the missing logic in `Baking_PreheatOven()`.
 void test_Baking_PreheatOven_shouldFailIfSettingOvenTemperatureFails(void) {
@@ -215,7 +215,7 @@ void test_Baking_PreheatOven_shouldSucceedAfterAWhile(void) {
 
 ## Add a pinch of command line…
 
-See Ceedling’s [documentation](#--documentation--learning) for examples and everything you need to know about Ceedling’s configuration file options (not showng here).
+See Ceedling’s [documentation](#-documentation--learning) for examples and everything you need to know about Ceedling’s configuration file options (not shown here).
 
 ```shell
  > ceedling test:all
