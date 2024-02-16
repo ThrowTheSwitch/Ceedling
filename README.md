@@ -18,9 +18,9 @@ All generated and framework code is easy to see and understand.
 Ceedling's features support low-level embedded development to enterprise-level software 
 systems.
 
-⭐️ Eager to just get going? Jump to 
+⭐️ **Eager to just get going? Jump to 
 [📚 Documentation & Learning](#-documentation--learning) and
-[🚀 Getting Started](#-getting-started).
+[🚀 Getting Started](#-getting-started).**
 
 ## Ceedling is a suite of tools
 
@@ -62,14 +62,17 @@ dependency management, and more.
 
 # 🙋‍♀️ Need Help?
 
-* Found a bug or want to suggest a feature? Submit an **[issue](/issue)** 
-  at this repo.
+* Found a bug or want to suggest a feature?
+  **[Submit an issue][ceedling-issues]** at this repo.
 * Trying to understand features or solve a testing problem? Hit the
   **[discussion forums][forums]**.
-* Need paid training, customizations, or support contracts?
-  **[Contact ThingamaByte][thingama-contact]**. Incidentally, work has begun 
-  on certified versions of the Ceedling suite of tools.
+* Paid training, customizations, and support contracts are avaialble by 
+  **[contacting ThingamaByte][thingama-contact]**.
 
+Yes, work has begun on certified versions of the Ceedling suite of tools.
+Again, [reach out to ThingamaByte][thingama-contact] for more.
+
+[ceedling-issues]: https://github.com/ThrowTheSwitch/Ceedling/issues
 [forums]: https://www.throwtheswitch.org/forums
 [thingama-contact]: https://www.thingamabyte.com/contact
 
