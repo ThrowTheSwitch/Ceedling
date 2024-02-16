@@ -1,6 +1,6 @@
 # Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-🚚 _February 16, 2024_ || **Ceedling 0.32** is a release candidate and will be shipping very soon. See the [Release Notes](#docs/ReleaseNotes.md).
+_February 16, 2024_ 🚚 **Ceedling 0.32** is a release candidate and will be shipping very soon. See the [Release Notes](#docs/ReleaseNotes.md) for a long list of improvements and fixes.
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -16,8 +16,8 @@ All generated and framework code is easy to see and understand.
 Ceedling's features support low-level embedded development to enterprise-level software 
 systems.
 
-🚀 Eager to just get going? Jump to [📚 Documentation & Learning](#-documentation--learning) and
-[⭐️ Getting Started](#-getting-started).
+⭐️ Eager to just get going? Jump to [📚 Documentation & Learning](#-documentation--learning) and
+[🚀 Getting Started](#-getting-started).
 
 ## Ceedling is a suite of tools
 
@@ -297,7 +297,7 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 <br/>
 
-# ⭐️ Getting Started
+# 🚀 Getting Started
 
 👀 See the **_[Quick Start](docs/CeedlingPacket.md#quick-start)_** section in Ceedling’s core documentation, _Ceedling Packet_.
 
