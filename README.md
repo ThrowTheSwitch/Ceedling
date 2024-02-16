@@ -321,8 +321,6 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling, the GCC toolchain, and some helper scripts is also available. A Docker container is a self-contained, portable, well managed alternative to a local installation of Ceedling.
 
-The Ceedling Docker image is early in its lifecycle and due for significant updates and improvements. Check its documentation for version information, status, and supported platforms.
-
 [docker-image]: https://hub.docker.com/r/throwtheswitch/madsciencelab
 
 ### Example super-duper simple Ceedling configuration file
