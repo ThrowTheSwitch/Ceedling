@@ -424,7 +424,7 @@ file for you by adding `--gitignore` to your `new` call.
 ```
 <br/>
 
-# 💻 Contributin to Ceedling Development
+# 💻 Contributing to Ceedling Development
 
 ## Alternate installation
 
