@@ -1,6 +1,6 @@
 # Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-🚚 February 16, 2024 **Ceedling 0.32** is a release candidate and will be available very soon.
+🚚 February 16, 2024 **Ceedling 0.32** is a release candidate and will be shipped very soon.
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -9,11 +9,15 @@
 **Ceedling can build your release artifact but is especially adept at building
 test suites.**
 
-Ceedling works the way developers want to work. It is flexible and entirely command-line driven.
+Ceedling works the way developers want to work. It is flexible and entirely
+command-line driven. It drives code generation and command line tools for you.
 All generated and framework code is easy to see and understand.
 
 Ceedling's features support low-level embedded development to enterprise-level software 
 systems.
+
+🚀 Eager to just get going? Jump to [📚 Documentation & Learning](#-documentation--learning) and
+[⭐️ Getting Started](#-getting-started).
 
 ## Ceedling is a suite of tools
 
@@ -32,7 +36,7 @@ awesomeness in the C language.
 
 ## But, wait. There’s more.
 
-For simples project structures, Ceedling can build and test an entire project from just a
+For simple project structures, Ceedling can build and test an entire project from just a
 few lines in its project configuration file.
 
 Because it handles all the nitty-gritty of rebuilds and becuase of Unity and CMock,
