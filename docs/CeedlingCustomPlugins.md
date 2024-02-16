@@ -1,4 +1,4 @@
-# Creating Custom Plugins for Ceedling
+# Creating Plugins for Ceedling
 
 This guide walks you through the process of creating custom plugins for
 [Ceedling](https://github.com/ThrowTheSwitch/Ceedling).
@@ -12,15 +12,15 @@ Ceedling plugins or simply searching for code examples online.
 
 ## Contents
 
-- [Overview](#custom-ceedling-plugins-overview)
-- [Conventions & Architecture](#ceedling-plugin-architecture)
+- [Custom Plugins Overview](#custom-plugins-overview)
+- [Plugin Conventions & Architecture](#plugin-conventions--architecture)
   - [Configuration Plugin](#plugin-option-1-configuration)
   - [Programmatic `Plugin` subclass](#plugin-option-2-plugin-subclass)
   - [Rake Tasks Plugin](#plugin-option-3-rake-tasks)
 
 ---
 
-# Custom Ceedling Plugins Overview
+# Custom Plugins Overview
 
 Ceedling plugins extend Ceedling without modifying its core code. They are
 implemented in YAML and the Ruby programming language and are loaded by 
@@ -33,7 +33,7 @@ reporting.
 See _[CeedlingPacket](CeedlingPacket.md)_ for basic details of operation
 (`:plugins` configuration section) and for a directory of built-in plugins.
 
-# Ceedling Plugin Conventions & Architecture
+# Plugin Conventions & Architecture
 
 Plugins are enabled and configured from within a Ceedling project's YAML
 configuration file.
