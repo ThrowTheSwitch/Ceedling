@@ -12,11 +12,11 @@ Ceedling plugins or simply searching for code examples online.
 
 ## Contents
 
-- [Custom Plugins Overview](#custom-plugins-overview)
-- [Plugin Conventions & Architecture](#plugin-conventions--architecture)
-  - [Configuration Plugin](#plugin-option-1-configuration)
-  - [Programmatic `Plugin` subclass](#plugin-option-2-plugin-subclass)
-  - [Rake Tasks Plugin](#plugin-option-3-rake-tasks)
+* [Custom Plugins Overview](#custom-plugins-overview)
+* [Plugin Conventions & Architecture](#plugin-conventions--architecture)
+   1. [Configuration Plugin](#plugin-option-1-configuration)
+   1. [Programmatic `Plugin` subclass](#plugin-option-2-plugin-subclass)
+   1. [Rake Tasks Plugin](#plugin-option-3-rake-tasks)
 
 ---
 

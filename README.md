@@ -47,9 +47,9 @@ Because it handles all the nitty-gritty of rebuilds and becuase of Unity and
 CMock, Ceedling makes [Test-Driven Development][TDD] in C a breeze.
 
 Ceedling is also extensible with a simple plugin mechanism. It comes with a
-number of built-in plugins for code coverage, test suite report generation,
-Continuous Integration features, IDE integration, release library builds &
-dependency management, and more.
+number of [built-in plugins][ceedling-plugins] for code coverage, test suite
+report generation, Continuous Integration features, IDE integration, release
+library builds & dependency management, and more.
 
 [Unity]: https://github.com/throwtheswitch/unity
 [xUnit]: https://en.wikipedia.org/wiki/XUnit
@@ -59,6 +59,7 @@ dependency management, and more.
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
 [FFF-plugin]: https://github.com/ElectronVector/fake_function_framework
+[ceedling-plugins]: docs/CeedlingPacket.md#ceedling-plugins
 
 <br/>
 
