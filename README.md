@@ -1,6 +1,8 @@
 # Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-_February 16, 2024_ 🚚 **Ceedling 0.32** is a release candidate and will be shipping very soon. See the [Release Notes](#docs/ReleaseNotes.md) for a long list of improvements and fixes.
+_February 16, 2024_ 🚚 **Ceedling 0.32** is a release candidate and will be
+ shipping very soon. See the [Release Notes](#docs/ReleaseNotes.md) for a long
+ list of improvements and fixes.
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -16,7 +18,8 @@ All generated and framework code is easy to see and understand.
 Ceedling's features support low-level embedded development to enterprise-level software 
 systems.
 
-⭐️ Eager to just get going? Jump to [📚 Documentation & Learning](#-documentation--learning) and
+⭐️ Eager to just get going? Jump to 
+[📚 Documentation & Learning](#-documentation--learning) and
 [🚀 Getting Started](#-getting-started).
 
 ## Ceedling is a suite of tools
@@ -36,13 +39,16 @@ awesomeness in the C language.
 
 ## But, wait. There’s more.
 
-For simple project structures, Ceedling can build and test an entire project from just a
-few lines in its project configuration file.
+For simple project structures, Ceedling can build and test an entire project
+from just a few lines in its project configuration file.
 
-Because it handles all the nitty-gritty of rebuilds and becuase of Unity and CMock,
-Ceedling makes [Test-Driven Development][TDD] in C a breeze.
+Because it handles all the nitty-gritty of rebuilds and becuase of Unity and
+CMock, Ceedling makes [Test-Driven Development][TDD] in C a breeze.
 
-Ceedling is also extensible with a simple plugin mechanism. It comes with a number of built-in plugins for code coverage, test suite report generation, Continuous Integration features, IDE integration, release library builds & dependency management, and more.
+Ceedling is also extensible with a simple plugin mechanism. It comes with a
+number of built-in plugins for code coverage, test suite report generation,
+Continuous Integration features, IDE integration, release library builds &
+dependency management, and more.
 
 [Unity]: https://github.com/throwtheswitch/unity
 [CMock]: https://github.com/throwtheswitch/cmock
@@ -54,15 +60,28 @@ Ceedling is also extensible with a simple plugin mechanism. It comes with a numb
 
 <br/>
 
+# 🙋‍♀️ Need Help?
+
+* Found a bug or want to suggest a feature? Submit an **[issue](/issue)** 
+  at this repo.
+* Trying to understand features or solve a testing problem? Hit the
+  **[discussion forums][forums]**.
+* Need paid training, customizations, or support contracts?
+  **[Contact ThingamaByte][thingama-contact]**. Incidentally, work has begun 
+  on certified versions of the Ceedling suite of tools.
+
+[forums]: https://www.throwtheswitch.org/forums
+[thingama-contact]: https://www.thingamabyte.com/contact
+
+<br/>
+
 # 🧑‍🍳 Sample Unit Testing Code
 
 While Ceedling can build your release artifact, its claim to fame is building and running tests suites.
 
 There’s a good chance you’re looking at Ceedling because of its test suite abilities. And, you’d probably like to see what that looks like, huh? Well, let’s cook you up some realistic examples of tested code and running Ceedling with that code.
 
-## First, we start with a serving of source code to be tested…
-
-Tastes of two source files follow.
+## First, we start with servings of source code to be tested…
 
 ### Recipe.c
 
@@ -269,6 +288,10 @@ IGNORED: 0
 <br/>
 
 # 📚 Documentation & Learning
+
+A variety of options for [support][TTS-help] exist as well.
+
+[TTS-help]: https://www.throwtheswitch.org/#help-section
 
 ## Ceedling docs
 
