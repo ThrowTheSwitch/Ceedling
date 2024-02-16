@@ -8,19 +8,20 @@ _February 16, 2024_ 🚚 **Ceedling 0.32** is a release candidate and will be
 
 ## Developer-friendly release _and_ test builds
 
-**Ceedling can build your release artifact but is especially adept at building
-test suites.**
+Ceedling can build your release artifact but is especially adept at building
+test suites.
+
+⭐️ **Eager to just get going? Jump to 
+[📚 Documentation & Learning](#-documentation--learning) and
+[🚀 Getting Started](#-getting-started).**
 
 Ceedling works the way developers want to work. It is flexible and entirely
 command-line driven. It drives code generation and command line tools for you.
 All generated and framework code is easy to see and understand.
 
-Ceedling's features support low-level embedded development to enterprise-level software 
-systems.
-
-⭐️ **Eager to just get going? Jump to 
-[📚 Documentation & Learning](#-documentation--learning) and
-[🚀 Getting Started](#-getting-started).**
+Ceedling's features support all types of C development from low-level embedded
+to enterprise systems. No tool is perfect, but it can do a lot to help you and
+your team produce quality software.
 
 ## Ceedling is a suite of tools
 
@@ -28,7 +29,7 @@ Ceedling is also a suite of tools. It is the glue for bringing together three
 other awesome open-source projects you can’t live without if you‘re creating 
 awesomeness in the C language.
 
-1. **[Unity]**, an xUnit-style test framework.
+1. **[Unity]**, an [xUnit]-style test framework.
 1. **[CMock]**<sup>†</sup>, a code generating, 
    [function mocking & stubbing][test-doubles] kit for interaction-based testing.
 1. **[CException]**, a framework for adding simple exception handling to C projects
@@ -51,6 +52,7 @@ Continuous Integration features, IDE integration, release library builds &
 dependency management, and more.
 
 [Unity]: https://github.com/throwtheswitch/unity
+[xUnit]: https://en.wikipedia.org/wiki/XUnit
 [CMock]: https://github.com/throwtheswitch/cmock
 [CException]: https://github.com/throwtheswitch/cexception
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
