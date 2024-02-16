@@ -1,6 +1,6 @@
 # Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-🚚 February 16, 2024 **Ceedling 0.32** is a release candidate and will be shipped very soon.
+🚚 _February 16, 2024_ || **Ceedling 0.32** is a release candidate and will be shipping very soon. See the [Release Notes](#docs/ReleaseNotes.md).
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -42,7 +42,7 @@ few lines in its project configuration file.
 Because it handles all the nitty-gritty of rebuilds and becuase of Unity and CMock,
 Ceedling makes [Test-Driven Development][TDD] in C a breeze.
 
-Ceedling is also extensible with a simple plugin mechanism. It comes with a number of built-in plugins for code coverage, test suite report generation, Continuous Integration features, IDE integration, release libraries & dependencies, and more.
+Ceedling is also extensible with a simple plugin mechanism. It comes with a number of built-in plugins for code coverage, test suite report generation, Continuous Integration features, IDE integration, release library builds & dependency management, and more.
 
 [Unity]: https://github.com/throwtheswitch/unity
 [CMock]: https://github.com/throwtheswitch/cmock
@@ -51,6 +51,8 @@ Ceedling is also extensible with a simple plugin mechanism. It comes with a numb
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
 [FFF-plugin]: https://github.com/ElectronVector/fake_function_framework
+
+<br/>
 
 # 🧑‍🍳 Sample Unit Testing Code
 
@@ -172,7 +174,10 @@ Let’s flavor our test code with a dash of mocks as well…
 #include "MockOven.h" // By convention, mock .h/.c code generated from Oven.h by CMock
 #include "MockTime.h" // By convention, mock .h/.c code generated from Time.h by CMock
 
-// 🚫 This test will fail! Find the missing logic in `Baking_PreheatOven()`.
+/*
+ * 🚫 This test will fail! Find the missing logic in `Baking_PreheatOven()`.
+ * (`Oven_SetTemperatureF()` returns success / failure.)
+ */
 void test_Baking_PreheatOven_shouldFailIfSettingOvenTemperatureFails(void) {
   Timer timer; // Uninitialized struct
 
@@ -261,6 +266,8 @@ FAILED:  1
 IGNORED: 0
 ```
 
+<br/>
+
 # 📚 Documentation & Learning
 
 ## Ceedling docs
@@ -287,6 +294,8 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 [running-options]: http://www.throwtheswitch.org/build/which
 [courses]: http://www.throwtheswitch.org/dr-surlys-school
 [tutorial]: http://www.electronvector.com/blog/add-unit-tests-to-your-current-project-with-ceedling
+
+<br/>
 
 # ⭐️ Getting Started
 
@@ -415,8 +424,9 @@ file for you by adding `--gitignore` to your `new` call.
 ```shell
  > ceedling new --gitignore YourNewProjectName
 ```
+<br/>
 
-# 💻 Ceedling Development
+# 💻 Contributin to Ceedling Development
 
 ## Alternate installation
 
