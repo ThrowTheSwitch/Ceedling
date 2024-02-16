@@ -41,6 +41,8 @@ Ceedling is also extensible with a simple plugin mechanism. It comes with a numb
 
 While Ceedling can build your release artifact, its claim to fame is building and running tests suites.
 
+There’s a good chance you’re looking at Ceedling because of its test suite abilities. And, you’d probably like to see what that looks like, huh? Well, let’s cook you up some realistic examples of tested code and running Ceedling with that code.
+
 ## First, we start with a serving of source code to be tested…
 
 Tastes of two source files follow.
@@ -216,6 +218,8 @@ void test_Baking_PreheatOven_shouldSucceedAfterAWhile(void) {
 ## Add a pinch of command line…
 
 See Ceedling’s [documentation](#-documentation--learning) for examples and everything you need to know about Ceedling’s configuration file options (not shown here).
+
+The super duper short version is that your project configuration file tells Ceedling where to find test and source files, what testing options you’re using, sets compilation symbols and build tool flags, enables your plugins, and configures your build tool command lines (Ceedling defaults to using the GNU compiler collection — which must be installed, if used).
 
 ```shell
  > ceedling test:all
