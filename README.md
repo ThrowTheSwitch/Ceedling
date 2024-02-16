@@ -24,7 +24,7 @@ few lines in a project configuration file.
 Because it handles all the nitty-gritty of rebuilds and becuase of Unity and CMock,
 Ceedling makes [Test-Driven Development][TDD] in C a breeze.
 
-Ceedling is also extensible with a simple plugin mechanism.
+Ceedling is also extensible with a simple plugin mechanism. It comes with a number of built-in plugins for code coverage, test suite report generation, Continuous Integration features, IDE integration, and more.
 
 <sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
 [fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
@@ -102,6 +102,8 @@ bool_t Baking_PreheatOven(float setTempF, duration_t timeout) {
 ```
 
 ## Next, a sprinkle of unit test code…
+
+Some of what Ceedling does is by naming conventions. See Ceedling’s [documentation](#--documentation--learning) for much more on this.
 
 ### TestRecipe.c
 
@@ -213,11 +215,15 @@ void test_Baking_PreheatOven_shouldSucceedAfterAWhile(void) {
 
 ## Add a pinch of command line…
 
+See Ceedling’s [documentation](#--documentation--learning) for examples and everything you need to know about Ceedling’s configuration file options (not showng here).
+
 ```shell
  > ceedling test:all
 ```
 
 ## Voilà! Test results. `#ChefsKiss`
+
+The test results below are one of the last bits of logging Ceedling produces for a test suite build. Not shown here are all the steps for extracting build details, C code generation, and compilation and linking.
 
 ```
 -------------------
