@@ -12,15 +12,15 @@ Ceedling plugins or simply searching for code examples online.
 
 ## Contents
 
-- [Overview](#overview)
-- [Ceedling Plugin Architecture](#ceedling-plugin-architecture)
-  - [Configuration](#configuration)
-  - [Script](#script)
-  - [Rake Tasks](#rake-tasks)
+- [Overview](#custom-ceedling-plugins-overview)
+- [Conventions & Architecture](#ceedling-plugin-architecture)
+  - [Configuration Plugin](#plugin-option-1-configuration)
+  - [Programmatic `Plugin` subclass](#plugin-option-2-plugin-subclass)
+  - [Rake Tasks Plugin](#plugin-option-3-rake-tasks)
 
 ---
 
-# Overview
+# Custom Ceedling Plugins Overview
 
 Ceedling plugins extend Ceedling without modifying its core code. They are
 implemented in YAML and the Ruby programming language and are loaded by 
@@ -33,25 +33,28 @@ reporting.
 See _[CeedlingPacket](CeedlingPacket.md)_ for basic details of operation
 (`:plugins` configuration section) and for a directory of built-in plugins.
 
-# Plugin Conventions
+# Ceedling Plugin Conventions & Architecture
 
 Plugins are enabled and configured from within a Ceedling project's YAML
 configuration file.
 
-Plugins must be organized in a folder named after the
-plugin located in a Ruby load path.
+Conventions & requirements:
 
-# Ceedling Plugin Architecture
+* Plugins must be organized in a containing directory matching the name of the
+  plugin as used in the project configuration `:plugins` ↳ `:enabled` list.
+* A plugin's containing directory must be located in a Ruby load path. Load
+  paths may be added to a Ceedling project using the `:plugins` ↳ `:load_paths`
+  list.
+* Plugin directories must contain either or both `config/` and `lib/`
+  subdirectories.
 
 Ceedling provides 3 options to customize its behavior through a plugin. Each
 strategy is implemented with source files conforming to location and naming
 conventions. These approaches can be combined.
 
-1. Configuration (YAML & Ruby)
-1. `Plugin` subclass (Ruby)
-1. Rake tasks (Ruby)
+1. Configuration (YAML & Ruby) 1. `Plugin` subclass (Ruby) 1. Rake tasks (Ruby)
 
-# Plugin Architecture Option 1: Configuration
+# Plugin Option 1: Configuration
 
 The configuration option, surprisingly enough, provides configuration values. These plugin configuration values can supplement or override project configuration values. More often than not this option is used to provide configuration to the programmatic `Plugin` subclass option.
 
@@ -90,7 +93,7 @@ done with the `project.yml` file.
 ...
 
 
-# Plugin Architecture Option 2: `Plugin` Subclass
+# Plugin Option 2: `Plugin` Subclass
 
 Perform some custom actions at various stages of the build process.
 
@@ -296,7 +299,7 @@ This method is called in case an error happens during project build process.
 This method is called when onvoking the `summary` task, i.e.: `ceedling summary`.
 The idea is that the method prints the results of the last build.
 
-# Plugin Architecture Option 3: Rake Tasks
+# Plugin Option 3: Rake Tasks
 
 Add custom Rake tasks to your project that can be run with
 `ceedling <custom_task>`.
