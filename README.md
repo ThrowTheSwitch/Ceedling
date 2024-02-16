@@ -1,12 +1,21 @@
 # Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-🌱 **Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
-release artifact but is especially adept at building test suites.**
+🚚 February 16, 2024 **Ceedling 0.32** is a release candidate and will be available very soon.
 
-Ceedling works the way developers want to work. It is entirely command-line driven.
-All generated and framework code is easy to see and understand. Its features
-cater to low-level embedded development as well as enterprise-level software 
+# 🌱 Ceedling is a handy-dandy build system for C projects
+
+## Developer-friendly release _and_ test builds
+
+**Ceedling can build your release artifact but is especially adept at building
+test suites.**
+
+Ceedling works the way developers want to work. It is flexible and entirely command-line driven.
+All generated and framework code is easy to see and understand.
+
+Ceedling's features support low-level embedded development to enterprise-level software 
 systems.
+
+## Ceedling is a suite of tools
 
 Ceedling is also a suite of tools. It is the glue for bringing together three 
 other awesome open-source projects you can’t live without if you‘re creating 
@@ -18,16 +27,18 @@ awesomeness in the C language.
 1. **[CException]**, a framework for adding simple exception handling to C projects
    in the style of higher-order programming languages.
 
-In its simplest form, Ceedling can build and test an entire project from just a
-few lines in a project configuration file.
+<sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
+[fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
+
+## But, wait. There’s more.
+
+For simples project structures, Ceedling can build and test an entire project from just a
+few lines in its project configuration file.
 
 Because it handles all the nitty-gritty of rebuilds and becuase of Unity and CMock,
 Ceedling makes [Test-Driven Development][TDD] in C a breeze.
 
-Ceedling is also extensible with a simple plugin mechanism. It comes with a number of built-in plugins for code coverage, test suite report generation, Continuous Integration features, IDE integration, and more.
-
-<sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
-[fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
+Ceedling is also extensible with a simple plugin mechanism. It comes with a number of built-in plugins for code coverage, test suite report generation, Continuous Integration features, IDE integration, release libraries & dependencies, and more.
 
 [Unity]: https://github.com/throwtheswitch/unity
 [CMock]: https://github.com/throwtheswitch/cmock
