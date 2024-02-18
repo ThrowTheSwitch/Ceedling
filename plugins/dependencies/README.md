@@ -240,15 +240,4 @@ dependencies.
 Maybe you want to take that query further and actually get a list of ALL the header files
 Ceedling has found, including those belonging to your dependencies.
 
-Testing
-=======
-
-Hopefully all your dependencies are fully tested... but we can't always depend on that.
-In the event that they are tested with Ceedling, you'll probably want to consider using
-the `:subprojects` plugin instead of this one. The purpose of this plugin is to pull in
-third party code for release... and to provide a mockable interface for Ceedling to use
-during its tests of other modules.
-
-If that's what you're after... you've found the right plugin!
-
 Happy Testing!
