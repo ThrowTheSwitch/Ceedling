@@ -28,7 +28,7 @@ class Generator
       :test => test,
       :context => context,
       :output_path => output_path }
-    
+
     @plugin_manager.pre_mock_generate( arg_hash )
 
     begin
@@ -42,7 +42,7 @@ class Generator
 
       # Get default config created by Ceedling and customize it
       config = @generator_mocks.build_configuration( output_path )
-  
+
       # Generate mock
       msg = @reportinator.generate_module_progress(
         operation: "Generating mock for",
@@ -203,7 +203,7 @@ class Generator
     @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
     command =
-      @tool_executor.build_command_line( 
+      @tool_executor.build_command_line(
         arg_hash[:tool],
         arg_hash[:flags],
         arg_hash[:source],
@@ -289,7 +289,7 @@ class Generator
     # Configure debugger
     @debugger_utils.configure_debugger(command)
 
-    # Apply additional test case filters 
+    # Apply additional test case filters
     command[:line] += @unity_utils.collect_test_runner_additional_args
 
     # Enable collecting GCOV results even when segmenatation fault is appearing
@@ -302,14 +302,14 @@ class Generator
     shell_result = @tool_executor.exec( command )
 
     # Handle SegFaults
-    if shell_result[:output] =~ /\s*Segmentation\sfault.*/i
+    if (shell_result[:output] =~ /\s*Segmentation\sfault.*/i) or (shell_result[:status].exitstatus == 3) or (shell_result[:status].termsig == 11)
       if @configurator.project_config_hash[:project_use_backtrace] && @configurator.project_config_hash[:test_runner_cmdline_args]
         # If we have the options and tools to learn more, dig into the details
         shell_result = @debugger_utils.gdb_output_collector(shell_result)
       else
         # Otherwise, call a segfault a single failure so it shows up in the report
         source = File.basename(executable).ext(@configurator.extension_source)
-        shell_result[:output] = "#{source}:1:test_Unknown:FAIL:Segmentation Fault" 
+        shell_result[:output] = "#{source}:1:test_Unknown:FAIL:Segmentation Fault"
         shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
         shell_result[:exit_code] = 1
       end

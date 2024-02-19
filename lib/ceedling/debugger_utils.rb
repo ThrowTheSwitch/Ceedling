@@ -1,3 +1,5 @@
+require 'tempfile'
+
 # The debugger utils class,
 # Store functions and variables helping to parse debugger output and
 # prepare output understandable by report generators
@@ -31,26 +33,29 @@ class DebuggerUtils
     end
   end
 
-  # Execute test_runner file under gdb and return:
-  # - output -> stderr and stdout
-  # - time -> execution of single test
+  # Execute test_runner file under gdb
   #
   # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
-  # @return [String, #output] - output from binary execution
-  # @return [Float, #time] - time execution of the binary file
-  def collect_cmd_output_with_gdb(command, cmd, test_case=nil)
-    gdb_file_name = @configurator.project_config_hash[:tools_backtrace_reporter][:executable]
-    gdb_extra_args = @configurator.project_config_hash[:tools_backtrace_reporter][:arguments]
-    gdb_extra_args = gdb_extra_args.join(' ')
+  # @return  hash - shell_result
+  def collect_cmd_output_with_gdb(command, args, test_case=nil)
+    test_output = Tempfile.new('gdb-output', @configurator.project_test_results_path)
+    test_output.close
 
-    gdb_exec_cmd = command.clone 
-    gdb_exec_cmd[:line] = "#{gdb_file_name} #{gdb_extra_args} #{cmd}"
+    gdb_exec_cmd = @tool_executor.build_command_line(
+      @configurator.project_config_hash[:tools_backtrace_reporter], [],
+      command[:line], args, test_output.path, test_case)
+
     crash_result = @tool_executor.exec(gdb_exec_cmd)
-    if (crash_result[:exit_code] == 0) and (crash_result[:output] =~ /(?:PASS|FAIL|IGNORE)/)
-      [crash_result[:output], crash_result[:time].to_f]
-    else
-      ["#{gdb_file_name.split(/\w+/)[0]}:1:#{test_case || 'test_Unknown'}:FAIL:#{crash_result[:output]}", 0.0]
+
+    crash_result[:gdb_output] = crash_result[:output]
+    crash_result[:output] = File.read(test_output.path)
+
+    if crash_result[:exit_code] != 0
+      crash_result[:output] += "crash:1:#{test_case || 'test_Unknown'}:FAIL:GDB crashed!"
     end
+    crash_result
+  ensure
+    test_output.unlink
   end
 
   # Collect list of test cases from test_runner
@@ -62,10 +67,10 @@ class DebuggerUtils
   # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
   # @return Array - list of the test_cases defined in test_file_runner
   def collect_list_of_test_cases(command)
-    all_test_names = command.clone 
+    all_test_names = command.clone
     all_test_names[:line] += @unity_utils.additional_test_run_args('', 'list_test_cases')
     test_list = @tool_executor.exec(all_test_names)
-    test_runner_tc = test_list[:output].split("\n").drop(1)
+    test_runner_tc = test_list[:output].split("\n").drop(1).map(&:strip)
 
     # Clean collected test case names
     # Filter tests which contain test_case_name passed by `--test_case` argument
@@ -117,17 +122,22 @@ class DebuggerUtils
     test_case_list_to_execute = collect_list_of_test_cases(@command_line)
     test_case_list_to_execute.each do |test_case_name|
       test_run_cmd = @command_line.clone
-      test_run_cmd_with_args = test_run_cmd[:line] + @unity_utils.additional_test_run_args(test_case_name, 'test_case')
-      test_output, exec_time = collect_cmd_output_with_gdb(test_run_cmd, test_run_cmd_with_args, test_case_name)
+      gdb_result = collect_cmd_output_with_gdb(
+        test_run_cmd,
+        @unity_utils.additional_test_run_args(test_case_name, 'test_case'),
+        test_case_name)
+
+      test_output = gdb_result[:output]
+      gdb_output = gdb_result[:gdb_output]
 
       # Concatenate execution time between tests
-      # running tests serpatatelly might increase total execution time
-      shell_result[:time] += exec_time
+      # running tests separately might increase total execution time
+      shell_result[:time] += gdb_result[:time]
 
       # Concatenate test results from single test runs, which not crash
       # to create proper output for further parser
       if test_output =~ /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
-        test_output = "#{Regexp.last_match(1)}:#{Regexp.last_match(2)}:#{Regexp.last_match(3)}:#{Regexp.last_match(4)}#{Regexp.last_match(5)}"
+        test_output = test_output[0..Regexp.last_match.end(0)]
         if test_output =~ /:PASS/
           test_case_result_collector[:passed] += 1
         elsif test_output =~ /:IGNORE/
@@ -135,35 +145,32 @@ class DebuggerUtils
         elsif test_output =~ /:FAIL:/
           test_case_result_collector[:failed] += 1
         end
-      else
+      elsif gdb_output =~ /Segmentation\sfault/i
         # <-- Parse Segmentatation Fault output section -->
-        
-        # Withdraw test_name from gdb output
-        test_name = if test_output =~ /<(.*)>/
-                      Regexp.last_match(1)
-                    else
-                      ''
-                    end
+        error_msg = "Segmentation fault"
 
         # Collect file_name and line in which Segmentation fault have his beginning
-        if test_output =~ /#{test_name}\s\(\)\sat\s(.*):(\d+)\n/
-          # Remove path from file_name
-          file_name = Regexp.last_match(1).to_s.split('/').last.split('\\').last
-          # Save line number
+        if gdb_output =~ /#{test_case_name}\s\(\)\sat\s(.*):(\d+)\n/
+          file_name = Regexp.last_match(1)
           line = Regexp.last_match(2)
 
-          # Replace:
-          # - '\n' by @new_line_tag to make gdb output flat
-          # - ':' by @colon_tag to avoid test results problems
-          # to enable parsing output for default generator_test_results regex
-          test_output = test_output.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
-          test_output = "#{file_name}:#{line}:#{test_name}:FAIL: #{test_output}"
+          if gdb_output =~ /in\s.*\s\(.*\)\sat\s(.*):\d+$/ and Regexp.last_match(1) != file_name
+            error_msg += " " + Regexp.last_match(0)
+          end
+
+          test_output = "#{test_output}#{file_name}:#{line}:#{test_case_name}:FAIL: #{error_msg}\n"
+        else
+          test_output = "#{test_output}unknown:1:#{test_case_name}:FAIL: #{error_msg}\n"
         end
 
-        # Mark test as failure
+        test_case_result_collector[:failed] += 1
+
+      else
+        test_output = "#{test_output}unexpected_exit:1:#{test_case_name}:FAIL:Unexpected early exit: #{gdb_output.lines.last.chomp}\n"
         test_case_result_collector[:failed] += 1
       end
-      test_case_result_collector[:output].append("#{test_output}\r\n")
+
+      test_case_result_collector[:output].append(test_output)
     end
 
     template = "\n-----------------------\n" \

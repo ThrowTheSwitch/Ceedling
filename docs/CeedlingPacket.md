@@ -1927,15 +1927,15 @@ migrated to the `:test_build` and `:release_build` sections.
     By default, this tool is set as follows:
 
     ```yaml
-   :tools:
-     :backtrace_reporter:
-       :executable: gdb
-       :arguments:
-         - -q
-         - --eval-command run
-         - --eval-command backtrace
-         - --batch
-         - --args
+    :tools:
+      :backtrace_reporter:
+        :executable: gdb
+        :arguments:
+          - -q
+          - --batch
+          - --eval-command="run [args] > [output]"
+          - --eval-command backtrace
+      - [test.exe]
     ```
     
     It is important that the debugging tool should be run as a background task, and with the
@@ -3462,6 +3462,18 @@ specifying / overriding tools.
    - `${3}`: optional output map
    - `${4}`: optional library list
    - `${5}`: optional library path list
+
+  **Default**: `gcc`
+
+* `:backtrace_reporter`:
+
+  Debugger for getting backtraces when a test segfaults
+
+   - `${1}`: test executable
+   - `${2}`: arguments to test executable
+   - `${3}`: file to write test executable output to
+             (backtrace should be on the debugger's stdout/stderr)
+   - `${4}`: test name
 
   **Default**: `gcc`
 

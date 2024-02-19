@@ -259,13 +259,35 @@ DEFAULT_BACKTRACE_TOOL = {
   :name => 'default_backtrace_reporter'.freeze,
   :stderr_redirect => StdErrRedirect::AUTO.freeze,
   :optional => true.freeze,
-  :arguments => [
-    '-q',
-    '--eval-command run',
-    '--eval-command backtrace',
-    '--batch',
-    '--args'
-    ].freeze
+  :arguments => ( SystemWrapper.windows? ?
+      # Shell redirection doesn't work reliably on Windows
+      # but we can use gdb's "tty" command with an ordinary file.
+      [
+        '-q'.freeze,
+        '--batch'.freeze,
+        '--eval-command=\"tty ${3}\"'.freeze,
+        '--eval-command run'.freeze,
+        "--command #{File.expand_path(File.dirname(__FILE__) + '/../../bin/backtrace.gdb')}".freeze,
+        '--args ${1}'.freeze,
+        '${2}'.freeze,
+      ].freeze
+    :
+      # Linux won't let us use "tty" with an ordinary file
+      # but we can use shell redirection. We need to sub both
+      # the args (${2}) and the output file (${3}) into the
+      # "run" command but Ceedling doesn't support doing two
+      # substitutions in one argument; fortunately we can work
+      # around it by putting the opening quote on one line and
+      # the closing quote on the next.
+      [
+        '-q'.freeze,
+        '--batch'.freeze,
+        '--eval-command="run ${2}'.freeze,
+        '> ${3}"'.freeze,
+        "--command #{File.expand_path(File.dirname(__FILE__) + '/../../bin/backtrace.gdb')}".freeze,
+        '${1}'.freeze,
+      ]
+    )
   }
 
 
