@@ -24,7 +24,7 @@
   :options_paths: []
 
   # enable release build (more details in release_build section below)
-  :release_build: FALSE
+  :release_build: TRUE
 
 # specify additional yaml files to automatically load. This is helpful if you
 # want to create project files which specify your tools, and then include those
@@ -37,9 +37,45 @@
 
 # further details to configure the way Ceedling handles release code
 :release_build:
-  :output: MyApp.out
+  :output: DepTest
   :use_assembly: FALSE
   :artifacts: []
+
+# add the following dependencies to our build
+:dependencies:
+  :libraries:
+    - :name: SupervisorSupremo
+      :source_path:   supervisor/
+      :build_path:    supervisor/
+      :artifact_path: supervisor/build/release/exe
+      :fetch:
+        :method: :none
+      :environment: []
+      :build:
+        - "ceedling clobber test:all release"
+      :artifacts:
+        :static_libraries:
+          - libsupervisor.a
+        :dynamic_libraries: []
+        :includes: 
+          - supevisor/src
+  :libraries:
+    - :name: WorkerBees
+      :source_path:   third_party/bees/source
+      :build_path:    third_party/bees/source
+      :artifact_path: third_party/bees/source/build
+      :fetch:
+        :method: :zip
+        :source: ../../../../workerbees.zip #relative to source_path above
+      :environment: []
+      :build:
+        - make
+      :artifacts:
+        :static_libraries:
+          - libworker.a
+        :dynamic_libraries: []
+        :includes:
+          - libworker.h
 
 # Plugins are optional Ceedling features which can be enabled. Ceedling supports
 # a variety of plugins which may effect the way things are compiled, reported, 

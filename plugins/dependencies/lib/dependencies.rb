@@ -105,6 +105,18 @@ class Dependencies < Plugin
     end
   end
 
+  def wrap_command(cmd)
+    if (cmd.class == String)
+      cmd = { 
+        :name => cmd.split(/\s+/)[0],
+        :executable => cmd.split(/\s+/)[0],
+        :line => cmd, 
+        :options => { :boom => true } 
+      } 
+    end
+    return cmd
+  end
+
   def fetch_if_required(lib_path)
     blob = @dependencies[lib_path]
     raise "Could not find dependency '#{lib_path}'" if blob.nil?
@@ -114,8 +126,10 @@ class Dependencies < Plugin
 
     steps = case blob[:fetch][:method]
             when :none
-              return
+              []
             when :zip
+              [ "unzip -o #{blob[:fetch][:source]}" ]
+            when :gzip
               [ "gzip -d #{blob[:fetch][:source]}" ]
             when :git
               branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
@@ -144,7 +158,7 @@ class Dependencies < Plugin
     @ceedling[:streaminator].stdout_puts("Fetching dependency #{blob[:name]}...", Verbosity::NORMAL)
     Dir.chdir(get_source_path(blob)) do
       steps.each do |step|
-        @ceedling[:tool_executor].exec( step )
+        @ceedling[:tool_executor].exec( wrap_command(step) )
       end
     end
   end
@@ -163,7 +177,7 @@ class Dependencies < Plugin
     @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
     Dir.chdir(get_build_path(blob)) do
       blob[:build].each do |step|
-        @ceedling[:tool_executor].exec( step )
+        @ceedling[:tool_executor].exec( wrap_command(step) )
       end
     end
   end
