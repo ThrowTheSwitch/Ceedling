@@ -62,13 +62,14 @@ class SystemWrapper
       # Run the command but absorb any exceptions and capture error info instead
       stdout, stderr, status = Open3.capture3( command )
     rescue => err
-      stderr = err
+      stdout = ""
+      stderr = err.to_s
       exit_code = -1
     end
 
     # If boom, then capture the actual exit code, otherwise leave it as zero
     # as though execution succeeded
-    exit_code = status.exitstatus.freeze if boom
+    exit_code = status.exitstatus.freeze if boom and not status.nil?
 
     # (Re)set the system exit code
     $exit_code = exit_code
@@ -76,7 +77,7 @@ class SystemWrapper
     return {
       # Combine stdout & stderr streams for complete output
       :output    => (stdout + stderr).freeze,
-      
+
       # Relay full Process::Status
       :status    => status.freeze,
       
