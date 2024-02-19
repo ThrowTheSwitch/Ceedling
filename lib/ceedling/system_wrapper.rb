@@ -1,4 +1,4 @@
-require 'rbconfig'    
+require 'rbconfig'
 require 'open3'
 
 class SystemWrapper
@@ -52,7 +52,7 @@ class SystemWrapper
     return Time.now.asctime
   end
 
-  def shell_capture3(command:, boom:false) 
+  def shell_capture3(command:, boom:false)
     # Beginning with later versions of Ruby2, simple exit codes were replaced
     # by the more capable and robust Process::Status.
     # Parts of Process::Status's behavior is similar to an integer exit code in
@@ -80,7 +80,7 @@ class SystemWrapper
 
       # Relay full Process::Status
       :status    => status.freeze,
-      
+
       # Provide simple exit code accessor
       :exit_code => exit_code.freeze
     }
@@ -114,7 +114,7 @@ class SystemWrapper
   end
 
   def add_load_path(path)
-    $LOAD_PATH.unshift(path)
+    $LOAD_PATH.unshift(path.dup)
   end
 
   def require_file(path)
