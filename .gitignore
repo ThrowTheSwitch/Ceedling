@@ -14,6 +14,7 @@ examples/temp_sensor/build/
 plugins/fff/examples/fff_example/build/
 plugins/module_generator/example/build/
 plugins/dependencies/example/boss/build/
+plugins/dependencies/example/boss/third_party/
 plugins/dependencies/example/supervisor/build/
 
 ceedling.sublime-project

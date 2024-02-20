@@ -9,7 +9,7 @@ int supervisor_delegate(int* worker_loads, int num_workers)
 	if ((num_workers < 0) || (worker_loads == 0))
 		return -1;
 
-	for (i=0 i < num_workers; i++)
+	for (i=0; i < num_workers; i++)
 	{
 		if (worker_loads[i] < most_bored_hours)
 		{
@@ -29,7 +29,7 @@ int supervisor_progress(int* worker_loads, int num_workers)
 	if (worker_loads == 0)
 		return 0;
 
-	for (i=0 i < num_workers; i++)
+	for (i=0; i < num_workers; i++)
 	{
 		total_hours += worker_loads[i];
 	}

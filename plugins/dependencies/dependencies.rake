@@ -82,6 +82,10 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
     end
   end
 
+
+  # grab our own reference to the main configuration hash
+  project_config = @ceedling[:configurator].project_config_hash
+
   # Add source files to our list of things to build during release
   source_files = @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
   task PROJECT_RELEASE_BUILD_TARGET => source_files

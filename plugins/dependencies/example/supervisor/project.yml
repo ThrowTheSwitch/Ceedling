@@ -24,7 +24,7 @@
   :options_paths: []
 
   # enable release build (more details in release_build section below)
-  :release_build: FALSE
+  :release_build: TRUE
 
 # specify additional yaml files to automatically load. This is helpful if you
 # want to create project files which specify your tools, and then include those
@@ -37,7 +37,7 @@
 
 # further details to configure the way Ceedling handles release code
 :release_build:
-  :output: MyApp.out
+  :output: libsupervisor.a
   :use_assembly: FALSE
   :artifacts: []
 
@@ -54,7 +54,7 @@
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
     #- compile_commands_json          # generate a compile_commands.json file
-    - dependencies                    # automatically fetch 3rd party libraries, etc.
+    #- dependencies                   # automatically fetch 3rd party libraries, etc.
     #- subprojects                    # managing builds and test for static libraries
     #- fake_function_framework        # use FFF instead of CMock
 
@@ -77,7 +77,7 @@
   #:assembly: .s
   #:dependencies: .d
   #:object: .o
-  :executable: .out
+  :executable: .a
   #:testpass: .pass
   #:testfail: .fail
   #:subprojects: .a
@@ -166,15 +166,14 @@
   :test: []
   :release: []
 
-:module_generator:
-  :project_root: ./
-  :naming: :snake #options: :bumpy, :camel, :caps, or :snake
-  :boilerplates: 
-    :src: "/* MAY THE SOURCE BE WITH YOU */"
-    :inc: |
-      /* ==================================
-      |  It's important to make everyone
-      |  feel included, particularly in 
-      |  when making important decisions.
-      ===================================*/
-    :tst: "// Don't Test Me, Sir."
+# Override the default linker tool to build a static library release instead of  
+# as executable. woo!
+:tools:
+  :release_linker:
+    :name: library linker
+    :executable: as
+    :arguments:
+      - "\"${1}\""
+      - "${5}"
+      - "-o \"${2}\""
+      - "${4}"

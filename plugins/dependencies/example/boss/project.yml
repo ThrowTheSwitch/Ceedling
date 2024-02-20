@@ -45,9 +45,9 @@
 :dependencies:
   :libraries:
     - :name: SupervisorSupremo
-      :source_path:   supervisor/
-      :build_path:    supervisor/
-      :artifact_path: supervisor/build/release/exe
+      :source_path:   ../supervisor/
+      :build_path:    ../supervisor/
+      :artifact_path: ../supervisor/build/release
       :fetch:
         :method: :none
       :environment: []
@@ -59,7 +59,6 @@
         :dynamic_libraries: []
         :includes: 
           - supevisor/src
-  :libraries:
     - :name: WorkerBees
       :source_path:   third_party/bees/source
       :build_path:    third_party/bees/source
@@ -116,7 +115,7 @@
   :executable: .out
   #:testpass: .pass
   #:testfail: .fail
-  #:subprojects: .a
+  :subprojects: .a
 
 # This is where Ceedling should look for your source and test files.
 # see documentation for the many options for specifying this.
