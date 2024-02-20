@@ -1,6 +1,6 @@
 #include "boss.h"
 #include "supervisor.h"
-#include "worker.h"
+#include "libworker.h"
 
 #define MAXIMUM_WORKERS 20
 
@@ -52,7 +52,7 @@ int boss_micro_manage(int* chunks_of_work, int num_chunks)
 	}
 
 	/* Start of the work iteration */
-	for (i = 0; i < num_workers; i++)
+	for (i = 0; i < total_workers; i++)
 	{
 		worker_start_over(i);
 	}
@@ -60,7 +60,7 @@ int boss_micro_manage(int* chunks_of_work, int num_chunks)
 	/* Distribute the work "fairly" */
 	for (i = 0; i < num_chunks; i++)
 	{
-		id = supervisor_delegate(hours_worked, num_workers);
+		id = supervisor_delegate(hours_worked, total_workers);
 		if (id >= 0)
 		{
 			worker_work(id, chunks_of_work[i]);
@@ -69,5 +69,5 @@ int boss_micro_manage(int* chunks_of_work, int num_chunks)
 	}
 
 	/* How much work was finished? */
-	return supervisor_progress(hours_worked, num_workers);
+	return supervisor_progress(hours_worked, total_workers);
 }
