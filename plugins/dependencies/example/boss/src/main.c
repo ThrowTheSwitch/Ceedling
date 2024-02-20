@@ -9,19 +9,19 @@ int main(int argc, char *argv[])
     int work[WORK];
     int retval;
 
-	// This could be more interesting... but honestly, we're just proving this all builds
+	/* This could be more interesting... but honestly, we're just proving this all builds */
 	boss_start();
 
-	// Hire some workers
+	/* Hire some workers */
 	for (i=0; i < 3; i++)
 	{
 		boss_hire_workers( 1 + rand() % 5 );
 	}
 
-	// Fire a few
+	/* Fire a few */
 	boss_fire_workers( rand() % 3 );
 
-	// Do some work
+	/* Do some work */
 	for (i= 0; i < WORK; i++)
 	{
 		work[i] = rand() % 10;

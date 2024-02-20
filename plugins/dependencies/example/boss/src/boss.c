@@ -4,9 +4,9 @@
 
 #define MAXIMUM_WORKERS 20
 
-static int hours_worked[MAXIMUM_WORKERS];
-static int total_workers = 0;
-static int total_hours = 0;
+STATIC int hours_worked[MAXIMUM_WORKERS];
+STATIC int total_workers = 0;
+STATIC int total_hours = 0;
 
 void boss_start()
 {

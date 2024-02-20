@@ -143,7 +143,9 @@
 :defines:
   :test:
     - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
-  :release: []
+    - STATIC=
+  :release:
+    - STATIC=static
 
   # Enable to inject name of a test as a unique compilation symbol into its respective executable build. 
   :use_test_definition: FALSE 
