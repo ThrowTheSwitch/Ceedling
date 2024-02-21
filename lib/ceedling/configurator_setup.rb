@@ -211,7 +211,7 @@ class ConfiguratorSetup
     missing_plugins =
       Set.new( config[:plugins][:enabled] ) -
       Set.new( @configurator_plugins.rake_plugins ) -
-      Set.new( @configurator_plugins.script_plugins )
+      Set.new( @configurator_plugins.programmatic_plugins )
 
     missing_plugins.each do |plugin|
       @streaminator.stderr_puts("ERROR: Ceedling plugin '#{plugin}' contains no rake or Ruby class entry point. (Misspelled or missing files?)", Verbosity::ERRORS)

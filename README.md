@@ -1,43 +1,303 @@
 # Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-🌱 **Ceedling is a handy-dandy build system for C projects. Ceedling can build your 
-release artifact but is especially adept at building test suites.**
+_February 16, 2024_ 🚚 **Ceedling 0.32** is a release candidate and will be
+ shipping very soon. See the [Release Notes](#docs/ReleaseNotes.md) for a long
+ list of improvements and fixes.
 
-Ceedling works the way developers want to work. It is entirely command-line driven.
-All generated and framework code is easy to see and understand. Its features
-cater to low-level embedded development as well as enterprise-level software 
-systems.
+# 🌱 Ceedling is a handy-dandy build system for C projects
+
+## Developer-friendly release _and_ test builds
+
+Ceedling can build your release artifact but is especially adept at building
+test suites.
+
+⭐️ **Eager to just get going? Jump to 
+[📚 Documentation & Learning](#-documentation--learning) and
+[🚀 Getting Started](#-getting-started).**
+
+Ceedling works the way developers want to work. It is flexible and entirely
+command-line driven. It drives code generation and command line tools for you.
+All generated and framework code is easy to see and understand.
+
+Ceedling's features support all types of C development from low-level embedded
+to enterprise systems. No tool is perfect, but it can do a lot to help you and
+your team produce quality software.
+
+## Ceedling is a suite of tools
 
 Ceedling is also a suite of tools. It is the glue for bringing together three 
 other awesome open-source projects you can’t live without if you‘re creating 
 awesomeness in the C language.
 
-1. **[Unity]**, an xUnit-style test framework.
+1. **[Unity]**, an [xUnit]-style test framework.
 1. **[CMock]**<sup>†</sup>, a code generating, 
    [function mocking & stubbing][test-doubles] kit for interaction-based testing.
 1. **[CException]**, a framework for adding simple exception handling to C projects
    in the style of higher-order programming languages.
 
-In its simplest form, Ceedling can build and test an entire project from just a
-few lines in a project configuration file.
-
-Because it handles all the nitty-gritty of rebuilds and becuase of Unity and CMock,
-Ceedling makes [Test-Driven Development][tdd] in C a breeze.
-
-Ceedling is also extensible with a simple plugin mechanism.
-
 <sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
 [fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
 
+## But, wait. There’s more.
+
+For simple project structures, Ceedling can build and test an entire project
+from just a few lines in its project configuration file.
+
+Because it handles all the nitty-gritty of rebuilds and becuase of Unity and
+CMock, Ceedling makes [Test-Driven Development][TDD] in C a breeze.
+
+Ceedling is also extensible with a simple plugin mechanism. It comes with a
+number of [built-in plugins][ceedling-plugins] for code coverage, test suite
+report generation, Continuous Integration features, IDE integration, release
+library builds & dependency management, and more.
+
 [Unity]: https://github.com/throwtheswitch/unity
+[xUnit]: https://en.wikipedia.org/wiki/XUnit
 [CMock]: https://github.com/throwtheswitch/cmock
 [CException]: https://github.com/throwtheswitch/cexception
-[tdd]: http://en.wikipedia.org/wiki/Test-driven_development
+[TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
 [FFF-plugin]: https://github.com/ElectronVector/fake_function_framework
+[ceedling-plugins]: docs/CeedlingPacket.md#ceedling-plugins
+
+<br/>
+
+# 🙋‍♀️ Need Help?
+
+* Found a bug or want to suggest a feature?
+  **[Submit an issue][ceedling-issues]** at this repo.
+* Trying to understand features or solve a testing problem? Hit the
+  **[discussion forums][forums]**.
+* Paid training, customizations, and support contracts are avaialble by 
+  **[contacting ThingamaByte][thingama-contact]**.
+
+Yes, work has begun on certified versions of the Ceedling suite of tools.
+Again, [reach out to ThingamaByte][thingama-contact] for more.
+
+[ceedling-issues]: https://github.com/ThrowTheSwitch/Ceedling/issues
+[forums]: https://www.throwtheswitch.org/forums
+[thingama-contact]: https://www.thingamabyte.com/contact
+
+<br/>
+
+# 🧑‍🍳 Sample Unit Testing Code
+
+While Ceedling can build your release artifact, its claim to fame is building and running tests suites.
+
+There’s a good chance you’re looking at Ceedling because of its test suite abilities. And, you’d probably like to see what that looks like, huh? Well, let’s cook you up some realistic examples of tested code and running Ceedling with that code.
+
+## First, we start with servings of source code to be tested…
+
+### Recipe.c
+
+```c
+#include "Recipe.h"
+#include "Kitchen.h"
+#include <stdio.h>
+
+#define MAX_SPICE_COUNT (4)
+#define MAX_SPICE_AMOUNT_TSP (8.0f)
+
+static float spice_amount = 0;
+static uint8_t spice_count = 0;
+
+void Recipe_Reset(char* recipe, size_t size) {
+  memset(recipe, 0, size);
+  spice_amount = 0;
+  spice_count = 0;
+}
+
+// Add ingredients to a spice list string with amounts (tsp.)
+bool_t Recipe_BuildSpiceListTsp(char* list, size_t maxLen, SpiceId spice, float amount) {
+  if ((++spice_count > MAX_SPICE_COUNT) || ((spice_amount += amount) > MAX_SPICE_AMOUNT_TSP)) {
+    snprintf( list, maxLen, "Too spicy!" );
+    return FALSE;
+  }
+
+  // Kitchen_Ingredient() not shown
+  snprintf( list + strlen(list), maxLen, "%s\n", Kitchen_Ingredient( spice, amount, TEASPOON ) );
+  return TRUE;
+}
+```
+
+### Baking.c
+
+```c
+#include "Oven.h"
+#include "Time.h"
+#include "Baking.h"
+
+bool_t Baking_PreheatOven(float setTempF, duration_t timeout) {
+  float temperature = 0.0;
+  Timer* timer = Time_StartTimer( timeout );
+  
+  Oven_SetTemperatureF( setTempF );
+
+  while (temperature < setTempF) {
+    Time_SleepMs( 250 );
+    if (Time_IsTimerExpired( timer )) break;
+    temperature = Oven_GetTemperatureReadingF();
+  }
+
+  return (temperature >= setTempF);
+}
+
+```
+
+## Next, a sprinkle of unit test code…
+
+Some of what Ceedling does is by naming conventions. See Ceedling’s [documentation](#-documentation--learning) for much more on this.
+
+### TestRecipe.c
+
+```c
+#include "unity.h"   // Unity, unit test framework
+#include "Recipe.h"  // By convention, Recipe.c is part of TestRecipe executable build
+#include "Kitchen.h" // By convention, Kitchen.c (not shown) is part of TestRecipe executable build
+
+char recipe[100];
+
+void setUp(void) {
+  // Execute reset before each test case
+  Recipe_Reset( recipe, sizeof(recipe) );
+}
+
+void test_Recipe_BuildSpiceListTsp_shouldBuildSpiceList(void) {
+  TEST_ASSERT_TRUE( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), OREGANO, 0.5 ) );
+  TEST_ASSERT_TRUE( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), ROSEMARY, 1.0 ) );
+  TEST_ASSERT_TRUE( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), THYME, 0.33 ) );
+  TEST_ASSERT_EQUAL_STRING( "1/2 tsp. Oregano\n1 tsp. Rosemary\n1/3 tsp. Thyme\n", recipe );
+}
+
+void test_Recipe_BuildSpiceListTsp_shouldFailIfTooMuchSpice(void) {
+  TEST_ASSERT_TRUE ( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), CORIANDER, 4.0 ) );
+  TEST_ASSERT_TRUE ( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), BLACK_PEPPER, 4.0 ) );
+  // Total spice = 8.0 + 0.1 tsp.
+  TEST_ASSERT_FALSE( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), BASIL, 0.1 ) );
+  TEST_ASSERT_EQUAL_STRING( "Too spicy!", recipe );
+}
+
+void test_Recipe_BuildSpiceListTsp_shouldFailIfTooManySpices(void) {
+  TEST_ASSERT_TRUE ( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), OREGANO, 1.0 ) );
+  TEST_ASSERT_TRUE ( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), CORIANDER, 1.0 ) );
+  TEST_ASSERT_TRUE ( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), BLACK_PEPPER, 1.0 ) );
+  TEST_ASSERT_TRUE ( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), THYME, 1.0 ) );
+  // Attempt to add 5th spice
+  TEST_ASSERT_FALSE( Recipe_BuildSpiceListTsp( recipe, sizeof(recipe), BASIL, 1.0 ) );
+  TEST_ASSERT_EQUAL_STRING( "Too spicy!", recipe );
+}
+```
+
+### TestBaking.c
+
+Let’s flavor our test code with a dash of mocks as well…
+
+```c
+#include "unity.h"    // Unity, unit test framework
+#include "Baking.h"   // By convention, Baking.c is part of TestBaking executable build
+#include "MockOven.h" // By convention, mock .h/.c code generated from Oven.h by CMock
+#include "MockTime.h" // By convention, mock .h/.c code generated from Time.h by CMock
+
+/*
+ * 🚫 This test will fail! Find the missing logic in `Baking_PreheatOven()`.
+ * (`Oven_SetTemperatureF()` returns success / failure.)
+ */
+void test_Baking_PreheatOven_shouldFailIfSettingOvenTemperatureFails(void) {
+  Timer timer; // Uninitialized struct
+
+  Time_StartTimer_ExpectAndReturn( TWENTY_MIN, &timer );
+
+  // Tell source code that setting the oven temperature did not work
+  Oven_SetTemperatureF_ExpectAndReturn( 350.0, FALSE );
+
+  TEST_ASSERT_FALSE( Baking_PreheatOven( 350.0, TWENTY_MIN ) );
+}
+
+void test_Baking_PreheatOven_shouldFailIfTimeoutExpires(void) {
+  Timer timer; // Uninitialized struct
+
+  Time_StartTimer_ExpectAndReturn( TEN_MIN, &timer );
+
+  Oven_SetTemperatureF_ExpectAndReturn( 200.0, TRUE );
+
+  // We only care that `sleep()` is called, not necessarily every call to it
+  Time_SleepMs_Ignore();
+
+  // Unrolled loop of timeout and temperature checks
+  Time_IsTimerExpired_ExpectAndReturn( &timer, FALSE );
+  Oven_GetTemperatureReadingF_ExpectAndReturn( 100.0 );
+  Time_IsTimerExpired_ExpectAndReturn( &timer, FALSE );
+  Oven_GetTemperatureReadingF_ExpectAndReturn( 105.0 );
+  Time_IsTimerExpired_ExpectAndReturn( &timer, FALSE );
+  Oven_GetTemperatureReadingF_ExpectAndReturn( 110.0 );
+  Time_IsTimerExpired_ExpectAndReturn( &timer, TRUE );
+
+  TEST_ASSERT_FALSE( Baking_PreheatOven( 200.0, TEN_MIN ) );  
+}
+
+void test_Baking_PreheatOven_shouldSucceedAfterAWhile(void) {
+  Timer timer; // Uninitialized struct
+
+  Time_StartTimer_ExpectAndReturn( TEN_MIN, &timer );
+
+  Oven_SetTemperatureF_ExpectAndReturn( 400.0, TRUE );
+
+  // We only care that `sleep()` is called, not necessarily every call to it
+  Time_SleepMs_Ignore();
+
+  // Unrolled loop of timeout and temperature checks
+  Time_IsTimerExpired_ExpectAndReturn( &timer, FALSE );
+  Oven_GetTemperatureReadingF_ExpectAndReturn( 390.0 );
+  Time_IsTimerExpired_ExpectAndReturn( &timer, FALSE );
+  Oven_GetTemperatureReadingF_ExpectAndReturn( 395.0 );
+  Time_IsTimerExpired_ExpectAndReturn( &timer, FALSE );
+  Oven_GetTemperatureReadingF_ExpectAndReturn( 399.0 );
+  Time_IsTimerExpired_ExpectAndReturn( &timer, FALSE );
+  Oven_GetTemperatureReadingF_ExpectAndReturn( 401.0 );
+
+  TEST_ASSERT_TRUE( Baking_PreheatOven( 400.0, TEN_MIN ) );
+}
+```
+
+## Add a pinch of command line…
+
+See Ceedling’s [documentation](#-documentation--learning) for examples and everything you need to know about Ceedling’s configuration file options (not shown here).
+
+The super duper short version is that your project configuration file tells Ceedling where to find test and source files, what testing options you’re using, sets compilation symbols and build tool flags, enables your plugins, and configures your build tool command lines (Ceedling defaults to using the GNU compiler collection — which must be installed, if used).
+
+```shell
+ > ceedling test:all
+```
+
+## Voilà! Test results. `#ChefsKiss`
+
+The test results below are one of the last bits of logging Ceedling produces for a test suite build. Not shown here are all the steps for extracting build details, C code generation, and compilation and linking.
+
+```
+-------------------
+FAILED TEST SUMMARY
+-------------------
+[test/TestBaking.c]
+  Test: test_Baking_PreheatOven_shouldFailIfSettingOvenTemperatureFails
+  At line (7): "Function Time_SleepMs() called more times than expected."
+
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  6
+PASSED:  5
+FAILED:  1
+IGNORED: 0
+```
+
+<br/>
 
 # 📚 Documentation & Learning
+
+A variety of options for [support][TTS-help] exist as well.
+
+[TTS-help]: https://www.throwtheswitch.org/#help-section
 
 ## Ceedling docs
 
@@ -64,7 +324,9 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 [courses]: http://www.throwtheswitch.org/dr-surlys-school
 [tutorial]: http://www.electronvector.com/blog/add-unit-tests-to-your-current-project-with-ceedling
 
-# ⭐️ Getting Started
+<br/>
+
+# 🚀 Getting Started
 
 👀 See the **_[Quick Start](docs/CeedlingPacket.md#quick-start)_** section in Ceedling’s core documentation, _Ceedling Packet_.
 
@@ -87,8 +349,6 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 ### Docker image
 
 A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling, the GCC toolchain, and some helper scripts is also available. A Docker container is a self-contained, portable, well managed alternative to a local installation of Ceedling.
-
-The Ceedling Docker image is early in its lifecycle and due for significant updates and improvements. Check its documentation for version information, status, and supported platforms.
 
 [docker-image]: https://hub.docker.com/r/throwtheswitch/madsciencelab
 
@@ -191,8 +451,9 @@ file for you by adding `--gitignore` to your `new` call.
 ```shell
  > ceedling new --gitignore YourNewProjectName
 ```
+<br/>
 
-# 💻 Ceedling Development
+# 💻 Contributing to Ceedling Development
 
 ## Alternate installation
 

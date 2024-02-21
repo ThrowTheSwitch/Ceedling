@@ -335,6 +335,7 @@ class TestInvoker
             }
 
             @test_invoker_helper.run_fixture_now(**arg_hash)
+
           # Handle exceptions so we can ensure post_test() is called.
           # A lone `ensure` includes an implicit rescuing of StandardError 
           # with the exception continuing up the call trace.

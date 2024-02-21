@@ -1006,7 +1006,7 @@ Ceedling (more on this later).
   Enable logging to <build path>/logs. Must come before test and release
   tasks to log their steps and output. Log names are a concatenation of
   project, user, and option files loaded. User and option files are
-  documented in the advanced topics section of this document.
+  documented in another section.
 
 * `ceedling verbosity[x] <tasks...>`:
 
@@ -3580,7 +3580,7 @@ _Note_: Many users find that the handy-dandy [Command Hooks plugin]
  [command-hooks] is often enough to meet their needs. This plugin allows
  you to connect your own scripts and tools to Ceedling build steps.
 
-[custom-plugins]: CeedlingCustomPlugins.md
+[custom-plugins]: PluginsDevelopmentGuide.md
 [ceedling-plugins]: ../plugins/
 [command-hooks]: ../plugins/command_hooks/
 

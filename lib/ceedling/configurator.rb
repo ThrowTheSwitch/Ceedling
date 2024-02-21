@@ -8,7 +8,7 @@ require 'deep_merge'
 
 class Configurator
 
-  attr_reader :project_config_hash, :script_plugins, :rake_plugins
+  attr_reader :project_config_hash, :programmatic_plugins, :rake_plugins
   attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
 
   constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper) do
@@ -30,7 +30,7 @@ class Configurator
     @project_config_hash = {}
     @project_config_hash_backup = {}
 
-    @script_plugins = []
+    @programmatic_plugins = []
     @rake_plugins   = []
   end
 
@@ -107,11 +107,9 @@ class Configurator
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST )
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_PREPROCESSORS ) if (config[:project][:use_test_preprocessor])
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_ASSEMBLER )     if (config[:test_build][:use_assembly])
-    # @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_DEPENDENCIES )  if (config[:project][:use_deep_dependencies])
 
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE )              if (config[:project][:release_build])
     @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_ASSEMBLER )    if (config[:project][:release_build] and config[:release_build][:use_assembly])
-    # @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_DEPENDENCIES ) if (config[:project][:release_build] and config[:project][:use_deep_dependencies])
   end
 
 
@@ -196,11 +194,13 @@ class Configurator
     config[:tools].each_key do |name|
       tool = @project_config_hash[(tools_name_prefix + name.to_s).to_sym]
 
-      # smoosh in extra arguments if specified at top-level of config (useful for plugins & default gcc tools)
-      # arguments are squirted in at _end_ of list
+      # Smoosh in extra arguments specified at top-level of config
+      # (useful for plugins & default gcc tools if argument order does not matter).
+      # Arguments are squirted in at *end* of list.
       top_level_tool = (tools_name_prefix + name.to_s).to_sym
       if (not config[top_level_tool].nil?)
-         # adding and flattening is not a good idea: might over-flatten if there's array nesting in tool args
+         # Adding and flattening is not a good idea -- might over-flatten if 
+         # there's array nesting in tool args.
          tool[:arguments].concat config[top_level_tool][:arguments]
       end
     end
@@ -208,24 +208,45 @@ class Configurator
 
 
   def find_and_merge_plugins(config)
-    # Plugins must be loaded before generic path evaluation & magic that happen later;
-    # perform path magic here as discrete step.
+    # Plugins must be loaded before generic path evaluation & magic that happen later.
+    # So, perform path magic here as discrete step.
     config[:plugins][:load_paths].each do |path|
       path.replace( @system_wrapper.module_eval(path) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
       FilePathUtils::standardize(path)
     end
 
-    config[:plugins][:load_paths] << FilePathUtils::standardize( Ceedling.load_path )
+    # Add Ceedling's plugins path as load path so built-in plugins can be found
+    config[:plugins][:load_paths] << FilePathUtils::standardize( Ceedling.plugins_load_path )
     config[:plugins][:load_paths].uniq!
 
     paths_hash = @configurator_plugins.process_aux_load_paths(config)
 
-    @rake_plugins   = @configurator_plugins.find_rake_plugins( config, paths_hash )
-    @script_plugins = @configurator_plugins.find_script_plugins( config, paths_hash )
-    config_plugins  = @configurator_plugins.find_config_plugins( config, paths_hash )
+    # Rake-based plugins
+    @rake_plugins = @configurator_plugins.find_rake_plugins( config, paths_hash )
+
+    # Ruby `PLugin` subclass programmatic plugins
+    @programmatic_plugins = @configurator_plugins.find_programmatic_plugins( config, paths_hash )
+    
+    # Config YAML defaults plugins
     plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash )
+    
+    # Config Ruby-based hash defaults plugins
     plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
 
+    # Config plugins
+    config_plugins  = @configurator_plugins.find_config_plugins( config, paths_hash )
+
+    # Load base configuration values (defaults) from YAML
+    plugin_yml_defaults.each do |defaults|
+      @configurator_builder.populate_defaults( config, @yaml_wrapper.load(defaults) )
+    end
+
+    # Load base configuration values (defaults) as hash from Ruby
+    plugin_hash_defaults.each do |defaults|
+      @configurator_builder.populate_defaults( config, defaults )
+    end
+
+    # Merge plugin configuration values (like Ceedling project file)
     config_plugins.each do |plugin|
       plugin_config = @yaml_wrapper.load( plugin )
 
@@ -240,17 +261,10 @@ class Configurator
       config.deep_merge(plugin_config)
     end
 
-    plugin_yml_defaults.each do |defaults|
-      @configurator_builder.populate_defaults( config, @yaml_wrapper.load(defaults) )
-    end
-
-    plugin_hash_defaults.each do |defaults|
-      @configurator_builder.populate_defaults( config, defaults )
-    end
-
-    # special plugin setting for results printing
+    # Set special plugin setting for results printing if unset
     config[:plugins][:display_raw_test_results] = true if (config[:plugins][:display_raw_test_results].nil?)
 
+    # Add corresponding path to each plugin's configuration
     paths_hash.each_pair { |name, path| config[:plugins][name] = path }
   end
 

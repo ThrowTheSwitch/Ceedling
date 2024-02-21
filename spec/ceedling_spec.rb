@@ -14,14 +14,14 @@ describe 'Ceedling' do
     end
   end
 
-  context 'load_path' do
+  context 'plugins_load_path' do
     it 'should return the location of the plugins directory' do
       # create test state/variables
       load_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       load_path = File.join( load_path, 'plugins' )
       # mocks/stubs/expected calls
       # execute method
-      location = Ceedling.load_path
+      location = Ceedling.plugins_load_path
       # validate results
       expect(location).to eq(load_path)
     end

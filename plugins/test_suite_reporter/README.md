@@ -367,9 +367,13 @@ class FancyShmancyTestsReporter < TestsReporter
 end
 ```
 
-### Test results data structure
+### Plugin hooks & test results data structure
 
-See _CeedlingPacket_ for documentation of the test results data structure (`results` method arguments in above sample code) and this plugin's built-in `TestsReports` subclasses for examples of its use.
+See [_PluginsDevelopmentGuide_][custom-plugins] for documentation of the test results data structure (i.e. the `results` method arguments in above sample code).
+
+See this plugin's built-in `TestsReports` subclasses — `json_tests_reporter.rb`, `junit_tests_reporter.rb`, and `cppunit_tests_reporter.rb` — for examples of using test results.
+
+[custom-plugins]: ../docs/PluginsDevelopmentGuide.md
 
 ### `TestsReporter` utility methods
 
