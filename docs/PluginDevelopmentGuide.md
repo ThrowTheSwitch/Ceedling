@@ -62,9 +62,10 @@ configuration file (`:plugins` section).
 
 Conventions & requirements:
 
-* Plugin configuration names, containing directory names, and filenames must:
+* Plugin configuration names, the containing directory names, and filenames 
+  must:
    * All match (i.e. identical names)
-   * Be snake_case (lowercase names with connecting underscores).
+   * Be snake_case (lowercase with connecting underscores).
 * Plugins must be organized in a containing directory (the name of the plugin
   as used in the project configuration `:plugins` ↳ `:enabled` list is its 
   containing directory name).
@@ -126,8 +127,11 @@ Project configuration file:
 
 Ceedling project directory sturcture:
 
+(Third flavor of configuration plugin shown.)
+
 ```
 project/
+├── project.yml
 └── support/
     └── plugins/
         └── zoom_zap/
@@ -135,7 +139,7 @@ project/
                 └── zoom_zap.yml
 ```
 
-## Configuration build & use
+## Ceedling configuration build & use
 
 Configuration is developed at startup in this order:
 
@@ -236,9 +240,9 @@ of predefined Ceedling build steps.
 The contents of `<plugin_name>.rb` must implement a class that subclasses
 `Plugin`, Ceedling's plugin base class.
 
-## Example plugin class
+## Example `Plugin` subclass
 
-An incomplete `Plugin` subclass follows to illustate.
+An incomplete `Plugin` subclass follows to illustate the basics.
 
 ```ruby
 # whiz_bang/lib/whiz_bang.rb
@@ -249,10 +253,12 @@ class WhizBang < Plugin
     # ...
   end
   
+  # Build step hook
   def pre_test(test)
     # ...
   end
   
+  # Build step hook
   def post_test(test)
     # ...
   end
@@ -275,6 +281,7 @@ Ceedling project directory sturcture:
 
 ```
 project/
+├── project.yml
 └── support/
     └── plugins/
         └── whiz_bang/
@@ -295,7 +302,9 @@ Each `Plugin` sublcass has access to the following instance variables:
 * `@ceedling`
 
 `@name` is self explanatory. `@ceedling` is a hash containing every object 
-within the Ceedling application. Objects commonly used in plugins include:
+within the Ceedling application; its keys are the filenames of the objects.
+
+Objects commonly used in plugins include:
 
 * `@ceedling[:configurator]` — Project configuration
 * `@ceedling[:streaminator]` — Logging
@@ -318,6 +327,25 @@ project does not enable preprocessing or a build does not include tests, these
 are not called. This pair of methods is called a number of times equal to the
 number of mocks in a test build.
 
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  # Filepath of header file to be preprocessed on its way to being mocked
+  :header_file =>  "<filepath>",
+  # Filepath of processed header file
+  :preprocessed_header_file => "<filepath>",
+  # Filepath of tests C file the mock will be used by
+  :test => "<filepath>",
+  # List of flags to be provided to `cpp` tool
+  :flags => [<flags>],
+  # List of search paths to be provided to `cpp` tool
+  :include_paths => [<paths>],
+  # List of compilation symbols to be provided to `cpp` tool
+  :defines => [<defines>]
+}
+```
+
 ## `Plugin` hook methods `pre_test_preprocess(arg_hash)` and `post_test_preprocess(arg_hash)`
 
 These methods are called before and after execution of test file preprocessing
@@ -325,6 +353,25 @@ These methods are called before and after execution of test file preprocessing
 enable preprocessing or a build does not include tests, these are not called.
 This pair of methods is called a number of times equal to the number of test
 files in a test build.
+
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  # Filepath of C test file to be preprocessed on its way to being used to generate runner
+  :test_file => "<filepath>",
+  # Filepath of processed tests file
+  :preprocessed_test_file => "<filepath>",
+  # Filepath of tests C file the mock will be used by
+  :test => "<filepath>",
+  # List of flags to be provided to `cpp` tool
+  :flags => [<flags>],
+  # List of search paths to be provided to `cpp` tool
+  :include_paths => [<paths>],
+  # List of compilation symbols to be provided to `cpp` tool
+  :defines => [<defines>]
+}
+```
 
 ## `Plugin` hook methods `pre_mock_generate(arg_hash)` and `post_mock_generate(arg_hash)`
 
@@ -337,8 +384,8 @@ The argument `arg_hash` follows the structure below:
 
 ```ruby
 arg_hash = {
-  # Path of the header file being mocked.
-  :header_file => "<header file being mocked>",
+  # Filepath of the header file being mocked.
+  :header_file => "<filepath>",
   # Additional context passed by the calling function.
   # Ceedling passes the 'test' symbol.
   :context => TEST_SYM
@@ -360,10 +407,10 @@ arg_hash = {
   # Additional context passed by the calling function.
   # Ceedling passes the 'test' symbol.
   :context => TEST_SYM,
-  # Path of the tests source file.
-  :test_file => "<tests source file>",
-  # Path of the tests runner file.
-  :runner_file => "<tests runner source file>"
+  # Filepath of the tests C file.
+  :test_file => "<filepath>",
+  # Filepath of the generated tests runner file.
+  :runner_file => "<filepath>"
 }
 ```
 
@@ -377,14 +424,8 @@ The argument `arg_hash` follows the structure below:
 
 ```ruby
 arg_hash = {
-  # Hash holding compiler tool properties.
   :tool => {
-    :executable => "<tool executable>",
-    :name => "<tool name>",
-    :stderr_redirect => StdErrRedirect::NONE,
-    :background_exec => BackgroundExec::NONE,
-    :optional => false,
-    :arguments => [],
+    # Hash holding compiler tool elements (see CeedlingPacket)
   },
   # Symbol of the operation being performed, i.e.: compile, assemble or link
   :operation => OPERATION_COMPILE_SYM,
@@ -392,14 +433,14 @@ arg_hash = {
   # Ceedling passes a symbol according to the build type.
   # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
   :context => TEST_SYM,
-  # Path of the input source file. e.g.: .c file
-  :source => "<source file>",
-  # Path of the output object file. e.g.: .o file
-  :object => "<object file>",
-  # Path of the listing file. e.g.: .lst file
-  :list => "<listing file>",
-  # Path of the dependencies file. e.g.: .d file
-  :dependencies => "<dependencies file>"
+  # Filepath of the input C file
+  :source => "<filepath>",
+  # Filepath of the output object file
+  :object => "<filepath>",
+  # Filepath of the listing file. e.g.: .lst file
+  :list => "<filepath>",
+  # Filepath of the dependencies file. e.g.: .d file
+  :dependencies => "<filepath>"
 }
 ```
 
@@ -417,12 +458,7 @@ The argument `arg_hash` follows the structure below:
 arg_hash = {
   # Hash holding linker tool properties.
   :tool => {
-    :executable => "<tool executable>",
-    :name => "<tool name>",
-    :stderr_redirect => StdErrRedirect::NONE,
-    :background_exec => BackgroundExec::NONE,
-    :optional => false,
-    :arguments => [],
+    # Hash holding compiler tool elements (see CeedlingPacket)
   },
   # Additional context passed by the calling function.
   # Ceedling passes a symbol according to the build type.
@@ -430,14 +466,14 @@ arg_hash = {
   :context => TEST_SYM,
   # List of object files paths being linked. e.g.: .o files
   :objects => [],
-  # Path of the output file. e.g.: .out file
-  :executable => "<executable file>",
-  # Path of the map file. e.g.: .map file
-  :map => "<map file>",
+  # Filepath of the output file. e.g.: .out file
+  :executable => "<filepath>",
+  # Filepath of the map file. e.g.: .map file
+  :map => "<filepath>",
   # List of libraries to link. e.g.: the ones passed to the linker with -l
-  :libraries => [],
+  :libraries => [<names>],
   # List of libraries paths. e.g.: the ones passed to the linker with -L
-  :libpaths => []
+  :libpaths => [<paths>]
 }
 ```
 
@@ -454,21 +490,16 @@ The argument `arg_hash` follows the structure below:
 arg_hash = {
   # Hash holding execution tool properties.
   :tool => {
-    :executable => "<tool executable>",
-    :name => "<tool name>",
-    :stderr_redirect => StdErrRedirect::NONE,
-    :background_exec => BackgroundExec::NONE,
-    :optional => false,
-    :arguments => [],
+    # Hash holding compiler tool elements (see CeedlingPacket)
   },
   # Additional context passed by the calling function.
   # Ceedling passes a symbol according to the build type.
   # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
   :context => TEST_SYM,
   # Path to the tests executable file. e.g.: .out file
-  :executable => "<executable file>",
+  :executable => "<filepath>",
   # Path to the tests result file. e.g.: .pass/.fail file
-  :result_file => "<result file>"
+  :result_file => "<filepath>"
 }
 ```
 
@@ -501,6 +532,86 @@ cases is not a build error.
 This method is called when invoking the summary task, `ceedling summary`. This
 method facilitates logging the results of the last build without running the
 previous build again.
+
+## Collecting test results from within `Plugin` subclass
+
+Some testing-specific plugins need access to test results to do their work. A
+utility method is available for this purpose.
+
+`@ceedling[:plugin_reportinator].assemble_test_results()`
+
+This method takes as an argument a list of results filepaths. These typically
+correspond directly to the collection of test files Ceedling processed in a
+given test build. It's common for this list of filepaths to be assembled from
+the `post_test_fixture_execute` build step execution hook.
+
+The data that `assemble_test_results()` returns hss a structure as follows. In 
+this example, actual results from a single, real test file are presented as 
+hash/array Ruby code with comments and with some edits to reduce line length.
+
+```ruby
+{
+  # Associates each test executable (i.e. test file) with an execution run time
+  :times => {
+    "test/TestUsartModel.c" => 0.21196400001645088
+  },
+
+  # List of succeeding test cases, grouped by test file.
+  :successes => [
+    {
+      :source => {:file => "test/TestUsartModel.c", :dirname => "test", :basename => "TestUsartModel.c"},
+      :collection => [
+        # If Unity is configured to do so, it will output execution run time for each test case.
+        # Ceedling creates a zero entry if the Unity option is not enabled.
+        {:test => "testCase1", :line => 17, :message => "", :unity_test_time => 0.0},
+        {:test => "testCase2", :line => 31, :message => "", :unity_test_time => 0.0}
+      ]
+    }
+  ],
+
+  # List of failing test cases, grouped by test file.
+  :failures => [
+    {
+      :source => {:file => "test/TestUsartModel.c", :dirname => "test", :basename => "TestUsartModel.c"},
+      :collection => [
+        {:test => "testCase3", :line => 25, :message => "<failure message>", :unity_test_time => 0.0}
+      ]
+    }
+  ],
+
+  # List of ignored test cases, grouped by test file.
+  :ignores => [
+    {
+      :source => {:file => "test/TestUsartModel.c", :dirname => "test", :basename => "TestUsartModel.c"},
+      :collection => [
+        {:test => "testCase4", :line => 39, :message => "", :unity_test_time => 0.0}
+      ]
+    }
+  ],
+
+  # List of strings printed to $stdout, grouped by test file.
+  :stdout => [
+    {
+      :source => {:file => "test/TestUsartModel.c", :dirname => "test", :basename => "TestUsartModel.c"},
+      # Calls to print to $stdout are outside Unity's scope, preventing attaching test file line numbers
+      :collection => [
+        "<$stdout string (e.g. printf() call)>"
+      ]
+    }
+  ],
+
+  # Test suite run stats
+  :counts => {
+    :total   => 4,
+    :passed  => 2,
+    :failed  => 1,
+    :ignored => 1,
+    :stdout  => 1},
+
+  # The sum of all test file execution run times
+  :total_time => 0.21196400001645088
+}
+```
 
 # Plugin Option 3: Rake Tasks
 
@@ -541,6 +652,7 @@ Ceedling project directory sturcture:
 
 ```
 project/
+├── project.yml
 └── support/
     └── plugins/
         └── hello_world/
