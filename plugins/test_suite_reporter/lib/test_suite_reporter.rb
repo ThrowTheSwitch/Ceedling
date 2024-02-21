@@ -49,11 +49,12 @@ class TestSuiteReporter < Plugin
     @streaminator.stdout_puts( msg )
 
     # For each configured reporter, generate a test suite report per test context
-    @reporters.each do |reporter|
-      @results.each do |context, results_filepaths|
-        # Assemble results from all results filepaths collected
-        _results = @ceedling[:plugin_reportinator].assemble_test_results( results_filepaths )
+    @results.each do |context, results_filepaths|
+      # Assemble results from all results filepaths collected
+      _results = @ceedling[:plugin_reportinator].assemble_test_results( results_filepaths )
 
+      # Provide results to each Reporter
+      @reporters.each do |reporter|
         filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
 
         msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
