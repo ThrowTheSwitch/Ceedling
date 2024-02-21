@@ -369,11 +369,11 @@ end
 
 ### Plugin hooks & test results data structure
 
-See [_PluginsDevelopmentGuide_][custom-plugins] for documentation of the test results data structure (i.e. the `results` method arguments in above sample code).
+See [_PluginDevelopmentGuide_][custom-plugins] for documentation of the test results data structure (i.e. the `results` method arguments in above sample code).
 
 See this plugin's built-in `TestsReports` subclasses — `json_tests_reporter.rb`, `junit_tests_reporter.rb`, and `cppunit_tests_reporter.rb` — for examples of using test results.
 
-[custom-plugins]: ../docs/PluginsDevelopmentGuide.md
+[custom-plugins]: ../docs/PluginDevelopmentGuide.md
 
 ### `TestsReporter` utility methods
 

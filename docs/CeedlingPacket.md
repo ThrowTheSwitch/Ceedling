@@ -3571,16 +3571,17 @@ Notes on test fixture tooling example:
 See the section below dedicated to plugins for more information. This section
 pertains to enabling plugins in your project configuration.
 
-Ceedling includes a number of built-in plugins. See the collection in [plugins/]
-[ceedling-plugins] or the dedicated documentation section below. Each
-subdirectory includes a _README_ that documents the capabilities and
-configuration options. 
+Ceedling includes a number of built-in plugins. See the collection within
+the project at [plugins/][ceedling-plugins] or the documentation section below 
+dedicated to Ceedling's plugins. Each built-in plugin subdirectory includes 
+thorough  documentation covering its capabilities and configuration options. 
 
-_Note_: Many users find that the handy-dandy [Command Hooks plugin]
- [command-hooks] is often enough to meet their needs. This plugin allows
- you to connect your own scripts and tools to Ceedling build steps.
+_Note_: Many users find that the handy-dandy 
+[Command Hooks plugin] [command-hooks] is often enough to meet their needs.
+This plugin allows you to connect your own scripts and tools to Ceedling build 
+steps.
 
-[custom-plugins]: PluginsDevelopmentGuide.md
+[custom-plugins]: PluginDevelopmentGuide.md
 [ceedling-plugins]: ../plugins/
 [command-hooks]: ../plugins/command_hooks/
 
