@@ -22,6 +22,7 @@ class GeneratorMocks
     if    (verbosity == Verbosity::SILENT)
       # CMock is silent
       config[:verbosity] = 0
+      
     elsif (verbosity == Verbosity::DEBUG)
       # CMock max verbosity
       config[:verbosity] = 3

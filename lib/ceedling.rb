@@ -15,7 +15,7 @@ module Ceedling
   # Return the path to the "built-in" plugins.
   # === Return
   # _String_ - The path where the default plugins live.
-  def self.load_path
+  def self.plugins_load_path
     File.join( self.location, 'plugins')
   end
 

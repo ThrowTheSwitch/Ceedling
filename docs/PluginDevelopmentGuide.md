@@ -103,7 +103,7 @@ can be appropriate in some circumstances. Further, Ceedling's configuration
 pluging abilities are often a great way to provide configuration to
 programmatic `Plugin` subclasses (Ceedling plugins options #2).
 
-## Three flvors of configuration plugins exist
+## Three flavors of configuration plugins exist
 
 1. **YAML defaults.** The data of a simple YAML file is incorporated into
    Ceedling's configuration defaults during startup.
@@ -302,7 +302,8 @@ Each `Plugin` sublcass has access to the following instance variables:
 * `@ceedling`
 
 `@name` is self explanatory. `@ceedling` is a hash containing every object 
-within the Ceedling application; its keys are the filenames of the objects.
+within the Ceedling application; its keys are the filenames of the objects
+minus file extension.
 
 Objects commonly used in plugins include:
 
@@ -337,11 +338,11 @@ arg_hash = {
   :preprocessed_header_file => "<filepath>",
   # Filepath of tests C file the mock will be used by
   :test => "<filepath>",
-  # List of flags to be provided to `cpp` tool
+  # List of flags to be provided to `cpp` GNU preprocessor tool
   :flags => [<flags>],
-  # List of search paths to be provided to `cpp` tool
+  # List of search paths to be provided to `cpp` GNU preprocessor tool
   :include_paths => [<paths>],
-  # List of compilation symbols to be provided to `cpp` tool
+  # List of compilation symbols to be provided to `cpp` GNU preprocessor tool
   :defines => [<defines>]
 }
 ```
@@ -364,11 +365,11 @@ arg_hash = {
   :preprocessed_test_file => "<filepath>",
   # Filepath of tests C file the mock will be used by
   :test => "<filepath>",
-  # List of flags to be provided to `cpp` tool
+  # List of flags to be provided to `cpp` GNU preprocessor tool
   :flags => [<flags>],
-  # List of search paths to be provided to `cpp` tool
+  # List of search paths to be provided to `cpp` GNU preprocessor tool
   :include_paths => [<paths>],
-  # List of compilation symbols to be provided to `cpp` tool
+  # List of compilation symbols to be provided to `cpp` GNU preprocessor tool
   :defines => [<defines>]
 }
 ```
@@ -387,8 +388,12 @@ arg_hash = {
   # Filepath of the header file being mocked.
   :header_file => "<filepath>",
   # Additional context passed by the calling function.
-  # Ceedling passes the 'test' symbol.
-  :context => TEST_SYM
+  # Ceedling passes the :test symbol by default while plugins may provide another
+  :context => :<context>,
+  # Filepath of the tests C file that references the requested mock
+  :test => "<filepath>",
+  # Filepath of the generated mock C code.
+  :output_path => "<filepath>"
 }
 ```
 
@@ -405,10 +410,12 @@ The argument `arg_hash` follows the structure below:
 ```ruby
 arg_hash = {
   # Additional context passed by the calling function.
-  # Ceedling passes the 'test' symbol.
-  :context => TEST_SYM,
+  # Ceedling passes the :test symbol by default while plugins may provide another
+  :context => :<context>,
   # Filepath of the tests C file.
   :test_file => "<filepath>",
+  # Filepath of the test file to be processed (if preprocessing enabled, this is not the same as :test_file).  
+  :input_file => "<filepath>",
   # Filepath of the generated tests runner file.
   :runner_file => "<filepath>"
 }
@@ -427,19 +434,24 @@ arg_hash = {
   :tool => {
     # Hash holding compiler tool elements (see CeedlingPacket)
   },
-  # Symbol of the operation being performed, i.e.: compile, assemble or link
-  :operation => OPERATION_COMPILE_SYM,
+  # Symbol of the operation being performed, e.g. :compile, :assemble or :link
+  :operation => :<operation>,
   # Additional context passed by the calling function.
-  # Ceedling passes a symbol according to the build type.
-  # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
-  :context => TEST_SYM,
+  # Ceedling provides :test or :release by default while plugins may provide another.
+  :context => :<context>,
   # Filepath of the input C file
   :source => "<filepath>",
   # Filepath of the output object file
   :object => "<filepath>",
-  # Filepath of the listing file. e.g.: .lst file
+  # List of flags to be provided to compiler tool
+  :flags => [<flags>],
+  # List of search paths to be provided to compiler tool
+  :search_paths => [<paths>],
+  # List of compilation symbols to be provided to compiler tool
+  :defines => [<defines>],
+  # Filepath of the listing file, e.g. .lst file
   :list => "<filepath>",
-  # Filepath of the dependencies file. e.g.: .d file
+  # Filepath of the dependencies file, e.g. .d file
   :dependencies => "<filepath>"
 }
 ```
@@ -461,18 +473,19 @@ arg_hash = {
     # Hash holding compiler tool elements (see CeedlingPacket)
   },
   # Additional context passed by the calling function.
-  # Ceedling passes a symbol according to the build type.
-  # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
-  :context => TEST_SYM,
-  # List of object files paths being linked. e.g.: .o files
+  # Ceedling provides :test or :release by default while plugins may provide another.
+  :context => :<context>,
+  # List of object files paths being linked, e.g. .o files
   :objects => [],
-  # Filepath of the output file. e.g.: .out file
+  # List of flags to be provided to linker tool
+  :flags => [<flags>],
+  # Filepath of the output file, e.g. .out file
   :executable => "<filepath>",
-  # Filepath of the map file. e.g.: .map file
+  # Filepath of the map file, e.g. .map file
   :map => "<filepath>",
-  # List of libraries to link. e.g.: the ones passed to the linker with -l
+  # List of libraries to link, e.g. those passed to the (GNU) linker with -l
   :libraries => [<names>],
-  # List of libraries paths. e.g.: the ones passed to the linker with -L
+  # List of libraries paths, e.g. the ones passed to the (GNU) linker with -L
   :libpaths => [<paths>]
 }
 ```
@@ -493,12 +506,15 @@ arg_hash = {
     # Hash holding compiler tool elements (see CeedlingPacket)
   },
   # Additional context passed by the calling function.
-  # Ceedling passes a symbol according to the build type.
-  # e.g.: 'test', 'release', 'gcov', 'bullseye', 'subprojects'.
-  :context => TEST_SYM,
-  # Path to the tests executable file. e.g.: .out file
+  # Ceedling provides :test or :release by default while plugins may provide another.
+  :context => :<context>,
+  # Name of the test file minus path and extension (`test/TestIness.c` -> 'TestIness')
+  :test_name => "<name>",
+  # Filepath of original tests C file that became the test executable
+  :test_filepath => "<filepath>",
+  # Path to the tests executable file, e.g. .out file
   :executable => "<filepath>",
-  # Path to the tests result file. e.g.: .pass/.fail file
+  # Path to the tests result file, e.g. .pass/.fail file
   :result_file => "<filepath>"
 }
 ```

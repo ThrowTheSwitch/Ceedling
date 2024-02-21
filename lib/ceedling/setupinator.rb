@@ -47,7 +47,7 @@ class Setupinator
     @ceedling[:configurator].tools_supplement_arguments( config_hash )
     
     # Merge in any environment variables that plugins specify after the main build
-    @ceedling[:plugin_manager].load_plugin_scripts( @ceedling[:configurator].script_plugins, @ceedling ) do |env|
+    @ceedling[:plugin_manager].load_programmatic_plugins( @ceedling[:configurator].programmatic_plugins, @ceedling ) do |env|
       @ceedling[:configurator].eval_environment_variables( env )
       @ceedling[:configurator].build_supplement( config_hash, env )
     end

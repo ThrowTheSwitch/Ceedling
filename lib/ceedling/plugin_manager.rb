@@ -6,14 +6,14 @@ class PluginManager
 
   def setup
     @build_fail_registry = []
-    @plugin_objects = [] # so we can preserve order
+    @plugin_objects = [] # List so we can preserve order
   end
 
-  def load_plugin_scripts(script_plugins, system_objects)
+  def load_programmatic_plugins(plugins, system_objects)
     environment = []
 
-    script_plugins.each do |plugin|
-      # protect against instantiating object multiple times due to processing config multiple times (option files, etc)
+    plugins.each do |plugin|
+      # Protect against instantiating object multiple times due to processing config multiple times (option files, etc)
       next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
       begin
         @system_wrapper.require_file( "#{plugin}.rb" )
@@ -21,7 +21,7 @@ class PluginManager
         @plugin_objects << object
         environment += object.environment
 
-        # add plugins to hash of all system objects
+        # Add plugins to hash of all system objects
         system_objects[plugin.downcase.to_sym] = object
       rescue
         puts "Exception raised while trying to load plugin: #{plugin}"
