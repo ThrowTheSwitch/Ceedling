@@ -15,8 +15,7 @@ class PreprocessinatorFileHandler
       include_paths
       )
     
-    @tool_executor.exec( command )
-
+    shell_result = @tool_executor.exec( command )
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
 
@@ -55,6 +54,8 @@ class PreprocessinatorFileHandler
     contents.gsub!( /(\h*\n){3,}/, "\n\n" )
     
     @file_wrapper.write( preprocessed_filepath, contents )
+
+    return shell_result
   end
 
   def preprocess_test_file(source_filepath:, preprocessed_filepath:, includes:, flags:, include_paths:, defines:)
@@ -67,8 +68,7 @@ class PreprocessinatorFileHandler
       include_paths
       )
     
-    @tool_executor.exec( command )
-
+    shell_result = @tool_executor.exec( command )
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
 
@@ -94,6 +94,8 @@ class PreprocessinatorFileHandler
     contents.gsub!( /(\h*\n){3,}/, "\n\n" ) # Collapse repeated blank lines
 
     @file_wrapper.write( preprocessed_filepath, contents )
+
+    return shell_result
   end
 
 
