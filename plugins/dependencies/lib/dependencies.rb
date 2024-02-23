@@ -80,8 +80,12 @@ class Dependencies < Plugin
   end
 
   def get_include_directories_for_dependency(deplib)
-    paths = (deplib[:artifacts][:includes] || []).map {|path| File.join(get_artifact_path(deplib), path)}
-    @ceedling[:file_path_collection_utils].collect_paths(paths)
+    paths = (deplib[:artifacts][:includes] || []).map {|path| File.join(get_artifact_path(deplib), path.split(/[\/\\]/)[0..-2]) }
+    @ceedling[:file_path_collection_utils].collect_paths(paths).uniq
+  end
+
+  def get_include_files_for_dependency(deplib)
+    (deplib[:artifacts][:includes] || []).map {|path| File.join(get_artifact_path(deplib), path)}
   end
 
   def set_env_if_required(lib_path)
@@ -217,7 +221,8 @@ class Dependencies < Plugin
   def add_headers_and_sources()
     # Search for header file paths and files to add to our collections
     DEPENDENCIES_LIBRARIES.each do |deplib|
-      get_include_directories_for_dependency(deplib).each do |header|
+      ( get_include_directories_for_dependency(deplib) +
+        get_include_files_for_dependency(deplib) ).each do |header|
         cfg = @ceedling[:configurator].project_config_hash
         cfg[:collection_paths_include] << header
         cfg[:collection_paths_source_and_include] << header

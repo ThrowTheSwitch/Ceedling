@@ -76,7 +76,7 @@ namespace RELEASE_SYM do
           @ceedling[:file_finder].find_source_file(source)
         end
     ]) do |compile|
-      @ceedling[:rake_wrapper][:directories].invoke
+      @ceedling[:rake_wrapper][:prepare].invoke
       @ceedling[:project_config_manager].process_release_config_change
       @ceedling[:release_invoker].setup_and_invoke_objects( [compile.source] )
     end
@@ -90,7 +90,7 @@ namespace RELEASE_SYM do
           @ceedling[:file_finder].find_assembly_file(source)
         end
     ]) do |assemble|
-      @ceedling[:rake_wrapper][:directories].invoke
+      @ceedling[:rake_wrapper][:prepare].invoke
       @ceedling[:project_config_manager].process_release_config_change
       @ceedling[:release_invoker].setup_and_invoke_objects( [assemble.source] )
     end

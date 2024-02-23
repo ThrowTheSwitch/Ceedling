@@ -3,7 +3,7 @@ require 'ceedling/file_path_utils'
 
 
 desc "Build release target."
-task RELEASE_SYM => [:directories] do
+task RELEASE_SYM => [:prepare] do
   header = "Release build '#{File.basename(PROJECT_RELEASE_BUILD_TARGET)}'"
   @ceedling[:streaminator].stdout_puts("\n\n#{header}\n#{'-' * header.length}")  
   

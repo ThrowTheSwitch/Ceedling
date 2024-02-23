@@ -13,6 +13,7 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   all_deps = @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
              @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib) +
              @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) +
+             @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib) +
              @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
 
   # Add a rule for building the actual libraries from dependency list
@@ -37,6 +38,7 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
 
   # Add a rule for building the source and includes from dependency list
   (@ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) +
+   @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib) +
    @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
   ).each do |libpath|
     task libpath do |filetask|
@@ -99,8 +101,8 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   task RELEASE_SYM => dynamic_libs
 
   # Add the include dirs / files to our list of dependencies for release
-  headers = @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib)
-  task RELEASE_SYM => headers
+  headers = @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) + 
+            @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib)
 
   # Paths to Libraries need to be Added to the Lib Path List
   all_libs = static_libs + dynamic_libs
@@ -150,4 +152,4 @@ namespace :files do
 end
 
 # Make sure that we build dependencies before attempting to tackle any of the unit tests
-Rake::Task[:directories].enhance ['dependencies:make']
+Rake::Task[:prepare].enhance ['dependencies:make']
