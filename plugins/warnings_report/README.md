@@ -9,7 +9,7 @@ At the end of a build, any collected warning messages are written to one or more
 plain text log files.
 
 Warning messages are collected for all compilation-related builds and
-differentiated by build context — `test`, `release`, or plugin-modified build
+differentiated by build context — `test`, `release`, or plugin-modified build 
 (e.g. `gcov`).
 
 Ceedling warning messages or warning messages from code generation will not
