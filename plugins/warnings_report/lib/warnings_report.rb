@@ -2,6 +2,7 @@ require 'ceedling/plugin'
 require 'ceedling/constants'
 
 class WarningsReport < Plugin
+  # `Plugin` setup()
   def setup
     # Create structure of @warnings hash with default values
     @warnings = Hash.new() do |h,k|
@@ -23,7 +24,7 @@ class WarningsReport < Plugin
     @reportinator = @ceedling[:reportinator]
   end
 
-  # Build step hook
+  # `Plugin` build step hook
   def post_mock_preprocess(arg_hash)
     # After preprocessing, parse output, store warning if found
     process_output(
@@ -33,7 +34,7 @@ class WarningsReport < Plugin
     )
   end
 
-  # Build step hook
+  # `Plugin` build step hook
   def post_test_preprocess(arg_hash)
     # After preprocessing, parse output, store warning if found
     process_output(
@@ -43,7 +44,7 @@ class WarningsReport < Plugin
     )
   end
 
-  # Build step hook
+  # `Plugin` build step hook
   def post_compile_execute(arg_hash)
     # After compiling, parse output, store warning if found
     process_output(
@@ -53,7 +54,7 @@ class WarningsReport < Plugin
     )
   end
 
-  # Build step hook
+  # `Plugin` build step hook
   def post_link_execute(arg_hash)
     # After linking, parse output, store warning if found
     process_output(
@@ -63,13 +64,13 @@ class WarningsReport < Plugin
     )
   end
 
-  # Build step hook
+  # `Plugin` build step hook
   def post_build()
     # Write collected warnings to log(s)
     write_logs( @warnings, @log_filename )
   end
 
-  # Build step hook
+  # `Plugin` build step hook
   def post_error()
     # Write collected warnings to log(s)
     write_logs( @warnings, @log_filename )
@@ -95,19 +96,25 @@ class WarningsReport < Plugin
     msg = @reportinator.generate_heading( "Running Warnings Report" )
     @streaminator.stdout_puts( msg )
 
-    if warnings.empty?
-      @streaminator.stdout_puts( "No build warnings collected.\n" )
+    empty = false
+
+    @mutex.synchronize { empty = warnings.empty? }
+
+    if empty
+      @streaminator.stdout_puts( "Build produced no warnings.\n" )
       return
     end
 
-    warnings.each do |context, hash|
-      log_filepath = form_log_filepath( context, filename )
+    @mutex.synchronize do
+      warnings.each do |context, hash|
+        log_filepath = form_log_filepath( context, filename )
 
-      msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
-      @streaminator.stdout_puts( msg )
+        msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
+        @streaminator.stdout_puts( msg )
 
-      File.open( log_filepath, 'w' ) do |f|
-        hash[:collection].each { |warning| f << warning }
+        File.open( log_filepath, 'w' ) do |f|
+          hash[:collection].each { |warning| f << warning }
+        end
       end
     end
 

@@ -3,7 +3,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** January 5, 2024
+**Date:** February 22, 2024
 
 # Explicit `:paths` ↳ `:include` entries in the project file
 
@@ -77,9 +77,15 @@ Similarly, various global constant project file accessors have changed, specific
 
 See the [official documentation](CeedlingPacket.md) on global constants & accessors for updated lists and information.
 
+# Raw Output Report Plugin
+
+This plugin (renamed -- see next section) no longer generated empty log files and no longer generates log files with _test_ and _pass_ in their filenames. Log files are now simply named `<test file>.raw.log`.
+
 # Plugin Name Changes
 
 The following plugin names will need to be updated in the `:plugins` section of your `project.yml` file.
 
- - The plugin previously called `fake_function_framework` is now simply called `fff`. 
+- The plugin previously called `fake_function_framework` is now simply called `fff`.
+- `json_tests_report`, `xml_tests_report`, and `junit_tests_report` have been superseded by a single plugin `test_suite_reporter` able to generate each of the previous test reports as well as user-defined tests reports.
+- `raw_output_report` has been renamed to `raw_tests_output_report`.
 

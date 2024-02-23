@@ -17,6 +17,10 @@ class GcovrReportinator
       extension: EXTENSION_EXECUTABLE,
       boom: true
     )
+
+    # Convenient instance variable references
+    @streaminator = @ceedling[:streaminator]
+    @reportinator = @ceedling[:reportinator]
   end
 
   # Generate the gcovr report(s) specified in the options.
@@ -32,6 +36,9 @@ class GcovrReportinator
 
     # Build the common gcovr arguments.
     args_common = args_builder_common(gcovr_opts)
+
+    msg = @reportinator.generate_heading( "Running Gcovr Coverage Reports" )
+    @streaminator.stdout_puts( msg )
 
     if ((gcovr_version_info[0] == 4) && (gcovr_version_info[1] >= 2)) || (gcovr_version_info[0] > 4)
       reports = []
@@ -52,8 +59,10 @@ class GcovrReportinator
       args += (_args = args_builder_html(opts, false))
       reports << "HTML" if not _args.empty?
       
-      msg = @ceedling[:reportinator].generate_progress("Creating #{reports.join(', ')} coverage report(s) with gcovr in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
-      @ceedling[:streaminator].stdout_puts( "\n" + msg )
+      reports.each do |report|
+        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
+        @streaminator.stdout_puts( msg )
+      end
 
       # Generate the report(s).
       # only if one of the previous done checks for:
@@ -75,16 +84,16 @@ class GcovrReportinator
       args_html = args_builder_html(opts, true)
 
       if args_html.length > 0
-        msg = @ceedling[:reportinator].generate_progress("Creating an HTML coverage report with gcovr in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
-        @ceedling[:streaminator].stdout_puts( msg )
+        msg = @reportinator.generate_progress("Generating an HTML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
+        @streaminator.stdout_puts( msg )
 
         # Generate the HTML report.
         run( gcovr_opts, (args_common + args_html), exception_on_fail )
       end
 
       if args_cobertura.length > 0
-        msg = @ceedling[:reportinator].generate_progress("Creating an Cobertura XML coverage report with gcovr in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
-        @ceedling[:streaminator].stdout_puts( msg )
+        msg = @reportinator.generate_progress("Generating an Cobertura XML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
+        @streaminator.stdout_puts( msg )
 
         # Generate the Cobertura XML report.
         run( gcovr_opts, (args_common + args_cobertura), exception_on_fail )
@@ -257,7 +266,7 @@ class GcovrReportinator
   def generate_text_report(opts, args_common, boom)
     gcovr_opts = get_gcovr_opts(opts)
     args_text = ""
-    message_text = "Creating a text coverage report"
+    message_text = "Generating a text coverage report"
 
     filename = gcovr_opts[:text_artifact_filename] || 'coverage.txt'
 
@@ -265,8 +274,8 @@ class GcovrReportinator
     args_text += "--output \"#{artifacts_file_txt}\" "
     message_text += " in '#{GCOV_GCOVR_ARTIFACTS_PATH}'"
 
-    msg = @ceedling[:reportinator].generate_progress(message_text)
-    @ceedling[:streaminator].stdout_puts(msg, Verbosity::NORMAL)
+    msg = @reportinator.generate_progress(message_text)
+    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
 
     # Generate the text report
     run( gcovr_opts, (args_common + args_text), boom )
@@ -305,8 +314,8 @@ class GcovrReportinator
 
     command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], "--version")
 
-    msg = @ceedling[:reportinator].generate_progress("Collecting gcovr version for conditional feature handling")
-    @ceedling[:streaminator].stdout_puts(msg, Verbosity::OBNOXIOUS)
+    msg = @reportinator.generate_progress("Collecting gcovr version for conditional feature handling")
+    @streaminator.stdout_puts(msg, Verbosity::OBNOXIOUS)
 
     shell_result = @ceedling[:tool_executor].exec( command )
     version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)
@@ -330,7 +339,7 @@ class GcovrReportinator
       if boom
         raise CeedlingException.new(msg)
       else
-        @ceedling[:streaminator].stderr_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
+        @streaminator.stderr_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
         # Clear bit in exit code
         exitcode &= ~2
       end
@@ -342,7 +351,7 @@ class GcovrReportinator
       if boom
         raise CeedlingException.new(msg)
       else
-        @ceedling[:streaminator].stderr_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
+        @streaminator.stderr_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
         # Clear bit in exit code
         exitcode &= ~4
       end
@@ -354,7 +363,7 @@ class GcovrReportinator
       if boom
         raise CeedlingException.new(msg)
       else
-        @ceedling[:streaminator].stderr_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
+        @streaminator.stderr_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
         # Clear bit in exit code
         exitcode &= ~8
       end
@@ -366,7 +375,7 @@ class GcovrReportinator
       if boom
         raise CeedlingException.new(msg)
       else
-        @ceedling[:streaminator].stderr_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
+        @streaminator.stderr_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
         # Clear bit in exit code
         exitcode &= ~16
       end

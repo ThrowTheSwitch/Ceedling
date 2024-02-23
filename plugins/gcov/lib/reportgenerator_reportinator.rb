@@ -26,6 +26,10 @@ class ReportGeneratorReportinator
       extension: EXTENSION_EXECUTABLE,
       boom: true
     )
+
+    # Convenient instance variable references
+    @streaminator = @ceedling[:streaminator]
+    @reportinator = @ceedling[:reportinator]
   end
 
 
@@ -35,8 +39,13 @@ class ReportGeneratorReportinator
     total_time = Benchmark.realtime do
       rg_opts = get_opts(opts)
 
-      msg = @ceedling[:reportinator].generate_progress("Creating #{opts[:gcov_reports].join(', ')} coverage report(s) with ReportGenerator in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}'")
-      @ceedling[:streaminator].stdout_puts( "\n" + msg )
+      msg = @reportinator.generate_heading( "Running ReportGenerator Coverage Reports" )
+      @streaminator.stdout_puts( msg )
+
+      opts[:gcov_reports].each do |report|
+        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}'")
+        @streaminator.stdout_puts( msg )
+      end
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.
       for gcov_file in Dir.glob("*.gcov")
@@ -90,7 +99,7 @@ class ReportGeneratorReportinator
           end          
         end
       else
-        @ceedling[:streaminator].stdout_puts("\nWARNING: No matching .gcno coverage files found.", Verbosity::COMPLAIN)
+        @streaminator.stdout_puts("\nWARNING: No matching .gcno coverage files found.", Verbosity::COMPLAIN)
       end
 
     end
