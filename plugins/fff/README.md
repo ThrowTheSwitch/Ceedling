@@ -20,7 +20,7 @@ In the `:plugins` configuration, add `fff` to the list of enabled plugins:
   :load_paths:
     - vendor/ceedling/plugins
   :enabled:
-    - stdout_pretty_tests_report
+    - report_tests_pretty_stdout
     - module_generator
     - fff
 ```

@@ -15,13 +15,13 @@ understands the GTest console logging format.
 # Setup
 
 Enable the plugin in your Ceedling project by adding 
-`stdout_gtestlike_tests_report` to the list of enabled plugins instead of any 
-other `stdout_*_tests_report` plugin.
+`report_tests_gtestlike_stdout` to the list of enabled plugins instead of any 
+other `report_tests_*_stdout` plugin.
 
 ```YAML
 :plugins:
   :enabled:
-    - stdout_gtestlike_tests_report
+    - report_tests_gtestlike_stdout
 ```
 
 # Configuration

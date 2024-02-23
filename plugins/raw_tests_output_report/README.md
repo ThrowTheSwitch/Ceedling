@@ -38,7 +38,7 @@ Enable the plugin in your Ceedling project:
 ``` YAML
 :plugins:
   :enabled:
-    - raw_tests_output_report
+    - report_tests_raw_output_log
 ```
 
 # Configuration

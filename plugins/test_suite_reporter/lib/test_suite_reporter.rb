@@ -9,7 +9,7 @@ class TestSuiteReporter < Plugin
     
     # Get our test suite reports' configuration
     config = @ceedling[:setupinator].config_hash
-    @config = config[:test_suite_reporter]
+    @config = config[:report_tests_log_factory]
     
     # Get list of enabled reports
     reports = @config[:reports]

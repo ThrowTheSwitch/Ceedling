@@ -1,4 +1,4 @@
 ---
-:test_suite_reporter:
+:report_tests_log_factory:
   :reports: []
 ...

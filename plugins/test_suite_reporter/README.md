@@ -27,22 +27,22 @@ If a test report produced by this plugin does not work for your needs or is not 
 
 # Setup
 
-Enable the plugin in your Ceedling project file by adding `test_suite_reporter` to the list of enabled plugins.
+Enable the plugin in your Ceedling project file by adding `report_tests_log_factory` to the list of enabled plugins.
 
 ```yaml
 :plugins:
   :enabled:
-    - test_suite_reporter
+    - report_tests_log_factory
 ```
 
 All generated reports are written to `<build root>/artifacts/<context>`. Your Ceedling project file specifies `<build root>` as a required entry for any build. Your build's context defaults to `test`. Certain other test build plugins (e.g. GCov) provide a different context (e.g. `gcov`) for test builds, generally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than `test/`, `gcov/`.
 
 # Configuration
 
-Enable the reports you wish to generate — `json`, `junit`, and/or `cppunit` — within the `:test_suite_reporter` ↳ `:reports` configuration list.
+Enable the reports you wish to generate — `json`, `junit`, and/or `cppunit` — within the `:report_tests_log_factory` ↳ `:reports` configuration list.
 
 ```yaml
-:test_suite_reporter:
+:report_tests_log_factory:
   # Any one or all three of the following...
   :reports:
     - json
@@ -56,10 +56,10 @@ Each report is written to a default filename within `<build root>/artifacts/<con
 * JUnit XML: _junit_tests_report.xml_
 * CppUnit XML: _cppunit_tests_report.xml_
 
-To change the output filename, specify it with the `:filename` key beneath the relevant report within the `:test_suite_reporter` configuration block:
+To change the output filename, specify it with the `:filename` key beneath the relevant report within the `:report_tests_log_factory` configuration block:
 
 ```yaml
-:test_suite_reporter:
+:report_tests_log_factory:
   # Replace `<report>` with one of the available options above.
   # Each report can have its own sub-configuration block.
   :reports:
@@ -101,9 +101,9 @@ The JSON this plugin generates uses an ad hoc set of data structures following n
 ```yaml
 :plugins:
   :enabled:
-    - test_suite_reporter
+    - report_tests_log_factory
 
-:test_suite_reporter:
+:report_tests_log_factory:
   :reports:
     - json
   # Default filename shown for completeness
@@ -169,9 +169,9 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
 ```yaml
 :plugins:
   :enabled:
-    - test_suite_reporter
+    - report_tests_log_factory
 
-:test_suite_reporter:
+:report_tests_log_factory:
   :reports:
     - junit
   # Default filename shown for completeness
@@ -218,9 +218,9 @@ In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ bec
 ```yaml
 :plugins:
   :enabled:
-    - test_suite_reporter
+    - report_tests_log_factory
 
-:test_suite_reporter:
+:report_tests_log_factory:
   :reports:
     - cppunit
   # Default filename shown for completeness
@@ -283,7 +283,7 @@ Creating your own report requires three steps:
 
 1. Choose a directory to hold your report Ruby code and add it to your `:plugins` ↳ `:load_paths` configuration.
 1. Create a Ruby file in the directory from (1) per instructions that follow.
-1. Enable your new report in your `:test_suite_reporter` Ceedling configuration.
+1. Enable your new report in your `:report_tests_log_factory` Ceedling configuration.
 
 ## Custom report configuration
 
@@ -294,9 +294,9 @@ Configuration steps, (1) and (3) above, are documented by example below. Convent
   :load_paths:              # Paths can be relative or absolute
     - scripts/              # Add <build root>/scripts to Ruby's load paths
   :enabled:
-    - test_suite_reporter
+    - report_tests_log_factory
 
-:test_suite_reporter:
+:report_tests_log_factory:
   :reports:
     - fancy_shmancy         # Your custom report must follow naming rules (below)
 ```
@@ -316,7 +316,7 @@ To create a custom report, here's what you gotta do:
 
 Overriding the default filename of your custom report happens just as it does for the built-in reports. In fact, apart from the custom load path, the built-in reports documented above use the same mechanisms as a custom report. These Ruby files can and should be used as references.
 
-You may access `:test_suite_reporter` configuration for your custom report using a handy utility method documented in a later section.
+You may access `:report_tests_log_factory` configuration for your custom report using a handy utility method documented in a later section.
 
 ### Sample `TestReporter` custom subclass
 
@@ -329,7 +329,7 @@ require 'tests_reporter'
 # Your custom class must:
 #  1. Follow the naming convention <CustomReport>TestsReporter where 
 #     <CustomReport> corresponds to the <custom_report> entry in your 
-#     `:test_suite_reporter` configuration.
+#     `:report_tests_log_factory` configuration.
 #  2. Sublcass `TestsReporter`.
 class FancyShmancyTestsReporter < TestsReporter
 
@@ -393,14 +393,14 @@ See this plugin's built-in `TestsReports` subclasses — `json_tests_reporter.rb
 
 You may call the private method `fetch_config_value(*keys)` of the parent class `TestReporters` from your custom subclass to retrieve configuration entries.
 
-This method automatically indexes into `:test_suite_reporter` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns `nil`. Otherwise, it returns the hash, list, string, boolean, or numeric value for the specified key walk into your report's configuration.
+This method automatically indexes into `:report_tests_log_factory` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns `nil`. Otherwise, it returns the hash, list, string, boolean, or numeric value for the specified key walk into your report's configuration.
 
-`fetch_config_value(*keys)` expects a list of keys and only accesses configuration beneath `:test_suite_reporter` ↳ `:<custom_report>`.
+`fetch_config_value(*keys)` expects a list of keys and only accesses configuration beneath `:report_tests_log_factory` ↳ `:<custom_report>`.
 
 ##### Example _FancyShmancy_ configuration + `TestsReporter.fetch_config_value()` calls
 
 ```yaml
-test_suite_reporter:
+report_tests_log_factory:
   :fancy_shmancy:
     # Hypothetical feature to standardize test names before writing to report
     :standardize:

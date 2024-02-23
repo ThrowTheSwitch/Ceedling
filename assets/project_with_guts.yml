@@ -61,9 +61,9 @@
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
     #- test_suite_reporter
     - raw_tests_output_report
-    - stdout_pretty_tests_report
-    #- stdout_ide_tests_report
-    #- stdout_gtestlike_tests_report
+    - report_tests_pretty_stdout
+    #- report_tests_ide_stdout
+    #- report_tests_gtestlike_stdout
     #- teamcity_tests_report
     #- warnings_report
 

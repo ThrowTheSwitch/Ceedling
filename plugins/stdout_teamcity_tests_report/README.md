@@ -21,17 +21,17 @@ https://www.jetbrains.com/help/teamcity/service-messages.html
 # Setup
 
 Enable the plugin in your Ceedling project file by adding 
-`stdout_teamcity_tests_report`.
+`report_tests_teamcity_stdout`.
 
 ``` YAML
 :plugins:
   :enabled:
-    - stdout_teamcity_tests_report
+    - report_tests_teamcity_stdout
 ```
 
 # Configuration
 
-All the `stdout_*_tests_report` plugins may be enabled in various combinations.
+All the `report_tests_*_stdout` plugins may be enabled in various combinations.
 But, some combinations may not make a great deal of sense. The TeamCity
 plugin “plays nice” with all the others but is generally most appropriate 
 running in a CI build on a TeamCity server. Its output will clutter and obscure

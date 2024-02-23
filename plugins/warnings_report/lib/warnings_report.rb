@@ -16,7 +16,7 @@ class WarningsReport < Plugin
     @mutex = Mutex.new()
 
     # Get default (default.yml) / user-set log filename in project.yml
-    @log_filename = @ceedling[:configurator].warnings_report_filename
+    @log_filename = @ceedling[:configurator].report_build_warnings_log_filename
 
     # Convenient instance variable references
     @file_wrapper = @ceedling[:file_wrapper]

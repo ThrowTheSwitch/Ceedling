@@ -20,14 +20,14 @@ links that jump directly to failing test cases.
 
 # Setup
 
-Enable the plugin in your project.yml by adding `stdout_ide_tests_report` to 
-the list of enabled plugins instead of any other `stdout_*_tests_report` 
+Enable the plugin in your project.yml by adding `report_tests_ide_stdout` to 
+the list of enabled plugins instead of any other `report_tests_*_stdout` 
 plugin.
 
 ``` YAML
 :plugins:
   :enabled:
-    - stdout_ide_tests_report
+    - report_tests_ide_stdout
 ```
 
 # Configuration
