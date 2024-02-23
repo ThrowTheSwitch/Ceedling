@@ -1,4 +1,6 @@
-# Ceedling Plugin: TeamCity Tests Report
+# Ceedling Plugin: TeamCity Test Suite Console Report
+
+Prints to the console ($stdout) test suite build events and results in a format understood by the CI product TeamCity.
 
 # Plugin Overview
 
@@ -16,33 +18,10 @@ options on enabling the build in CI but disabling it locally.
 [service-messages]:
 https://www.jetbrains.com/help/teamcity/service-messages.html
 
-# Example Output
+# Setup
 
-TeamCity's convention for identifying tests uses the naming convention of the underlying Java language in which TeamCity is written, `package_or_namespace.ClassName.TestName`.
-
-This plugin maps Ceedling conventions to TeamCity test service messages as `context.TestFilepath.TestCaseName`.
-
-* `context` Your build's context defaults to `test`. Certain other test build plugins (e.g. GCov) provide a different context (`gcov`) for test builds, generally named after themselves.
-* `TestFilepath` This identifier is the relative filepath of the relevant test file without a file extension (e.g. no `.c`).
-* `TestCaseName` This identified is a test case function name within a Ceedling test file.
-
-```
-##teamcity[testSuiteStarted name='TestUsartModel' flowId='15']
-##teamcity[testStarted name='test.test/TestUsartModel.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting' flowId='15']
-##teamcity[testFinished name='test.test/TestUsartModel.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting' duration='81' flowId='15']
-##teamcity[testStarted name='test.test/TestUsartModel.testShouldReturnErrorMessageUponInvalidTemperatureValue' flowId='15']
-##teamcity[testFinished name='test.test/TestUsartModel.testShouldReturnErrorMessageUponInvalidTemperatureValue' duration='81' flowId='15']
-##teamcity[testStarted name='test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately' flowId='15']
-##teamcity[testFailed name='test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately' message='Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected.' details='File: test/TestUsartModel.c Line: 25' flowId='15']
-##teamcity[testFinished name='test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately' duration='81' flowId='15']
-##teamcity[testIgnored name='test.test/TestUsartModel.testShouldReturnWakeupMessage' flowId='15']
-##teamcity[testSuiteFinished name='TestUsartModel' flowId='15']
-```
-
-# Configuration
-
-Enable the plugin in your project.yml by adding `stdout_teamcity_tests_report`.
-No further configuration is necessary or possible.
+Enable the plugin in your Ceedling project file by adding 
+`stdout_teamcity_tests_report`.
 
 ``` YAML
 :plugins:
@@ -50,10 +29,13 @@ No further configuration is necessary or possible.
     - stdout_teamcity_tests_report
 ```
 
-All the `stdout_*_tests_report` plugins may be enabled along with the others,
-but some combinations may not make a great deal of sense. The TeamCity
-plugin “plays nice” with all the others but really only makes sense enabled for
-CI builds on a TeamCity server.
+# Configuration
+
+All the `stdout_*_tests_report` plugins may be enabled in various combinations.
+But, some combinations may not make a great deal of sense. The TeamCity
+plugin “plays nice” with all the others but is generally most appropriate 
+running in a CI build on a TeamCity server. Its output will clutter and obscure
+console logging at a local development environment command line.
 
 You may enable the TeamCity plugin (above) but disable its operation using the
 following.
@@ -69,8 +51,44 @@ blurb configuration setting.
 
 Ceedling provides features for applying configurations settings on top of your
 core project file. These include options files and user project files.
-See _CeedlingPacket_ for full details. As an example, you might enable the
-plugin in the main project file that is committed to your repository while
-disabling the plugin in your local user project file that is ignored by your
-repository. In this way, the plugin would run on a TeamCity build server but
-not in your local development environment.
+See _[CeedlingPacket][ceedling-packet]_ for full details.
+
+[ceedling-packet]: ../docs/CeedlingPacket.md
+
+As an example, you might enable the plugin in the main project file that is
+committed to your repository while disabling the plugin in your local user
+project file that is ignored by your repository. In this way, the plugin would
+run on a TeamCity build server but not in your local development environment.
+
+# Example Output
+
+TeamCity's convention for identifying tests uses the naming convention of the
+underlying Java language in which TeamCity is written,
+`package_or_namespace.ClassName.TestName`.
+
+This plugin maps Ceedling conventions to TeamCity test service messages as
+`context.TestFilepath.TestCaseName`.
+
+* `context` Your build's context defaults to `test`. Certain other test build 
+  plugins (e.g. GCov) provide a different context (`gcov`) for test builds, 
+  generally named after themselves.
+* `TestFilepath` This identifier is the relative filepath of the relevant test
+  file without a file extension (e.g. no `.c`).
+* `TestCaseName` This identifier is a test case function name within a Ceedling test file.
+
+```sh
+ > ceedling test:UsartModel
+```
+
+```
+##teamcity[testSuiteStarted name='TestUsartModel' flowId='15']
+##teamcity[testStarted name='test.test/TestUsartModel.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting' flowId='15']
+##teamcity[testFinished name='test.test/TestUsartModel.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting' duration='81' flowId='15']
+##teamcity[testStarted name='test.test/TestUsartModel.testShouldReturnErrorMessageUponInvalidTemperatureValue' flowId='15']
+##teamcity[testFinished name='test.test/TestUsartModel.testShouldReturnErrorMessageUponInvalidTemperatureValue' duration='81' flowId='15']
+##teamcity[testStarted name='test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately' flowId='15']
+##teamcity[testFailed name='test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately' message='Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected.' details='File: test/TestUsartModel.c Line: 25' flowId='15']
+##teamcity[testFinished name='test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately' duration='81' flowId='15']
+##teamcity[testIgnored name='test.test/TestUsartModel.testShouldReturnWakeupMessage' flowId='15']
+##teamcity[testSuiteFinished name='TestUsartModel' flowId='15']
+```

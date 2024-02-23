@@ -1,6 +1,6 @@
-# Ceedling Plugin: Test Suite Reporter
+# Ceedling Plugin: Test Suite Report Log Factory
 
-Generate one or more readymade test suite reports or create your own.
+Generate one or more built-in test suite reports — JSON, JUnit XML, or CppUnit XML — or create your own.
 
 # Plugin Overview
 
@@ -118,6 +118,10 @@ The JSON this plugin generates uses an ad hoc set of data structures following n
 
 In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored.
 
+```sh
+ > ceedling test:UsartModel
+```
+
 ```json
 {
   "FailedTests": [
@@ -182,6 +186,10 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
 
 In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ becomes a JUnit _test suite_.
 
+```sh
+ > ceedling test:UsartModel
+```
+
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
 <testsuites tests="4" failures="1" time="0.331">
@@ -226,6 +234,10 @@ In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ bec
 In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored.
 
 In mapping a Ceedling test suite to CppUnit convetions, a CppUnit test name is the concatenation of a Ceedling test filename and a test case function name. As such, a test filename will appear in the report a number of times equal to the number of test cases it holds. Test IDs are merely an incrementing count useful to uniquely identifying tests by number; no ordering or convention is enforced in generating them.
+
+```sh
+ > ceedling test:UsartModel
+```
 
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>

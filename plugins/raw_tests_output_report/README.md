@@ -1,34 +1,46 @@
-# Ceedling Plugin: Raw Test Output Report
+# Ceedling Plugin: Raw Test Output Logs
+
+Capture extra console output — typically `printf()`-style statements — from 
+test cases to log files.
 
 # Plugin Overview
 
-This plugin gathers console output from test executables into log files.
-Unity-based test executables print test case pass/fail status messages and test
-case accounting to $stdout. This plugin filters out this expected output leaving 
-log files containing only extra console output.
-
-Ceedling and Unity cooperate to extract console statements unrelated to test
-cases and present them through $stdout plugins. This plugin captures the same
-output to log files instead.
+This plugin gathers and filters console output from test executables into log 
+files.
 
 Debugging in unit tested code is often accomplished with simple `printf()`-
-style calls to dump information to the console. This plugin can be helpful
-in supporting debugging efforts.
+style calls to dump information to the console. This plugin's log files can be 
+helpful in supporting debugging efforts or quality validation.
 
-Log files are only created if test executables produce console output as
-described above and are named for those test executables.
+## Test executable output
+
+Ceedling and Unity cooperate to extract console statements from test executable
+runs. Unity-based test executables print test case pass/fail status messages
+and test case accounting to the console ($stdout). Ceedling and various
+reporting plugins gather all this, including unrecognized output, to format it
+and present summaries at the console. This plugin captures the unrecognized
+output to log files.
+
+## Log files
+
+Log files are only created if test executables produce console output apart from
+expected Unity test results as described above. Log files are named for the
+respective test executables.
 
 Builds are differentiated by build context — `test`, `release`, or
 plugin-modified build (e.g. `gcov`). Log files are written to `<build
 root>/artifacts/<context>/<test file>.raw.log`.
 
-# Setup & Configuration
+# Setup
 
-Enable the plugin in your Ceedling project by adding `raw_tests_output_report`
-to the list of enabled plugins.
+Enable the plugin in your Ceedling project:
 
 ``` YAML
 :plugins:
   :enabled:
     - raw_tests_output_report
 ```
+
+# Configuration
+
+No additional configuration is needed once the plugin is enabled.

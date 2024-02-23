@@ -1,4 +1,6 @@
-# Ceedling Plugin: GTest-like Tests Report
+# Ceedling Plugin: GTest-like Test Suite Console Report
+
+Prints to the console ($stdout) test suite results in a GTest-like format.
 
 # Plugin Overview
 
@@ -10,9 +12,25 @@ readable summary form — specifically the GoogleTest format.
 This plugin is most useful when using an IDE or working with a CI system that
 understands the GTest console logging format.
 
-# Output (Snippet)
+# Setup
 
-## GoogleTest reporting elements
+Enable the plugin in your Ceedling project by adding 
+`stdout_gtestlike_tests_report` to the list of enabled plugins instead of any 
+other `stdout_*_tests_report` plugin.
+
+```YAML
+:plugins:
+  :enabled:
+    - stdout_gtestlike_tests_report
+```
+
+# Configuration
+
+No additional configuration is needed once the plugin is enabled.
+
+# Plugin Output
+
+## Ceedling mapped to GoogleTest reporting elements
 
 Ceedling's conventions and output map to GTest format as the following:
 
@@ -35,6 +53,10 @@ The GTest format is verbose. It lists all tests with success and failure results
 
 The example output below shows the header and footer of test results for a suite 
 of 49 Ceedling tests in 18 test files but only includes logging for 6 tests.
+
+```sh
+ > ceedling test:all
+```
 
 ```
 [==========] Running 49 tests from 18 test cases.
@@ -71,16 +93,4 @@ test/TestModel.c(21): error: Function TaskScheduler_Init() called more times tha
 [  FAILED  ] test/TestModel.c.testInitShouldCallSchedulerAndTemperatureFilterInit
 
  1 FAILED TESTS
-```
-
-# Configuration
-
-Enable the plugin in your project.yml by adding `stdout_gtestlike_tests_report`
-to the list of enabled plugins instead of any other `stdout_*_tests_report` 
-plugin.
-
-```YAML
-:plugins:
-  :enabled:
-    - stdout_gtestlike_tests_report
 ```

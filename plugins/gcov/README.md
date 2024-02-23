@@ -2,8 +2,7 @@
 
 This plugin integrates the code coverage abilities of the GNU compiler 
 collection with test builds. It provides simple coverage metrics by default and
-can optionally produce sophisticated coverage reports by way of specialized 
-reporting utitlies it runs for you.
+can optionally produce sophisticated coverage reports.
 
 # Plugin Overview
 

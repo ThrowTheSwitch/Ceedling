@@ -37,4 +37,4 @@ Enable the plugin in your Ceedling project file by adding `compile_commands_json
 
 There is no additional configuration necessary to run this plugin.
 
-`clangd` will search your build directory for the JSON compilation database, but in some instances it can be easier and necessary to symlink the file into the root directory of your project (e.g. `ln -s ./build/artifacts/compile_commands.json .`).
+`clangd` will search your build directory for the JSON compilation database, but in some instances on Unix-asbed platforms it can be easier and necessary to symlink the file into the root directory of your project (e.g. `ln -s ./build/artifacts/compile_commands.json .`).
