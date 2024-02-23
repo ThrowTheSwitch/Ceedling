@@ -474,7 +474,7 @@ module CeedlingTestCases
     end
   end
 
-  def uses_raw_tests_output_report_plugin
+  def uses_report_tests_raw_output_log_plugin
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
