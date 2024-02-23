@@ -39,7 +39,7 @@ describe "Ceedling" do
     it { can_test_projects_with_compile_error }
     it { can_test_projects_with_both_mock_and_real_header }
     it { can_test_projects_with_success_when_space_appears_between_hash_and_include }
-    it { uses_raw_output_report_plugin }
+    it { uses_raw_tests_output_report_plugin }
     it { test_run_of_projects_fail_because_of_sigsegv_without_report }
     it { test_run_of_projects_fail_because_of_sigsegv_with_report }
     it { execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue_when_cmd_args_set_to_true }
