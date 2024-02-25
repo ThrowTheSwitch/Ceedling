@@ -47,7 +47,7 @@
     - :name: SupervisorSupremo
       :source_path:   ../supervisor/
       :build_path:    ../supervisor/
-      :artifact_path: ../supervisor/build/release
+      :artifact_path: ../supervisor/build
       :fetch:
         :method: :none
       :environment: []
@@ -55,10 +55,10 @@
         - "ceedling clobber test:all release"
       :artifacts:
         :static_libraries:
-          - libsupervisor.a
+          - release/libsupervisor.a
         :dynamic_libraries: []
         :includes: 
-          - ../../src/supervisor.h
+          - ../src/supervisor.h
     - :name: WorkerBees
       :source_path:   third_party/bees/source
       :build_path:    third_party/bees/source

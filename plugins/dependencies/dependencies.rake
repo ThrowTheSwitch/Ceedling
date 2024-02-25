@@ -78,7 +78,7 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
 
     namespace :fetch do
       # Add task to directly clobber this dependency
-      task(deplib_name) do
+      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_source_path(deplib)) do
         @ceedling[DEPENDENCIES_SYM].fetch_if_required(deplib_name)
       end
     end
@@ -100,10 +100,6 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   dynamic_libs = @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
   task RELEASE_SYM => dynamic_libs
 
-  # Add the include dirs / files to our list of dependencies for release
-  headers = @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) + 
-            @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib)
-
   # Paths to Libraries need to be Added to the Lib Path List
   all_libs = static_libs + dynamic_libs
   PATHS_LIBRARIES ||= []
@@ -116,6 +112,8 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   all_libs.each {|lib| LIBRARIES_SYSTEM << File.basename(lib,'.*').sub(/^lib/,'') }
   LIBRARIES_SYSTEM.uniq!
   LIBRARIES_SYSTEM.reject!{|s| s.empty?}
+
+  task 'test:all' => all_deps
 end
 
 # Add any artifact:include or :source folders to our release & test includes paths so linking and mocking work.
@@ -150,6 +148,3 @@ namespace :files do
     puts "file count: #{deps.size}"
   end
 end
-
-# Make sure that we build dependencies before attempting to tackle any of the unit tests
-Rake::Task[:prepare].enhance ['dependencies:make']

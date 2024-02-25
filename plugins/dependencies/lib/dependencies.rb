@@ -28,20 +28,25 @@ class Dependencies < Plugin
     end
   end
 
-  def config
+  def config()
     updates = {
       :collection_paths_include => COLLECTION_PATHS_INCLUDE,
       :collection_all_headers => COLLECTION_ALL_HEADERS,
     }
 
-    @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib).each do |incpath|
-      updates[:collection_paths_include] << incpath
-      Dir[ File.join(incpath, "*#{EXTENSION_HEADER}") ].each do |f|
-        updates[:collection_all_headers] << f
+    DEPENDENCIES_LIBRARIES.each do |deplib|
+      @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib).each do |incpath|
+        updates[:collection_paths_include] << incpath
+        #COLLECTION_PATHS_INCLUDE << incpath
+      end
+
+      @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib).each do |inc|
+        updates[:collection_all_headers] << inc
+        #COLLECTION_ALL_HEADERS << inc
       end
     end
 
-    return updates
+    updates
   end
 
   def get_name(deplib)
@@ -61,8 +66,12 @@ class Dependencies < Plugin
     return deplib[:artifact_path] || deplib[:source_path] || File.join('dependencies', get_name(deplib))
   end
 
-  def get_working_paths(deplib)
-    paths = [deplib[:source_path], deplib[:build_path], deplib[:artifact_paths]].compact.uniq
+  def get_working_paths(deplib, artifact_only=false)
+    paths = if artifact_only
+      [deplib[:artifact_path]].compact.uniq
+    else
+      [deplib[:source_path], deplib[:build_path], deplib[:artifact_path]].compact.uniq
+    end
     paths = [ File.join('dependencies', get_name(deplib)) ] if (paths.empty?)
     return paths
   end
@@ -80,8 +89,16 @@ class Dependencies < Plugin
   end
 
   def get_include_directories_for_dependency(deplib)
-    paths = (deplib[:artifacts][:includes] || []).map {|path| File.join(get_artifact_path(deplib), path.split(/[\/\\]/)[0..-2]) }
-    @ceedling[:file_path_collection_utils].collect_paths(paths).uniq
+    paths = (deplib[:artifacts][:includes] || []).map do |path| 
+      if (path =~ /.*\.h$/)
+        path.split(/[\/\\]/)[0..-2]
+      elsif (path =~ /(?:^\+:)|(?:^-:)|(?:\*\*)/)
+        @ceedling[:file_path_collection_utils].collect_paths([path])
+      else
+        path
+      end
+    end
+    return paths.map{|path| File.join(get_artifact_path(deplib), path) }.uniq 
   end
 
   def get_include_files_for_dependency(deplib)
@@ -124,9 +141,14 @@ class Dependencies < Plugin
   def fetch_if_required(lib_path)
     blob = @dependencies[lib_path]
     raise "Could not find dependency '#{lib_path}'" if blob.nil?
-    return if (blob[:fetch].nil?)
-    return if (blob[:fetch][:method].nil?)
-    return if (directory(blob[:source_path]) && !Dir.empty?(blob[:source_path]))
+    if (blob[:fetch].nil?) || (blob[:fetch][:method].nil?)
+      @ceedling[:streaminator].stdout_puts("No method to fetch #{blob[:name]}", Verbosity::COMPLAIN)
+      return
+    end
+    unless (directory(blob[:source_path])) #&& !Dir.empty?(blob[:source_path]))
+      @ceedling[:streaminator].stdout_puts("Path #{blob[:source_path]} is required", Verbosity::COMPLAIN)
+      return
+    end
 
     steps = case blob[:fetch][:method]
             when :none
@@ -191,14 +213,17 @@ class Dependencies < Plugin
     raise "Could not find dependency '#{lib_path}'" if blob.nil?
 
     # We don't clean anything unless we know how to fetch a new copy
-    if (blob[:fetch].nil? || blob[:fetch][:method].nil? || (blob[:fetch][:method] == :none))
+    if (blob[:fetch].nil? || blob[:fetch][:method].nil?)
       @ceedling[:streaminator].stdout_puts("Nothing to clean for dependency #{blob[:name]}", Verbosity::NORMAL)
       return
     end
 
+    # We only need to clean the artifacts if the source isn't being fetched
+    artifacts_only = (blob[:fetch][:method] == :none)
+
     # Perform the actual Cleaning
     @ceedling[:streaminator].stdout_puts("Cleaning dependency #{blob[:name]}...", Verbosity::NORMAL)
-    get_working_paths(blob).each do |path|
+    get_working_paths(blob, artifacts_only).each do |path|
       FileUtils.rm_rf(path) if File.directory?(path)
     end
   end
@@ -220,22 +245,26 @@ class Dependencies < Plugin
 
   def add_headers_and_sources()
     # Search for header file paths and files to add to our collections
+    cfg = @ceedling[:configurator].project_config_hash
+
     DEPENDENCIES_LIBRARIES.each do |deplib|
-      ( get_include_directories_for_dependency(deplib) +
-        get_include_files_for_dependency(deplib) ).each do |header|
-        cfg = @ceedling[:configurator].project_config_hash
+      get_include_directories_for_dependency(deplib).each do |header|
         cfg[:collection_paths_include] << header
         cfg[:collection_paths_source_and_include] << header
         cfg[:collection_paths_test_support_source_include] << header
         cfg[:collection_paths_test_support_source_include_vendor] << header
         cfg[:collection_paths_release_toolchain_include] << header
-        Dir[ File.join(header, "*#{EXTENSION_HEADER}") ].each do |f|
-          cfg[:collection_all_headers] << f
-        end
+      end
+
+      get_include_files_for_dependency(deplib).each do |header|
+        cfg[:collection_all_headers] << header
+
+        cfg[:files] ||= {}
+        cfg[:files][:include] ||= []
+        cfg[:files][:include] << header
       end
 
       get_source_files_for_dependency(deplib).each do |source|
-        cfg = @ceedling[:configurator].project_config_hash
         cfg[:collection_paths_source_and_include] << source
         cfg[:collection_paths_test_support_source_include] << source
         cfg[:collection_paths_test_support_source_include_vendor] << source
