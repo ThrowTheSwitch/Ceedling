@@ -7,6 +7,7 @@ require 'reportgenerator_reportinator'
 
 class Gcov < Plugin
   
+  # `Plugin` setup()
   def setup
     @result_list = []
 
@@ -25,6 +26,8 @@ class Gcov < Plugin
 
     # Validate tools and configuration while building reportinators
     @reportinators = build_reportinators( @project_config[:gcov_utilities], @reports_enabled )
+
+    @mutex = Mutex.new()
   end
 
   # Called within class and also externally by plugin Rakefile
@@ -57,20 +60,29 @@ class Gcov < Plugin
       )
   end
 
+  # `Plugin` build step hook
   def post_test_fixture_execute(arg_hash)
     result_file = arg_hash[:result_file]
 
-    if (result_file =~ /#{GCOV_RESULTS_PATH}/) && !@result_list.include?(result_file)
-      @result_list << arg_hash[:result_file]
+    @mutex.synchronize do
+      if (result_file =~ /#{GCOV_RESULTS_PATH}/) && !@result_list.include?(result_file)
+        @result_list << arg_hash[:result_file]
+      end
     end
   end
 
+  # `Plugin` build step hook
   def post_build
     # Do nothing unless a gcov: task was used
     return unless @ceedling[:task_invoker].invoked?(/^#{GCOV_TASK_ROOT}/)
 
+    results = {}
+
     # Assemble test results
-    results = @ceedling[:plugin_reportinator].assemble_test_results( @result_list )
+    @mutex.synchronize do
+      results = @ceedling[:plugin_reportinator].assemble_test_results( @result_list )
+    end
+
     hash = {
       header: GCOV_ROOT_NAME.upcase,
       results: results
@@ -90,6 +102,7 @@ class Gcov < Plugin
     generate_coverage_reports() if automatic_reporting_enabled?
   end
 
+  # `Plugin` build step hook
   def summary
     # Build up the list of passing results from all tests
     result_list = @ceedling[:file_path_utils].form_pass_results_filelist(

@@ -3,6 +3,7 @@ require 'ceedling/defaults'
 
 class StdoutTeamcityTestsReport < Plugin
 
+  # `Plugin` setup()
   def setup
     # TEAMCITY_BUILD defaults to true but can be overridden in a user 
     # project file to stop CI messages locally.
@@ -21,7 +22,7 @@ class StdoutTeamcityTestsReport < Plugin
     @suites = {}
   end
 
-  # Hook run before each test executable begins building
+  # `Plugin` build step hook
   def pre_test(test)
     return if !@output_enabled
 
@@ -40,7 +41,7 @@ class StdoutTeamcityTestsReport < Plugin
     end
   end
 
-  # Hook run after test executable is run
+  # `Plugin` build step hook
   def post_test_fixture_execute(arg_hash)
     return if !@output_enabled
 
@@ -126,7 +127,7 @@ class StdoutTeamcityTestsReport < Plugin
 
   end
 
-  # Hook run after a test executable build
+  # `Plugin` build step hook
   def post_test(test)
     return if !@output_enabled
 

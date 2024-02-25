@@ -474,7 +474,7 @@ module CeedlingTestCases
     end
   end
 
-  def uses_raw_output_report_plugin
+  def uses_raw_tests_output_report_plugin
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -487,7 +487,7 @@ module CeedlingTestCases
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
         expect(output).to match(/IGNORED:\s+\d/)
-        expect(File.exist?("build/artifacts/test/test_example_file_verbose.log")).to eq true
+        expect(File.exist?("build/artifacts/test/test_example_file_verbose.raw.log")).to eq true
       end
     end
   end

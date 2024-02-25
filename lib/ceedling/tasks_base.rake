@@ -19,7 +19,7 @@ task :version do
   puts " CException:: #{Ceedling::Version::CEXCEPTION}"
 end
 
-desc "Set verbose output (silent:[#{Verbosity::SILENT}] - debug:[#{Verbosity::DEBUG}])."
+desc "Set verbose output numerically (silent:[#{Verbosity::SILENT}] - debug:[#{Verbosity::DEBUG}])."
 task :verbosity, :level do |t, args|
   # Most of setting verbosity has been moved to command line processing before Rake.
   level = args.level.to_i
@@ -35,6 +35,14 @@ task :verbosity, :level do |t, args|
 end
 
 namespace :verbosity do 
+  desc "Set verbose output by named level."
+  task :* do
+    message = "\nOops! 'verbosity:*' isn't a real task. " +
+              "Replace '*' with a named level (see verbosity:list).\n\n"
+
+    @ceedling[:streaminator].stdout_puts( message, Verbosity::ERRORS )
+  end
+
   # Most of setting verbosity has been moved to command line processing before Rake.
   VERBOSITY_OPTIONS.each_pair do |key, val| 
     task key do
@@ -46,6 +54,7 @@ namespace :verbosity do
   end
 
   # Offer a handy list of verbosity levels
+  desc "Available verbosity levels by name"
   task :list do 
     VERBOSITY_OPTIONS.keys.each do |key|
       puts " - verbosity:#{key}"

@@ -2,7 +2,8 @@ require 'ceedling/plugin'
 require 'ceedling/defaults'
 
 class StdoutPrettyTestsReport < Plugin
-  
+
+  # `Plugin` setup()
   def setup
     @result_list = []
     @mutex = Mutex.new
@@ -15,7 +16,7 @@ class StdoutPrettyTestsReport < Plugin
     @ceedling[:plugin_reportinator].register_test_results_template( template )
   end
   
-  # Collect result file paths after each test fixture execution
+  # `Plugin` build step hook -- collect result file paths after each test fixture execution
   def post_test_fixture_execute(arg_hash)
     # Thread-safe manipulation since test fixtures can be run in child processes
     # spawned within multiple test execution threads.
@@ -24,7 +25,7 @@ class StdoutPrettyTestsReport < Plugin
     end
   end
   
-  # Render a report immediately upon build completion (that invoked tests)
+  # `Plugin` build step hook -- render a report immediately upon build completion (that invoked tests)
   def post_build()
     # Ensure a test task was invoked as part of the build
     return if not (@ceedling[:task_invoker].test_invoked?)
@@ -42,7 +43,7 @@ class StdoutPrettyTestsReport < Plugin
     end
   end
 
-  # Render a test results report on demand using results from a previous build
+  # `Plugin` build step hook -- render a test results report on demand using results from a previous build
   def summary()
     # Build up the list of passing results from all tests
     result_list = @ceedling[:file_path_utils].form_pass_results_filelist(

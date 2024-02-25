@@ -26,7 +26,7 @@ namespace TEST_SYM do
               "Use a real test or source file name (no path) in place of the wildcard.\n" +
               "Example: rake #{TEST_ROOT_NAME}:foo.c\n\n"
 
-    @ceedling[:streaminator].stdout_puts( message )
+    @ceedling[:streaminator].stdout_puts( message, Verbosity::ERRORS )
   end
 
   desc "Just build tests without running."
@@ -43,7 +43,7 @@ namespace TEST_SYM do
     if (matches.size > 0)
       @ceedling[:test_invoker].setup_and_invoke(tests:matches, options:{:force_run => false}.merge(TOOL_COLLECTION_TEST_TASKS))
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
+      @ceedling[:streaminator].stdout_puts( "\nFound no tests matching pattern /#{args.regex}/.", Verbosity::ERRORS )
     end
   end
 
@@ -56,7 +56,7 @@ namespace TEST_SYM do
     if (matches.size > 0)
       @ceedling[:test_invoker].setup_and_invoke(tests:matches, options:{:force_run => false}.merge(TOOL_COLLECTION_TEST_TASKS))
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
+      @ceedling[:streaminator].stdout_puts( "\nFound no tests including the given path or path component.", Verbosity::ERRORS )
     end
   end
 

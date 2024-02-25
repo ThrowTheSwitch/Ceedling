@@ -6,6 +6,7 @@ BEEP_SYM       = BEEP_ROOT_NAME.to_sym
 
 class Beep < Plugin
   
+  # `Plugin` setup()
   def setup
     # Get non-flattenified project configuration
     project_config = @ceedling[:setupinator].config_hash
@@ -48,7 +49,8 @@ class Beep < Plugin
       boom: true
     ) if tools[:on_error] != :bell
   end
-  
+
+  # `Plugin` build step hook  
   def post_build
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_done],
@@ -60,6 +62,7 @@ class Beep < Plugin
     @ceedling[:system_wrapper].shell_system( command: command[:line], verbose: true )
   end
   
+  # `Plugin` build step hook
   def post_error
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_error],

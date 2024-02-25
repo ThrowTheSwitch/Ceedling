@@ -1,6 +1,8 @@
 require 'ceedling/plugin'
 
 class TestSuiteReporter < Plugin
+  
+  # `Plugin` setup()
   def setup
     # Hash: Context => Array of test executable results files
     @results = {}
@@ -18,11 +20,13 @@ class TestSuiteReporter < Plugin
     # Disable this plugin if no reports configured
     @enabled = !(reports.empty?)
 
+    @mutex = Mutex.new()
+
     @streaminator = @ceedling[:streaminator]
     @reportinator = @ceedling[:reportinator]
   end
 
-  # Plugin hook -- collect context:results_filepath after test fixture runs
+  # `Plugin` build step hook -- collect context:results_filepath after test fixture runs
   def post_test_fixture_execute(arg_hash)
     # Do nothing if no reports configured
     return if not @enabled
@@ -30,36 +34,45 @@ class TestSuiteReporter < Plugin
     # Get context from test run
     context = arg_hash[:context]
 
-    # Create an empty array if context does not already exist as a key
-    @results[context] = [] if @results[context].nil?
+    @mutex.synchronize do
+      # Create an empty array if context does not already exist as a key
+      @results[context] = [] if @results[context].nil?
 
-    # Add results filepath to array at context key
-    @results[context] << arg_hash[:result_file]
+      # Add results filepath to array at context key
+      @results[context] << arg_hash[:result_file]
+    end
   end
 
-  # Plugin hook -- process results into log files after test build completes
+  # `Plugin` build step hook -- process results into log files after test build completes
   def post_build
     # Do nothing if no reports configured
     return if not @enabled
 
+    empty = false
+
+    @mutex.synchronize { empty = @results.empty? }
+
     # Do nothing if no results were generated (e.g. not a test build)
-    return if @results.empty?
+    return if empty
 
     msg = @reportinator.generate_heading( "Running Test Suite Reports" )
     @streaminator.stdout_puts( msg )
 
-    # For each configured reporter, generate a test suite report per test context
-    @reporters.each do |reporter|
+    @mutex.synchronize do
+      # For each configured reporter, generate a test suite report per test context
       @results.each do |context, results_filepaths|
         # Assemble results from all results filepaths collected
         _results = @ceedling[:plugin_reportinator].assemble_test_results( results_filepaths )
 
-        filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
+        # Provide results to each Reporter
+        @reporters.each do |reporter|
+          filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
 
-        msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
-        @streaminator.stdout_puts( msg )
+          msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
+          @streaminator.stdout_puts( msg )
 
-        reporter.write( filepath: filepath, results: _results )
+          reporter.write( filepath: filepath, results: _results )
+        end
       end
     end
 

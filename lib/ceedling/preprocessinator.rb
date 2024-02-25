@@ -79,7 +79,7 @@ class Preprocessinator
     }
 
     # Extract shallow includes & print status message    
-    includes = preprocess_file_common(**arg_hash)
+    includes = preprocess_file_common( **arg_hash )
 
     arg_hash = {
       source_filepath:       filepath,
@@ -91,7 +91,7 @@ class Preprocessinator
     }
 
     # Run file through preprocessor & further process result
-    @file_handler.preprocess_header_file(**arg_hash)
+    plugin_arg_hash[:shell_result] = @file_handler.preprocess_header_file( **arg_hash )
 
     # Trigger post_mock_preprocessing plugin hook
     @plugin_manager.post_mock_preprocess( plugin_arg_hash )
@@ -123,7 +123,7 @@ class Preprocessinator
     }
 
     # Extract shallow includes & print status message
-    includes = preprocess_file_common(**arg_hash)
+    includes = preprocess_file_common( **arg_hash )
 
     arg_hash = {
       source_filepath:       filepath,
@@ -135,7 +135,7 @@ class Preprocessinator
     }
 
     # Run file through preprocessor & further process result
-    @file_handler.preprocess_test_file(**arg_hash)
+    plugin_arg_hash[:shell_result] = @file_handler.preprocess_test_file( **arg_hash )
 
     # Trigger pre_mock_preprocessing plugin hook
     @plugin_manager.post_test_preprocess( plugin_arg_hash )
@@ -159,7 +159,7 @@ class Preprocessinator
       filename: File.basename(filepath)
     )
 
-    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+    @streaminator.stdout_puts( msg, Verbosity::NORMAL )
 
     # Extract includes
     includes = preprocess_includes(
@@ -183,7 +183,7 @@ class Preprocessinator
         filename: File.basename(filepath)
         )
       @streaminator.stdout_puts( msg, Verbosity::NORMAL )
-      includes = @yaml_wrapper.load(includes_list_filepath)
+      includes = @yaml_wrapper.load( includes_list_filepath )
     else
       includes = @includes_handler.extract_includes(
         filepath:      filepath,
@@ -193,7 +193,7 @@ class Preprocessinator
         defines:       defines
         )
       
-      @includes_handler.write_includes_list(includes_list_filepath, includes)
+      @includes_handler.write_includes_list( includes_list_filepath, includes )
     end
 
     return includes
