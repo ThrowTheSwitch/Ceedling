@@ -59,16 +59,7 @@
     #- fake_function_framework        # use FFF instead of CMock
 
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
-    #- colour_report
-    #- json_tests_report
-    #- junit_tests_report
-    - raw_output_report
     - stdout_pretty_tests_report
-    #- stdout_ide_tests_report
-    #- stdout_gtestlike_tests_report
-    #- teamcity_tests_report
-    #- warnings_report
-    #- xml_tests_report
 
 # override the default extensions for your system and toolchain
 :extension:
