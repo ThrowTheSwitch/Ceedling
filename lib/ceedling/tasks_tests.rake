@@ -1,6 +1,6 @@
 require 'ceedling/constants'
 
-task :test => [:directories] do
+task :test => [:prepare] do
   Rake.application['test:all'].invoke
 end
 
@@ -14,7 +14,7 @@ namespace TEST_SYM do
   }
 
   desc "Run all unit tests (also just 'test' works)."
-  task :all => [:directories] do
+  task :all => [:prepare] do
     @ceedling[:test_invoker].setup_and_invoke(
       tests:COLLECTION_ALL_TESTS,
       options:{:force_run => true, :build_only => false}.merge(TOOL_COLLECTION_TEST_TASKS))
@@ -30,12 +30,12 @@ namespace TEST_SYM do
   end
 
   desc "Just build tests without running."
-  task :build_only => [:directories] do
+  task :build_only => [:prepare] do
     @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, options:{:build_only => true}.merge(TOOL_COLLECTION_TEST_TASKS))
   end
 
   desc "Run tests by matching regular expression pattern."
-  task :pattern, [:regex] => [:directories] do |t, args|
+  task :pattern, [:regex] => [:prepare] do |t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each { |test| matches << test if (test =~ /#{args.regex}/) }
@@ -48,7 +48,7 @@ namespace TEST_SYM do
   end
 
   desc "Run tests whose test path contains [dir] or [dir] substring."
-  task :path, [:dir] => [:directories] do |t, args|
+  task :path, [:dir] => [:prepare] do |t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each { |test| matches << test if File.dirname(test).include?(args.dir.gsub(/\\/, '/')) }

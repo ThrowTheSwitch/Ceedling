@@ -113,7 +113,7 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   LIBRARIES_SYSTEM.uniq!
   LIBRARIES_SYSTEM.reject!{|s| s.empty?}
 
-  task 'test:all' => all_deps
+  task :prepare => all_deps
 end
 
 # Add any artifact:include or :source folders to our release & test includes paths so linking and mocking work.

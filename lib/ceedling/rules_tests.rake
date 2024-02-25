@@ -41,7 +41,7 @@ namespace TEST_SYM do
         @ceedling[:file_finder].find_test_from_file_path(test)
       end
   ]) do |test|
-    @ceedling[:rake_wrapper][:directories].invoke
+    @ceedling[:rake_wrapper][:prepare].invoke
     @ceedling[:test_invoker].setup_and_invoke(tests:[test.source], options:{:force_run => true, :build_only => false}.merge(TOOL_COLLECTION_TEST_RULES))
   end
 end
