@@ -32,12 +32,21 @@ def assert_file_not_exist(path)
   end
 end
 
-def assert_cmd_returns(cmd, expected)
+def assert_cmd_return(cmd, expected)
   retval = `ceedling #{cmd}`
   if (retval.include? expected)
     puts "Testing included `#{expected}`"
   else
     raise "Testing did not include `#{expected}`"
+  end
+end
+
+def assert_cmd_not_return(cmd, expected)
+  retval = `ceedling #{cmd}`
+  if (!retval.include? expected)
+    puts "Testing didn't included `#{expected}`"
+  else
+    raise "Testing included `#{expected}`, which was unexpected."
   end
 end
 
@@ -50,107 +59,107 @@ task :integration_test do
 
     # verify we can clean the dependencies
     puts "\nCleaning the Dependencies:"
-    assert_cmd_returns("dependencies:clean")
-    assert_file_not_exist("boss/third_party/bees/source/makefile")
-    assert_file_not_exist("boss/third_party/bees/source/src/worker.c")
-    assert_file_not_exist("boss/third_party/bees/source/src/worker.h")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.a")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.h")
-    assert_file_not_exist("supervisor/build/release/libsupervisor.a")
-    assert_file_not_exist("supervisor/build/artifacts/release/libsupervisor.a")
-    assert_file_exist("supervisor/src/supervisor.c")
-    assert_file_exist("supervisor/src/supervisor.h")
+    assert_cmd_not_return("dependencies:clean",'error')
+    assert_file_not_exist("./third_party/bees/source/makefile")
+    assert_file_not_exist("./third_party/bees/source/src/worker.c")
+    assert_file_not_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
 
     # verify we can fetch the dependencies
     puts "\nFetching the Dependencies:"
-    assert_cmd_returns("dependencies:fetch")
-    assert_file_exist("boss/third_party/bees/source/makefile")
-    assert_file_exist("boss/third_party/bees/source/src/worker.c")
-    assert_file_exist("boss/third_party/bees/source/src/worker.h")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.a")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.h")
-    assert_file_not_exist("supervisor/build/release/libsupervisor.a")
-    assert_file_not_exist("supervisor/build/artifacts/release/libsupervisor.a")
-    assert_file_exist("supervisor/src/supervisor.c")
-    assert_file_exist("supervisor/src/supervisor.h")
+    assert_cmd_not_return("dependencies:fetch",'error')
+    assert_file_exist("./third_party/bees/source/makefile")
+    assert_file_exist("./third_party/bees/source/src/worker.c")
+    assert_file_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
 
     # verify we can make the dependencies
     puts "\nMaking the Dependencies:"
-    assert_cmd_returns("dependencies:make")
-    assert_file_exist("boss/third_party/bees/source/makefile")
-    assert_file_exist("boss/third_party/bees/source/src/worker.c")
-    assert_file_exist("boss/third_party/bees/source/src/worker.h")
-    assert_file_exist("boss/third_party/bees/source/build/libworker.a")
-    assert_file_exist("boss/third_party/bees/source/build/libworker.h")
-    assert_file_exist("supervisor/build/release/libsupervisor.a")
-    assert_file_exist("supervisor/build/artifacts/release/libsupervisor.a")
-    assert_file_exist("supervisor/src/supervisor.c")
-    assert_file_exist("supervisor/src/supervisor.h")
+    assert_cmd_not_return("dependencies:make",'error')
+    assert_file_exist("./third_party/bees/source/makefile")
+    assert_file_exist("./third_party/bees/source/src/worker.c")
+    assert_file_exist("./third_party/bees/source/src/worker.h")
+    assert_file_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
 
     # verify we can clean the dependencies again
     puts "\nCleaning the Dependencies (round 2):"
-    assert_cmd_returns("dependencies:clean")
-    assert_file_not_exist("boss/third_party/bees/source/makefile")
-    assert_file_not_exist("boss/third_party/bees/source/src/worker.c")
-    assert_file_not_exist("boss/third_party/bees/source/src/worker.h")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.a")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.h")
-    assert_file_not_exist("supervisor/build/release/libsupervisor.a")
-    assert_file_not_exist("supervisor/build/artifacts/release/libsupervisor.a")
-    assert_file_exist("supervisor/src/supervisor.c")
-    assert_file_exist("supervisor/src/supervisor.h")
+    assert_cmd_not_return("dependencies:clean",'error')
+    assert_file_not_exist("./third_party/bees/source/makefile")
+    assert_file_not_exist("./third_party/bees/source/src/worker.c")
+    assert_file_not_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
 
     # verify dependencies are built automatically for a release build
     puts "\nRelease with Dependencies:"
-    assert_cmd_returns("release")
-    assert_file_exist("boss/third_party/bees/source/makefile")
-    assert_file_exist("boss/third_party/bees/source/src/worker.c")
-    assert_file_exist("boss/third_party/bees/source/src/worker.h")
-    assert_file_exist("boss/third_party/bees/source/build/libworker.a")
-    assert_file_exist("boss/third_party/bees/source/build/libworker.h")
-    assert_file_exist("supervisor/build/release/libsupervisor.a")
-    assert_file_exist("supervisor/build/artifacts/release/libsupervisor.a")
-    assert_file_exist("supervisor/src/supervisor.c")
-    assert_file_exist("supervisor/src/supervisor.h")
+    assert_cmd_not_return("release",'error')
+    assert_file_exist("./third_party/bees/source/makefile")
+    assert_file_exist("./third_party/bees/source/src/worker.c")
+    assert_file_exist("./third_party/bees/source/src/worker.h")
+    assert_file_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
 
     # verify we can clean the dependencies again
     puts "\nCleaning the Dependencies (round 3):"
-    assert_cmd_returns("dependencies:clean")
-    assert_file_not_exist("boss/third_party/bees/source/makefile")
-    assert_file_not_exist("boss/third_party/bees/source/src/worker.c")
-    assert_file_not_exist("boss/third_party/bees/source/src/worker.h")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.a")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.h")
-    assert_file_not_exist("supervisor/build/release/libsupervisor.a")
-    assert_file_not_exist("supervisor/build/artifacts/release/libsupervisor.a")
-    assert_file_exist("supervisor/src/supervisor.c")
-    assert_file_exist("supervisor/src/supervisor.h")
+    assert_cmd_not_return("dependencies:clean",'error')
+    assert_file_not_exist("./third_party/bees/source/makefile")
+    assert_file_not_exist("./third_party/bees/source/src/worker.c")
+    assert_file_not_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
 
     # verify dependencies are built automatically for a test build
     puts "\nTesting with Dependencies:"
-    assert_cmd_returns("test:all")
-    assert_file_exist("boss/third_party/bees/source/makefile")
-    assert_file_exist("boss/third_party/bees/source/src/worker.c")
-    assert_file_exist("boss/third_party/bees/source/src/worker.h")
-    assert_file_exist("boss/third_party/bees/source/build/libworker.a")
-    assert_file_exist("boss/third_party/bees/source/build/libworker.h")
-    assert_file_exist("supervisor/build/release/libsupervisor.a")
-    assert_file_exist("supervisor/build/artifacts/release/libsupervisor.a")
-    assert_file_exist("supervisor/src/supervisor.c")
-    assert_file_exist("supervisor/src/supervisor.h")
+    assert_cmd_not_return("test:all",'error')
+    assert_file_exist("./third_party/bees/source/makefile")
+    assert_file_exist("./third_party/bees/source/src/worker.c")
+    assert_file_exist("./third_party/bees/source/src/worker.h")
+    assert_file_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
 
     # verify we can clean the dependencies again
     puts "\nCleaning the Dependencies (round 4):"
-    assert_cmd_returns("dependencies:clean")
-    assert_file_not_exist("boss/third_party/bees/source/makefile")
-    assert_file_not_exist("boss/third_party/bees/source/src/worker.c")
-    assert_file_not_exist("boss/third_party/bees/source/src/worker.h")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.a")
-    assert_file_not_exist("boss/third_party/bees/source/build/libworker.h")
-    assert_file_not_exist("supervisor/build/release/libsupervisor.a")
-    assert_file_not_exist("supervisor/build/artifacts/release/libsupervisor.a")
-    assert_file_exist("supervisor/src/supervisor.c")
-    assert_file_exist("supervisor/src/supervisor.h")
+    assert_cmd_not_return("dependencies:clean",'error')
+    assert_file_not_exist("./third_party/bees/source/makefile")
+    assert_file_not_exist("./third_party/bees/source/src/worker.c")
+    assert_file_not_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
 
     puts "\nPASSES MODULE SELF-TESTS"
 

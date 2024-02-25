@@ -43,7 +43,7 @@
 
 # add the following dependencies to our build
 :dependencies:
-  :libraries:
+  :deps:
     - :name: SupervisorSupremo
       :source_path:   ../supervisor/
       :build_path:    ../supervisor/
@@ -193,3 +193,22 @@
   :system: []    # for example, you might list 'm' to grab the math library
   :test: []
   :release: []
+
+# TOOLS 
+# This is custom configuration for any tools, but in this case, we are highlighting the
+# configuration options for the dependency tools
+:tools:
+  :deps_compiler:
+    :executable: gcc
+    :arguments:
+      - -g
+      - -I"$": COLLECTION_PATHS_SUBPROJECTS
+      - -D$: COLLECTION_DEFINES_SUBPROJECTS
+      - -c "${1}""
+      - -o "${2}""
+  :deps_linker:
+    :executable: ar
+    :arguments:
+      - rcs
+      - ${2}
+      - ${1}

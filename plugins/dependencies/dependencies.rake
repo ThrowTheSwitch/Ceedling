@@ -1,5 +1,5 @@
 
-DEPENDENCIES_LIBRARIES.each do |deplib|
+DEPENDENCIES_DEPS.each do |deplib|
 
   # Look up the name of this dependency library
   deplib_name = @ceedling[DEPENDENCIES_SYM].get_name(deplib)
@@ -122,16 +122,16 @@ end
 # Add tasks for building or cleaning ALL depencies
 namespace DEPENDENCIES_SYM do
   desc "Deploy missing dependencies."
-  task :deploy => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:deploy:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :deploy => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:deploy:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 
   desc "Build any missing dependencies."
-  task :make => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:make:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :make => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:make:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 
   desc "Clean all dependencies."
-  task :clean => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:clean:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :clean => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:clean:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 
   desc "Fetch all dependencies."
-  task :fetch => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:fetch:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :fetch => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:fetch:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 end
 
 namespace :files do
@@ -139,7 +139,7 @@ namespace :files do
   task :dependencies do
     puts "dependency files:"
     deps = []
-    DEPENDENCIES_LIBRARIES.each do |deplib|
+    DEPENDENCIES_DEPS.each do |deplib|
       deps << @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib)
       deps << @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
     end

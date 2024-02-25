@@ -204,7 +204,7 @@ In this case, Ceedling is able to automatically add these to its internal source
 these files to be used while building your release code.
 
 Tasks
------
+=====
 
 Once configured correctly, the `:dependencies` plugin should integrate seamlessly into your
 workflow and you shouldn't have to think about it. In the real world, that doesn't always happen.
@@ -244,5 +244,54 @@ dependencies.
 
 Maybe you want to take that query further and actually get a list of ALL the header files
 Ceedling has found, including those belonging to your dependencies.
+
+Custom Tools
+============
+
+You can optionally specify a compiler and linker, just as you would a release build:
+
+```
+:tools:
+  :deps_compiler:
+    :executable: gcc
+    :arguments:
+      - -g
+      - -I"$": COLLECTION_PATHS_SUBPROJECTS
+      - -D$: COLLECTION_DEFINES_SUBPROJECTS
+      - -c "${1}"
+      - -o "${2}"
+  :deps_linker:
+    :executable: ar
+    :arguments:
+      - rcs
+      - ${2}
+      - ${1}
+```
+
+Then, once created, you can reference these tools in your build steps by using a symbol instead
+of a string:
+
+```
+:dependencies:
+  :deps:
+    - :name: CaptainCrunch
+      :source_path:   ../cc/
+      :build_path:    ../cc/
+      :artifact_path: ../cc/build
+      :fetch:
+        :method: :none
+      :environment: []
+      :build:
+        - :deps_compiler
+        - :deps_linker
+      :artifacts:
+        :static_libraries:
+          - release/cc.a
+        :dynamic_libraries: []
+        :includes: 
+          - ../src/cc.h
+      :defines:
+        - THESE_GET_USED_DURING_COMPILATION
+```
 
 Happy Testing!

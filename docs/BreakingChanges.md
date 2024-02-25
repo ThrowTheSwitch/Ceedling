@@ -89,3 +89,48 @@ The following plugin names will need to be updated in the `:plugins` section of 
 - `json_tests_report`, `xml_tests_report`, and `junit_tests_report` have been superseded by a single plugin `test_suite_reporter` able to generate each of the previous test reports as well as user-defined tests reports.
 - `raw_output_report` has been renamed to `raw_tests_output_report`.
 
+# Subprojects Plugin Replaced
+
+The `subprojects` plugin has been completely replaced by the more-powerful `dependencies` plugin. To retain your previous functionality, you need to do a little reorganizing in your `project.yml` file. Obviously the `:subprojects` section is now called `:dependencies`. The collection of `:paths` is now `:deps`. We'll have a little more organizing to do once we're inside that section as well. Your `:source` is now organized in `:source_path` and, since you're not fetching it form another project, the `:fetch:method` should be set to `:none`. The `:build_root` now becomes `:build_path`. You'll also need to specify the name of the library produced under `:artifacts:static_libraries`.
+
+For example:
+
+```
+:subprojects:  
+  :paths:
+   - :name: libprojectA
+     :source:
+       - ./subprojectA/
+     :include:
+       - ./subprojectA/inc
+     :build_root: ./subprojectA/build/dir
+     :defines: 
+       - DEFINE_JUST_FOR_THIS_FILE
+       - AND_ANOTHER
+```
+
+The above subproject definition will now look like the following:
+
+```
+:dependencies:
+  :deps:
+    - :name: Project A
+      :source_path:   ./subprojectA/
+      :build_path:    ./subprojectA/
+      :artifact_path: ./subprojectA/build/dir
+      :fetch:
+        :method: :none
+      :environment: []
+      :build:
+        - :deps_compiler
+        - :deps_linker
+      :artifacts:
+        :static_libraries:
+          - libprojectA.a
+        :dynamic_libraries: []
+        :includes: 
+          - ../subprojectA/subprojectA.h
+      :defines: 
+        - DEFINE_JUST_FOR_THIS_FILE
+        - AND_ANOTHER
+```

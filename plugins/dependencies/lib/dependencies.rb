@@ -13,7 +13,7 @@ class Dependencies < Plugin
     # Set up a fast way to look up dependencies by name or static lib path
     @dependencies = {}
     @dynamic_libraries = []
-    DEPENDENCIES_LIBRARIES.each do |deplib|
+    DEPENDENCIES_DEPS.each do |deplib|
 
       @dependencies[ deplib[:name] ] = deplib.clone
       all_deps = get_static_libraries_for_dependency(deplib) +
@@ -34,7 +34,7 @@ class Dependencies < Plugin
       :collection_all_headers => COLLECTION_ALL_HEADERS,
     }
 
-    DEPENDENCIES_LIBRARIES.each do |deplib|
+    DEPENDENCIES_DEPS.each do |deplib|
       @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib).each do |incpath|
         updates[:collection_paths_include] << incpath
         #COLLECTION_PATHS_INCLUDE << incpath
@@ -247,7 +247,7 @@ class Dependencies < Plugin
     # Search for header file paths and files to add to our collections
     cfg = @ceedling[:configurator].project_config_hash
 
-    DEPENDENCIES_LIBRARIES.each do |deplib|
+    DEPENDENCIES_DEPS.each do |deplib|
       get_include_directories_for_dependency(deplib).each do |header|
         cfg[:collection_paths_include] << header
         cfg[:collection_paths_source_and_include] << header

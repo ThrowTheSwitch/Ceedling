@@ -104,6 +104,13 @@ jobs:
           rake
           cd ../..
 
+      # Run Dependencies Plugin Tests
+      - name: Run Tests On Dependency Plugin
+        run: |
+          cd plugins/dependencies
+          rake
+          cd ../..
+
   # Job: Automatic Minor Releases
   auto-release:
     name: "Automatic Minor Releases"
