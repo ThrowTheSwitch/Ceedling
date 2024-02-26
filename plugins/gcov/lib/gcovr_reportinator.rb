@@ -104,6 +104,9 @@ class GcovrReportinator
     if report_enabled?(opts, ReportTypes::TEXT)
       generate_text_report( opts, args_common, exception_on_fail )
     end
+
+    # White space log line
+    @streaminator.stdout_puts( '' )
   end
 
   ### Private ###

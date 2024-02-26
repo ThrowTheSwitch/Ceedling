@@ -1,11 +1,21 @@
 # Ceedling Plugin: Beep
 
-# Plugin Overview
+Hear a useful beep at the end of a build.
 
-This plugin simply beeps at the end of a build.
+# Plugin Overview
 
 Are you getting too distracted surfing the internet, chatting with coworkers, or swordfighting while a long build runs? A friendly beep will let you know
 it's time to pay attention again.
+
+# Setup
+
+To use this plugin, it must be enabled:
+
+```yaml
+:plugins:
+  :enabled:
+    - beep
+```
 
 # Configuration
 

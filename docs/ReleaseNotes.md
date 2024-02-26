@@ -2,7 +2,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** February 21, 2024
+**Date:** February 26, 2024
 
 <br/>
 
@@ -203,6 +203,7 @@ Much glorious filepath and pathfile handling now abounds:
 
 1. The plugin subsystem has incorporated logging to trace plugin activities at high verbosity levels.
 1. Additional events have been added for test preprocessing steps (the popular and useful [`command_hooks` plugin](plugins/command_hooks/README.md) has been updated accordingly).
+1. Built-in plugins have been updated for thread-safety as Ceedling is now able to execute builds with multiple threads.
 
 ### Improvements, changes, and bug fixes for `gcov` plugin
 
@@ -219,9 +220,9 @@ See the [gcov plugin's documentation](plugins/gcov/README.md).
 
 Longstanding bugs produced duplicate and sometimes incorrect lists of header files. Similarly, support file lists were not properly expanded from globs. Both of these problems have been fixed. The `files:header` command line task has replaced the `files:include` task.
 
-### Improvements and bug fixes for `compile_commands_json` plugin
+### Improvements and bug fixes for `compile_commands_json_db` plugin
 
-1. The plugin creates a compilation database that distinguishes the same code file compiled multiple times with different configurations as part of the new test suite build structure.
+1. The plugin creates a compilation database that distinguishes the same code file compiled multiple times with different configurations as part of the new test suite build structure. It has been updated to work with other Ceedling changes and small bugs have been fixed.
 1. Documentation has been greatly revised.
 
 ### Improvements and bug fixes for `beep` plugin
@@ -235,15 +236,17 @@ Longstanding bugs produced duplicate and sometimes incorrect lists of header fil
 
 When used with other plugins, these test reporting plugins' generated report could end up in a location within `build/artifacts/` that was inconsistent and confusing. This has been fixed.
 
-The three previously discrete plugins listed below have been consolidated into a single new plugin, `test_suite_reporter`:
+The three previously discrete plugins listed below have been consolidated into a single new plugin, `report_tests_log_factory`:
 
 1. `junit_tests_report`
 1. `json_tests_report`
 1. `xml_tests_report`
 
-`test_suite_reporter` is able to generate all 3 reports of the plugins it replaces as well as generate custom report formats with a small amount of user-written Ruby code (i.e. not an entire Ceedling plugun).
+`report_tests_log_factory` is able to generate all 3 reports of the plugins it replaces as well as generate custom report formats with a small amount of user-written Ruby code (i.e. not an entire Ceedling plugun). See its [documentation](../plugins/report_tests_log_factory) for more.
 
-The report format of the previously independent `xml_tests_report` plugin has been renamed from _XML_ in all instances to _CppUnit_ as this is the specific test reporting format the former plugin and new `test_suite_reporter` plugin outputs.
+The report format of the previously independent `xml_tests_report` plugin has been renamed from _XML_ in all instances to _CppUnit_ as this is the specific test reporting format the former plugin and new `report_tests_log_factory` plugin outputs.
+
+In some circumstances, JUnit report generation would yield an exception in its routines for reorganizing test results (Issues [#829](https://github.com/ThrowTheSwitch/Ceedling/issues/829) & [#833](https://github.com/ThrowTheSwitch/Ceedling/issues/833)). The true source of the nil test results entries has likely been fixed but protections have also been added in JUnit report generation as well.
 
 ### Dashed filename handling bug fix
 

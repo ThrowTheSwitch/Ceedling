@@ -252,7 +252,7 @@ else
   require File.join(here, "lib", "ceedling", "constants.rb")
   require 'rbconfig'
 
-  #determine platform
+  # Determine platform
   platform = begin
     case(RbConfig::CONFIG['host_os'])
       when /mswin|mingw|cygwin/i
@@ -266,7 +266,7 @@ else
     :linux
   end
 
-  #create our default meta-runner option set
+  # Create our default meta-runner option set
   options = {
     :pretest => nil,
     :args => [],
@@ -296,7 +296,7 @@ else
   options[:which_ceedling] = yaml_options[:project][:which_ceedling] if (yaml_options[:project] && yaml_options[:project][:which_ceedling])
   options[:default_tasks]  = yaml_options[:default_tasks] if yaml_options[:default_tasks]
 
-  #sort through command line options
+  # Sort through command line options
   ARGV.each do |v|
     case(v)
       when /^(?:new|examples?|templates?)$/

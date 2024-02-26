@@ -28,7 +28,7 @@ class FileFinderHelper
         reverse_original_pieces = original_filepath.split(/(?:\\|\/)/).reverse
         matches.each_with_index do |m,i|
           reverse_match_pieces = m.split(/(?:\\|\/)/).reverse
-          # 
+
           num = reverse_original_pieces.zip(reverse_match_pieces).inject(0){|s,v| v[0] == v[1] ? s+3 : s}
           num = reverse_original_pieces.inject(num){|s,v| reverse_match_pieces.include?(v) ? s+1 : s}
           if num > best_match_value
