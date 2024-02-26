@@ -31,7 +31,9 @@ class JunitTestsReporter < TestsReporter
 
   private
 
-  # Reorganize the output by test suite instead of by result
+  # Reorganize test results by test executable instead of by result category
+  # Original success structure: successeses { file => test_cases[] }
+  # Reorganized test results:   file => test_cases[{... result: :success}]
   def reorganize_results( results )
     # Create structure of hash with default values
     suites = Hash.new() do |h,k|
@@ -50,10 +52,17 @@ class JunitTestsReporter < TestsReporter
     results[:successes].each do |result|
       # Extract filepath
       source = result[:source][:file]
+
       # Filepath minus file extension
       name = source.sub( /#{File.extname(source)}$/, '' )
 
-      # Add success test cases to full collection and update statistics
+      # Sanitize: Ensure no nil elements
+      result[:collection].compact!
+
+      # Sanitize: Ensure no empty test result hashes
+      result[:collection].select! {|test| !test.empty?() }
+
+      # Add success test cases to full test case collection and update statistics
       suites[name][:collection] += result[:collection].map{|test| test.merge(result: :success)}
       suites[name][:total] += result[:collection].length
       suites[name][:success] += result[:collection].length
@@ -63,10 +72,17 @@ class JunitTestsReporter < TestsReporter
     results[:failures].each do |result|
       # Extract filepath
       source = result[:source][:file]
+
       # Filepath minus file extension
       name = source.sub( /#{File.extname(source)}$/, '' )
 
-      # Add failure test cases to full collection and update statistics
+      # Sanitize: Ensure no nil elements
+      result[:collection].compact!
+
+      # Sanitize: Ensure no empty test result hashes
+      result[:collection].select! {|test| !test.empty?() }
+
+      # Add failure test cases to full test case collection and update statistics
       suites[name][:collection] += result[:collection].map{|test| test.merge(result: :failed)}
       suites[name][:total] += result[:collection].length
       suites[name][:failed] += result[:collection].length
@@ -76,10 +92,17 @@ class JunitTestsReporter < TestsReporter
     results[:ignores].each do |result|
       # Extract filepath
       source = result[:source][:file]
+
       # Filepath minus file extension
       name = source.sub( /#{File.extname(source)}$/, '' )
 
-      # Add ignored test cases to full collection and update statistics
+      # Sanitize: Ensure no nil elements
+      result[:collection].compact!
+
+      # Sanitize: Ensure no empty test result hashes
+      result[:collection].select! {|test| !test.empty?() }
+
+      # Add ignored test cases to full test case collection and update statistics
       suites[name][:collection] += result[:collection].map{|test| test.merge(result: :ignored)}
       suites[name][:total] += result[:collection].length
       suites[name][:ignored] += result[:collection].length
