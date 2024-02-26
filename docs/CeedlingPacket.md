@@ -1854,15 +1854,15 @@ migrated to the `:test_build` and `:release_build` sections.
     By default, this tool is set as follows:
 
     ```yaml
-      :tools:
-        :backtrace_reporter:
-          :executable: gdb
-          :arguments:
-            - -q
-            - --eval-command run
-            - --eval-command backtrace
-            - --batch
-            - --args
+   :tools:
+     :backtrace_reporter:
+       :executable: gdb
+       :arguments:
+         - -q
+         - --eval-command run
+         - --eval-command backtrace
+         - --batch
+         - --args
     ```
     
     It is important that the debugging tool should be run as a background task, and with the
@@ -3603,7 +3603,7 @@ scripts and command line tools to Ceedling build steps.
 
 Plugins can provide a variety of added functionality to Ceedling. In
 general use, it's assumed that at least one reporting plugin will be
-used to format test results (usually `stdout_pretty_tests_report`).
+used to format test results (usually `report_tests_pretty_stdout`).
 
 If no reporting plugins are specified, Ceedling will print to `$stdout` the
 (quite readable) raw test results from all test fixtures executed.
@@ -3616,7 +3616,7 @@ If no reporting plugins are specified, Ceedling will print to `$stdout` the
     - project/tools/ceedling/plugins  # Home to your collection of plugin directories.
     - project/support                 # Home to some ruby code your custom plugins share.
   :enabled:
-    - stdout_pretty_tests_report      # Nice test results at your command line.
+    - report_tests_pretty_stdout      # Nice test results at your command line.
     - our_custom_code_metrics_report  # You created a plugin to scan all code to collect 
                                       # line counts and complexity metrics. Its name is a
                                       # subdirectory beneath the first `:load_path` entry.
@@ -3736,9 +3736,9 @@ for how to create custom plugins.
 
 ## Ceedling's built-in plugins, a directory
 
-### Ceedling plugin `stdout_pretty_tests_report`
+### Ceedling plugin `report_tests_pretty_stdout`
 
-[This plugin][stdout_pretty_tests_report] is meant to tbe the default for
+[This plugin][report_tests_pretty_stdout] is meant to tbe the default for
 printing test results to the console. Without it, readable test results are
 still produced but are not nicely formatted and summarized.
 
@@ -3748,19 +3748,19 @@ simulator memory errors) collected from executing the test fixtures.
 
 Alternatives to this plugin are:
  
- * `stdout_ide_tests_report`
- * `stdout_gtestlike_tests_report`
+ * `report_tests_ide_stdout`
+ * `report_tests_gtestlike_stdout`
 
 Both of the above write to the console test results with a format that is useful
 to IDEs generally in the case of the former, and GTest-aware reporting tools in
 the case of the latter.
 
-[stdout_pretty_tests_report]: ../plugins/stdout_pretty_tests_report
+[report_tests_pretty_stdout]: ../plugins/report_tests_pretty_stdout
 
-### Ceedling plugin `stdout_ide_tests_report`
+### Ceedling plugin `report_tests_ide_stdout`
 
-[This plugin][stdout_ide_tests_report] prints to the console test results
-formatted similarly to `stdout_pretty_tests_report` with one key difference.
+[This plugin][report_tests_ide_stdout] prints to the console test results
+formatted similarly to `report_tests_pretty_stdout` with one key difference.
 This plugin's output is formatted such that an IDE executing Ceedling tasks can
 recognize file paths and line numbers in test failures, etc.
 
@@ -3770,17 +3770,18 @@ test result in your IDE's execution window and jump to the failure (or ignored
 test) in your test file (more on using [IDEs] with Ceedling, Unity, and
 CMock).
 
-If enabled, this plugin should be used in place of `stdout_pretty_tests_report`.
+If enabled, this plugin should be used in place of 
+`report_tests_pretty_stdout`.
 
-[stdout_ide_tests_report]: ../plugins/stdout_ide_tests_report
+[report_tests_ide_stdout]: ../plugins/report_tests_ide_stdout
 
 [IDEs]: https://www.throwtheswitch.org/ide
 
-### Ceedling plugin `stdout_teamcity_tests_report`
+### Ceedling plugin `report_tests_teamcity_stdout`
 
 [TeamCity] is one of the original Continuous Integration server products.
 
-[This plugin][stdout_teamcity_tests_report] processes test results into TeamCity
+[This plugin][report_tests_teamcity_stdout] processes test results into TeamCity
 service messages printed to the console. TeamCity's service messages are unique
 to the product and allow the CI server to extract build steps, test results,
 and more from software builds if present.
@@ -3790,21 +3791,21 @@ local developer builds. See the plugin's documentation for options to enable
 this plugin only in CI builds and not in local builds.
 
 [TeamCity]: https://jetbrains.com/teamcity
-[stdout_teamcity_tests_report]: ../plugins/stdout_teamcity_tests_report
+[report_tests_teamcity_stdout]: ../plugins/report_tests_teamcity_stdout
 
-### Ceedling plugin `stdout_gtestlike_tests_report`
+### Ceedling plugin `report_tests_gtestlike_stdout`
 
-[This plugin][stdout_gtestlike_tests_report] collects test results and prints
+[This plugin][report_tests_gtestlike_stdout] collects test results and prints
 them to the console in a format that mimics [Google Test's output][gtest-sample-output]. 
 Google Test output is both human readable and recognized
 by a variety of reporting tools, IDEs, and Continuous Integration servers.
 
 If enabled, this plugin should be used in place of
-`stdout_pretty_tests_report`.
+`report_tests_pretty_stdout`.
 
 [gtest-sample-output]:
 https://subscription.packtpub.com/book/programming/9781800208988/11/ch11lvl1sec31/controlling-output-with-google-test
-[stdout_gtestlike_tests_report]: ../plugins/stdout_gtestlike_tests_report
+[report_tests_gtestlike_stdout]: ../plugins/report_tests_gtestlike_stdout
 
 ### Ceedling plugin `command_hooks`
 
@@ -3875,30 +3876,30 @@ formats.
 [GCovr]: https://www.gcovr.com/
 [ReportGenerator]: https://reportgenerator.io
 
-### Ceedling plugin `test_suite_reporter`
+### Ceedling plugin `report_tests_log_factory`
 
-[This plugin][test_suite_reporter] produces any or all of three useful test
+[This plugin][report_tests_log_factory] produces any or all of three useful test
 suite reports in JSON, JUnit, or CppUnit format. It further provides a
 mechanism for users to create their own custom reports with a small amount of
 custom Ruby rather than a full plugin.
 
-[test_suite_reporter]: ../plugins/test_suite_reporter
+[report_tests_log_factory]: ../plugins/report_tests_log_factory
 
-### Ceedling plugin `warnings_report`
+### Ceedling plugin `report_build_warnings_log`
 
-[This plugin][warnings_report] scans the output of build tools for console
+[This plugin][report_build_warnings_log] scans the output of build tools for console
 warning notices and produces a simple text file that collects all such warning
 messages.
 
-[warnings_report]: ../plugins/warnings_report
+[report_build_warnings_log]: ../plugins/report_build_warnings_log
 
-### Ceedling plugin `raw_tests_output_report`
+### Ceedling plugin `report_tests_raw_output_log`
 
-[This plugin][raw_tests_output_report] captures extraneous console output
+[This plugin][report_tests_raw_output_log] captures extraneous console output
 generated by test executables — typically for debugging — to log files named
 after the test executables.
 
-[raw_tests_output_report]: ../plugins/raw_tests_output_report
+[report_tests_raw_output_log]: ../plugins/report_tests_raw_output_log
 
 ### Ceedling plugin `subprojects`
 
@@ -3917,14 +3918,14 @@ release build target.
 
 [dependencies]: ../plugins/dependencies
 
-### Ceedling plugin `compile_commands_json`
+### Ceedling plugin `compile_commands_json_db`
 
-[This plugin][compile_commands_json] create a [JSON Compilation Database][json-compilation-database]. 
+[This plugin][compile_commands_json_db] create a [JSON Compilation Database][json-compilation-database]. 
 This file is useful to [any code editor or IDE][lsp-tools] that implements 
 syntax highlighting, etc. by way of the LLVM project's [`clangd`][clangd] 
 Language Server Protocol conformant language server.
 
-[compile_commands_json]: ../plugins/compile_commands_json
+[compile_commands_json_db]: ../plugins/compile_commands_json_db
 [lsp-tools]: https://microsoft.github.io/language-server-protocol/implementors/tools/
 [clangd]: https://clangd.llvm.org
 [json-compilation-database]: https://clang.llvm.org/docs/JSONCompilationDatabase.html

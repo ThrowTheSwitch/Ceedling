@@ -3,7 +3,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** February 22, 2024
+**Date:** February 26, 2024
 
 # Explicit `:paths` ↳ `:include` entries in the project file
 
@@ -16,7 +16,7 @@ This behavior is no more. Why? For two interrelated reasons.
 1. For large or complex projects, expansive header file search path lists can exceed command line maximum lengths on some platforms. An enforced, tailored set of search paths helps prevent this problem.
 1. In order to support the desired behavior of `TEST_INCLUDE_PATH()` a concice set of “base” header file search paths is necessary. `:paths` ↳ `:include` is that base list.
 
-Using 0.32 Ceedling with older project files can lead to errors when generating mocks or compiler errors on finding header files. Add all paths to the `:paths` ↳ `:include` project file entry to fix this problem.
+Using 0.32 Ceedling with older project files can lead to errors when generating mocks or compiler errors on finding header files. Add all relevant header file search paths to the `:paths` ↳ `:include` project file entry to fix this problem.
 
 # Format change for `:defines` in the project file
 
@@ -27,6 +27,8 @@ In brief:
 1. A more logically named hierarchy differentiates `#define`s for test preprocessing, test compilation, and release compilation.
 1. Previously, compilation symbols could be specified for a specific C file by name, but these symbols were only defined when compiling that specific file. Further, this matching was only against a file's full name. Now, pattern matching is also an option.
 1. Filename matching for test compilation symbols happens against _only test file names_. More importantly, the configured symbols are applied in compilation of each C file that comprises a test executable. Each test executable is treated as a mini-project.
+
+Symbols specified for release builds are applied to all files in the release build.
 
 # Format change for `:flags` in the project file
 
@@ -77,15 +79,46 @@ Similarly, various global constant project file accessors have changed, specific
 
 See the [official documentation](CeedlingPacket.md) on global constants & accessors for updated lists and information.
 
-# Raw Output Report Plugin
+# `raw_output_report` plugin
 
-This plugin (renamed -- see next section) no longer generated empty log files and no longer generates log files with _test_ and _pass_ in their filenames. Log files are now simply named `<test file>.raw.log`.
+This plugin (renamed -- see next section) no longer generates empty log files and no longer generates log files with _test_ and _pass_ in their filenames. Log files are now simply named `<test file>.raw.log`.
 
-# Plugin Name Changes
+# Consolidation of plugins: `json_tests_report`, `xml_tests_report` & `junit_tests_report` ➡️ `report_tests_log_factory`
 
-The following plugin names will need to be updated in the `:plugins` section of your `project.yml` file.
+The individual `json_tests_report`, `xml_tests_report`, and `junit_tests_report` plugins are superseded by a single plugin `report_tests_log_factory` able to generate each or all of the previous test reports as well as user-defined tests reports. The new plugin requires a small amount of extra configuration the previous individual plugins did not. See the [`report_tests_log_factory` documentation](../plugins/report_tests_log_factory).
 
-- The plugin previously called `fake_function_framework` is now simply called `fff`.
-- `json_tests_report`, `xml_tests_report`, and `junit_tests_report` have been superseded by a single plugin `test_suite_reporter` able to generate each of the previous test reports as well as user-defined tests reports.
-- `raw_output_report` has been renamed to `raw_tests_output_report`.
+In addition, all references and naming connected to the previous `xml_tests_report` plugin have been updated to refer to _CppUnit_ rather than generic _XML_ as this is the actual format of the report that is processed.
+
+# Built-in Plugin Name Changes
+
+The following plugin names must be updated in the `:plugins` ↳ `:enabled` list of your Ceedling project file.
+
+This renaming was primarily enacted to more clearly organize and relate reporting-oriented plugins. Secondarily, some names were changed simply for greater clarity.
+
+Some test report generation plugins were not simply renamed but superseded by a new plugin (see preceding section).
+
+- `fake_function_framework` ➡️ `fff`
+- `compile_commands_json` ➡️ `compile_commands_json_db`
+- `json_tests_report`, `xml_tests_report` & `junit_tests_report` ➡️ `report_tests_log_factory`
+- `raw_output_report` ➡️ `report_tests_raw_output_log`
+- `stdout_gtestlike_tests_report` ➡️ `report_tests_gtestlike_stdout`
+- `stdout_ide_tests_report` ➡️ `report_tests_ide_stdout`
+- `stdout_pretty_tests_report` ➡️ `report_tests_pretty_stdout`   
+- `stdout_teamcity_tests_report` ➡️ `report_tests_teamcity_stdout` 
+- `warnings_report` ➡️ `report_build_warnings_log`
+- `test_suite_reporter` ➡️ `report_tests_log_factory`
+
+# `gcov` plugin coverage report generation name and behavior changes
+
+The `gcov` plugin and its [documentation](../plugins/gcov) has been significantly revised. See [release notes](ReleaseNotes.md) for all the details.
+
+The report generation task `utils:gcov` has been renamed and its behavior has been altered.
+
+Coverage reports are now generated automatically unless the manual report generation task is enabled with a configuration option (the manual report generation option disables the automatc option). See below. If automatic report generation is disabled, the task `report:gcov` becomes available to trigger report generation (a `gcov:` task must be executed before `report:gcov` just as was the case with `utils:gcov`).
+
+```yaml
+:gcov:
+  :report_task: TRUE
+```
+
 
