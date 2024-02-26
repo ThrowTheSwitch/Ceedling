@@ -25,12 +25,12 @@ Once enabled, this plugin generates the database as `<build root>/artifacts/comp
 
 # Setup
 
-Enable the plugin in your Ceedling project file by adding `compile_commands_json` to the list of enabled plugins.
+Enable the plugin in your Ceedling project file by adding `compile_commands_json_db` to the list of enabled plugins.
 
 ``` YAML
 :plugins:
   :enabled:
-    - compile_commands_json
+    - compile_commands_json_db
 ```
 
 # Configuration

@@ -2,7 +2,7 @@ require 'ceedling/plugin'
 require 'ceedling/constants'
 require 'json'
 
-class CompileCommandsJson < Plugin
+class CompileCommandsJsonDb < Plugin
   
   # `Plugin` setup()
   def setup
