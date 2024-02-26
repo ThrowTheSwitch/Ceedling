@@ -108,6 +108,9 @@ class ReportGeneratorReportinator
       shell_result[:time] = total_time
       @reportinator_helper.print_shell_result(shell_result)
     end
+
+    # White space log line
+    @streaminator.stdout_puts( '' )
   end
 
 
