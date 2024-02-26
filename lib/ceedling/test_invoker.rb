@@ -78,10 +78,10 @@ class TestInvoker
         end
 
         # Validate test build directive paths via TEST_INCLUDE_PATH() & augment header file collection from the same
-        @helper.process_project_include_paths
+        @helper.process_project_include_paths()
 
         # Validate test build directive source file entries via TEST_SOURCE_FILE()
-        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+        @testables.each do |_, details|
           @helper.validate_build_directive_source_files( test:details[:name], filepath:details[:filepath] )
         end
       end
