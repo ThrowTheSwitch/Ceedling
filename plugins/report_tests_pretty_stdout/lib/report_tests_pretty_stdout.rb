@@ -1,19 +1,21 @@
 require 'ceedling/plugin'
 require 'ceedling/defaults'
 
-class StdoutIdeTestsReport < Plugin
+class ReportTestsPrettyStdout < Plugin
 
   # `Plugin` setup()
   def setup
     @result_list = []
     @mutex = Mutex.new
+    
+    # Fetch the test results template for this plugin
+    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
+    template = @ceedling[:file_wrapper].read(File.join(@plugin_root, 'assets/template.erb'))
 
-    # Set the report template (which happens to be the Ceedling default)
-    @ceedling[:plugin_reportinator].register_test_results_template(
-      DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE
-      )
+    # Set the report template
+    @ceedling[:plugin_reportinator].register_test_results_template( template )
   end
-
+  
   # `Plugin` build step hook -- collect result file paths after each test fixture execution
   def post_test_fixture_execute(arg_hash)
     # Thread-safe manipulation since test fixtures can be run in child processes
@@ -22,11 +24,11 @@ class StdoutIdeTestsReport < Plugin
       @result_list << arg_hash[:result_file]
     end
   end
-
+  
   # `Plugin` build step hook -- render a report immediately upon build completion (that invoked tests)
   def post_build()
     # Ensure a test task was invoked as part of the build
-    return if (not @ceedling[:task_invoker].test_invoked?)
+    return if not (@ceedling[:task_invoker].test_invoked?)
 
     results = @ceedling[:plugin_reportinator].assemble_test_results( @result_list )
     hash = {
@@ -34,9 +36,9 @@ class StdoutIdeTestsReport < Plugin
       :results => results
     }
 
-    @ceedling[:plugin_reportinator].run_test_results_report( hash ) do
+    @ceedling[:plugin_reportinator].run_test_results_report(hash) do
       message = ''
-      message = 'Unit test failures.' if (hash[:results][:counts][:failed] > 0)
+      message = 'Unit test failures.' if (results[:counts][:failed] > 0)
       message
     end
   end

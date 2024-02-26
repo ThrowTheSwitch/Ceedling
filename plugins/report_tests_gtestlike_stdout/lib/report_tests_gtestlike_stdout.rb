@@ -1,7 +1,7 @@
 require 'ceedling/plugin'
 require 'ceedling/defaults'
 
-class StdoutGtestlikeTestsReport < Plugin
+class ReportTestsGtestlikeStdout < Plugin
 
   # `Plugin` setup()
   def setup

@@ -1,7 +1,8 @@
 require 'ceedling/plugin'
 require 'ceedling/constants'
 
-class WarningsReport < Plugin
+class ReportBuildWarningsLog < Plugin
+  
   # `Plugin` setup()
   def setup
     # Create structure of @warnings hash with default values

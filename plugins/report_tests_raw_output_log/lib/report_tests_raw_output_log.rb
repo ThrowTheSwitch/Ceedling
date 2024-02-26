@@ -1,7 +1,7 @@
 require 'ceedling/plugin'
 require 'ceedling/constants'
 
-class RawTestsOutputReport < Plugin
+class ReportTestsRawOutputLog < Plugin
   # `Plugin` setup()
   def setup
    # @raw_output hash with default values

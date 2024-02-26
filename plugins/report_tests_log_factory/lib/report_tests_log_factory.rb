@@ -1,6 +1,6 @@
 require 'ceedling/plugin'
 
-class TestSuiteReporter < Plugin
+class ReportTestsLogFactory < Plugin
   
   # `Plugin` setup()
   def setup

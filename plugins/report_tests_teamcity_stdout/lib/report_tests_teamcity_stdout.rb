@@ -1,7 +1,7 @@
 require 'ceedling/plugin'
 require 'ceedling/defaults'
 
-class StdoutTeamcityTestsReport < Plugin
+class ReportTestsTeamcityStdout < Plugin
 
   # `Plugin` setup()
   def setup
