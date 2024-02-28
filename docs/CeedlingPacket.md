@@ -1839,7 +1839,7 @@ migrated to the `:test_build` and `:release_build` sections.
     
     ``` yaml
     :test_runner:
-        :cmdline_args: true
+      :cmdline_args: true
     ```
 
     If a test segfaults when `cmdline_args` has be set to `true`, the debugger will execute 
@@ -3270,7 +3270,38 @@ project configuration file.
 
 ## `:test_runner` Configure test runner generation
 
-TODO: ...
+The format of Ceedling test files — the C files that contain unit test cases — 
+is intentionally simple. It's pure code and all legit, simple C with `#include` 
+statements, test case functions, and optional `setUp()` and `tearDown()` 
+functions.
+
+To create test executables, we need a `main()` and a variety of calls to the 
+Unity framework to “hook up” all your test cases into a test suite. You can do
+this by hand, of course, but it's tedious and needed updates are easily 
+forgotten.
+
+So, Unity provides a script able to generate a test runner in C for you. It 
+relies on [conventions] used in in your test files. Ceedling takes this a step 
+further by calling this script for you with all the needed parameters.
+
+Test runner generation is configurable. The `:test_runner` section of your 
+Ceedling project file allows you to pass options to Unity's runner generation 
+script. A YAML hash beneath `:test_runner` is provided directly to that script.
+
+[Test runner configuration options are documented in the Unity project][unity-runner-options].
+
+Example configuration:
+
+```yaml
+:test_runner:
+  # Insert additional #include statements in a generated runner
+  :includes:
+    - Foo.h
+    - Bar.h
+```
+
+[ceedling-conventions]: #important-conventions--behaviors
+[unity-runner-options]: https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityHelperScriptsGuide.md#options-accepted-by-generate_test_runnerrb
 
 ## `:tools` Configuring command line tools used for build steps
 
