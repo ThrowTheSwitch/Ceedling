@@ -2,7 +2,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** February 26, 2024
+**Date:** February 28, 2024
 
 <br/>
 
@@ -171,6 +171,22 @@ Each test executable is now built as a mini project. Using improved `:defines` h
 
 One powerful new feature is the ability to test the same source file built differently for different tests. Imagine a source file has three different conditional compilation sections. You can now write unit tests for each of those sections without complicated gymnastics to cause your test suite to build and run properly.
 
+### `report_tests_log_factory` plugin
+
+This new plugin consolidates a handful of previously discrete report gernation plugins into a single plugin that also enables low-code, custom, end-user created reports.
+
+The output of these prior plugins are now simply configuration options for this new plugin:
+
+1. `junit_tests_report`
+1. `json_tests_report`
+1. `xml_tests_report`
+
+This new plugin also includes the option to generate an HTML report (see next section).
+
+### HTML tests report
+
+A community member submitted an [HTML report generation plugin](https://github.com/ThrowTheSwitch/Ceedling/pull/756/) that was not officially released before 0.32. It has been absorbed into the new `report_tests_log_factory` plugin (see previous section).
+
 <br/>
 
 ## 💪 Improvements and 🪲 Bug Fixes
@@ -242,7 +258,7 @@ The three previously discrete plugins listed below have been consolidated into a
 1. `json_tests_report`
 1. `xml_tests_report`
 
-`report_tests_log_factory` is able to generate all 3 reports of the plugins it replaces as well as generate custom report formats with a small amount of user-written Ruby code (i.e. not an entire Ceedling plugun). See its [documentation](../plugins/report_tests_log_factory) for more.
+`report_tests_log_factory` is able to generate all 3 reports of the plugins it replaces as well as custom report formats with a small amount of user-written Ruby code (i.e. not an entire Ceedling plugun). See its [documentation](../plugins/report_tests_log_factory) for more.
 
 The report format of the previously independent `xml_tests_report` plugin has been renamed from _XML_ in all instances to _CppUnit_ as this is the specific test reporting format the former plugin and new `report_tests_log_factory` plugin outputs.
 
