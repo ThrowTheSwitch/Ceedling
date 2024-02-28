@@ -79,7 +79,7 @@ Some test reporting formats include the execution time (duration) for aspects of
 
 Ceedling automatically gathers all the relevant durations. In fact, Ceedling itself performs the needed timing and arithmetric in all cases, except one. Individual test case exection time tracking is specifically a [Unity] feature (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values and make them available to reports.
 
-To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation symbols in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest.
+To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation symbols (`:unity` ↳ `:defines`) in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest. Unity test case durations in reports default to 0 if this Unity compilation option is not configured.
 
 ```yaml
 :unity:
@@ -87,7 +87,7 @@ To enable test case duration measurements, they must be enabled as a Unity compi
     - UNITY_INCLUDE_EXEC_TIME
 ```
 
-_Note:_ Most test cases are quite short, and most computers are quite fast. As such, test case execution time is often reported as 0 milliseconds as the CPU execution time for a test case typically remains in the microseconds range.
+_Note:_ Most test cases are quite short, and most computers are quite fast. As such, test case execution time is often reported as 0 milliseconds as the CPU execution time for a test case typically remains in the microseconds range. Unity would require special rigging that is inconsistently available across platforms to measure test case durations in the microsecond range.
 
 [Unity]: https://github.com/ThrowTheSwitch/Unity
 

@@ -1256,6 +1256,30 @@ A test case function signature must have these elements:
 In other words, a test function signature should look like this: 
 `void test<any_name_you_like>(void)`.
 
+### Execution time (duration) in Ceedling operations & test suites
+
+#### Ceedling's logged run times
+
+Ceedling logs two execution times for every project run.
+
+#### Ceedling test suite and Unity test executable run durations
+
+Some test reporting formats include the execution time (duration) for aspects of a test suite run. Various granularities exist from the total time for all tests to the time of each suite (per the relevant defition of a suite) to the time required to run individual test cases. See _CeedlingPacket_ for the details on time duration values.
+
+#### Unity test case run times
+
+Individual test case exection time tracking is specifically a [Unity] feature (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values — generally made use by reports.
+
+To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation symbols (`:unity` ↳ `:defines`) in your Ceedling project file (below). Unity test case durations default to 0 if this Unity compilation option is not set.
+
+```yaml
+:unity:
+  :defines:
+    - UNITY_INCLUDE_EXEC_TIME
+```
+
+_Note:_ Most test cases are quite short, and most computers are quite fast. As such, test case execution time is often reported as 0 milliseconds as the CPU execution time for a test case typically remains in the microseconds range. Unity would require special rigging that is inconsistently available across platforms to measure test case durations in the microsecond range.
+
 ## The Magic of Dependency Tracking
 
 Previous versions of Ceedling used features of Rake to offer
