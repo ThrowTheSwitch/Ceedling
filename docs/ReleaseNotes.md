@@ -126,7 +126,7 @@ The gcov plugin has been updated and improved, but its proprietary counterpart, 
 
 #### Gcov Plugin's support for deprecated features removed
 
-The configuration format for the `gcovr` utility changed when support for the `reportgenerator` utility was added. A format that accomodated a more uniform and common layout was adopted. However, support for the older, deprecated `gcvor`-only configuration was maintained. This support for the deprecated `gcvor` configuration format has been removed.
+The configuration format for the `gcovr` utility changed when support for the `reportgenerator` utility was added. A format that accomodated a more uniform and common layout was adopted. However, support for the older, deprecated `gcovr`-only configuration was maintained. This support for the deprecated `gcovr` configuration format has been removed.
 
 Please consult the [gcov plugin's documentation](plugins/gcov/README.md) to update any old-style `gcovr` configurations.
 
