@@ -15,7 +15,9 @@ coverage reports for your project. The simplest is text-based coverage
 summaries printed to the console after a `gcov:` test task is executed.
 
 This document details configuration, reporting options, and provides basic
-troubleshooting help.
+[troubleshooting help][troubleshooting].
+
+[troubleshooting]: #advanced-configuration--troubleshooting
 
 # Simple Coverage Summaries
 
@@ -752,10 +754,10 @@ Details of interest for this plugin to be modified or made use of using
 Ceedling's advanced features are primarily contained in 
 [defaults_gcov.rb](conig/defaults_gcov.rb) and [defaults.yml](config/defaults.yml).
 
-## “gcvor not found”
+## “gcovr not found”
 
 `gcovr` is a Python-based application. Depending on the particulars of its 
-installation and your platform, you may encounter a “gcvor not found” error. 
+installation and your platform, you may encounter a “gcovr not found” error. 
 This is usually related to complications of running a Python script as an 
 executable.
 

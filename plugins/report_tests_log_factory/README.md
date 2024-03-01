@@ -1,16 +1,17 @@
 # Ceedling Plugin: Test Suite Report Log Factory
 
-Generate one or more built-in test suite reports — JSON, JUnit XML, or CppUnit XML — or create your own.
+Generate one or more built-in test suite reports — JSON, JUnit XML, CppUnit XML, or HTML — or create your own.
 
 # Plugin Overview
 
 Test reports are handy for all sorts of reasons. Various build and reporting tools are able to generate, visualize, or otherwise process results encoded in handy container formats including JSON and XML.
 
-This plugin generates one or more of up to three available test suite report formats:
+This plugin generates one or more of up to four available test suite report formats:
 
 1. JSON
 1. JUnit XML
 1. CppUnit XML
+1. HTML
 
 This plugin generates reports after test builds, storing them in your project `artifacts/` build path.
 
@@ -43,11 +44,12 @@ Enable the reports you wish to generate — `json`, `junit`, and/or `cppunit` �
 
 ```yaml
 :report_tests_log_factory:
-  # Any one or all three of the following...
+  # Any one or all four of the following...
   :reports:
     - json
     - junit
     - cppunit
+    - html
 ```
 
 Each report is written to a default filename within `<build root>/artifacts/<context>`:
@@ -55,6 +57,7 @@ Each report is written to a default filename within `<build root>/artifacts/<con
 * JSON: _tests_report.json_
 * JUnit XML: _junit_tests_report.xml_
 * CppUnit XML: _cppunit_tests_report.xml_
+* HTML: _tests_report.html_
 
 To change the output filename, specify it with the `:filename` key beneath the relevant report within the `:report_tests_log_factory` configuration block:
 
@@ -76,7 +79,7 @@ Some test reporting formats include the execution time (duration) for aspects of
 
 Ceedling automatically gathers all the relevant durations. In fact, Ceedling itself performs the needed timing and arithmetric in all cases, except one. Individual test case exection time tracking is specifically a [Unity] feature (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values and make them available to reports.
 
-To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation symbols in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest.
+To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation symbols (`:unity` ↳ `:defines`) in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest. Unity test case durations as reported by Ceedling default to 0 if this Unity compilation option is not configured.
 
 ```yaml
 :unity:
@@ -84,7 +87,7 @@ To enable test case duration measurements, they must be enabled as a Unity compi
     - UNITY_INCLUDE_EXEC_TIME
 ```
 
-_Note:_ Most test cases are quite short, and most computers are quite fast. As such, test case execution time is often reported as 0 milliseconds as the CPU execution time for a test case typically remains in the microseconds range.
+_Note:_ Most test cases are quite short, and most computers are quite fast. As such, Unity test case execution time is often reported as 0 milliseconds as the CPU execution time for a test case typically remains in the microseconds range. Unity would require special rigging that is inconsistently available across platforms to measure test case durations at a finer resolution.
 
 [Unity]: https://github.com/ThrowTheSwitch/Unity
 
@@ -204,7 +207,6 @@ In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ bec
     </testcase>
   </testsuite>
 </testsuites>
-
 ```
 
 ## CppUnit XML Format
@@ -274,8 +276,31 @@ In mapping a Ceedling test suite to CppUnit convetions, a CppUnit test name is t
     <Failures>1</Failures>
   </Statistics>
 </TestRun>
-
 ```
+
+## HTML Format
+
+This plugin creates an adhoc HTML page in a single file.
+
+### Example HTML configuration YAML
+
+```yaml
+:plugins:
+  :enabled:
+    - report_tests_log_factory
+
+:report_tests_log_factory:
+  :reports:
+    - html
+  # Default filename shown for completeness
+  # `:html` block only needed to override default
+  :html:
+    :filename: tests_report.html
+```
+
+### Example HTML test report
+
+![](sample_html_report.png)
 
 # Creating Your Own Custom Report
 
