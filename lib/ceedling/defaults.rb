@@ -70,7 +70,7 @@ DEFAULT_TEST_FIXTURE_TOOL = {
 
 DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
-  :name => 'default_test_includes_preprocessor'.freeze,
+  :name => 'default_test_shallow_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
@@ -90,7 +90,7 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
 
 DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
-  :name => 'default_test_includes_preprocessor'.freeze,
+  :name => 'default_test_nested_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
