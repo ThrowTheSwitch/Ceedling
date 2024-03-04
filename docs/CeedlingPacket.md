@@ -1256,6 +1256,35 @@ A test case function signature must have these elements:
 In other words, a test function signature should look like this: 
 `void test<any_name_you_like>(void)`.
 
+### Preprocessing behavior for tests
+
+Ceedling and CMock are advanced tools that both perform fairly sophisticated
+parsing.
+
+However, neither of these tools fully understand the entire C language,
+especially C's preprocessing statements.
+
+If your test files rely on macros and `#ifdef` conditionals, there's a good
+chance that Ceedling will break on trying to process your test files, or,
+alternatively, your test suite will not execute as expected.
+
+Similarly, generating mocks of header files with macros and `#ifdef`
+conditionals can get weird.
+
+Ceedling includes an optional ability to preprocess test files and header files
+before executing any operations on them. See the `:project` ↳
+`:use_test_preprocessor`). That is, Ceedling will expand preprocessor
+statements in test files before generating test runners from them and will
+expand preprocessor statements in header files before generating mocks from
+them.
+
+This ability uses `gcc`'s preprocessing mode and the `cpp` preprocessor tool to
+strip down / expand test files and headers to their applicable content which
+can then be processed by Ceedling and CMock. They must be in your search path
+if Ceedling’s preprocessing is enabled. Further, Ceedling’s features are
+directly tied to these tools' abilities and options. They should not be
+redefined for other toolchains.
+
 ### Execution time (duration) reporting in Ceedling operations & test suites
 
 #### Ceedling’s logged run times
@@ -1772,20 +1801,16 @@ migrated to the `:test_build` and `:release_build` sections.
 * `:use_test_preprocessor`
 
   This option allows Ceedling to work with test files that contain
-  conditional compilation statements (e.g. #ifdef) and header files you
+  conditional compilation statements (e.g. `#ifdef`) and header files you
   wish to mock that contain conditional preprocessor statements and/or
   macros.
 
-  Ceedling and CMock are advanced tools with sophisticated parsers.
-  However, they do not include entire C language preprocessors.
-  Consequently, with this option enabled, Ceedling will use `gcc`'s
-  preprocessing mode and the cpp preprocessor tool to strip down /
-  expand test files and headers to their applicable content which can
-  then be processed by Ceedling and CMock.
+  See the [documentation on test preprocessing][test-preprocessing] for more.
 
   With this option enabled, the `gcc` & `cpp` tools must exist in an
-  accessible system search path and test runner files are always
-  regenerated.
+  accessible system search path.
+
+  [test-preprocessing]: #preprocessing-behavior-for-tests
 
   **Default**: FALSE
 
@@ -2135,9 +2160,11 @@ the various path-related documentation sections.
 
 * <h3><code>:paths</code> ↳ <code>:libraries</code></h3>
 
-  Library search paths. See `:libraries` section.
+  Library search paths. [See `:libraries` section][libraries].
 
   **Default**: `[]` (empty)
+
+  [libraries]: #libraries
 
 * <h3><code>:paths</code> ↳ <code>:&lt;custom&gt;</code></h3>
 
@@ -2621,8 +2648,8 @@ matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
   YAML key plus symbol list. Both are documented below.
   
   _Note:_ Left unspecified, `:preprocess` symbols default to be identical to `:test` 
-  symbols. Override this behavior by adding `:defines` ↳ `:preprocess` flags. If you want 
-  no additional flags for preprocessing regardless of `test` symbols, simply specify an 
+  symbols. Override this behavior by adding `:defines` ↳ `:preprocess` symbols. If you want 
+  no additional symbols for preprocessing regardless of `test` symbols, simply specify an 
   empty list `[]`.
   
   **Default**: `[]` (empty)
@@ -3379,10 +3406,104 @@ Example configuration:
 ## `:tools` Configuring command line tools used for build steps
 
 Ceedling requires a variety of tools to work its magic. By default, the GNU 
-toolchain (`gcc`, `cpp`, `as`) are configured and ready for use with no 
-additions to the project configuration YAML file. However, as most work will 
-require a project-specific toolchain, Ceedling provides a generic means for 
-specifying / overriding tools.
+toolchain (`gcc`, `cpp`, `as` — and `gcov` via plugin) are configured and ready 
+for use with no additions to your project configuration YAML file.
+
+A few items before we dive in:
+
+1. Sometimes Ceedling’s built-in tools are _nearly_ what you need but not 
+   quite. If you only need to add some arguments to all uses of tool's command
+   line, Ceedling offers a shortcut to do so. See the 
+   [final section of the `:tools`][tool-args-shortcut] documentation for 
+   details.
+1. If you need fine-grained control of the arguments Ceedling uses in the build
+   steps for test executables, see the documentation for [`:flags`][flags].
+   Ceedling allows you to control the command line arguments for each test 
+   executable build — with a variety of pattern matching options.
+1. If you need to link libraries — your own or standard options — please see 
+   the [top-level `:libraries` section][libraries] available for your 
+   configuration file. Ceedling supports a number of useful options for working
+   with pre-compiled libraries. If your library linking needs are super simple,
+   the shortcut in (1) might be the simplest option.
+
+[flags]: #flags-configure-preprocessing-compilation--linking-command-line-flags
+[tool-args-shortcut]: #ceedling-tool-arguments-addition-shortcut
+
+### Ceedling tools for test suite builds
+
+Our recommended approach to writing and executing test suites relies on the GNU 
+toolchain. _*Yes, even for embedded system work on platforms with their own, 
+proprietary C toolchain.*_ Please see 
+[this section of documentation][sweet-suite] to understand this recommendation 
+among all your options.
+
+You can and sometimes must run a Ceedling test suite in an emulator or on
+target, and Ceedling allows you to do this through tool definitions documented
+here. Generally, you'll likely want to rely on the default definitions.
+
+[sweet-suite]: #all-your-sweet-sweet-test-suite-options
+
+### Ceedling tools for release builds
+
+More often than not, release builds require custom tool definitions. The GNU
+toolchain is configured for Ceeding release builds by default just as with test
+builds. You'll likely need your own definitions for `:release_compiler`, 
+`:release_linker`, and possibly `:release_assembler`.
+
+### Ceedling plugin tools
+
+Ceedling plugins are free to define their own tools that are loaded into your 
+project configuration at startup. Plugin tools are defined using the same 
+mechanisns as Ceedling’s built-in tools and are called the same way. That is,
+all features available to you for working with tools as an end users are
+generally available for working with plugin-based tools. This presumes a 
+plugin author followed guidance and convention in creating any command line 
+actions.
+
+### Ceedling tool definitions
+
+Contained in this section are details on Ceedling’s default tool definitions.
+For sake of space, the entirety of a given definition is not shown. If you need
+to get in the weeds or want a full example, see the file `defaults.rb` in 
+Ceedling’s lib/ directory.
+
+#### Tool definition overview
+
+Listed below are the built-in tool names, corresponding to build steps along 
+with the numbered parameters that Ceedling uses to fill out a full command line
+for the named tool. The full list of fundamental elements for a tool definition
+are documented in the sections that follow along with examples.
+
+Not every numbered parameter listed immediately below must be referenced in a
+Ceedling tool definition. If `${4}` isn't referenced by your custom tool, 
+Ceedling simply skips it while expanding a tool definition into a command line.
+
+The numbered parameters below are references that expand / are replaced with 
+actual values when the corresponding command line is constructed. If the values
+behind these parameters are lists, Ceedling expands the containing reference
+multiple times with the contents of the value. A conceptual example is 
+instructive…
+
+#### Simplified tool definition / expansion example
+
+A partial tool definition:
+
+```yaml
+:tools:
+   :power_drill:
+      :executable: dewalt.exe
+      :arguments:
+         - "--X${3}"
+```
+
+Let's say that `${3}` is a list inside Ceedling, `[2, 3, 7]`. The expanded tool
+command line for `:tools` ↳ `:power_drill` would look like this:
+
+```shell
+ > dewalt.exe --X2 --X3 --X7
+```
+
+#### Ceedling’s default build step tool definitions
 
 * `:test_compiler`:
 
@@ -3465,7 +3586,7 @@ specifying / overriding tools.
 
   **Default**: `gcc`
 
-### Tool configurable elements:
+#### Tool defintion configurable elements
 
 1. `:executable` - Command line executable (required).
 
@@ -3484,7 +3605,7 @@ specifying / overriding tools.
 
 1. `:name` - Simple name (i.e. "nickname") of tool beyond its
    executable name. This is optional. If not explicitly set 
-   then Ceedling will form a name from the tool's YAML entry.
+   then Ceedling will form a name from the tool's YAML entry key.
 
 1. `:stderr_redirect` - Control of capturing `$stderr` messages
    {`:none`, `:auto`, `:win`, `:unix`, `:tcsh`}.
@@ -3497,7 +3618,7 @@ specifying / overriding tools.
    you can set this to `true` if it's not needed for testing (e.g.
    as part of a plugin).
 
-### Tool element runtime substitution
+#### Tool element runtime substitution
 
 To accomplish useful work on multiple files, a configured tool will most often
 require that some number of its arguments or even the executable itself change
@@ -3613,7 +3734,7 @@ decorated in any way needed. To use a literal `$`, escape it as `\\$`.
 
 * The built-in preprocessing tools _can_ be overridden with 
   non-GCC equivalents. However, this is highly impractical to do
-  as preprocessing features are highly dependent on the 
+  as preprocessing features are quite dependent on the 
   idiosyncrasies and features of the GCC toolchain.
 
 #### Example Test Compiler Tooling
@@ -3669,6 +3790,40 @@ Notes on test fixture tooling example:
    fixture _is_ `${1}`.
 1. We're using `$stderr` redirection to allow us to capture simulator error 
    messages to `$stdout` for display at the run's conclusion.
+
+### Ceedling tool arguments addition shortcut
+
+Sometimes Ceedling’s default tool defininitions are _this close_ to being just
+what you need. But, darn, you need one extra argument on the command line, and
+you'd love to not override an entire tool definition to tweak it.
+
+We got you. Now, this little feature only allows you to add arguments to the
+end of a tool command line. Not the beginning. And, you can't remove arguments
+with this hack.
+
+Further, this little feature is a blanket application across all uses of a 
+tool. If you need fine-grained control of command line flags in build steps per
+test executable, please see the [`:flags` configuration documentation][flags].
+
+To use this shortcut, simply add a configuration section to your project file 
+at the top-level, `:tools_<tool_to_modify>` ↳ `:arguments`. See the list of 
+tool names at the beginning of the `:tools` documentation to identify the named
+options. Plugins can also include their own tool definitions that can be 
+modified with this same hack.
+
+This example YAML:
+
+```yaml
+:tools_test_compiler:
+   :arguments:
+      - --flag         # Add `--flag` to the end of all test C file compilation
+```
+
+...will produce this command line:
+
+```shell
+ > gcc <default command line> --flag
+```
 
 ## `:plugins` Ceedling extensions
 
