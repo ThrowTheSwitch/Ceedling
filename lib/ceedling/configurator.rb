@@ -64,7 +64,6 @@ class Configurator
      :test_fixture,
      :test_includes_preprocessor,
      :test_file_preprocessor,
-     :test_file_preprocessor_directives,
      :test_dependencies_generator,
      :release_compiler,
      :release_assembler,
