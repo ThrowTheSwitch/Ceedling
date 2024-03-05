@@ -8,7 +8,7 @@ class ToolValidator
   
   constructor :file_wrapper, :streaminator, :system_wrapper, :reportinator
 
-  def validate(tool:, name:nil, extension:, respect_optional:false, boom:false)
+  def validate(tool:, name:nil, extension:EXTENSION_EXECUTABLE, respect_optional:false, boom:false)
     # Redefine name with name inside tool hash if it's not provided
     # If the name is provided it's likely the formatted key path into the configuration file
     name = tool[:name] if name.nil? or name.empty?

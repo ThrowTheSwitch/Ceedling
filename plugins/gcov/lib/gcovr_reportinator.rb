@@ -14,7 +14,6 @@ class GcovrReportinator
     # Validate the gcovr tool since it's used to generate reports
     @ceedling[:tool_validator].validate(
       tool: TOOLS_GCOV_GCOVR_REPORT,
-      extension: EXTENSION_EXECUTABLE,
       boom: true
     )
 

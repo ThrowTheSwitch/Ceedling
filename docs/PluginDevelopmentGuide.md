@@ -320,6 +320,39 @@ If your plugin defines this method, it will be called during plugin creation at
 Ceedling startup. It is effectively your constructor for your custom `Plugin`
 subclass.
 
+## `Plugin` hook methods `pre_` and `post_` conventions & concerns
+
+### Multi-threaded protections
+
+Because Ceedling can run build operations in multiple threads, build step hook
+handliers must be thread safe. Practically speaking, this generally requires
+a `Mutex` object `synchronize()`d around any code that writes to or reads from
+a common data structure instantiated within a plugin.
+
+A common example is collecting test results filepaths from the 
+`post_test_fixture_execute()` hook. A hash or array accumulating these 
+filepaths as text executables complete their runs must have appropriate 
+threading protections.
+
+### Command line tool shell results
+
+Pre and post build step hooks are often called on either side of a command line 
+tool operation. If a command line tool is executed for a build step (e.g. test 
+compilation), the `arg_hash` will be the same for the pre and post hooks with
+one difference.
+
+In the `post_` hook, the `arg_hash` parameter will contain a `shell_result` key
+whose associated value is itself a hash with the following contents:
+
+```ruby
+{
+  :output => "<Console output>", # String holding any $stdout / redirected $stderr output
+  :status => <Process::Status>,  # Ruby object of type Process::Status
+  :exit_code => <int>,           # Command line exit code (extracted from :status object)
+  :time => <float>               # Seconds elapsed for shell operation
+}
+```
+
 ## `Plugin` hook methods `pre_mock_preprocess(arg_hash)` and `post_mock_preprocess(arg_hash)`
 
 These methods are called before and after execution of preprocessing for header
@@ -548,6 +581,39 @@ cases is not a build error.
 This method is called when invoking the summary task, `ceedling summary`. This
 method facilitates logging the results of the last build without running the
 previous build again.
+
+## Validating a plugin’s tools
+
+By default, Ceedling validates configured tools at startup according to a 
+simple setting within the tool definition. This works just fine for default
+core tools and options. However, in the case of plugins, tools may not be even 
+relevant to a plugin's operation depending on its configurable options. It's
+a bit silly for a tool not needed by your project to fail validation if 
+Ceedling can't find it in your `$PATH`. Similarly, it's irresponsible to skip
+validating a tool just because it may not be needed.
+
+Ceedling provides optional, programmatic tool validation for these cases.
+`@ceedling]:tool_validator].validate()` can be forced to ignore a tool's 
+`required:` setting to validate it. In such a scenario, a plugin should 
+configure its own tools as `:optional => true` but forcibly validate them at 
+plugin startup if the plugin's configuration options require said tool.
+
+An example from the `gcov` plugin illustrates this.
+
+```ruby
+# Validate gcov summary tool if coverage summaries are enabled (summaries rely on the `gcov` tool)
+if summaries_enabled?( @project_config )
+  @ceedling[:tool_validator].validate(
+    tool: TOOLS_GCOV_SUMMARY, # Tool defintion as Ruby hash
+    boom: true                # Ignore optional status (raise exception if invalid)
+  )
+end
+```
+
+The tool `TOOLS_GCOV_SUMMARY` is defined with a Ruby hash in the plugin code.
+It is configured with `:optional => true`. At plugin startup, configuration
+options determine if the tool is needed. It is forcibly validated if the plugin
+configuration requires it.
 
 ## Collecting test results from within `Plugin` subclass
 
