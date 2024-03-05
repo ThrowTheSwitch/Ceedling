@@ -33,7 +33,7 @@ def assert_file_not_exist(path)
 end
 
 def assert_cmd_return(cmd, expected)
-  retval = `ceedling #{cmd}`
+  retval = `ruby ../../../../bin/ceedling #{cmd}`
   if (retval.include? expected)
     puts "Testing included `#{expected}`"
   else
@@ -42,7 +42,7 @@ def assert_cmd_return(cmd, expected)
 end
 
 def assert_cmd_not_return(cmd, expected)
-  retval = `ceedling #{cmd}`
+  retval = `ruby ../../../../bin/ceedling #{cmd}`
   if (!retval.include? expected)
     puts "Testing didn't included `#{expected}`"
   else

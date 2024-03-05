@@ -122,8 +122,7 @@ The above subproject definition will now look like the following:
         :method: :none
       :environment: []
       :build:
-        - :deps_compiler
-        - :deps_linker
+        - :build_lib
       :artifacts:
         :static_libraries:
           - libprojectA.a

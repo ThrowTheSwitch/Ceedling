@@ -203,7 +203,11 @@ class Dependencies < Plugin
     @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
     Dir.chdir(get_build_path(blob)) do
       blob[:build].each do |step|
-        @ceedling[:tool_executor].exec( wrap_command(step) )
+        if (step.class == Symbol)
+          exec_dependency_builtin_command(step, blob)
+        else
+          @ceedling[:tool_executor].exec( wrap_command(step) )
+        end
       end
     end
   end
@@ -275,7 +279,96 @@ class Dependencies < Plugin
       end
     end
   end
+
+  def exec_dependency_builtin_command(step, blob)
+    case step
+    when :build_lib # We are going to use our defined deps tools to build this library
+      build_lib(blob)
+    else 
+      raise "No such build action as #{step.inspect} for dependency #{blob[:name]}" 
+    end
+  end
+
+  def build_lib(blob)
+    src = []
+    asm = []
+    hdr = []
+    name = blob[:name] || ""
+
+    # Verify there is an artifact that we're building that makes sense
+    libs = []
+    raise "No library artifacts specified for dependency #{name}" unless blob.include?(:artifacts)
+    libs += blob[:artifacts][:static_libraries] if blob[:artifacts].include?(:static_libraries)
+    libs += blob[:artifacts][:static_libraries] if blob[:artifacts].include?(:static_libraries)
+    libs = libs.flatten.uniq
+    raise "No library artifacts specified for dependency #{name}" if libs.empty?
+    lib = libs[0]
+
+    # Find all the source, header, and assembly files 
+    src = Dir["#{blob[:source_path]}/**/*#{EXTENSION_SOURCE}"]
+    hdr = Dir["#{blob[:source_path]}/**/*#{EXTENSION_HEADER}"].map{|f| File.dirname(f) }.uniq
+    if (EXTENSION_ASSEMBLY && !EXTENSION_ASSEMBLY.empty?)  
+      asm = Dir["#{blob[:source_path]}/**/*#{EXTENSION_ASSEMBLY}"]
+    end
+    @deps_lookup_by_path[ blob[:build_path] ] = name
+
+    # Do we have what we need to do this?
+    raise "Nothing to build" if (asm.empty? and src.empty?)
+    raise "No assembler specified for building dependency #{name}" unless (defined?(TOOLS_DEPS_ASSEMBLER) || asm.empty?)
+    raise "No compiler specified for building dependency #{name}" unless (defined?(TOOLS_DEPS_COMPILER) || src.empty?)
+    raise "No linker specified for building dependency #{name}" unless defined?(TOOLS_DEPS_LINKER)
+
+    # Build all the source files
+    src.each do |src_file|
+      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPENDENCIES, find_my_paths(object.source, blob, :c))
+      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPENDENCIES, find_my_defines(object.source, blob, :c))
+      @ceedling[:generator].generate_object_file(
+        TOOLS_DEPS_COMPILER,
+        OPERATION_COMPILE_SYM,
+        DEPENDENCIES_SYM,
+        src_file,
+        File.basename(src_file,EXTENSION_OBJECT),
+        @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename(src_file,EXTENSION_OBJECT) ) )
+    end
+
+    # Build all the assembly files
+    asm.each do |src_file|
+      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPENDENCIES, find_my_paths(object.source, blob, :asm))
+      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPENDENCIES, find_my_defines(object.source, blob, :asm))
+      @ceedling[:generator].generate_object_file(
+        TOOLS_DEPS_ASSEMBLER,
+        OPERATION_ASSEMBLY_SYM,
+        DEPENDENCIES_SYM,
+        src_file,
+        File.basename(src_file,EXTENSION_OBJECT) )
+    end
+
+    # Link the library
+    obj = (src + asm).map{|f| File.basename(f, EXTENSION_OBJECT) }.uniq
+    @ceedling[:generator].generate_executable_file(
+      TOOLS_DEPS_LINKER,
+      DEPENDENCIES_SYM,
+      obj,
+      lib,
+      @ceedling[:file_path_utils].form_test_build_map_filepath(lib))
+  end
+
+  def find_my_paths( c_file, blob, file_type = :c )  
+    return (blob[:source] + (blob[:include] || [])) if (blob[file_type].include?(c_file))  
+    return []  
+  end  
+
+  def find_my_defines( c_file, blob, file_type = :c )  
+    return (blob[:defines] || []) if (blob[file_type].include?(c_file)) 
+    return []  
+  end  
+
+  def replace_constant(constant, new_value)  
+    Object.send(:remove_const, constant.to_sym) if (Object.const_defined? constant)  
+    Object.const_set(constant, new_value)  
+  end
 end
+
 
 # end blocks always executed following rake run
 END {

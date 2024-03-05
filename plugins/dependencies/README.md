@@ -248,7 +248,7 @@ Ceedling has found, including those belonging to your dependencies.
 Custom Tools
 ============
 
-You can optionally specify a compiler and linker, just as you would a release build:
+You can optionally specify a compiler, assembler, and linker, just as you would a release build:
 
 ```
 :tools:
@@ -268,8 +268,9 @@ You can optionally specify a compiler and linker, just as you would a release bu
       - ${1}
 ```
 
-Then, once created, you can reference these tools in your build steps by using a symbol instead
-of a string:
+Then, once created, you can reference these tools in your build steps by using the `:build_lib` symbol instead
+of a series of strings to explain all the steps. Ceedling will understand that it should build all the specified
+source and/or assembly files into the specified library:
 
 ```
 :dependencies:
@@ -282,8 +283,7 @@ of a string:
         :method: :none
       :environment: []
       :build:
-        - :deps_compiler
-        - :deps_linker
+        - :build_lib
       :artifacts:
         :static_libraries:
           - release/cc.a
