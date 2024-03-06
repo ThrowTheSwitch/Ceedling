@@ -77,7 +77,6 @@ namespace RELEASE_SYM do
         end
     ]) do |compile|
       @ceedling[:rake_wrapper][:directories].invoke
-      @ceedling[:project_config_manager].process_release_config_change
       @ceedling[:release_invoker].setup_and_invoke_objects( [compile.source] )
     end
   end
@@ -91,7 +90,6 @@ namespace RELEASE_SYM do
         end
     ]) do |assemble|
       @ceedling[:rake_wrapper][:directories].invoke
-      @ceedling[:project_config_manager].process_release_config_change
       @ceedling[:release_invoker].setup_and_invoke_objects( [assemble.source] )
     end
   end

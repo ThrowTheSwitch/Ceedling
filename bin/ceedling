@@ -268,7 +268,6 @@ else
 
   # Create our default meta-runner option set
   options = {
-    :pretest => nil,
     :args => [],
     :add_path => [],
     :path_connector => (platform == :mswin) ? ";" : ":",
@@ -277,13 +276,6 @@ else
     :default_tasks => [ 'test:all' ],
     :list_tasks => false
   }
-
-  # Guess that we need a special script file first if it exists
-  if (platform == :mswin)
-    options[:pretest] = File.exist?("#{ platform }_setup.bat") ? "#{ platform }_setup.bat" : nil
-  else
-    options[:pretest] = File.exist?("#{ platform }_setup.sh") ? "source #{ platform }_setup.sh" : nil
-  end
 
   # Merge in project settings if they can be found here
   yaml_options = YamlWrapper.new.load(main_filepath)
@@ -300,10 +292,10 @@ else
   ARGV.each do |v|
     case(v)
       when /^(?:new|examples?|templates?)$/
-        puts "\nOops. You called ceedling with argument '#{v}'.\n" +
+        puts "\nOops. You called `ceedling` with argument '#{v}'.\n" +
              "      This is an operation that will create a new project... \n" +
-             "      but it looks like you're already in a project. If you really \n" +
-             "      want to do this, try moving to an empty folder.\n\n"
+             "      But it looks like you're already in a project.\n" +
+             "      If you really want to do this, try moving to an empty folder.\n\n"
         abort
       when /^help$/
         options[:list_tasks] = true
@@ -377,7 +369,7 @@ else
     else
       load "#{options[:which_ceedling]}/lib/ceedling.rb"
     end
-    Ceedling.load_project
+    Ceedling.load_ceedling_rakefile()
   end
 
   Rake.application.standard_exception_handling do

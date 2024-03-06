@@ -19,7 +19,6 @@ Rake::TaskManager.record_task_metadata = true
 require 'diy'
 require 'constructor'
 require 'ceedling/constants'
-require 'ceedling/target_loader'
 require 'ceedling/system_wrapper'
 require 'ceedling/reportinator'
 require 'deep_merge'
@@ -63,15 +62,7 @@ begin
   # one-stop shopping for all our setup and such after construction
   @ceedling[:setupinator].ceedling = @ceedling
 
-  project_config =
-    begin
-      cfg = @ceedling[:setupinator].load_project_files
-      TargetLoader.inspect(cfg, ENV['TARGET'])
-    rescue TargetLoader::NoTargets
-      cfg
-    rescue TargetLoader::RequestReload
-      @ceedling[:setupinator].load_project_files
-    end
+  project_config = @ceedling[:setupinator].load_project_files
 
   @ceedling[:setupinator].do_setup( project_config )
 

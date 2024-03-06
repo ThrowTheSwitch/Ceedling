@@ -19,8 +19,8 @@ class Setupinator
 
 
   def load_project_files
-    @ceedling[:project_file_loader].find_project_files
-    return @ceedling[:project_file_loader].load_project_config
+    @ceedling[:project_file_loadinator].find_project_files
+    return @ceedling[:project_file_loadinator].load_project_config
   end
 
   def do_setup(config_hash)
@@ -37,7 +37,6 @@ class Setupinator
     @ceedling[:configurator].eval_paths( config_hash )
     @ceedling[:configurator].standardize_paths( config_hash )
     @ceedling[:configurator].find_and_merge_plugins( config_hash )
-    @ceedling[:configurator].merge_imports( config_hash )
     @ceedling[:configurator].tools_setup( config_hash )
     @ceedling[:configurator].validate( config_hash )
     # Partially flatten config + build Configurator accessors and globals
@@ -54,7 +53,6 @@ class Setupinator
     
     @ceedling[:plugin_reportinator].set_system_objects( @ceedling )
     @ceedling[:loginator].project_log_filepath = form_log_filepath()
-    @ceedling[:project_config_manager].config_hash = config_hash
   end
 
   def reset_defaults(config_hash)
@@ -72,12 +70,11 @@ private
     # should differentiate its context.
     # We do this by concatenating config/options names into a log filename.
 
-    config_files = []
+    config_files = ['project']
 
-    config_files << @ceedling[:project_file_loader].main_file
-    config_files << @ceedling[:project_file_loader].user_file
-    config_files += @ceedling[:project_config_manager].options_files
-    config_files.compact! # Remove empties
+    # config_files << @ceedling[:project_file_loadinator].main_file
+    # config_files << @ceedling[:project_file_loadinator].user_file
+    # config_files.compact! # Remove empties
     
     # Drop component file name extensions and smoosh together with underscores
     log_name = config_files.map{ |file| file.ext('') }.join( '_' )

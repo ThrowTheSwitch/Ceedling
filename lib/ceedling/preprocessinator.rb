@@ -9,7 +9,6 @@ class Preprocessinator
               :file_wrapper,
               :yaml_wrapper,
               :plugin_manager,
-              :project_config_manager,
               :configurator,
               :test_context_extractor,
               :streaminator,

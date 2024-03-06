@@ -102,42 +102,7 @@ task :environment do
 end
 end
 
-namespace :options do
-
-  COLLECTION_PROJECT_OPTIONS.each do |option_path|
-    option = File.basename(option_path, '.yml')
-
-    desc "Merge #{option} project options."
-    task option.to_sym do
-      hash = @ceedling[:project_config_manager].merge_options( @ceedling[:setupinator].config_hash, option_path )
-      @ceedling[:setupinator].do_setup( hash )
-      if @ceedling[:configurator].project_release_build
-        load(File.join(CEEDLING_LIB, 'ceedling', 'rules_release.rake'))
-      end
-    end
-  end
-
-  # This is to give nice errors when typing options
-  rule /^options:.*/ do |t, args|
-    filename = t.to_s.split(':')[-1] + '.yml'
-    filelist = COLLECTION_PROJECT_OPTIONS.map{|s| File.basename(s) }
-    @ceedling[:file_finder].find_file_from_list(filename, filelist, :error)
-  end
-
-  # This will output the fully-merged tools options to their own project.yml file
-  desc "Export tools options to a new project file"
-  task :export, :filename do |t, args|
-    outfile = args.filename || 'tools.yml'
-    toolcfg = {}
-    @ceedling[:configurator].project_config_hash.each_pair do |k,v|
-      toolcfg[k] = v if (k.to_s[0..5] == 'tools_')
-    end
-    File.open(outfile,'w') {|f| f << toolcfg.to_yaml({:indentation => 2})}
-  end
-end
-
-
-# do not present task if there's no plugins
+# Do not present task if there's no plugins
 if (not PLUGINS_ENABLED.empty?)
 desc "Execute plugin result summaries (no build triggering)."
 task :summary do

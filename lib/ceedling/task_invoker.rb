@@ -3,7 +3,7 @@ class TaskInvoker
 
   attr_accessor :first_run
 
-  constructor :dependinator, :build_batchinator, :rake_utils, :rake_wrapper, :project_config_manager
+  constructor :dependinator, :build_batchinator, :rake_utils, :rake_wrapper
 
   def setup
     @test_regexs = [/^#{TEST_ROOT_NAME}:/]

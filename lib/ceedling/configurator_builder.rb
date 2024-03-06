@@ -227,19 +227,6 @@ class ConfiguratorBuilder
   end
 
 
-  def collect_project_options(in_hash)
-    options = []
-
-    in_hash[:project_options_paths].each do |path|
-      options << @file_wrapper.directory_listing( File.join(path, '*' + in_hash[:extension_yaml]) )
-    end
-
-    return {
-      :collection_project_options => options.flatten
-      }
-  end
-
-
   def expand_all_path_globs(in_hash)
     out_hash = {}
     path_keys = []

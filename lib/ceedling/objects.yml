@@ -36,7 +36,7 @@ file_path_collection_utils:
   compose:
     - file_wrapper
 
-project_file_loader:
+project_file_loadinator:
   compose:
     - yaml_wrapper
     - streaminator
@@ -52,12 +52,6 @@ debugger_utils:
      - configurator
      - tool_executor
      - unity_utils
-
-project_config_manager:
-  compose:
-    - cacheinator
-    - yaml_wrapper
-    - file_wrapper
 
 cacheinator:
   compose:
@@ -200,7 +194,6 @@ task_invoker:
     - build_batchinator
     - rake_utils
     - rake_wrapper
-    - project_config_manager
 
 config_matchinator:
   compose:
@@ -268,7 +261,6 @@ generator_test_runner:
 dependinator:
   compose:
     - configurator
-    - project_config_manager
     - test_context_extractor
     - file_path_utils 
     - rake_wrapper
@@ -284,7 +276,6 @@ preprocessinator:
     - file_wrapper
     - yaml_wrapper
     - plugin_manager
-    - project_config_manager
     - configurator
     - test_context_extractor
     - streaminator

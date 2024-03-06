@@ -299,7 +299,6 @@ DEFAULT_CEEDLING_CONFIG = {
       :test_threads => 1,
       :use_test_preprocessor => false,
       :test_file_prefix => 'test_',
-      :options_paths => [],
       :release_build => false,
       :use_backtrace => false,
       :debug => false

@@ -13,7 +13,6 @@ task RELEASE_SYM => [:directories] do
     core_objects  = []
     extra_objects = @ceedling[:file_path_utils].form_release_build_objects_filelist( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
 
-    @ceedling[:project_config_manager].process_release_config_change()
     core_objects.concat( @ceedling[:release_invoker].setup_and_invoke_objects( COLLECTION_RELEASE_BUILD_INPUT ) )
   
     # If we're using libraries, we need to add those to our collection as well
