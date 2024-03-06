@@ -59,7 +59,7 @@
     #- fake_function_framework        # use FFF instead of CMock
 
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
-    - stdout_pretty_tests_report
+    - report_tests_pretty_stdout
 
 # override the default extensions for your system and toolchain
 :extension:
