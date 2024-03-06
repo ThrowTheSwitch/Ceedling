@@ -70,7 +70,7 @@ Once you have Ceedling installed and a project file, Ceedling tasks go like this
 a new release of Ceedling.)
 
 Building test suites in C requires much more scaffolding than for
-a release build. As such, much of Ceedling's documentation is concerned
+a release build. As such, much of Ceedling’s documentation is concerned
 with test builds. But, release build documentation is here too. We promise.
 It's just all mixed together.
 
@@ -106,7 +106,7 @@ It's just all mixed together.
 
 1. **[Now What? How Do I Make It _GO_?][packet-section-7]**
 
-   Ceedling's many command line tasks and some of the rules about using them.
+   Ceedling’s many command line tasks and some of the rules about using them.
 
 1. **[Important Conventions & Behaviors][packet-section-8]**
 
@@ -121,13 +121,13 @@ It's just all mixed together.
 
 1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-10]**
 
-   This is the exhaustive documentation for all of Ceedling's project file 
+   This is the exhaustive documentation for all of Ceedling’s project file 
    configuration options — from project paths to command line tools to plugins and
    much, much more.
 
 1. **[Build Directive Macros][packet-section-11]**
 
-   These code macros can help you accomplish your build goals When Ceedling's 
+   These code macros can help you accomplish your build goals When Ceedling’s 
    conventions aren't enough.
 
 1. **[Ceedling Plugins][packet-section-12]**
@@ -208,7 +208,7 @@ and directory structure – all by way of the configuration file.
 Further, because Ceedling piggybacks on Rake, you can add your
 own Rake tasks to accomplish project tasks outside of testing
 and release builds. A facility for plugins also allows you to
-extend Ceedling's capabilities for needs such as custom code
+extend Ceedling’s capabilities for needs such as custom code
 metrics reporting and coverage testing.
 
 ## What’s with This Name?
@@ -584,7 +584,7 @@ those header files. It's kinda magical.
 
 For more on the assertions and mocking shown above, consult the 
 documentation for [Unity] and [CMock] or the resources in
-Ceedling's [README][/README.md].
+Ceedling’s [README][/README.md].
 
 Ceedling, Unity, and CMock rely on a variety of
 [conventions to make your life easier][conventions-and-behaviors].
@@ -1105,7 +1105,7 @@ holds all that stuff if you want).
 
 ## Directory Structure, Filenames & Extensions
 
-Much of Ceedling's functionality is driven by collecting files
+Much of Ceedling’s functionality is driven by collecting files
 matching certain patterns inside the paths it's configured
 to search. See the documentation for the `:extension` section
 of your configuration file (found later in this document) to
@@ -1256,6 +1256,79 @@ A test case function signature must have these elements:
 In other words, a test function signature should look like this: 
 `void test<any_name_you_like>(void)`.
 
+### Execution time (duration) reporting in Ceedling operations & test suites
+
+#### Ceedling’s logged run times
+
+Ceedling logs two execution times for every project run.
+
+It first logs the set up time necessary to process your project file, parse code
+files, build an internal representation of your project, etc. This duration does
+not capture the time necessary to load the Ruby runtime itself.
+
+```
+Ceedling set up completed in 223 milliseconds
+```
+
+Secondly, each Ceedling run also logs the time necessary to run all the tasks 
+you specify at the command line.
+
+```
+Ceedling operations completed in 1.03 seconds
+```
+
+#### Ceedling test suite and Unity test executable run durations
+
+A test suite comprises one or more Unity test executables (see 
+[Anatomy of a Test Suite][anatomy-test-suite]). Ceedling times indvidual Unity 
+test executable run durations. It also sums these into a total test suite 
+execution time. These duration values are typically used in generating test 
+reports via plugins.
+
+Not all test report formats utilize duration values. For those that do, some
+effort is usually required to map Ceedling duration values to a relevant test 
+suite abstraction within a given test report format.
+
+Because Ceedling can execute builds with multiple threads, care must be taken
+to interpret test suite duration values — particularly in relation to 
+Ceedling’s logged run times.
+
+In a multi-threaded build it's quite common for the logged Ceedling project run
+time to be less than the total suite time in a test report. In multi-threaded 
+builds on multi-core machines, test executables are run on different processors
+simultaneously. As such, the total on-processor time in a test report can 
+exceed the operation time Ceedling itself logs to the console. Further, because
+multi-threading tends to introduce context switching and processor scheduling 
+overhead, the run duration of a test executable may be reported as longer than
+a in a comparable single-threaded build.
+
+[anatomy-test-suite]: #anatomy-of-a-test-suite
+
+#### Unity test case run times
+
+Individual test case exection time tracking is specifically a [Unity] feature 
+(see its documentation for more details). If enabled and if your platform 
+supports the time mechanism Unity relies on, Ceedling will automatically 
+collect test case time values — generally made use of by test report plugins.
+
+To enable test case duration measurements, they must be enabled as a Unity
+compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation
+symbols (`:unity` ↳ `:defines`) in your Ceedling project file (see example
+below). Unity test case durations as reported by Ceedling default to 0 if the
+compilation option is not set.
+
+```yaml
+:unity:
+  :defines:
+    - UNITY_INCLUDE_EXEC_TIME
+```
+
+_Note:_ Most test cases are quite short, and most computers are quite fast. As
+ such, Unity test case execution time is often reported as 0 milliseconds as
+ the CPU execution time for a test case typically remains in the microseconds
+ range. Unity would require special rigging that is inconsistently available
+ across platforms to measure test case durations at a finer resolution.
+
 ## The Magic of Dependency Tracking
 
 Previous versions of Ceedling used features of Rake to offer
@@ -1351,7 +1424,7 @@ with an exit code of 0 even upon test case failures.
 ```
 
 If you use the option for graceful failures in CI, you'll want to
-rig up some kind of logging monitor that scans Ceedling's test
+rig up some kind of logging monitor that scans Ceedling’s test
 summary report sent to `$stdout` and/or a log file. Otherwise, you
 could have a successful build but failing tests.
 
@@ -1394,7 +1467,7 @@ both enable it and configure it. Enabling CException makes it available in
 both release builds and test builds.
 
 This section provides a high-level view of how the various tools become
-part of your builds and fit into Ceedling's configuration file. Ceedling's 
+part of your builds and fit into Ceedling’s configuration file. Ceedling’s 
 configuration file is discussed in detail in the next section.
 
 See [Unity], [CMock], and [CException]'s project documentation for all 
@@ -1407,7 +1480,7 @@ documentation.
 
 Unity is wholly compiled C code. As such, its configuration is entirely 
 controlled by a variety of compilation symbols. These can be configured
-in Ceedling's `:unity` project settings.
+in Ceedling’s `:unity` project settings.
 
 ### Example Unity configurations
 
@@ -1499,11 +1572,11 @@ a test executable in the same way that any C file is — including Unity,
 CException, and generated mock C code, for that matter. 
 
 CMock's code generation can be configured using YAML similar to Ceedling 
-itself. Ceedling's project file is something of a container for CMock's 
+itself. Ceedling’s project file is something of a container for CMock's 
 YAML configuration (Ceedling also uses CMock's configuration, though).
 
 See the documentation for the top-level [`:cmock`][cmock-yaml-config] 
-section within Ceedling's project file.
+section within Ceedling’s project file.
 
 [cmock-yaml-config]: #cmock-configure-cmocks-code-generation--compilation
 
@@ -1538,7 +1611,7 @@ compilation with symbols managed in your Ceedling project file's
 
 Like Unity, CException is wholly compiled C code. As such, its 
 configuration is entirely controlled by a variety of `#define` symbols. 
-These can be configured in Ceedling's `:cexception` ↳ `:defines` project 
+These can be configured in Ceedling’s `:cexception` ↳ `:defines` project 
 settings.
 
 Unlike Unity which is always available in test builds and CMock that 
@@ -1641,7 +1714,7 @@ for this. A few highlights from that reference page:
   of Ceedling itself is skewed towards supporting testing, though
   Ceedling can, of course, build your binary release artifact
   as well. Note that some complex binary release builds are beyond
-  Ceedling's abilities. See the Ceedling plugin [subprojects] for
+  Ceedling’s abilities. See the Ceedling plugin [subprojects] for
   extending release build abilities.
 
 [MinGW]: http://www.mingw.org/
@@ -1839,7 +1912,7 @@ migrated to the `:test_build` and `:release_build` sections.
     
     ``` yaml
     :test_runner:
-        :cmdline_args: true
+      :cmdline_args: true
     ```
 
     If a test segfaults when `cmdline_args` has be set to `true`, the debugger will execute 
@@ -1854,15 +1927,15 @@ migrated to the `:test_build` and `:release_build` sections.
     By default, this tool is set as follows:
 
     ```yaml
-      :tools:
-        :backtrace_reporter:
-          :executable: gdb
-          :arguments:
-            - -q
-            - --eval-command run
-            - --eval-command backtrace
-            - --batch
-            - --args
+   :tools:
+     :backtrace_reporter:
+       :executable: gdb
+       :arguments:
+         - -q
+         - --eval-command run
+         - --eval-command backtrace
+         - --batch
+         - --args
     ```
     
     It is important that the debugging tool should be run as a background task, and with the
@@ -2222,7 +2295,7 @@ Entries in `:files` accomplish filepath-oriented tailoring of the bulk file
 collections created from `:paths` directory listings and filename pattern
 matching.
 
-On occasion you may need to remove from or add individual files to Ceedling's
+On occasion you may need to remove from or add individual files to Ceedling’s
 file collections.
 
 The path grammar documented in the `:paths` configuration section largely
@@ -2468,7 +2541,7 @@ Ceedling uses path lists and wildcard matching against filename extensions to co
 
 ## `:defines` Command line symbols used in compilation
 
-Ceedling's internal, default compiler tool configurations (see later `:tools` section) 
+Ceedling’s internal, default compiler tool configurations (see later `:tools` section) 
 execute compilation of test and source C files.
 
 These default tool configurations are a one-size-fits-all approach. If you need to add to
@@ -2568,7 +2641,7 @@ matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
 
   Some advanced plugins make use of build contexts as well. For instance, the Ceedling 
   Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
-  that take advantage of Ceedling's internal mechanisms, you can add to those tools'
+  that take advantage of Ceedling’s internal mechanisms, you can add to those tools'
   compilation symbols in the same manner as the built-in contexts.
 
 ### `:defines` options
@@ -2865,7 +2938,7 @@ few levels of support.
 
 ## `:flags` Configure preprocessing, compilation & linking command line flags
 
-Ceedling's internal, default tool configurations (see later `:tools` section) execute 
+Ceedling’s internal, default tool configurations (see later `:tools` section) execute 
 compilation and linking of test and source files among other needs.
 
 These default tool configurations are a one-size-fits-all approach. If you need to add to
@@ -2973,7 +3046,7 @@ flags list format cannot be mixed for `:flags` ↳ `:test`.
 
   Some advanced plugins make use of build contexts as well. For instance, the Ceedling 
   Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
-  that take advantage of Ceedling's internal mechanisms, you can add to those tools'
+  that take advantage of Ceedling’s internal mechanisms, you can add to those tools'
   flags in the same manner as the built-in contexts and operations.
 
 ### Simple `:flags` configuration
@@ -3199,7 +3272,7 @@ See [CMock] documentation.
 
 * `:verbosity`:
 
-  If not set, defaults to Ceedling's verbosity level
+  If not set, defaults to Ceedling’s verbosity level
 
 * `:defines`:
 
@@ -3270,7 +3343,38 @@ project configuration file.
 
 ## `:test_runner` Configure test runner generation
 
-TODO: ...
+The format of Ceedling test files — the C files that contain unit test cases — 
+is intentionally simple. It's pure code and all legit, simple C with `#include` 
+statements, test case functions, and optional `setUp()` and `tearDown()` 
+functions.
+
+To create test executables, we need a `main()` and a variety of calls to the 
+Unity framework to “hook up” all your test cases into a test suite. You can do
+this by hand, of course, but it's tedious and needed updates are easily 
+forgotten.
+
+So, Unity provides a script able to generate a test runner in C for you. It 
+relies on [conventions] used in in your test files. Ceedling takes this a step 
+further by calling this script for you with all the needed parameters.
+
+Test runner generation is configurable. The `:test_runner` section of your 
+Ceedling project file allows you to pass options to Unity's runner generation 
+script. A YAML hash beneath `:test_runner` is provided directly to that script.
+
+[Test runner configuration options are documented in the Unity project][unity-runner-options].
+
+Example configuration:
+
+```yaml
+:test_runner:
+  # Insert additional #include statements in a generated runner
+  :includes:
+    - Foo.h
+    - Bar.h
+```
+
+[ceedling-conventions]: #important-conventions--behaviors
+[unity-runner-options]: https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityHelperScriptsGuide.md#options-accepted-by-generate_test_runnerrb
 
 ## `:tools` Configuring command line tools used for build steps
 
@@ -3573,7 +3677,7 @@ pertains to enabling plugins in your project configuration.
 
 Ceedling includes a number of built-in plugins. See the collection within
 the project at [plugins/][ceedling-plugins] or the [documentation section below](#ceedling-plugins)
-dedicated to Ceedling's plugins. Each built-in plugin subdirectory includes 
+dedicated to Ceedling’s plugins. Each built-in plugin subdirectory includes 
 thorough documentation covering its capabilities and configuration options. 
 
 _Note_: Many users find that the handy-dandy [Command Hooks plugin][command-hooks] 
@@ -3603,7 +3707,7 @@ scripts and command line tools to Ceedling build steps.
 
 Plugins can provide a variety of added functionality to Ceedling. In
 general use, it's assumed that at least one reporting plugin will be
-used to format test results (usually `stdout_pretty_tests_report`).
+used to format test results (usually `report_tests_pretty_stdout`).
 
 If no reporting plugins are specified, Ceedling will print to `$stdout` the
 (quite readable) raw test results from all test fixtures executed.
@@ -3616,7 +3720,7 @@ If no reporting plugins are specified, Ceedling will print to `$stdout` the
     - project/tools/ceedling/plugins  # Home to your collection of plugin directories.
     - project/support                 # Home to some ruby code your custom plugins share.
   :enabled:
-    - stdout_pretty_tests_report      # Nice test results at your command line.
+    - report_tests_pretty_stdout      # Nice test results at your command line.
     - our_custom_code_metrics_report  # You created a plugin to scan all code to collect 
                                       # line counts and complexity metrics. Its name is a
                                       # subdirectory beneath the first `:load_path` entry.
@@ -3663,7 +3767,7 @@ enabled for test builds.
 #include "unity.h"
 #include "somefile.h"
 
-// There is no file.h in this project to trigger Ceedling's convention.
+// There is no file.h in this project to trigger Ceedling’s convention.
 // Compile file.c and link into test_mycode executable.
 TEST_SOURCE_FILE("foo/bar/file.c")
 
@@ -3690,7 +3794,7 @@ Unless you have a pretty funky C project, at least one search path entry
 — however formed — is necessary for every test executable.
 
 Please see [Configuring Your Header File Search Paths][header-file-search-paths]
-for an overview of Ceedling's conventions on header file search paths.
+for an overview of Ceedling’s conventions on header file search paths.
 
 [header-file-search-paths]: #configuring-your-header-file-search-paths
 
@@ -3734,11 +3838,11 @@ for how to create custom plugins.
 
 [//]: # (Links in this section already defined above)
 
-## Ceedling's built-in plugins, a directory
+## Ceedling’s built-in plugins, a directory
 
-### Ceedling plugin `stdout_pretty_tests_report`
+### Ceedling plugin `report_tests_pretty_stdout`
 
-[This plugin][stdout_pretty_tests_report] is meant to tbe the default for
+[This plugin][report_tests_pretty_stdout] is meant to tbe the default for
 printing test results to the console. Without it, readable test results are
 still produced but are not nicely formatted and summarized.
 
@@ -3748,19 +3852,19 @@ simulator memory errors) collected from executing the test fixtures.
 
 Alternatives to this plugin are:
  
- * `stdout_ide_tests_report`
- * `stdout_gtestlike_tests_report`
+ * `report_tests_ide_stdout`
+ * `report_tests_gtestlike_stdout`
 
 Both of the above write to the console test results with a format that is useful
 to IDEs generally in the case of the former, and GTest-aware reporting tools in
 the case of the latter.
 
-[stdout_pretty_tests_report]: ../plugins/stdout_pretty_tests_report
+[report_tests_pretty_stdout]: ../plugins/report_tests_pretty_stdout
 
-### Ceedling plugin `stdout_ide_tests_report`
+### Ceedling plugin `report_tests_ide_stdout`
 
-[This plugin][stdout_ide_tests_report] prints to the console test results
-formatted similarly to `stdout_pretty_tests_report` with one key difference.
+[This plugin][report_tests_ide_stdout] prints to the console test results
+formatted similarly to `report_tests_pretty_stdout` with one key difference.
 This plugin's output is formatted such that an IDE executing Ceedling tasks can
 recognize file paths and line numbers in test failures, etc.
 
@@ -3770,17 +3874,18 @@ test result in your IDE's execution window and jump to the failure (or ignored
 test) in your test file (more on using [IDEs] with Ceedling, Unity, and
 CMock).
 
-If enabled, this plugin should be used in place of `stdout_pretty_tests_report`.
+If enabled, this plugin should be used in place of 
+`report_tests_pretty_stdout`.
 
-[stdout_ide_tests_report]: ../plugins/stdout_ide_tests_report
+[report_tests_ide_stdout]: ../plugins/report_tests_ide_stdout
 
 [IDEs]: https://www.throwtheswitch.org/ide
 
-### Ceedling plugin `stdout_teamcity_tests_report`
+### Ceedling plugin `report_tests_teamcity_stdout`
 
 [TeamCity] is one of the original Continuous Integration server products.
 
-[This plugin][stdout_teamcity_tests_report] processes test results into TeamCity
+[This plugin][report_tests_teamcity_stdout] processes test results into TeamCity
 service messages printed to the console. TeamCity's service messages are unique
 to the product and allow the CI server to extract build steps, test results,
 and more from software builds if present.
@@ -3790,25 +3895,25 @@ local developer builds. See the plugin's documentation for options to enable
 this plugin only in CI builds and not in local builds.
 
 [TeamCity]: https://jetbrains.com/teamcity
-[stdout_teamcity_tests_report]: ../plugins/stdout_teamcity_tests_report
+[report_tests_teamcity_stdout]: ../plugins/report_tests_teamcity_stdout
 
-### Ceedling plugin `stdout_gtestlike_tests_report`
+### Ceedling plugin `report_tests_gtestlike_stdout`
 
-[This plugin][stdout_gtestlike_tests_report] collects test results and prints
+[This plugin][report_tests_gtestlike_stdout] collects test results and prints
 them to the console in a format that mimics [Google Test's output][gtest-sample-output]. 
 Google Test output is both human readable and recognized
 by a variety of reporting tools, IDEs, and Continuous Integration servers.
 
 If enabled, this plugin should be used in place of
-`stdout_pretty_tests_report`.
+`report_tests_pretty_stdout`.
 
 [gtest-sample-output]:
 https://subscription.packtpub.com/book/programming/9781800208988/11/ch11lvl1sec31/controlling-output-with-google-test
-[stdout_gtestlike_tests_report]: ../plugins/stdout_gtestlike_tests_report
+[report_tests_gtestlike_stdout]: ../plugins/report_tests_gtestlike_stdout
 
 ### Ceedling plugin `command_hooks`
 
-[This plugin][command-hooks] provides a simple means for connecting Ceedling's build events to
+[This plugin][command-hooks] provides a simple means for connecting Ceedling’s build events to
 Ceedling tool entries you define in your project configuration (see `:tools`
 documentation). In this way you can easily connect your own scripts or command
 line utilities to build steps without creating an entire custom plugin.
@@ -3875,30 +3980,30 @@ formats.
 [GCovr]: https://www.gcovr.com/
 [ReportGenerator]: https://reportgenerator.io
 
-### Ceedling plugin `test_suite_reporter`
+### Ceedling plugin `report_tests_log_factory`
 
-[This plugin][test_suite_reporter] produces any or all of three useful test
+[This plugin][report_tests_log_factory] produces any or all of three useful test
 suite reports in JSON, JUnit, or CppUnit format. It further provides a
 mechanism for users to create their own custom reports with a small amount of
 custom Ruby rather than a full plugin.
 
-[test_suite_reporter]: ../plugins/test_suite_reporter
+[report_tests_log_factory]: ../plugins/report_tests_log_factory
 
-### Ceedling plugin `warnings_report`
+### Ceedling plugin `report_build_warnings_log`
 
-[This plugin][warnings_report] scans the output of build tools for console
+[This plugin][report_build_warnings_log] scans the output of build tools for console
 warning notices and produces a simple text file that collects all such warning
 messages.
 
-[warnings_report]: ../plugins/warnings_report
+[report_build_warnings_log]: ../plugins/report_build_warnings_log
 
-### Ceedling plugin `raw_tests_output_report`
+### Ceedling plugin `report_tests_raw_output_log`
 
-[This plugin][raw_tests_output_report] captures extraneous console output
+[This plugin][report_tests_raw_output_log] captures extraneous console output
 generated by test executables — typically for debugging — to log files named
 after the test executables.
 
-[raw_tests_output_report]: ../plugins/raw_tests_output_report
+[report_tests_raw_output_log]: ../plugins/report_tests_raw_output_log
 
 ### Ceedling plugin `subprojects`
 
@@ -3917,14 +4022,14 @@ release build target.
 
 [dependencies]: ../plugins/dependencies
 
-### Ceedling plugin `compile_commands_json`
+### Ceedling plugin `compile_commands_json_db`
 
-[This plugin][compile_commands_json] create a [JSON Compilation Database][json-compilation-database]. 
+[This plugin][compile_commands_json_db] create a [JSON Compilation Database][json-compilation-database]. 
 This file is useful to [any code editor or IDE][lsp-tools] that implements 
 syntax highlighting, etc. by way of the LLVM project's [`clangd`][clangd] 
 Language Server Protocol conformant language server.
 
-[compile_commands_json]: ../plugins/compile_commands_json
+[compile_commands_json_db]: ../plugins/compile_commands_json_db
 [lsp-tools]: https://microsoft.github.io/language-server-protocol/implementors/tools/
 [clangd]: https://clangd.llvm.org
 [json-compilation-database]: https://clang.llvm.org/docs/JSONCompilationDatabase.html

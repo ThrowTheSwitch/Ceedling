@@ -13,13 +13,13 @@ task RELEASE_SYM => [:prepare] do
     core_objects  = []
     extra_objects = @ceedling[:file_path_utils].form_release_build_objects_filelist( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
 
-    @ceedling[:project_config_manager].process_release_config_change
+    @ceedling[:project_config_manager].process_release_config_change()
     core_objects.concat( @ceedling[:release_invoker].setup_and_invoke_objects( COLLECTION_RELEASE_BUILD_INPUT ) )
   
     # If we're using libraries, we need to add those to our collection as well
     library_objects = (defined? LIBRARIES_RELEASE && !LIBRARIES_RELEASE.empty?) ? LIBRARIES_RELEASE.flatten.compact : []
     file( PROJECT_RELEASE_BUILD_TARGET => (core_objects + extra_objects + library_objects) )
-    Rake::Task[PROJECT_RELEASE_BUILD_TARGET].invoke
+    Rake::Task[PROJECT_RELEASE_BUILD_TARGET].invoke()
 
   rescue StandardError => e
     @ceedling[:application].register_build_failure

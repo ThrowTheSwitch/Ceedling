@@ -311,6 +311,9 @@ class ConfiguratorBuilder
       all_tests.include( File.join(path, "#{in_hash[:project_test_file_prefix]}*#{in_hash[:extension_source]}") )
     end
 
+    # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
+    all_tests.resolve()
+
     return {
       # Add / subtract files via :files ↳ :test
       :collection_all_tests => @file_path_collection_utils.revise_filelist( all_tests, in_hash[:files_test] )
@@ -333,6 +336,9 @@ class ConfiguratorBuilder
       all_assembly.include( File.join(path, "*#{in_hash[:extension_assembly]}") )
     end
 
+    # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
+    all_assembly.resolve()
+
     return {
       # Add / subtract files via :files ↳ :assembly
       :collection_all_assembly => @file_path_collection_utils.revise_filelist( all_assembly, in_hash[:files_assembly] )
@@ -347,6 +353,9 @@ class ConfiguratorBuilder
     in_hash[:collection_paths_source].each do |path|
       all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
     end
+
+    # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
+    all_source.resolve()
 
     return {
       # Add / subtract files via :files ↳ :source
@@ -366,6 +375,9 @@ class ConfiguratorBuilder
     paths.each do |path|
       all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
     end
+
+    # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
+    all_headers.resolve()
 
     return {
       # Add / subtract files via :files ↳ :include
@@ -394,6 +406,9 @@ class ConfiguratorBuilder
     # Add / subtract files via :files ↳ :source & :files ↳ :assembly
     revisions =  in_hash[:files_source]
     revisions += in_hash[:files_assembly] if in_hash[:release_build_use_assembly]
+
+    # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
+    release_input.resolve()
 
     return {
       :collection_release_build_input => @file_path_collection_utils.revise_filelist( release_input, revisions )
@@ -433,6 +448,9 @@ class ConfiguratorBuilder
     revisions += in_hash[:files_source]
     revisions += in_hash[:files_assembly] if in_hash[:test_build_use_assembly]
 
+    # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
+    all_input.resolve()
+
     return {
       :collection_existing_test_build_input => @file_path_collection_utils.revise_filelist( all_input, revisions )
     }
@@ -460,6 +478,9 @@ class ConfiguratorBuilder
       support.include( File.join(path, "*#{in_hash[:extension_source]}") )
       support.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
     end
+
+    # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
+    support.resolve()
 
     support = @file_path_collection_utils.revise_filelist( support, in_hash[:files_support] )
 
@@ -491,7 +512,7 @@ class ConfiguratorBuilder
       filelist.include( File.join(path, '*' + EXTENSION_CORE_SOURCE) )
     end
 
-    # Ensure FileList patterns & revisions are resolved into full list of filepaths
+    # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
     filelist.resolve()
 
     # Extract just source file names

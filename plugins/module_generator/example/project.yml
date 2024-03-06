@@ -53,17 +53,17 @@
     #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
-    #- compile_commands_json          # generate a compile_commands.json file
+    #- compile_commands_json_db          # generate a compile_commands.json file
     #- dependencies                   # automatically fetch 3rd party libraries, etc.
     #- subprojects                    # managing builds and test for static libraries
     #- fake_function_framework        # use FFF instead of CMock
 
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
     #- test_suite_reporter
-    - raw_tests_output_report
-    - stdout_pretty_tests_report
-    #- stdout_ide_tests_report
-    #- stdout_gtestlike_tests_report
+    - report_tests_raw_output_log
+    - report_tests_pretty_stdout
+    #- report_tests_ide_stdout
+    #- report_tests_gtestlike_stdout
     #- teamcity_tests_report
     #- warnings_report
 
