@@ -200,6 +200,7 @@ class Dependencies < Plugin
     end
 
     FileUtils.mkdir_p(get_build_path(blob)) unless File.exist?(get_build_path(blob))
+    FileUtils.mkdir_p(get_artifact_path(blob)) unless File.exist?(get_artifact_path(blob))
 
     # Perform the build
     @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
@@ -356,11 +357,18 @@ class Dependencies < Plugin
       DEPENDENCIES_SYM,
       obj,
       [],
-      lib, #TODO NEEDS TO GO TO DEPLOY
+      lib,
       @ceedling[:file_path_utils].form_test_build_map_filepath(get_artifact_path(blob),lib),
       (blob[:libraries] || []),
       (blob[:libpaths] || [])
     )
+
+    # Move the library to the specifed artifact folder
+    unless get_build_path(blob) == get_artifact_path(blob)
+      src = File.expand_path(lib)
+      dst = File.expand_path(get_artifact_path(blob), Array.new(get_build_path(blob).split(/[\\\/]+/).length,"../").join()) + "/" + lib
+      FileUtils.cp_r(src, dst)
+    end
   end
 
   def find_my_paths( c_file, blob, file_type = :c )  
