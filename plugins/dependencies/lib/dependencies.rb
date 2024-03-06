@@ -145,8 +145,8 @@ class Dependencies < Plugin
       @ceedling[:streaminator].stdout_puts("No method to fetch #{blob[:name]}", Verbosity::COMPLAIN)
       return
     end
-    unless (directory(blob[:source_path])) #&& !Dir.empty?(blob[:source_path]))
-      @ceedling[:streaminator].stdout_puts("Path #{blob[:source_path]} is required", Verbosity::COMPLAIN)
+    unless (directory(get_source_path(blob))) #&& !Dir.empty?(get_source_path(blob)))
+      @ceedling[:streaminator].stdout_puts("Path #{get_source_path(blob)} is required", Verbosity::COMPLAIN)
       return
     end
 
@@ -155,8 +155,8 @@ class Dependencies < Plugin
               []
             when :zip
               [ "unzip -o #{blob[:fetch][:source]}" ]
-            when :gzip
-              [ "gzip -d #{blob[:fetch][:source]}" ]
+            when :tar_gzip
+              [ "tar -xvzf #{blob[:fetch][:source]} -C ./" ]
             when :git
               branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
               branch = ("-b " + branch) unless branch.empty?
@@ -199,6 +199,8 @@ class Dependencies < Plugin
       return
     end
 
+    FileUtils.mkdir_p(get_build_path(blob)) unless File.exist?(get_build_path(blob))
+
     # Perform the build
     @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
     Dir.chdir(get_build_path(blob)) do
@@ -237,7 +239,7 @@ class Dependencies < Plugin
     raise "Could not find dependency '#{lib_path}'" if blob.nil?
 
     # We don't need to deploy anything if there isn't anything to deploy
-    if (blob[:artifacts].nil? || blob[:artifacts][:dynamic_libraries].nil?  || blob[:artifacts][:dynamic_libraries].empty?)
+    if (blob[:artifacts].nil? || blob[:artifacts][:dynamic_libraries].nil? || blob[:artifacts][:dynamic_libraries].empty?)
       @ceedling[:streaminator].stdout_puts("Nothing to deploy for dependency #{blob[:name]}", Verbosity::NORMAL)
       return
     end
@@ -305,12 +307,11 @@ class Dependencies < Plugin
     lib = libs[0]
 
     # Find all the source, header, and assembly files 
-    src = Dir["#{blob[:source_path]}/**/*#{EXTENSION_SOURCE}"]
-    hdr = Dir["#{blob[:source_path]}/**/*#{EXTENSION_HEADER}"].map{|f| File.dirname(f) }.uniq
+    src = Dir["./**/*#{EXTENSION_SOURCE}"]
+    hdr = Dir["./**/*#{EXTENSION_HEADER}"].map{|f| File.dirname(f) }.uniq
     if (EXTENSION_ASSEMBLY && !EXTENSION_ASSEMBLY.empty?)  
-      asm = Dir["#{blob[:source_path]}/**/*#{EXTENSION_ASSEMBLY}"]
+      asm = Dir["./**/*#{EXTENSION_ASSEMBLY}"]
     end
-    @deps_lookup_by_path[ blob[:build_path] ] = name
 
     # Do we have what we need to do this?
     raise "Nothing to build" if (asm.empty? and src.empty?)
@@ -320,47 +321,54 @@ class Dependencies < Plugin
 
     # Build all the source files
     src.each do |src_file|
-      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPENDENCIES, find_my_paths(object.source, blob, :c))
-      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPENDENCIES, find_my_defines(object.source, blob, :c))
-      @ceedling[:generator].generate_object_file(
-        TOOLS_DEPS_COMPILER,
-        OPERATION_COMPILE_SYM,
-        DEPENDENCIES_SYM,
-        src_file,
-        File.basename(src_file,EXTENSION_OBJECT),
-        @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename(src_file,EXTENSION_OBJECT) ) )
+      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPS, find_my_paths(src_file, blob))
+      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPS, find_my_defines(src_file, blob))
+      @ceedling[:generator].generate_object_file_c(
+        tool:         TOOLS_DEPS_COMPILER,
+        module_name:  File.basename(src_file).ext(),
+        context:      DEPENDENCIES_SYM,
+        source:       src_file,
+        object:       File.basename(src_file).ext(EXTENSION_OBJECT),
+        search_paths: hdr,
+        flags:        (blob[:flags] || []),
+        defines:      (blob[:defines] || []),
+        list:         @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename(src_file,EXTENSION_OBJECT) )
+      )
     end
 
     # Build all the assembly files
     asm.each do |src_file|
-      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPENDENCIES, find_my_paths(object.source, blob, :asm))
-      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPENDENCIES, find_my_defines(object.source, blob, :asm))
-      @ceedling[:generator].generate_object_file(
-        TOOLS_DEPS_ASSEMBLER,
-        OPERATION_ASSEMBLY_SYM,
-        DEPENDENCIES_SYM,
-        src_file,
-        File.basename(src_file,EXTENSION_OBJECT) )
+      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPS, find_my_paths(src_file, blob))
+      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPS, find_my_defines(src_file, blob))
+      @ceedling[:generator].generate_object_file_asm(
+        tool:        TOOLS_DEPS_ASSEMBLER,
+        module_name: File.basename(src_file).ext(),
+        context:     DEPENDENCIES_SYM,
+        source:      src_file,
+        object:      File.basename(src_file).ext(EXTENSION_OBJECT)
+      )
     end
 
     # Link the library
-    obj = (src + asm).map{|f| File.basename(f, EXTENSION_OBJECT) }.uniq
+    obj = (src + asm).map{|f| File.basename(f).ext(EXTENSION_OBJECT) }.uniq
     @ceedling[:generator].generate_executable_file(
       TOOLS_DEPS_LINKER,
       DEPENDENCIES_SYM,
       obj,
-      lib,
-      @ceedling[:file_path_utils].form_test_build_map_filepath(lib))
+      [],
+      lib, #TODO NEEDS TO GO TO DEPLOY
+      @ceedling[:file_path_utils].form_test_build_map_filepath(get_artifact_path(blob),lib),
+      (blob[:libraries] || []),
+      (blob[:libpaths] || [])
+    )
   end
 
   def find_my_paths( c_file, blob, file_type = :c )  
-    return (blob[:source] + (blob[:include] || [])) if (blob[file_type].include?(c_file))  
-    return []  
+    return ((blob[:source] || []) + (blob[:include] || [])).compact.uniq
   end  
 
   def find_my_defines( c_file, blob, file_type = :c )  
-    return (blob[:defines] || []) if (blob[file_type].include?(c_file)) 
-    return []  
+    return (blob[:defines] || []).compact.uniq 
   end  
 
   def replace_constant(constant, new_value)  

@@ -1,5 +1,8 @@
 #include <stdlib.h>
+#include <stdio.h>
+
 #include "boss.h"
+#include "version.h"
 
 #define WORK 20
 
@@ -8,6 +11,9 @@ int main(int argc, char *argv[])
     int i;
     int work[WORK];
     int retval;
+
+    /* output the version */
+    puts(get_version());
 
 	/* This could be more interesting... but honestly, we're just proving this all builds */
 	boss_start();

@@ -75,6 +75,22 @@
         :dynamic_libraries: []
         :includes:
           - libworker.h
+    - :name: VersionReporter
+      :source_path:   third_party/version/reporter
+      :build_path:    third_party/version/reporter
+      :artifact_path: third_party/version/build
+      :fetch:
+        :method: :tar_gzip
+        :source: ../../../../version.tar.gzip #relative to source_path above
+      :environment: []
+      :build:
+        - :build_lib
+      :artifacts:
+        :static_libraries:
+          - libver.a
+        :dynamic_libraries: []
+        :includes:
+          - ../reporter/version.h
 
 # Plugins are optional Ceedling features which can be enabled. Ceedling supports
 # a variety of plugins which may effect the way things are compiled, reported, 
@@ -202,10 +218,10 @@
     :executable: gcc
     :arguments:
       - -g
-      - -I"$": COLLECTION_PATHS_SUBPROJECTS
-      - -D$: COLLECTION_DEFINES_SUBPROJECTS
-      - -c "${1}""
-      - -o "${2}""
+      - -I"$": COLLECTION_PATHS_DEPS
+      - -D$: COLLECTION_DEFINES_DEPS
+      - -c "${1}"
+      - -o "${2}"
   :deps_linker:
     :executable: ar
     :arguments:

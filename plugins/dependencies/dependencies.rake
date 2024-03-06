@@ -42,7 +42,7 @@ DEPENDENCIES_DEPS.each do |deplib|
    @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
   ).each do |libpath|
     task libpath do |filetask|
-      path = filetask.name
+      path = File.expand_path(filetask.name)
 
       if (File.file?(path) || File.directory?(path))
         @ceedling[:streaminator].stdout_puts("Nothing to do for dependency #{path}", Verbosity::OBNOXIOUS)
