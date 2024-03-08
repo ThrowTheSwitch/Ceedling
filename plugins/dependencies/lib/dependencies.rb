@@ -1,9 +1,10 @@
 require 'ceedling/plugin'
 require 'ceedling/constants'
+require 'pathname'
 
-DEPENDENCIES_ROOT_NAME         = 'dependencies'
-DEPENDENCIES_TASK_ROOT         = DEPENDENCIES_ROOT_NAME + ':'
-DEPENDENCIES_SYM               = DEPENDENCIES_ROOT_NAME.to_sym
+DEPENDENCIES_ROOT_NAME = 'dependencies'
+DEPENDENCIES_TASK_ROOT = DEPENDENCIES_ROOT_NAME + ':'
+DEPENDENCIES_SYM       = DEPENDENCIES_ROOT_NAME.to_sym
 
 class Dependencies < Plugin
 
@@ -37,12 +38,10 @@ class Dependencies < Plugin
     DEPENDENCIES_DEPS.each do |deplib|
       @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib).each do |incpath|
         updates[:collection_paths_include] << incpath
-        #COLLECTION_PATHS_INCLUDE << incpath
       end
 
       @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib).each do |inc|
         updates[:collection_all_headers] << inc
-        #COLLECTION_ALL_HEADERS << inc
       end
     end
 
@@ -54,23 +53,47 @@ class Dependencies < Plugin
     return deplib[:name].gsub(/\W*/,'')
   end
 
+  def get_fetch_path(deplib)
+    if deplib.include? :paths
+      return deplib[:paths][:fetch] || deplib[:paths][:source] || File.join('dependencies', get_name(deplib))
+    else
+      return File.join('dependencies', get_name(deplib))
+    end
+  end
+
   def get_source_path(deplib)
-    return deplib[:source_path] || File.join('dependencies', get_name(deplib))
+    if deplib.include? :paths
+      return deplib[:paths][:source] || deplib[:paths][:fetch] || File.join('dependencies', get_name(deplib))
+    else
+      return File.join('dependencies', get_name(deplib))
+    end
   end
 
   def get_build_path(deplib)
-    return deplib[:build_path] || deplib[:source_path] || File.join('dependencies', get_name(deplib))
+    if deplib.include? :paths
+      return deplib[:paths][:build] || deplib[:paths][:source] || deplib[:paths][:fetch] || File.join('dependencies', get_name(deplib))
+    else
+      return File.join('dependencies', get_name(deplib))
+    end
   end
 
   def get_artifact_path(deplib)
-    return deplib[:artifact_path] || deplib[:source_path] || File.join('dependencies', get_name(deplib))
+    if deplib.include? :paths
+      return deplib[:paths][:artifact] || deplib[:paths][:build] || File.join('dependencies', get_name(deplib))
+    else
+      return File.join('dependencies', get_name(deplib))
+    end
   end
 
   def get_working_paths(deplib, artifact_only=false)
-    paths = if artifact_only
-      [deplib[:artifact_path]].compact.uniq
+    paths = if deplib.include?(:paths)
+      if artifact_only
+        [deplib[:paths][:artifact]].compact.uniq
+      else
+        deplib[:paths].values.compact.uniq
+      end
     else
-      [deplib[:source_path], deplib[:build_path], deplib[:artifact_path]].compact.uniq
+      []
     end
     paths = [ File.join('dependencies', get_name(deplib)) ] if (paths.empty?)
     return paths
@@ -150,6 +173,8 @@ class Dependencies < Plugin
       return
     end
 
+    FileUtils.mkdir_p(get_fetch_path(blob)) unless File.exist?(get_fetch_path(blob))
+
     steps = case blob[:fetch][:method]
             when :none
               []
@@ -182,7 +207,7 @@ class Dependencies < Plugin
 
     # Perform the actual fetching
     @ceedling[:streaminator].stdout_puts("Fetching dependency #{blob[:name]}...", Verbosity::NORMAL)
-    Dir.chdir(get_source_path(blob)) do
+    Dir.chdir(get_fetch_path(blob)) do
       steps.each do |step|
         @ceedling[:tool_executor].exec( wrap_command(step) )
       end
@@ -199,12 +224,12 @@ class Dependencies < Plugin
       return
     end
 
-    FileUtils.mkdir_p(get_build_path(blob)) unless File.exist?(get_build_path(blob))
+    FileUtils.mkdir_p(get_source_path(blob)) unless File.exist?(get_source_path(blob))
     FileUtils.mkdir_p(get_artifact_path(blob)) unless File.exist?(get_artifact_path(blob))
 
     # Perform the build
     @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
-    Dir.chdir(get_build_path(blob)) do
+    Dir.chdir(get_source_path(blob)) do
       blob[:build].each do |step|
         if (step.class == Symbol)
           exec_dependency_builtin_command(step, blob)
@@ -296,7 +321,12 @@ class Dependencies < Plugin
     src = []
     asm = []
     hdr = []
+    obj = []
+
     name = blob[:name] || ""
+    source_path = Pathname.new get_source_path(blob)
+    build_path = Pathname.new get_build_path(blob)
+    relative_build_path = build_path.relative_path_from(source_path)
 
     # Verify there is an artifact that we're building that makes sense
     libs = []
@@ -322,6 +352,7 @@ class Dependencies < Plugin
 
     # Build all the source files
     src.each do |src_file|
+      object_file = relative_build_path + File.basename(src_file).ext(EXTENSION_OBJECT)
       @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPS, find_my_paths(src_file, blob))
       @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPS, find_my_defines(src_file, blob))
       @ceedling[:generator].generate_object_file_c(
@@ -329,16 +360,18 @@ class Dependencies < Plugin
         module_name:  File.basename(src_file).ext(),
         context:      DEPENDENCIES_SYM,
         source:       src_file,
-        object:       File.basename(src_file).ext(EXTENSION_OBJECT),
+        object:       object_file,
         search_paths: hdr,
         flags:        (blob[:flags] || []),
         defines:      (blob[:defines] || []),
         list:         @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename(src_file,EXTENSION_OBJECT) )
       )
-    end
+      obj << object_file
+    end 
 
     # Build all the assembly files
     asm.each do |src_file|
+      object_file = relative_build_path + File.basename(src_file).ext(EXTENSION_OBJECT)
       @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPS, find_my_paths(src_file, blob))
       @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPS, find_my_defines(src_file, blob))
       @ceedling[:generator].generate_object_file_asm(
@@ -346,18 +379,18 @@ class Dependencies < Plugin
         module_name: File.basename(src_file).ext(),
         context:     DEPENDENCIES_SYM,
         source:      src_file,
-        object:      File.basename(src_file).ext(EXTENSION_OBJECT)
+        object:      object_file
       )
+      obj << object_file
     end
 
     # Link the library
-    obj = (src + asm).map{|f| File.basename(f).ext(EXTENSION_OBJECT) }.uniq
     @ceedling[:generator].generate_executable_file(
       TOOLS_DEPS_LINKER,
       DEPENDENCIES_SYM,
       obj,
       [],
-      lib,
+      relative_build_path+lib,
       @ceedling[:file_path_utils].form_test_build_map_filepath(get_artifact_path(blob),lib),
       (blob[:libraries] || []),
       (blob[:libpaths] || [])

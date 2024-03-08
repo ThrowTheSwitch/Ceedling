@@ -45,9 +45,11 @@
 :dependencies:
   :deps:
     - :name: SupervisorSupremo
-      :source_path:   ../supervisor/
-      :build_path:    ../supervisor/
-      :artifact_path: ../supervisor/build
+      :paths:
+        :fetch:    ../supervisor/
+        :source:   ../supervisor/
+        :build:    ../supervisor/build
+        :artifact: ../supervisor/build
       :fetch:
         :method: :none
       :environment: []
@@ -60,9 +62,11 @@
         :includes: 
           - ../src/supervisor.h
     - :name: WorkerBees
-      :source_path:   third_party/bees/source
-      :build_path:    third_party/bees/source
-      :artifact_path: third_party/bees/source/build
+      :paths:
+        :fetch:    third_party/bees/source
+        :source:   third_party/bees/source
+        :build:    third_party/bees/source/build
+        :artifact: third_party/bees/source/build
       :fetch:
         :method: :zip
         :source: ../../../../workerbees.zip #relative to source_path above
@@ -76,9 +80,11 @@
         :includes:
           - libworker.h
     - :name: VersionReporter
-      :source_path:   third_party/version/reporter
-      :build_path:    third_party/version/reporter
-      :artifact_path: third_party/version/build
+      :paths:
+        :fetch:    third_party/version/reporter
+        :source:   third_party/version/reporter
+        :build:    third_party/version/build
+        :artifact: third_party/version/build
       :fetch:
         :method: :tar_gzip
         :source: ../../../../version.tar.gzip #relative to source_path above
@@ -225,6 +231,6 @@
   :deps_linker:
     :executable: ar
     :arguments:
-      - rcs
+      - -rcs
       - ${2}
       - ${1}

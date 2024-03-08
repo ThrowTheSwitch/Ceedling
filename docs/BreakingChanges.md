@@ -124,7 +124,7 @@ Coverage reports are now generated automatically unless the manual report genera
 
 # Subprojects Plugin Replaced
 
-The `subprojects` plugin has been completely replaced by the more-powerful `dependencies` plugin. To retain your previous functionality, you need to do a little reorganizing in your `project.yml` file. Obviously the `:subprojects` section is now called `:dependencies`. The collection of `:paths` is now `:deps`. We'll have a little more organizing to do once we're inside that section as well. Your `:source` is now organized in `:source_path` and, since you're not fetching it form another project, the `:fetch:method` should be set to `:none`. The `:build_root` now becomes `:build_path`. You'll also need to specify the name of the library produced under `:artifacts:static_libraries`.
+The `subprojects` plugin has been completely replaced by the more-powerful `dependencies` plugin. To retain your previous functionality, you need to do a little reorganizing in your `project.yml` file. Obviously the `:subprojects` section is now called `:dependencies`. The collection of `:paths` is now `:deps`. We'll have a little more organizing to do once we're inside that section as well. Your `:source` is now organized in `:paths` ↳ `:source` and, since you're not fetching it form another project, the `:fetch` ↳ `:method` should be set to `:none`. The `:build_root` now becomes `:paths` ↳ `:build`. You'll also need to specify the name of the library produced under `:artifacts` ↳ `:static_libraries`.
 
 For example:
 
@@ -148,9 +148,11 @@ The above subproject definition will now look like the following:
 :dependencies:
   :deps:
     - :name: Project A
-      :source_path:   ./subprojectA/
-      :build_path:    ./subprojectA/
-      :artifact_path: ./subprojectA/build/dir
+      :paths:
+        :fetch:    ./subprojectA/
+        :source:   ./subprojectA/
+        :build:    ./subprojectA/build/dir
+        :artifact: ./subprojectA/build/dir
       :fetch:
         :method: :none
       :environment: []
