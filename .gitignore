@@ -11,8 +11,11 @@ examples/blinky/build/
 examples/blinky/vendor/
 examples/temp_sensor/vendor/
 examples/temp_sensor/build/
-fff/examples/fff_example/build/
-module_generator/example/build/
+plugins/fff/examples/fff_example/build/
+plugins/module_generator/example/build/
+plugins/dependencies/example/boss/build/
+plugins/dependencies/example/boss/third_party/
+plugins/dependencies/example/supervisor/build/
 
 ceedling.sublime-project
 ceedling.sublime-workspace

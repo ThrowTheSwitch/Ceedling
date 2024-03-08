@@ -215,7 +215,7 @@
 #   :naming: :snake #options: :bumpy, :camel, :caps, or :snake
 #   :includes:
 #     :tst: []
-#     :src: []:module_generator:
+#     :src: []
 #   :boilerplates: 
 #     :src: ""
 #     :inc: ""
