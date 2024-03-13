@@ -72,9 +72,9 @@ library builds & dependency management, and more.
 * Paid training, customizations, and support contracts are avaialble by 
   **[contacting ThingamaByte][thingama-contact]**.
 
-The ThrowTheSwitch community follows a **[code of conduct](CODE_OF_CONDUCT.md)**.
+The ThrowTheSwitch community follows a **[code of conduct](docs/CODE_OF_CONDUCT.md)**.
 
-Please familiarize yourself with our guideline for **[contributing](CONTRIBUTING.md)** to this project, be it code, reviews, documentation, or reports.
+Please familiarize yourself with our guideline for **[contributing](docs/CONTRIBUTING.md)** to this project, be it code, reviews, documentation, or reports.
 
 Yes, work has begun on certified versions of the Ceedling suite of tools.
 Again, [reach out to ThingamaByte][thingama-contact] for more.
