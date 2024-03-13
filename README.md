@@ -63,7 +63,7 @@ library builds & dependency management, and more.
 
 <br/>
 
-# 🙋‍♀️ Need Help?
+# 🙋‍♀️ Need Help? Want to Help?
 
 * Found a bug or want to suggest a feature?
   **[Submit an issue][ceedling-issues]** at this repo.
@@ -71,6 +71,10 @@ library builds & dependency management, and more.
   **[discussion forums][forums]**.
 * Paid training, customizations, and support contracts are avaialble by 
   **[contacting ThingamaByte][thingama-contact]**.
+
+The ThrowTheSwitch community follows a **[code of conduct](CODE_OF_CONDUCT.md)**.
+
+Please familiarize yourself with our guideline for **[contributing](CONTRIBUTING.md)** to this project, be it code, reviews, documentation, or reports.
 
 Yes, work has begun on certified versions of the Ceedling suite of tools.
 Again, [reach out to ThingamaByte][thingama-contact] for more.
