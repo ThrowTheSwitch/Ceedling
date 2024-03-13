@@ -189,7 +189,7 @@ Commit comments, Issues, Feature Requests... they can all use a little sprucing 
 
 - Kindly note any violations to the guidelines specified in this document. 
 
-## :nail_care: Coding Style
+## :violin: Coding Style
 
 Consistency is the most important. Following the existing style, formatting, and naming conventions of the file you are modifying and of the overall project. Failure to do so will result in a prolonged review process that has to focus on updating the superficial aspects of your code, rather than improving its functionality and performance.
 
@@ -203,7 +203,7 @@ C code is linted with [AStyle](https://astyle.sourceforge.net/).
 
 ### Ruby Styleguide
 
-Ruby code is linted with [Rubocop][//https://github.com/rubocop/rubocop]
+Ruby code is linted with [Rubocop](https://github.com/rubocop/rubocop)
 
 ## :medal_sports: Certificate of Origin
 
