@@ -2,7 +2,7 @@
 
 👍🎉 _First off, thanks for taking the time to contribute!_ 🎉👍
 
-The following is a set of guidelines for contributing to any of ThrowTheSwitch.org's projects or the website itself, hosted at throwtheswitch.org or ThrowTheSwith's organization on GitHub. These are mostly guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request.
+The following is a set of guidelines for contributing to any of ThrowTheSwitch.org's projects or the website itself, hosted at throwtheswitch.org or ThrowTheSwitch's organization on GitHub. These are mostly guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request.
 
 ### Table Of Contents
 
@@ -62,9 +62,9 @@ In short, since you are most likely a developer, **provide a ticket that you wou
 
 - **Use [GitHub-flavored Markdown](https://help.github.com/en/github/writing-on-github/basic-writing-and-formatting-syntax).** Especially put code blocks and console outputs in backticks (```). This improves readability.
 
-## :love_letter: Feature Requests
+## :seedling: Feature Requests
 
-Feature requests are welcome! While we will consider all requests, we cannot guarantee your request will be accepted. We want to avoid [feature creep](https://en.wikipedia.org/wiki/Feature_creep). Your idea may be great, but also out-of-scope for the project. If accepted, we cannot make any commitments regarding the timeline for implementation and release. However, you are welcome to submit a pull request to help!
+Feature requests are welcome! We don't have all the answers and we truly love the collaborative experience of building software together! That being said, we cannot guarantee your request will be accepted. We want to avoid [feature creep](https://en.wikipedia.org/wiki/Feature_creep). Your idea may be great, but also out-of-scope for the project. If accepted, we'll do our best to tackle it in a timely manner, but cannot make any commitments regarding the timeline for implementation and release. However, you are welcome to submit a pull request to help!
 
 - **Please don't open a duplicate feature request.** Search for existing feature requests first. If you find your feature (or one very similar) previously requested, comment on that issue.
 
@@ -123,7 +123,7 @@ Please [write a great commit message](https://chris.beams.io/posts/git-commit/).
 1. If applicable, prefix the title with the relevant component name or emoji (see below. examples: "[Docs] Fix typo", "[Profile] Fix missing avatar")
 
 ```
-[TAG] Short summary of changes in 50 chars or less
+:palm_tree: Summary of Amazing Feature Here
 
 Add a more detailed explanation here, if necessary. Possibly give 
 some background about the issue being fixed, etc. The body of the 
@@ -144,9 +144,9 @@ but might not understand why a particular solution was implemented.
 Are there side effects or other unintuitive consequences of this
 change? Here's the place to explain them.
 
- - Bullet points are okay, too
+ - Bullet points are awesome, too
 
- - A hyphen or asterisk should be used for the bullet, preceded
+ - A hyphen should be used for the bullet, preceded
    by a single space, with blank lines in between
 
 Note the fixed or relevant GitHub issues at the end:
@@ -157,7 +157,7 @@ See also: #456, #789
 
 ## :heart: Who Loves Emoji?
 
-Commit comments, Issues, Feature Requests... they can all use a little sprucing up, right? Consider using the following emoji for a mix of function and :sparles: dazzle!
+Commit comments, Issues, Feature Requests... they can all use a little sprucing up, right? Consider using the following emoji for a mix of function and :sparkles: dazzle!
 
   - actions
     - :seedling: `:seedling:` (or other plants) when growing new features. Choose your fav! :cactus: :herb: :evergreen_tree: :palm_tree: :deciduous_tree: :blossom: 

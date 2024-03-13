@@ -1,7 +1,9 @@
 
-# Contributor Covenant Code of Conduct
+# ThrowTheSwitch.org Code of Conduct
 
-Thank you for participating in a ThrowTheSwitch.org community project!
+Thank you for participating in a ThrowTheSwitch.org community project! We want
+this to continue to be a warm and inviting place for everyone to share ideas
+and get help. To accomplish this goal, we've developed this Code of Conduct.
 
 ## Our Pledge
 
