@@ -79,60 +79,61 @@ class Configurator
   # We do this because early config validation failures may need access to verbosity,
   # but the accessors won't be available until after configuration is validated.
   def set_verbosity(config)
-    # PROJECT_VERBOSITY and PROJECT_DEBUG were set at command line processing 
+    # PROJECT_VERBOSITY and PROJECT_DEBUG were set at command line processing
     # before Ceedling is even loaded.
 
     if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG) or (config[:project][:debug])
       eval("def project_debug() return true end", binding())
     else
-      eval("def project_debug() return false end", binding())      
+      eval("def project_debug() return false end", binding())
     end
 
     if !!defined?(PROJECT_VERBOSITY)
       eval("def project_verbosity() return #{PROJECT_VERBOSITY} end", binding())
     end
 
-    # Configurator will try to create these accessors automatically but will silently 
+    # Configurator will try to create these accessors automatically but will silently
     # fail if they already exist.
   end
 
 
   # The default values defined in defaults.rb (eg. DEFAULT_TOOLS_TEST) are populated
   # into @param config
-  def populate_defaults(config)
-    new_config = DEFAULT_CEEDLING_CONFIG.deep_clone
-    new_config.deep_merge!(config)
-    config.replace(new_config)
+  def merge_ceedling_config(config, default_config)
+    # Merge ceedling default config with default tools
+    default_config.replace( DEFAULT_CEEDLING_CONFIG.deep_clone )
+    default_config.deep_merge( DEFAULT_TOOLS_TEST.deep_clone )
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone ) if (config[:project][:use_test_preprocessor])
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_ASSEMBLER.deep_clone )     if (config[:test_build][:use_assembly])
 
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST )
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_PREPROCESSORS ) if (config[:project][:use_test_preprocessor])
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_ASSEMBLER )     if (config[:test_build][:use_assembly])
+    default_config.deep_merge( DEFAULT_TOOLS_RELEASE.deep_clone )              if (config[:project][:release_build])
+    default_config.deep_merge( DEFAULT_TOOLS_RELEASE_ASSEMBLER.deep_clone )    if (config[:project][:release_build] and config[:release_build][:use_assembly])
 
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE )              if (config[:project][:release_build])
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_ASSEMBLER )    if (config[:project][:release_build] and config[:release_build][:use_assembly])
+    # Merge current config with ceedling internal settings
+    config.deep_merge( CEEDLING_CONFIG_INTERNAL.deep_clone )
   end
 
 
-  def populate_unity_defaults(config)
-      unity = config[:unity] || {}
-      @runner_config = unity.merge(config[:test_runner] || {})
-  end
-
-  def populate_cmock_defaults(config)
+  def merge_cmock_config(config, default_config)
     # cmock has its own internal defaults handling, but we need to set these specific values
     # so they're present for the build environment to access;
     # note: these need to end up in the hash given to initialize cmock for this to be successful
-    cmock = config[:cmock] || {}
+
+    # populate defaults with cmock internal settings
+    default_cmock = default_config[:cmock] || {}
 
     # yes, we're duplicating the default mock_prefix in cmock, but it's because we need CMOCK_MOCK_PREFIX always available in Ceedling's environment
-    cmock[:mock_prefix] = 'Mock' if (cmock[:mock_prefix].nil?)
+    default_cmock[:mock_prefix] = 'Mock' if (default_cmock[:mock_prefix].nil?)
 
     # just because strict ordering is the way to go
-    cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
+    default_cmock[:enforce_strict_ordering] = true                                                  if (default_cmock[:enforce_strict_ordering].nil?)
 
-    cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
+    default_cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (default_cmock[:mock_path].nil?)
 
-    cmock[:verbosity] = @project_verbosity                                                  if (cmock[:verbosity].nil?)
+    default_cmock[:verbosity] = @project_verbosity                                                  if (default_cmock[:verbosity].nil?)
+
+    # populate current config with cmock config
+    cmock = config[:cmock] || {}
 
     cmock[:plugins] = []                             if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym }
@@ -142,13 +143,21 @@ class Configurator
 
     if (cmock[:unity_helper])
       cmock[:unity_helper] = [cmock[:unity_helper]] if cmock[:unity_helper].is_a? String
+      cmock[:includes] = [] if (cmock[:includes].nil?)
       cmock[:includes] += cmock[:unity_helper].map{|helper| File.basename(helper) }
       cmock[:includes].uniq!
     end
 
-    @runner_config = cmock.merge(@runner_config || config[:test_runner] || {})
-
     @cmock_config = cmock
+  end
+
+
+  def copy_vendor_defines(config)
+    # NOTE: To maintain any backwards compatibility following a refactoring of :defines: handling,
+    #       copy top-level vendor defines into the respective tool areas.
+    config[UNITY_SYM].store(:defines, config[:defines][UNITY_SYM])
+    config[CMOCK_SYM].store(:defines, config[:defines][CMOCK_SYM])
+    config[CEXCEPTION_SYM].store(:defines, config[:defines][CEXCEPTION_SYM])
   end
 
 
@@ -207,7 +216,7 @@ class Configurator
   end
 
 
-  def find_and_merge_plugins(config)
+  def find_and_merge_plugins(config, default_config)
     # Plugins must be loaded before generic path evaluation & magic that happen later.
     # So, perform path magic here as discrete step.
     config[:plugins][:load_paths].each do |path|
@@ -238,12 +247,12 @@ class Configurator
 
     # Load base configuration values (defaults) from YAML
     plugin_yml_defaults.each do |defaults|
-      @configurator_builder.populate_defaults( config, @yaml_wrapper.load(defaults) )
+      default_config.deep_merge!( @yaml_wrapper.load(defaults) )
     end
 
     # Load base configuration values (defaults) as hash from Ruby
     plugin_hash_defaults.each do |defaults|
-      @configurator_builder.populate_defaults( config, defaults )
+      @configurator_builder.populate_defaults( default_config, defaults )
     end
 
     # Merge plugin configuration values (like Ceedling project file)
@@ -252,7 +261,7 @@ class Configurator
 
       # Special handling for plugin paths
       if (plugin_config.include?( :paths ))
-        plugin_config[:paths].update(plugin_config[:paths]) do |k,v| 
+        plugin_config[:paths].update(plugin_config[:paths]) do |k,v|
           plugin_path = plugin.match(/(.*)[\/]config[\/]\w+\.yml/)[1]
           v.map {|vv| File.expand_path(vv.gsub!(/\$PLUGIN_PATH/,plugin_path)) }
         end
@@ -266,6 +275,22 @@ class Configurator
 
     # Add corresponding path to each plugin's configuration
     paths_hash.each_pair { |name, path| config[:plugins][name] = path }
+  end
+
+
+  def populate_config_with_defaults(config, default_config)
+    @configurator_builder.populate_defaults( config, default_config )
+  end
+
+
+  # unity cmock initializer
+  def populate_runner_config(config)
+    unity = config[:unity] || {}
+    @runner_config = unity.merge(config[:test_runner])
+
+    cmock = config[:cmock] || {}
+    @runner_config = cmock.merge(@runner_config)
+    @cmock_config = cmock
   end
 
 
@@ -453,7 +478,6 @@ class Configurator
     end
   end
 
-
   def insert_rake_plugins(plugins)
     plugins.each do |plugin|
       @project_config_hash[:project_rakefile_component_files] << plugin
@@ -476,7 +500,7 @@ class Configurator
         paths << container[key] if (key.to_s =~ /_path(s)?$/)
       end
     end
-    
+
     return paths.flatten()
   end
 
@@ -496,4 +520,3 @@ class Configurator
   end
 
 end
-

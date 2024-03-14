@@ -363,12 +363,6 @@ DEFAULT_CEEDLING_CONFIG = {
       :include => [],
     },
 
-    # unlike other top-level entries, environment's value is an array to preserve order
-    :environment => [
-      # when evaluated, this provides wider text field for rake task comments
-      {:rake_columns => '120'},
-    ],
-
     :defines => {
       :use_test_definition => false,
       :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
@@ -405,18 +399,15 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :unity => {
-      :vendor_path => CEEDLING_VENDOR,
       :defines => []
     },
 
     :cmock => {
-      :vendor_path => CEEDLING_VENDOR,
       :includes => [],
       :defines => []
     },
 
     :cexception => {
-      :vendor_path => CEEDLING_VENDOR,
       :defines => []
     },
 
@@ -445,6 +436,28 @@ DEFAULT_CEEDLING_CONFIG = {
     :release_linker    => { :arguments => [] },
     :release_assembler => { :arguments => [] },
     :release_dependencies_generator => { :arguments => [] },
+
+  }.freeze
+
+CEEDLING_CONFIG_INTERNAL = {
+
+    # unlike other top-level entries, environment's value is an array to preserve order
+    :environment => [
+      # when evaluated, this provides wider text field for rake task comments
+      {:rake_columns => '120'},
+    ],
+
+    :unity => {
+      :vendor_path => CEEDLING_VENDOR
+    },
+
+    :cmock => {
+      :vendor_path => CEEDLING_VENDOR
+    },
+
+    :cexception => {
+      :vendor_path => CEEDLING_VENDOR
+    },
 
     :plugins => {
       :load_paths => [],

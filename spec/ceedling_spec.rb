@@ -82,8 +82,8 @@ describe 'Ceedling' do
 
     it 'should load the project with the specified plugins enabled' do
       # create test state/variables
-      DEFAULT_CEEDLING_CONFIG[:plugins][:enabled].clear()
-      DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].clear()
+      CEEDLING_CONFIG_INTERNAL[:plugins][:enabled].clear()
+      CEEDLING_CONFIG_INTERNAL[:plugins][:load_paths].clear()
       spec_double = double('spec-double')
       rakefile_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
@@ -102,8 +102,8 @@ describe 'Ceedling' do
     it 'should set the project root if the root key is provided' do
       # create test state/variables
       Object.send(:remove_const, :PROJECT_ROOT)
-      DEFAULT_CEEDLING_CONFIG[:plugins][:enabled].clear()
-      DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].clear()
+      CEEDLING_CONFIG_INTERNAL[:plugins][:enabled].clear()
+      CEEDLING_CONFIG_INTERNAL[:plugins][:load_paths].clear()
       rakefile_path = File.expand_path( File.join( File.dirname(__FILE__), '..' ).gsub( 'spec','lib' ) )
       rakefile_path = File.join( rakefile_path, 'lib', 'ceedling', 'rakefile.rb' )
       # mocks/stubs/expected calls
@@ -120,8 +120,8 @@ describe 'Ceedling' do
   context 'register_plugin' do
     it 'should register a plugin' do
       # create test state/variables
-      DEFAULT_CEEDLING_CONFIG[:plugins][:enabled].clear()
-      DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].clear()
+      CEEDLING_CONFIG_INTERNAL[:plugins][:enabled].clear()
+      CEEDLING_CONFIG_INTERNAL[:plugins][:load_paths].clear()
       spec_double = double('spec-double')
       # mocks/stubs/expected calls
       expect(Gem::Specification).to receive(:find_by_name).with('ceedling-foo').and_return(spec_double)
@@ -130,14 +130,14 @@ describe 'Ceedling' do
       # execute method
       Ceedling.register_plugin('foo')
       # validate results
-      expect(DEFAULT_CEEDLING_CONFIG[:plugins][:enabled]).to eq ["foo"]
-      expect(DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths]).to eq(["dummy/path"])
+      expect(CEEDLING_CONFIG_INTERNAL[:plugins][:enabled]).to eq ["foo"]
+      expect(CEEDLING_CONFIG_INTERNAL[:plugins][:load_paths]).to eq(["dummy/path"])
     end
 
     it 'should register a plugin with an alternative prefix' do
       # create test state/variables
-      DEFAULT_CEEDLING_CONFIG[:plugins][:enabled].clear()
-      DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths].clear()
+      CEEDLING_CONFIG_INTERNAL[:plugins][:enabled].clear()
+      CEEDLING_CONFIG_INTERNAL[:plugins][:load_paths].clear()
       spec_double = double('spec-double')
       # mocks/stubs/expected calls
       expect(Gem::Specification).to receive(:find_by_name).with('prefix-foo').and_return(spec_double)
@@ -146,9 +146,8 @@ describe 'Ceedling' do
       # execute method
       Ceedling.register_plugin('foo','prefix-')
       # validate results
-      expect(DEFAULT_CEEDLING_CONFIG[:plugins][:enabled]).to eq(["foo"])
-      expect(DEFAULT_CEEDLING_CONFIG[:plugins][:load_paths]).to eq(["dummy/path"])
+      expect(CEEDLING_CONFIG_INTERNAL[:plugins][:enabled]).to eq(["foo"])
+      expect(CEEDLING_CONFIG_INTERNAL[:plugins][:load_paths]).to eq(["dummy/path"])
     end
   end
 end
-
