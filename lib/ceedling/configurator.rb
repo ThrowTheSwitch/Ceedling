@@ -9,13 +9,11 @@ require 'deep_merge'
 class Configurator
 
   attr_reader :project_config_hash, :programmatic_plugins, :rake_plugins
-  attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
+  attr_accessor :project_logging, :sanity_checks
 
   constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper) do
-    @project_logging   = false
-    @project_debug     = false
-    @project_verbosity = Verbosity::NORMAL
-    @sanity_checks     = TestResultsSanityChecks::NORMAL
+    @project_logging = false
+    @sanity_checks   = TestResultsSanityChecks::NORMAL
   end
 
   def setup
@@ -131,7 +129,8 @@ class Configurator
 
     cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
 
-    cmock[:verbosity] = @project_verbosity                                                  if (cmock[:verbosity].nil?)
+    # Use dynamically defined accessor
+    cmock[:verbosity] = project_verbosity()                                                 if (cmock[:verbosity].nil?)
 
     cmock[:plugins] = []                             if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym }
@@ -268,23 +267,37 @@ class Configurator
   end
 
 
+  # Process environment variables set in configuration file
+  # (Each entry beneath :environment is another hash)
   def eval_environment_variables(config)
     config[:environment].each do |hash|
-      key   = hash.keys[0]
-      value = hash[key]
+      key   = hash.keys[0] # Get first (should be only) environment variable entry
+      value = hash[key]    # Get associated value
       items = []
 
+      # Special case handling for :path environment variable entry
+      # File::PATH_SEPARATOR => ':' (Unix-ish) or ';' (Windows)
       interstitial = ((key == :path) ? File::PATH_SEPARATOR : '')
+
+      # Create an array container for the value of this entry
+      #  - If the value is an array, get it
+      #  - Otherwise, place value in a single item array
       items = ((value.class == Array) ? hash[key] : [value])
 
+      # Process value array
       items.each do |item|
+        # Process each item for Ruby string replacement
         if item.is_a? String and item =~ RUBY_STRING_REPLACEMENT_PATTERN
           item.replace( @system_wrapper.module_eval( item ) )
         end
       end
 
+      # Join any value items (become a flattened string)
+      #  - With path separator if the key was :path
+      #  - With nothing otherwise
       hash[key] = items.join( interstitial )
 
+      # Set the environment variable for our session
       @system_wrapper.env_set( key.to_s.upcase, hash[key] )
     end
   end

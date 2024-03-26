@@ -1,12 +1,8 @@
 require 'fileutils'
 
-# get directory containing this here file, back up one directory, and expand to full path
-CEEDLING_ROOT    = File.expand_path(File.dirname(__FILE__) + '/../..')
-CEEDLING_LIB     = File.join(CEEDLING_ROOT, 'lib')
+# CEEDLING_ROOT defined at startup
 CEEDLING_VENDOR  = File.join(CEEDLING_ROOT, 'vendor')
-CEEDLING_RELEASE = File.join(CEEDLING_ROOT, 'release')
 
-$LOAD_PATH.unshift( CEEDLING_LIB )
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'unity/auto') )
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'diy/lib') )
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'cmock/lib') )
@@ -16,12 +12,8 @@ require 'rake'
 # Let's make sure we remember the task descriptions in case we need them
 Rake::TaskManager.record_task_metadata = true
 
-require 'diy'
-require 'constructor'
-require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/reportinator'
-require 'deep_merge'
 
 def log_runtime(run, start_time_s, end_time_s)
   return if !defined?(PROJECT_VERBOSITY)
@@ -51,20 +43,22 @@ begin
   # Redefine start_time with actual timestamp before set up begins
   start_time = SystemWrapper.time_stopwatch_s()
 
-  # construct all our objects
-  # ensure load path contains all libraries needed first
-  lib_ceedling_load_path_temp = File.join(CEEDLING_LIB, 'ceedling')
-  $LOAD_PATH.unshift( lib_ceedling_load_path_temp )
-  @ceedling = DIY::Context.from_yaml( File.read( File.join(lib_ceedling_load_path_temp, 'objects.yml') ) )
+  # Construct all objects
+  #  1. Add full path to $LOAD_PATH to simplify objects.yml
+  #  2. Perform object construction + dependency injection
+  #  3. Remove full path from $LOAD_PATH
+  $LOAD_PATH.unshift( CEEDLING_LIB )
+  @ceedling = DIY::Context.from_yaml( File.read( File.join( CEEDLING_LIB, 'objects.yml' ) ) )
   @ceedling.build_everything
-  # now that all objects are built, delete 'lib/ceedling' from load path
-  $LOAD_PATH.delete(lib_ceedling_load_path_temp)
-  # one-stop shopping for all our setup and such after construction
+  $LOAD_PATH.delete( CEEDLING_LIB )
+
+  # One-stop shopping for all our setup and such after construction
   @ceedling[:setupinator].ceedling = @ceedling
 
-  project_config = @ceedling[:setupinator].load_project_files
-
-  @ceedling[:setupinator].do_setup( project_config )
+  @ceedling[:setupinator].do_setup( 
+    config: CEEDLING_APPCFG[:project_config],
+    log_filepath: CEEDLING_APPCFG[:log_filepath]
+  )
 
   log_runtime( 'set up', start_time, SystemWrapper.time_stopwatch_s() )
 

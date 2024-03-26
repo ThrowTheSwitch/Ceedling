@@ -36,13 +36,6 @@ file_path_collection_utils:
   compose:
     - file_wrapper
 
-project_file_loadinator:
-  compose:
-    - yaml_wrapper
-    - streaminator
-    - system_wrapper
-    - file_wrapper
-
 unity_utils:
   compose:
      - configurator

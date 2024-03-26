@@ -1,0 +1,43 @@
+
+# Loaded from ceedling/lib
+file_wrapper:
+
+# Loaded from ceedling/lib
+yaml_wrapper:
+
+# Loaded from ceedling/lib
+config_walkinator:
+
+logger:
+
+# Separation of logic from CLI user interface
+cli_runner:
+  compose:
+    - yaml_wrapper
+    - file_wrapper
+    - config_walkinator
+    - logger
+
+path_validator:
+  compose:
+    - file_wrapper
+    - logger
+
+mixinator:
+  compose:
+    - path_validator
+    - yaml_wrapper
+    - logger
+
+projectinator:
+  compose:
+    - file_wrapper
+    - path_validator
+    - yaml_wrapper
+    - logger
+
+configinator:
+  compose:
+    - config_walkinator
+    - projectinator
+    - mixinator

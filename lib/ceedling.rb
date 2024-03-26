@@ -27,8 +27,8 @@ module Ceedling
     File.join( self.location, 'lib', 'ceedling', 'rakefile.rb' )
   end
 
-  def self.load_ceedling_rakefile()
-    load "#{self.rakefile}"
+  def self.load_rakefile()
+    require "#{self.rakefile}"
   end
 
 end

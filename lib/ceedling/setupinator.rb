@@ -18,13 +18,8 @@ class Setupinator
   end
 
 
-  def load_project_files
-    @ceedling[:project_file_loadinator].find_project_files
-    return @ceedling[:project_file_loadinator].load_project_config
-  end
-
-  def do_setup(config_hash)
-    @config_hash = config_hash
+  def do_setup(config:, log_filepath: )
+    @config_hash = config
 
     # Load up all the constants and accessors our rake files, objects, & external scripts will need.
     # Note: Configurator modifies the cmock section of the hash with a couple defaults to tie 
@@ -52,7 +47,10 @@ class Setupinator
     end
     
     @ceedling[:plugin_reportinator].set_system_objects( @ceedling )
-    @ceedling[:loginator].project_log_filepath = form_log_filepath()
+
+    # Logging set up
+    @ceedling[:loginator].set_logfile( form_log_filepath( log_filepath ) )
+    @ceedling[:configurator].project_logging = @ceedling[:loginator].project_logging
   end
 
   def reset_defaults(config_hash)
@@ -63,23 +61,17 @@ class Setupinator
 
 private
 
-  def form_log_filepath()
-    # Various project files and options files can combine to create different configurations.
-    # Different configurations means different behaviors.
-    # As these variations are easy to run from the command line, a resulting log file 
-    # should differentiate its context.
-    # We do this by concatenating config/options names into a log filename.
+  def form_log_filepath( log_filepath )
+    # Bail out early if logging is disabled
+    return log_filepath if log_filepath.empty?()
 
-    config_files = ['project']
+    # If there's no directory path, put named log file in default location
+    if File.dirname( log_filepath ).empty?()
+      return File.join( @ceedling[:configurator].project_log_path, log_filepath )
+    end
 
-    # config_files << @ceedling[:project_file_loadinator].main_file
-    # config_files << @ceedling[:project_file_loadinator].user_file
-    # config_files.compact! # Remove empties
-    
-    # Drop component file name extensions and smoosh together with underscores
-    log_name = config_files.map{ |file| file.ext('') }.join( '_' )
-
-    return File.join( @ceedling[:configurator].project_log_path, log_name.ext('.log') )
+    # Otherwise, log filepath includes a directory (that's already been created)
+    return log_filepath
   end
 
 end
