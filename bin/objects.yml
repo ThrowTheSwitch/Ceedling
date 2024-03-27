@@ -11,6 +11,12 @@ config_walkinator:
 logger:
 
 # Separation of logic from CLI user interface
+cli_handler:
+  compose:
+    - configinator
+    - cli_runner
+    - logger
+
 cli_runner:
   compose:
     - yaml_wrapper

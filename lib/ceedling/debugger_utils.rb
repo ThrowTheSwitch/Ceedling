@@ -69,13 +69,13 @@ class DebuggerUtils
 
     # Clean collected test case names
     # Filter tests which contain test_case_name passed by `--test_case` argument
-    if ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
-      test_runner_tc.delete_if { |i| !(i =~ /#{ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']}/) }
+    if !@configurator.include_test_case.empty?
+      test_runner_tc.delete_if { |i| !(i =~ /#{@configurator.include_test_case}/) }
     end
 
     # Filter tests which contain test_case_name passed by `--exclude_test_case` argument
-    if ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME']
-      test_runner_tc.delete_if { |i| i =~ /#{ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME']}/ }
+    if !@configurator.exclude_test_case.empty?
+      test_runner_tc.delete_if { |i| i =~ /#{@configurator.exclude_test_case}/ }
     end
 
     test_runner_tc

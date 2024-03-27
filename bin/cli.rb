@@ -30,6 +30,8 @@ module CeedlingTasks
       super(args, config, options)
 
       @app_cfg = options[:app_cfg]
+      @handler = options[:objects][:cli_handler]
+
       @configinator = options[:objects][:configinator]
       @runner = options[:objects][:cli_runner]
       @logger = options[:objects][:logger]
@@ -38,31 +40,7 @@ module CeedlingTasks
     # Override Thor help to list Rake tasks as well
     desc "help [COMMAND]", "Describe available commands and list build operations"
     def help(command=nil)
-      # If help requested for a command, show it and skip listing build tasks
-      if !command.nil?
-        super(command)
-        return
-      end
-
-      # Load configuration using default options / environment variables
-      # Thor does not allow options added to `help`
-      config = @configinator.loadinate()
-
-      # Save reference to loaded configuration
-      @app_cfg[:project_config] = config
-
-      @runner.set_verbosity() # Default to normal
-
-      @runner.load_ceedling(
-        config: config,
-        which: @app_cfg[:which_ceedling],
-        default_tasks: @app_cfg[:default_tasks]
-      )
-
-      super(command)
-
-      @logger.log( 'Build operations (from project configuration):' )
-      @runner.print_rake_tasks()
+      @handler.help( command, @app_cfg ) { |command| super(command) }
     end
 
     desc "new PROJECT_NAME", "create a new ceedling project"
@@ -119,36 +97,7 @@ module CeedlingTasks
     method_option :test_case, :type => :string, :default => ''
     method_option :exclude_test_case, :type => :string, :default => ''
     def build(*tasks)
-      config = @configinator.loadinate( filepath: options[:project], mixins: options[:mixin] )
-
-      default_tasks = @configinator.default_tasks( config: config, default_tasks: @app_cfg[:default_tasks] )
-
-      # Test case filters
-      # ENV['CEEDLING_INCLUDE_TEST_CASE_NAME'] = $1
-      # ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'] = $1
-      @runner.process_testcase_filters(
-        config: config,
-        include: options[:test_case],
-        exclude: options[:exclude_test_case],
-        tasks: tasks,
-        default_tasks: default_tasks
-      )
-
-      log_filepath = @runner.process_logging( options[:log], options[:logfile] )
-
-      # Save references
-      @app_cfg[:project_config] = config
-      @app_cfg[:log_filepath] = log_filepath
-
-      @runner.set_verbosity( options[:verbosity] )
-
-      @runner.load_ceedling( 
-        config: config,
-        which: @app_cfg[:which_ceedling],
-        default_tasks: default_tasks
-      )
-
-      @runner.run_rake_tasks( tasks )
+      @handler.build( tasks, @app_cfg, options )
     end
 
     desc "dumpconfig FILEPATH", "Assemble project configuration and write to a YAML file"

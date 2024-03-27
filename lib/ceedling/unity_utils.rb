@@ -2,16 +2,10 @@
 # Store functions to enable test execution of single test case under test file
 # and additional warning definitions
 class UnityUtils
-  attr_reader :test_runner_disabled_replay, :arg_option_map
-  attr_accessor :test_case_incl, :test_case_excl, :not_supported
 
-  constructor :configurator
+  constructor :configurator, :streaminator
 
   def setup
-    @test_runner_disabled_replay = "NOTICE: \n" \
-     "The option[s]: %<opt>.s \ncannot be applied." \
-     'To enable it, please add `:cmdline_args` under' \
-     ' :test_runner option in your project.yml.'
     @test_case_incl = ''
     @test_case_excl = ''
     @not_supported = ''
@@ -67,29 +61,27 @@ class UnityUtils
 
   # Parse passed by user arguments
   def create_test_runner_additional_args
-    if ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
+    if !@configurator.include_test_case.empty?
       if @configurator.project_config_hash[:test_runner_cmdline_args]
         @test_case_incl += additional_test_run_args(
-          ENV['CEEDLING_INCLUDE_TEST_CASE_NAME'],
+          @configurator.include_test_case,
           'test_case')
       else
         @not_supported += "\n\t--test_case"
       end
     end
 
-    if ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME']
+    if !@configurator.exclude_test_case.empty?
       if @configurator.project_config_hash[:test_runner_cmdline_args]
         @test_case_excl += additional_test_run_args(
-          ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'],
+          @configurator.exclude_test_case,
           'exclude_test_case')
       else
         @not_supported += "\n\t--exclude_test_case"
       end
     end
 
-    if ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'] || ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
-      print_warning_about_not_enabled_cmdline_args
-    end
+    print_warning_about_not_enabled_cmdline_args() unless @not_supported.empty?
   end
 
   # Return UNITY_USE_COMMAND_LINE_ARGS define required by Unity to
@@ -100,9 +92,12 @@ class UnityUtils
     @configurator.project_config_hash[:test_runner_cmdline_args] ? ['UNITY_USE_COMMAND_LINE_ARGS'] : []
   end
 
-  # Print on output console warning about lack of support for single test run
-  # if cmdline_args is not set to true in project.yml file, that
-  def print_warning_about_not_enabled_cmdline_args
-    puts(format(@test_runner_disabled_replay, opt: @not_supported)) unless @not_supported.empty?
+  # Log warning about lack of support for single test run
+  # if cmdline_args is not enabled in project configuration
+  def print_warning_about_not_enabled_cmdline_args()
+    msg = "WARNING: Option[s]: %<opt>.s cannot be used by test runner. " +
+          "Enable :test_runner ↳ :cmdline_args in your project configuration."
+
+    @streaminator.stderr_puts( format(msg, opt: @not_supported), Verbosity::COMPLAIN )
   end
 end

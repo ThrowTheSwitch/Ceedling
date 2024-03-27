@@ -141,7 +141,7 @@ class CliRunner
   end
 
 
-  def load_ceedling(config:, which:, default_tasks:)
+  def load_ceedling(config:, which:, default_tasks:[])
     # Determine which Ceedling we're running
     #  1. Copy the value passed in (most likely a default determined in the first moments of startup)
     #  2. If a :project ↳ :which_ceedling entry exists in the config, use it instead
@@ -158,11 +158,12 @@ class CliRunner
     end
 
     # Set default tasks
-    Rake::Task.define_task(:default => default_tasks)
+    Rake::Task.define_task(:default => default_tasks) if !default_tasks.empty?
 
     # Load Ceedling
     Ceedling.load_rakefile()
   end
+
 
   def process_testcase_filters(config:, include:, exclude:, tasks:, default_tasks:)
     # Do nothing if no test case filters
@@ -228,7 +229,7 @@ class CliRunner
 
 
   # Set global consts for verbosity and debug
-  def set_verbosity(verbosity='')
+  def set_verbosity(verbosity=nil)
     verbosity = verbosity.nil? ? Verbosity::NORMAL : VERBOSITY_OPTIONS[verbosity.to_sym()]
 
     # Create global constant PROJECT_VERBOSITY

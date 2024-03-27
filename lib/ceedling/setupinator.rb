@@ -18,8 +18,12 @@ class Setupinator
   end
 
 
-  def do_setup(config:, log_filepath: )
-    @config_hash = config
+  def do_setup( app_cfg )
+    @config_hash = app_cfg[:project_config]
+    log_filepath = app_cfg[:log_filepath]
+
+    @ceedling[:configurator].include_test_case = app_cfg[:include_test_case]
+    @ceedling[:configurator].exclude_test_case = app_cfg[:exclude_test_case]
 
     # Load up all the constants and accessors our rake files, objects, & external scripts will need.
     # Note: Configurator modifies the cmock section of the hash with a couple defaults to tie 

@@ -55,10 +55,7 @@ begin
   # One-stop shopping for all our setup and such after construction
   @ceedling[:setupinator].ceedling = @ceedling
 
-  @ceedling[:setupinator].do_setup( 
-    config: CEEDLING_APPCFG[:project_config],
-    log_filepath: CEEDLING_APPCFG[:log_filepath]
-  )
+  @ceedling[:setupinator].do_setup( CEEDLING_APPCFG )
 
   log_runtime( 'set up', start_time, SystemWrapper.time_stopwatch_s() )
 
