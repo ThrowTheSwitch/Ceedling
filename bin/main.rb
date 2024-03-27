@@ -13,7 +13,7 @@ begin
   #  3. Remove paths from $LOAD_PATH
   $LOAD_PATH.unshift( CEEDLING_LIB )
   objects = DIY::Context.from_yaml( File.read( File.join( CEEDLING_BIN, 'objects.yml' ) ) )
-  objects.build_everything
+  objects.build_everything()
   $LOAD_PATH.delete( CEEDLING_BIN ) # Loaded in top-level `ceedling` script
   $LOAD_PATH.delete( CEEDLING_LIB )
 
@@ -27,7 +27,6 @@ begin
 
   # Otherwise, run command line args through Thor
   elsif (ARGV.size() > 0)
-    CeedlingTasks::CLI.source_root( CEEDLING_ROOT )
     CeedlingTasks::CLI.start( ARGV,
       {
         :app_cfg => CEEDLING_APPCFG,
@@ -36,8 +35,8 @@ begin
     )
   end
 
-# Thor application CLI did not handle command line arguments
-# Pass along ARGV to Rake instead
+# Thor application CLI did not handle command line arguments.
+# Pass along ARGV to Rake instead.
 rescue Thor::UndefinedCommandError
   objects[:cli_handler].rake_exec( app_cfg: CEEDLING_APPCFG, tasks: _ARGV )
 

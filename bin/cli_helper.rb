@@ -142,6 +142,27 @@ class CliHelper
     File.open( filepath, 'w' ) {|out| YAML.dump( _config, out )}
   end
 
+
+  def lookup_example_projects(examples_path)
+    examples = []
+
+    # Examples directory listing glob
+    glob = File.join( examples_path, '*' )
+
+    @file_wrapper.directory_listing(glob).each do |path|
+      # Skip anything that's not a directory
+      next if !@file_wrapper.directory?( path )
+
+      # Split the directory path into elements, indexing the last one
+      project = (path.split( File::SEPARATOR ))[-1]
+
+      examples << project
+    end
+
+    return examples
+  end
+
+
   ### Private ###
 
   private

@@ -8,6 +8,8 @@ yaml_wrapper:
 # Loaded from ceedling/lib
 config_walkinator:
 
+actions_wrapper:
+
 logger:
 
 # Separation of logic from CLI user interface
@@ -16,6 +18,7 @@ cli_handler:
     - configinator
     - cli_helper
     - yaml_wrapper
+    - actions_wrapper
     - logger
 
 cli_helper:

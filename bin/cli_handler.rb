@@ -1,11 +1,12 @@
 
 class CliHandler
 
-  constructor :configinator, :cli_helper, :yaml_wrapper, :logger
+  constructor :configinator, :cli_helper, :yaml_wrapper, :actions_wrapper, :logger
 
   def setup()
-    # Alias
+    # Aliases
     @helper = @cli_helper
+    @actions = @actions_wrapper
   end
 
   def app_help(app_cfg, command, &thor_help)
@@ -18,14 +19,10 @@ class CliHandler
 
     # Call Rake task listing method
     # Provide block to execute after Ceedling is loaded before tasks are listed
-    rake_tasks( app_cfg: app_cfg ) { callback.call( command ) }
+    rake_tasks( app_cfg: app_cfg ) { thor_help.call( command ) }
   end
 
   def copy_assets_and_create_structure(name, silent=false, force=false, options = {})
-
-    puts "WARNING: --no_docs deprecated. It is now the default. Specify -docs if you want docs installed." if (options[:no_docs] || options[:nodocs])
-    puts "WARNING: --as_gem deprecated. It is now the default. Specify -local if you want ceedling installed to this project." if (options[:as_gem] || options[:asgem])
-    puts "WARNING: --with_ignore deprecated. It is now called -gitignore" if (options[:with_ignore] || options[:withignore])
 
     use_docs     = options[:docs] || false
     use_configs  = !(options[:no_configs] || options[:noconfigs] || false)
@@ -54,8 +51,7 @@ class CliHandler
     end
 
     # Genarate gitkeep in test support path
-    FileUtils.touch(File.join(test_support_path, '.gitkeep')) unless \
-      test_support_path.empty?
+    FileUtils.touch(File.join(test_support_path, '.gitkeep')) unless test_support_path.empty?
 
     # If documentation requested, create a place to dump them and do so
     doc_path = ''
@@ -243,13 +239,50 @@ class CliHandler
     @helper.print_rake_tasks()
   end
 
+
+  def create_example(examples_path, options, name, dest)
+    examples = @helper.lookup_example_projects( examples_path )
+
+    if !examples.include?( name )
+      raise( "No example project '#{name}' could be found" )
+    end
+
+    dest = dest.nil? ? name : File.join( dest, name )
+
+    # copy_assets_and_create_structure(dest, true, false, {:local=>true, :docs=>options[:docs]})
+
+    dest_src      = File.join( dest, 'src' )
+    dest_test     = File.join( dest, 'test' )
+    dest_project  = File.join( dest, 'project.yml' )
+
+    @actions._directory( "examples/#{name}/src", dest_src )
+    @actions._directory( "examples/#{name}/test", dest_test )
+    @actions._copy_file( "examples/#{name}/project.yml", dest_project )
+
+    @logger.log( "\nExample project '#{name}' created at #{dest}/.\n" )
+  end
+
+
+  def list_examples(examples_path)
+    examples = @helper.lookup_example_projects( examples_path )
+
+    raise( "No examples projects found") if examples.empty?
+
+    @logger.log( "\nAvailable exmple projects:" )
+
+    examples.each {|example| @logger.log( " - #{example}" ) }
+
+    @logger.log( "\n" )
+  end
+
+
   def version()
     require 'ceedling/version'
     version = <<~VERSION
-        Ceedling:: #{Ceedling::Version::CEEDLING}
-           CMock:: #{Ceedling::Version::CMOCK}
-           Unity:: #{Ceedling::Version::UNITY}
-      CException:: #{Ceedling::Version::CEXCEPTION}
+        Ceedling => #{Ceedling::Version::CEEDLING}
+           CMock => #{Ceedling::Version::CMOCK}
+           Unity => #{Ceedling::Version::UNITY}
+      CException => #{Ceedling::Version::CEXCEPTION}
     VERSION
     @logger.log( version )
   end

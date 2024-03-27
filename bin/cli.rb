@@ -20,6 +20,9 @@ module PermissiveCLI
 end
 
 module CeedlingTasks
+
+  CEEDLING_EXAMPLES_PATH = File.join( CEEDLING_ROOT, 'examples' )
+
   class CLI < Thor
     include Thor::Actions
     extend PermissiveCLI
@@ -47,26 +50,18 @@ module CeedlingTasks
     end
 
 
-    desc "new PROJECT_NAME", "Create a new project"
-    method_option :docs, :type => :boolean, :default => false, :desc => "Add docs in project vendor directory"
-    method_option :local, :type => :boolean, :default => false, :desc => "Create a copy of Ceedling in the project vendor directory"
-    method_option :gitignore, :type => :boolean, :default => false, :desc => "Create a gitignore file for ignoring ceedling generated files"
+    desc "new NAME", "Create a new project"
+    method_option :docs, :type => :boolean, :default => false, :desc => "Copy docs to project vendor/ path"
+    method_option :local, :type => :boolean, :default => false, :desc => "Copy Ceedling to project vendor/ path"
+    method_option :gitignore, :type => :boolean, :default => false, :desc => "Create .gitignore file to ignore Ceedling-generated files"
     method_option :no_configs, :type => :boolean, :default => false, :desc => "Don't install starter configuration files"
     method_option :noconfigs, :type => :boolean, :default => false
-
-    #deprecated:
-    method_option :no_docs, :type => :boolean, :default => false
-    method_option :nodocs, :type => :boolean, :default => false
-    method_option :as_gem, :type => :boolean, :default => false
-    method_option :asgem, :type => :boolean, :default => false
-    method_option :with_ignore, :type => :boolean, :default => false
-    method_option :withignore, :type => :boolean, :default => false
     def new(name, silent = false)
       @handler.copy_assets_and_create_structure(name, silent, false, options)
     end
 
 
-    desc "upgrade PROJECT_NAME", "Upgrade ceedling for a project (not req'd if gem used)"
+    desc "upgrade NAME", "Upgrade ceedling for a project (not req'd if gem used)"
     def upgrade(name, silent = false)
       as_local = true
       yaml_path = File.join(name, "project.yml")
@@ -95,7 +90,7 @@ module CeedlingTasks
     end
 
 
-    desc "dumpconfig FILEPATH [SECTIONS]", "Process project configuration and dump to to a YAML file"
+    desc "dumpconfig FILEPATH [SECTIONS]", "Process project configuration and dump compelete result to a YAML file"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     def dumpconfig(filepath, *sections)
@@ -111,34 +106,17 @@ module CeedlingTasks
     end
 
 
-    desc "examples", "list available example projects"
+    desc "examples", "List available example projects"
     def examples()
-      puts "Available sample projects:"
-      FileUtils.cd(File.join(CEEDLING_ROOT, "examples")) do
-        Dir["*"].each {|proj| puts "  #{proj}"}
-      end
+      @handler.list_examples( CEEDLING_EXAMPLES_PATH )
     end
 
-    desc "example PROJ_NAME [DEST]", "new specified example project (in DEST, if specified)"
-    def example(proj_name, dest=nil)
-      if dest.nil? then dest = proj_name end
 
-      copy_assets_and_create_structure(dest, true, false, {:local=>true, :docs=>true})
-
-      dest_src      = File.join(dest,'src')
-      dest_test     = File.join(dest,'test')
-      dest_project  = File.join(dest,'project.yml')
-
-      directory "examples/#{proj_name}/src",         dest_src
-      directory "examples/#{proj_name}/test",        dest_test
-      remove_file dest_project
-      copy_file "examples/#{proj_name}/project.yml", dest_project
-
-      puts "\n"
-      puts "Example project '#{proj_name}' created!"
-      puts " - Tool documentation is located in vendor/ceedling/docs"
-      puts " - Execute 'ceedling help' to view available test & build tasks"
-      puts ''
+    desc "example NAME [DEST]", "Create named example project (in optional DEST path)"
+    method_option :local, :type => :boolean, :default => false, :desc => "Copy Ceedling to project vendor/ path"
+    method_option :docs, :type => :boolean, :default => false, :desc => "Copy docs into project subdirectory"
+    def example(name, dest=nil)
+      @handler.create_example( CEEDLING_EXAMPLES_PATH, options, name, dest )
     end
 
 
