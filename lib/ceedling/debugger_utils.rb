@@ -63,7 +63,7 @@ class DebuggerUtils
   # @return Array - list of the test_cases defined in test_file_runner
   def collect_list_of_test_cases(command)
     all_test_names = command.clone 
-    all_test_names[:line] += @unity_utils.additional_test_run_args('', 'list_test_cases')
+    all_test_names[:line] += @unity_utils.additional_test_run_args( '', :list_test_cases )
     test_list = @tool_executor.exec(all_test_names)
     test_runner_tc = test_list[:output].split("\n").drop(1)
 
@@ -117,7 +117,7 @@ class DebuggerUtils
     test_case_list_to_execute = collect_list_of_test_cases(@command_line)
     test_case_list_to_execute.each do |test_case_name|
       test_run_cmd = @command_line.clone
-      test_run_cmd_with_args = test_run_cmd[:line] + @unity_utils.additional_test_run_args(test_case_name, 'test_case')
+      test_run_cmd_with_args = test_run_cmd[:line] + @unity_utils.additional_test_run_args( test_case_name, :test_case )
       test_output, exec_time = collect_cmd_output_with_gdb(test_run_cmd, test_run_cmd_with_args, test_case_name)
 
       # Concatenate execution time between tests

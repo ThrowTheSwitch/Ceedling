@@ -390,6 +390,7 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :test_runner => {
+      :cmdline_args => false,
       :includes => [],
       :file_suffix => '_runner',
     },

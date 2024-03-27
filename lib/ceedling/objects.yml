@@ -39,7 +39,6 @@ file_path_collection_utils:
 unity_utils:
   compose:
      - configurator
-     - streaminator
 
 debugger_utils:
   compose:
