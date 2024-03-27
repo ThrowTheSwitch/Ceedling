@@ -23,10 +23,9 @@ class Configurator
     # Runner config reference to provide to runner generation
     @runner_config = {} # Default empty hash, replaced by reference below
 
-    # note: project_config_hash is an instance variable so constants and accessors created
+    # Note: project_config_hash is an instance variable so constants and accessors created
     # in eval() statements in build() have something of proper scope and persistence to reference
     @project_config_hash = {}
-    @project_config_hash_backup = {}
 
     @programmatic_plugins = []
     @rake_plugins   = []
@@ -41,17 +40,6 @@ class Configurator
 
   def replace_flattened_config(config)
     @project_config_hash.merge!(config)
-    @configurator_setup.build_constants_and_accessors(@project_config_hash, binding())
-  end
-
-
-  def store_config
-    @project_config_hash_backup = @project_config_hash.clone
-  end
-
-
-  def restore_config
-    @project_config_hash = @project_config_hash_backup
     @configurator_setup.build_constants_and_accessors(@project_config_hash, binding())
   end
 
@@ -389,7 +377,6 @@ class Configurator
     @configurator_setup.build_project_collections( flattened_config )
 
     @project_config_hash = flattened_config.clone
-    store_config()
 
     @configurator_setup.build_constants_and_accessors( flattened_config, binding() )
 
@@ -416,9 +403,6 @@ class Configurator
 
     # Update global constant
     @configurator_builder.build_global_constant(elem, value)
-
-    # Update backup config
-    store_config
   end
 
 
@@ -432,7 +416,6 @@ class Configurator
 
     # merge our flattened hash with built hash from previous build
     @project_config_hash.deep_merge!( config_more_flattened )
-    store_config()
 
     # create more constants and accessors
     @configurator_setup.build_constants_and_accessors(config_more_flattened, binding())
