@@ -14,12 +14,12 @@ logger:
 cli_handler:
   compose:
     - configinator
-    - cli_runner
+    - cli_helper
+    - yaml_wrapper
     - logger
 
-cli_runner:
+cli_helper:
   compose:
-    - yaml_wrapper
     - file_wrapper
     - config_walkinator
     - logger

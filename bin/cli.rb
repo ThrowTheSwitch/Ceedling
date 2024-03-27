@@ -1,6 +1,6 @@
 require 'thor'
 
-# Special handler to prevent Thor from barfing on unrecognized Rake tasks
+# Special handler to prevent Thor from barfing on unrecognized CLI arguments (i.e. Rake tasks)
 module PermissiveCLI
   def self.extended(base)
     super
@@ -11,7 +11,11 @@ module PermissiveCLI
     config[:shell] ||= Thor::Base.shell.new
     dispatch(nil, args, nil, config)
   rescue Thor::UndefinedCommandError
-    # Eat unhandled command errors so we can pass on to more command line processing
+    # Eat unhandled command errors
+    #  - No error message
+    #  - No `exit()`
+    #  - Re-raise to allow Rake task handling
+    raise
   end
 end
 
@@ -23,6 +27,7 @@ module CeedlingTasks
     # Ensure we bail out with non-zero exit code if the command line is wrong
     def self.exit_on_failure?() true end
 
+    # Allow `build` to be omitted in command line
     default_task :build
 
     # Intercept construction to extract configuration and injected dependencies
@@ -31,19 +36,18 @@ module CeedlingTasks
 
       @app_cfg = options[:app_cfg]
       @handler = options[:objects][:cli_handler]
-
-      @configinator = options[:objects][:configinator]
-      @runner = options[:objects][:cli_runner]
-      @logger = options[:objects][:logger]
     end
+
 
     # Override Thor help to list Rake tasks as well
     desc "help [COMMAND]", "Describe available commands and list build operations"
     def help(command=nil)
-      @handler.help( command, @app_cfg ) { |command| super(command) }
+      # Call application help with block to execute Thor's built-in help after Ceedling loads
+      @handler.app_help( @app_cfg, command ) { |command| super(command) }
     end
 
-    desc "new PROJECT_NAME", "create a new ceedling project"
+
+    desc "new PROJECT_NAME", "Create a new project"
     method_option :docs, :type => :boolean, :default => false, :desc => "Add docs in project vendor directory"
     method_option :local, :type => :boolean, :default => false, :desc => "Create a copy of Ceedling in the project vendor directory"
     method_option :gitignore, :type => :boolean, :default => false, :desc => "Create a gitignore file for ignoring ceedling generated files"
@@ -58,10 +62,11 @@ module CeedlingTasks
     method_option :with_ignore, :type => :boolean, :default => false
     method_option :withignore, :type => :boolean, :default => false
     def new(name, silent = false)
-      @runner.copy_assets_and_create_structure(name, silent, false, options)
+      @handler.copy_assets_and_create_structure(name, silent, false, options)
     end
 
-    desc "upgrade PROJECT_NAME", "upgrade ceedling for a project (not req'd if gem used)"
+
+    desc "upgrade PROJECT_NAME", "Upgrade ceedling for a project (not req'd if gem used)"
     def upgrade(name, silent = false)
       as_local = true
       yaml_path = File.join(name, "project.yml")
@@ -72,67 +77,39 @@ module CeedlingTasks
         raise "ERROR: Could not find valid project file '#{yaml_path}'"
       end
       found_docs = File.exist?( File.join(name, "docs", "CeedlingPacket.md") )
-      @runner.copy_assets_and_create_structure(name, silent, true, {:upgrade => true, :no_configs => true, :local => as_local, :docs => found_docs})
+      @handler.copy_assets_and_create_structure(name, silent, true, {:upgrade => true, :no_configs => true, :local => as_local, :docs => found_docs})
     end
 
-
-    # desc "verbosity", "List verbosity or set with flags"
-    # method_option :level, :enum => ['silent', 'errors', 'warnings', 'normal', 'obnoxious', 'debug'], :aliases => ['-l']
-    # method_option :num, :type => :numeric, :enum => [0, 1, 2, 3, 4, 5], :aliases => ['-n']
-    # def verbosity()
-    #   puts 'Verbosity'
-    #   puts options
-
-    #   if options.empty?
-    #     puts 'Some options'
-    #   end
-    # end
 
     desc "build TASKS", "Run build tasks"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :verbosity, :enum => ['silent', 'errors', 'warnings', 'normal', 'obnoxious', 'debug'], :aliases => ['-v']
+    # method_option :num, :type => :numeric, :enum => [0, 1, 2, 3, 4, 5], :aliases => ['-n']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     method_option :log, :type => :boolean, :default => false, :aliases => ['-l']
     method_option :logfile, :type => :string, :default => ''
     method_option :test_case, :type => :string, :default => ''
     method_option :exclude_test_case, :type => :string, :default => ''
     def build(*tasks)
-      @handler.build( tasks, @app_cfg, options )
+      @handler.app_exec( @app_cfg, options, tasks )
     end
 
-    desc "dumpconfig FILEPATH", "Assemble project configuration and write to a YAML file"
+
+    desc "dumpconfig FILEPATH [SECTIONS]", "Process project configuration and dump to to a YAML file"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
-    def dumpconfig(filepath)
-      # options[:filepath]
-      # options[:mixin]
-
-      puts 'Dump'
+    def dumpconfig(filepath, *sections)
+      @handler.dumpconfig( @app_cfg, options, filepath, sections )
     end
 
-    # desc "mixins", "Commands to mix settings into base configuration"
-    # subcommand "mixins", Mixins
 
     desc "tasks", "List all build operations"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     def tasks()
-      config = @configinator.loadinate( filepath: options[:project], mixins: options[:mixin] )
-
-      # Save reference to loaded configuration
-      @app_cfg[:project_config] = config
-
-      @runner.set_verbosity() # Default to normal
-
-      @runner.load_ceedling(
-        config: config,
-        which: @app_cfg[:which_ceedling],
-        default_tasks: @app_cfg[:default_tasks]
-      )
-
-      @logger.log( 'Build operations (from project configuration):' )
-      @runner.print_rake_tasks()
+      @handler.rake_tasks( app_cfg: @app_cfg, project: options[:project], mixins: options[:mixin] )
     end
+
 
     desc "examples", "list available example projects"
     def examples()
@@ -164,9 +141,10 @@ module CeedlingTasks
       puts ''
     end
 
+
     desc "version", "Version details for Ceedling components"
     def version()
-      @runner.print_version()
+      @handler.version()
     end
 
   end
