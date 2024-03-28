@@ -14,7 +14,7 @@ class ConfiguratorValidator
     exist = !hash[:value].nil?
 
     if (not exist)
-      walk = @reportinator.generate_config_walk( keys, hash[:depth] )
+      walk = @reportinator.generate_config_walk( keys )
       @streaminator.stderr_puts("ERROR: Required config file entry #{walk} does not exist.", Verbosity::ERRORS )    
     end
     

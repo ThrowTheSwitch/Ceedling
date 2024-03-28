@@ -343,15 +343,22 @@ class Configurator
   end
 
 
-  def validate(config)
-    # Collect felonies and go straight to jail
-    if (not @configurator_setup.validate_required_sections( config ))
+  def validate_essential(config)
+    # Collect all infractions, everybody on probation until final adjudication
+    blotter = true
+
+    blotter &= @configurator_setup.validate_required_sections( config )
+    blotter &= @configurator_setup.validate_required_section_values( config )
+
+    if !blotter
       raise CeedlingException.new("ERROR: Ceedling configuration failed validation")
     end
+  end
 
-    # Collect all misdemeanors, everybody on probation
+
+  def validate_final(config)
+    # Collect all infractions, everybody on probation until final adjudication
     blotter = true
-    blotter &= @configurator_setup.validate_required_section_values( config )
     blotter &= @configurator_setup.validate_paths( config )
     blotter &= @configurator_setup.validate_tools( config )
     blotter &= @configurator_setup.validate_threads( config )

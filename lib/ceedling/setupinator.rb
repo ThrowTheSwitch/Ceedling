@@ -29,6 +29,7 @@ class Setupinator
     # Note: Configurator modifies the cmock section of the hash with a couple defaults to tie 
     #       projects together -- the modified hash is used to build the cmock object.
     @ceedling[:configurator].set_verbosity( config_hash )
+    @ceedling[:configurator].validate_essential( config_hash )
     @ceedling[:configurator].populate_defaults( config_hash )
     @ceedling[:configurator].populate_unity_defaults( config_hash )
     @ceedling[:configurator].populate_cmock_defaults( config_hash )
@@ -37,7 +38,7 @@ class Setupinator
     @ceedling[:configurator].standardize_paths( config_hash )
     @ceedling[:configurator].find_and_merge_plugins( config_hash )
     @ceedling[:configurator].tools_setup( config_hash )
-    @ceedling[:configurator].validate( config_hash )
+    @ceedling[:configurator].validate_final( config_hash )
     # Partially flatten config + build Configurator accessors and globals
     @ceedling[:configurator].build( config_hash, :environment )
 
