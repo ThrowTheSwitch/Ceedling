@@ -12,7 +12,7 @@ class Configinator
     cmdline_mixins = mixins
 
     # Load raw config from command line, environment variable, or default filepath
-    config = @projectinator.load( filepath:cmdline_filepath, env:ENV )
+    project_filepath, config = @projectinator.load( filepath:cmdline_filepath, env:ENV )
 
     # Extract cfg_enabled_mixins mixins list plus load paths list from config
     cfg_enabled_mixins, cfg_load_paths = @projectinator.extract_mixins(
@@ -77,7 +77,7 @@ class Configinator
     # Merge mixins
     @mixinator.merge( config:config, filepaths:mixin_filepaths )
 
-    return config
+    return project_filepath, config
   end
 
   def default_tasks(config:, default_tasks:)

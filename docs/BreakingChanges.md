@@ -3,7 +3,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** February 26, 2024
+**Date:** March 28, 2024
 
 # Explicit `:paths` ↳ `:include` entries in the project file
 
@@ -121,4 +121,21 @@ Coverage reports are now generated automatically unless the manual report genera
   :report_task: TRUE
 ```
 
+# Exit code handling (a.k.a. `:graceful_fail`)
 
+Be default Ceedling terminates with an exit code of `1` when a build succeeds but unit tests fail.
+
+A previously undocumented project configuration option `:graceful_fail` could force a Ceedling exit code of `0` upon test failures.
+
+This configuration option has moved (and is now [documented](CeedlingPacket.md)).
+
+Previously:
+```yaml
+:graceful_fail: TRUE
+```
+
+Now:
+```yaml
+:test_build:
+  :graceful_fail: TRUE
+```

@@ -21,6 +21,8 @@ end
 
 module CeedlingTasks
 
+  VERBOSITY_DEBUG = 'debug'
+
   CEEDLING_EXAMPLES_PATH = File.join( CEEDLING_ROOT, 'examples' )
 
   class CLI < Thor
@@ -76,13 +78,14 @@ module CeedlingTasks
     end
 
 
-    desc "build TASKS", "Run build tasks"
+    desc "build TASKS", "Run build tasks (`build` keyword optional)"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
-    method_option :verbosity, :enum => ['silent', 'errors', 'warnings', 'normal', 'obnoxious', 'debug'], :aliases => ['-v']
+    method_option :verbosity, :enum => ['silent', 'errors', 'warnings', 'normal', 'obnoxious', VERBOSITY_DEBUG], :aliases => ['-v']
     # method_option :num, :type => :numeric, :enum => [0, 1, 2, 3, 4, 5], :aliases => ['-n']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     method_option :log, :type => :boolean, :default => false, :aliases => ['-l']
     method_option :logfile, :type => :string, :default => ''
+    method_option :graceful_fail, :type => :boolean, :default => nil
     method_option :test_case, :type => :string, :default => ''
     method_option :exclude_test_case, :type => :string, :default => ''
     def build(*tasks)
@@ -93,16 +96,26 @@ module CeedlingTasks
     desc "dumpconfig FILEPATH [SECTIONS]", "Process project configuration and dump compelete result to a YAML file"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
+    method_option :debug, :type => :boolean, :default => false, :hide => true
     def dumpconfig(filepath, *sections)
-      @handler.dumpconfig( @app_cfg, options, filepath, sections )
+      # Get unfrozen copy of options so we can add to it
+      _options = options.dup()
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      @handler.dumpconfig( @app_cfg, _options, filepath, sections )
     end
 
 
     desc "tasks", "List all build operations"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
+    method_option :debug, :type => :boolean, :default => false, :hide => true
     def tasks()
-      @handler.rake_tasks( app_cfg: @app_cfg, project: options[:project], mixins: options[:mixin] )
+      @handler.rake_tasks(
+        app_cfg: @app_cfg,
+        project: options[:project],
+        mixins: options[:mixin],
+        verbosity: options[:debug] ? VERBOSITY_DEBUG : nil
+      )
     end
 
 
@@ -115,8 +128,12 @@ module CeedlingTasks
     desc "example NAME [DEST]", "Create named example project (in optional DEST path)"
     method_option :local, :type => :boolean, :default => false, :desc => "Copy Ceedling plus supporting tools to vendor/ path"
     method_option :docs, :type => :boolean, :default => false, :desc => "Copy documentation to docs/ path"
+    method_option :debug, :type => :boolean, :default => false, :hide => true
     def example(name, dest=nil)
-      @handler.create_example( CEEDLING_ROOT, CEEDLING_EXAMPLES_PATH, options, name, dest )
+      # Get unfrozen copy of options so we can add to it
+      _options = options.dup()
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      @handler.create_example( CEEDLING_ROOT, CEEDLING_EXAMPLES_PATH, _options, name, dest )
     end
 
 

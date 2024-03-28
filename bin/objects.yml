@@ -16,8 +16,8 @@ logger:
 cli_handler:
   compose:
     - configinator
+    - projectinator
     - cli_helper
-    - yaml_wrapper
     - actions_wrapper
     - logger
 

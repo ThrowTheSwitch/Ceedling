@@ -1,7 +1,7 @@
 
 class CliHandler
 
-  constructor :configinator, :cli_helper, :yaml_wrapper, :actions_wrapper, :logger
+  constructor :configinator, :projectinator, :cli_helper, :actions_wrapper, :logger
 
   def setup()
     # Aliases
@@ -9,6 +9,7 @@ class CliHandler
     @actions = @actions_wrapper
   end
 
+  # Complemented by `rake_tasks()` that can be called independently
   def app_help(app_cfg, command, &thor_help)
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
@@ -17,9 +18,14 @@ class CliHandler
       return
     end
 
-    # Call Rake task listing method
-    # Provide block to execute after Ceedling is loaded before tasks are listed
-    rake_tasks( app_cfg: app_cfg ) { thor_help.call( command ) }
+    # Display Thor-generated help listing
+    thor_help.call( command )
+
+    # If it was help for a specific command, we're done
+    return if !command.nil?
+
+    # If project configuration is available, also display Rake tasks
+    rake_tasks( app_cfg: app_cfg ) if @projectinator.config_available?
   end
 
   def copy_assets_and_create_structure(name, silent=false, force=false, options = {})
@@ -52,64 +58,6 @@ class CliHandler
 
     # Genarate gitkeep in test support path
     FileUtils.touch(File.join(test_support_path, '.gitkeep')) unless test_support_path.empty?
-
-    # # If documentation requested, create a place to dump them and do so
-    # doc_path = ''
-    # if use_docs
-    #   doc_path = use_gem ? File.join(name, 'docs') : File.join(ceedling_path, 'docs')
-    #   FileUtils.mkdir_p doc_path
-
-    #   in_doc_path = lambda {|f| File.join(doc_path, f)}
-
-    #   # Add documentation from main projects to list
-    #   doc_files = {}
-    #   ['docs','vendor/unity/docs','vendor/cmock/docs','vendor/cexception/docs'].each do |p|
-    #     Dir[ File.expand_path(File.join(CEEDLING_ROOT, p, '*.md')) ].each do |f|
-    #       doc_files[ File.basename(f) ] = f unless(doc_files.include? f)
-    #     end
-    #   end
-
-    #   # Add documentation from plugins to list
-    #   Dir[ File.join(CEEDLING_ROOT, 'plugins/**/README.md') ].each do |plugin_path|
-    #     k = "plugin_" + plugin_path.split(/\\|\//)[-2] + ".md"
-    #     doc_files[ k ] = File.expand_path(plugin_path)
-    #   end
-
-    #   # Copy all documentation
-    #   doc_files.each_pair do |k, v|
-    #     copy_file(v, in_doc_path.call(k), :force => force)
-    #   end
-    # end
-
-    # # If installed locally to project, copy ceedling, unity, cmock, & supports to vendor
-    # unless use_gem
-    #   FileUtils.mkdir_p ceedling_path
-
-    #   #copy full folders from ceedling gem into project
-    #   %w{plugins lib bin}.map do |f|
-    #     {:src => f, :dst => File.join(ceedling_path, f)}
-    #   end.each do |f|
-    #     directory(f[:src], f[:dst], :force => force)
-    #   end
-
-    #   # mark ceedling as an executable
-    #   File.chmod(0755, File.join(ceedling_path, 'bin', 'ceedling')) unless windows?
-
-    #   #copy necessary subcomponents from ceedling gem into project
-    #   sub_components = [
-    #     {:src => 'vendor/c_exception/lib/',     :dst => 'vendor/c_exception/lib'},
-    #     {:src => 'vendor/cmock/config/',        :dst => 'vendor/cmock/config'},
-    #     {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
-    #     {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
-    #     {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
-    #     {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
-    #     {:src => 'vendor/unity/src/',           :dst => 'vendor/unity/src'},
-    #   ]
-
-    #   sub_components.each do |c|
-    #     directory(c[:src], File.join(ceedling_path, c[:dst]), :force => force)
-    #   end
-    # end
 
     # We're copying in a configuration file if we haven't said not to
     if (use_configs)
@@ -149,7 +97,7 @@ class CliHandler
   end
 
   def app_exec(app_cfg, options, tasks)
-    config = @configinator.loadinate( filepath: options[:project], mixins: options[:mixin] )
+    project_filepath, config = @configinator.loadinate( filepath: options[:project], mixins: options[:mixin] )
 
     default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
 
@@ -169,9 +117,21 @@ class CliHandler
     app_cfg[:include_test_case] = options[:test_case]
     app_cfg[:exclude_test_case] = options[:exclude_test_case]
 
+    # Set graceful_exit from command line & configuration options
+    app_cfg[:tests_graceful_fail] =
+     @helper.process_graceful_fail(
+        config: config,
+        tasks: tasks,
+        cmdline_graceful_fail: options[:graceful_fail]
+      )
+
+    # Enable setup / operations duration logging in Rake context
+    app_cfg[:stopwatch] = @helper.process_stopwatch( tasks: tasks, default_tasks: default_tasks )
+
     @helper.set_verbosity( options[:verbosity] )
 
     @helper.load_ceedling( 
+      project_filepath: project_filepath,
       config: config,
       which: app_cfg[:which_ceedling],
       default_tasks: default_tasks
@@ -181,16 +141,20 @@ class CliHandler
   end
 
   def rake_exec(app_cfg:, tasks:)
-    config = @configinator.loadinate() # Use defaults for project file & mixins
+    project_filepath, config = @configinator.loadinate() # Use defaults for project file & mixins
 
     default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
 
     # Save references
     app_cfg[:project_config] = config
 
+    # Enable setup / operations duration logging in Rake context
+    app_cfg[:stopwatch] = @helper.process_stopwatch( tasks: tasks, default_tasks: default_tasks )
+
     @helper.set_verbosity() # Default verbosity
 
     @helper.load_ceedling( 
+      project_filepath: project_filepath,
       config: config,
       which: app_cfg[:which_ceedling],
       default_tasks: default_tasks
@@ -200,16 +164,17 @@ class CliHandler
   end
 
   def dumpconfig(app_cfg, options, filepath, sections)
-    config = @configinator.loadinate( filepath: options[:project], mixins: options[:mixin] )
+    project_filepath, config = @configinator.loadinate( filepath: options[:project], mixins: options[:mixin] )
 
     default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
 
     # Save references
     app_cfg[:project_config] = config
 
-    @helper.set_verbosity() # Default to normal
+    @helper.set_verbosity( options[:verbosity] )
 
     config = @helper.load_ceedling( 
+      project_filepath: project_filepath,
       config: config,
       which: app_cfg[:which_ceedling],
       default_tasks: default_tasks
@@ -218,24 +183,22 @@ class CliHandler
     @helper.dump_yaml( config, filepath, sections )
   end
 
-  def rake_tasks(app_cfg:, project:nil, mixins:[], &post_ceedling_load)
-    config = @configinator.loadinate( filepath: project, mixins: mixins )
+  def rake_tasks(app_cfg:, project:nil, mixins:[], verbosity:nil)
+    project_filepath, config = @configinator.loadinate( filepath: project, mixins: mixins )
 
     # Save reference to loaded configuration
     app_cfg[:project_config] = config
 
-    @helper.set_verbosity() # Default to normal
+    @helper.set_verbosity( verbosity ) # Default to normal
 
     @helper.load_ceedling(
+      project_filepath: project_filepath,
       config: config,
       which: app_cfg[:which_ceedling],
       default_tasks: app_cfg[:default_tasks]
     )
 
-    # Block handler
-    post_ceedling_load.call() if post_ceedling_load
-
-    @logger.log( 'Build operations (from project configuration):' )
+    @logger.log( 'Build operations:' )
     @helper.print_rake_tasks()
   end
 
@@ -246,6 +209,8 @@ class CliHandler
     if !examples.include?( name )
       raise( "No example project '#{name}' could be found" )
     end
+
+    @helper.set_verbosity( options[:verbosity] )
 
     # If destination is nil, reassign it to name
     # Otherwise, join the destination and name into a new path

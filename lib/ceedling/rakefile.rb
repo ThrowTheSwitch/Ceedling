@@ -15,7 +15,9 @@ Rake::TaskManager.record_task_metadata = true
 require 'ceedling/system_wrapper'
 require 'ceedling/reportinator'
 
-def log_runtime(run, start_time_s, end_time_s)
+# Operation duration logging
+def log_runtime(run, start_time_s, end_time_s, enabled)
+  return if !enabled
   return if !defined?(PROJECT_VERBOSITY)
   return if (PROJECT_VERBOSITY < Verbosity::ERRORS)
 
@@ -26,17 +28,17 @@ def log_runtime(run, start_time_s, end_time_s)
   puts( "\nCeedling #{run} completed in #{duration}" )
 end
 
+# Centralized last resort, outer exception handling
 def boom_handler(exception:, debug:)
   $stderr.puts("#{exception.class} ==> #{exception.message}")
   if debug
     $stderr.puts("Backtrace ==>")
     $stderr.puts(exception.backtrace)
   end
-  abort # Rake's abort
+  exit(1)
 end
 
-# Exists in external scope
-start_time = nil
+start_time = nil # Outside scope of exception handling
 
 # Top-level exception handling for any otherwise un-handled exceptions, particularly around startup
 begin
@@ -49,15 +51,15 @@ begin
   #  3. Remove full path from $LOAD_PATH
   $LOAD_PATH.unshift( CEEDLING_LIB )
   @ceedling = DIY::Context.from_yaml( File.read( File.join( CEEDLING_LIB, 'objects.yml' ) ) )
-  @ceedling.build_everything
+  @ceedling.build_everything()
   $LOAD_PATH.delete( CEEDLING_LIB )
 
   # One-stop shopping for all our setup and such after construction
   @ceedling[:setupinator].ceedling = @ceedling
-
   @ceedling[:setupinator].do_setup( CEEDLING_APPCFG )
 
-  log_runtime( 'set up', start_time, SystemWrapper.time_stopwatch_s() )
+  setup_done = SystemWrapper.time_stopwatch_s()
+  log_runtime( 'set up', start_time, setup_done, CEEDLING_APPCFG[:stopwatch] )
 
   # Configure high-level verbosity
   unless defined?(PROJECT_DEBUG) and PROJECT_DEBUG
@@ -81,13 +83,20 @@ begin
   # Reset start_time before operations begins
   start_time = SystemWrapper.time_stopwatch_s()
 
-  # tell all our plugins we're about to do something
+  # Tell all our plugins we're about to do something
   @ceedling[:plugin_manager].pre_build
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 rescue StandardError => e
   boom_handler( exception:e, debug:PROJECT_DEBUG )
+end
+
+def test_failures_handler()
+  graceful_fail = CEEDLING_APPCFG[:tests_graceful_fail]
+
+  # $stdout test reporting plugins store test failures
+  exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
 end
 
 # End block always executed following rake run
@@ -99,18 +108,18 @@ END {
   @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash )    if (@ceedling[:task_invoker].test_invoked?)
   @ceedling[:cacheinator].cache_release_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].release_invoked?)
 
-  graceful_fail = @ceedling[:setupinator].config_hash[:graceful_fail]
-
   # Only perform these final steps if we got here without runtime exceptions or errors
   if (@ceedling[:application].build_succeeded?)
     # Tell all our plugins the build is done and process results
     begin
       @ceedling[:plugin_manager].post_build
       @ceedling[:plugin_manager].print_plugin_failures
-      log_runtime( 'operations', start_time, SystemWrapper.time_stopwatch_s() )
-      exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
+      ops_done = SystemWrapper.time_stopwatch_s()
+      log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
+      test_failures_handler() if @ceedling[:task_invoker].test_invoked?
     rescue => ex
-      log_runtime( 'operations', start_time, SystemWrapper.time_stopwatch_s() )
+      ops_done = SystemWrapper.time_stopwatch_s()
+      log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
       boom_handler( exception:ex, debug:PROJECT_DEBUG )
       exit(1)
     end

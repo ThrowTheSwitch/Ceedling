@@ -1429,7 +1429,8 @@ all test case statistics.
 
 ### Ceedling Exit Codes
 
-In its default configuration, Ceedling produces an exit code of `1`:
+In its default configuration, Ceedling terminates with an exit code 
+of `1`:
 
  * On any build error and immediately terminates upon that build 
    error.
@@ -1443,13 +1444,13 @@ upon either build errors or test failures.
 If this exit code convention for test failures does not work for you, 
 no problem-o. You may be of the mind that running a test suite to 
 completion should yield a successful exit code (even if tests failed).
-Add the following at the top-level of your project file (i.e. all the 
-way to the left — not nested) to force Ceedling to finish a build 
-with an exit code of 0 even upon test case failures.
+Add the following to your project file to force Ceedling to finish a 
+build with an exit code of 0 even upon test case failures.
 
 ```yaml
-# Ceedling will terminate with happy `exit(0)` even if test cases fail
-:graceful_fail: true
+# Ceedling terminates with happy `exit(0)` even if test cases fail
+:test_build:
+   :graceful_fail: true
 ```
 
 If you use the option for graceful failures in CI, you'll want to

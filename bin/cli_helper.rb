@@ -10,9 +10,9 @@ class CliHelper
     @actions = @actions_wrapper
   end
 
-  def load_ceedling(config:, which:, default_tasks:[])
+  def load_ceedling(project_filepath:, config:, which:, default_tasks:[])
     # Determine which Ceedling we're running
-    #  1. Copy the value passed in (most likely a default determined in the first moments of startup)
+    #  1. Copy the which value passed in (most likely a default determined in the first moments of startup)
     #  2. If a :project ↳ :which_ceedling entry exists in the config, use it instead
     _which = which.dup()
     walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
@@ -23,7 +23,14 @@ class CliHelper
       require 'ceedling'
     else
       # Load Ceedling from a path
-      require File.join( _which, '/lib/ceedling.rb' )
+      project_path = File.dirname( project_filepath )
+      ceedling_path = File.join( project_path, _which, '/lib/ceedling.rb' )
+
+      if !@file_wrapper.exist?( ceedling_path )
+        raise "Configuration :project ↳ :which_ceedling => '#{_which}' points to a path relative to your project file that contains no Ceedling installation"
+      end
+
+      require( ceedling_path )
     end
 
     # Set default tasks
@@ -60,6 +67,29 @@ class CliHelper
   end
 
 
+  def process_graceful_fail(config:, tasks:, cmdline_graceful_fail:)
+    _tasks = tasks.empty?() ? default_tasks : tasks
+
+    # Blow up if graceful fail is provided without any actual test tasks
+    if _tasks.none?(/^test:/i)
+      raise "--graceful-fail specified without any test tasks"
+    end
+
+    # Precedence
+    #  1. Command line option
+    #  2. Configuration entry
+
+    # If command line option was set, use it
+    return cmdline_graceful_fail if !cmdline_graceful_fail.nil?
+
+    # If configuration contains :graceful_fail, use it
+    walked = @config_walkinator.fetch_value( config, :test_build, :graceful_fail )
+    return walked[:value] if !walked[:value].nil?
+
+    return false
+  end
+
+
   def process_logging(enabled, filepath)
     # No log file if neither enabled nor a specific filename/filepath
     return '' if !enabled and filepath.empty?()
@@ -79,6 +109,18 @@ class CliHelper
     return filepath
   end
 
+
+  def process_stopwatch(tasks:, default_tasks:)
+    _tasks = tasks.empty?() ? default_tasks.dup() : tasks.dup()
+
+    # Namespace-less (clobber, clean, etc.), files:, and paths: tasks should not have stopwatch logging
+    #  1. Filter out tasks lacking a namespace
+    #  2. Look for any tasks other than paths: or files:
+    _tasks.select! {|t| t.include?( ':') }
+    _tasks.reject! {|t| t =~ /(^files:|^paths:)/}
+
+    return !_tasks.empty?
+  end
 
   def print_rake_tasks()
     Rake.application.standard_exception_handling do

@@ -9,7 +9,7 @@ def get_app_cfg()
     # Default, blank value
     :log_filepath => '',
 
-    # Only specified in project configuration (no command line or environment variable)
+    # Only specified in project config (no command line or environment variable)
     :default_tasks => ['test:all'],
 
     # Basic check from working directory
@@ -17,7 +17,13 @@ def get_app_cfg()
 
     # Default, blank test case filters
     :include_test_case => '',
-    :exclude_test_case => ''
+    :exclude_test_case => '',
+
+    # Default to no duration logging for setup & build ops in Rake context
+    :stopwatch => false,
+
+    # Default to `exit(1)` upon failing test cases
+    :tests_graceful_fail => false,
   }
 
   return app_cfg

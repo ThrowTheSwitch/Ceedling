@@ -2,7 +2,7 @@
 
 **Version:** 0.32 pre-release incremental build
 
-**Date:** February 28, 2024
+**Date:** March 28, 2024
 
 <br/>
 
@@ -275,6 +275,19 @@ In certain combinations of Ceedling features, a dash in a C filename could cause
 Issue [#110](https://github.com/ThrowTheSwitch/Ceedling/issues/110)
 
 Ceedling has long had the ability to configure a source filename extension other than `.c` (`:extension` ↳ `:source`). However, in most circumstances this ability would lead to broken builds. Regardless of user-provided source files and filename extenion settings, Ceedling's supporting frameworks — Unity, CMock, and CException — all have `.c` file components. Ceedling also generates mocks and test runners with `.c` filename extensions regardless of any filename extension setting. Changing the source filename extension would cause Ceedling to miss its own core source files. This has been fixed. 
+
+### Exit code options for test suite failures
+
+Be default Ceedling terminates with an exit code of `1` when a build succeeds but unit tests fail.
+
+A previously undocumented project configuration option `:graceful_fail` could force a Ceedling exit code of `0` upon test failures.
+
+This configuration option has moved but is now [documented](CeedlingPacket.md). It is also available as a new command line argument (`--graceful-fail`).
+
+```yaml
+:test_build:
+  :graceful_fail: TRUE
+```
 
 <br/>
 
