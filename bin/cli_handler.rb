@@ -53,63 +53,63 @@ class CliHandler
     # Genarate gitkeep in test support path
     FileUtils.touch(File.join(test_support_path, '.gitkeep')) unless test_support_path.empty?
 
-    # If documentation requested, create a place to dump them and do so
-    doc_path = ''
-    if use_docs
-      doc_path = use_gem ? File.join(name, 'docs') : File.join(ceedling_path, 'docs')
-      FileUtils.mkdir_p doc_path
+    # # If documentation requested, create a place to dump them and do so
+    # doc_path = ''
+    # if use_docs
+    #   doc_path = use_gem ? File.join(name, 'docs') : File.join(ceedling_path, 'docs')
+    #   FileUtils.mkdir_p doc_path
 
-      in_doc_path = lambda {|f| File.join(doc_path, f)}
+    #   in_doc_path = lambda {|f| File.join(doc_path, f)}
 
-      # Add documentation from main projects to list
-      doc_files = {}
-      ['docs','vendor/unity/docs','vendor/cmock/docs','vendor/cexception/docs'].each do |p|
-        Dir[ File.expand_path(File.join(CEEDLING_ROOT, p, '*.md')) ].each do |f|
-          doc_files[ File.basename(f) ] = f unless(doc_files.include? f)
-        end
-      end
+    #   # Add documentation from main projects to list
+    #   doc_files = {}
+    #   ['docs','vendor/unity/docs','vendor/cmock/docs','vendor/cexception/docs'].each do |p|
+    #     Dir[ File.expand_path(File.join(CEEDLING_ROOT, p, '*.md')) ].each do |f|
+    #       doc_files[ File.basename(f) ] = f unless(doc_files.include? f)
+    #     end
+    #   end
 
-      # Add documentation from plugins to list
-      Dir[ File.join(CEEDLING_ROOT, 'plugins/**/README.md') ].each do |plugin_path|
-        k = "plugin_" + plugin_path.split(/\\|\//)[-2] + ".md"
-        doc_files[ k ] = File.expand_path(plugin_path)
-      end
+    #   # Add documentation from plugins to list
+    #   Dir[ File.join(CEEDLING_ROOT, 'plugins/**/README.md') ].each do |plugin_path|
+    #     k = "plugin_" + plugin_path.split(/\\|\//)[-2] + ".md"
+    #     doc_files[ k ] = File.expand_path(plugin_path)
+    #   end
 
-      # Copy all documentation
-      doc_files.each_pair do |k, v|
-        copy_file(v, in_doc_path.call(k), :force => force)
-      end
-    end
+    #   # Copy all documentation
+    #   doc_files.each_pair do |k, v|
+    #     copy_file(v, in_doc_path.call(k), :force => force)
+    #   end
+    # end
 
-    # If installed locally to project, copy ceedling, unity, cmock, & supports to vendor
-    unless use_gem
-      FileUtils.mkdir_p ceedling_path
+    # # If installed locally to project, copy ceedling, unity, cmock, & supports to vendor
+    # unless use_gem
+    #   FileUtils.mkdir_p ceedling_path
 
-      #copy full folders from ceedling gem into project
-      %w{plugins lib bin}.map do |f|
-        {:src => f, :dst => File.join(ceedling_path, f)}
-      end.each do |f|
-        directory(f[:src], f[:dst], :force => force)
-      end
+    #   #copy full folders from ceedling gem into project
+    #   %w{plugins lib bin}.map do |f|
+    #     {:src => f, :dst => File.join(ceedling_path, f)}
+    #   end.each do |f|
+    #     directory(f[:src], f[:dst], :force => force)
+    #   end
 
-      # mark ceedling as an executable
-      File.chmod(0755, File.join(ceedling_path, 'bin', 'ceedling')) unless windows?
+    #   # mark ceedling as an executable
+    #   File.chmod(0755, File.join(ceedling_path, 'bin', 'ceedling')) unless windows?
 
-      #copy necessary subcomponents from ceedling gem into project
-      sub_components = [
-        {:src => 'vendor/c_exception/lib/',     :dst => 'vendor/c_exception/lib'},
-        {:src => 'vendor/cmock/config/',        :dst => 'vendor/cmock/config'},
-        {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
-        {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
-        {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
-        {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
-        {:src => 'vendor/unity/src/',           :dst => 'vendor/unity/src'},
-      ]
+    #   #copy necessary subcomponents from ceedling gem into project
+    #   sub_components = [
+    #     {:src => 'vendor/c_exception/lib/',     :dst => 'vendor/c_exception/lib'},
+    #     {:src => 'vendor/cmock/config/',        :dst => 'vendor/cmock/config'},
+    #     {:src => 'vendor/cmock/lib/',           :dst => 'vendor/cmock/lib'},
+    #     {:src => 'vendor/cmock/src/',           :dst => 'vendor/cmock/src'},
+    #     {:src => 'vendor/diy/lib',              :dst => 'vendor/diy/lib'},
+    #     {:src => 'vendor/unity/auto/',          :dst => 'vendor/unity/auto'},
+    #     {:src => 'vendor/unity/src/',           :dst => 'vendor/unity/src'},
+    #   ]
 
-      sub_components.each do |c|
-        directory(c[:src], File.join(ceedling_path, c[:dst]), :force => force)
-      end
-    end
+    #   sub_components.each do |c|
+    #     directory(c[:src], File.join(ceedling_path, c[:dst]), :force => force)
+    #   end
+    # end
 
     # We're copying in a configuration file if we haven't said not to
     if (use_configs)
@@ -247,9 +247,9 @@ class CliHandler
       raise( "No example project '#{name}' could be found" )
     end
 
+    # If destination is nil, reassign it to name
+    # Otherwise, join the destination and name into a new path
     dest = dest.nil? ? name : File.join( dest, name )
-
-    # copy_assets_and_create_structure(dest, true, false, {:local=>true, :docs=>options[:docs]})
 
     dest_src      = File.join( dest, 'src' )
     dest_test     = File.join( dest, 'test' )
@@ -258,6 +258,9 @@ class CliHandler
     @actions._directory( "examples/#{name}/src", dest_src )
     @actions._directory( "examples/#{name}/test", dest_test )
     @actions._copy_file( "examples/#{name}/project.yml", dest_project )
+
+    @helper.vendor_tools( dest ) if options[:local]
+    # @helper.copy_docs( dest ) if options[:docs]
 
     @logger.log( "\nExample project '#{name}' created at #{dest}/.\n" )
   end

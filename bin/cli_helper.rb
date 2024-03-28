@@ -3,12 +3,12 @@ require 'ceedling/constants'
 
 class CliHelper
 
-  constructor :file_wrapper, :config_walkinator, :logger
+  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :logger
 
   def setup
-    # ...
+    #Aliases
+    @actions = @actions_wrapper
   end
-
 
   def load_ceedling(config:, which:, default_tasks:[])
     # Determine which Ceedling we're running
@@ -162,6 +162,60 @@ class CliHelper
     return examples
   end
 
+
+  # def copy_docs()
+  #   doc_path = use_gem ? File.join(name, 'docs') : File.join(ceedling_path, 'docs')
+  #   FileUtils.mkdir_p doc_path
+
+  #   in_doc_path = lambda {|f| File.join(doc_path, f)}
+
+  #   # Add documentation from main projects to list
+  #   doc_files = {}
+  #   ['docs','vendor/unity/docs','vendor/cmock/docs','vendor/cexception/docs'].each do |p|
+  #     Dir[ File.expand_path(File.join(CEEDLING_ROOT, p, '*.md')) ].each do |f|
+  #       doc_files[ File.basename(f) ] = f unless(doc_files.include? f)
+  #     end
+  #   end
+
+  #   # Add documentation from plugins to list
+  #   Dir[ File.join(CEEDLING_ROOT, 'plugins/**/README.md') ].each do |plugin_path|
+  #     k = "plugin_" + plugin_path.split(/\\|\//)[-2] + ".md"
+  #     doc_files[ k ] = File.expand_path(plugin_path)
+  #   end
+
+  #   # Copy all documentation
+  #   doc_files.each_pair do |k, v|
+  #     @actions._copy_file(v, File.join( doc_path, k ), :force => force)
+  #   end
+  # end
+
+
+  def vendor_tools(base_path)
+    ceedling_path = File.join( base_path, 'vendor', 'ceedling' )
+
+    # Copy folders from current Ceedling into project
+    %w{plugins lib bin mixins}.each do |folder|
+      @actions._directory( folder, File.join( ceedling_path, folder ), :force => true )
+    end
+
+    # Mark ceedling as an executable
+    File.chmod( 0755, File.join( ceedling_path, 'bin', 'ceedling' ) ) unless windows?
+
+    # Copy necessary subcomponents from current ceedling into project
+    components = [
+      'vendor/c_exception/lib/',
+      'vendor/cmock/config/',   
+      'vendor/cmock/lib/',      
+      'vendor/cmock/src/',      
+      'vendor/diy/lib/',         
+      'vendor/unity/auto/',     
+      'vendor/unity/src/',      
+    ]
+
+    components.each do |path|
+      @actions._directory( path, File.join( ceedling_path, path ), :force => true )
+    end
+  end
 
   ### Private ###
 

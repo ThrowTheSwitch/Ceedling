@@ -25,6 +25,7 @@ cli_helper:
   compose:
     - file_wrapper
     - config_walkinator
+    - actions_wrapper
     - logger
 
 path_validator:

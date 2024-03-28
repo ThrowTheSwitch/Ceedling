@@ -7,12 +7,12 @@ class ActionsWrapper
 
   source_root( CEEDLING_ROOT )
 
-  def _directory( src, dest )
-    directory( src, dest )
+  def _directory( src, *args )
+    directory( src, *args )
   end
 
-  def _copy_file( src, dest )
-    copy_file( src, dest )
+  def _copy_file( src, *args )
+    copy_file( src, *args )
   end
 
 end

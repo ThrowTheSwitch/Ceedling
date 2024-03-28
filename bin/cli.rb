@@ -114,7 +114,7 @@ module CeedlingTasks
 
     desc "example NAME [DEST]", "Create named example project (in optional DEST path)"
     method_option :local, :type => :boolean, :default => false, :desc => "Copy Ceedling to project vendor/ path"
-    method_option :docs, :type => :boolean, :default => false, :desc => "Copy docs into project subdirectory"
+    method_option :docs, :type => :boolean, :default => false, :desc => "Copy docs to project subdirectory"
     def example(name, dest=nil)
       @handler.create_example( CEEDLING_EXAMPLES_PATH, options, name, dest )
     end
