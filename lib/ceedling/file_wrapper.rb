@@ -33,7 +33,7 @@ class FileWrapper
   end
 
   def directory_listing(glob)
-    return Dir.glob(glob, File::FNM_PATHNAME)
+    return Dir.glob(glob, File::FNM_PATHNAME) # Case insensitive globs
   end
 
   def rm_f(filepath, options={})

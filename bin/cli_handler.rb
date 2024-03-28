@@ -240,7 +240,7 @@ class CliHandler
   end
 
 
-  def create_example(examples_path, options, name, dest)
+  def create_example(ceedling_root, examples_path, options, name, dest)
     examples = @helper.lookup_example_projects( examples_path )
 
     if !examples.include?( name )
@@ -259,10 +259,12 @@ class CliHandler
     @actions._directory( "examples/#{name}/test", dest_test )
     @actions._copy_file( "examples/#{name}/project.yml", dest_project )
 
-    @helper.vendor_tools( dest ) if options[:local]
-    # @helper.copy_docs( dest ) if options[:docs]
+    vendored_ceedling = File.join( dest, 'vendor', 'ceedling' )
 
-    @logger.log( "\nExample project '#{name}' created at #{dest}/.\n" )
+    @helper.vendor_tools( ceedling_root, vendored_ceedling ) if options[:local]
+    @helper.copy_docs( ceedling_root, dest ) if options[:docs]
+
+    @logger.log( "\nExample project '#{name}' created at #{dest}/\n" )
   end
 
 

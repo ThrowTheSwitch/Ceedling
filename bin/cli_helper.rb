@@ -135,8 +135,8 @@ class CliHelper
         raise(msg)
       end
 
-      # Update _config to subconfig
-      _config = walked[:value]
+      # Update _config to subconfig with final sections path element as container
+      _config = { _sections.last => walked[:value] }
     end
 
     File.open( filepath, 'w' ) {|out| YAML.dump( _config, out )}
@@ -163,45 +163,79 @@ class CliHelper
   end
 
 
-  # def copy_docs()
-  #   doc_path = use_gem ? File.join(name, 'docs') : File.join(ceedling_path, 'docs')
-  #   FileUtils.mkdir_p doc_path
+  def copy_docs(src_base_path, dest_base_path)
+    docs_path = File.join( dest_base_path, 'docs' )
 
-  #   in_doc_path = lambda {|f| File.join(doc_path, f)}
+    # Hash that will hold documentation copy paths
+    #  - Key: (modified) destination documentation path
+    #  - Value: source path
+    doc_files = {}
 
-  #   # Add documentation from main projects to list
-  #   doc_files = {}
-  #   ['docs','vendor/unity/docs','vendor/cmock/docs','vendor/cexception/docs'].each do |p|
-  #     Dir[ File.expand_path(File.join(CEEDLING_ROOT, p, '*.md')) ].each do |f|
-  #       doc_files[ File.basename(f) ] = f unless(doc_files.include? f)
-  #     end
-  #   end
+    # Add docs to list from Ceedling (docs/) and supporting projects (docs/<project>)
+    { # Source path => docs/ destination path
+      'docs'                    => '.',
+      'vendor/unity/docs'       => 'unity',
+      'vendor/cmock/docs'       => 'cmock',
+      'vendor/c_exception/docs' => 'c_exception'
+    }.each do |src, dest|
+      # Form glob to collect all markdown files
+      glob = File.join( src_base_path, src, '*.md' )
+      # Look up markdown files
+      listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
+      # For each markdown filepath, add to hash
+      listing.each do |filepath|
+        # Reassign destination
+        _dest = File.join( dest, File.basename(filepath) )
+        doc_files[ _dest ] = filepath
+      end
+    end
 
-  #   # Add documentation from plugins to list
-  #   Dir[ File.join(CEEDLING_ROOT, 'plugins/**/README.md') ].each do |plugin_path|
-  #     k = "plugin_" + plugin_path.split(/\\|\//)[-2] + ".md"
-  #     doc_files[ k ] = File.expand_path(plugin_path)
-  #   end
+    # Add docs to list from Ceedling plugins (docs/plugins)
+    glob = File.join( src_base_path, 'plugins/**/README.md' )
+    listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
+    listing.each do |path|
+      # 'README.md' => '<name>.md' where name extracted from containing path
+      rename = path.split(/\\|\//)[-2] + '.md'
+      # For each Ceedling plugin readme, add to hash
+      dest = File.join( 'plugins', rename )
+      doc_files[ dest ] = path
+    end
 
-  #   # Copy all documentation
-  #   doc_files.each_pair do |k, v|
-  #     @actions._copy_file(v, File.join( doc_path, k ), :force => force)
-  #   end
-  # end
+    # Add licenses from Ceedling (docs/) and supporting projects (docs/<project>)
+    { # Destination path => Source path
+      '.'           => '.', # Ceedling
+      'unity'       => 'vendor/unity',
+      'cmock'       => 'vendor/cmock',
+      'c_exception' => 'vendor/c_exception',
+    }.each do |dest, src|
+      glob = File.join( src_base_path, src, 'license.txt' )
+      # Look up licenses (use glob as capitalization can be inconsistent)
+      listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
+      # Safety check on nil references since we explicitly reference first element
+      next if listing.empty?
+      filepath = listing.first
+      # Reassign dest
+      dest = File.join( dest, File.basename( filepath ) )
+      doc_files[ dest ] = filepath
+    end
+
+    # Copy all documentation
+    doc_files.each_pair do |dest, src|
+      @actions._copy_file(src, File.join( docs_path, dest ), :force => true)
+    end
+  end
 
 
-  def vendor_tools(base_path)
-    ceedling_path = File.join( base_path, 'vendor', 'ceedling' )
-
+  def vendor_tools(src_base_path, dest_base_path)
     # Copy folders from current Ceedling into project
     %w{plugins lib bin mixins}.each do |folder|
-      @actions._directory( folder, File.join( ceedling_path, folder ), :force => true )
+      @actions._directory( folder, File.join( dest_base_path, folder ), :force => true )
     end
 
     # Mark ceedling as an executable
-    File.chmod( 0755, File.join( ceedling_path, 'bin', 'ceedling' ) ) unless windows?
+    File.chmod( 0755, File.join( dest_base_path, 'bin', 'ceedling' ) ) unless windows?
 
-    # Copy necessary subcomponents from current ceedling into project
+    # Copy necessary subcomponent dirs into project
     components = [
       'vendor/c_exception/lib/',
       'vendor/cmock/config/',   
@@ -213,8 +247,33 @@ class CliHelper
     ]
 
     components.each do |path|
-      @actions._directory( path, File.join( ceedling_path, path ), :force => true )
+      src = File.join( src_base_path, path )
+      dest = File.join( dest_base_path, path )
+      @actions._directory( src, dest, :force => true )
     end
+
+    # Add licenses from Ceedling and supporting projects
+    license_files = {}
+    [ # Source paths
+      '.', # Ceedling
+      'vendor/unity',
+      'vendor/cmock',
+      'vendor/c_exception',
+    ].each do |src|
+      glob = File.join( src_base_path, src, 'license.txt' )
+      # Look up licenses (use glob as capitalization can be inconsistent)
+      listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
+      # Safety check on nil references since we explicitly reference first element
+      next if listing.empty?
+      filepath = listing.first
+      dest = File.join( dest_base_path, src, File.basename( filepath ) )
+      license_files[ dest ] = filepath
+    end
+
+    license_files.each_pair do |dest, src|
+      @actions._copy_file( src, dest, :force => true)
+    end
+
   end
 
   ### Private ###
