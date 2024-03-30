@@ -6,13 +6,13 @@ class Configinator
 
   constructor :config_walkinator, :projectinator, :mixinator
 
-  def loadinate(filepath:nil, mixins:[])
+  def loadinate(filepath:nil, mixins:[], env:{})
     # Aliases for clarity
     cmdline_filepath = filepath
     cmdline_mixins = mixins
 
     # Load raw config from command line, environment variable, or default filepath
-    project_filepath, config = @projectinator.load( filepath:cmdline_filepath, env:ENV )
+    project_filepath, config = @projectinator.load( filepath:cmdline_filepath, env:env )
 
     # Extract cfg_enabled_mixins mixins list plus load paths list from config
     cfg_enabled_mixins, cfg_load_paths = @projectinator.extract_mixins(
@@ -62,7 +62,7 @@ class Configinator
     )
 
     # Fetch CEEDLING_MIXIN_# environment variables and sort into ordered list of hash tuples [{env variable => filepath}...]
-    env_mixins = @mixinator.fetch_env_filepaths( ENV )
+    env_mixins = @mixinator.fetch_env_filepaths( env )
     @mixinator.validate_env_filepaths( env_mixins )
     # Redefine list as just filepaths
     env_mixins = env_mixins.map {|entry| entry.values[0] }

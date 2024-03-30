@@ -1,5 +1,5 @@
 require 'rbconfig'
-require 'ceedling/constants'
+require 'ceedling/constants' # From Ceedling application
 
 class CliHelper
 
@@ -9,6 +9,43 @@ class CliHelper
     #Aliases
     @actions = @actions_wrapper
   end
+
+
+  def project_exists?( path, op, *components )
+    exists = []
+
+    components.each do |f|
+      _path = File.join( path, f )
+      exists << (@file_wrapper.exist?( _path ) or @file_wrapper.directory?( _path ))
+    end
+
+    return exists.reduce(op)
+  end
+
+
+  def create_project_file(ceedling_root, dest, local)
+    project_filepath = File.join( dest, DEFAULT_PROJECT_FILENAME )
+    source_filepath = ''
+
+    if local
+      source_filepath = File.join( ceedling_root, 'assets', 'project_with_guts.yml' )
+    else
+      source_filepath = File.join( ceedling_root, 'assets', 'project_as_gem.yml' )
+    end
+
+    # Clone the project file and update internal version
+    require 'ceedling/version'
+    @actions._copy_file( source_filepath, project_filepath, :force => true)
+    @actions._gsub_file( project_filepath, /:ceedling_version:\s+'\?'/, ":ceedling_version: #{Ceedling::Version::CEEDLING}" )
+  end
+
+
+  def which_ceedling?(config)
+    walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
+    return 'gem' if walked[:value].nil?
+    return walked[:value]
+  end
+
 
   def load_ceedling(project_filepath:, config:, which:, default_tasks:[])
     # Determine which Ceedling we're running
@@ -205,8 +242,8 @@ class CliHelper
   end
 
 
-  def copy_docs(src_base_path, dest_base_path)
-    docs_path = File.join( dest_base_path, 'docs' )
+  def copy_docs(ceedling_root, dest)
+    docs_path = File.join( dest, 'docs' )
 
     # Hash that will hold documentation copy paths
     #  - Key: (modified) destination documentation path
@@ -221,7 +258,7 @@ class CliHelper
       'vendor/c_exception/docs' => 'c_exception'
     }.each do |src, dest|
       # Form glob to collect all markdown files
-      glob = File.join( src_base_path, src, '*.md' )
+      glob = File.join( ceedling_root, src, '*.md' )
       # Look up markdown files
       listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
       # For each markdown filepath, add to hash
@@ -233,7 +270,7 @@ class CliHelper
     end
 
     # Add docs to list from Ceedling plugins (docs/plugins)
-    glob = File.join( src_base_path, 'plugins/**/README.md' )
+    glob = File.join( ceedling_root, 'plugins/**/README.md' )
     listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
     listing.each do |path|
       # 'README.md' => '<name>.md' where name extracted from containing path
@@ -250,7 +287,7 @@ class CliHelper
       'cmock'       => 'vendor/cmock',
       'c_exception' => 'vendor/c_exception',
     }.each do |dest, src|
-      glob = File.join( src_base_path, src, 'license.txt' )
+      glob = File.join( ceedling_root, src, 'license.txt' )
       # Look up licenses (use glob as capitalization can be inconsistent)
       listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
       # Safety check on nil references since we explicitly reference first element
@@ -268,16 +305,23 @@ class CliHelper
   end
 
 
-  def vendor_tools(src_base_path, dest_base_path)
+  def vendor_tools(ceedling_root, dest)
+    vendor_path = File.join( dest, 'vendor', 'ceedling' )
+    assets_path = File.join( ceedling_root, 'assets' )
+
     # Copy folders from current Ceedling into project
     %w{plugins lib bin mixins}.each do |folder|
-      @actions._directory( folder, File.join( dest_base_path, folder ), :force => true )
+      @actions._directory( 
+        File.join( ceedling_root, folder ),
+        File.join( vendor_path, folder ),
+        :force => true
+      )
     end
 
     # Mark ceedling as an executable
-    File.chmod( 0755, File.join( dest_base_path, 'bin', 'ceedling' ) ) unless windows?
+    @actions._chmod( File.join( vendor_path, 'bin', 'ceedling' ), 0755 ) unless windows?
 
-    # Copy necessary subcomponent dirs into project
+    # Assembly necessary subcomponent dirs
     components = [
       'vendor/c_exception/lib/',
       'vendor/cmock/config/',   
@@ -288,10 +332,11 @@ class CliHelper
       'vendor/unity/src/',      
     ]
 
+    # Copy necessary subcomponent dirs into project
     components.each do |path|
-      src = File.join( src_base_path, path )
-      dest = File.join( dest_base_path, path )
-      @actions._directory( src, dest, :force => true )
+      _src = File.join( ceedling_root, path )
+      _dest = File.join( vendor_path, path )
+      @actions._directory( _src, _dest, :force => true )
     end
 
     # Add licenses from Ceedling and supporting projects
@@ -302,20 +347,43 @@ class CliHelper
       'vendor/cmock',
       'vendor/c_exception',
     ].each do |src|
-      glob = File.join( src_base_path, src, 'license.txt' )
+      glob = File.join( ceedling_root, src, 'license.txt' )
+
       # Look up licenses (use glob as capitalization can be inconsistent)
       listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
+      
       # Safety check on nil references since we explicitly reference first element
       next if listing.empty?
-      filepath = listing.first
-      dest = File.join( dest_base_path, src, File.basename( filepath ) )
-      license_files[ dest ] = filepath
+      
+      # Add license copying to hash      
+      license = listing.first
+      filepath = File.join( vendor_path, src, File.basename( license ) )
+      license_files[ filepath ] = license
     end
 
+    # Copy license files into place
     license_files.each_pair do |dest, src|
       @actions._copy_file( src, dest, :force => true)
     end
 
+    # Create executable helper scripts in project root
+    if windows?
+      # Windows command prompt launch script
+      @actions._copy_file(
+        File.join( assets_path, 'ceedling.cmd'),
+        File.join( dest, 'ceedling.cmd'),
+        :force => true
+      )
+    else
+      # Unix shell launch script
+      launch = File.join( dest, 'ceedling')
+      @actions._copy_file(
+        File.join( assets_path, 'ceedling'),
+        launch,
+        :force => true
+      )
+      @actions._chmod( launch, 0755 )
+    end
   end
 
   ### Private ###
@@ -323,7 +391,7 @@ class CliHelper
   private
 
 def windows?
-  return ((RbConfig::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false) if defined?(RbConfig)
+  return ((RbConfig::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false) if defined?( RbConfig )
   return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
 end
 

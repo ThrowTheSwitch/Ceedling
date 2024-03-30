@@ -25,12 +25,12 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
 
   return if duration.empty?
 
-  puts( "\nCeedling #{run} completed in #{duration}" )
+  puts( "\n🌱 Ceedling #{run} completed in #{duration}" )
 end
 
 # Centralized last resort, outer exception handling
 def boom_handler(exception:, debug:)
-  $stderr.puts("#{exception.class} ==> #{exception.message}")
+  $stderr.puts("🌱 #{exception.class} ==> #{exception.message}")
   if debug
     $stderr.puts("Backtrace ==>")
     $stderr.puts(exception.backtrace)
@@ -124,9 +124,9 @@ END {
       exit(1)
     end
 
-    exit(0)
+å    exit(0)
   else
-    puts("\nCeedling could not complete operations because of errors.")
+    puts("\n🌱 Ceedling could not complete operations because of errors.")
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex

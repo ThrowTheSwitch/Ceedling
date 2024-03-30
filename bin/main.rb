@@ -23,7 +23,7 @@ begin
   # Backwards compatibility command line hack to silently presenve Rake `-T` CLI handling
   if (ARGV.size() == 1 and ARGV[0] == '-T')
     # Call rake task listing handler w/ default handling of project file and mixins
-    objects[:cli_handler].rake_tasks( app_cfg: CEEDLING_APPCFG )
+    objects[:cli_handler].rake_tasks( env:ENV, app_cfg:CEEDLING_APPCFG )
 
   # Otherwise, run command line args through Thor
   elsif (ARGV.size() > 0)
@@ -38,11 +38,11 @@ begin
 # Thor application CLI did not handle command line arguments.
 # Pass along ARGV to Rake instead.
 rescue Thor::UndefinedCommandError
-  objects[:cli_handler].rake_exec( app_cfg: CEEDLING_APPCFG, tasks: _ARGV )
+  objects[:cli_handler].rake_exec( env:ENV, app_cfg: CEEDLING_APPCFG, tasks: _ARGV )
 
 # Bootloader boom handling
 rescue StandardError => e
-  $stderr.puts( "ERROR: #{e.message}" )
+  $stderr.puts( "\n🌱 ERROR: #{e.message}" )
   $stderr.puts( e.backtrace ) if ( defined?( PROJECT_DEBUG ) and PROJECT_DEBUG )
   exit(1)
 end

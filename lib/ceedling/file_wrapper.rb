@@ -24,6 +24,7 @@ class FileWrapper
     return File.extname(filepath)
   end
 
+  # Is path a directory and does it exist?
   def directory?(path)
     return File.directory?(path)
   end

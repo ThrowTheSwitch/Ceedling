@@ -1,4 +1,5 @@
 require 'thor'
+require 'ceedling/constants' # From Ceedling application
 
 # Special handler to prevent Thor from barfing on unrecognized CLI arguments (i.e. Rake tasks)
 module PermissiveCLI
@@ -48,33 +49,33 @@ module CeedlingTasks
     desc "help [COMMAND]", "Describe available commands and list build operations"
     def help(command=nil)
       # Call application help with block to execute Thor's built-in help after Ceedling loads
-      @handler.app_help( @app_cfg, command ) { |command| super(command) }
+      @handler.app_help( ENV, @app_cfg, command ) { |command| super(command) }
     end
 
 
-    desc "new NAME", "Create a new project"
-    method_option :docs, :type => :boolean, :default => false, :desc => "Copy docs to project vendor/ path"
-    method_option :local, :type => :boolean, :default => false, :desc => "Copy Ceedling to project vendor/ path"
-    method_option :gitignore, :type => :boolean, :default => false, :desc => "Create .gitignore file to ignore Ceedling-generated files"
-    method_option :no_configs, :type => :boolean, :default => false, :desc => "Don't install starter configuration files"
-    method_option :noconfigs, :type => :boolean, :default => false
-    def new(name, silent = false)
-      @handler.copy_assets_and_create_structure(name, silent, false, options)
+    desc "new NAME [DEST]", "Create a new project"
+    method_option :local, :type => :boolean, :default => false, :desc => "Install Ceedling plus supporting tools to vendor/"
+    method_option :docs, :type => :boolean, :default => false, :desc => "Copy documentation to docs/"
+    method_option :configs, :type => :boolean, :default => true, :desc => "Install starter configuration files"
+    method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and remove destination"
+    method_option :debug, :type => :boolean, :default => false, :hide => true
+    # method_option :gitignore, :type => :boolean, :default => false, :desc => "Create .gitignore file to ignore Ceedling-generated files"
+    def new(name, dest=nil)
+      # Get unfrozen copy of options so we can add to it
+      _options = options.dup()
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      @handler.new_project( CEEDLING_ROOT, _options, name, dest )
     end
 
 
-    desc "upgrade NAME", "Upgrade ceedling for a project (not req'd if gem used)"
-    def upgrade(name, silent = false)
-      as_local = true
-      yaml_path = File.join(name, "project.yml")
-      begin
-        require File.join(CEEDLING_ROOT,"lib","ceedling","yaml_wrapper.rb")
-        as_local = (YamlWrapper.new.load(yaml_path)[:project][:which_ceedling] != 'gem')
-      rescue
-        raise "ERROR: Could not find valid project file '#{yaml_path}'"
-      end
-      found_docs = File.exist?( File.join(name, "docs", "CeedlingPacket.md") )
-      @handler.copy_assets_and_create_structure(name, silent, true, {:upgrade => true, :no_configs => true, :local => as_local, :docs => found_docs})
+    desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project"
+    method_option :project, :type => :string, :default => DEFAULT_PROJECT_FILENAME, :desc => "Project filename"
+    method_option :debug, :type => :boolean, :default => false, :hide => true
+    def upgrade(path)
+      # Get unfrozen copy of options so we can add to it
+      _options = options.dup()
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      @handler.upgrade_project( CEEDLING_ROOT, _options, path )
     end
 
 
@@ -89,7 +90,7 @@ module CeedlingTasks
     method_option :test_case, :type => :string, :default => ''
     method_option :exclude_test_case, :type => :string, :default => ''
     def build(*tasks)
-      @handler.app_exec( @app_cfg, options, tasks )
+      @handler.app_exec( ENV, @app_cfg, options, tasks )
     end
 
 
@@ -101,7 +102,7 @@ module CeedlingTasks
       # Get unfrozen copy of options so we can add to it
       _options = options.dup()
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
-      @handler.dumpconfig( @app_cfg, _options, filepath, sections )
+      @handler.dumpconfig( ENV, @app_cfg, _options, filepath, sections )
     end
 
 
@@ -111,6 +112,7 @@ module CeedlingTasks
     method_option :debug, :type => :boolean, :default => false, :hide => true
     def tasks()
       @handler.rake_tasks(
+        env: ENV,
         app_cfg: @app_cfg,
         project: options[:project],
         mixins: options[:mixin],
@@ -126,8 +128,8 @@ module CeedlingTasks
 
 
     desc "example NAME [DEST]", "Create named example project (in optional DEST path)"
-    method_option :local, :type => :boolean, :default => false, :desc => "Copy Ceedling plus supporting tools to vendor/ path"
-    method_option :docs, :type => :boolean, :default => false, :desc => "Copy documentation to docs/ path"
+    method_option :local, :type => :boolean, :default => false, :desc => "Install Ceedling plus supporting tools to vendor/"
+    method_option :docs, :type => :boolean, :default => false, :desc => "Copy documentation to docs/"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     def example(name, dest=nil)
       # Get unfrozen copy of options so we can add to it

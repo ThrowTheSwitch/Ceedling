@@ -1,3 +1,4 @@
+require 'ceedling/constants' # From Ceedling application
 
 class CliHandler
 
@@ -10,94 +11,94 @@ class CliHandler
   end
 
   # Complemented by `rake_tasks()` that can be called independently
-  def app_help(app_cfg, command, &thor_help)
+  def app_help(env, app_cfg, command, &thor_help)
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
-      thor_help.call( command )
+      thor_help.call( command ) if block_given?
       return
     end
 
     # Display Thor-generated help listing
-    thor_help.call( command )
+    thor_help.call( command ) if block_given?
 
     # If it was help for a specific command, we're done
     return if !command.nil?
 
     # If project configuration is available, also display Rake tasks
-    rake_tasks( app_cfg: app_cfg ) if @projectinator.config_available?
+    # Use project file defaults (since `help` allows no flags or options)
+    rake_tasks( env:env, app_cfg:app_cfg ) if @projectinator.config_available?( env:env )
   end
 
-  def copy_assets_and_create_structure(name, silent=false, force=false, options = {})
 
-    use_docs     = options[:docs] || false
-    use_configs  = !(options[:no_configs] || options[:noconfigs] || false)
-    use_gem      = !(options[:local])
-    use_ignore   = options[:gitignore] || false
-    is_upgrade   = options[:upgrade] || false
+  def new_project(ceedling_root, options, name, dest)
+    @helper.set_verbosity( options[:verbosity] )
 
-    ceedling_path     = File.join(name, 'vendor', 'ceedling')
-    source_path       = File.join(name, 'src')
-    test_path         = File.join(name, 'test')
-    test_support_path = File.join(name, 'test/support')
+    # If destination is nil, reassign it to name
+    # Otherwise, join the destination and name into a new path
+    dest = dest.nil? ? ('./' + name) : File.join( dest, name )
 
-    # If it's not an upgrade, make sure we have the paths we expect
-    if (!is_upgrade)
-      [source_path, test_path, test_support_path].each do |d|
-        FileUtils.mkdir_p d
-      end
-    else
-      prj_yaml = @yaml_wrapper.load(File.join(name, 'project.yml'))
-      test_support_path = if prj_yaml.key?(:path) && \
-                             prj_yaml[:path].key?(:support)
-                            prj_yaml.key?[:path][:support]
-                          else
-                            ''
-                          end
+    # Check for existing project (unless --force)
+    if @helper.project_exists?( dest, :|, DEFAULT_PROJECT_FILENAME, 'src', 'test' )
+      msg = "It appears a project already exists at #{dest}/. Use --force to destroy it and create a new project."
+      raise msg
+    end unless options[:force]
+
+    # Blow away any existing directories and contents if --force
+    @actions.remove_dir( dest ) if options[:force]
+
+    # Create blank directory structure
+    ['.', 'src', 'test', 'test/support'].each do |path|
+      @actions._empty_directory( File.join( dest, path) )
     end
 
-    # Genarate gitkeep in test support path
-    FileUtils.touch(File.join(test_support_path, '.gitkeep')) unless test_support_path.empty?
+    # Vendor the tools and install command line helper scripts
+    @helper.vendor_tools( ceedling_root, dest ) if options[:local]
 
-    # We're copying in a configuration file if we haven't said not to
-    if (use_configs)
-      dst_yaml = File.join(name, 'project.yml')
-      src_yaml = if use_gem
-        File.join(CEEDLING_ROOT, 'assets', 'project_as_gem.yml')
-      else
-        if windows?
-          copy_file(File.join('assets', 'ceedling.cmd'), File.join(name, 'ceedling.cmd'), :force => force)
-        else
-          copy_file(File.join('assets', 'ceedling'), File.join(name, 'ceedling'), :force => force)
-          File.chmod(0755, File.join(name, 'ceedling'))
-        end
-        File.join(CEEDLING_ROOT, 'assets', 'project_with_guts.yml')
-      end
+    # Copy in documentation
+    @helper.copy_docs( ceedling_root, dest ) if options[:docs]
 
-      # Perform the actual clone of the config file, while updating the version
-      File.open(dst_yaml,'w') do |dst|
-        require File.expand_path(File.join(File.dirname(__FILE__),"..","lib","ceedling","version.rb"))
-        dst << File.read(src_yaml).gsub(":ceedling_version: '?'",":ceedling_version: #{Ceedling::Version::CEEDLING}")
-        puts "      create  #{dst_yaml}"
-      end
-    end
+    # Copy / set up project file
+    @helper.create_project_file( ceedling_root, dest, options[:local] ) if options[:configs]
 
-    # Copy the gitignore file if requested
-    if (use_ignore)
-      copy_file(File.join('assets', 'default_gitignore'), File.join(name, '.gitignore'), :force => force)
-    end
-
-    unless silent
-      puts "\n"
-      puts "Project '#{name}' #{force ? "upgraded" : "created"}!"
-      puts " - Tool documentation is located in #{doc_path}" if use_docs
-      puts " - Execute 'ceedling help' from #{name} to view available test & build tasks"
-      puts ''
-    end
+    @logger.log( "\n🌱 New project '#{name}' created at #{dest}/\n" )
   end
 
-  def app_exec(app_cfg, options, tasks)
-    project_filepath, config = @configinator.loadinate( filepath: options[:project], mixins: options[:mixin] )
+
+  def upgrade_project(ceedling_root, options, path)
+    # Check for existing project
+    if !@helper.project_exists?( path, :&, options[:project], 'vendor/ceedling/lib/ceedling.rb' )
+      msg = "Could not find an existing project at #{path}/."
+      raise msg
+    end
+
+    project_filepath = File.join( path, options[:project] )
+    _, config = @projectinator.load( filepath:project_filepath, silent:true )
+
+    if (@helper.which_ceedling?( config ) == 'gem')
+      msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
+      raise msg
+    end
+
+    # Recreate vendored tools
+    vendor_path = File.join( path, 'vendor', 'ceedling' )
+    @actions.remove_dir( vendor_path )
+    @helper.vendor_tools( ceedling_root, path )
+
+    # Recreate documentation if we find docs/ subdirectory
+    docs_path = File.join( path, 'docs' )
+    founds_docs = @helper.project_exists?( path, :&, File.join( 'docs', 'CeedlingPacket.md' ) )
+    if founds_docs
+      @actions.remove_dir( docs_path )
+      @helper.copy_docs( ceedling_root, path )
+    end
+
+    @logger.log( "\n🌱 Upgraded project at #{path}/\n" )
+  end
+
+
+  def app_exec(env, app_cfg, options, tasks)
+    project_filepath, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
 
     default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
 
@@ -140,8 +141,8 @@ class CliHandler
     @helper.run_rake_tasks( tasks )
   end
 
-  def rake_exec(app_cfg:, tasks:)
-    project_filepath, config = @configinator.loadinate() # Use defaults for project file & mixins
+  def rake_exec(env:, app_cfg:, tasks:)
+    project_filepath, config = @configinator.loadinate( env:env ) # Use defaults for project file & mixins
 
     default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
 
@@ -163,8 +164,8 @@ class CliHandler
     @helper.run_rake_tasks( tasks )
   end
 
-  def dumpconfig(app_cfg, options, filepath, sections)
-    project_filepath, config = @configinator.loadinate( filepath: options[:project], mixins: options[:mixin] )
+  def dumpconfig(env, app_cfg, options, filepath, sections)
+    project_filepath, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
 
     default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
 
@@ -183,8 +184,8 @@ class CliHandler
     @helper.dump_yaml( config, filepath, sections )
   end
 
-  def rake_tasks(app_cfg:, project:nil, mixins:[], verbosity:nil)
-    project_filepath, config = @configinator.loadinate( filepath: project, mixins: mixins )
+  def rake_tasks(env:, app_cfg:, project:nil, mixins:[], verbosity:nil)
+    project_filepath, config = @configinator.loadinate( filepath:project, mixins:mixins, env:env )
 
     # Save reference to loaded configuration
     app_cfg[:project_config] = config
@@ -214,22 +215,23 @@ class CliHandler
 
     # If destination is nil, reassign it to name
     # Otherwise, join the destination and name into a new path
-    dest = dest.nil? ? name : File.join( dest, name )
+    dest = dest.nil? ? ('./' + name) : File.join( dest, name )
 
     dest_src      = File.join( dest, 'src' )
     dest_test     = File.join( dest, 'test' )
-    dest_project  = File.join( dest, 'project.yml' )
+    dest_project  = File.join( dest, DEFAULT_PROJECT_FILENAME )
 
     @actions._directory( "examples/#{name}/src", dest_src )
     @actions._directory( "examples/#{name}/test", dest_test )
-    @actions._copy_file( "examples/#{name}/project.yml", dest_project )
+    @actions._copy_file( "examples/#{name}/#{DEFAULT_PROJECT_FILENAME}", dest_project )
 
-    vendored_ceedling = File.join( dest, 'vendor', 'ceedling' )
+    # Vendor the tools and install command line helper scripts
+    @helper.vendor_tools( ceedling_root, dest ) if options[:local]
 
-    @helper.vendor_tools( ceedling_root, vendored_ceedling ) if options[:local]
+    # Copy in documentation
     @helper.copy_docs( ceedling_root, dest ) if options[:docs]
 
-    @logger.log( "\nExample project '#{name}' created at #{dest}/\n" )
+    @logger.log( "\n🌱 Example project '#{name}' created at #{dest}/\n" )
   end
 
 
@@ -249,7 +251,7 @@ class CliHandler
   def version()
     require 'ceedling/version'
     version = <<~VERSION
-        Ceedling => #{Ceedling::Version::CEEDLING}
+     🌱 Ceedling => #{Ceedling::Version::CEEDLING}
            CMock => #{Ceedling::Version::CMOCK}
            Unity => #{Ceedling::Version::UNITY}
       CException => #{Ceedling::Version::CEXCEPTION}

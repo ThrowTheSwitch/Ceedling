@@ -23,7 +23,7 @@ task RELEASE_SYM => [:directories] do
   rescue StandardError => e
     @ceedling[:application].register_build_failure
 
-    @ceedling[:streaminator].stderr_puts("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
+    @ceedling[:streaminator].stderr_puts(🌱 "#{e.class} ==> #{e.message}", Verbosity::ERRORS)
 
     # Debug backtrace
     @ceedling[:streaminator].stderr_puts("Backtrace ==>", Verbosity::DEBUG)
