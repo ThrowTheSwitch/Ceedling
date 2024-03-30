@@ -1,8 +1,9 @@
+require 'ceedling/constants' # From Ceedling application
 
 class Projectinator
 
   PROJECT_FILEPATH_ENV_VAR = 'CEEDLING_PROJECT_FILE'
-  DEFAULT_PROJECT_FILEPATH = './project.yml'
+  DEFAULT_PROJECT_FILEPATH = './' + DEFAULT_PROJECT_FILENAME
 
   constructor :file_wrapper, :path_validator, :yaml_wrapper, :logger
 

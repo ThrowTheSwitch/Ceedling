@@ -38,9 +38,7 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
-unless defined?(PROJECT_ROOT)
-  PROJECT_ROOT = Dir.pwd()
-end
+DEFAULT_PROJECT_FILENAME = 'project.yml'
 
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
 
