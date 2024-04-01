@@ -164,7 +164,7 @@ class CliHandler
   def dumpconfig(env, app_cfg, options, filepath, sections)
     @helper.set_verbosity( options[:verbosity] )
 
-    @path_validator.standardize_paths( options[:project], *options[:mixin] )
+    @path_validator.standardize_paths( filepath, options[:project], *options[:mixin] )
 
     project_filepath, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
 
@@ -181,6 +181,8 @@ class CliHandler
     )
 
     @helper.dump_yaml( config, filepath, sections )
+
+    @logger.log( "\n🌱 Dumped project configuration to #{filepath}\n" )
   end
 
 
@@ -222,11 +224,11 @@ class CliHandler
 
     raise( "No examples projects found") if examples.empty?
 
-    @logger.log( "\nAvailable exmple projects:" )
+    output = "\n🌱 Available example projects:\n"
 
-    examples.each {|example| @logger.log( " - #{example}" ) }
+    examples.each {|example| output << " - #{example}\n" }
 
-    @logger.log( "\n" )
+    @logger.log( output + "\n" )
   end
 
 

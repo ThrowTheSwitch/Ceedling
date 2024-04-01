@@ -33,7 +33,7 @@ class Configinator
     if not @projectinator.validate_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
-      source: 'Config :mixins ↳ :cfg_enabled_mixins =>'
+      source: 'Config :mixins ↳ :enabled =>'
     )
       raise 'Project configuration file section :mixins failed validation'
     end
@@ -61,21 +61,21 @@ class Configinator
       load_paths: cfg_load_paths,
     )
 
-    # Fetch CEEDLING_MIXIN_# environment variables and sort into ordered list of hash tuples [{env variable => filepath}...]
+    # Fetch CEEDLING_MIXIN_# environment variables
+    # Sort into ordered list of hash tuples [{env variable => filepath}...]
     env_mixins = @mixinator.fetch_env_filepaths( env )
     @mixinator.validate_env_filepaths( env_mixins )
-    # Redefine list as just filepaths
-    env_mixins = env_mixins.map {|entry| entry.values[0] }
 
-    # Eliminate duplicate mixins and return a list of filepaths in merge order
-    mixin_filepaths = @mixinator.dedup_mixins(
+    # Eliminate duplicate mixins and return list of mixins in merge order
+    # [{source => filepath}...]
+    mixins_assembled = @mixinator.assemble_mixins(
       config: config_mixins,
       env: env_mixins,
       cmdline: cmdline_mixins
     )
 
     # Merge mixins
-    @mixinator.merge( config:config, filepaths:mixin_filepaths )
+    @mixinator.merge( config:config, mixins:mixins_assembled )
 
     return project_filepath, config
   end

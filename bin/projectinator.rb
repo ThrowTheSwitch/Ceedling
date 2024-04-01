@@ -41,10 +41,10 @@ class Projectinator
     # If no user provided filepath and the default filepath does not exist,
     # we have a big problem
     else
-      raise "No project filepath provided and default location #{DEFAULT_PROJECT_FILEPATH} not found"
+      raise "No project filepath provided and default #{DEFAULT_PROJECT_FILEPATH} not found"
     end
 
-    # We'll never get here but return empty configuration for completeness
+    # We'll never get here but return nil/empty for completeness
     return nil, {}
   end
 
@@ -107,26 +107,27 @@ class Projectinator
     validated = true
 
     mixins.each do |mixin|
-      found = false
-
-      # Validate that each mixin is just a name
-      if !File.extname(mixin).empty? or mixin.include?(File::SEPARATOR)
-        @logger.log( "ERROR: #{source} '#{mixin}' should be a name, not a filename" )
-        validated = false
-        next
-      end
-
-      # Validate that each mixin can be found among the load paths
-      load_paths.each do |path|
-        if @file_wrapper.exist?( File.join( path, mixin + '.yml') )
-          found = true
-          break
+      # Validate mixin filepaths
+      if !File.extname( mixin ).empty? or mixin.include?( File::SEPARATOR )
+        if !@file_wrapper.exist?( mixin )
+          @logger.log( "ERROR: Cannot find mixin at #{mixin}" )
+          validated = false
         end
-      end
 
-      if !found
-        @logger.log( "ERROR: #{source} '#{mixin}' cannot be found in the mixin load paths" )
-        validated = false
+      # Otherwise, validate that mixin name can be found among the load paths
+      else
+        found = false
+        load_paths.each do |path|
+          if @file_wrapper.exist?( File.join( path, mixin + '.yml') )
+            found = true
+            break
+          end
+        end
+
+        if !found
+          @logger.log( "ERROR: #{source} '#{mixin}' cannot be found in the mixin load paths" )
+          validated = false
+        end
       end
     end
 
@@ -140,11 +141,18 @@ class Projectinator
     # Fill results hash with mixin name => mixin filepath
     # Already validated, so we know the mixin filepath exists
     mixins.each do |mixin|
-      load_paths.each do |path|
-        filepath = File.join( path, mixin + '.yml' )
-        if @file_wrapper.exist?( filepath )
-          filepaths << filepath
-          break
+      # Handle explicit filepaths
+      if !File.extname( mixin ).empty? or mixin.include?( File::SEPARATOR )
+        filepaths << mixin
+
+      # Find name in load_paths (we already know it exists from previous validation)
+      else
+        load_paths.each do |path|
+          filepath = File.join( path, mixin + '.yml' )
+          if @file_wrapper.exist?( filepath )
+            filepaths << filepath
+            break
+          end
         end
       end
     end
@@ -165,7 +173,7 @@ class Projectinator
       raise "Empty configuration in project filepath #{filepath} #{method}" if config.nil?
 
       # Log what the heck we loaded
-      @logger.log( "Loaded project configuration from #{filepath}" ) if !silent
+      @logger.log( "🌱 Loaded project configuration #{method} using #{filepath}" ) if !silent
 
       return config
     rescue Errno::ENOENT

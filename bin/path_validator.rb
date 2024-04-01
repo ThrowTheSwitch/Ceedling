@@ -31,6 +31,7 @@ class PathValidator
   end
 
   # Ensure any Windows backslashes are converted to Ruby path forward slashes
+  # Santization happens inline
   def standardize_paths( *paths )
     paths.each do |path|
       next if path.nil? or path.empty?

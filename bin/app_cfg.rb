@@ -13,6 +13,7 @@ def get_app_cfg()
     :default_tasks => ['test:all'],
 
     # Basic check from working directory
+    # If vendor/ceedling exists, default to running vendored Ceedling
     :which_ceedling => (Dir.exist?( 'vendor/ceedling' ) ? 'vendor/ceedling' : 'gem'),
 
     # Default, blank test case filters

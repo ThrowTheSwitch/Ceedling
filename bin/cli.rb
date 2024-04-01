@@ -15,7 +15,7 @@ module PermissiveCLI
     # Eat unhandled command errors
     #  - No error message
     #  - No `exit()`
-    #  - Re-raise to allow Rake task handling
+    #  - Re-raise to allow Rake task CLI handling elsewhere
     raise
   end
 end
@@ -51,8 +51,12 @@ module CeedlingTasks
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     method_option :debug, :type => :boolean, :default => false, :hide => true
     def help(command=nil)
-      # Get unfrozen copy of options so we can add to it
+      # Get unfrozen copies so we can add / modify
       _options = options.dup()
+      _options[:project] = options[:project].dup() if !options[:project].nil?
+      _options[:mixin] = []
+      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
+
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
       # Call application help with block to execute Thor's built-in help in the help logic
@@ -66,12 +70,14 @@ module CeedlingTasks
     method_option :configs, :type => :boolean, :default => true, :desc => "Install starter configuration files"
     method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and remove destination"
     method_option :debug, :type => :boolean, :default => false, :hide => true
-    # method_option :gitignore, :type => :boolean, :default => false, :desc => "Create .gitignore file to ignore Ceedling-generated files"
     def new(name, dest=nil)
-      # Get unfrozen copy of options so we can add to it
+      # Get unfrozen copies so we can add / modify
       _options = options.dup()
+      _dest = dest.dup() if !dest.nil?
+
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
-      @handler.new_project( CEEDLING_ROOT, _options, name, dest )
+
+      @handler.new_project( CEEDLING_ROOT, _options, name, _dest )
     end
 
 
@@ -79,17 +85,20 @@ module CeedlingTasks
     method_option :project, :type => :string, :default => DEFAULT_PROJECT_FILENAME, :desc => "Project filename"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     def upgrade(path)
-      # Get unfrozen copy of options so we can add to it
+      # Get unfrozen copies so we can add / modify
       _options = options.dup()
+      _options[:project] = options[:project].dup()
+      _path = path.dup()
+
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
-      @handler.upgrade_project( CEEDLING_ROOT, _options, path )
+
+      @handler.upgrade_project( CEEDLING_ROOT, _options, _path )
     end
 
 
     desc "build TASKS", "Run build tasks (`build` keyword optional)"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :verbosity, :enum => ['silent', 'errors', 'warnings', 'normal', 'obnoxious', VERBOSITY_DEBUG], :aliases => ['-v']
-    # method_option :num, :type => :numeric, :enum => [0, 1, 2, 3, 4, 5], :aliases => ['-n']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     method_option :log, :type => :boolean, :default => false, :aliases => ['-l']
     method_option :logfile, :type => :string, :default => ''
@@ -97,7 +106,13 @@ module CeedlingTasks
     method_option :test_case, :type => :string, :default => ''
     method_option :exclude_test_case, :type => :string, :default => ''
     def build(*tasks)
-      @handler.app_exec( ENV, @app_cfg, options, tasks )
+      # Get unfrozen copies so we can add / modify
+      _options = options.dup()
+      _options[:project] = options[:project].dup() if !options[:project].nil?
+      _options[:mixin] = []
+      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
+
+      @handler.app_exec( ENV, @app_cfg, _options, tasks )
     end
 
 
@@ -106,10 +121,16 @@ module CeedlingTasks
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     method_option :debug, :type => :boolean, :default => false, :hide => true
     def dumpconfig(filepath, *sections)
-      # Get unfrozen copy of options so we can add to it
+      # Get unfrozen copies so we can add / modify
       _options = options.dup()
+      _options[:project] = options[:project].dup() if !options[:project].nil?
+      _options[:mixin] = []
+      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
+      _filepath = filepath.dup()
+
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
-      @handler.dumpconfig( ENV, @app_cfg, _options, filepath, sections )
+
+      @handler.dumpconfig( ENV, @app_cfg, _options, _filepath, sections )
     end
 
 
@@ -124,10 +145,13 @@ module CeedlingTasks
     method_option :docs, :type => :boolean, :default => false, :desc => "Copy documentation to docs/"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     def example(name, dest=nil)
-      # Get unfrozen copy of options so we can add to it
+      # Get unfrozen copies so we can add / modify
       _options = options.dup()
+      _dest = dest.dup() if !dest.nil?
+
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
-      @handler.create_example( CEEDLING_ROOT, CEEDLING_EXAMPLES_PATH, _options, name, dest )
+
+      @handler.create_example( CEEDLING_ROOT, CEEDLING_EXAMPLES_PATH, _options, name, _dest )
     end
 
 

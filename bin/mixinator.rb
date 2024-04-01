@@ -33,12 +33,17 @@ class Mixinator
     _vars = []
     # Iterate over sorted environment variable names
     var_names.each do |name|
+      # Duplicate the filepath string to get unfrozen copy
+      # Handle any Windows path shenanigans
       # Insert in array {env var name => filepath}
-      _vars << {name => @path_validator.standardize_paths( vars[name] )}
+      path = vars[name].dup()
+      @path_validator.standardize_paths( path )
+      _vars << {name => path}
     end
 
     # Remove any duplicate filepaths by comparing the full absolute path
-    _vars.uniq! {|entry| File.expand_path( entry.values[0] )}
+    # Higher numbered environment variables removed
+    _vars.uniq! {|entry| File.expand_path( entry.values.first )}
 
     return _vars
   end
@@ -48,8 +53,8 @@ class Mixinator
 
     vars.each do |entry|
       validated &= @path_validator.validate(
-        paths: [entry.values[0]],
-        source: "Environment variable `#{entry.keys[0]}` filepath",
+        paths: [entry.values.first],
+        source: "Environment variable `#{entry.keys.first}` filepath",
       )
     end
 
@@ -58,32 +63,41 @@ class Mixinator
     end
   end
 
-  def dedup_mixins(config:, env:, cmdline:)
-    # Remove duplicates
-    #  1. Invert the merge order to yield the precedence of mixin selections
-    #  2. Expand filepaths to absolute paths for correct deduplication
-    #  3. Remove duplicates
-    filepaths = (cmdline + env + config).uniq {|entry| File.expand_path( entry )}
+  def assemble_mixins(config:, env:, cmdline:)
+    assembly = []
 
-    # Return the compacted list in merge order
-    return filepaths.reverse()
+    # Build list of hashses to facilitate deduplication
+    cmdline.each {|filepath| assembly << {'command line' => filepath}}
+    assembly += env
+    config.each {|filepath| assembly << {'project configuration' => filepath}}
+
+    # Remove duplicates inline
+    #  1. Expand filepaths to absolute paths for correct deduplication
+    #  2. Remove duplicates
+    assembly.uniq! {|entry| File.expand_path( entry.values.first )}
+
+    # Return the compacted list (in merge order)
+    return assembly
   end
 
-  def merge(config:, filepaths:)
-    filepaths.each do |filepath| 
-      mixin = @yaml_wrapper.load( filepath )
+  def merge(config:, mixins:)
+    mixins.each do |mixin|
+      source = mixin.keys.first
+      filepath = mixin.values.first
+
+      _mixin = @yaml_wrapper.load( filepath )
 
       # Report if the mixin was blank or otherwise produced no hash
-      raise "Empty mixin configuration in #{filepath}" if config.nil?
+      raise "Empty mixin configuration in #{filepath}" if _mixin.nil?
 
-      # Sanitize the mixin config by removing any :mixins section (we ignore these in merges)
-      mixin.delete(:mixins) if mixin[:mixins]
+      # Sanitize the mixin config by removing any :mixins section (these should not end up in merges)
+      _mixin.delete(:mixins)
 
       # Merge this bad boy
-      config.deep_merge( mixin )
+      config.deep_merge( _mixin )
 
       # Log what filepath we used for this mixin
-      @logger.log( "Merged mixin configuration from #{filepath}" )
+      @logger.log( " + Merged #{source} mixin using #{filepath}" )
     end
   end
 

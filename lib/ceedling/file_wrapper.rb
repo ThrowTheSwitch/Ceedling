@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'rake' # for FileList
 require 'fileutils'
+require 'pathname'
 require 'ceedling/constants'
 
 
@@ -27,6 +28,10 @@ class FileWrapper
   # Is path a directory and does it exist?
   def directory?(path)
     return File.directory?(path)
+  end
+
+  def relative?(path)
+    return Pathname.new( path).relative?
   end
 
   def dirname(path)
