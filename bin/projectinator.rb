@@ -24,6 +24,7 @@ class Projectinator
     # Next priority: environment variable
     elsif env[PROJECT_FILEPATH_ENV_VAR]
       filepath = env[PROJECT_FILEPATH_ENV_VAR]
+      @path_validator.standardize_paths( filepath )
       config = load_filepath( 
         filepath,
         "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`",

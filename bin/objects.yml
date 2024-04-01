@@ -18,6 +18,7 @@ cli_handler:
     - configinator
     - projectinator
     - cli_helper
+    - path_validator
     - actions_wrapper
     - logger
 

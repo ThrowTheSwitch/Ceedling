@@ -30,4 +30,12 @@ class PathValidator
     return validated
   end
 
+  # Ensure any Windows backslashes are converted to Ruby path forward slashes
+  def standardize_paths( *paths )
+    paths.each do |path|
+      next if path.nil? or path.empty?
+      path.gsub!( "\\", '/' )
+    end
+  end
+
 end

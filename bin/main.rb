@@ -23,7 +23,7 @@ begin
   # Backwards compatibility command line hack to silently presenve Rake `-T` CLI handling
   if (ARGV.size() == 1 and ARGV[0] == '-T')
     # Call rake task listing handler w/ default handling of project file and mixins
-    objects[:cli_handler].rake_tasks( env:ENV, app_cfg:CEEDLING_APPCFG )
+    objects[:cli_handler].list_rake_tasks( env:ENV, app_cfg:CEEDLING_APPCFG )
 
   # Otherwise, run command line args through Thor
   elsif (ARGV.size() > 0)
@@ -36,9 +36,19 @@ begin
   end
 
 # Thor application CLI did not handle command line arguments.
-# Pass along ARGV to Rake instead.
 rescue Thor::UndefinedCommandError
-  objects[:cli_handler].rake_exec( env:ENV, app_cfg: CEEDLING_APPCFG, tasks: _ARGV )
+  # Marrying Thor Rake command line handling creates a gap (see comments in CLI handling).
+  # If a user enters only Rake build tasks at the command line followed by Thor flags,
+  # our Thor configuration doesn't see those flags.
+  # We catch the exception of unrecognized Thor commands here (i.e. the Rake tasks),
+  # and try again by forcing the Thor `build` command at the beginning of the command line.
+  # This way, our Thor handling will process the flags and pass the Rake tasks along.
+  CeedlingTasks::CLI.start( _ARGV.unshift( 'build' ),
+    {
+      :app_cfg => CEEDLING_APPCFG,
+      :objects => objects,
+    }
+  )
 
 # Bootloader boom handling
 rescue StandardError => e

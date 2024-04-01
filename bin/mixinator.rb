@@ -34,7 +34,7 @@ class Mixinator
     # Iterate over sorted environment variable names
     var_names.each do |name|
       # Insert in array {env var name => filepath}
-      _vars << {name => vars[name]}
+      _vars << {name => @path_validator.standardize_paths( vars[name] )}
     end
 
     # Remove any duplicate filepaths by comparing the full absolute path

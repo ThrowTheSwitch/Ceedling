@@ -47,9 +47,16 @@ module CeedlingTasks
 
     # Override Thor help to list Rake tasks as well
     desc "help [COMMAND]", "Describe available commands and list build operations"
+    method_option :project, :type => :string, :default => nil, :aliases => ['-p']
+    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
+    method_option :debug, :type => :boolean, :default => false, :hide => true
     def help(command=nil)
-      # Call application help with block to execute Thor's built-in help after Ceedling loads
-      @handler.app_help( ENV, @app_cfg, command ) { |command| super(command) }
+      # Get unfrozen copy of options so we can add to it
+      _options = options.dup()
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+
+      # Call application help with block to execute Thor's built-in help in the help logic
+      @handler.app_help( ENV, @app_cfg, _options, command ) { |command| super(command) }
     end
 
 
@@ -103,21 +110,6 @@ module CeedlingTasks
       _options = options.dup()
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
       @handler.dumpconfig( ENV, @app_cfg, _options, filepath, sections )
-    end
-
-
-    desc "tasks", "List all build operations"
-    method_option :project, :type => :string, :default => nil, :aliases => ['-p']
-    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
-    method_option :debug, :type => :boolean, :default => false, :hide => true
-    def tasks()
-      @handler.rake_tasks(
-        env: ENV,
-        app_cfg: @app_cfg,
-        project: options[:project],
-        mixins: options[:mixin],
-        verbosity: options[:debug] ? VERBOSITY_DEBUG : nil
-      )
     end
 
 

@@ -6,13 +6,13 @@ class Configinator
 
   constructor :config_walkinator, :projectinator, :mixinator
 
-  def loadinate(filepath:nil, mixins:[], env:{})
+  def loadinate(filepath:nil, mixins:[], env:{}, silent:false)
     # Aliases for clarity
     cmdline_filepath = filepath
     cmdline_mixins = mixins
 
     # Load raw config from command line, environment variable, or default filepath
-    project_filepath, config = @projectinator.load( filepath:cmdline_filepath, env:env )
+    project_filepath, config = @projectinator.load( filepath:cmdline_filepath, env:env, silent:silent )
 
     # Extract cfg_enabled_mixins mixins list plus load paths list from config
     cfg_enabled_mixins, cfg_load_paths = @projectinator.extract_mixins(
