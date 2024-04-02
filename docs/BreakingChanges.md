@@ -1,11 +1,15 @@
+# 🌱 Ceedling Breaking Changes
 
-# 💔 Breaking Changes for 0.32 Release Candidate
+These breaking changes are complemented by two other documents:
 
-**Version:** 0.32 pre-release incremental build
+1. **[📣 Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
+1. **[🪵 Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
 
-**Date:** March 28, 2024
+---
 
-# Explicit `:paths` ↳ `:include` entries in the project file
+# [1.0.0 pre-release] — 2024-04-02
+
+## Explicit `:paths` ↳ `:include` entries in the project file
 
 The `:paths` ↳ `:include` entries in the project file must now be explicit and complete.
 
@@ -18,7 +22,7 @@ This behavior is no more. Why? For two interrelated reasons.
 
 Using 0.32 Ceedling with older project files can lead to errors when generating mocks or compiler errors on finding header files. Add all relevant header file search paths to the `:paths` ↳ `:include` project file entry to fix this problem.
 
-# Format change for `:defines` in the project file
+## Format change for `:defines` in the project file
 
 To better support per-test-executable configurations, the format of `:defines` has changed. See the [official documentation](CeedlingPacket.md) for specifics.
 
@@ -30,7 +34,7 @@ In brief:
 
 Symbols specified for release builds are applied to all files in the release build.
 
-# Format change for `:flags` in the project file
+## Format change for `:flags` in the project file
 
 To better support per-test-executable configurations, the format and function of `:flags` has changed somewhat. See the [official documentation](CeedlingPacket.md) for specifics.
 
@@ -41,11 +45,11 @@ In brief:
 
 Flags specified for release builds are applied to all files in the release build.
 
-# `TEST_FILE()` ➡️ `TEST_SOURCE_FILE()`
+## `TEST_FILE()` ➡️ `TEST_SOURCE_FILE()`
 
 The previously undocumented `TEST_FILE()` build directive macro (#796) available within test files has been renamed and is now officially documented. See earlier section on this.
 
-# Quoted executables in tool definitions
+## Quoted executables in tool definitions
 
 While unusual, some executables have names with spaces. This is more common on Windows than Unix derivatives, particularly with proprietary compiler toolchains.
 
@@ -61,17 +65,17 @@ Automatic quoting has been removed. If you need a quoted executable, simply expl
     :executable: \"Code Cranker\"
 ```
 
-# Build output directory structure changes
+## Build output directory structure changes
 
-## Test builds
+### Test builds
 
 Each test is now treated as its own mini-project. Differentiating components of the same name that are a part of multiple test executables required further subdirectories in the build directory structure. Generated mocks, compiled object files, linked executables, and preprocessed output all end up one directory deeper than in previous versions of Ceedling. In each case, these files are found inside a subdirectory named for their containing test.
 
-## Release builds
+### Release builds
 
 Release build object files were previously segregated by their source. The release build output directory had subdirectories `c/` and `asm/`. These subdirectories are no longer in use.
 
-# Changes to global constants & accessors
+## Changes to global constants & accessors
 
 Some global constant “collections” that were previously key elements of Ceedling have changed or gone away as the build pipeline is now able to process a configuration for each individual test executable in favor of for the entire suite.
 
@@ -79,17 +83,17 @@ Similarly, various global constant project file accessors have changed, specific
 
 See the [official documentation](CeedlingPacket.md) on global constants & accessors for updated lists and information.
 
-# `raw_output_report` plugin
+## `raw_output_report` plugin
 
 This plugin (renamed -- see next section) no longer generates empty log files and no longer generates log files with _test_ and _pass_ in their filenames. Log files are now simply named `<test file>.raw.log`.
 
-# Consolidation of test report generation plugins ➡️ `report_tests_log_factory`
+## Consolidation of test report generation plugins ➡️ `report_tests_log_factory`
 
 The individual `json_tests_report`, `xml_tests_report`, and `junit_tests_report` plugins are superseded by a single plugin `report_tests_log_factory` able to generate each or all of the previous test reports as well as an HTML report and user-defined tests reports. The new plugin requires a small amount of extra configuration the previous individual plugins did not. See the [`report_tests_log_factory` documentation](../plugins/report_tests_log_factory).
 
 In addition, all references and naming connected to the previous `xml_tests_report` plugin have been updated to refer to _CppUnit_ rather than generic _XML_ as this is the actual format of the report that is processed.
 
-# Built-in Plugin Name Changes
+## Built-in Plugin Name Changes
 
 The following plugin names must be updated in the `:plugins` ↳ `:enabled` list of your Ceedling project file.
 
@@ -108,7 +112,7 @@ Some test report generation plugins were not simply renamed but superseded by a 
 - `warnings_report` ➡️ `report_build_warnings_log`
 - `test_suite_reporter` ➡️ `report_tests_log_factory`
 
-# `gcov` plugin coverage report generation name and behavior changes
+## `gcov` plugin coverage report generation name and behavior changes
 
 The `gcov` plugin and its [documentation](../plugins/gcov) has been significantly revised. See [release notes](ReleaseNotes.md) for all the details.
 
@@ -121,7 +125,7 @@ Coverage reports are now generated automatically unless the manual report genera
   :report_task: TRUE
 ```
 
-# Exit code handling (a.k.a. `:graceful_fail`)
+## Exit code handling (a.k.a. `:graceful_fail`)
 
 Be default Ceedling terminates with an exit code of `1` when a build succeeds but unit tests fail.
 
