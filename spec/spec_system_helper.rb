@@ -56,6 +56,10 @@ class SystemContext
     git_repo = File.expand_path(File.join(File.dirname(__FILE__), '..'))
     bundler_gem_file_data = [ %Q{source "http://rubygems.org/"},
                               %Q{gem "rake"},
+                              %Q{gem "constructor"},
+                              %Q{gem "diy"},
+                              %Q{gem "thor"},
+                              %Q{gem "deep_merge"},
                               %Q{gem "ceedling", :path => '#{git_repo}'}
                             ].join("\n")
 

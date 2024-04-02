@@ -120,8 +120,8 @@ class CliHelper
   def process_graceful_fail(config:, tasks:, cmdline_graceful_fail:)
     _tasks = tasks.empty?() ? default_tasks : tasks
 
-    # Blow up if graceful fail is provided without any actual test tasks
-    if _tasks.none?(/^test:/i)
+    # Blow up if --graceful-fail provided without any actual test tasks
+    if _tasks.none?(/^test:/i) and cmdline_graceful_fail
       raise "--graceful-fail specified without any test tasks"
     end
 

@@ -65,7 +65,7 @@ class UnityUtils
   # Parse passed by user arguments
   def process_test_runner_build_options()
     # Blow up immediately if things aren't right
-    return if !test_case_filters_configured?()
+    return if !test_runner_cmdline_args_configured?()
 
     @test_runner_defines << 'UNITY_USE_COMMAND_LINE_ARGS'
 
@@ -90,23 +90,22 @@ class UnityUtils
   private
 
   # Raise exception if lacking support for test case matching
-  def test_case_filters_configured?()
+  def test_runner_cmdline_args_configured?()
     # Command line arguments configured
     cmdline_args = @configurator.test_runner_cmdline_args
 
     # Test case filters in use
     test_case_filters = !@configurator.include_test_case.empty? or !@configurator.exclude_test_case.empty?
 
-    # Bail out if test case filters aren't in use
-    return false if !test_case_filters
+    # Test case filters are in use but test runner command line arguments are not enabled
+    if test_case_filters and !cmdline_args
+      # Blow up if filters are in use but test runner command line arguments are not enabled
+      msg = 'Unity test case filters cannot be used as configured. ' +
+            'Enable :test_runner ↳ :cmdline_args in your project configuration.'
 
-    # Test case filters are in use and test runner command line arguments enabled
-    return true if cmdline_args
+      raise CeedlingException.new( msg )
+    end
 
-    # Blow up if filters are in use but test runner command line arguments are not enabled
-    msg = 'Unity test case filters cannot be used as configured. ' +
-          'Enable :test_runner ↳ :cmdline_args in your project configuration.'
-
-    raise CeedlingException.new( msg )
+    return cmdline_args
   end
 end
