@@ -35,11 +35,29 @@ class CliHandler
     return if !command.nil?
 
     # If project configuration is available, also display Rake tasks
-    # Use project file defaults (since `help` allows no flags or options)
     @path_validator.standardize_paths( options[:project], *options[:mixin], )
-    if @projectinator.config_available?( filepath:options[:project], env:env )
-      help_rake_tasks( env:env, app_cfg:app_cfg, options:options  )
-    end
+    return if !@projectinator.config_available?( filepath:options[:project], env:env )
+
+    project_filepath, config = 
+      @configinator.loadinate(
+        filepath: options[:project],
+        mixins: options[:mixin],
+        env: env,
+        silent: true # Suppress project config load logging
+      )
+
+    # Save reference to loaded configuration
+    app_cfg[:project_config] = config
+
+    @helper.load_ceedling(
+      project_filepath: project_filepath,
+      config: config,
+      which: app_cfg[:which_ceedling],
+      default_tasks: app_cfg[:default_tasks]
+    )
+
+    @logger.log( '🌱 Build operations:' )
+    @helper.print_rake_tasks()
   end
 
 
@@ -113,7 +131,7 @@ class CliHandler
   end
 
 
-  def app_exec(env, app_cfg, options, tasks)
+  def build(env:, app_cfg:, options:{}, tasks:)
     @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
@@ -142,8 +160,9 @@ class CliHandler
     app_cfg[:tests_graceful_fail] =
      @helper.process_graceful_fail(
         config: config,
+        cmdline_graceful_fail: options[:graceful_fail],
         tasks: tasks,
-        cmdline_graceful_fail: options[:graceful_fail]
+        default_tasks: default_tasks
       )
 
     # Enable setup / operations duration logging in Rake context
@@ -186,6 +205,19 @@ class CliHandler
   end
 
 
+  def list_examples(examples_path)
+    examples = @helper.lookup_example_projects( examples_path )
+
+    raise( "No examples projects found") if examples.empty?
+
+    output = "\n🌱 Available example projects:\n"
+
+    examples.each {|example| output << " • #{example}\n" }
+
+    @logger.log( output + "\n" )
+  end
+
+
   def create_example(ceedling_root, examples_path, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
 
@@ -219,19 +251,6 @@ class CliHandler
   end
 
 
-  def list_examples(examples_path)
-    examples = @helper.lookup_example_projects( examples_path )
-
-    raise( "No examples projects found") if examples.empty?
-
-    output = "\n🌱 Available example projects:\n"
-
-    examples.each {|example| output << " - #{example}\n" }
-
-    @logger.log( output + "\n" )
-  end
-
-
   def version()
     require 'ceedling/version'
     version = <<~VERSION
@@ -241,33 +260,6 @@ class CliHandler
        CException => #{Ceedling::Version::CEXCEPTION}
     VERSION
     @logger.log( version )
-  end
-
-  ### Private ###
-
-  private
-
-  def help_rake_tasks(env:, app_cfg:, options:)
-    project_filepath, config = 
-      @configinator.loadinate(
-        filepath: options[:project],
-        mixins: options[:mixin],
-        env: env,
-        silent: true # Suppress project config load logging
-      )
-
-    # Save reference to loaded configuration
-    app_cfg[:project_config] = config
-
-    @helper.load_ceedling(
-      project_filepath: project_filepath,
-      config: config,
-      which: app_cfg[:which_ceedling],
-      default_tasks: app_cfg[:default_tasks]
-    )
-
-    @logger.log( '🌱 Build operations:' )
-    @helper.print_rake_tasks()
   end
 
 end

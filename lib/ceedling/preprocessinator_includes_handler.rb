@@ -9,6 +9,7 @@ class PreprocessinatorIncludesHandler
   ## ============================
   ##
   ## BACKGROUND
+  ## --------
   ## #include extraction is hard to do. In simple cases a regex approach suffices, but nested header files,
   ## clever macros, and conditional preprocessing statements easily introduce high complexity.
   ##

@@ -97,7 +97,7 @@ class Mixinator
       config.deep_merge( _mixin )
 
       # Log what filepath we used for this mixin
-      @logger.log( " + Merged #{source} mixin using #{filepath}" ) if !silent
+      @logger.log( "  + Merged #{source} mixin using #{filepath}" ) if !silent
     end
   end
 

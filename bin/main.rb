@@ -5,6 +5,7 @@ require 'app_cfg'
 
 CEEDLING_APPCFG = get_app_cfg()
 
+
 # Entry point
 begin
   # Construct all bootloader objects
@@ -17,15 +18,17 @@ begin
   $LOAD_PATH.delete( CEEDLING_BIN ) # Loaded in top-level `ceedling` script
   $LOAD_PATH.delete( CEEDLING_LIB )
 
-  # Keep a copy of the command line (Thor consumes ARGV)
+  # Keep a copy of the command line for edge case CLI hacking (Thor consumes ARGV)
   _ARGV = ARGV.clone
+
+  # NOTE: See comment block in cli.rb to understand CLI handling.
 
   # Backwards compatibility command line hack to silently presenve Rake `-T` CLI handling
   if (ARGV.size() == 1 and ARGV[0] == '-T')
     # Call rake task listing handler w/ default handling of project file and mixins
     objects[:cli_handler].list_rake_tasks( env:ENV, app_cfg:CEEDLING_APPCFG )
 
-  # Otherwise, run command line args through Thor
+  # Run command line args through Thor
   elsif (ARGV.size() > 0)
     CeedlingTasks::CLI.start( ARGV,
       {
@@ -33,6 +36,10 @@ begin
         :objects => objects,
       }
     )
+
+  # Handle `ceedling` run with no arguments (run default build tasks)
+  else
+    objects[:cli_handler].build( env:ENV, app_cfg:CEEDLING_APPCFG, tasks:[] )
   end
 
 # Thor application CLI did not handle command line arguments.

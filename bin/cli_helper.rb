@@ -98,12 +98,8 @@ class CliHelper
     # Do nothing if no test case filters
     return if include.empty? and exclude.empty?
 
-    _tasks = tasks.empty?() ? default_tasks : tasks
-
-    # Blow up if a test case filter is provided without any actual test tasks
-    if _tasks.none?(/^test:/i)
-      raise "Test case filters specified without any test tasks"
-    end
+    # TODO: When we can programmatically check if a task is a test task,
+    #       raise an exception if --graceful-fail is set without test operations
 
     # Add test runner configuration setting necessary to use test case filters
     walked = @config_walkinator.fetch_value( config, :test_runner )
@@ -117,13 +113,9 @@ class CliHelper
   end
 
 
-  def process_graceful_fail(config:, tasks:, cmdline_graceful_fail:)
-    _tasks = tasks.empty?() ? default_tasks : tasks
-
-    # Blow up if --graceful-fail provided without any actual test tasks
-    if _tasks.none?(/^test:/i) and cmdline_graceful_fail
-      raise "--graceful-fail specified without any test tasks"
-    end
+  def process_graceful_fail(config:, cmdline_graceful_fail:, tasks:, default_tasks:)
+    # TODO: When we can programmatically check if a task is a test task,
+    #       raise an exception if --graceful-fail is set without test operations
 
     # Precedence
     #  1. Command line option
