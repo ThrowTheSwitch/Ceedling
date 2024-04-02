@@ -50,6 +50,18 @@ module CeedlingTasks
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     method_option :debug, :type => :boolean, :default => false, :hide => true
+    long_desc <<-LONGDESC
+    `help` provides standard help for all available application commands.
+
+    COMMAND is optional and will produce detailed help for a specific command.
+
+    `help` also lists the available build operations from loading your project configuration.
+    Optionally, a project filepath and/or mixins may be provided through command line flags. If not
+    provided, default options for loading project configuration will be used.
+
+    Mixin flags may be specified multiple times and may refer to either a mixin name in a load path
+    or a specific filepath of a mixin.
+    LONGDESC
     def help(command=nil)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -70,6 +82,10 @@ module CeedlingTasks
     method_option :configs, :type => :boolean, :default => true, :desc => "Install starter configuration files"
     method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and remove destination"
     method_option :debug, :type => :boolean, :default => false, :hide => true
+    long_desc <<-LONGDESC
+    `new` creates a new project structure.
+    
+    LONGDESC
     def new(name, dest=nil)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -84,6 +100,10 @@ module CeedlingTasks
     desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project"
     method_option :project, :type => :string, :default => DEFAULT_PROJECT_FILENAME, :desc => "Project filename"
     method_option :debug, :type => :boolean, :default => false, :hide => true
+    long_desc <<-LONGDESC
+    `upgrades` updates an existing project structure.
+
+    LONGDESC
     def upgrade(path)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -105,6 +125,10 @@ module CeedlingTasks
     method_option :graceful_fail, :type => :boolean, :default => nil
     method_option :test_case, :type => :string, :default => ''
     method_option :exclude_test_case, :type => :string, :default => ''
+    long_desc <<-LONGDESC
+    `build` executes operations created from your project configuration.
+    
+    LONGDESC
     def build(*tasks)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -120,6 +144,10 @@ module CeedlingTasks
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     method_option :debug, :type => :boolean, :default => false, :hide => true
+    long_desc <<-LONGDESC
+    `dumpconfig` loads your project configuration, including all manipulations, and dumps the final config to a YAML file.
+    
+    LONGDESC
     def dumpconfig(filepath, *sections)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -135,6 +163,11 @@ module CeedlingTasks
 
 
     desc "examples", "List available example projects"
+    long_desc <<-LONGDESC
+    `examples` lists the names of the example projects that come packaged with Ceedling.
+
+    The output of this list is most useful when used with the `example` command to extract an example project to your filesystem.
+    LONGDESC
     def examples()
       @handler.list_examples( CEEDLING_EXAMPLES_PATH )
     end
@@ -144,6 +177,19 @@ module CeedlingTasks
     method_option :local, :type => :boolean, :default => false, :desc => "Install Ceedling plus supporting tools to vendor/"
     method_option :docs, :type => :boolean, :default => false, :desc => "Copy documentation to docs/"
     method_option :debug, :type => :boolean, :default => false, :hide => true
+    long_desc <<-LONGDESC
+    `example` extracts the named example project from within Ceedling to your filesystem.
+
+    A list of example projects is available with the `examples` command.
+
+    DEST is an optional directory path in which to place the example project (e.g. <DEST>/<example>).
+
+    The optional `--local` flag copies Ceedling and its dependencies to a vendor/ directory next to the example project.
+
+    The optional `--docs` flag copies all tool documentation to a docs/ directory next to the example project.
+
+    `example` is destructive. It will replace the existing contents of a previoulsy created example project.
+    LONGDESC
     def example(name, dest=nil)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()

@@ -205,9 +205,9 @@ class CliHandler
     dest_test     = File.join( dest, 'test' )
     dest_project  = File.join( dest, DEFAULT_PROJECT_FILENAME )
 
-    @actions._directory( "examples/#{name}/src", dest_src )
-    @actions._directory( "examples/#{name}/test", dest_test )
-    @actions._copy_file( "examples/#{name}/#{DEFAULT_PROJECT_FILENAME}", dest_project )
+    @actions._directory( "examples/#{name}/src", dest_src, :force => true )
+    @actions._directory( "examples/#{name}/test", dest_test, :force => true )
+    @actions._copy_file( "examples/#{name}/#{DEFAULT_PROJECT_FILENAME}", dest_project, :force => true )
 
     # Vendor the tools and install command line helper scripts
     @helper.vendor_tools( ceedling_root, dest ) if options[:local]
