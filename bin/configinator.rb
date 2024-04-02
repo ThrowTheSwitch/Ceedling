@@ -75,7 +75,7 @@ class Configinator
     )
 
     # Merge mixins
-    @mixinator.merge( config:config, mixins:mixins_assembled )
+    @mixinator.merge( config:config, mixins:mixins_assembled, silent:silent )
 
     return project_filepath, config
   end
