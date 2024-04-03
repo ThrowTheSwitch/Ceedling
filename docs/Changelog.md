@@ -4,7 +4,7 @@ This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 This changelog is complemented by two other documents:
 
-1. **[📣 Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
+1. **[🔊 Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
 1. **[💔 Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
 
 ---
@@ -40,7 +40,20 @@ In short, `TEST_SOURCE_FILE()` allows you to be explicit as to which source C fi
 
 ### Mixins for modifying your configuration
 
-...
+Thorough documentation on Mixins can be found in _[CeedlingPacket](CeedlingPacket.md))_.
+
+### Additional options for loading a base configuration from a project file
+
+Once upon a time, you could load a project configuration in just two simple ways — _project.yml_ in your working directory and an environment variable pointing to a different file. Those days are over.
+
+You may now:
+
+* Load your project configuration from a filepath provided at the command line.
+* Load your project configuration from an environment variable hoding a filepath.
+* Load your project configuration from the default _project.yml_ in your working directory.
+* Modify your configuration with Mixins loaded from your project file, environment variables, and/or from the command line.
+
+All the options for loading and modifying a project configuration are thoroughly documented in _[CeedlingPacket](CeedlingPacket.md))_.
 
 ### More better `:flags` handling
 
@@ -125,6 +138,14 @@ The preprocessing needed by Ceedling for sophisticated projects has always been 
 This release of Ceedling stripped the feature back to basics and largely rewrote it within the context of the new build pipeline. Complicated regular expressions and Ruby-generated temporary files have been eliminated. Instead, Ceedling now blends two reports from gcc' `cpp` tool and complements this with additional context. In addition, preprocessing now occurs at the right moments in the overall build pipeline.
 
 While this new approach is not 100% foolproof, it is far more robust and far simpler than previous attempts. Other new Ceedling features should be able to address shortcomings in edge cases.
+
+## Project file environment variable name change `CEEDLING_MAIN_PROJECT_FILE` ➡️ `CEEDLING_PROJECT_FILE`
+
+Options and support for loading a project configuration have expanded significantly, mostly notably with the addition of Mixins.
+
+The environment variable option for pointing Ceedling to a project file other than _project.yml_ in your working directory has been renamed `CEEDLING_MAIN_PROJECT_FILE` ➡️ `CEEDLING_PROJECT_FILE`.
+
+Documentation on Mixins and the new options for loading a project configuration are thoroughly documented in _[CeedlingPacket](CeedlingPacket.md))_.
 
 ### Plugin system improvements
 
@@ -229,3 +250,7 @@ The gcov plugin has been updated and improved, but its proprietary counterpart, 
 The configuration format for the `gcovr` utility changed when support for the `reportgenerator` utility was added. A format that accomodated a more uniform and common layout was adopted. However, support for the older, deprecated `gcovr`-only configuration was maintained. This support for the deprecated `gcovr` configuration format has been removed.
 
 Please consult the [gcov plugin's documentation](plugins/gcov/README.md) to update any old-style `gcovr` configurations.
+
+### Undocumented environment variable `CEEDLING_USER_PROJECT_FILE` support removed
+
+A previously undocumented feature for merging a second configuration via environment variable `CEEDLING_USER_PROJECT_FILE` has been removed. This feature has been superseded by the new Mixins functionality.

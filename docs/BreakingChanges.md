@@ -2,7 +2,7 @@
 
 These breaking changes are complemented by two other documents:
 
-1. **[📣 Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
+1. **[🔊 Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
 1. **[🪵 Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
 
 ---
@@ -143,3 +143,15 @@ Now:
 :test_build:
   :graceful_fail: TRUE
 ```
+
+## Project file environment variable name change `CEEDLING_MAIN_PROJECT_FILE` ➡️ `CEEDLING_PROJECT_FILE`
+
+Options and support for loading a project configuration have expanded significantly, mostly notably with the addition of Mixins.
+
+The environment variable option for pointing Ceedling to a project file other than _project.yml_ in your working directory has been renamed `CEEDLING_MAIN_PROJECT_FILE` ➡️ `CEEDLING_PROJECT_FILE`.
+
+In addition, a previously undocumented feature for merging a second configuration via environment variable `CEEDLING_USER_PROJECT_FILE` has been removed. This feature has been superseded by the new Mixins functionality.
+
+Thorough documentation on Mixins and the new options for loading a project configuration can be found in _[CeedlingPacket](CeedlingPacket.md))_.
+
+

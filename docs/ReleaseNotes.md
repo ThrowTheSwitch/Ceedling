@@ -45,6 +45,17 @@ The following new features (discussed in later sections) contribute to this new 
 - `:defines` handling. `#define`s are now specified for the compilation of all modules comprising a test executable. Matching is only against test file names but now includes wildcard and regular expression options.
 - `:flags` handling. Flags (e.g. `-std=c99`) are now specified for the build steps—preprocessing, compilation, and linking—of all modules comprising a test executable. Matching is only against test file names and now includes more sensible and robust wildcard and regular expression options.
 
+#### Mixins for configuration variations
+
+Ever wanted to smoosh in some extra configuration selectively? Let's say you have different build scenarios and you'd like to run different variations of your project for them. Maybe you have core configuration that is common to all those scenarios. Previous versions of Ceedling included a handful of features that partially met these sorts of needs.
+
+All such features have been superseded by _Mixins_. Mixins are simply additional YAML that gets merged into you base project configuration. However, Mixins provide several key improvements over previous features:
+
+1. Mixins can be as little or as much configuration as you want. You could push all your configuration into mixins with a base project file including nothing but a `:mixins` section.
+1. Mixins can be specified in your project configuration, via environment variables, and from the command line. A clear order of precedence controls the order of merging. Any conflicts or duplicates are automatically resolved.
+1. Logging makes clear what proejct file and mixins are loaded and merged at startup.
+1. Like built-in plugins, Ceedling will soon come with built-in mixins available for common build scenarios.
+
 #### A proper command line
 
 Until this release, Ceedling depended on Rake for most of its command line handling. Rake's task conventions provide poor command line handling abilities. The core problems with Rake command line handling include:

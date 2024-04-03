@@ -799,12 +799,6 @@ are completed once, only step 3 is needed for each new project.
    `:environment` ↳ `:path` in your project file (see
    `:environment` section later in this document).
 
-1. To use a project file name other than the default `project.yml`
-   or place the project file in a directory other than the one
-   in which you'll run Rake, create an environment variable
-   `CEEDLING_MAIN_PROJECT_FILE` with your desired project
-   file path.
-
 1. To better understand Rake conventions, Rake execution,
    and Rakefiles, consult the [Rake tutorial, examples, and
    user guide](http://rubyrake.org/).
