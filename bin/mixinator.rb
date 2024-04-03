@@ -19,10 +19,10 @@ class Mixinator
     end
   end
 
-  def fetch_env_filepaths(vars)
+  def fetch_env_filepaths(env)
     var_names = []
 
-    vars.each do |var, filepath|
+    env.each do |var, filepath|
       # Explicitly ignores CEEDLING_MIXIN_0
       var_names << var if var =~ /CEEDLING_MIXIN_[1-9]\d*/
     end
@@ -36,7 +36,7 @@ class Mixinator
       # Duplicate the filepath string to get unfrozen copy
       # Handle any Windows path shenanigans
       # Insert in array {env var name => filepath}
-      path = vars[name].dup()
+      path = env[name].dup()
       @path_validator.standardize_paths( path )
       _vars << {name => path}
     end
@@ -97,7 +97,7 @@ class Mixinator
       config.deep_merge( _mixin )
 
       # Log what filepath we used for this mixin
-      @logger.log( "  + Merged #{source} mixin using #{filepath}" ) if !silent
+      @logger.log( " + Merged #{source} mixin using #{filepath}" ) if !silent
     end
   end
 

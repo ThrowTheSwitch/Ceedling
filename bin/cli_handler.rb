@@ -22,13 +22,13 @@ class CliHandler
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
-      @logger._print( '🌱 ' )
+      @logger._print( '🌱 Application ' )
       thor_help.call( command ) if block_given?
       return
     end
 
     # Display Thor-generated help listing
-    @logger._print( '🌱 ' )
+    @logger._print( '🌱 Application ' )
     thor_help.call( command ) if block_given?
 
     # If it was help for a specific command, we're done
@@ -56,7 +56,7 @@ class CliHandler
       default_tasks: app_cfg[:default_tasks]
     )
 
-    @logger.log( '🌱 Build operations:' )
+    @logger.log( "🌱 Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes)" )
     @helper.print_rake_tasks()
   end
 
@@ -202,6 +202,49 @@ class CliHandler
     @helper.dump_yaml( config, filepath, sections )
 
     @logger.log( "\n🌱 Dumped project configuration to #{filepath}\n" )
+  end
+
+
+  def environment(env, app_cfg, options)
+    @helper.set_verbosity( options[:verbosity] )
+
+    @path_validator.standardize_paths( options[:project], *options[:mixin] )
+
+    project_filepath, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
+
+    # Save references
+    app_cfg[:project_config] = config
+
+    config = @helper.load_ceedling( 
+      project_filepath: project_filepath,
+      config: config,
+      which: app_cfg[:which_ceedling]
+    )
+
+    env_list = []
+
+    # Process external environment -- filter for Ceedling variables
+    env.each do |var, value|
+      next if !(var =~ /ceedling/i)
+      name = var.to_s
+      env_list << "#{name}: \"#{value}\""
+    end
+
+    # Process environment created by configuration
+    config[:environment].each do |env|
+      env.each_key do |key|
+        name = key.to_s
+        env_list << "#{name}: \"#{env[key]}\""
+      end
+    end
+
+    output = "\n🌱 Environment variables:\n"
+
+    env_list.sort.each do |line|
+      output << " • #{line}\n"
+    end
+
+    @logger.log( output + "\n")
   end
 
 

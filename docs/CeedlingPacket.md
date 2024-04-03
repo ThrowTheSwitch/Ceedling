@@ -836,7 +836,7 @@ involves two different conventions:
 1. Build Tasks. Build tasks actually execute test suites, run release
    builds, etc. These tasks are created from your project file.
 
-## Quick start
+## Quick command line example to get you started
 
 To exercise the Ceedling command line quickly, follow these steps after 
 [installing Ceedling](#ceedling-installation--set-up):
@@ -846,8 +846,8 @@ To exercise the Ceedling command line quickly, follow these steps after
 1. Execute `ceedling example temp_sensor` in your terminal.
 1. Change directories into the new _temp_sensor/_ directory.
 1. Execute `ceedling test:all` in your terminal.
-1. Review the build and test suite console output as well as the 
-   _project.yml_ file in the root of the example project.
+1. Take a look at the build and test suite console output as well as 
+   the _project.yml_ file in the root of the example project.
 
 ## Ceedling application commands
 
@@ -875,6 +875,18 @@ list and explain the available application commands.
   Process project configuration and write final result to a YAML file. 
   Various option flags exist to control what project configuration is 
   loaded.
+
+* `ceedling environment`:
+
+  Lists project related environment variables:
+
+  * All configured environment variable names and string values added to
+    your environment from within Ceedling and through the `:environment`
+    section of your configuration. This is especially helpful in 
+    verifying the evaluation of any string replacement expressions in
+    your config entries.
+  * All existing Ceedling-related environment variables set before you
+    ran Ceedling from the command line.
 
 * `ceedling example`:
 
@@ -916,13 +928,6 @@ Build task are loaded from your project configuration. Unlike
 application commands that are fixed, build tasks vary depending on your
 project configuration and the files within your project structure.
 
-* `ceedling environment`:
-
-  List all configured environment variable names and string values. This
-  task is helpful in verifying the evaluation of any Ruby expressions in
-  the `:environment` section of your config file. _Note:_ Ceedling may
-  set some convenience environment variables by default.
-
 * `ceedling paths:*`:
 
   List all paths collected from `:paths` entries in your YAML config
@@ -955,10 +960,11 @@ project configuration and the files within your project structure.
 * `ceedling test:pattern[*]`:
 
   Execute any tests whose name and/or path match the regular expression
-  pattern (case sensitive). Example: `ceedling "test:pattern[(I|i)nit]"` will
-  execute all tests named for initialization testing. _Note:_ Quotes may
-  be necessary around the regex characters or entire task to distinguish
-  these characters from shell command line operators.
+  pattern (case sensitive). Example: `ceedling "test:pattern[(I|i)nit]"` 
+  will execute all tests named for initialization testing.
+
+  _Note:_ Quotes are likely necessary around the regex characters or 
+  entire task to distinguish characters from shell command line operators.
 
 * `ceedling test:path[*]`:
 

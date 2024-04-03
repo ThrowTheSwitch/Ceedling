@@ -316,6 +316,31 @@ module CeedlingTasks
     end
 
 
+    desc "environment", "List all configured environment variable names and string values."
+    method_option :project, :type => :string, :default => nil, :aliases => ['-p']
+    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
+    method_option :debug, :type => :boolean, :default => false, :hide => true
+    long_desc <<-LONGDESC
+    `ceedling environment` displays all environment variables that have been set for project use.
+
+    Optional Flags:
+
+    • #{DOC_PROJECT_FLAG}
+
+    • #{DOC_MIXIN_FLAG}
+    LONGDESC
+    def environment()
+      # Get unfrozen copies so we can add / modify
+      _options = options.dup()
+      _options[:project] = options[:project].dup() if !options[:project].nil?
+      _options[:mixin] = []
+      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
+
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+
+      @handler.environment( ENV, @app_cfg, _options )
+    end
+
     desc "examples", "List available example projects"
     long_desc <<-LONGDESC
     `ceedling examples` lists the names of the example projects that come packaged with Ceedling.

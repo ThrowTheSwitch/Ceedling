@@ -27,23 +27,6 @@ task :upgrade do
   puts "again if you'd like to perform an upgrade."
 end
 
-# list expanded environment variables
-if (not ENVIRONMENT.empty?)
-desc "List all configured environment variables."
-task :environment do
-  env_list = []
-  ENVIRONMENT.each do |env|
-    env.each_key do |key|
-      name = key.to_s.upcase
-	  env_list.push(" - #{name}: \"#{env[key]}\"")
-    end
-  end
-  env_list.sort.each do |env_line|
-	puts env_line
-  end
-end
-end
-
 # Do not present task if there's no plugins
 if (not PLUGINS_ENABLED.empty?)
 desc "Execute plugin result summaries (no build triggering)."
