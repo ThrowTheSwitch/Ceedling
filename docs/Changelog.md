@@ -38,6 +38,10 @@ In short, `TEST_INCLUDE_PATH()` allows you to add a header file search path to t
 
 In short, `TEST_SOURCE_FILE()` allows you to be explicit as to which source C files should be compiled and linked into a test executable. Sometimes Ceedling's convention for matching source files with test files by way of `#include`d header files does not meet the need. This solves the problems of those scenarios.
 
+### Mixins for modifying your configuration
+
+...
+
 ### More better `:flags` handling
 
 Issue [#43](https://github.com/ThrowTheSwitch/Ceedling/issues/43)
@@ -178,6 +182,10 @@ See the [gcov plugin's documentation](plugins/gcov/README.md).
 1. The plugin more properly uses looging and system shell calls.
 
 ## 👋 Removed
+
+### `options:` tasks
+
+Options files were a simple but limited way to merge configuration with your base configuration from the command line. This feature has been superseded by Ceedling Mixins.
 
 ### Test suite smart rebuilds
 

@@ -279,7 +279,7 @@ module CeedlingTasks
     end
 
 
-    desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and dump compelete result to a YAML file"
+    desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and write final result to a YAML file"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
     method_option :debug, :type => :boolean, :default => false, :hide => true

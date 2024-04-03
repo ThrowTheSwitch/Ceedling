@@ -137,7 +137,7 @@
     int8:     INT8
     bool:     UINT8
 
-# Configuration options specify to Unity's test runner generator
+# Configuration options specific to Unity's test runner generator
 :test_runner:
   :cmdline_args: TRUE
 

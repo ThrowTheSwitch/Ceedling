@@ -44,7 +44,7 @@ Once you have Ceedling installed and a project file, Ceedling tasks go like this
 
 * `ceedling test:all`, or
 * `ceedling release`, or, if you fancy,
-* `ceedling clobber verbosity:obnoxious test:all gcov:all release`
+* `ceedling --verbosity=obnoxious clobber test:all gcov:all release`
 
 ## Quick Start Documentation
 
@@ -57,7 +57,7 @@ Once you have Ceedling installed and a project file, Ceedling tasks go like this
 [quick-start-1]: #ceedling-installation--set-up
 [quick-start-2]: #commented-sample-test-file
 [quick-start-3]: #simple-sample-project-file
-[quick-start-4]: #now-what-how-do-i-make-it-go
+[quick-start-4]: #now-what-how-do-i-make-it-go-the-command-line
 [quick-start-5]: #the-almighty-project-configuration-file-in-glorious-yaml
 
 <br/>
@@ -104,9 +104,9 @@ It's just all mixed together.
 
    This one is pretty self explanatory.
 
-1. **[Now What? How Do I Make It _GO_?][packet-section-7]**
+1. **[Now What? How Do I Make It _GO_? The Command Line.][packet-section-7]**
 
-   Ceedling’s many command line tasks and some of the rules about using them.
+   Ceedling’s command line.
 
 1. **[Important Conventions & Behaviors][packet-section-8]**
 
@@ -148,7 +148,7 @@ It's just all mixed together.
 [packet-section-4]:  #commented-sample-test-file
 [packet-section-5]:  #anatomy-of-a-test-suite
 [packet-section-6]:  #ceedling-installation--set-up
-[packet-section-7]:  #now-what-how-do-i-make-it-go
+[packet-section-7]:  #now-what-how-do-i-make-it-go-the-command-line
 [packet-section-8]:  #important-conventions--behaviors
 [packet-section-9]:  #using-unity-cmock--cexception
 [packet-section-10]: #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
@@ -816,42 +816,112 @@ are completed once, only step 3 is needed for each new project.
 
 <br/>
 
-# Now What? How Do I Make It _GO_?
+# Now What? How Do I Make It _GO_? The Command Line.
 
 We're getting a little ahead of ourselves here, but it's good
 context on how to drive this bus. Everything is done via the command
-line. We'll cover conventions and how to actually configure
+line. We'll cover project conventions and how to actually configure
 your project in later sections.
 
-To run tests, build your release artifact, etc., you will be interacting
-with Rake under the hood on the command line. Ceedling works with Rake 
-to present you with named tasks that coordinate the file generation and
-build steps needed to accomplish something useful. You can also
-add your own independent Rake tasks or create plugins to extend
-Ceedling (more on this later).
+For now, let's talk about the command line.
 
-## Ceedling command line tasks
+To run tests, build your release artifact, etc., you will be using the
+trusty command line. Ceedling is transitioning away from being built
+around Rake. As such, interacting with Ceedling at the command line
+involves two different conventions:
+
+1. Application Commands. Application commands are how you tell Ceedling
+   what to do. These create projects, load project files, begin builds,
+   output version information, etc.
+1. Build Tasks. Build tasks actually execute test suites, run release
+   builds, etc. These tasks are created from your project file.
+
+## Quick start
+
+To exercise the Ceedling command line quickly, follow these steps after 
+[installing Ceedling](#ceedling-installation--set-up):
+
+1. Open a terminal and chnage directories to a location suitable for
+   an example project.
+1. Execute `ceedling example temp_sensor` in your terminal.
+1. Change directories into the new _temp_sensor/_ directory.
+1. Execute `ceedling test:all` in your terminal.
+1. Review the build and test suite console output as well as the 
+   _project.yml_ file in the root of the example project.
+
+## Ceedling application commands
+
+Ceedling provides robust command line help for application commands.
+Execute `ceedling help` for a summary view of all application commands.
+Execute `ceedling help <command>` for detailed help.
+
+_Note:_ Because the built-in command line help is thorough, we will only briefly
+list and explain the available application commands.
 
 * `ceedling [no arguments]`:
 
-  Run the default Rake task (conveniently recognized by the name default
-  by Rake). Neither Rake nor Ceedling provide a default task. Rake will
-  abort if run without arguments when no default task is defined. You can
-  conveniently define a default task in the Rakefile discussed in the
-  preceding setup & installation section of this document.
+  Runs the default build tasks. Unless set in the project file, Ceedling 
+  uses a default task of `test:all`. To override this behavior, set your 
+  own default tasks in the project file (see later section). 
 
-* `ceedling -T`:
+* `ceedling build <tasks...>` or `ceedling <tasks...>`:
 
-  List all available Rake tasks with descriptions (Rake tasks without
-  descriptions are not listed). -T is a command line switch for Rake and
-  not the same as tasks that follow.
+  Runs the named build tasks. `build` is optional. Various option flags
+  exist to control what project configuration is loaded, verbosity 
+  levels, logging, etc. See next section for build tasks.
+
+* `ceedling dumpconfig`:
+
+  Process project configuration and write final result to a YAML file. 
+  Various option flags exist to control what project configuration is 
+  loaded.
+
+* `ceedling example`:
+
+  Extracts an example project from within Ceedling to your local 
+  filesystem. The available examples are listed with 
+  `ceedling examples`. Various option flags control whether the example
+  contains vendored Ceedling and/or a documentation bundle.
+
+* `ceedling examples`:
+
+  Lists the available examples within Ceedling. To extract an example,
+  use `ceedling example`.
+
+* `ceedling help`:
+
+  Displays summary help for all application commands and detailed help 
+  for each command. `ceedling help` also loads your project 
+  configuration (if available) and lists all build tasks from it. 
+  Various option flags control what project configuration is loaded.
+
+* `ceedling new`:
+
+  Creates a new project structure. Various option flags control whether 
+  the new project contains vendored Ceedling, a documentation bundle,
+  and/or a starter project configuration file.
+
+* `ceedling upgrade`:
+
+  Upgrade vendored installation of Ceedling for an existing project 
+  along with any locally installed documentation bundles.
+
+* `ceedling version`:
+
+  Displays version information for Ceedling and its components.
+
+## Ceedling build tasks
+
+Build task are loaded from your project configuration. Unlike 
+application commands that are fixed, build tasks vary depending on your
+project configuration and the files within your project structure.
 
 * `ceedling environment`:
 
   List all configured environment variable names and string values. This
   task is helpful in verifying the evaluation of any Ruby expressions in
-  the `:environment` section of your config file. *Note: Ceedling may
-  set some convenience environment variables by default.*
+  the `:environment` section of your config file. _Note:_ Ceedling may
+  set some convenience environment variables by default.
 
 * `ceedling paths:*`:
 
@@ -869,23 +939,12 @@ Ceedling (more on this later).
   List all files and file counts collected from the relevant search
   paths specified by the `:paths` entries of your YAML config file. The
   `files:assembly` task will only be available if assembly support is
-  enabled in the `:release_build` section of your configuration file.
-
-* `ceedling options:*`:
-
-  Load and merge configuration settings into the main project
-  configuration. Each task is named after a `*.yml` file found in the
-  configured options directory. See documentation for the configuration
-  setting `:project` ↳ `:options_paths` and for options files in advanced
-  topics.
+  enabled in the `:release_build` or `:test_build` sections of your 
+  configuration file.
 
 * `ceedling test:all`:
 
-  Run all unit tests (rebuilding anything that's changed along the way).
-
-* `ceedling test:build_only`:
-
-  Build all unit tests, object files and executable but not run them.
+  Run all unit tests.
 
 * `ceedling test:*`:
 
@@ -897,28 +956,24 @@ Ceedling (more on this later).
 
   Execute any tests whose name and/or path match the regular expression
   pattern (case sensitive). Example: `ceedling "test:pattern[(I|i)nit]"` will
-  execute all tests named for initialization testing. Note: quotes may
-  be necessary around the ceedling parameter to distinguish regex characters
-  from command line operators.
+  execute all tests named for initialization testing. _Note:_ Quotes may
+  be necessary around the regex characters or entire task to distinguish
+  these characters from shell command line operators.
 
 * `ceedling test:path[*]`:
 
   Execute any tests whose path contains the given string (case
   sensitive). Example: `ceedling test:path[foo/bar]` will execute all tests
-  whose path contains foo/bar. Note: both directory separator characters
-  / and \ are valid.
+  whose path contains foo/bar. _Notes:_
 
-* `ceedling test:* --test_case=<test_case_name> `
-  Execute test cases which do not match **`test_case_name`**. This option
-  is available only after setting  `:cmdline_args` to `true` under 
-  `:test_runner` in the project file:
-    
-    ```yaml
-    :test_runner:
-      :cmdline_args: true
-    ```
+  1. Both directory separator characters `/` and `\` are valid.
+  1. Quotes may be necessary around the task to distinguish the parameter's
+     characters from shell command line operators.
 
-  For instance, if you have a test file test_gpio.c containing the following 
+* `ceedling test:* --test-case=<test_case_name> `
+  Execute individual test cases which match `test_case_name`.
+
+  For instance, if you have a test file _test_gpio.c_ containing the following 
   test cases (test cases are simply `void test_name(void)`:
 
     - `test_gpio_start`
@@ -927,24 +982,16 @@ Ceedling (more on this later).
 
   … and you want to run only _configure_ tests, you can call:
 
-    `ceedling test:gpio --test_case=configure`
+    `ceedling test:gpio --test-case=configure`
 
   **Test case matching notes**
 
-    Test case matching is on sub-strings. `--test_case=configure` matches on
+  * Test case matching is on sub-strings. `--test_case=configure` matches on
     the test cases including the word _configure_, naturally. 
-    `--test_case=gpio` would match all three test cases.
-
+    `--test-case=gpio` would match all three test cases.
 
 * `ceedling test:* --exclude_test_case=<test_case_name> `
-  Execute test cases which do not match **`test_case_name`**. This option
-  is available only after setting  `:cmdline_args` to `true` under 
-  `:test_runner` in the project file:
-    
-    ```yaml
-    :test_runner:
-      :cmdline_args: true
-    ```
+  Execute test cases which do not match `test_case_name`.
 
   For instance, if you have file test_gpio.c with defined 3 tests:
 
@@ -958,7 +1005,7 @@ Ceedling (more on this later).
 
   **Test case exclusion matching notes**
 
-    Exclude matching follows the same sub-string logic as discussed in the
+  * Exclude matching follows the same sub-string logic as discussed in the
     preceding section.
 
 * `ceedling release`:
@@ -975,61 +1022,6 @@ Ceedling (more on this later).
 
   Sometimes you just need to assemble a single file doggonit. Example:
   `ceedling release:assemble:foo.s`
-
-* `ceedling module:create[Filename]`:
-* `ceedling module:create[<Path:>Filename]`:
-
-  It's often helpful to create a file automatically. What's better than
-  that? Creating a source file, a header file, and a corresponding test
-  file all in one step!
-
-  There are also patterns which can be specified to automatically generate
-  a bunch of files. Try `ceedling module:create[Poodles,mch]` for example!
-
-  The module generator has several options you can configure.
-  F.e. Generating the source/header/test file in a sub-directory (by adding 
-  <Path> when calling `module:create`). For more info, refer to the 
-  [Module Generator][#module-generator] section.
-
-* `ceedling module:stub[Filename]`:
-* `ceedling module:stub[<Path:>Filename]`:
-
-  So what happens if you've created your API in your header (maybe even using
-  TDD to do so?) and now you need to start to implement the corresponding C
-  module? Why not get a head start by using `ceedling module:stub[headername]`
-  to automatically create a function skeleton for every function declared in
-  that header? Better yet, you can call this again whenever you add new functions
-  to that header to add just the new functions, leaving the old ones alone!
-
-* `ceedling logging <tasks...>`:
-
-  Enable logging to <build path>/logs. Must come before test and release
-  tasks to log their steps and output. Log names are a concatenation of
-  project, user, and option files loaded. User and option files are
-  documented in another section.
-
-* `ceedling verbosity[x] <tasks...>`:
-
-  Change default verbosity level. `[x]` ranges from `0` (quiet) to `4`
-  (obnoxious) with `5` reserved for debugging output. Level `3` is the 
-  default. 
-  
-  The verbosity task must precede all tasks in the command line task list 
-  for which output is desired to be seen. Verbosity settings are generally 
-  most meaningful in conjunction with test and release tasks.
-
-* `ceedling verbosity:<level> <tasks...>`:
-
-  Alternative verbosity task scheme using the name of each level.
-
-  | Numeric Level | Named Level         |
-  |---------------|---------------------|
-  | verbosity[0]  | verbosity:silent    |
-  | verbosity[1]  | verbosity:errors    |
-  | verbosity[2]  | verbosity:warnings  |
-  | verbosity[3]  | verbosity:normal    |
-  | verbosity[4]  | verbosity:obnoxious |
-  | verbosity[5]  | verbosity:debug     |
 
 * `ceedling summary`:
 
@@ -1050,31 +1042,11 @@ Ceedling (more on this later).
   runners, mocks, preprocessor output. Clobber produces no output at the
   command line unless verbosity has been set to an appreciable level.
 
-* `ceedling options:export`:
-
-  This allows you to export a snapshot of your current tool configuration
-  as a yaml file. You can specify the name of the file in brackets `[blah.yml]`
-  or let it default to `tools.yml`. In either case, the contents of the file 
-  can be used as the tool configuration for your project if desired, and 
-  modified as you wish.
-
 ## Ceedling Command Line Tasks, Extra Credit
-
-### Rake
-
-To better understand Rake conventions, Rake execution, and
-Rakefiles, consult the [Rake tutorial, examples, and user guide][rake-guide].
-
-[rake-guide]: http://rubyrake.org/
-
-### File Tasks Are Not Advertised
-
-Individual test and release file tasks are not listed in `-T` output. 
-Because so many files may be present it's unwieldy to list them all.
 
 ### Combining Tasks At the Command Line
 
-Multiple Rake tasks can be executed at the command line.
+Multiple build tasks can be executed at the command line.
 
 For example, `ceedling
 clobber test:all release` will remove all generated files;
@@ -1082,10 +1054,8 @@ build and run all tests; and then build all source — in that order.
 If any task fails along the way, execution halts before the
 next task.
 
-Task order is executed as provided and can be important! This is a 
-limitation of Rake. For instance, you won't get much useful information 
-from executing `ceedling test:foo 'verbosity[4]'`. Instead, you 
-probably want `ceedling 'verbosity[4]' test:foo`.
+Task order is executed as provided and can be important! Running 
+`clobber` after a `test:` or `release:` task will not accomplish much.
 
 ### Build Directory and Revision Control
 
@@ -1296,14 +1266,14 @@ files, build an internal representation of your project, etc. This duration does
 not capture the time necessary to load the Ruby runtime itself.
 
 ```
-Ceedling set up completed in 223 milliseconds
+🌱 Ceedling set up completed in 223 milliseconds
 ```
 
 Secondly, each Ceedling run also logs the time necessary to run all the tasks 
 you specify at the command line.
 
 ```
-Ceedling operations completed in 1.03 seconds
+🌱 Ceedling operations completed in 1.03 seconds
 ```
 
 #### Ceedling test suite and Unity test executable run durations
@@ -1826,23 +1796,6 @@ migrated to the `:test_build` and `:release_build` sections.
   do with C files in the test directories.
 
   **Default**: "test_"
-
-* `:options_paths`
-
-  Just as you may have various build configurations for your source
-  codebase, you may need variations of your project configuration.
-
-  By specifying options paths, Ceedling will search for other project
-  YAML files, make command line tasks available (ceedling options:variation
-  for a variation.yml file), and merge the project configuration of
-  these option files in with the main project file at runtime. See
-  advanced topics.
-
-  Note these Rake tasks at the command line - like verbosity or logging
-  control - must come before the test or release task they are meant to
-  modify.
-
-  **Default**: `[]` (empty)
 
 * `:release_build`
 

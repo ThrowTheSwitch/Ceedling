@@ -143,7 +143,7 @@
   :defines:
     - UNITY_EXCLUDE_FLOAT
 
-# Configuration options specify to Unity's test runner generator
+# Configuration options specific to Unity's test runner generator
 :test_runner:
   :cmdline_args: FALSE
 
