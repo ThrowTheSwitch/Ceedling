@@ -2,8 +2,8 @@
 
 These release notes are complemented by two other documents:
 
-1. **[🪵 Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
-1. **[💔 Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
+1. 🪵 **[Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
+1. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
 
 ---
 
@@ -11,7 +11,7 @@ These release notes are complemented by two other documents:
 
 ## 🏴‍☠️ Avast, Breaking Changes, Ye Scallywags!
 
-**_Ahoy!_** There be **[breaking changes](BreakingChanges.md)** ahead, mateys! Arrr…
+**_Ahoy!_** There be plenty o’ **[breaking changes](BreakingChanges.md)** ahead, mateys! Arrr…
 
 ## 👀 Highlights
 
@@ -29,7 +29,7 @@ Ceedling now runs in Ruby3. This latest version of Ceedling is _not_ backwards c
 
 Previously, Ceedling builds were depth-first and limited to a single line of execution. This limitation was an artifact of how Ceedling was architected and relying on general purpose Rake for the build pipeline. Rake does, in fact, support multi-threaded builds, but, Ceedling was unable to take advantage of this. As such, builds were limited to a single line of execution no matter how many CPU resources were available.
 
-Ceedling 0.32 introduces a new build pipeline that batches build steps breadth-first. This means all test preprocessor steps, all compilation steps, all linking steps, etc. can benefit from concurrent and parallel execution. This speedup applies to both test suite and release builds.
+Ceedling 1.0.0 introduces a new build pipeline that batches build steps breadth-first. This means all test preprocessor steps, all compilation steps, all linking steps, etc. can benefit from concurrent and parallel execution. This speedup applies to both test suite and release builds.
 
 #### Per-test-executable configurations
 
@@ -47,7 +47,7 @@ The following new features (discussed in later sections) contribute to this new 
 
 #### Mixins for configuration variations
 
-Ever wanted to smoosh in some extra configuration selectively? Let's say you have different build scenarios and you'd like to run different variations of your project for them. Maybe you have core configuration that is common to all those scenarios. Previous versions of Ceedling included a handful of features that partially met these sorts of needs.
+Ever wanted to smoosh in some extra configuration selectively? Let’s say you have different build scenarios and you'd like to run different variations of your project for them. Maybe you have core configuration that is common to all those scenarios. Previous versions of Ceedling included a handful of features that partially met these sorts of needs.
 
 All such features have been superseded by _Mixins_. Mixins are simply additional YAML that gets merged into you base project configuration. However, Mixins provide several key improvements over previous features:
 
@@ -58,7 +58,7 @@ All such features have been superseded by _Mixins_. Mixins are simply additional
 
 #### A proper command line
 
-Until this release, Ceedling depended on Rake for most of its command line handling. Rake's task conventions provide poor command line handling abilities. The core problems with Rake command line handling include:
+Until this release, Ceedling depended on Rake for most of its command line handling. Rake’s task conventions provide poor command line handling abilities. The core problems with Rake command line handling include:
 
 1. Only brief, limited help statements.
 1. No optional flags to modify a task — verbosity, logging, etc. were their own tasks.
@@ -75,7 +75,7 @@ Try `ceedling help` and then `ceedling help <command>` to get started.
 
 #### `TEST_SOURCE_FILE(...)`
 
-In previous versions of Ceedling, a new, undocumented build directive feature was introduced. Adding a call to the macro `TEST_FILE(...)` with a C file's name added that C file to the compilation and linking list for a test executable.
+In previous versions of Ceedling, a new, undocumented build directive feature was introduced. Adding a call to the macro `TEST_FILE(...)` with a C file’s name added that C file to the compilation and linking list for a test executable.
 
 This approach was helpful when relying on a Ceedling convention was problematic. Specifically, `#include`ing a header file would cause any correspondingly named source file to be added to the build list for a test executable. This convention could cause problems if, for example, the header file defined symbols that complicated test compilation or behavior. Similarly, if a source file did not have a corresponding header file of the same name, sometimes the only option was to `#include` it directly; this was ugly and problematic in its own way.
 
@@ -83,15 +83,15 @@ The previously undocumented build directive macro `TEST_FILE(...)` has been rena
 
 #### Preprocessing improvements
 
-Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing (expanding macros in test files and header files to be mocked) is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling's long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release.
+Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing (expanding macros in test files and header files to be mocked) is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling’s long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release.
 
 #### Documentation
 
-The [Ceedling user guide](CeedlingPacket.md) has been significantly revised and expanded. We will expand it further in future releases and eventually break it up into multiple documents or migrate it to a full documentation management system.
+The Ceedling user guide, _[CeedlingPacket](CeedlingPacket.md)_, has been significantly revised and expanded. We will expand it further in future releases and eventually break it up into multiple documents or migrate it to a full documentation management system.
 
 Many of the plugins have received documentation updates as well.
 
-There's more to be done, but Ceedling's documentation is more complete and accurate than it's ever been.
+There’s more to be done, but Ceedling’s documentation is more complete and accurate than it’s ever been.
 
 ### Small Deal Highlights 🥉
 
@@ -99,8 +99,8 @@ There's more to be done, but Ceedling's documentation is more complete and accur
 - Logical ambiguity and functional bugs within `:paths` and `:files` configuration handling have been resolved along with updated documentation.
 - A variety of small improvements and fixes have been made throughout the plugin system and to many plugins.
 - The historically unwieldy `verbosity` command line task now comes in two flavors. The original recipe numeric parameterized version (e.g. `[4]`) exist as is. The new extra crispy recipe includes — funny enough — verbose task names `verbosity:silent`, `verbosity:errors`, `verbosity:complain`, `verbosity:normal`, `verbosity:obnoxious`, `verbosity:debug`. 
-- This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake's design assumptions hamper building the sorts of features Ceedling's users want, Rake's command line structure creates a messy user experience for a full application built around it, and Rake's quirks cause maintenance challenges. Particularly for test suites, much of Ceedling's (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
-- This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 0.32 release. Future releases will have far shorter notes.
+- This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake’s design assumptions hamper building the sorts of features Ceedling’s users want, Rake’s command line structure creates a messy user experience for a full application built around it, and Rake’s quirks cause maintenance challenges. Particularly for test suites, much of Ceedling’s (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
+- This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 1.0.0 release. Future releases will have far shorter notes.
 - The `fake_function_framework` plugin has been renamed simply `fff`
 
 ### Important Changes in Behavior to Be Aware Of 🚨
@@ -134,9 +134,9 @@ When a native thread blocks for I/O, Ruby allows the OS scheduler to context swi
 
 #### Process spawning
 
-Ruby's process spawning abilities have always mapped directly to OS capabilities. When a processor has multiple cores available, the OS tends to spread multiple child processes across those cores in true parallel execution.
+Ruby’s process spawning abilities have always mapped directly to OS capabilities. When a processor has multiple cores available, the OS tends to spread multiple child processes across those cores in true parallel execution.
 
-Much of Ceedling's workload is executing a tool — such as a compiler — in a child process. With multiple threads enabled, each thread can spawn a child process for a build tool used by a build step. These child processes can be spread across multiple cores in true parallel execution.
+Much of Ceedling’s workload is executing a tool — such as a compiler — in a child process. With multiple threads enabled, each thread can spawn a child process for a build tool used by a build step. These child processes can be spread across multiple cores in true parallel execution.
 
 ## 📣 Shoutouts
 
@@ -145,4 +145,4 @@ Thank yous and acknowledgments:
 - …
 
 
-[sourceforge]: https://sourceforge.net/projects/ceedling/ "Ceedling's public debut"
+[sourceforge]: https://sourceforge.net/projects/ceedling/ "Ceedling’s public debut"

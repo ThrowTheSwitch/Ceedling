@@ -2,8 +2,8 @@
 
 These breaking changes are complemented by two other documents:
 
-1. **[🔊 Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
-1. **[🪵 Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
+1. 🔊 **[Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
+1. 🪵 **[Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
 
 ---
 
@@ -29,7 +29,7 @@ To better support per-test-executable configurations, the format of `:defines` h
 In brief:
 
 1. A more logically named hierarchy differentiates `#define`s for test preprocessing, test compilation, and release compilation.
-1. Previously, compilation symbols could be specified for a specific C file by name, but these symbols were only defined when compiling that specific file. Further, this matching was only against a file's full name. Now, pattern matching is also an option.
+1. Previously, compilation symbols could be specified for a specific C file by name, but these symbols were only defined when compiling that specific file. Further, this matching was only against a file’s full name. Now, pattern matching is also an option.
 1. Filename matching for test compilation symbols happens against _only test file names_. More importantly, the configured symbols are applied in compilation of each C file that comprises a test executable. Each test executable is treated as a mini-project.
 
 Symbols specified for release builds are applied to all files in the release build.

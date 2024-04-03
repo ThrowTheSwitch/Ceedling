@@ -4,8 +4,8 @@ This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 This changelog is complemented by two other documents:
 
-1. **[🔊 Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
-1. **[💔 Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
+1. 🔊 **[Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
+1. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
 
 ---
 
@@ -15,9 +15,9 @@ This changelog is complemented by two other documents:
 
 ### Parallel execution of build steps
 
-As was explained in the _[Highlights](#-Highlights)_, Ceedling can now run its internal tasks in parallel and take full advantage of your build system's resources. Even lacking various optimizations (see _[Known Issues](#-Known-Issues)_) builds are now often quite speedy.
+As was explained in the _[Highlights](#-Highlights)_, Ceedling can now run its internal tasks in parallel and take full advantage of your build system’s resources. Even lacking various optimizations (see _[Known Issues](#-Known-Issues)_) builds are now often quite speedy.
 
-Enabling this speedup requires either or both of two simple configuration settings. See Ceedling's [documentation](CeedlingPacket.md) for `:project` ↳ `:compile_threads` and `:project` ↳ `:test_threads`.
+Enabling this speedup requires either or both of two simple configuration settings. See Ceedling’s [documentation](CeedlingPacket.md) for `:project` ↳ `:compile_threads` and `:project` ↳ `:test_threads`.
 
 ### `TEST_INCLUDE_PATH(...)` & `TEST_SOURCE_FILE(...)`
 
@@ -36,11 +36,11 @@ In short, `TEST_INCLUDE_PATH()` allows you to add a header file search path to t
 
 #### `TEST_SOURCE_FILE(...)`
 
-In short, `TEST_SOURCE_FILE()` allows you to be explicit as to which source C files should be compiled and linked into a test executable. Sometimes Ceedling's convention for matching source files with test files by way of `#include`d header files does not meet the need. This solves the problems of those scenarios.
+In short, `TEST_SOURCE_FILE()` allows you to be explicit as to which source C files should be compiled and linked into a test executable. Sometimes Ceedling’s convention for matching source files with test files by way of `#include`d header files does not meet the need. This solves the problems of those scenarios.
 
 ### Mixins for modifying your configuration
 
-Thorough documentation on Mixins can be found in _[CeedlingPacket](CeedlingPacket.md))_.
+Thorough documentation on Mixins can be found in _[CeedlingPacket](CeedlingPacket.md)_.
 
 ### Additional options for loading a base configuration from a project file
 
@@ -59,11 +59,11 @@ All the options for loading and modifying a project configuration are thoroughly
 
 Issue [#43](https://github.com/ThrowTheSwitch/Ceedling/issues/43)
 
-Each test executable is now built as a mini project. Using improved `:flags` handling and an updated section format within Ceedling's project file, you have much better options for specifying flags presented to the various tools within your build, particulary within test builds.
+Each test executable is now built as a mini project. Using improved `:flags` handling and an updated section format within Ceedling’s project file, you have much better options for specifying flags presented to the various tools within your build, particulary within test builds.
 
 ### More better `:defines` handling
 
-Each test executable is now built as a mini project. Using improved `:defines` handling and an updated section format within Ceedling's project file, you have much better options for specifying symbols used in your builds' compilation steps, particulary within test builds.
+Each test executable is now built as a mini project. Using improved `:defines` handling and an updated section format within Ceedling’s project file, you have much better options for specifying symbols used in your builds' compilation steps, particulary within test builds.
 
 One powerful new feature is the ability to test the same source file built differently for different tests. Imagine a source file has three different conditional compilation sections. You can now write unit tests for each of those sections without complicated gymnastics to cause your test suite to build and run properly.
 
@@ -87,7 +87,7 @@ A community member submitted an [HTML report generation plugin](https://github.c
 
 ### `:paths` and `:files` handling bug fixes and clarification
 
-Most project configurations are relatively simple, and Ceedling's features for collecting paths worked fine enough. However, bugs and ambiguities lurked. Further, insufficient validation left users resorting to old fashioned trial-and-error troubleshooting.
+Most project configurations are relatively simple, and Ceedling’s features for collecting paths worked fine enough. However, bugs and ambiguities lurked. Further, insufficient validation left users resorting to old fashioned trial-and-error troubleshooting.
 
 Much glorious filepath and pathfile handling now abounds:
 
@@ -111,7 +111,7 @@ In certain combinations of Ceedling features, a dash in a C filename could cause
 
 Issue [#110](https://github.com/ThrowTheSwitch/Ceedling/issues/110)
 
-Ceedling has long had the ability to configure a source filename extension other than `.c` (`:extension` ↳ `:source`). However, in most circumstances this ability would lead to broken builds. Regardless of user-provided source files and filename extenion settings, Ceedling's supporting frameworks — Unity, CMock, and CException — all have `.c` file components. Ceedling also generates mocks and test runners with `.c` filename extensions regardless of any filename extension setting. Changing the source filename extension would cause Ceedling to miss its own core source files. This has been fixed.
+Ceedling has long had the ability to configure a source filename extension other than `.c` (`:extension` ↳ `:source`). However, in most circumstances this ability would lead to broken builds. Regardless of user-provided source files and filename extenion settings, Ceedling’s supporting frameworks — Unity, CMock, and CException — all have `.c` file components. Ceedling also generates mocks and test runners with `.c` filename extensions regardless of any filename extension setting. Changing the source filename extension would cause Ceedling to miss its own core source files. This has been fixed.
 
 ### Bug fixes for `gcov` plugin
 
@@ -133,13 +133,13 @@ Issues [#806](https://github.com/ThrowTheSwitch/Ceedling/issues/806) + [#796](ht
 
 Preprocessing refers to expanding macros and other related code file text manipulations often needed in sophisticated projects before key test suite generation steps. Without (optional) preprocessing, generating test funners from test files and generating mocks from header files lead to all manner of build shenanigans.
 
-The preprocessing needed by Ceedling for sophisticated projects has always been a difficult feature to implement. The most significant reason is simply that there is no readily available cross-platform C code preprocessing tool that provides Ceedling everything it needs to do its job. Even gcc's `cpp` preprocessor tool comes up short. Over time Ceedling's attempt at preprocessing grew more brittle and complicated as community contribturs attempted to fix it or cause it to work properly with other new features.
+The preprocessing needed by Ceedling for sophisticated projects has always been a difficult feature to implement. The most significant reason is simply that there is no readily available cross-platform C code preprocessing tool that provides Ceedling everything it needs to do its job. Even gcc’s `cpp` preprocessor tool comes up short. Over time Ceedling’s attempt at preprocessing grew more brittle and complicated as community contribturs attempted to fix it or cause it to work properly with other new features.
 
 This release of Ceedling stripped the feature back to basics and largely rewrote it within the context of the new build pipeline. Complicated regular expressions and Ruby-generated temporary files have been eliminated. Instead, Ceedling now blends two reports from gcc' `cpp` tool and complements this with additional context. In addition, preprocessing now occurs at the right moments in the overall build pipeline.
 
 While this new approach is not 100% foolproof, it is far more robust and far simpler than previous attempts. Other new Ceedling features should be able to address shortcomings in edge cases.
 
-## Project file environment variable name change `CEEDLING_MAIN_PROJECT_FILE` ➡️ `CEEDLING_PROJECT_FILE`
+### Project file environment variable name change `CEEDLING_MAIN_PROJECT_FILE` ➡️ `CEEDLING_PROJECT_FILE`
 
 Options and support for loading a project configuration have expanded significantly, mostly notably with the addition of Mixins.
 
@@ -189,7 +189,7 @@ In some circumstances, JUnit report generation would yield an exception in its r
 1. Coverage reports are now automatically generated after `gcov:` test tasks are executed. This behvaior can be disabled with a new configuration option. When enabled, a separate task is made available to trigger report generation.
 1. To maintain consistency, repports generated by `gcovr` and `reportgenerator` are written to subdirectories named for the respective tools benath the `gcov/` artifacts path.
 
-See the [gcov plugin's documentation](plugins/gcov/README.md).
+See the [gcov plugin’s documentation](plugins/gcov/README.md).
 
 ### Improvements for `compile_commands_json_db` plugin
 
@@ -221,11 +221,11 @@ In future revisions of Ceedling, smart rebuilds will be brought back (without re
 
 Note that release builds do retain a fair amount of smart rebuild capabilities. Release builds continue to rely on Rake (for now).
 
-### Preprocessor support for Unity's `TEST_CASE()` and `TEST_RANGE()`
+### Preprocessor support for Unity’s `TEST_CASE()` and `TEST_RANGE()`
 
 The project configuration option `:use_preprocessor_directives` is no longer recognized.
 
-**_Note:_** Unity's features `TEST_CASE()` and `TEST_RANGE()` continue to work but only when `:use_test_preprocessor` is disabled.
+**_Note:_** Unity’s features `TEST_CASE()` and `TEST_RANGE()` continue to work but only when `:use_test_preprocessor` is disabled.
 
 `TEST_CASE()` and `TEST_RANGE()` are do-nothing macros that disappear when the preprocessor digests a test file.
 
@@ -233,23 +233,23 @@ In future revisions of Ceedling, support for `TEST_CASE()` and `TEST_RANGE()` wh
 
 ### Removed background task execution
 
-Background task execution for tool configurations (`:background_exec`) has been deprecated. This option was one of Ceedling's earliest features attempting to speed up builds within the constraints of relying on Rake. This feature has rarely, if ever, been used in practice, and other, better options exist to manage any scenario that might motivate a background task.
+Background task execution for tool configurations (`:background_exec`) has been deprecated. This option was one of Ceedling’s earliest features attempting to speed up builds within the constraints of relying on Rake. This feature has rarely, if ever, been used in practice, and other, better options exist to manage any scenario that might motivate a background task.
 
 ### Removed `colour_report` plugin
 
 Colored build output and test results in your terminal is glorious. Long ago the `colour_report` plugin provided this. It was a simple plugin that hooked into Ceedling in a somewhat messy way. Its approach to coloring output was also fairly brittle. It long ago stopped coloring build output as intended. It has been removed.
 
-Ceedling's logging will eventually be updated to rely on a proper logging library. This will provide a number of important features along with greater speed and stability for the tool as a whole. This will also be the opportunity to add robust terminal text coloring support.
+Ceedling’s logging will eventually be updated to rely on a proper logging library. This will provide a number of important features along with greater speed and stability for the tool as a whole. This will also be the opportunity to add robust terminal text coloring support.
 
 ### Bullseye Plugin temporarily disabled
 
 The gcov plugin has been updated and improved, but its proprietary counterpart, the [Bullseye](https://www.bullseye.com) plugin, is not presently functional. The needed fixes and updates require a software license that we do not (yet) have.
 
-### Gcov Plugin's support for deprecated features removed
+### Gcov Plugin’s support for deprecated features removed
 
 The configuration format for the `gcovr` utility changed when support for the `reportgenerator` utility was added. A format that accomodated a more uniform and common layout was adopted. However, support for the older, deprecated `gcovr`-only configuration was maintained. This support for the deprecated `gcovr` configuration format has been removed.
 
-Please consult the [gcov plugin's documentation](plugins/gcov/README.md) to update any old-style `gcovr` configurations.
+Please consult the [gcov plugin’s documentation](plugins/gcov/README.md) to update any old-style `gcovr` configurations.
 
 ### Undocumented environment variable `CEEDLING_USER_PROJECT_FILE` support removed
 
