@@ -233,6 +233,8 @@ module CeedlingTasks
     method_option :graceful_fail, :type => :boolean, :default => nil
     method_option :test_case, :type => :string, :default => ''
     method_option :exclude_test_case, :type => :string, :default => ''
+    # Include for consistency with other commands (override --verbosity)
+    method_option :debug, :type => :boolean, :default => false, :hide => true
 
     long_desc <<-LONGDESC
     `ceedling build` executes build tasks created from your project configuration.
@@ -274,6 +276,7 @@ module CeedlingTasks
       _options[:project] = options[:project].dup() if !options[:project].nil?
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
+      _options[:verbosity] = VERBOSITY_DEBUG if options[:debug]
 
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )
     end
