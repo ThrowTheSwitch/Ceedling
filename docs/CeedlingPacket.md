@@ -1872,6 +1872,13 @@ migrated to the `:test_build` and `:release_build` sections.
 
   **Default**: (none)
 
+* `:default_tasks`
+
+  An array of default build / plugin tasks Ceedling should execute if 
+  none are provided at the command line.
+
+  **Default**: ['test:all']
+
 * `:use_mocks`
 
   Configures the build environment to make use of CMock. Note that if

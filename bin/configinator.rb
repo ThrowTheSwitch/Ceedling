@@ -89,7 +89,7 @@ class Configinator
       default_tasks = walked[:value].dup()
     else
       # Set key/value in config if it's not set
-      config[:project][:default_tasks] = default_tasks
+      config.deep_merge( {:project => {:default_tasks => default_tasks}} )
     end
 
     return default_tasks

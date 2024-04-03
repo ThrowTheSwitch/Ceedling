@@ -138,7 +138,7 @@ class CliHandler
 
     project_filepath, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
 
-    default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
+    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
     @helper.process_testcase_filters(
       config: config,
@@ -166,7 +166,7 @@ class CliHandler
       )
 
     # Enable setup / operations duration logging in Rake context
-    app_cfg[:stopwatch] = @helper.process_stopwatch( tasks: tasks, default_tasks: default_tasks )
+    app_cfg[:stopwatch] = @helper.process_stopwatch( tasks:tasks, default_tasks:default_tasks )
 
     @helper.load_ceedling( 
       project_filepath: project_filepath,
