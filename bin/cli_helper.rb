@@ -53,23 +53,24 @@ class CliHelper
     #  2. If a :project ↳ :which_ceedling entry exists in the config, use it instead
     _which = which.dup()
     walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
-    _which = walked[:value] if walked[:value]
+    _which = walked[:value] if !walked[:value].nil?
+
     @path_validator.standardize_paths( _which )
 
     # Load Ceedling from the gem
     if (_which == 'gem')
       require 'ceedling'
+      return
 
     # Load Ceedling from a path
     else
-      ceedling_path = File.join( _which, '/lib/ceedling.rb' )
-
       # If a relative :which_ceedling, load in relation to project file location
       if @file_wrapper.relative?( _which )
         project_path = File.dirname( project_filepath )
-        ceedling_path = File.join( project_path, ceedling_path )
+        ceedling_path = File.join( project_path, _which )
+        ceedling_path = File.expand_path( ceedling_path )
 
-        if !@file_wrapper.exist?( ceedling_path )
+        if !@file_wrapper.directory?( ceedling_path )
           raise "Configuration value :project ↳ :which_ceedling => '#{_which}' points to a path relative to your project file that contains no Ceedling installation"
         end
 
@@ -80,7 +81,8 @@ class CliHelper
         end
       end
 
-      require( ceedling_path )
+      require( File.join( ceedling_path, '/lib/ceedling.rb' ) )
+      @logger.log( " > Running Ceedling from #{ceedling_path}/" )
     end
 
     # Set default tasks
