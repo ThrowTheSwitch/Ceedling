@@ -119,24 +119,31 @@ It's just all mixed together.
    together several key tools and frameworks. Those can require configuration of 
    their own. Ceedling facilitates this.
 
-1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-10]**
+1. **[How to Load a Project Configuration. You Have Options, My Friend.][packet-section-10]**
+
+   You can use a command line flag, an environment variable, or rely on a default
+   file in your working directory to load your base configuration. Then, you have
+   Mixins for merging additional configuration for different build scenarios as 
+   needed via command line, environment variable, and/or your project configuration file.
+
+1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-11]**
 
    This is the exhaustive documentation for all of Ceedling’s project file 
    configuration options — from project paths to command line tools to plugins and
    much, much more.
 
-1. **[Build Directive Macros][packet-section-11]**
+1. **[Build Directive Macros][packet-section-12]**
 
    These code macros can help you accomplish your build goals When Ceedling’s 
    conventions aren't enough.
 
-1. **[Ceedling Plugins][packet-section-12]**
+1. **[Ceedling Plugins][packet-section-13]**
 
    Ceedling is extensible. It includes a number of built-in plugins for code coverage,
    test report generation, continuous integration reporting, test file scaffolding 
    generation, sophisticated release builds, and more.
 
-1. **[Global Collections][packet-section-13]**
+1. **[Global Collections][packet-section-14]**
 
    Ceedling is built in Ruby. Collections are globally available Ruby lists of paths,
    files, and more that can be useful for advanced customization of a Ceedling project 
@@ -151,10 +158,11 @@ It's just all mixed together.
 [packet-section-7]:  #now-what-how-do-i-make-it-go-the-command-line
 [packet-section-8]:  #important-conventions--behaviors
 [packet-section-9]:  #using-unity-cmock--cexception
-[packet-section-10]: #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
-[packet-section-11]: #build-directive-macros
-[packet-section-12]: #ceedling-plugins
-[packet-section-13]: #global-collections
+[packet-section-10]: #how-to-load-a-project-configuration-you-have-options-my-friend
+[packet-section-11]: #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
+[packet-section-12]: #build-directive-macros
+[packet-section-13]: #ceedling-plugins
+[packet-section-14]: #global-collections
 
 ---
 
@@ -681,12 +689,16 @@ to be reported to the developer at the command line.
 
 ## Incidentally, Ceedling comes with example projects
 
-If you run Ceedling without a project file (that is, from a working directory 
-with no project file present), you can generate entire example projects.
+Ceedling comes with entire example projects you can extract.
 
-- `ceedling examples` to list available example projects
-- `ceedling example <project> [destination]` to generate the 
-  named example project
+1. Execute `ceedling examples` in your terminal to list available example 
+   projects.
+1. Execute `ceedling example <project> [destination]` to extract the 
+   named example project.
+
+You can inspect the _project.yml_ file and source & test code. Run 
+`ceedling help` from the root of the example projects to see what you can
+do, or just go nuts with `ceedling test:all`.
 
 <br/>
 
@@ -821,14 +833,20 @@ For now, let's talk about the command line.
 
 To run tests, build your release artifact, etc., you will be using the
 trusty command line. Ceedling is transitioning away from being built
-around Rake. As such, interacting with Ceedling at the command line
-involves two different conventions:
+around Rake. As such, right now, interacting with Ceedling at the 
+command line involves two different conventions:
 
-1. Application Commands. Application commands are how you tell Ceedling
-   what to do. These create projects, load project files, begin builds,
-   output version information, etc.
-1. Build Tasks. Build tasks actually execute test suites, run release
-   builds, etc. These tasks are created from your project file.
+1. **Application Commands.** Application commands tell Ceedling what to
+   to do with your project. These create projects, load project files, 
+   begin builds, output version information, etc. These include rich 
+   help and operate similarly to popular command line tools like `git`.
+1. **Build & Plugin Tasks.** Build tasks actually execute test suites, 
+   run release builds, etc. These tasks are created from your project 
+   file. These are generated through Ceedling's Rake-based code and 
+   conform to its conventions — simplistic help, no option flags, but 
+   bracketed arguments.
+
+In the case of running builds, both come into play at the command line.
 
 ## Quick command line example to get you started
 
@@ -862,7 +880,10 @@ list and explain the available application commands.
 
   Runs the named build tasks. `build` is optional. Various option flags
   exist to control what project configuration is loaded, verbosity 
-  levels, logging, etc. See next section for build tasks.
+  levels, logging, etc. See next section for build tasks. Of note,
+  this application command provides optional test case filters using
+  traditional option flags (ex. `--test-case=<filter>`) whose contents
+  are provided to Rake test tasks behind the scenes.
 
 * `ceedling dumpconfig`:
 
@@ -951,25 +972,6 @@ project configuration and the files within your project structure.
   accompanying test. No path. Examples: `ceedling test:foo`, `ceedling 
   test:foo.c` or `ceedling test:test_foo.c`
 
-* `ceedling test:pattern[*]`:
-
-  Execute any tests whose name and/or path match the regular expression
-  pattern (case sensitive). Example: `ceedling "test:pattern[(I|i)nit]"` 
-  will execute all tests named for initialization testing.
-
-  _Note:_ Quotes are likely necessary around the regex characters or 
-  entire task to distinguish characters from shell command line operators.
-
-* `ceedling test:path[*]`:
-
-  Execute any tests whose path contains the given string (case
-  sensitive). Example: `ceedling test:path[foo/bar]` will execute all tests
-  whose path contains foo/bar. _Notes:_
-
-  1. Both directory separator characters `/` and `\` are valid.
-  1. Quotes may be necessary around the task to distinguish the parameter's
-     characters from shell command line operators.
-
 * `ceedling test:* --test-case=<test_case_name> `
   Execute individual test cases which match `test_case_name`.
 
@@ -1007,6 +1009,25 @@ project configuration and the files within your project structure.
 
   * Exclude matching follows the same sub-string logic as discussed in the
     preceding section.
+
+* `ceedling test:pattern[*]`:
+
+  Execute any tests whose name and/or path match the regular expression
+  pattern (case sensitive). Example: `ceedling "test:pattern[(I|i)nit]"` 
+  will execute all tests named for initialization testing.
+
+  _Note:_ Quotes are likely necessary around the regex characters or 
+  entire task to distinguish characters from shell command line operators.
+
+* `ceedling test:path[*]`:
+
+  Execute any tests whose path contains the given string (case
+  sensitive). Example: `ceedling test:path[foo/bar]` will execute all tests
+  whose path contains foo/bar. _Notes:_
+
+  1. Both directory separator characters `/` and `\` are valid.
+  1. Quotes may be necessary around the task to distinguish the parameter's
+     characters from shell command line operators.
 
 * `ceedling release`:
 
@@ -1634,6 +1655,96 @@ if you wish to use it in your project.
 
 <br/>
 
+# How to Load a Project Configuration. You Have Options, My Friend.
+
+Ceedling needs a project configuration to accomplish anything for you.
+Ceedling's project configuration is a large in-memory data structure.
+That data structure is loaded from a human-readable file format called
+YAML.
+
+The next section details Ceedling’s project configuration options in 
+YAML. This section explains all your options for loading and modifying 
+project configuration from files to begin with.
+
+## Overview of Project Configuration Loading & Smooshing
+
+Ceedling has a certain pipeline for loading and manipulating the 
+configuration it uses to build your projects. It goes something like
+this:
+
+1. Load the base project configuration from a YAML file.
+1. Merge the base configuration with zero or more Mixins from YAML files.
+1. Load zero or more plugins that alter or merge additional configuration.
+1. Merge in default values to ensure all necessary configuration to run
+   is present.
+
+Ceedling provides reasonably verbose logging at startup telling you which
+configuration files were used and in what order they were merged.
+
+## Options for Loading Your Base Project Configuration
+
+You have three options for telling Ceedling what base project 
+configuration to load. These options are ordered below according to their
+precedence. If an option higher in the list is present, it is used.
+
+1. Command line option flags
+1. Environment variable
+1. Default file in working directory
+
+### `--project` command line flags
+
+Many of Ceedling's application commands include an optional `--project`
+flag. When provided, Ceedling will load as its base configuration the
+YAML filepath provided.
+
+Example: `ceedling --project=my/path/build.yml test:all`
+
+_Note:_ Ceedling loads any relative paths within your configuration in
+relation to your working directory. This can cause a disconnect between
+configuration paths, working directory, and the path to your project 
+file.
+
+If the filepath does not exist, Ceedling terminates with an error.
+
+### Environment variable `CEEDLING_PROJECT_FILE`
+
+If a `--project` flag is not used at the command line, but the 
+environment variable `CEEDLING_PROJECT_FILE` is set, Ceedling will use
+the path it contains to load your project configuration.
+
+If the filepath does not exist, Ceedling terminates with an error.
+
+### Default _project.yml_ in your working directory
+
+If neither a `--project` command line flag nor environment variable
+`CEEDLING_PROJECT_FILE` are set, then Ceedling tries to load a file 
+named _project.yml_ in your working directory.
+
+If this file does not exist, Ceedling terminates with an error.
+
+## Applying Mixins to Your Base Project Configuration
+
+Once you have a base configuation loaded, you may want to modify it for
+any number of reasons. Example scenarios:
+
+* A single project actually contains mutiple build variations. You would
+  like to maintain a common configuration that is shared among build
+  variations.
+* Your repository contains the configuration needed by your Continuous
+  Integration server setup, but this is not fun to run locally. You would
+  like to modify the configuration locally with sources external to your
+  repository.
+* Ceedling's default `gcc` tools do not work for your project needs. You
+  would like the complex tooling configurations you most often need to
+  be maintained separately and shared among projects.
+
+Mixins allow you to merge modifications to your project configuration
+just after the base project file is loaded. The merge is so low-level
+and generic you can, in fact, load an empty base configuration and merge
+in entire project configurations through mixins.
+
+## Options 
+
 # The Almighty Ceedling Project Configuration File (in Glorious YAML)
 
 ## Some YAML Learnin’
@@ -1902,8 +2013,8 @@ migrated to the `:test_build` and `:release_build` sections.
     code under test case causing the segmetation fault will be omitted from Coverage Report.
 
     The default debugger (gdb)[https://www.sourceware.org/gdb/] can be switched to other
-    debug engines via setting a new configuration under the tool node in project.yml. 
-    By default, this tool is set as follows:
+    debug engines via setting a new configuration under the `:tools` node in your project
+    configuration. By default, this tool is set as follows:
 
     ```yaml
    :tools:
@@ -3177,34 +3288,6 @@ works. Advanced YAML features can help you copy the same flags into multiple `:f
 test file matchers.
 
 Please see the discussion in `:defines` for a complete example.
-
-## `:import` Load additional project config files
-
-In some cases it is nice to have config files (project.yml, options files) which can
-load other config files, for commonly re-used definitions (target processor,
-common code modules, etc).
-
-These can be recursively nested, the included files can include other files.
-
-To import config files, either provide an array of files to import, or use hashes to set imports. The former is useful if you do not anticipate needing to replace a given file for different configurations (project: or options:). If you need to replace/remove imports based on different configuration files, use the hashed version. The two methods cannot be mixed in the same .yml.
-
-### Example `:import` YAML blurbs
-
-Using array:
-
-```yaml
-:import:
-  - path/to/config.yml
-  - path/to/another/config.yml
-```
-
-Using hashes:
-
-```yaml
-:import:
-  :configA: path/to/config.yml
-  :configB: path/to/another/config.yml
-```
 
 ## `:cexception` Configure CException’s features
 

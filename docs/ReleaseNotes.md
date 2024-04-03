@@ -103,7 +103,7 @@ There’s more to be done, but Ceedling’s documentation is more complete and a
 - This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 1.0.0 release. Future releases will have far shorter notes.
 - The `fake_function_framework` plugin has been renamed simply `fff`
 
-### Important Changes in Behavior to Be Aware Of 🚨
+## 🚨 Important Changes in Behavior to Be Aware Of
 
 - **Test suite build order 🔢.** Ceedling no longer builds each test executable one at a time. From the tasks you provide at the command line, Ceedling now collects up and batches all preprocessing steps, all mock generation, all test runner generation, all compilation, etc. Previously you would see each of these done for a single test executable and then repeated for the next executable and so on. Now, each build step happens to completion for all specified tests before moving on to the next build step. 
 - **Logging output order 🔢.** When multi-threaded builds are enabled, logging output may not be what you expect. Progress statements may be all batched together or interleaved in ways that are misleading. The steps are happening in the correct order. How you are informed of them may be somewhat out of order.
