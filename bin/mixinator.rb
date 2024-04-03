@@ -87,8 +87,8 @@ class Mixinator
 
       _mixin = @yaml_wrapper.load( filepath )
 
-      # Report if the mixin was blank or otherwise produced no hash
-      raise "Empty mixin configuration in #{filepath}" if _mixin.nil?
+      # Hnadle an empty mixin (it's unlikely but logically coherent)
+      _mixin = {} if _mixin.nil?
 
       # Sanitize the mixin config by removing any :mixins section (these should not end up in merges)
       _mixin.delete(:mixins)
@@ -97,8 +97,12 @@ class Mixinator
       config.deep_merge( _mixin )
 
       # Log what filepath we used for this mixin
-      @logger.log( " + Merged #{source} mixin using #{filepath}" ) if !silent
+      @logger.log( " + Merged #{'(empty) ' if _mixin.empty?}#{source} mixin using #{filepath}" ) if !silent
     end
+
+    # Validate final configuration
+    msg = "Final configuration is empty"
+    raise msg if config.empty?
   end
 
 end

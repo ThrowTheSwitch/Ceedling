@@ -47,7 +47,7 @@ class CliHelper
   end
 
 
-  def load_ceedling(project_filepath:, config:, which:, default_tasks:[])
+  def load_ceedling(project_filepath:, config:, which:, default_tasks:[], silent:false)
     # Determine which Ceedling we're running
     #  1. Copy the which value passed in (most likely a default determined in the first moments of startup)
     #  2. If a :project ↳ :which_ceedling entry exists in the config, use it instead
@@ -82,7 +82,7 @@ class CliHelper
       end
 
       require( File.join( ceedling_path, '/lib/ceedling.rb' ) )
-      @logger.log( " > Running Ceedling from #{ceedling_path}/" )
+      @logger.log( " > Running Ceedling from #{ceedling_path}/" ) if !silent
     end
 
     # Set default tasks

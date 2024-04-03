@@ -53,7 +53,8 @@ class CliHandler
       project_filepath: project_filepath,
       config: config,
       which: app_cfg[:which_ceedling],
-      default_tasks: app_cfg[:default_tasks]
+      default_tasks: app_cfg[:default_tasks],
+      silent: true # Suppress loading logging
     )
 
     @logger.log( "🌱 Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes)" )

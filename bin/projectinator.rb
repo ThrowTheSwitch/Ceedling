@@ -72,7 +72,10 @@ class Projectinator
     # Get mixins config hash
     _mixins = config[:mixins]
 
-    return [], [] if _mixins.nil?
+    # If no :mixins section, return:
+    #  - Empty enabled list
+    #  - Load paths with only the built-in Ceedling mixins/ path
+    return [], [mixins_base_path] if _mixins.nil?
 
     # Build list of load paths
     # Configured load paths are higher in search path ordering
@@ -169,11 +172,12 @@ class Projectinator
       # Load the filepath we settled on as our project configuration
       config = @yaml_wrapper.load( filepath )
 
-      # Report if it was blank or otherwise produced no hash
-      raise "Empty configuration in project filepath #{filepath} #{method}" if config.nil?
+      # A blank configuration file is technically an option (assuming mixins are merged)
+      # Redefine config as empty hash
+      config = {} if config.nil?
 
       # Log what the heck we loaded
-      @logger.log( "🌱 Loaded project configuration #{method} using #{filepath}" ) if !silent
+      @logger.log( "🌱 Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}" ) if !silent
 
       return config
     rescue Errno::ENOENT
