@@ -1740,10 +1740,71 @@ any number of reasons. Example scenarios:
 
 Mixins allow you to merge modifications to your project configuration
 just after the base project file is loaded. The merge is so low-level
-and generic you can, in fact, load an empty base configuration and merge
-in entire project configurations through mixins.
+and generic that you can, in fact, load an empty base configuration 
+and merge in entire project configurations through mixins.
 
-## Options 
+## Options for Loading Mixins
+
+You have three options for telling Ceedling what mixins to load. These 
+options are ordered below according to their precedence. A Mixin higher
+in the list is merged earlier. In addition, options higher in the list
+force duplicate Mixin filepaths to be ignored lower in the list.
+
+Unlike base project file loading that resolves to a single filepath, 
+multiple mixins can be specified using any or all of these options.
+
+1. Command line option flags
+1. Environment variables
+1. Base project configuration file entries
+
+### `--mixin` command line flags
+
+As already discussed above, many of Ceedling's application commands 
+include an optional `--project` flag. Most of these commands also
+recognize zero or more `--mixin` flags.
+
+When provided, Ceedling will load the specified YAML file and merge
+it with the base project configuration.
+
+A Mixin flag can contain one of two types of values:
+
+1. A filename or filepath to a Mixin yaml file. A filename contains
+   a file extension. A filepath includes a leading directory path.
+1. A simple name (no file extension and no path). This name is used
+   as a lookup in Ceedling's Mixin load paths.
+
+Example: `ceedling --project=build.yml --mixin=foo --mixin=bar/mixin.yaml test:all`
+
+Order of precedence is set by the command line Mixin order 
+left-to-right.
+
+Filepaths may be relative (in relation to the working directory) or
+absolute.
+
+If the Mixin filename or filepath does not exist, Ceedling terminates 
+with an error. If Ceedling cannot find the Mixin name in any load paths,
+it terminates with an error.
+
+### Mixin environment variables
+
+Mixins can also be loaded through environment variables. Ceedling
+recognizes environment variables with a naming scheme of 
+`CEEDLING_MIXIN_#`, where `#` is any number greater than 0.
+
+Precedence among the environment variables is a simple ascending
+sort of the trailing numeric value in the environment variable name.
+For example, `CEEDLING_MIXIN_5` will be merged before 
+`CEEDLING_MIXIN_99`.
+
+Filepaths may be relative (in relation to the working directory) or
+absolute.
+
+If the filepath specified by an environment variable does not exist,
+Ceedling terminates with an error.
+
+### Base project configuration file `:mixins` section entries
+
+...
 
 # The Almighty Ceedling Project Configuration File (in Glorious YAML)
 
