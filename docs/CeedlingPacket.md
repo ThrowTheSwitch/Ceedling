@@ -1683,7 +1683,7 @@ configuration files were used and in what order they were merged.
 
 ## Options for Loading Your Base Project Configuration
 
-You have three options for telling Ceedling what base project 
+You have three options for telling Ceedling what single base project 
 configuration to load. These options are ordered below according to their
 precedence. If an option higher in the list is present, it is used.
 
@@ -1725,7 +1725,7 @@ If this file does not exist, Ceedling terminates with an error.
 ## Applying Mixins to Your Base Project Configuration
 
 Once you have a base configuation loaded, you may want to modify it for
-any number of reasons. Example scenarios:
+any number of reasons. Some example scenarios:
 
 * A single project actually contains mutiple build variations. You would
   like to maintain a common configuration that is shared among build
@@ -1738,7 +1738,7 @@ any number of reasons. Example scenarios:
   would like the complex tooling configurations you most often need to
   be maintained separately and shared among projects.
 
-Mixins allow you to merge modifications to your project configuration
+Mixins allow you to merge configuration with your project configuration
 just after the base project file is loaded. The merge is so low-level
 and generic that you can, in fact, load an empty base configuration 
 and merge in entire project configurations through mixins.
@@ -1748,7 +1748,7 @@ and merge in entire project configurations through mixins.
 You have three options for telling Ceedling what mixins to load. These 
 options are ordered below according to their precedence. A Mixin higher
 in the list is merged earlier. In addition, options higher in the list
-force duplicate Mixin filepaths to be ignored lower in the list.
+force duplicate mixin filepaths to be ignored lower in the list.
 
 Unlike base project file loading that resolves to a single filepath, 
 multiple mixins can be specified using any or all of these options.
@@ -1760,30 +1760,41 @@ multiple mixins can be specified using any or all of these options.
 ### `--mixin` command line flags
 
 As already discussed above, many of Ceedling's application commands 
-include an optional `--project` flag. Most of these commands also
-recognize zero or more `--mixin` flags.
+include an optional `--project` flag. Most of these same commands 
+also recognize optional `--mixin` flags. Note that `--mixin` can be 
+used multiple times in a single command line.
 
 When provided, Ceedling will load the specified YAML file and merge
 it with the base project configuration.
 
 A Mixin flag can contain one of two types of values:
 
-1. A filename or filepath to a Mixin yaml file. A filename contains
+1. A filename or filepath to a mixin yaml file. A filename contains
    a file extension. A filepath includes a leading directory path.
 1. A simple name (no file extension and no path). This name is used
-   as a lookup in Ceedling's Mixin load paths.
+   as a lookup in Ceedling's mixin load paths.
 
 Example: `ceedling --project=build.yml --mixin=foo --mixin=bar/mixin.yaml test:all`
 
-Order of precedence is set by the command line Mixin order 
+Simple mixin names (#2 above) require mixin load paths to search.
+A default mixin load path is always in the list and points to within
+Ceedling itself (in order to host eventual built-in mixins like 
+built-in plugins). User-specified load paths must be added through 
+the `:mixins` section of the base configuration project file. See 
+the [documentation for the `:mixins` section of your project 
+configuration][mixins-config-section] for more details.
+
+Order of precedence is set by the command line mixin order 
 left-to-right.
 
 Filepaths may be relative (in relation to the working directory) or
 absolute.
 
-If the Mixin filename or filepath does not exist, Ceedling terminates 
-with an error. If Ceedling cannot find the Mixin name in any load paths,
-it terminates with an error.
+If the `--mixin` filename or filepath does not exist, Ceedling 
+terminates with an error. If Ceedling cannot find a mixin name in 
+any load paths, it terminates with an error.
+
+[mixins-config-section]: #base-project-configuration-file-mixins-section-entries
 
 ### Mixin environment variables
 
@@ -1796,15 +1807,64 @@ sort of the trailing numeric value in the environment variable name.
 For example, `CEEDLING_MIXIN_5` will be merged before 
 `CEEDLING_MIXIN_99`.
 
-Filepaths may be relative (in relation to the working directory) or
-absolute.
+Mixin environment variables only hold filepaths. Filepaths may be 
+relative (in relation to the working directory) or absolute.
 
 If the filepath specified by an environment variable does not exist,
 Ceedling terminates with an error.
 
 ### Base project configuration file `:mixins` section entries
 
-...
+Ceedling only recognizes a `:mixins` section in your base project
+configuration file. A `:mixins` section in a mixin is ignored.
+
+The `:mixins` configuration section contains two subsections. Both
+are optional.
+
+* `:enabled`
+
+  An optional array of mixin filenames/filepaths and/or mixin names:
+
+  1. A filename contains a file extension. A filepath includes a 
+     leading directory path. The file is YAML.
+  1. A simple name (no file extension and no path) is used
+     as a lookup in Ceedling's mixin load paths.
+
+  **Default**: []
+
+* `:load_paths`
+
+  Paths containing mixin files to be searched via mixin names. A mixin
+  filename in a load path has the form _<name>.yml_. Searches start in
+  the path at the top of the list and end in the default internal
+  mixin search path.
+
+  Both mixin names in the `:enabled` list (above) and on the command
+  line via `--mixin` flag use this list of load paths for searches.
+  
+  **Default**: [<Ceedling internal mixin path>]
+
+Example `:mixins` YAML blurb:
+
+```yaml
+:mixins:
+   :enabled:
+      - foo            # Ceedling looks for foo.yml in proj/mixins & support/
+      - path/bar.yaml  # Ceedling merges this file with base project conig
+   :load_paths:
+      - proj/mixins
+      - support
+```
+
+Relating the above example to command line `--mixin` flag handling:
+
+* A command line flag of `--mixin=foo` is equivalent to the `foo` 
+  entry in the `:enabled` mixin configuration.
+* A command line flag of `--mixin=path/bay.yaml` is equivalent to the 
+  `path/bay.yaml` entry in the `:enabled` mixin configuration.
+* Note that while command line `--mixin` flags work identifically to 
+  entries in `:mixins` ↳ `:enabled`, they are merged first instead of 
+  last in the mixin precedence.
 
 # The Almighty Ceedling Project Configuration File (in Glorious YAML)
 
@@ -2098,6 +2158,14 @@ migrated to the `:test_build` and `:release_build` sections.
     
     It is important that the debugging tool should be run as a background task, and with the
     option to pass additional arguments to the test executable.
+
+## `:mixins` Configuring mixins to merge
+
+This section of a project configuration file is documented in the
+[discussion of project files and mixins][mixins-config-section].
+
+**_Note:_** A `:mixins` section is only recognized within a base project 
+configuration file. Any `:mixins` sections within mixin files are ignored.
 
 ## `:test_build` Configuring a test build
 

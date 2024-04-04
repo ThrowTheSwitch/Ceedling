@@ -49,11 +49,11 @@ This may seem silly, right? Why enable the plugin and then disable it,
 cancelling it out? The answer has to do with _where_ you use the second YAML
 blurb configuration setting.
 
-Ceedling provides features for applying configurations settings on top of your
-core project file. These include options files and user project files.
-See _[CeedlingPacket][ceedling-packet]_ for full details.
+Ceedling provides Mixins for applying configurations settings on top of your
+base project configuraiton file. 
+See the [Mixins documentation][ceedling-mixins] for full details.
 
-[ceedling-packet]: ../docs/CeedlingPacket.md
+[ceedling-mixins]: ../docs/CeedlingPacket.md#base-project-configuration-file-mixins-section-entries
 
 As an example, you might enable the plugin in the main project file that is
 committed to your repository while disabling the plugin in your local user
