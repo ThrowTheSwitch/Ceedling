@@ -4,6 +4,7 @@ class Projectinator
 
   PROJECT_FILEPATH_ENV_VAR = 'CEEDLING_PROJECT_FILE'
   DEFAULT_PROJECT_FILEPATH = './' + DEFAULT_PROJECT_FILENAME
+  DEFAULT_YAML_FILE_EXTENSION = '.yml'
 
   constructor :file_wrapper, :path_validator, :yaml_wrapper, :logger
 
@@ -66,6 +67,15 @@ class Projectinator
   end
 
 
+  def lookup_yaml_extension(config:)
+    return DEFAULT_YAML_FILE_EXTENSION if config[:extension].nil?
+
+    return DEFAULT_YAML_FILE_EXTENSION if config[:extension][:yaml].nil?
+
+    return config[:extension][:yaml]
+  end
+
+
   # Pick apart a :mixins projcet configuration section and return components
   # Layout mirrors :plugins section
   def extract_mixins(config:, mixins_base_path:)
@@ -92,6 +102,7 @@ class Projectinator
     return enabled, load_paths
   end
 
+
   # Validate :load_paths from :mixins section in project configuration
   def validate_mixin_load_paths(load_paths)
     validated = @path_validator.validate(
@@ -105,8 +116,9 @@ class Projectinator
     end
   end
 
+
   # Validate mixins list
-  def validate_mixins(mixins:, load_paths:, source:)
+  def validate_mixins(mixins:, load_paths:, source:, yaml_extension:)
     validated = true
 
     mixins.each do |mixin|
@@ -121,14 +133,14 @@ class Projectinator
       else
         found = false
         load_paths.each do |path|
-          if @file_wrapper.exist?( File.join( path, mixin + '.yml') )
+          if @file_wrapper.exist?( File.join( path, mixin + yaml_extension) )
             found = true
             break
           end
         end
 
         if !found
-          @logger.log( "ERROR: #{source} '#{mixin}' cannot be found in the mixin load paths" )
+          @logger.log( "ERROR: #{source} '#{mixin}' cannot be found in the mixin load paths as '#{mixin + yaml_extension}'" )
           validated = false
         end
       end
@@ -137,8 +149,9 @@ class Projectinator
     return validated
   end
 
+
   # Yield ordered list of filepaths
-  def lookup_mixins(mixins:, load_paths:)
+  def lookup_mixins(mixins:, load_paths:, yaml_extension:)
     filepaths = []
 
     # Fill results hash with mixin name => mixin filepath
@@ -151,7 +164,7 @@ class Projectinator
       # Find name in load_paths (we already know it exists from previous validation)
       else
         load_paths.each do |path|
-          filepath = File.join( path, mixin + '.yml' )
+          filepath = File.join( path, mixin + yaml_extension )
           if @file_wrapper.exist?( filepath )
             filepaths << filepath
             break

@@ -20,6 +20,9 @@ class Configinator
       mixins_base_path: MIXINS_BASE_PATH
     )
 
+    # Get our YAML file extension
+    yaml_ext = @projectinator.lookup_yaml_extension( config:config )
+
     # Remove any silly redundancies
     cfg_enabled_mixins.uniq!
     # Use absolute path to ensure proper deduplication
@@ -33,7 +36,8 @@ class Configinator
     if not @projectinator.validate_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
-      source: 'Config :mixins ↳ :enabled =>'
+      source: 'Config :mixins ↳ :enabled =>',
+      yaml_extension: yaml_ext
     )
       raise 'Project configuration file section :mixins failed validation'
     end
@@ -42,7 +46,8 @@ class Configinator
     if not @projectinator.validate_mixins(
       mixins: cmdline_mixins,
       load_paths: cfg_load_paths,
-      source: 'Mixin'
+      source: 'Mixin',
+      yaml_extension: yaml_ext
     )
       raise 'Command line failed validation'
     end
@@ -52,6 +57,7 @@ class Configinator
     config_mixins = @projectinator.lookup_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
+      yaml_extension: yaml_ext
     )
 
     # Find mixins from command line among load paths
@@ -59,6 +65,7 @@ class Configinator
     cmdline_mixins = @projectinator.lookup_mixins(
       mixins: cmdline_mixins,
       load_paths: cfg_load_paths,
+      yaml_extension: yaml_ext
     )
 
     # Fetch CEEDLING_MIXIN_# environment variables

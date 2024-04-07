@@ -1743,6 +1743,110 @@ just after the base project file is loaded. The merge is so low-level
 and generic that you can, in fact, load an empty base configuration 
 and merge in entire project configurations through mixins.
 
+## Mixins Example Plus Merging Rules
+
+Let’s start with an example that also explains how mixins are merged.
+Then, the documentation sections that follow will discuss everything else
+in detail.
+
+### Mixins Example: Scenario
+
+In this example, we will load a base project configuration and then
+apply three mixins using each of the available means — command line,
+envionment variable, and :mixins section in the base project 
+configuration file.
+
+#### Example environment variable
+
+`CEEDLING_MIXIN_1` = `./env.yml`
+
+#### Example command line
+
+`ceedling --project=base.yml --mixin=support/mixins/cmdline.yml <tasks>`
+
+_Note:_ The `--mixin` flag supports more than filepaths (see later 
+documentation section). 
+
+### Mixins Example: Configuration files
+
+_base.yml_ — Our base project configuration file
+
+```yaml
+:mixins:                 # `:mixins` section only recognized in base project configuration
+   :enabled:             # `:enabled` list supports names and filepaths
+      - enabled          # Ceedling looks for name as enabled.yml in load paths and merges if found
+   :load_paths:
+      - support/mixins
+
+:project:
+  :build_root: build/
+
+:plugins:
+  :enabled:
+    - report_tests_pretty_stdout
+```
+
+_support/mixins/cmdline.yml_ — Mixin via command line filepath flag
+
+```yaml
+:project:
+  :use_test_preprocessor: TRUE
+  :test_file_prefix: Test
+```
+
+_env.yml_ — Mixin via environment variable filepath
+
+```yaml
+:plugins:
+  :enabled:
+    - compile_commands_json_db
+```
+
+_support/mixins/enabled.yml_ — Mixin via base project configuration file `:mixins` section
+
+```yaml
+:project:
+  :use_test_preprocessor: FALSE
+
+:plugins:
+  :enabled:
+    - gcov
+```
+
+### Mixins Example: Resulting project configuration
+
+Project configuration following mixin merges:
+
+```yaml
+:project:
+  :build_root: build/           # From base.yml
+  :use_test_preprocessor: TRUE  # Value in support/mixins/cmdline.yml overwrote value from support/mixins/enabled.yml
+  :test_file_prefix: Test       # Added to :project from support/mixins/cmdline.yml
+
+:plugins:
+  :enabled:                     # :plugins ↳ :enabled from mixins merged with list in base.yml
+  - report_tests_pretty_stdout  # From base.yml
+  - compile_commands_json_db    # From env.yml
+  - gcov                        # From support/mixins/enabled.yml
+```
+
+### Mixins deep merge rules
+
+Mixins are merged in a specific order. See the next documentation 
+sections for details.
+
+Smooshing of mixin configurations into the base project configuration
+follows a few basic rules:
+
+* If a configuration key/value pair does not already exist at the time
+  of merging, it is added to the configuration.
+* If a simple value — e.g. boolean, string, numeric — already exists 
+  at the time of merging, that value is replaced by the value being
+  merged in.
+* If a container — e.g. list or hash — already exists at the time of a
+  merge, the contents are combined. In the case of lists, merged 
+  values are added to the end of the list.
+
 ## Options for Loading Mixins
 
 You have three options for telling Ceedling what mixins to load. These 
@@ -1826,7 +1930,7 @@ are optional.
   An optional array of mixin filenames/filepaths and/or mixin names:
 
   1. A filename contains a file extension. A filepath includes a 
-     leading directory path. The file is YAML.
+     leading directory path. The file content is YAML.
   1. A simple name (no file extension and no path) is used
      as a lookup in Ceedling's mixin load paths.
 
@@ -1835,9 +1939,13 @@ are optional.
 * `:load_paths`
 
   Paths containing mixin files to be searched via mixin names. A mixin
-  filename in a load path has the form _<name>.yml_. Searches start in
-  the path at the top of the list and end in the default internal
-  mixin search path.
+  filename in a load path has the form _<name>.yml_ by default. If
+  an alternate filename extension has been specified in your project
+  configuration (`:extension` ↳ `:yaml`) it will be used for file
+  lookups in the mixin load paths instead of _.yml_.
+
+  Searches start in the path at the top of the list and end in the 
+  default internal mixin search path.
 
   Both mixin names in the `:enabled` list (above) and on the command
   line via `--mixin` flag use this list of load paths for searches.

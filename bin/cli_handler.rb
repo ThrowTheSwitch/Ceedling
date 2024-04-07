@@ -57,7 +57,7 @@ class CliHandler
       silent: true # Suppress loading logging
     )
 
-    @logger.log( "🌱 Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes)" )
+    @logger.log( "🌱 Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes and/or escape sequences in most shells)" )
     @helper.print_rake_tasks()
   end
 
@@ -188,21 +188,28 @@ class CliHandler
 
     project_filepath, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
 
-    default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
+    # Exception handling to ensure we dump the configuration regardless of config validation errors
+    begin
+      # If enabled, process the configuration through Ceedling automatic settings, defaults, plugins, etc.
+      if options[:app]
+        default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
 
-    # Save references
-    app_cfg[:project_config] = config
+        # Save references
+        app_cfg[:project_config] = config
 
-    config = @helper.load_ceedling( 
-      project_filepath: project_filepath,
-      config: config,
-      which: app_cfg[:which_ceedling],
-      default_tasks: default_tasks
-    )
-
-    @helper.dump_yaml( config, filepath, sections )
-
-    @logger.log( "\n🌱 Dumped project configuration to #{filepath}\n" )
+        config = @helper.load_ceedling( 
+          project_filepath: project_filepath,
+          config: config,
+          which: app_cfg[:which_ceedling],
+          default_tasks: default_tasks
+        )
+      else
+        @logger.log( " > Skipped loading Ceedling application" )
+      end
+    ensure
+      @helper.dump_yaml( config, filepath, sections )
+      @logger.log( "\n🌱 Dumped project configuration to #{filepath}\n" )      
+    end
   end
 
 

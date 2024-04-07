@@ -285,6 +285,7 @@ module CeedlingTasks
     desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and write final result to a YAML file"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p']
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
+    method_option :app, :type => :boolean, :default => true, :desc => "Runs Ceedling application and its configuration manipulations"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
     `ceedling dumpconfig` loads your project configuration, including all manipulations & merges,
@@ -295,7 +296,7 @@ module CeedlingTasks
 
     SECTIONS is an optional configuration section “path” that extracts only a portion of a 
     configuration. The resulting top-level YAML container will be the last element of the path. 
-    The following example will produce a config.yml containing :test_compiler: {...}.
+    The following example will produce a config.yml containing ':test_compiler: {...}'.
     No section path produces a complete configuration.
     \x5> ceedling dumpconfig my/path/config.yml tools test_compiler
 
@@ -304,6 +305,10 @@ module CeedlingTasks
     • #{DOC_PROJECT_FLAG}
 
     • #{DOC_MIXIN_FLAG}
+
+    • `--app` loads the Ceedling application that adds various settings, merges defaults, loads 
+    configration changes due to plugins, and validates the configuration. Disabling the application
+    dumps the project configuration after any mixins but before any application manipulations.
     LONGDESC
     def dumpconfig(filepath, *sections)
       # Get unfrozen copies so we can add / modify
