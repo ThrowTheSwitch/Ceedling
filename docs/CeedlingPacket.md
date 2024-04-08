@@ -122,9 +122,11 @@ It's just all mixed together.
 1. **[How to Load a Project Configuration. You Have Options, My Friend.][packet-section-10]**
 
    You can use a command line flag, an environment variable, or rely on a default
-   file in your working directory to load your base configuration. Then, you have
-   Mixins for merging additional configuration for different build scenarios as 
-   needed via command line, environment variable, and/or your project configuration file.
+   file in your working directory to load your base configuration.
+
+   Once your base project configuration is loaded, you have **_Mixins_** for merging 
+   additional configuration for different build scenarios as needed via command line, 
+   environment variable, and/or your project configuration file.
 
 1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-11]**
 
@@ -1693,9 +1695,9 @@ precedence. If an option higher in the list is present, it is used.
 
 ### `--project` command line flags
 
-Many of Ceedling's application commands include an optional `--project`
-flag. When provided, Ceedling will load as its base configuration the
-YAML filepath provided.
+Many of Ceedling's [application commands][packet-section-7] include an 
+optional `--project` flag. When provided, Ceedling will load as its base 
+configuration the YAML filepath provided.
 
 Example: `ceedling --project=my/path/build.yml test:all`
 
@@ -1710,13 +1712,14 @@ If the filepath does not exist, Ceedling terminates with an error.
 
 If a `--project` flag is not used at the command line, but the 
 environment variable `CEEDLING_PROJECT_FILE` is set, Ceedling will use
-the path it contains to load your project configuration.
+the path it contains to load your project configuration. The path can
+be absolute or relative (to your working directory).
 
 If the filepath does not exist, Ceedling terminates with an error.
 
 ### Default _project.yml_ in your working directory
 
-If neither a `--project` command line flag nor environment variable
+If neither a `--project` command line flag nor the environment variable
 `CEEDLING_PROJECT_FILE` are set, then Ceedling tries to load a file 
 named _project.yml_ in your working directory.
 
@@ -1746,14 +1749,14 @@ and merge in entire project configurations through mixins.
 ## Mixins Example Plus Merging Rules
 
 Let’s start with an example that also explains how mixins are merged.
-Then, the documentation sections that follow will discuss everything else
+Then, the documentation sections that follow will discuss everything
 in detail.
 
 ### Mixins Example: Scenario
 
 In this example, we will load a base project configuration and then
 apply three mixins using each of the available means — command line,
-envionment variable, and :mixins section in the base project 
+envionment variable, and `:mixins` section in the base project 
 configuration file.
 
 #### Example environment variable
@@ -1764,12 +1767,13 @@ configuration file.
 
 `ceedling --project=base.yml --mixin=support/mixins/cmdline.yml <tasks>`
 
-_Note:_ The `--mixin` flag supports more than filepaths (see later 
+_Note:_ The `--mixin` flag supports more than filepaths and can be used 
+multiple times in the same command line for multiple mixins (see later 
 documentation section). 
 
 The example command line above will produce the following logging output.
 
-```sh
+```shell
 🌱 Loaded project configuration from command line argument using base.yml
  + Merged command line mixin using support/mixins/cmdline.yml
  + Merged CEEDLING_MIXIN_1 mixin using ./env.yml
@@ -1778,8 +1782,8 @@ The example command line above will produce the following logging output.
 
 _Notes_
 
-* The logging output for _enabled.yml_ comes from the `:mixins` section 
-  within the base project configuration file provided below.
+* The logging output above referencing _enabled.yml_ comes from the 
+  `:mixins` section within the base project configuration file provided below.
 * The resulting configuration in this example is missing settings required
   by Ceedling. This will cause a validation build error that is not shown
   here.
@@ -1788,12 +1792,21 @@ _Notes_
 
 #### _base.yml_ — Our base project configuration file
 
+Our base project configuration file:
+
+1. Sets up a configuration file-baesd mixin. Ceedling will look for a mixin
+   named _enabled_ in the specified load paths. In this simple configuration
+   that means Ceedling looks for and merges _support/mixins/enabled.yml_.
+1. Creates a `:project` section in our configuration.
+1. Creates a `:plugins` section in our configuration and enables the standard 
+   console test report output plugin.
+
 ```yaml
-:mixins:                 # `:mixins` section only recognized in base project configuration
-   :enabled:             # `:enabled` list supports names and filepaths
-      - enabled          # Ceedling looks for name as enabled.yml in load paths and merges if found
-   :load_paths:
-      - support/mixins
+:mixins:              # `:mixins` section only recognized in base project configuration
+  :enabled:           # `:enabled` list supports names and filepaths
+    - enabled         # Ceedling looks for name as enabled.yml in load paths and merges if found
+  :load_paths:
+   - support/mixins
 
 :project:
   :build_root: build/
@@ -1805,6 +1818,10 @@ _Notes_
 
 #### _support/mixins/cmdline.yml_ — Mixin via command line filepath flag
 
+This mixin will merge a `:project` section with the existing `:project`
+section from the base project file per the deep merge rules (noted after 
+the example).
+
 ```yaml
 :project:
   :use_test_preprocessor: TRUE
@@ -1813,13 +1830,22 @@ _Notes_
 
 #### _env.yml_ — Mixin via environment variable filepath
 
+This mixin will merge a `:plugins` section with the existing `:plugins`
+section from the base project file per the deep merge rules (noted 
+after the example).
+
 ```yaml
 :plugins:
   :enabled:
     - compile_commands_json_db
 ```
 
-#### _support/mixins/enabled.yml_ — Mixin via base project configuration file `:mixins` section
+#### _support/mixins/enabled.yml_ — Mixin via base project configuration 
+file `:mixins` section
+
+This mixin listed in the base configuration project file will merge
+`:project` and `:plugins` sections with those that already exist from
+the base configuration plus earlier mixin merges.
 
 ```yaml
 :project:
@@ -1841,10 +1867,12 @@ Project configuration following mixin merges:
   :test_file_prefix: Test       # Added to :project from support/mixins/cmdline.yml
 
 :plugins:
-  :enabled:                     # :plugins ↳ :enabled from mixins merged with list in base.yml
+  :enabled:                     # :plugins ↳ :enabled from two mixins merged with oringal list in base.yml
   - report_tests_pretty_stdout  # From base.yml
   - compile_commands_json_db    # From env.yml
   - gcov                        # From support/mixins/enabled.yml
+
+# Note: Original :mixins section is filtered out of resulting config
 ```
 
 ### Mixins deep merge rules
@@ -1861,8 +1889,8 @@ follows a few basic rules:
   at the time of merging, that value is replaced by the value being
   merged in.
 * If a container — e.g. list or hash — already exists at the time of a
-  merge, the contents are combined. In the case of lists, merged 
-  values are added to the end of the list.
+  merge, the contents are _combined_. In the case of lists, merged 
+  values are added to the end of the existing list.
 
 ## Options for Loading Mixins
 
@@ -1937,7 +1965,9 @@ Ceedling terminates with an error.
 ### Base project configuration file `:mixins` section entries
 
 Ceedling only recognizes a `:mixins` section in your base project
-configuration file. A `:mixins` section in a mixin is ignored.
+configuration file. A `:mixins` section in a mixin is ignored. The
+`:mixins` section of a base project configuration file is filtered
+out of the resulting configuration.
 
 The `:mixins` configuration section contains two subsections. Both
 are optional.
@@ -1951,7 +1981,7 @@ are optional.
   1. A simple name (no file extension and no path) is used
      as a lookup in Ceedling's mixin load paths.
 
-  **Default**: []
+  **Default**: `[]`
 
 * `:load_paths`
 

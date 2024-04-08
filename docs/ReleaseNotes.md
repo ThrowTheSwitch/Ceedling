@@ -15,7 +15,7 @@ These release notes are complemented by two other documents:
 
 ## 👀 Highlights
 
-This Ceedling release is probably the most significant since the project was first posted to [SourceForge][sourceforge] in 2009. See the [Changelog](Changelog.md) for all the details.
+This Ceedling release is probably the most significant since the project was first [posted to SourceForge in 2009][sourceforge]. See the [Changelog](Changelog.md) for all the details.
 
 Ceedling now runs in Ruby 3. Builds can now run much faster than previous versions because of parallelized tasks. For test suites, header file search paths, code defines, and tool run flags are now customizable per test executable.
 
