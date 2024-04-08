@@ -1773,7 +1773,7 @@ documentation section).
 
 The example command line above will produce the following logging output.
 
-```shell
+```
 🌱 Loaded project configuration from command line argument using base.yml
  + Merged command line mixin using support/mixins/cmdline.yml
  + Merged CEEDLING_MIXIN_1 mixin using ./env.yml
@@ -1806,7 +1806,7 @@ Our base project configuration file:
   :enabled:           # `:enabled` list supports names and filepaths
     - enabled         # Ceedling looks for name as enabled.yml in load paths and merges if found
   :load_paths:
-   - support/mixins
+    - support/mixins
 
 :project:
   :build_root: build/
@@ -1820,7 +1820,7 @@ Our base project configuration file:
 
 This mixin will merge a `:project` section with the existing `:project`
 section from the base project file per the deep merge rules (noted after 
-the example).
+the examples).
 
 ```yaml
 :project:
@@ -1832,7 +1832,7 @@ the example).
 
 This mixin will merge a `:plugins` section with the existing `:plugins`
 section from the base project file per the deep merge rules (noted 
-after the example).
+after the examples).
 
 ```yaml
 :plugins:
@@ -1840,12 +1840,12 @@ after the example).
     - compile_commands_json_db
 ```
 
-#### _support/mixins/enabled.yml_ — Mixin via base project configuration 
-file `:mixins` section
+#### _support/mixins/enabled.yml_ — Mixin via base project configuration file `:mixins` section
 
 This mixin listed in the base configuration project file will merge
 `:project` and `:plugins` sections with those that already exist from
-the base configuration plus earlier mixin merges.
+the base configuration plus earlier mixin merges per the deep merge 
+rules (noted after the examples).
 
 ```yaml
 :project:
@@ -1858,7 +1858,7 @@ the base configuration plus earlier mixin merges.
 
 ### Mixins Example: Resulting project configuration
 
-Project configuration following mixin merges:
+Behold the project configuration following mixin merges:
 
 ```yaml
 :project:
@@ -1868,9 +1868,9 @@ Project configuration following mixin merges:
 
 :plugins:
   :enabled:                     # :plugins ↳ :enabled from two mixins merged with oringal list in base.yml
-  - report_tests_pretty_stdout  # From base.yml
-  - compile_commands_json_db    # From env.yml
-  - gcov                        # From support/mixins/enabled.yml
+    - report_tests_pretty_stdout  # From base.yml
+    - compile_commands_json_db    # From env.yml
+    - gcov                        # From support/mixins/enabled.yml
 
 # Note: Original :mixins section is filtered out of resulting config
 ```
@@ -2003,12 +2003,12 @@ Example `:mixins` YAML blurb:
 
 ```yaml
 :mixins:
-   :enabled:
-      - foo            # Ceedling looks for foo.yml in proj/mixins & support/
-      - path/bar.yaml  # Ceedling merges this file with base project conig
-   :load_paths:
-      - proj/mixins
-      - support
+  :enabled:
+    - foo            # Ceedling looks for foo.yml in proj/mixins & support/
+    - path/bar.yaml  # Ceedling merges this file with base project conig
+  :load_paths:
+    - proj/mixins
+    - support
 ```
 
 Relating the above example to command line `--mixin` flag handling:
