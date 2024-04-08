@@ -1767,9 +1767,26 @@ configuration file.
 _Note:_ The `--mixin` flag supports more than filepaths (see later 
 documentation section). 
 
+The example command line above will produce the following logging output.
+
+```sh
+🌱 Loaded project configuration from command line argument using base.yml
+ + Merged command line mixin using support/mixins/cmdline.yml
+ + Merged CEEDLING_MIXIN_1 mixin using ./env.yml
+ + Merged project configuration mixin using ./enabled.yml
+```
+
+_Notes_
+
+* The logging output for _enabled.yml_ comes from the `:mixins` section 
+  within the base project configuration file provided below.
+* The resulting configuration in this example is missing settings required
+  by Ceedling. This will cause a validation build error that is not shown
+  here.
+
 ### Mixins Example: Configuration files
 
-_base.yml_ — Our base project configuration file
+#### _base.yml_ — Our base project configuration file
 
 ```yaml
 :mixins:                 # `:mixins` section only recognized in base project configuration
@@ -1786,7 +1803,7 @@ _base.yml_ — Our base project configuration file
     - report_tests_pretty_stdout
 ```
 
-_support/mixins/cmdline.yml_ — Mixin via command line filepath flag
+#### _support/mixins/cmdline.yml_ — Mixin via command line filepath flag
 
 ```yaml
 :project:
@@ -1794,7 +1811,7 @@ _support/mixins/cmdline.yml_ — Mixin via command line filepath flag
   :test_file_prefix: Test
 ```
 
-_env.yml_ — Mixin via environment variable filepath
+#### _env.yml_ — Mixin via environment variable filepath
 
 ```yaml
 :plugins:
@@ -1802,7 +1819,7 @@ _env.yml_ — Mixin via environment variable filepath
     - compile_commands_json_db
 ```
 
-_support/mixins/enabled.yml_ — Mixin via base project configuration file `:mixins` section
+#### _support/mixins/enabled.yml_ — Mixin via base project configuration file `:mixins` section
 
 ```yaml
 :project:

@@ -71,18 +71,26 @@ module CeedlingTasks
   VERBOSITY_NORMAL = 'normal'
   VERBOSITY_DEBUG = 'debug'
 
-  DOC_LOCAL_FLAG = "`--local` copies Ceedling and its dependencies to a vendor/ 
+  DOC_LOCAL_FLAG = "Install Ceedling plus supporting tools to vendor/"
+
+  DOC_DOCS_FLAG = "Copy documentation to docs/"
+
+  DOC_PROJECT_FLAG = "Loads the filepath as your base project configuration"
+
+  DOC_MIXIN_FLAG = "Merges the configuration mixin by name or filepath."
+
+  LONGDOC_LOCAL_FLAG = "`--local` copies Ceedling and its dependencies to a vendor/ 
     subdirectory in the root of the project. It also installs a 
     platform-appropriate executable script `ceedling` at the root of the 
     project."
 
-  DOC_DOCS_FLAG = "`--docs` copies all tool documentation to a docs/ 
+  LONGDOC_DOCS_FLAG = "`--docs` copies all tool documentation to a docs/ 
     subdirectory in the root of the project."
 
-  DOC_PROJECT_FLAG = "`--project` loads the specified project file as your 
+  LONGDOC_PROJECT_FLAG = "`--project` loads the specified project file as your 
     base configuration."
 
-  DOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This 
+  LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This 
     flag may be repeated for multiple mixins. A simple mixin name will initiate a 
     lookup from within mixin load paths specified in your project file and among 
     Ceedling’s internal mixin load path. A filepath and/or filename (having an 
@@ -113,8 +121,8 @@ module CeedlingTasks
 
     # Override Thor help to list Rake tasks as well
     desc "help [COMMAND]", "Describe available commands and list build operations"
-    method_option :project, :type => :string, :default => nil, :aliases => ['-p']
-    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
+    method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
     `ceedling help` provides standard help for all available application commands 
@@ -129,9 +137,9 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{DOC_PROJECT_FLAG}
+    • #{LONGDOC_PROJECT_FLAG}
 
-    • #{DOC_MIXIN_FLAG}
+    • #{LONGDOC_MIXIN_FLAG}
     LONGDESC
     def help(command=nil)
       # Get unfrozen copies so we can add / modify
@@ -147,11 +155,11 @@ module CeedlingTasks
     end
 
 
-    desc "new NAME [DEST]", "Create a new project"
-    method_option :local, :type => :boolean, :default => false, :desc => "Install Ceedling plus supporting tools to vendor/"
-    method_option :docs, :type => :boolean, :default => false, :desc => "Copy documentation to docs/"
+    desc "new NAME [DEST]", "Create a new project structure at optional DEST path"
+    method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
+    method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
     method_option :configs, :type => :boolean, :default => true, :desc => "Install starter configuration files"
-    method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and remove destination"
+    method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and recreate destination"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
     `ceedling new` creates a new project structure.
@@ -164,9 +172,9 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{DOC_LOCAL_FLAG}
+    • #{LONGDOC_LOCAL_FLAG}
 
-    • #{DOC_DOCS_FLAG}
+    • #{LONGDOC_DOCS_FLAG}
 
     • `--configs` copies a starter project configuration file into the root of the 
     new project.
@@ -186,7 +194,7 @@ module CeedlingTasks
     end
 
 
-    desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project"
+    desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project at PATH"
     method_option :project, :type => :string, :default => DEFAULT_PROJECT_FILENAME, :desc => "Project filename"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
@@ -225,17 +233,16 @@ module CeedlingTasks
 
 
     desc "build [TASKS...]", "Run build tasks (`build` keyword not required)"
-    method_option :project, :type => :string, :default => nil, :aliases => ['-p']
-    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
+    method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :verbosity, :enum => ['silent', 'errors', 'warnings', VERBOSITY_NORMAL, 'obnoxious', VERBOSITY_DEBUG], :default => VERBOSITY_NORMAL, :aliases => ['-v']
-    method_option :log, :type => :boolean, :default => false, :aliases => ['-l']
-    method_option :logfile, :type => :string, :default => ''
-    method_option :graceful_fail, :type => :boolean, :default => nil
-    method_option :test_case, :type => :string, :default => ''
-    method_option :exclude_test_case, :type => :string, :default => ''
+    method_option :log, :type => :boolean, :default => false, :aliases => ['-l'], :desc => "Enable logging to default filepath"
+    method_option :logfile, :type => :string, :default => '', :desc => "Enable logging to given filepath"
+    method_option :graceful_fail, :type => :boolean, :default => nil, :desc => "Force exit code of 0 for unit test failures"
+    method_option :test_case, :type => :string, :default => '', :desc => "Filter for individual unit test names"
+    method_option :exclude_test_case, :type => :string, :default => '', :desc => "Prevent matched unit test names from running"
     # Include for consistency with other commands (override --verbosity)
     method_option :debug, :type => :boolean, :default => false, :hide => true
-
     long_desc <<-LONGDESC
     `ceedling build` executes build tasks created from your project configuration.
 
@@ -249,9 +256,9 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{DOC_PROJECT_FLAG}
+    • #{LONGDOC_PROJECT_FLAG}
 
-    • #{DOC_MIXIN_FLAG}
+    • #{LONGDOC_MIXIN_FLAG}
 
     • `--verbosity` sets the logging level.
 
@@ -282,10 +289,10 @@ module CeedlingTasks
     end
 
 
-    desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and write final result to a YAML file"
-    method_option :project, :type => :string, :default => nil, :aliases => ['-p']
-    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
-    method_option :app, :type => :boolean, :default => true, :desc => "Runs Ceedling application and its configuration manipulations"
+    desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and write final config to a YAML file"
+    method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
+    method_option :app, :type => :boolean, :default => true, :desc => "Runs Ceedling application and its config manipulations"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
     `ceedling dumpconfig` loads your project configuration, including all manipulations & merges,
@@ -302,9 +309,9 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{DOC_PROJECT_FLAG}
+    • #{LONGDOC_PROJECT_FLAG}
 
-    • #{DOC_MIXIN_FLAG}
+    • #{LONGDOC_MIXIN_FLAG}
 
     • `--app` loads the Ceedling application that adds various settings, merges defaults, loads 
     configration changes due to plugins, and validates the configuration. Disabling the application
@@ -324,18 +331,18 @@ module CeedlingTasks
     end
 
 
-    desc "environment", "List all configured environment variable names and string values."
-    method_option :project, :type => :string, :default => nil, :aliases => ['-p']
-    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m']
+    desc "environment", "List all configured environment variable names with values."
+    method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
     `ceedling environment` displays all environment variables that have been set for project use.
 
     Optional Flags:
 
-    • #{DOC_PROJECT_FLAG}
+    • #{LONGDOC_PROJECT_FLAG}
 
-    • #{DOC_MIXIN_FLAG}
+    • #{LONGDOC_MIXIN_FLAG}
     LONGDESC
     def environment()
       # Get unfrozen copies so we can add / modify
@@ -361,9 +368,9 @@ module CeedlingTasks
     end
 
 
-    desc "example NAME [DEST]", "Create named example project (in optional DEST path)"
-    method_option :local, :type => :boolean, :default => false, :desc => "Install Ceedling plus supporting tools to vendor/"
-    method_option :docs, :type => :boolean, :default => false, :desc => "Copy documentation to docs/"
+    desc "example NAME [DEST]", "Create named example project in optional DEST path"
+    method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
+    method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
     `ceedling example` extracts the named example project from within Ceedling to 
@@ -379,9 +386,9 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{DOC_LOCAL_FLAG}
+    • #{LONGDOC_LOCAL_FLAG}
 
-    • #{DOC_DOCS_FLAG}
+    • #{LONGDOC_DOCS_FLAG}
 
     NOTE: `example` is destructive. If the destination path is a previoulsy created
     example project, `ceedling example` will forcibly overwrite the contents.
