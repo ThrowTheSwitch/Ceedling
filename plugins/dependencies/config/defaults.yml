@@ -1,5 +1,20 @@
 ---
 :dependencies:
-  :libraries: []
+  :deps: []
 
+:tools:  
+  :deps_compiler:  
+    :executable: gcc  
+    :arguments:  
+      - -g  
+      - -I"$": COLLECTION_PATHS_DEPS  
+      - -D$: COLLECTION_DEFINES_DEPS  
+      - -c "${1}"  
+      - -o "${2}"  
+  :deps_linker:  
+    :executable: ar  
+    :arguments:  
+      - rcs  
+      - ${2}  
+      - ${1}
 ...

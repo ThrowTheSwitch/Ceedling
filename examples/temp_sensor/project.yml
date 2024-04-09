@@ -251,101 +251,103 @@
 # TOOLCHAIN CONFIGURATION
 ################################################################
 
+
 #:tools:
 # Ceedling defaults to using gcc for compiling, linking, etc.
 # As [:tools] is blank, gcc will be used (so long as it's in your system path)
 # See documentation to configure a given toolchain for use
 # :tools:
-#   :test:
-#     :compiler: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#     :linker: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#     :assembler: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#     :fixture: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#     :includes_preprocessor: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#     :file_preprocessor: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#     :dependencies_generator: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#   :release:
-#     :compiler: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#     :linker: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#     :assembler: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-#     :dependencies_generator: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :optional: FALSE
-# # The following tools can be defined and will run upon the named events when the `command_hooks` plugin is enabled
-#   :pre_mock_preprocess:
-#   :post_mock_preprocess:
-#   :pre_test_preprocess:
-#   :post_test_preprocess:
-#   :pre_mock_generate:
-#   :post_mock_generate:
-#   :pre_runner_generate:
-#   :post_runner_generate:
-#   :pre_compile_execute:
-#   :post_compile_execute:
-#   :pre_link_execute:
-#   :post_link_execute:
-#   :pre_test_fixture_execute:
-#   :post_test_fixture_execute:
-#   :pre_test:
-#   :post_test:
-#   :pre_release:
-#   :post_release:
-#   :pre_build:
-#   :post_build:
-#   :post_error:
-
+#   :test_compiler: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :test_linker: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :test_assembler: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :test_fixture: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :test_includes_preprocessor: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :test_file_preprocessor: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :test_file_preprocessor_directives: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :test_dependencies_generator: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :release_compiler: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :release_linker: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :release_assembler: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+#   :release_dependencies_generator: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :stderr_redirect: :auto
+#     :optional: FALSE
+# #These tools can be filled out when command_hooks plugin is enabled
+#   :pre_mock_preprocess
+#   :post_mock_preprocess
+#   :pre_mock_generate
+#   :post_mock_generate
+#   :pre_runner_preprocess
+#   :post_runner_preprocess
+#   :pre_runner_generate
+#   :post_runner_generate
+#   :pre_compile_execute
+#   :post_compile_execute
+#   :pre_link_execute
+#   :post_link_execute
+#   :pre_test_fixture_execute
+#   :pre_test
+#   :post_test
+#   :pre_release
+#   :post_release
+#   :pre_build
+#   :post_build
+#   :post_error
 ...
-

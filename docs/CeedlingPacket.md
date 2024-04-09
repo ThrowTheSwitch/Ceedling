@@ -2266,10 +2266,11 @@ migrated to the `:test_build` and `:release_build` sections.
 ```
 
 * `:use_backtrace`
+
   When a test file runs into a **Segmentation Fault**, the test executable 
   immediately crashes and further details aren't collected. By default, Ceedling
   reports a single failure for the entire file, specifying that it segfaulted. 
-  If you are running `gcc` or Clang (LLVM), then there is an option to get more
+  If you are running `gcc` or `Clang` (LLVM), then there is an option to get more
   detail!
 
   Set `:use_backtrace` to `true` and a segfault will trigger Ceedling to 

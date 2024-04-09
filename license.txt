@@ -1,4 +1,4 @@
-Copyright (c) Michael Karlesky, Mark VanderVoord, Greg Williams
+Copyright (c) 2011-2024 Michael Karlesky, Mark VanderVoord, Greg Williams
 
 https://opensource.org/license/mit/
 
@@ -13,15 +13,6 @@ conditions:
 
 The above copyright notice and this permission notice shall be
 included in all copies or substantial portions of the Software.
-
-The end-user documentation included with the redistribution, if
-any, must include the following acknowledgment: "This product
-includes software developed for the Ceedling Project by Michael 
-Karlesky, Mark VanderVoord, Greg Williams, and other contributors", 
-in the same place and form as other third-party acknowledgments.
-Alternately, this acknowledgment may appear in the software
-itself, in the same form and location as other such third-party
-acknowledgments.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES

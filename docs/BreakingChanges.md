@@ -155,3 +155,49 @@ In addition, a previously undocumented feature for merging a second configuratio
 Thorough documentation on Mixins and the new options for loading a project configuration can be found in _[CeedlingPacket](CeedlingPacket.md))_.
 
 
+# Subprojects Plugin Replaced
+
+The `subprojects` plugin has been completely replaced by the more-powerful `dependencies` plugin. To retain your previous functionality, you need to do a little reorganizing in your `project.yml` file. Obviously the `:subprojects` section is now called `:dependencies`. The collection of `:paths` is now `:deps`. We'll have a little more organizing to do once we're inside that section as well. Your `:source` is now organized in `:paths` ↳ `:source` and, since you're not fetching it form another project, the `:fetch` ↳ `:method` should be set to `:none`. The `:build_root` now becomes `:paths` ↳ `:build`. You'll also need to specify the name of the library produced under `:artifacts` ↳ `:static_libraries`.
+
+For example:
+
+```
+:subprojects:  
+  :paths:
+   - :name: libprojectA
+     :source:
+       - ./subprojectA/
+     :include:
+       - ./subprojectA/inc
+     :build_root: ./subprojectA/build/dir
+     :defines: 
+       - DEFINE_JUST_FOR_THIS_FILE
+       - AND_ANOTHER
+```
+
+The above subproject definition will now look like the following:
+
+```
+:dependencies:
+  :deps:
+    - :name: Project A
+      :paths:
+        :fetch:    ./subprojectA/
+        :source:   ./subprojectA/
+        :build:    ./subprojectA/build/dir
+        :artifact: ./subprojectA/build/dir
+      :fetch:
+        :method: :none
+      :environment: []
+      :build:
+        - :build_lib
+      :artifacts:
+        :static_libraries:
+          - libprojectA.a
+        :dynamic_libraries: []
+        :includes: 
+          - ../subprojectA/subprojectA.h
+      :defines: 
+        - DEFINE_JUST_FOR_THIS_FILE
+        - AND_ANOTHER
+```

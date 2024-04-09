@@ -89,7 +89,7 @@ begin
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 rescue StandardError => e
-  boom_handler( exception:e, debug:PROJECT_DEBUG )
+  boom_handler( exception:e, debug:(defined?(PROJECT_DEBUG) && PROJECT_DEBUG) )
 end
 
 def test_failures_handler()
@@ -120,17 +120,17 @@ END {
     rescue => ex
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
-      boom_handler( exception:ex, debug:PROJECT_DEBUG )
+      boom_handler( exception:ex, debug:(defined?(PROJECT_DEBUG) && PROJECT_DEBUG) )
       exit(1)
     end
 
-å    exit(0)
+    exit(0)
   else
     puts("\n🌱 Ceedling could not complete operations because of errors.")
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex
-      boom_handler( exception:ex, debug:PROJECT_DEBUG )
+      boom_handler( exception:ex, debug:(defined?(PROJECT_DEBUG) && PROJECT_DEBUG) )
     ensure
       exit(1)
     end

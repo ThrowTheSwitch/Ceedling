@@ -45,6 +45,9 @@ end
 # create a directory task for each of the paths, so we know how to build them
 PROJECT_BUILD_PATHS.each { |path| directory(path) }
 
+# create a single prepare task which collects all release and test prerequisites
+task :prepare => [:directories]
+
 # create a single directory task which verifies all the others get built
 task :directories => PROJECT_BUILD_PATHS
 
