@@ -126,8 +126,9 @@ class DebuggerUtils
 
       # Concatenate test results from single test runs, which not crash
       # to create proper output for further parser
-      if test_output =~ /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
-        test_output = "#{Regexp.last_match(1)}:#{Regexp.last_match(2)}:#{Regexp.last_match(3)}:#{Regexp.last_match(4)}#{Regexp.last_match(5)}"
+      m = test_output.match? /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
+      if m
+        test_output = "#{m[1]}:#{m[2]}:#{m[3]}:#{m[4]}#{m[5]}"
         if test_output =~ /:PASS/
           test_case_result_collector[:passed] += 1
         elsif test_output =~ /:IGNORE/
@@ -137,27 +138,23 @@ class DebuggerUtils
         end
       else
         # <-- Parse Segmentatation Fault output section -->
-        
-        # Withdraw test_name from gdb output
-        test_name = if test_output =~ /<(.*)>/
-                      Regexp.last_match(1)
-                    else
-                      ''
-                    end
 
-        # Collect file_name and line in which Segmentation fault have his beginning
-        if test_output =~ /#{test_name}\s\(\)\sat\s(.*):(\d+)\n/
+        # Collect file_name and line in which Segmentation faulted test is beginning
+        m = test_output.match? /#{test_case_name}\s*\(\)\sat\s(.*):(\d+)\n/
+        if m
           # Remove path from file_name
-          file_name = Regexp.last_match(1).to_s.split('/').last.split('\\').last
+          file_name = m[1].to_s.split('/').last.split('\\').last
           # Save line number
-          line = Regexp.last_match(2)
+          line = m[2]
 
           # Replace:
           # - '\n' by @new_line_tag to make gdb output flat
           # - ':' by @colon_tag to avoid test results problems
           # to enable parsing output for default generator_test_results regex
           test_output = test_output.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
-          test_output = "#{file_name}:#{line}:#{test_name}:FAIL: #{test_output}"
+          test_output = "#{file_name}:#{line}:#{test_case_name}:FAIL: #{test_output}"
+        else
+          test_output = "ERR:1:#{test_case_name}:FAIL: Segmentation Fault"
         end
 
         # Mark test as failure

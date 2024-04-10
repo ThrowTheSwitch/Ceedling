@@ -116,7 +116,7 @@ END {
       @ceedling[:plugin_manager].print_plugin_failures
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
-      test_failures_handler() if @ceedling[:task_invoker].test_invoked?
+      test_failures_handler() if (@ceedling[:task_invoker].test_invoked? || @ceedling[:task_invoker].invoked?(/^gcov:/))
     rescue => ex
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
