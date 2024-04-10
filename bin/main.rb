@@ -1,7 +1,6 @@
-require 'cli'
-require 'diy'
-require 'constructor'
-require 'app_cfg'
+require 'cli'          # Located alongside this file in CEEDLING_BIN
+require 'constructor'  # Assumed installed via Ceedling gem dependencies
+require 'app_cfg'      # Located alongside this file in CEEDLING_BIN
 
 CEEDLING_APPCFG = get_app_cfg()
 
@@ -10,11 +9,17 @@ CEEDLING_APPCFG = get_app_cfg()
 begin
   # Construct all bootloader objects
   #  1. Add full path to $LOAD_PATH to simplify objects.yml
-  #  2. Perform object construction + dependency injection from bin/objects.yml
-  #  3. Remove paths from $LOAD_PATH
+  #  2. Add vendored DIY to $LOAD_PATH so we can use it
+  #  3. Require DIY (used by Ceedling application too)
+  #  4. Perform object construction + dependency injection from bin/objects.yml
+  #  5. Remove unneeded / potentially problematic paths from $LOAD_PATH
   $LOAD_PATH.unshift( CEEDLING_LIB )
+  $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'diy/lib') )
+
+  require 'diy'
   objects = DIY::Context.from_yaml( File.read( File.join( CEEDLING_BIN, 'objects.yml' ) ) )
   objects.build_everything()
+  
   $LOAD_PATH.delete( CEEDLING_BIN ) # Loaded in top-level `ceedling` script
   $LOAD_PATH.delete( CEEDLING_LIB )
 

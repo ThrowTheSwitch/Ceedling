@@ -1,10 +1,6 @@
 require 'fileutils'
 
-# CEEDLING_ROOT defined at startup
-CEEDLING_VENDOR  = File.join(CEEDLING_ROOT, 'vendor')
-
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'unity/auto') )
-$LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'diy/lib') )
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'cmock/lib') )
 
 require 'rake'

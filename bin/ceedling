@@ -6,8 +6,9 @@ CEEDLING_ROOT     = File.expand_path( File.join( File.dirname( __FILE__ ), ".." 
 CEEDLING_BIN      = File.join( CEEDLING_ROOT, 'bin' )
 CEEDLING_LIB_BASE = File.join( CEEDLING_ROOT, 'lib' )
 CEEDLING_LIB      = File.join( CEEDLING_LIB_BASE, 'ceedling' )
+CEEDLING_VENDOR   = File.join( CEEDLING_ROOT, 'vendor' )
 
-# Add load path for `require 'ceedling/*'` statements + bin/ DIY
+# Add load path for `require 'ceedling/*'` statements and bin/ code
 $LOAD_PATH.unshift( CEEDLING_BIN, CEEDLING_LIB_BASE )
 
 # Load "bootloader" / command line handling in bin/
