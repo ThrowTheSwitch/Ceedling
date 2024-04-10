@@ -16,6 +16,8 @@ class CliHandler
     @actions = @actions_wrapper
   end
 
+
+  # Thor application help + Rake help (if available)
   def app_help(env, app_cfg, options, command, &thor_help)
     @helper.set_verbosity( options[:verbosity] )
 
@@ -38,27 +40,15 @@ class CliHandler
     @path_validator.standardize_paths( options[:project], *options[:mixin], )
     return if !@projectinator.config_available?( filepath:options[:project], env:env )
 
-    project_filepath, config = 
-      @configinator.loadinate(
-        filepath: options[:project],
-        mixins: options[:mixin],
-        env: env,
-        silent: true # Suppress project config load logging
-      )
+    list_rake_tasks( env:env, app_cfg:app_cfg, filepath:options[:project], mixins:options[:mixin] )
+  end
 
-    # Save reference to loaded configuration
-    app_cfg[:project_config] = config
 
-    @helper.load_ceedling(
-      project_filepath: project_filepath,
-      config: config,
-      which: app_cfg[:which_ceedling],
-      default_tasks: app_cfg[:default_tasks],
-      silent: true # Suppress loading logging
-    )
+  # Public to be used by `-T` ARGV hack handling
+  def rake_help( env:, app_cfg:)
+    @helper.set_verbosity() # Default to normal
 
-    @logger.log( "🌱 Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes and/or escape sequences in most shells)" )
-    @helper.print_rake_tasks()
+    list_rake_tasks( env:env, app_cfg:app_cfg )
   end
 
 
@@ -311,6 +301,36 @@ class CliHandler
        CException => #{Ceedling::Version::CEXCEPTION}
     VERSION
     @logger.log( version )
+  end
+
+
+  ### Private ###
+
+  private
+
+  def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[])
+    project_filepath, config = 
+      @configinator.loadinate(
+        filepath: filepath,
+        mixins: mixins,
+        env: env,
+        silent: true # Suppress project config load logging
+      )
+
+    # Save reference to loaded configuration
+    app_cfg[:project_config] = config
+
+    @logger.log( "🌱 Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes and/or escape sequences in most shells)" )
+
+    @helper.load_ceedling(
+      project_filepath: project_filepath,
+      config: config,
+      which: app_cfg[:which_ceedling],
+      default_tasks: app_cfg[:default_tasks],
+      silent: true
+    )
+
+    @helper.print_rake_tasks()
   end
 
 end

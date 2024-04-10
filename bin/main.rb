@@ -26,7 +26,7 @@ begin
   # Backwards compatibility command line hack to silently presenve Rake `-T` CLI handling
   if (ARGV.size() == 1 and ARGV[0] == '-T')
     # Call rake task listing handler w/ default handling of project file and mixins
-    objects[:cli_handler].list_rake_tasks( env:ENV, app_cfg:CEEDLING_APPCFG )
+    objects[:cli_handler].rake_help( env:ENV, app_cfg:CEEDLING_APPCFG )
 
   # Run command line args through Thor
   elsif (ARGV.size() > 0)
