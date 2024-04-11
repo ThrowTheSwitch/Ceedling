@@ -79,18 +79,21 @@ class Projectinator
   # Pick apart a :mixins projcet configuration section and return components
   # Layout mirrors :plugins section
   def extract_mixins(config:, mixins_base_path:)
+    # Check if our base path exists
+    mixins_base_path = nil unless File.directory?(mixins_base_path)
+
     # Get mixins config hash
     _mixins = config[:mixins]
 
     # If no :mixins section, return:
     #  - Empty enabled list
     #  - Load paths with only the built-in Ceedling mixins/ path
-    return [], [mixins_base_path] if _mixins.nil?
+    return [], [mixins_base_path].compact if _mixins.nil?
 
     # Build list of load paths
     # Configured load paths are higher in search path ordering
     load_paths = _mixins[:load_paths] || []
-    load_paths += [mixins_base_path] # += forces a copy of configuration section
+    load_paths += [mixins_base_path].compact # += forces a copy of configuration section
 
     # Get list of mixins
     enabled = _mixins[:enabled] || []
