@@ -60,7 +60,6 @@ class CliHelper
     # Load Ceedling from the gem
     if (_which == 'gem')
       require 'ceedling'
-      return
 
     # Load Ceedling from a path
     else

@@ -182,7 +182,7 @@ class CliHandler
     begin
       # If enabled, process the configuration through Ceedling automatic settings, defaults, plugins, etc.
       if options[:app]
-        default_tasks = @configinator.default_tasks( config: config, default_tasks: app_cfg[:default_tasks] )
+        default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
         # Save references
         app_cfg[:project_config] = config
