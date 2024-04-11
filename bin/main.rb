@@ -28,7 +28,7 @@ begin
 
   # NOTE: See comment block in cli.rb to understand CLI handling.
 
-  # Backwards compatibility command line hack to silently presenve Rake `-T` CLI handling
+  # Backwards compatibility command line hack to silently preserve Rake `-T` CLI handling
   if (ARGV.size() == 1 and ARGV[0] == '-T')
     # Call rake task listing handler w/ default handling of project file and mixins
     objects[:cli_handler].rake_help( env:ENV, app_cfg:CEEDLING_APPCFG )

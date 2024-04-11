@@ -183,7 +183,7 @@ describe "Ceedling" do
     end
   end
 
-  describe "command: `ceedling example [example]`" do
+  describe "command: `ceedling example temp_sensor`" do
     describe "temp_sensor" do
       before do
         @c.with_context do
