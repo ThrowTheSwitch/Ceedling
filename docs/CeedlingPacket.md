@@ -1997,7 +1997,8 @@ are optional.
   Both mixin names in the `:enabled` list (above) and on the command
   line via `--mixin` flag use this list of load paths for searches.
   
-  **Default**: `[<Ceedling internal mixin path>]`
+  **Default**: `[<Ceedling internal mixin path>]` (This default is
+  always present as the last path in the `:load_paths` list)
 
 Example `:mixins` YAML blurb:
 
