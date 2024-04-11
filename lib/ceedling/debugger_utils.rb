@@ -126,7 +126,7 @@ class DebuggerUtils
 
       # Concatenate test results from single test runs, which not crash
       # to create proper output for further parser
-      m = test_output.match? /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
+      m = test_output.match /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
       if m
         test_output = "#{m[1]}:#{m[2]}:#{m[3]}:#{m[4]}#{m[5]}"
         if test_output =~ /:PASS/
@@ -140,7 +140,7 @@ class DebuggerUtils
         # <-- Parse Segmentatation Fault output section -->
 
         # Collect file_name and line in which Segmentation faulted test is beginning
-        m = test_output.match? /#{test_case_name}\s*\(\)\sat\s(.*):(\d+)\n/
+        m = test_output.match /#{test_case_name}\s*\(\)\sat\s(.*):(\d+)\n/
         if m
           # Remove path from file_name
           file_name = m[1].to_s.split('/').last.split('\\').last
