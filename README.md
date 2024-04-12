@@ -441,10 +441,10 @@ from within the root directory of your project.
 
 Are you afraid of losing all your local changes when this happens? You 
 can prevent Ceedling from updating your project file by adding 
-`--no_configs`.
+`--no-configs`.
 
 ```shell
- > ceedling upgrade --local --no_configs YourSweetProject
+ > ceedling upgrade --local --no-configs YourSweetProject
 ```
 
 ## Git integration

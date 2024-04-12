@@ -83,7 +83,7 @@ class CliHandler
     @helper.copy_docs( ceedling_root, dest ) if options[:docs]
 
     # Copy / set up project file
-    @helper.create_project_file( ceedling_root, dest, options[:local] ) unless options[:no_configs]
+    @helper.create_project_file( ceedling_root, dest, options[:local] ) if options[:configs]
 
     # Copy Git Ignore file 
     @actions._copy_file( File.join(ceedling_root,'assets','default_gitignore'), File.join(dest,'.gitignore'), :force => true ) if options[:gitignore]
