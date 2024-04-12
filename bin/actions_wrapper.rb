@@ -1,4 +1,5 @@
 require 'thor'
+require 'fileutils'
 
 # Wrapper for handy Thor Actions
 class ActionsWrapper
@@ -13,6 +14,10 @@ class ActionsWrapper
 
   def _copy_file(src, *args)
     copy_file( src, *args )
+  end
+
+  def _touch_file(src)
+    FileUtils.touch(src)
   end
 
   def _chmod(src, mode, *args)

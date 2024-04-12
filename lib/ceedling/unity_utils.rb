@@ -69,11 +69,11 @@ class UnityUtils
 
     @test_runner_defines << 'UNITY_USE_COMMAND_LINE_ARGS'
 
-    if !@configurator.include_test_case.empty?
+    if !@configurator.include_test_case.nil? && !@configurator.include_test_case.empty?
       @test_case_incl += additional_test_run_args( @configurator.include_test_case, :test_case )
     end
 
-    if !@configurator.exclude_test_case.empty?
+    if !@configurator.exclude_test_case.nil? && !@configurator.exclude_test_case.empty?
       @test_case_excl += additional_test_run_args( @configurator.exclude_test_case, :exclude_test_case )
     end
   end
@@ -95,7 +95,8 @@ class UnityUtils
     cmdline_args = @configurator.test_runner_cmdline_args
 
     # Test case filters in use
-    test_case_filters = !@configurator.include_test_case.empty? or !@configurator.exclude_test_case.empty?
+    test_case_filters = (!@configurator.include_test_case.nil? && !@configurator.include_test_case.empty?) || 
+                        (!@configurator.exclude_test_case.nil? && !@configurator.exclude_test_case.empty?)
 
     # Test case filters are in use but test runner command line arguments are not enabled
     if test_case_filters and !cmdline_args

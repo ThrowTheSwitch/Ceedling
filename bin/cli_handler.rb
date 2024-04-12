@@ -74,6 +74,7 @@ class CliHandler
     ['.', 'src', 'test', 'test/support'].each do |path|
       @actions._empty_directory( File.join( dest, path) )
     end
+    @actions._touch_file( File.join(dest, 'test/support', '.gitkeep') )
 
     # Vendor the tools and install command line helper scripts
     @helper.vendor_tools( ceedling_root, dest ) if options[:local]
@@ -82,7 +83,10 @@ class CliHandler
     @helper.copy_docs( ceedling_root, dest ) if options[:docs]
 
     # Copy / set up project file
-    @helper.create_project_file( ceedling_root, dest, options[:local] ) if options[:configs]
+    @helper.create_project_file( ceedling_root, dest, options[:local] ) unless options[:no_configs]
+
+    # Copy Git Ignore file 
+    @actions._copy_file( File.join(ceedling_root,'assets','default_gitignore'), File.join(dest,'.gitignore'), :force => true ) if options[:gitignore]
 
     @logger.log( "\n🌱 New project '#{name}' created at #{dest}/\n" )
   end

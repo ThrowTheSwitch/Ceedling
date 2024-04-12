@@ -158,9 +158,11 @@ module CeedlingTasks
     desc "new NAME [DEST]", "Create a new project structure at optional DEST path"
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
-    method_option :configs, :type => :boolean, :default => true, :desc => "Install starter configuration files"
+    method_option :no_configs, :type => :boolean, :default => false, :desc => "Install starter configuration files"
+    method_option :noconfigs,  :type => :boolean, :default => false, :hide => true
     method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and recreate destination"
     method_option :debug, :type => :boolean, :default => false, :hide => true
+    method_option :gitignore, :type => :boolean, :default => false, :desc => "Create a gitignore file for ignoring ceedling generated files"
     long_desc <<-LONGDESC
     `ceedling new` creates a new project structure.
 
@@ -176,7 +178,7 @@ module CeedlingTasks
 
     • #{LONGDOC_DOCS_FLAG}
 
-    • `--configs` copies a starter project configuration file into the root of the 
+    • `--no_configs` don't copy a starter project configuration file into the root of the 
     new project.
 
     • `--force` overrides protectons preventing a new project from overwriting an 
@@ -189,6 +191,7 @@ module CeedlingTasks
       _dest = dest.dup() if !dest.nil?
 
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      _options[:no_configs] = options[:no_configs] || options[:noconfigs] || false
 
       @handler.new_project( CEEDLING_ROOT, _options, name, _dest )
     end

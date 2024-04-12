@@ -97,7 +97,7 @@ class CliHelper
 
   def process_testcase_filters(config:, include:, exclude:, tasks:, default_tasks:)
     # Do nothing if no test case filters
-    return if include.empty? and exclude.empty?
+    return if (include.nil? || include.empty?) && (exclude.nil? || exclude.empty?)
 
     # TODO: When we can programmatically check if a task is a test task,
     #       raise an exception if --graceful-fail is set without test operations
@@ -135,10 +135,10 @@ class CliHelper
 
   def process_logging(enabled, filepath)
     # No log file if neither enabled nor a specific filename/filepath
-    return '' if !enabled and filepath.empty?()
+    return '' if !enabled && (filepath.nil? || filepath.empty?())
 
     # Default logfile name (to be placed in default location) if enabled but no filename/filepath
-    return DEFAULT_CEEDLING_LOGFILE if enabled and filepath.empty?()
+    return DEFAULT_CEEDLING_LOGFILE if enabled && filepath.empty?()
 
     # Otherwise, a filename/filepath was provided that implicitly enables logging
     dir = File.dirname( filepath )

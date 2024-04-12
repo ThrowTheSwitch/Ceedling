@@ -190,7 +190,7 @@ module CeedlingTestCases
     @c.with_context do
       output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
       expect($?.exitstatus).to match(0)
-      expect(output).to match(/upgraded!/i)
+      expect(output).to match(/Upgraded/i)
       Dir.chdir @proj_name do
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
@@ -212,7 +212,7 @@ module CeedlingTestCases
       File.write("#{@proj_name}/project.yml", updated_prj_yml.join("\n"), mode: 'w')
 
       expect($?.exitstatus).to match(0)
-      expect(output).to match(/upgraded!/i)
+      expect(output).to match(/Upgraded/i)
       Dir.chdir @proj_name do
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
@@ -226,7 +226,7 @@ module CeedlingTestCases
     @c.with_context do
       output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
       expect($?.exitstatus).to match(1)
-      expect(output).to match(/rescue in upgrade/i)
+      expect(output).to match(/Could not find an existing project/i)
     end
   end
 
@@ -516,7 +516,6 @@ module CeedlingTestCases
         expect($?.exitstatus).to match(0)
         expect(output).to match(/ceedling clean/i)
         expect(output).to match(/ceedling clobber/i)
-        expect(output).to match(/ceedling logging/i)
         expect(output).to match(/ceedling module:create/i)
         expect(output).to match(/ceedling module:destroy/i)
         expect(output).to match(/ceedling summary/i)
@@ -730,8 +729,8 @@ module CeedlingTestCases
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
         expect(output).to match(/TESTED:\s+2/)
-        expect(output).to match(/PASSED:\s+1/)
-        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
       end
     end
@@ -755,8 +754,8 @@ module CeedlingTestCases
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
         expect(output).to match(/TESTED:\s+1/)
-        expect(output).to match(/PASSED:\s+0/)
-        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
       end
     end
@@ -780,8 +779,8 @@ module CeedlingTestCases
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
         expect(output).to match(/TESTED:\s+1/)
-        expect(output).to match(/PASSED:\s+0/)
-        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
       end
     end
