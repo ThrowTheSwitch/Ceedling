@@ -26,35 +26,35 @@ begin
   # Keep a copy of the command line for edge case CLI hacking (Thor consumes ARGV)
   _ARGV = ARGV.clone
 
-  # NOTE: See comment block in cli.rb to understand CLI handling.
+  #
+  # NOTE: See comment block in cli.rb to understand CLI handling
+  # ------------------------------------------------------------
+  #
 
   # Backwards compatibility command line hack to silently preserve Rake `-T` CLI handling
   if (ARGV.size() == 1 and ARGV[0] == '-T')
-    # Call rake task listing handler w/ default handling of project file and mixins
+    # Call Rake task listing handler w/ default handling of project file and mixins
     objects[:cli_handler].rake_help( env:ENV, app_cfg:CEEDLING_APPCFG )
 
-  # Run command line args through Thor
-  elsif (ARGV.size() > 0)
+  # Run command line args through Thor (including "naked" Rake tasks)
+  else
     CeedlingTasks::CLI.start( ARGV,
       {
         :app_cfg => CEEDLING_APPCFG,
         :objects => objects,
       }
     )
-
-  # Handle `ceedling` run with no arguments (run default build tasks)
-  else
-    objects[:cli_handler].build( env:ENV, app_cfg:CEEDLING_APPCFG, tasks:[] )
   end
 
-# Thor application CLI did not handle command line arguments.
+# Handle case of Thor application CLI failing to handle command line arguments.
 rescue Thor::UndefinedCommandError
-  # Marrying Thor Rake command line handling creates a gap (see comments in CLI handling).
+  # Marrying Thor & Rake command line handling creates a gap (see comments in CLI handling).
   # If a user enters only Rake build tasks at the command line followed by Thor flags,
   # our Thor configuration doesn't see those flags.
-  # We catch the exception of unrecognized Thor commands here (i.e. the Rake tasks),
+  # We catch the exception of unrecognized Thor commands here (i.e. any "naked" Rake tasks),
   # and try again by forcing the Thor `build` command at the beginning of the command line.
-  # This way, our Thor handling will process the flags and pass the Rake tasks along.
+  # This way, our Thor handling will process option flags and properly pass the Rake tasks 
+  # along as well.
   CeedlingTasks::CLI.start( _ARGV.unshift( 'build' ),
     {
       :app_cfg => CEEDLING_APPCFG,

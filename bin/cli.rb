@@ -7,7 +7,10 @@ require 'ceedling/constants' # From Ceedling application
 ##
 ## OVERVIEW
 ## --------
-## Ceedling's command line handling marries Thor and Rake.
+## Ceedling's command line handling marries Thor and Rake. Thor does not call
+## Rake. Rather, a handful of command line conventions, edge case handling,
+## and Thor features are stitched together to ensure a given command line is
+## processed by Thor and/or Rake.
 ##
 ## Ceedling's command line is processed with these mechanisms:
 ##  1. Special / edge case hacking of ARGV directly.
@@ -19,12 +22,11 @@ require 'ceedling/constants' # From Ceedling application
 ## -----------------
 ## Special / edge cases:
 ##  1. Silent backwards compatibility support for Rake's `-T`.
-##  2. No command line arguments provided (triggering default tasks build).
-##  3. Thor did not recognize "naked" build tasks as application commands
+##  2. Thor does not recognize "naked" build tasks as application commands
 ##     (`ceedling test:all` instead of `ceedling build test:all`). We catch 
-##     this exception and provide the command line as a `build` command to 
-##     Thor. This also allows us to ensure Thor processes `build` flags
-##     following naked build tasks that it would otherwise ignore.
+##     this exception and provide the command line back to Thor as a `build` 
+##     command line. This also allows us to ensure Thor processes `build` flags
+##     following naked build tasks that would otherwise be ignored.
 ##
 ## THOR
 ## ----
