@@ -15,18 +15,18 @@ require 'ceedling/reportinator'
 def log_runtime(run, start_time_s, end_time_s, enabled)
   return if !enabled
   return if !defined?(PROJECT_VERBOSITY)
-  return if (PROJECT_VERBOSITY < Verbosity::ERRORS)
+  return if (PROJECT_VERBOSITY < Verbosity::NORMAL)
 
   duration = Reportinator.generate_duration( start_time_s: start_time_s, end_time_s: end_time_s )
 
   return if duration.empty?
 
-  puts( "\n🌱 Ceedling #{run} completed in #{duration}" )
+  @ceedling[:streaminator].stdout_puts( "\nCeedling #{run} completed in #{duration}", Verbosity::TITLE )
 end
 
 # Centralized last resort, outer exception handling
 def boom_handler(exception:, debug:)
-  $stderr.puts("🌱 #{exception.class} ==> #{exception.message}")
+  $stderr.puts("#{exception.class} ==> #{exception.message}")
   if debug
     $stderr.puts("Backtrace ==>")
     $stderr.puts(exception.backtrace)
@@ -122,7 +122,7 @@ END {
 
     exit(0)
   else
-    puts("\n🌱 Ceedling could not complete operations because of errors.")
+    @ceedling[:streaminator].stdout_puts("\nCeedling could not complete operations because of errors.", Verbosity::ERRORS)
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex

@@ -6,13 +6,13 @@ class Configinator
 
   constructor :config_walkinator, :projectinator, :mixinator
 
-  def loadinate(filepath:nil, mixins:[], env:{}, silent:false)
+  def loadinate(filepath:nil, mixins:[], env:{})
     # Aliases for clarity
     cmdline_filepath = filepath
     cmdline_mixins = mixins || []
 
     # Load raw config from command line, environment variable, or default filepath
-    project_filepath, config = @projectinator.load( filepath:cmdline_filepath, env:env, silent:silent )
+    project_filepath, config = @projectinator.load( filepath:cmdline_filepath, env:env )
 
     # Extract cfg_enabled_mixins mixins list plus load paths list from config
     cfg_enabled_mixins, cfg_load_paths = @projectinator.extract_mixins(
@@ -36,7 +36,7 @@ class Configinator
     if not @projectinator.validate_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
-      source: 'Config :mixins ↳ :enabled =>',
+      source: 'Config :mixins -> :enabled =>',
       yaml_extension: yaml_ext
     )
       raise 'Project configuration file section :mixins failed validation'
@@ -82,7 +82,7 @@ class Configinator
     )
 
     # Merge mixins
-    @mixinator.merge( config:config, mixins:mixins_assembled, silent:silent )
+    @mixinator.merge( config:config, mixins:mixins_assembled )
 
     return project_filepath, config
   end

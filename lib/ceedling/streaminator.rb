@@ -9,6 +9,13 @@ class Streaminator
 
   def stdout_puts(string, verbosity=Verbosity::NORMAL)
     if (@verbosinator.should_output?(verbosity))
+      if (decorate)
+        if (verbosity == Verbosity::TITLE)
+          string.sub!(/^\n?/, "\n🌱 ")
+        elsif (verbosity == Verbosity::ERRORS)
+          string.sub!(/^\n?/, "\n🪲 ")
+        end
+      end
       @stream_wrapper.stdout_puts(string)
     end
     
@@ -18,6 +25,13 @@ class Streaminator
 
   def stderr_puts(string, verbosity=Verbosity::NORMAL)
     if (@verbosinator.should_output?(verbosity))
+      if (decorate)
+        if (verbosity == Verbosity::TITLE)
+          string.sub!(/^\n?/, "\n🌱 ")
+        elsif (verbosity == Verbosity::ERRORS)
+          string.sub!(/^\n?/, "\n🪲 ")
+        end
+      end
       @stream_wrapper.stderr_puts(string)
     end
 
@@ -27,11 +41,22 @@ class Streaminator
 
   def stream_puts(stream, string, verbosity=Verbosity::NORMAL)
     if (@verbosinator.should_output?(verbosity))
+      if (decorate)
+        if (verbosity == Verbosity::TITLE)
+          string.sub!(/^\n?/, "\n🌱 ")
+        elsif (verbosity == Verbosity::ERRORS)
+          string.sub!(/^\n?/, "\n🪲 ")
+        end
+      end
       stream.puts(string)
     end
 
     # write to log as though Verbosity::OBNOXIOUS
     @loginator.log( string, @streaminator_helper.extract_name(stream) )
+  end
+
+  def decorate
+    true #TODO LOGIC HERE
   end
 
 end

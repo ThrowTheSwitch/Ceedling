@@ -2,7 +2,7 @@ require 'deep_merge'
 
 class Mixinator
 
-  constructor :path_validator, :yaml_wrapper, :logger
+  constructor :path_validator, :yaml_wrapper, :streaminator
 
   def setup
     # ...
@@ -80,7 +80,7 @@ class Mixinator
     return assembly
   end
 
-  def merge(config:, mixins:, silent:)
+  def merge(config:, mixins:)
     mixins.each do |mixin|
       source = mixin.keys.first
       filepath = mixin.values.first
@@ -97,7 +97,7 @@ class Mixinator
       config.deep_merge( _mixin )
 
       # Log what filepath we used for this mixin
-      @logger.log( " + Merged #{'(empty) ' if _mixin.empty?}#{source} mixin using #{filepath}" ) if !silent
+      @streaminator.stdout_puts( " + Merged #{'(empty) ' if _mixin.empty?}#{source} mixin using #{filepath}", Verbosity::DEBUG )
     end
 
     # Validate final configuration

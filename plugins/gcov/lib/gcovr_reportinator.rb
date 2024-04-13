@@ -151,9 +151,9 @@ class GcovrReportinator
       # Value sanity checks for :fail_under_* settings
       if opt.to_s =~ /fail_/
         if not value.is_a? Integer
-          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} => '#{value}' must be an integer")
+          raise CeedlingException.new(":gcov -> :gcovr -> :#{opt} => '#{value}' must be an integer")
         elsif (value < 0) || (value > 100)
-          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} => '#{value}' must be an integer percentage 0 – 100")
+          raise CeedlingException.new(":gcov -> :gcovr -> :#{opt} => '#{value}' must be an integer percentage 0 – 100")
         end
       end
       

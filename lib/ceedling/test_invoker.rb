@@ -350,7 +350,7 @@ class TestInvoker
     # Runtime errors (parent is Exception) continue on up to be caught by Ruby itself.
     rescue StandardError => e
       @application.register_build_failure
-      @streaminator.stderr_puts("🌱 #{e.class} ==> #{e.message}", Verbosity::ERRORS)
+      @streaminator.stderr_puts("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
 
       # Debug backtrace
       @streaminator.stderr_puts("Backtrace ==>", Verbosity::DEBUG)

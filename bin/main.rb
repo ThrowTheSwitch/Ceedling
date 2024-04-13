@@ -64,7 +64,7 @@ rescue Thor::UndefinedCommandError
 
 # Bootloader boom handling
 rescue StandardError => e
-  $stderr.puts( "\n🌱 ERROR: #{e.message}" )
+  $stderr.puts( "\nERROR: #{e.message}" )
   $stderr.puts( e.backtrace ) if ( defined?( PROJECT_DEBUG ) and PROJECT_DEBUG )
   exit(1)
 end

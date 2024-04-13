@@ -3,7 +3,7 @@ require 'ceedling/constants' # From Ceedling application
 
 class CliHelper
 
-  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :logger
+  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :streaminator
 
   def setup
     #Aliases
@@ -47,10 +47,10 @@ class CliHelper
   end
 
 
-  def load_ceedling(project_filepath:, config:, which:, default_tasks:[], silent:false)
+  def load_ceedling(project_filepath:, config:, which:, default_tasks:[])
     # Determine which Ceedling we're running
     #  1. Copy the which value passed in (most likely a default determined in the first moments of startup)
-    #  2. If a :project ↳ :which_ceedling entry exists in the config, use it instead
+    #  2. If a :project -> :which_ceedling entry exists in the config, use it instead
     _which = which.dup()
     walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
     _which = walked[:value] if !walked[:value].nil?
@@ -70,18 +70,18 @@ class CliHelper
         ceedling_path = File.expand_path( ceedling_path )
 
         if !@file_wrapper.directory?( ceedling_path )
-          raise "Configuration value :project ↳ :which_ceedling => '#{_which}' points to a path relative to your project file that contains no Ceedling installation"
+          raise "Configuration value :project -> :which_ceedling => '#{_which}' points to a path relative to your project file that contains no Ceedling installation"
         end
 
       # Otherwise, :which_ceedling is an absolute path
       else
         if !@file_wrapper.exist?( ceedling_path )
-          raise "Configuration value :project ↳ :which_ceedling => '#{_which}' points to a path that contains no Ceedling installation"
+          raise "Configuration value :project -> :which_ceedling => '#{_which}' points to a path that contains no Ceedling installation"
         end
       end
 
       require( File.join( ceedling_path, '/lib/ceedling.rb' ) )
-      @logger.log( " > Running Ceedling from #{ceedling_path}/" ) if !silent
+      @streaminator.stdout_puts( " > Running Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
     end
 
     # Set default tasks
@@ -216,7 +216,7 @@ class CliHelper
       if walked[:value].nil?
         # Reformat list of symbols to list of :<section>s
         _sections.map! {|section| ":#{section.to_s}"}
-        msg = "Cound not find configuration section #{_sections.join(' ↳ ')}"
+        msg = "Cound not find configuration section #{_sections.join(' -> ')}"
         raise(msg)
       end
 
@@ -396,9 +396,9 @@ class CliHelper
 
   private
 
-def windows?
-  return ((RbConfig::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false) if defined?( RbConfig )
-  return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
-end
+  def windows?
+    return ((RbConfig::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false) if defined?( RbConfig )
+    return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
+  end
 
 end

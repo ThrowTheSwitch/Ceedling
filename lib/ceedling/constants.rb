@@ -1,11 +1,12 @@
 
 class Verbosity
-  SILENT      = 0  # as silent as possible (though there are some messages that must be spit out)
-  ERRORS      = 1  # only errors
-  COMPLAIN    = 2  # spit out errors and warnings/notices
-  NORMAL      = 3  # errors, warnings/notices, standard status messages
-  OBNOXIOUS   = 4  # all messages including extra verbose output (used for lite debugging / verification)
-  DEBUG       = 5  # special extra verbose output for hardcore debugging
+  SILENT      = 0   # as silent as possible (though there are some messages that must be spit out)
+  ERRORS      = 1   # only errors
+  COMPLAIN    = 2   # spit out errors and warnings/notices
+  TITLE       = 2.5 # just like NORMAL below, except extra decoration
+  NORMAL      = 3   # errors, warnings/notices, standard status messages
+  OBNOXIOUS   = 4   # all messages including extra verbose output (used for lite debugging / verification)
+  DEBUG       = 5   # special extra verbose output for hardcore debugging
 end
 
 VERBOSITY_OPTIONS = { 
