@@ -85,6 +85,10 @@ The previously undocumented build directive macro `TEST_FILE(...)` has been rena
 
 Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing (expanding macros in test files and header files to be mocked) is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling’s long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release.
 
+#### Segfault Handling
+
+Previously, if a test executable ran into a segmentation fault (usually caused by memory issues in the code), the entire test executable would report nothing and an error would be reported. This behavior has been improved so that segfaults result in rerunning each test individually to narrow down which test caused the problem. Each segfault is reported with its own failure. Also, the `:use_backtrace` option can be enabled if `gdb` is properly installed and configured, so that the specific line that caused the segfault can be reported.
+
 #### Documentation
 
 The Ceedling user guide, _[CeedlingPacket](CeedlingPacket.md)_, has been significantly revised and expanded. We will expand it further in future releases and eventually break it up into multiple documents or migrate it to a full documentation management system.

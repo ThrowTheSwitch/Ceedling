@@ -155,6 +155,18 @@ Resolves: #123
 See also: #456, #789
 ```
 
+## :white_check_mark: Pull Request Checklist
+
+Not all Pull Requests require these things, but here's a great list of things to check to see if it makes sense for your situation:
+
+ - [ ] Are the changes complete?
+ - [ ] Are there tests for the new functionality?
+ - [ ] Are the changes passing the style checks?
+ - [ ] Is there documentation for the new functionality?
+ - [ ] Has the change been added to `Changelog.md`?
+ - [ ] Has the change been added to `ReleaseNotes.md`?
+ - [ ] Have new config options been added as defaults to the `project.yml` files?
+
 ## :heart: Who Loves Emoji?
 
 Commit comments, Issues, Feature Requests... they can all use a little sprucing up, right? Consider using the following emoji for a mix of function and :sparkles: dazzle!

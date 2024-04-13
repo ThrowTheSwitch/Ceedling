@@ -83,6 +83,10 @@ This new plugin also includes the option to generate an HTML report (see next se
 
 A community member submitted an [HTML report generation plugin](https://github.com/ThrowTheSwitch/Ceedling/pull/756/) that was not officially released before 0.32. It has been absorbed into the new `report_tests_log_factory` plugin (see previous section).
 
+### Improved Segfault Handling
+
+Segmentation faults are now reported as failures instead of an error and given as fine of detail as possible for the current feature set. See the docs on `:backtrace` for more!
+
 ## 💪 Fixed
 
 ### `:paths` and `:files` handling bug fixes and clarification
