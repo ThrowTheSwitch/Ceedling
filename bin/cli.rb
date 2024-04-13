@@ -163,7 +163,7 @@ module CeedlingTasks
     method_option :configs, :type => :boolean, :default => true, :desc => "Install starter configuration files"
     method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and recreate destination"
     method_option :debug, :type => :boolean, :default => false, :hide => true
-    method_option :gitignore, :type => :boolean, :default => false, :desc => "Create a gitignore file for ignoring ceedling generated files"
+    method_option :gitsupport, :type => :boolean, :default => false, :desc => "Create .gitignore / .gitkeep files for convenience"
     long_desc <<-LONGDESC
     `ceedling new` creates a new project structure.
 

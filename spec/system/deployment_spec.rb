@@ -54,15 +54,15 @@ describe "Ceedling" do
     it { run_all_test_when_test_case_name_is_passed_but_cmdline_args_are_disabled_with_success }
   end
 
-  describe "deployed in a project's `vendor` directory with gitignore." do
+  describe "deployed in a project's `vendor` directory with git support." do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --local --docs --gitignore #{@proj_name} 2>&1`
+        `bundle exec ruby -S ceedling new --local --docs --gitsupport #{@proj_name} 2>&1`
       end
     end
 
     it { can_create_projects }
-    it { has_an_ignore }
+    it { has_git_support }
     it { contains_a_vendor_directory }
     it { contains_documentation }
     it { can_test_projects_with_success }

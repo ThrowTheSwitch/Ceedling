@@ -450,10 +450,12 @@ can prevent Ceedling from updating your project file by adding
 ## Git integration
 
 Are you using Git? You might want Ceedling to create a `.gitignore` 
-file for you by adding `--gitignore` to your `new` call.
+which ignores the build folder (while retaining control of the artifacts
+folder). This will also add a `.gitkeep` file to your `test/support` folder.
+You can enable this by adding `--gitsupport` to your `new` call.
 
 ```shell
- > ceedling new --gitignore YourNewProjectName
+ > ceedling new --gitsupport YourNewProjectName
 ```
 <br/>
 

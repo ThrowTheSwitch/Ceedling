@@ -173,15 +173,15 @@ module CeedlingTestCases
         expect(File.exist?("src")).to eq true
         expect(File.exist?("test")).to eq true
         expect(File.exist?("test/support")).to eq true
-        expect(File.exist?("test/support/.gitkeep")).to eq true
       end
     end
   end
 
-  def has_an_ignore
+  def has_git_support
     @c.with_context do
       Dir.chdir @proj_name do
         expect(File.exist?(".gitignore")).to eq true
+        expect(File.exist?("test/support/.gitkeep")).to eq true
       end
     end
   end
