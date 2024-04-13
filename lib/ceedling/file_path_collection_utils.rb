@@ -33,7 +33,8 @@ class FilePathCollectionUtils
       # Expand paths using Ruby's Dir.glob()
       #  - A simple path will yield that path
       #  - A path glob will expand to one or more paths
-      @file_wrapper.directory_listing( _reformed ).each do |entry|
+      # Note: `sort()` becuase of Github Issue #860
+      @file_wrapper.directory_listing( _reformed ).sort.each do |entry|
         # For each result, add it to the working list *only* if it's a directory
         # Previous validation has already made warnings about filepaths in the list
         dirs << entry if @file_wrapper.directory?(entry)
@@ -102,7 +103,8 @@ class FilePathCollectionUtils
       filepaths = []
 
       # Expand path by pattern as needed and add only filepaths to working list
-      @file_wrapper.directory_listing( path ).each do |entry|
+      # Note: `sort()` becuase of Github Issue #860
+      @file_wrapper.directory_listing( path ).sort.each do |entry|
         filepaths << File.expand_path( entry ) if !@file_wrapper.directory?( entry )
       end
 

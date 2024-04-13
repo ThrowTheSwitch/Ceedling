@@ -7,12 +7,11 @@ CEEDLING_VENDOR = File.expand_path(File.dirname(__FILE__) + '/../../vendor') unl
 CEEDLING_PLUGINS = [] unless defined? CEEDLING_PLUGINS
 
 DEFAULT_TEST_COMPILER_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
+  :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
   :name => 'default_test_compiler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
     "-I\"${5}\"".freeze, # Per-test executable search paths
     "-D\"${6}\"".freeze, # Per-test executable defines
@@ -28,13 +27,12 @@ DEFAULT_TEST_COMPILER_TOOL = {
   }
 
 DEFAULT_TEST_ASSEMBLER_TOOL = {
-  :executable => ENV['AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['AS'],
+  :executable => ENV['TEST_AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['TEST_AS'],
   :name => 'default_test_assembler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['AS'].nil? ? "" : ENV['AS'].split[1..-1],
-    ENV['ASFLAGS'].nil? ? "" : ENV['ASFLAGS'].split,
+    ENV['TEST_ASFLAGS'].nil? ? "" : ENV['TEST_ASFLAGS'].split,
     "-I\"${3}\"".freeze, # Search paths
     # Anny defines (${4}) are not included since GNU assembler ignores them
     "\"${1}\"".freeze,
@@ -43,20 +41,19 @@ DEFAULT_TEST_ASSEMBLER_TOOL = {
   }
 
 DEFAULT_TEST_LINKER_TOOL = {
-  :executable => ENV['CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CCLD'],
+  :executable => ENV['TEST_CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CCLD'],
   :name => 'default_test_linker'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['CCLD'].nil? ? "" : ENV['CCLD'].split[1..-1],
-    ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
-    ENV['LDFLAGS'].nil? ? "" : ENV['LDFLAGS'].split,
+    ENV['TEST_CFLAGS'].nil? ? "" : ENV['TEST_CFLAGS'].split,
+    ENV['TEST_LDFLAGS'].nil? ? "" : ENV['TEST_LDFLAGS'].split,
     "${1}".freeze,
     "${5}".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
     "${4}".freeze,
-    ENV['LDLIBS'].nil? ? "" : ENV['LDLIBS'].split
+    ENV['TEST_LDLIBS'].nil? ? "" : ENV['TEST_LDLIBS'].split
     ].freeze
   }
 
@@ -69,13 +66,12 @@ DEFAULT_TEST_FIXTURE_TOOL = {
   }
 
 DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
-  :name => 'default_test_includes_preprocessor'.freeze,
+  :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
+  :name => 'default_test_shallow_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
-    ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
+    ENV['TEST_CPPFLAGS'].nil? ? "" : ENV['TEST_CPPFLAGS'].split,
     '-E'.freeze,             # Run only through preprocessor stage with its output
     '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
     '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
@@ -89,13 +85,12 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
   }
 
 DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
-  :name => 'default_test_includes_preprocessor'.freeze,
+  :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
+  :name => 'default_test_nested_includes_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
-    ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
+    ENV['TEST_CPPFLAGS'].nil? ? "" : ENV['TEST_CPPFLAGS'].split,
     '-E'.freeze,             # Run only through preprocessor stage with its output
     '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
     '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
@@ -110,35 +105,16 @@ DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
   }
 
 DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
+  :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
   :name => 'default_test_file_preprocessor'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
-    ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
+    ENV['TEST_CPPFLAGS'].nil? ? "" : ENV['TEST_CPPFLAGS'].split,
     '-E'.freeze,
     "-I\"${4}\"".freeze, # Per-test executable search paths
     "-D\"${3}\"".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
-    "-x c".freeze,           # Force C language
-    "\"${1}\"".freeze,
-    "-o \"${2}\"".freeze
-    ].freeze
-  }
-
-DEFAULT_TEST_FILE_PREPROCESSOR_DIRECTIVES_TOOL = {
-  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_file_preprocessor_directives'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
-  :optional => false.freeze,
-  :arguments => [
-    '-E'.freeze,
-    "-I\"${4}\"".freeze, # Per-test executable search paths
-    "-D\"${3}\"".freeze, # Per-test executable defines
-    "-DGNU_COMPILER".freeze,
-    '-fdirectives-only'.freeze,
     # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "-x c".freeze,           # Force C language
     "\"${1}\"".freeze,
@@ -154,13 +130,12 @@ else
 end
 
 DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
+  :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
   :name => 'default_test_dependencies_generator'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
-    ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
+    ENV['TEST_CPPFLAGS'].nil? ? "" : ENV['TEST_CPPFLAGS'].split,
     '-E'.freeze,
     "-I\"${5}\"".freeze, # Per-test executable search paths
     "-D\"${4}\"".freeze, # Per-test executable defines
@@ -177,13 +152,12 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   }
 
 DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
+  :executable => ENV['RELEASE_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['RELEASE_CC'],
   :name => 'default_release_dependencies_generator'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
-    ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
+    ENV['RELEASE_CPPFLAGS'].nil? ? "" : ENV['RELEASE_CPPFLAGS'].split,
     '-E'.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR'}.freeze,
     {"-I\"$\"" => 'COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE'}.freeze,
@@ -202,17 +176,16 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   }
 
 DEFAULT_RELEASE_COMPILER_TOOL = {
-  :executable => ENV['CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CC'],
+  :executable => ENV['RELEASE_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['RELEASE_CC'],
   :name => 'default_release_compiler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['CC'].nil? ? "" : ENV['CC'].split[1..-1],
-    ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
+    ENV['RELEASE_CPPFLAGS'].nil? ? "" : ENV['RELEASE_CPPFLAGS'].split,
     "-I\"${5}\"".freeze, # Search paths
     "-D\"${6}\"".freeze, # Defines
     "-DGNU_COMPILER".freeze,
-    ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
+    ENV['RELEASE_CFLAGS'].nil? ? "" : ENV['RELEASE_CFLAGS'].split,
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     # gcc's list file output options are complex; no use of ${3} parameter in default config
@@ -222,13 +195,12 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
   }
 
 DEFAULT_RELEASE_ASSEMBLER_TOOL = {
-  :executable => ENV['AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['AS'],
+  :executable => ENV['RELEASE_AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['RELEASE_AS'],
   :name => 'default_release_assembler'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['AS'].nil? ? "" : ENV['AS'].split[1..-1],
-    ENV['ASFLAGS'].nil? ? "" : ENV['ASFLAGS'].split,
+    ENV['RELEASE_ASFLAGS'].nil? ? "" : ENV['RELEASE_ASFLAGS'].split,
     "-I\"${3}\"".freeze, # Search paths
     "-D\"${4}\"".freeze, # Defines (FYI--allowed with GNU assembler but ignored)
     "\"${1}\"".freeze,
@@ -237,20 +209,19 @@ DEFAULT_RELEASE_ASSEMBLER_TOOL = {
   }
 
 DEFAULT_RELEASE_LINKER_TOOL = {
-  :executable => ENV['CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['CCLD'],
+  :executable => ENV['RELEASE_CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['RELEASE_CCLD'],
   :name => 'default_release_linker'.freeze,
   :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
-    ENV['CCLD'].nil? ? "" : ENV['CCLD'].split[1..-1],
-    ENV['CFLAGS'].nil? ? "" : ENV['CFLAGS'].split,
-    ENV['LDFLAGS'].nil? ? "" : ENV['LDFLAGS'].split,
+    ENV['RELEASE_CFLAGS'].nil? ? "" : ENV['RELEASE_CFLAGS'].split,
+    ENV['RELEASE_LDFLAGS'].nil? ? "" : ENV['RELEASE_LDFLAGS'].split,
     "\"${1}\"".freeze,
     "${5}".freeze,
     "-o \"${2}\"".freeze,
     "".freeze,
     "${4}".freeze,
-    ENV['LDLIBS'].nil? ? "" : ENV['LDLIBS'].split
+    ENV['RELEASE_LDLIBS'].nil? ? "" : ENV['RELEASE_LDLIBS'].split
     ].freeze
   }
 
@@ -289,7 +260,6 @@ DEFAULT_TOOLS_TEST_PREPROCESSORS = {
     :test_shallow_includes_preprocessor => DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL,
     :test_nested_includes_preprocessor => DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL,
     :test_file_preprocessor     => DEFAULT_TEST_FILE_PREPROCESSOR_TOOL,
-    :test_file_preprocessor_directives => DEFAULT_TEST_FILE_PREPROCESSOR_DIRECTIVES_TOOL,
     }
   }
 
@@ -329,7 +299,6 @@ DEFAULT_CEEDLING_CONFIG = {
       :test_threads => 1,
       :use_test_preprocessor => false,
       :test_file_prefix => 'test_',
-      :options_paths => [],
       :release_build => false,
       :use_backtrace => false,
       :debug => false
@@ -421,6 +390,7 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :test_runner => {
+      :cmdline_args => false,
       :includes => [],
       :file_suffix => '_runner',
     },

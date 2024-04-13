@@ -336,6 +336,12 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 ## The basics
 
+### Docker image
+
+A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling, the GCC toolchain, and some helper scripts is also available. A Docker container is a self-contained, portable, well managed alternative to a local installation of Ceedling.
+
+[docker-image]: https://hub.docker.com/r/throwtheswitch/madsciencelab
+
 ### Local installation
 
 1. Install [Ruby]. (Only Ruby 3+ supported.)
@@ -349,12 +355,6 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
    ```shell
    > ceedling test:all release
    ```
-
-### Docker image
-
-A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling, the GCC toolchain, and some helper scripts is also available. A Docker container is a self-contained, portable, well managed alternative to a local installation of Ceedling.
-
-[docker-image]: https://hub.docker.com/r/throwtheswitch/madsciencelab
 
 ### Example super-duper simple Ceedling configuration file
 
@@ -441,19 +441,21 @@ from within the root directory of your project.
 
 Are you afraid of losing all your local changes when this happens? You 
 can prevent Ceedling from updating your project file by adding 
-`--no_configs`.
+`--no-configs`.
 
 ```shell
- > ceedling upgrade --local --no_configs YourSweetProject
+ > ceedling upgrade --local --no-configs YourSweetProject
 ```
 
 ## Git integration
 
 Are you using Git? You might want Ceedling to create a `.gitignore` 
-file for you by adding `--gitignore` to your `new` call.
+which ignores the build folder (while retaining control of the artifacts
+folder). This will also add a `.gitkeep` file to your `test/support` folder.
+You can enable this by adding `--gitsupport` to your `new` call.
 
 ```shell
- > ceedling new --gitignore YourNewProjectName
+ > ceedling new --gitsupport YourNewProjectName
 ```
 <br/>
 

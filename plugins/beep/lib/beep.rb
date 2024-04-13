@@ -39,13 +39,11 @@ class Beep < Plugin
     # Do not validate the `:bell` tool as it relies on `echo` that could be a shell feature rather than executable
     @ceedling[:tool_validator].validate(
       tool: @tools[:beep_on_done],
-      extension: EXTENSION_EXECUTABLE,
       boom: true
     ) if tools[:on_done] != :bell
 
     @ceedling[:tool_validator].validate(
       tool: @tools[:beep_on_error],
-      extension: EXTENSION_EXECUTABLE,
       boom: true
     ) if tools[:on_error] != :bell
   end

@@ -38,12 +38,12 @@ describe "Ceedling" do
     end
 
 
-    describe "command: `ceedling example [example]`" do
+    describe "command: `ceedling example temp_sensor`" do
       describe "temp_sensor" do
         before do
           @c.with_context do
             output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
-            expect(output).to match(/created!/)
+            expect(output).to match(/created/)
           end
         end
 

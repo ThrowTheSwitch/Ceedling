@@ -15,7 +15,6 @@ class ReportGeneratorReportinator
     # Validate the `reportgenerator` tool since it's used to generate reports
     @ceedling[:tool_validator].validate( 
       tool: TOOLS_GCOV_REPORTGENERATOR_REPORT,
-      extension: EXTENSION_EXECUTABLE,
       boom: true
     )
 
@@ -23,7 +22,6 @@ class ReportGeneratorReportinator
     # Note: This gcov tool is a different configuration than the gcov tool used for coverage summaries
     @ceedling[:tool_validator].validate(
       tool: TOOLS_GCOV_REPORT,
-      extension: EXTENSION_EXECUTABLE,
       boom: true
     )
 

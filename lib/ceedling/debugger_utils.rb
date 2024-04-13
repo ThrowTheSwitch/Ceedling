@@ -63,19 +63,19 @@ class DebuggerUtils
   # @return Array - list of the test_cases defined in test_file_runner
   def collect_list_of_test_cases(command)
     all_test_names = command.clone 
-    all_test_names[:line] += @unity_utils.additional_test_run_args('', 'list_test_cases')
+    all_test_names[:line] += @unity_utils.additional_test_run_args( '', :list_test_cases )
     test_list = @tool_executor.exec(all_test_names)
     test_runner_tc = test_list[:output].split("\n").drop(1)
 
     # Clean collected test case names
     # Filter tests which contain test_case_name passed by `--test_case` argument
-    if ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
-      test_runner_tc.delete_if { |i| !(i =~ /#{ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']}/) }
+    if !@configurator.include_test_case.empty?
+      test_runner_tc.delete_if { |i| !(i =~ /#{@configurator.include_test_case}/) }
     end
 
     # Filter tests which contain test_case_name passed by `--exclude_test_case` argument
-    if ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME']
-      test_runner_tc.delete_if { |i| i =~ /#{ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME']}/ }
+    if !@configurator.exclude_test_case.empty?
+      test_runner_tc.delete_if { |i| i =~ /#{@configurator.exclude_test_case}/ }
     end
 
     test_runner_tc
@@ -117,7 +117,7 @@ class DebuggerUtils
     test_case_list_to_execute = collect_list_of_test_cases(@command_line)
     test_case_list_to_execute.each do |test_case_name|
       test_run_cmd = @command_line.clone
-      test_run_cmd_with_args = test_run_cmd[:line] + @unity_utils.additional_test_run_args(test_case_name, 'test_case')
+      test_run_cmd_with_args = test_run_cmd[:line] + @unity_utils.additional_test_run_args( test_case_name, :test_case )
       test_output, exec_time = collect_cmd_output_with_gdb(test_run_cmd, test_run_cmd_with_args, test_case_name)
 
       # Concatenate execution time between tests
@@ -126,8 +126,9 @@ class DebuggerUtils
 
       # Concatenate test results from single test runs, which not crash
       # to create proper output for further parser
-      if test_output =~ /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
-        test_output = "#{Regexp.last_match(1)}:#{Regexp.last_match(2)}:#{Regexp.last_match(3)}:#{Regexp.last_match(4)}#{Regexp.last_match(5)}"
+      m = test_output.match /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
+      if m
+        test_output = "#{m[1]}:#{m[2]}:#{m[3]}:#{m[4]}#{m[5]}"
         if test_output =~ /:PASS/
           test_case_result_collector[:passed] += 1
         elsif test_output =~ /:IGNORE/
@@ -137,27 +138,23 @@ class DebuggerUtils
         end
       else
         # <-- Parse Segmentatation Fault output section -->
-        
-        # Withdraw test_name from gdb output
-        test_name = if test_output =~ /<(.*)>/
-                      Regexp.last_match(1)
-                    else
-                      ''
-                    end
 
-        # Collect file_name and line in which Segmentation fault have his beginning
-        if test_output =~ /#{test_name}\s\(\)\sat\s(.*):(\d+)\n/
+        # Collect file_name and line in which Segmentation faulted test is beginning
+        m = test_output.match /#{test_case_name}\s*\(\)\sat\s(.*):(\d+)\n/
+        if m
           # Remove path from file_name
-          file_name = Regexp.last_match(1).to_s.split('/').last.split('\\').last
+          file_name = m[1].to_s.split('/').last.split('\\').last
           # Save line number
-          line = Regexp.last_match(2)
+          line = m[2]
 
           # Replace:
           # - '\n' by @new_line_tag to make gdb output flat
           # - ':' by @colon_tag to avoid test results problems
           # to enable parsing output for default generator_test_results regex
           test_output = test_output.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
-          test_output = "#{file_name}:#{line}:#{test_name}:FAIL: #{test_output}"
+          test_output = "#{file_name}:#{line}:#{test_case_name}:FAIL: #{test_output}"
+        else
+          test_output = "ERR:1:#{test_case_name}:FAIL: Segmentation Fault"
         end
 
         # Mark test as failure

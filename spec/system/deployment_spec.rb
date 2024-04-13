@@ -51,24 +51,22 @@ describe "Ceedling" do
     it { exclude_test_case_name_filter_works_and_only_one_test_case_is_executed }
     it { none_of_test_is_executed_if_test_case_name_passed_does_not_fit_defined_in_test_file_and_cmdline_args_are_enabled }
     it { none_of_test_is_executed_if_test_case_name_and_exclude_test_case_name_is_the_same }
-    it { run_all_test_when_test_case_name_is_passed_but_cmdline_args_are_disabled_with_success }
+    it { run_all_test_when_test_case_name_is_passed_it_will_autoset_cmdline_args }
   end
 
-  describe "deployed in a project's `vendor` directory with gitignore." do
+  describe "deployed in a project's `vendor` directory with git support." do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --local --docs --gitignore #{@proj_name} 2>&1`
+        `bundle exec ruby -S ceedling new --local --docs --gitsupport #{@proj_name} 2>&1`
       end
     end
 
     it { can_create_projects }
-    it { has_an_ignore }
+    it { has_git_support }
     it { contains_a_vendor_directory }
     it { contains_documentation }
     it { can_test_projects_with_success }
   end
-
-
 
   describe "deployed in a project's `vendor` directory without docs." do
     before do
@@ -183,19 +181,19 @@ describe "Ceedling" do
     end
   end
 
-  describe "command: `ceedling example [example]`" do
+  describe "command: `ceedling example temp_sensor`" do
     describe "temp_sensor" do
       before do
         @c.with_context do
           output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
-          expect(output).to match(/created!/)
+          expect(output).to match(/created/)
         end
       end
 
       it "should be testable" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = `bundle exec ruby -S ceedling test:all`
+            @output = `bundle exec ruby -S ceedling test:all 2>&1`
             expect(@output).to match(/TESTED:\s+47/)
             expect(@output).to match(/PASSED:\s+47/)
           end

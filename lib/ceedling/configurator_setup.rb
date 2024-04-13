@@ -66,8 +66,6 @@ class ConfiguratorSetup
   end
 
   def build_project_collections(flattened_config)
-    flattened_config.merge!( @configurator_builder.collect_project_options( flattened_config ) ) 
- 
     ### iterate through all entries in paths section and expand any & all globs to actual paths
     flattened_config.merge!( @configurator_builder.expand_all_path_globs( flattened_config ) )
 
@@ -124,10 +122,6 @@ class ConfiguratorSetup
       config[:cmock][:unity_helper].each do |path|
         valid &= @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper ) 
       end
-    end
-
-    config[:project][:options_paths].each do |path|
-      valid &= @configurator_validator.validate_filepath_simple( path, :project, :options_paths )
     end
 
     config[:plugins][:load_paths].each do |path|

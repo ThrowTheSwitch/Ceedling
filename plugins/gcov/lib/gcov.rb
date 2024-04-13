@@ -14,12 +14,11 @@ class Gcov < Plugin
     @project_config = @ceedling[:configurator].project_config_hash
     @reports_enabled = reports_enabled?( @project_config[:gcov_reports] )
 
-    # Validate the gcov tools if coverage summaries are enabled (summaries rely on the gcov tool)
+    # Validate the gcov tools if coverage summaries are enabled (summaries rely on the `gcov` tool)
     # Note: This gcov tool is a different configuration than the gcov tool used by ReportGenerator
     if summaries_enabled?( @project_config )
       @ceedling[:tool_validator].validate(
         tool: TOOLS_GCOV_SUMMARY,
-        extension: EXTENSION_EXECUTABLE,
         boom: true
       )
     end

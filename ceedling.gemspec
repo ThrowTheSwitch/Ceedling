@@ -49,7 +49,7 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
 
   s.files      += Dir['**/*']
   s.test_files  = Dir['test/**/*', 'spec/**/*', 'features/**/*']
-  s.executables = Dir['bin/**/*'].map{|f| File.basename(f)}
+  s.executables = ['ceedling'] # bin/ceedling
 
   s.require_paths = ["lib", "vendor/cmock/lib"]
 end

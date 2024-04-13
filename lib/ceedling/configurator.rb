@@ -9,13 +9,11 @@ require 'deep_merge'
 class Configurator
 
   attr_reader :project_config_hash, :programmatic_plugins, :rake_plugins
-  attr_accessor :project_logging, :project_debug, :project_verbosity, :sanity_checks
+  attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case
 
   constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper) do
-    @project_logging   = false
-    @project_debug     = false
-    @project_verbosity = Verbosity::NORMAL
-    @sanity_checks     = TestResultsSanityChecks::NORMAL
+    @project_logging = false
+    @sanity_checks   = TestResultsSanityChecks::NORMAL
   end
 
   def setup
@@ -25,10 +23,9 @@ class Configurator
     # Runner config reference to provide to runner generation
     @runner_config = {} # Default empty hash, replaced by reference below
 
-    # note: project_config_hash is an instance variable so constants and accessors created
+    # Note: project_config_hash is an instance variable so constants and accessors created
     # in eval() statements in build() have something of proper scope and persistence to reference
     @project_config_hash = {}
-    @project_config_hash_backup = {}
 
     @programmatic_plugins = []
     @rake_plugins   = []
@@ -47,24 +44,12 @@ class Configurator
   end
 
 
-  def store_config
-    @project_config_hash_backup = @project_config_hash.clone
-  end
-
-
-  def restore_config
-    @project_config_hash = @project_config_hash_backup
-    @configurator_setup.build_constants_and_accessors(@project_config_hash, binding())
-  end
-
-
   def reset_defaults(config)
     [:test_compiler,
      :test_linker,
      :test_fixture,
      :test_includes_preprocessor,
      :test_file_preprocessor,
-     :test_file_preprocessor_directives,
      :test_dependencies_generator,
      :release_compiler,
      :release_assembler,
@@ -132,7 +117,8 @@ class Configurator
 
     cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
 
-    cmock[:verbosity] = @project_verbosity                                                  if (cmock[:verbosity].nil?)
+    # Use dynamically defined accessor
+    cmock[:verbosity] = project_verbosity()                                                 if (cmock[:verbosity].nil?)
 
     cmock[:plugins] = []                             if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym }
@@ -269,44 +255,37 @@ class Configurator
   end
 
 
-  def merge_imports(config)
-    if config[:import]
-      if config[:import].is_a? Array
-        until config[:import].empty?
-          path = config[:import].shift
-          path = @system_wrapper.module_eval(path) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
-          config.deep_merge!(@yaml_wrapper.load(path))
-        end
-      else
-        config[:import].each_value do |path|
-          if !path.nil?
-            path = @system_wrapper.module_eval(path) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
-            config.deep_merge!(@yaml_wrapper.load(path))
-          end
-        end
-      end
-    end
-    config.delete(:import)
-  end
-
-
+  # Process environment variables set in configuration file
+  # (Each entry beneath :environment is another hash)
   def eval_environment_variables(config)
     config[:environment].each do |hash|
-      key   = hash.keys[0]
-      value = hash[key]
+      key   = hash.keys[0] # Get first (should be only) environment variable entry
+      value = hash[key]    # Get associated value
       items = []
 
+      # Special case handling for :path environment variable entry
+      # File::PATH_SEPARATOR => ':' (Unix-ish) or ';' (Windows)
       interstitial = ((key == :path) ? File::PATH_SEPARATOR : '')
+
+      # Create an array container for the value of this entry
+      #  - If the value is an array, get it
+      #  - Otherwise, place value in a single item array
       items = ((value.class == Array) ? hash[key] : [value])
 
+      # Process value array
       items.each do |item|
+        # Process each item for Ruby string replacement
         if item.is_a? String and item =~ RUBY_STRING_REPLACEMENT_PATTERN
           item.replace( @system_wrapper.module_eval( item ) )
         end
       end
 
+      # Join any value items (become a flattened string)
+      #  - With path separator if the key was :path
+      #  - With nothing otherwise
       hash[key] = items.join( interstitial )
 
+      # Set the environment variable for our session
       @system_wrapper.env_set( key.to_s.upcase, hash[key] )
     end
   end
@@ -364,15 +343,22 @@ class Configurator
   end
 
 
-  def validate(config)
-    # Collect felonies and go straight to jail
-    if (not @configurator_setup.validate_required_sections( config ))
+  def validate_essential(config)
+    # Collect all infractions, everybody on probation until final adjudication
+    blotter = true
+
+    blotter &= @configurator_setup.validate_required_sections( config )
+    blotter &= @configurator_setup.validate_required_section_values( config )
+
+    if !blotter
       raise CeedlingException.new("ERROR: Ceedling configuration failed validation")
     end
+  end
 
-    # Collect all misdemeanors, everybody on probation
+
+  def validate_final(config)
+    # Collect all infractions, everybody on probation until final adjudication
     blotter = true
-    blotter &= @configurator_setup.validate_required_section_values( config )
     blotter &= @configurator_setup.validate_paths( config )
     blotter &= @configurator_setup.validate_tools( config )
     blotter &= @configurator_setup.validate_threads( config )
@@ -398,7 +384,6 @@ class Configurator
     @configurator_setup.build_project_collections( flattened_config )
 
     @project_config_hash = flattened_config.clone
-    store_config()
 
     @configurator_setup.build_constants_and_accessors( flattened_config, binding() )
 
@@ -425,9 +410,6 @@ class Configurator
 
     # Update global constant
     @configurator_builder.build_global_constant(elem, value)
-
-    # Update backup config
-    store_config
   end
 
 
@@ -441,7 +423,6 @@ class Configurator
 
     # merge our flattened hash with built hash from previous build
     @project_config_hash.deep_merge!( config_more_flattened )
-    store_config()
 
     # create more constants and accessors
     @configurator_setup.build_constants_and_accessors(config_more_flattened, binding())

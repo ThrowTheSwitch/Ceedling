@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'rake' # for FileList
 require 'fileutils'
+require 'pathname'
 require 'ceedling/constants'
 
 
@@ -24,8 +25,13 @@ class FileWrapper
     return File.extname(filepath)
   end
 
+  # Is path a directory and does it exist?
   def directory?(path)
     return File.directory?(path)
+  end
+
+  def relative?(path)
+    return Pathname.new( path).relative?
   end
 
   def dirname(path)
@@ -33,7 +39,7 @@ class FileWrapper
   end
 
   def directory_listing(glob)
-    return Dir.glob(glob, File::FNM_PATHNAME)
+    return Dir.glob(glob, File::FNM_PATHNAME) # Case insensitive globs
   end
 
   def rm_f(filepath, options={})

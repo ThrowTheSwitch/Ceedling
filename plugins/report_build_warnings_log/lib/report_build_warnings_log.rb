@@ -16,7 +16,7 @@ class ReportBuildWarningsLog < Plugin
     # Ceedling can run with multiple threads, provide a lock to use around @warnings
     @mutex = Mutex.new()
 
-    # Get default (default.yml) / user-set log filename in project.yml
+    # Get default (default.yml) / user-set log filename in project configuration
     @log_filename = @ceedling[:configurator].report_build_warnings_log_filename
 
     # Convenient instance variable references

@@ -20,9 +20,6 @@
   :test_threads: 8
   :compile_threads: 8
 
-  # you can specify different yaml config files which modify the existing one
-  :options_paths: []
-
   # enable release build (more details in release_build section below)
   :release_build: FALSE
 
@@ -146,7 +143,7 @@
   :defines:
     - UNITY_EXCLUDE_FLOAT
 
-# Configuration options specify to Unity's test runner generator
+# Configuration options specific to Unity's test runner generator
 :test_runner:
   :cmdline_args: FALSE
 

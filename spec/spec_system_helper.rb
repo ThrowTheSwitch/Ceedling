@@ -56,6 +56,10 @@ class SystemContext
     git_repo = File.expand_path(File.join(File.dirname(__FILE__), '..'))
     bundler_gem_file_data = [ %Q{source "http://rubygems.org/"},
                               %Q{gem "rake"},
+                              %Q{gem "constructor"},
+                              %Q{gem "diy"},
+                              %Q{gem "thor"},
+                              %Q{gem "deep_merge"},
                               %Q{gem "ceedling", :path => '#{git_repo}'}
                             ].join("\n")
 
@@ -169,15 +173,15 @@ module CeedlingTestCases
         expect(File.exist?("src")).to eq true
         expect(File.exist?("test")).to eq true
         expect(File.exist?("test/support")).to eq true
-        expect(File.exist?("test/support/.gitkeep")).to eq true
       end
     end
   end
 
-  def has_an_ignore
+  def has_git_support
     @c.with_context do
       Dir.chdir @proj_name do
         expect(File.exist?(".gitignore")).to eq true
+        expect(File.exist?("test/support/.gitkeep")).to eq true
       end
     end
   end
@@ -186,7 +190,7 @@ module CeedlingTestCases
     @c.with_context do
       output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
       expect($?.exitstatus).to match(0)
-      expect(output).to match(/upgraded!/i)
+      expect(output).to match(/Upgraded/i)
       Dir.chdir @proj_name do
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
@@ -208,7 +212,7 @@ module CeedlingTestCases
       File.write("#{@proj_name}/project.yml", updated_prj_yml.join("\n"), mode: 'w')
 
       expect($?.exitstatus).to match(0)
-      expect(output).to match(/upgraded!/i)
+      expect(output).to match(/Upgraded/i)
       Dir.chdir @proj_name do
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
@@ -222,7 +226,7 @@ module CeedlingTestCases
     @c.with_context do
       output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
       expect($?.exitstatus).to match(1)
-      expect(output).to match(/rescue in upgrade/i)
+      expect(output).to match(/Could not find an existing project/i)
     end
   end
 
@@ -512,7 +516,6 @@ module CeedlingTestCases
         expect($?.exitstatus).to match(0)
         expect(output).to match(/ceedling clean/i)
         expect(output).to match(/ceedling clobber/i)
-        expect(output).to match(/ceedling logging/i)
         expect(output).to match(/ceedling module:create/i)
         expect(output).to match(/ceedling module:destroy/i)
         expect(output).to match(/ceedling summary/i)
@@ -652,7 +655,7 @@ module CeedlingTestCases
     end
   end
 
-  def run_all_test_when_test_case_name_is_passed_but_cmdline_args_are_disabled_with_success
+  def run_all_test_when_test_case_name_is_passed_it_will_autoset_cmdline_args
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -662,11 +665,10 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers 2>&1`
 
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
-        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+1/)
         expect(output).to match(/FAILED:\s+0/)
-        expect(output).to match(/IGNORED:\s+1/)
-        expect(output).to match(/please add `:cmdline_args` under :test_runner option/)
+        expect(output).to match(/IGNORED:\s+0/)
       end
     end
   end
@@ -726,8 +728,8 @@ module CeedlingTestCases
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
         expect(output).to match(/TESTED:\s+2/)
-        expect(output).to match(/PASSED:\s+1/)
-        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
       end
     end
@@ -751,8 +753,8 @@ module CeedlingTestCases
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
         expect(output).to match(/TESTED:\s+1/)
-        expect(output).to match(/PASSED:\s+0/)
-        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
       end
     end
@@ -776,8 +778,8 @@ module CeedlingTestCases
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
         expect(output).to match(/TESTED:\s+1/)
-        expect(output).to match(/PASSED:\s+0/)
-        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
       end
     end

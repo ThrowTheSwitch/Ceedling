@@ -1,14 +1,6 @@
 require 'fileutils'
 
-# get directory containing this here file, back up one directory, and expand to full path
-CEEDLING_ROOT    = File.expand_path(File.dirname(__FILE__) + '/../..')
-CEEDLING_LIB     = File.join(CEEDLING_ROOT, 'lib')
-CEEDLING_VENDOR  = File.join(CEEDLING_ROOT, 'vendor')
-CEEDLING_RELEASE = File.join(CEEDLING_ROOT, 'release')
-
-$LOAD_PATH.unshift( CEEDLING_LIB )
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'unity/auto') )
-$LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'diy/lib') )
 $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'cmock/lib') )
 
 require 'rake'
@@ -16,15 +8,12 @@ require 'rake'
 # Let's make sure we remember the task descriptions in case we need them
 Rake::TaskManager.record_task_metadata = true
 
-require 'diy'
-require 'constructor'
-require 'ceedling/constants'
-require 'ceedling/target_loader'
 require 'ceedling/system_wrapper'
 require 'ceedling/reportinator'
-require 'deep_merge'
 
-def log_runtime(run, start_time_s, end_time_s)
+# Operation duration logging
+def log_runtime(run, start_time_s, end_time_s, enabled)
+  return if !enabled
   return if !defined?(PROJECT_VERBOSITY)
   return if (PROJECT_VERBOSITY < Verbosity::ERRORS)
 
@@ -32,50 +21,41 @@ def log_runtime(run, start_time_s, end_time_s)
 
   return if duration.empty?
 
-  puts( "\nCeedling #{run} completed in #{duration}" )
+  puts( "\n🌱 Ceedling #{run} completed in #{duration}" )
 end
 
+# Centralized last resort, outer exception handling
 def boom_handler(exception:, debug:)
-  $stderr.puts("#{exception.class} ==> #{exception.message}")
+  $stderr.puts("🌱 #{exception.class} ==> #{exception.message}")
   if debug
     $stderr.puts("Backtrace ==>")
     $stderr.puts(exception.backtrace)
   end
-  abort # Rake's abort
+  exit(1)
 end
 
-# Exists in external scope
-start_time = nil
+start_time = nil # Outside scope of exception handling
 
 # Top-level exception handling for any otherwise un-handled exceptions, particularly around startup
 begin
   # Redefine start_time with actual timestamp before set up begins
   start_time = SystemWrapper.time_stopwatch_s()
 
-  # construct all our objects
-  # ensure load path contains all libraries needed first
-  lib_ceedling_load_path_temp = File.join(CEEDLING_LIB, 'ceedling')
-  $LOAD_PATH.unshift( lib_ceedling_load_path_temp )
-  @ceedling = DIY::Context.from_yaml( File.read( File.join(lib_ceedling_load_path_temp, 'objects.yml') ) )
-  @ceedling.build_everything
-  # now that all objects are built, delete 'lib/ceedling' from load path
-  $LOAD_PATH.delete(lib_ceedling_load_path_temp)
-  # one-stop shopping for all our setup and such after construction
+  # Construct all objects
+  #  1. Add full path to $LOAD_PATH to simplify objects.yml
+  #  2. Perform object construction + dependency injection
+  #  3. Remove full path from $LOAD_PATH
+  $LOAD_PATH.unshift( CEEDLING_LIB )
+  @ceedling = DIY::Context.from_yaml( File.read( File.join( CEEDLING_LIB, 'objects.yml' ) ) )
+  @ceedling.build_everything()
+  $LOAD_PATH.delete( CEEDLING_LIB )
+
+  # One-stop shopping for all our setup and such after construction
   @ceedling[:setupinator].ceedling = @ceedling
+  @ceedling[:setupinator].do_setup( CEEDLING_APPCFG )
 
-  project_config =
-    begin
-      cfg = @ceedling[:setupinator].load_project_files
-      TargetLoader.inspect(cfg, ENV['TARGET'])
-    rescue TargetLoader::NoTargets
-      cfg
-    rescue TargetLoader::RequestReload
-      @ceedling[:setupinator].load_project_files
-    end
-
-  @ceedling[:setupinator].do_setup( project_config )
-
-  log_runtime( 'set up', start_time, SystemWrapper.time_stopwatch_s() )
+  setup_done = SystemWrapper.time_stopwatch_s()
+  log_runtime( 'set up', start_time, setup_done, CEEDLING_APPCFG[:stopwatch] )
 
   # Configure high-level verbosity
   unless defined?(PROJECT_DEBUG) and PROJECT_DEBUG
@@ -99,13 +79,20 @@ begin
   # Reset start_time before operations begins
   start_time = SystemWrapper.time_stopwatch_s()
 
-  # tell all our plugins we're about to do something
+  # Tell all our plugins we're about to do something
   @ceedling[:plugin_manager].pre_build
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 rescue StandardError => e
   boom_handler( exception:e, debug:(defined?(PROJECT_DEBUG) && PROJECT_DEBUG) )
+end
+
+def test_failures_handler()
+  graceful_fail = CEEDLING_APPCFG[:tests_graceful_fail]
+
+  # $stdout test reporting plugins store test failures
+  exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
 end
 
 # End block always executed following rake run
@@ -117,25 +104,25 @@ END {
   @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash )    if (@ceedling[:task_invoker].test_invoked?)
   @ceedling[:cacheinator].cache_release_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].release_invoked?)
 
-  graceful_fail = @ceedling[:setupinator].config_hash[:graceful_fail]
-
   # Only perform these final steps if we got here without runtime exceptions or errors
   if (@ceedling[:application].build_succeeded?)
     # Tell all our plugins the build is done and process results
     begin
       @ceedling[:plugin_manager].post_build
       @ceedling[:plugin_manager].print_plugin_failures
-      log_runtime( 'operations', start_time, SystemWrapper.time_stopwatch_s() )
-      exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
+      ops_done = SystemWrapper.time_stopwatch_s()
+      log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
+      test_failures_handler() if (@ceedling[:task_invoker].test_invoked? || @ceedling[:task_invoker].invoked?(/^gcov:/))
     rescue => ex
-      log_runtime( 'operations', start_time, SystemWrapper.time_stopwatch_s() )
+      ops_done = SystemWrapper.time_stopwatch_s()
+      log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
       boom_handler( exception:ex, debug:(defined?(PROJECT_DEBUG) && PROJECT_DEBUG) )
       exit(1)
     end
 
     exit(0)
   else
-    puts("\nCeedling could not complete operations because of errors.")
+    puts("\n🌱 Ceedling could not complete operations because of errors.")
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex

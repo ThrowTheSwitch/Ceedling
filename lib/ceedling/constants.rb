@@ -38,9 +38,7 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
-unless defined?(PROJECT_ROOT)
-  PROJECT_ROOT = Dir.pwd()
-end
+DEFAULT_PROJECT_FILENAME = 'project.yml'
 
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
 
@@ -74,9 +72,7 @@ CMOCK_LIB_PATH  = "#{CMOCK_ROOT_PATH}/src"
 CMOCK_C_FILE    = 'cmock.c'
 CMOCK_H_FILE    = 'cmock.h'
 
-
-DEFAULT_CEEDLING_MAIN_PROJECT_FILE = 'project.yml' unless defined?(DEFAULT_CEEDLING_MAIN_PROJECT_FILE) # main project file
-DEFAULT_CEEDLING_USER_PROJECT_FILE = 'user.yml'    unless defined?(DEFAULT_CEEDLING_USER_PROJECT_FILE) # supplemental user config file
+DEFAULT_CEEDLING_LOGFILE = 'ceedling.log'
 
 INPUT_CONFIGURATION_CACHE_FILE     = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
 DEFINES_DEPENDENCY_CACHE_FILE      = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files
