@@ -655,7 +655,7 @@ module CeedlingTestCases
     end
   end
 
-  def run_all_test_when_test_case_name_is_passed_but_cmdline_args_are_disabled_with_success
+  def run_all_test_when_test_case_name_is_passed_it_will_autoset_cmdline_args
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -665,11 +665,10 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers 2>&1`
 
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
-        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+1/)
         expect(output).to match(/FAILED:\s+0/)
-        expect(output).to match(/IGNORED:\s+1/)
-        expect(output).to match(/please add `:cmdline_args` under :test_runner option/)
+        expect(output).to match(/IGNORED:\s+0/)
       end
     end
   end
