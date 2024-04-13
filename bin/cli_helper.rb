@@ -189,6 +189,9 @@ class CliHelper
   def set_verbosity(verbosity=nil)
     verbosity = verbosity.nil? ? Verbosity::NORMAL : VERBOSITY_OPTIONS[verbosity.to_sym()]
 
+    # If we already set verbosity, there's nothing more to do here
+    return if Object.const_defined?('PROJECT_VERBOSITY')
+
     # Create global constant PROJECT_VERBOSITY
     Object.module_eval("PROJECT_VERBOSITY = verbosity")
     PROJECT_VERBOSITY.freeze()
