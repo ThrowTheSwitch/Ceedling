@@ -1,4 +1,12 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 
 class GeneratorHelper
@@ -32,8 +40,7 @@ class GeneratorHelper
 
       notice += "> This is often a symptom of a bad memory access in source or test code.\n\n"
 
-      @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
-      raise      
+      raise CeedlingException.new(notice)
     end
   end
   

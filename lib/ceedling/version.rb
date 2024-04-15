@@ -1,3 +1,9 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
 # @private
 module Ceedling
@@ -48,7 +54,9 @@ module Ceedling
       eval("#{name} = '#{a.join(".")}'")
     end
 
-    GEM = "0.31.1"
+    GEM = "0.32.0"
     CEEDLING = GEM
+
+    puts CEEDLING if __FILE__ == $0
   end
 end
