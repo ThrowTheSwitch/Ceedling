@@ -87,6 +87,10 @@ A community member submitted an [HTML report generation plugin](https://github.c
 
 Segmentation faults are now reported as failures instead of an error and given as fine of detail as possible for the current feature set. See the docs on `:backtrace` for more!
 
+### Pretty streamed output
+
+The output of Ceedling now optionally includes emoji and color. Ceedling will attempt to determine if your platform supports it. You can use `use_decorators` to force the feature on or off.
+
 ## 💪 Fixed
 
 ### `:paths` and `:files` handling bug fixes and clarification

@@ -146,6 +146,16 @@ class CliHandler
     )
 
     log_filepath = @helper.process_logging( options[:log], options[:logfile] )
+    if (config[:project] && config[:project][:use_decorators])
+      case config[:project][:use_decorators]
+      when :all
+        @streaminator.decorate(true)
+      when :none
+        @streaminator.decorate(false)
+      else #includes :auto
+        #nothing more to do. we've already figured out auto
+      end
+    end
 
     # Save references
     app_cfg[:project_config] = config

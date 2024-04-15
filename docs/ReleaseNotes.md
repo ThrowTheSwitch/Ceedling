@@ -106,6 +106,7 @@ There’s more to be done, but Ceedling’s documentation is more complete and a
 - This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake’s design assumptions hamper building the sorts of features Ceedling’s users want, Rake’s command line structure creates a messy user experience for a full application built around it, and Rake’s quirks cause maintenance challenges. Particularly for test suites, much of Ceedling’s (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
 - This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 1.0.0 release. Future releases will have far shorter notes.
 - The `fake_function_framework` plugin has been renamed simply `fff`
+- Optional output decorators have been added for your output stream enjoyment (see `:use_decorators`)
 
 ## 🚨 Important Changes in Behavior to Be Aware Of
 

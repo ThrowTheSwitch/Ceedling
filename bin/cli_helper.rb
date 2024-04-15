@@ -8,6 +8,8 @@ class CliHelper
   def setup
     #Aliases
     @actions = @actions_wrapper
+
+    @streaminator.decorate( !windows? )
   end
 
 
