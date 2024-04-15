@@ -15,7 +15,7 @@ class BuildBatchinator
       msg = "\n" + @reportinator.generate_progress(msg)
     end
 
-    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+    @streaminator.stream_puts(msg, Verbosity::NORMAL)
 
     yield # Execute build step block
   end

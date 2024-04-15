@@ -21,13 +21,20 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
 
   return if duration.empty?
 
-  @ceedling[:streaminator].stdout_puts( "\nCeedling #{run} completed in #{duration}", Verbosity::TITLE )
+  @ceedling[:streaminator].stream_puts( "\nCeedling #{run} completed in #{duration}" )
 end
 
 # Centralized last resort, outer exception handling
 def boom_handler(exception:, debug:)
-  $stderr.puts("#{exception.class} ==> #{exception.message}")
-  if debug
+  if !@ceedling.nil? && !@ceedling[:streaminator].nil?
+    @ceedling[:streaminator].stream_puts("#{exception.class} ==> #{exception.message}", Verbosity::ERRORS)
+    if debug
+      @ceedling[:streaminator].stream_puts("Backtrace ==>", Verbosity::ERRORS)
+      @ceedling[:streaminator].stream_puts(exception.backtrace, Verbosity::ERRORS)
+    end
+  else
+    # something went really wrong... streaming isn't even up and running yet
+    $stderr.puts("#{exception.class} ==> #{exception.message}")
     $stderr.puts("Backtrace ==>")
     $stderr.puts(exception.backtrace)
   end
@@ -122,7 +129,7 @@ END {
 
     exit(0)
   else
-    @ceedling[:streaminator].stdout_puts("\nCeedling could not complete operations because of errors.", Verbosity::ERRORS)
+    @ceedling[:streaminator].stream_puts("\nERROR: Ceedling could not complete operations because of errors.", Verbosity::ERRORS)
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex

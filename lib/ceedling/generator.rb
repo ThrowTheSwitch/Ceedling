@@ -49,7 +49,7 @@ class Generator
         module_name: test,
         filename: File.basename(input_filepath)
       )
-      @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+      @streaminator.stream_puts(msg, Verbosity::NORMAL)
 
       cmock = @generator_mocks.manufacture( config )
       cmock.setup_mocks( arg_hash[:header_file] )
@@ -83,7 +83,7 @@ class Generator
       )
 
     msg = @reportinator.generate_progress("Generating runner for #{module_name}")
-    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+    @streaminator.stream_puts(msg, Verbosity::NORMAL)
 
     # build runner file
     begin
@@ -136,7 +136,7 @@ class Generator
       module_name: module_name,
       filename: File.basename(arg_hash[:source])
       ) if msg.empty?
-    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+    @streaminator.stream_puts(msg, Verbosity::NORMAL)
 
     command =
       @tool_executor.build_command_line(
@@ -200,7 +200,7 @@ class Generator
       module_name: module_name,
       filename: File.basename(arg_hash[:source])
       ) if msg.empty?
-    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+    @streaminator.stream_puts(msg, Verbosity::NORMAL)
 
     command =
       @tool_executor.build_command_line( 
@@ -242,7 +242,7 @@ class Generator
     @plugin_manager.pre_link_execute(arg_hash)
 
     msg = @reportinator.generate_progress("Linking #{File.basename(arg_hash[:executable])}")
-    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+    @streaminator.stream_puts(msg, Verbosity::NORMAL)
 
     command =
       @tool_executor.build_command_line(
@@ -280,7 +280,7 @@ class Generator
     @plugin_manager.pre_test_fixture_execute(arg_hash)
 
     msg = @reportinator.generate_progress("Running #{File.basename(arg_hash[:executable])}")
-    @streaminator.stdout_puts(msg, Verbosity::NORMAL)
+    @streaminator.stream_puts(msg, Verbosity::NORMAL)
 
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results

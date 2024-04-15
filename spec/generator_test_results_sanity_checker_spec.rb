@@ -46,7 +46,7 @@ describe GeneratorTestResultsSanityChecker do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:ignored] = 0
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stderr_puts)
+      allow(@streaminator).to receive(:stream_puts)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
 
@@ -54,7 +54,7 @@ describe GeneratorTestResultsSanityChecker do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:failed] = 0
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stderr_puts)
+      allow(@streaminator).to receive(:stream_puts)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
 
@@ -62,21 +62,21 @@ describe GeneratorTestResultsSanityChecker do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:total] = 0
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stderr_puts)
+      allow(@streaminator).to receive(:stream_puts)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
 
     it 'rasies error if thorough check fails for error code not 255 not equal' do
       @configurator.sanity_checks = TestResultsSanityChecks::THOROUGH
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stderr_puts)
+      allow(@streaminator).to receive(:stream_puts)
       expect{@sanity_checker.verify(@results, 2)}.to raise_error(RuntimeError)
     end
 
     it 'rasies error if thorough check fails for error code 255 less than 255' do
       @configurator.sanity_checks = TestResultsSanityChecks::THOROUGH
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stderr_puts)
+      allow(@streaminator).to receive(:stream_puts)
       expect{@sanity_checker.verify(@results, 255)}.to raise_error(RuntimeError)
     end
 

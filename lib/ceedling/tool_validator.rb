@@ -35,7 +35,7 @@ class ToolValidator
     if (executable.nil? or executable.empty?)
       error = "#{name} is missing :executable in its configuration."
       if !boom
-        @streaminator.stderr_puts( 'ERROR: ' + error, Verbosity::ERRORS )
+        @streaminator.stream_puts( 'ERROR: ' + error, Verbosity::ERRORS )
         return false 
       end
 
@@ -104,7 +104,7 @@ class ToolValidator
 
     # Otherwise, log error
     if !exists
-      @streaminator.stderr_puts( 'ERROR: ' + error, Verbosity::ERRORS )
+      @streaminator.stream_puts( 'ERROR: ' + error, Verbosity::ERRORS )
     end
 
     return exists
@@ -123,7 +123,7 @@ class ToolValidator
         raise CeedlingException.new( error ) if boom
 
         # Otherwise log error
-        @streaminator.stderr_puts( 'ERROR: ' + error, Verbosity::ERRORS)
+        @streaminator.stream_puts( 'ERROR: ' + error, Verbosity::ERRORS)
         return false        
       end    
     elsif redirect.class != String

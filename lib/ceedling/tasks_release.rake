@@ -5,7 +5,7 @@ require 'ceedling/file_path_utils'
 desc "Build release target."
 task RELEASE_SYM => [:prepare] do
   header = "Release build '#{File.basename(PROJECT_RELEASE_BUILD_TARGET)}'"
-  @ceedling[:streaminator].stdout_puts("\n\n#{header}\n#{'-' * header.length}")  
+  @ceedling[:streaminator].stream_puts("\n\n#{header}\n#{'-' * header.length}")  
   
   begin
     @ceedling[:plugin_manager].pre_release
@@ -23,12 +23,12 @@ task RELEASE_SYM => [:prepare] do
   rescue StandardError => e
     @ceedling[:application].register_build_failure
 
-    @ceedling[:streaminator].stderr_puts("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
+    @ceedling[:streaminator].stream_puts("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
 
     # Debug backtrace
-    @ceedling[:streaminator].stderr_puts("Backtrace ==>", Verbosity::DEBUG)
+    @ceedling[:streaminator].stream_puts("Backtrace ==>", Verbosity::DEBUG)
     if @ceedling[:verbosinator].should_output?(Verbosity::DEBUG)
-      $stderr.puts(e.backtrace) # Formats properly when directly passed to puts()
+      @ceedling[:streaminator].stream_puts(e.backtrace, Verbosity::DEBUG) # Formats properly when directly passed to puts()
     end
 
   ensure

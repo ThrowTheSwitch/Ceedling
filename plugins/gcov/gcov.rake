@@ -39,7 +39,7 @@ namespace GCOV_SYM do
               "Use a real test or source file name (no path) in place of the wildcard.\n" \
               "Example: rake #{GCOV_ROOT_NAME}:foo.c\n\n"
 
-    @ceedling[:streaminator].stdout_puts(message)
+    @ceedling[:streaminator].stream_puts(message)
   end
 
   desc 'Run tests by matching regular expression pattern.'
@@ -53,7 +53,7 @@ namespace GCOV_SYM do
     if !matches.empty?
       @ceedling[:test_invoker].setup_and_invoke(tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
+      @ceedling[:streaminator].stream_puts("\nFound no tests matching pattern /#{args.regex}/.")
     end
   end
 
@@ -68,7 +68,7 @@ namespace GCOV_SYM do
     if !matches.empty?
       @ceedling[:test_invoker].setup_and_invoke(tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
+      @ceedling[:streaminator].stream_puts("\nFound no tests including the given path or path component.")
     end
   end
 

@@ -97,7 +97,7 @@ class Mixinator
       config.deep_merge( _mixin )
 
       # Log what filepath we used for this mixin
-      @streaminator.stdout_puts( " + Merged #{'(empty) ' if _mixin.empty?}#{source} mixin using #{filepath}", Verbosity::DEBUG )
+      @streaminator.stream_puts( " + Merged #{'(empty) ' if _mixin.empty?}#{source} mixin using #{filepath}", Verbosity::DEBUG )
     end
 
     # Validate final configuration

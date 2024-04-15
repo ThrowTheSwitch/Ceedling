@@ -95,7 +95,7 @@ namespace BULLSEYE_SYM do
               "Use a real test or source file name (no path) in place of the wildcard.\n" +
               "Example: rake #{BULLSEYE_ROOT_NAME}:foo.c\n\n"
 
-    @ceedling[:streaminator].stdout_puts( message )
+    @ceedling[:streaminator].stream_puts( message )
   end
 
   desc 'Run tests by matching regular expression pattern.'
@@ -112,7 +112,7 @@ namespace BULLSEYE_SYM do
       @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
       @ceedling[:configurator].restore_config
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
+      @ceedling[:streaminator].stream_puts("\nFound no tests matching pattern /#{args.regex}/.")
     end
   end
 
@@ -130,7 +130,7 @@ namespace BULLSEYE_SYM do
       @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
       @ceedling[:configurator].restore_config
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
+      @ceedling[:streaminator].stream_puts("\nFound no tests including the given path or path component.")
     end
   end
 

@@ -56,7 +56,7 @@ class ReportTestsLogFactory < Plugin
     return if empty
 
     msg = @reportinator.generate_heading( "Running Test Suite Reports" )
-    @streaminator.stdout_puts( msg )
+    @streaminator.stream_puts( msg )
 
     @mutex.synchronize do
       # For each configured reporter, generate a test suite report per test context
@@ -69,7 +69,7 @@ class ReportTestsLogFactory < Plugin
           filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
 
           msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
-          @streaminator.stdout_puts( msg )
+          @streaminator.stream_puts( msg )
 
           reporter.write( filepath: filepath, results: _results )
         end
@@ -77,7 +77,7 @@ class ReportTestsLogFactory < Plugin
     end
 
   # White space at command line after progress messages
-  @streaminator.stdout_puts( '' )
+  @streaminator.stream_puts( '' )
   end
 
   ### Private

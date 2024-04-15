@@ -95,14 +95,14 @@ class ReportBuildWarningsLog < Plugin
   # Walk warnings hash and write contents to log file(s)
   def write_logs( warnings, filename )
     msg = @reportinator.generate_heading( "Running Warnings Report" )
-    @streaminator.stdout_puts( msg )
+    @streaminator.stream_puts( msg )
 
     empty = false
 
     @mutex.synchronize { empty = warnings.empty? }
 
     if empty
-      @streaminator.stdout_puts( "Build produced no warnings.\n" )
+      @streaminator.stream_puts( "Build produced no warnings.\n" )
       return
     end
 
@@ -111,7 +111,7 @@ class ReportBuildWarningsLog < Plugin
         log_filepath = form_log_filepath( context, filename )
 
         msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
-        @streaminator.stdout_puts( msg )
+        @streaminator.stream_puts( msg )
 
         File.open( log_filepath, 'w' ) do |f|
           hash[:collection].each { |warning| f << warning }
@@ -120,7 +120,7 @@ class ReportBuildWarningsLog < Plugin
     end
 
     # White space at command line after progress messages
-    @streaminator.stdout_puts( '' )
+    @streaminator.stream_puts( '' )
   end
 
   def form_log_filepath(context, filename)

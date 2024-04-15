@@ -127,7 +127,7 @@ class Projectinator
       # Validate mixin filepaths
       if !File.extname( mixin ).empty? or mixin.include?( File::SEPARATOR )
         if !@file_wrapper.exist?( mixin )
-          @streaminator.stderr_puts( "ERROR: Cannot find mixin at #{mixin}" )
+          @streaminator.stream_puts( "ERROR: Cannot find mixin at #{mixin}" )
           validated = false
         end
 
@@ -142,7 +142,7 @@ class Projectinator
         end
 
         if !found
-          @streaminator.stderr_puts( "ERROR: #{source} '#{mixin}' cannot be found in the mixin load paths as '#{mixin + yaml_extension}'", Verbosity::ERRORS )
+          @streaminator.stream_puts( "ERROR: #{source} '#{mixin}' cannot be found in the mixin load paths as '#{mixin + yaml_extension}'", Verbosity::ERRORS )
           validated = false
         end
       end
@@ -192,7 +192,7 @@ class Projectinator
       config = {} if config.nil?
 
       # Log what the heck we loaded
-      @streaminator.stderr_puts( "Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}", Verbosity::DEBUG )
+      @streaminator.stream_puts( "Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}", Verbosity::DEBUG )
 
       return config
     rescue Errno::ENOENT

@@ -293,7 +293,7 @@ class TestInvokerHelper
                     "See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.\n\n"
 
         # Print helpful notice
-        @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
+        @streaminator.stream_puts(notice, Verbosity::COMPLAIN)
       end
 
       # Re-raise the exception

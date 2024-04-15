@@ -24,13 +24,13 @@ class CliHandler
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
-      @streaminator.stdout_puts( 'Application ', Verbosity::TITLE )
+      @streaminator.stream_puts( 'Ceedling Application ' )
       thor_help.call( command ) if block_given?
       return
     end
 
     # Display Thor-generated help listing
-    @streaminator.stdout_puts( 'Application ', Verbosity::TITLE )
+    @streaminator.stream_puts( 'Ceedling Application ' )
     thor_help.call( command ) if block_given?
 
     # If it was help for a specific command, we're done
@@ -90,7 +90,7 @@ class CliHandler
       @actions._touch_file( File.join(dest, 'test/support', '.gitkeep') )
     end
     
-    @streaminator.stdout_puts( "\nNew project '#{name}' created at #{dest}/\n", Verbosity::TITLE )
+    @streaminator.stream_puts( "\nNew project '#{name}' created at #{dest}/\n" )
   end
 
 
@@ -124,7 +124,7 @@ class CliHandler
       @helper.copy_docs( ceedling_root, path )
     end
 
-    @streaminator.stdout_puts( "\nUpgraded project at #{path}/\n", Verbosity::TITLE )
+    @streaminator.stream_puts( "\nUpgraded project at #{path}/\n" )
   end
 
 
@@ -210,11 +210,11 @@ class CliHandler
           default_tasks: default_tasks
         )
       else
-        @streaminator.stdout_puts( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
+        @streaminator.stream_puts( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
-      @streaminator.stdout_puts( "\nDumped project configuration to #{filepath}\n", Verbosity::TITLE )      
+      @streaminator.stream_puts( "\nDumped project configuration to #{filepath}\n" )      
     end
   end
 
@@ -258,7 +258,7 @@ class CliHandler
       output << " • #{line}\n"
     end
 
-    @streaminator.stdout_puts( output + "\n" )
+    @streaminator.stream_puts( output + "\n" )
   end
 
 
@@ -271,7 +271,7 @@ class CliHandler
 
     examples.each {|example| output << " • #{example}\n" }
 
-    @streaminator.stdout_puts( output + "\n" )
+    @streaminator.stream_puts( output + "\n" )
   end
 
 
@@ -304,7 +304,7 @@ class CliHandler
     # Copy in documentation
     @helper.copy_docs( ceedling_root, dest ) if options[:docs]
 
-    @streaminator.stdout_puts( "\nExample project '#{name}' created at #{dest}/\n", Verbosity::TITLE )
+    @streaminator.stream_puts( "\nExample project '#{name}' created at #{dest}/\n" )
   end
 
 
@@ -316,7 +316,7 @@ class CliHandler
             Unity => #{Ceedling::Version::UNITY}
        CException => #{Ceedling::Version::CEXCEPTION}
     VERSION
-    @streaminator.stdout_puts( version )
+    @streaminator.stream_puts( version )
   end
 
 
@@ -335,7 +335,7 @@ class CliHandler
     # Save reference to loaded configuration
     app_cfg[:project_config] = config
 
-    @streaminator.stdout_puts( "Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes and/or escape sequences in most shells)", Verbosity::TITLE )
+    @streaminator.stream_puts( "Ceedling Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes and/or escape sequences in most shells)" )
 
     @helper.load_ceedling(
       project_filepath: project_filepath,

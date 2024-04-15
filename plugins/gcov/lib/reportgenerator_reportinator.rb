@@ -38,11 +38,11 @@ class ReportGeneratorReportinator
       rg_opts = get_opts(opts)
 
       msg = @reportinator.generate_heading( "Running ReportGenerator Coverage Reports" )
-      @streaminator.stdout_puts( msg )
+      @streaminator.stream_puts( msg )
 
       opts[:gcov_reports].each do |report|
         msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}'")
-        @streaminator.stdout_puts( msg )
+        @streaminator.stream_puts( msg )
       end
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.
@@ -97,7 +97,7 @@ class ReportGeneratorReportinator
           end          
         end
       else
-        @streaminator.stdout_puts("\nWARNING: No matching .gcno coverage files found.", Verbosity::COMPLAIN)
+        @streaminator.stream_puts("\nWARNING: No matching .gcno coverage files found.", Verbosity::COMPLAIN)
       end
 
     end
@@ -108,7 +108,7 @@ class ReportGeneratorReportinator
     end
 
     # White space log line
-    @streaminator.stdout_puts( '' )
+    @streaminator.stream_puts( '' )
   end
 
 

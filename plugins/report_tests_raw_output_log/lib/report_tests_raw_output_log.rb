@@ -80,14 +80,14 @@ class ReportTestsRawOutputLog < Plugin
 
   def write_logs(hash)
     msg = @reportinator.generate_heading( "Running Raw Tests Output Report" )
-    @streaminator.stdout_puts( msg )
+    @streaminator.stream_puts( msg )
 
     empty = false
 
     @mutex.synchronize { empty = hash.empty? }
 
     if empty
-      @streaminator.stdout_puts( "Tests produced no extra console output.\n" )
+      @streaminator.stream_puts( "Tests produced no extra console output.\n" )
       return
     end
 
@@ -97,7 +97,7 @@ class ReportTestsRawOutputLog < Plugin
           log_filepath = form_log_filepath( context, test )
 
           msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
-          @streaminator.stdout_puts( msg )
+          @streaminator.stream_puts( msg )
 
           File.open( log_filepath, 'w' ) do |f|
             output.each { |line| f << line }
@@ -107,7 +107,7 @@ class ReportTestsRawOutputLog < Plugin
     end
 
     # White space at command line after progress messages
-    @streaminator.stdout_puts( '' )
+    @streaminator.stream_puts( '' )
   end
 
   def form_log_filepath(context, test)

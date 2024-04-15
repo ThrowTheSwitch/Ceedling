@@ -146,7 +146,7 @@ class ConfigMatchinator
         matched_notice(section:section, context:context, operation:operation, matcher:_matcher, filepath:filepath)
       else # No match
         path = generate_matcher_path(section, context, operation)
-        @streaminator.stderr_puts("#{path} -> `#{matcher}` did not match #{filepath}", Verbosity::DEBUG)
+        @streaminator.stream_puts("#{path} -> `#{matcher}` did not match #{filepath}", Verbosity::DEBUG)
       end
     end
 
@@ -159,7 +159,7 @@ class ConfigMatchinator
 
   def matched_notice(section:, context:, operation:, matcher:, filepath:)
     path = generate_matcher_path(section, context, operation)
-    @streaminator.stdout_puts("#{path} -> #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
+    @streaminator.stream_puts("#{path} -> #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
   end
 
   def generate_matcher_path(*keys)

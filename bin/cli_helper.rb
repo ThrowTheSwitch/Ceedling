@@ -83,7 +83,7 @@ class CliHelper
       end
 
       require( File.join( ceedling_path, '/lib/ceedling.rb' ) )
-      @streaminator.stdout_puts( " > Running Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
+      @streaminator.stream_puts( " > Running Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
     end
 
     # Set default tasks

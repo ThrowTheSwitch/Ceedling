@@ -25,16 +25,8 @@ class StreamWrapper
     STDERR.sync
   end
 
-  def stdout_override(&fnc)
-    @stdout_overide_fnc = fnc
-  end
-
   def stdout_puts(string)
-    if @stdout_overide_fnc
-      @stdout_overide_fnc.call(string)
-    else
-      $stdout.puts(string)
-    end
+    $stdout.puts(string)
   end
 
   def stderr_puts(string)

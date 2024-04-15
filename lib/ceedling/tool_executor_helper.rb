@@ -84,7 +84,7 @@ class ToolExecutorHelper
       output += "> And exited with status: [#{shell_result[:exit_code]}].\n" if (shell_result[:exit_code] != 0)
       output += "\n"
 
-      @streaminator.stdout_puts(output, Verbosity::OBNOXIOUS)
+      @streaminator.stream_puts(output, Verbosity::OBNOXIOUS)
     end
   end
 
@@ -108,7 +108,7 @@ class ToolExecutorHelper
       output += "> And then likely crashed.\n"                               if (shell_result[:exit_code] == nil)
       output += "\n"
 
-      @streaminator.stderr_puts(output, Verbosity::ERRORS)
+      @streaminator.stream_puts(output, Verbosity::ERRORS)
     end
   end
 end
