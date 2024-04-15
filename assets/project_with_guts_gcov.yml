@@ -8,6 +8,7 @@
   :use_mocks: TRUE
   :use_test_preprocessor: TRUE
   :use_backtrace: FALSE
+  :use_decorators: :auto #Decorate Ceedling's output text. Your options are :auto, :all, or :none
 
   # tweak the way ceedling handles automatic tasks
   :build_root: build

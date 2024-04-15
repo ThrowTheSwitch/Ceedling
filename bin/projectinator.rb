@@ -6,7 +6,7 @@ class Projectinator
   DEFAULT_PROJECT_FILEPATH = './' + DEFAULT_PROJECT_FILENAME
   DEFAULT_YAML_FILE_EXTENSION = '.yml'
 
-  constructor :file_wrapper, :path_validator, :yaml_wrapper, :logger
+  constructor :file_wrapper, :path_validator, :yaml_wrapper, :streaminator
 
   # Discovers project file path and loads configuration.
   # Precendence of attempts:
@@ -16,10 +16,10 @@ class Projectinator
   # Returns:
   #  - Absolute path of project file found and used
   #  - Config hash loaded from project file
-  def load(filepath:nil, env:{}, silent:false)
+  def load(filepath:nil, env:{})
     # Highest priority: command line argument
     if filepath
-      config = load_filepath( filepath, 'from command line argument', silent )
+      config = load_filepath( filepath, 'from command line argument' )
       return File.expand_path( filepath ), config
 
     # Next priority: environment variable
@@ -28,15 +28,14 @@ class Projectinator
       @path_validator.standardize_paths( filepath )
       config = load_filepath( 
         filepath,
-        "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`",
-        silent
+        "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`"
       )
       return File.expand_path( filepath ), config
 
     # Final option: default filepath
     elsif @file_wrapper.exist?( DEFAULT_PROJECT_FILEPATH )
       filepath = DEFAULT_PROJECT_FILEPATH
-      config = load_filepath( filepath, "at default location", silent )
+      config = load_filepath( filepath, "at default location" )
       return File.expand_path( filepath ), config
 
     # If no user provided filepath and the default filepath does not exist,
@@ -58,7 +57,7 @@ class Projectinator
     available = true
 
     begin
-      load(filepath:filepath, env:env, silent:true)
+      load(filepath:filepath, env:env)
     rescue
       available = false
     end
@@ -110,7 +109,7 @@ class Projectinator
   def validate_mixin_load_paths(load_paths)
     validated = @path_validator.validate(
       paths: load_paths,
-      source: 'Config :mixins ↳ :load_paths',
+      source: 'Config :mixins -> :load_paths',
       type: :directory
     )
 
@@ -128,7 +127,7 @@ class Projectinator
       # Validate mixin filepaths
       if !File.extname( mixin ).empty? or mixin.include?( File::SEPARATOR )
         if !@file_wrapper.exist?( mixin )
-          @logger.log( "ERROR: Cannot find mixin at #{mixin}" )
+          @streaminator.stream_puts( "ERROR: Cannot find mixin at #{mixin}" )
           validated = false
         end
 
@@ -143,7 +142,7 @@ class Projectinator
         end
 
         if !found
-          @logger.log( "ERROR: #{source} '#{mixin}' cannot be found in the mixin load paths as '#{mixin + yaml_extension}'" )
+          @streaminator.stream_puts( "ERROR: #{source} '#{mixin}' cannot be found in the mixin load paths as '#{mixin + yaml_extension}'", Verbosity::ERRORS )
           validated = false
         end
       end
@@ -183,7 +182,7 @@ class Projectinator
 
   private
 
-  def load_filepath(filepath, method, silent)
+  def load_filepath(filepath, method)
     begin
       # Load the filepath we settled on as our project configuration
       config = @yaml_wrapper.load( filepath )
@@ -193,7 +192,7 @@ class Projectinator
       config = {} if config.nil?
 
       # Log what the heck we loaded
-      @logger.log( "🌱 Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}" ) if !silent
+      @streaminator.stream_puts( "Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}", Verbosity::DEBUG )
 
       return config
     rescue Errno::ENOENT

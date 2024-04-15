@@ -137,24 +137,24 @@ describe ToolExecutorHelper do
       end
 
       it 'and boom is true displays output' do
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
       end
 
       it 'and boom is true with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
       end
 
       it 'and boom is false displays output' do
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
 
       it 'and boom is false with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
     end
@@ -174,13 +174,13 @@ describe ToolExecutorHelper do
       end
 
       it 'and boom is false displays output' do
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT_WITH_STATUS, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_STATUS, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
 
       it 'and boom is false with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
     end
@@ -217,13 +217,13 @@ describe ToolExecutorHelper do
       end
 
       it 'and boom is true displays output' do
-        expect(@streaminator).to receive(:stderr_puts).with(ERROR_OUTPUT, Verbosity::ERRORS)
+        expect(@streaminator).to receive(:stream_puts).with(ERROR_OUTPUT, Verbosity::ERRORS)
         @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
       end
 
       it 'and boom is true with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stderr_puts).with(ERROR_OUTPUT_WITH_MESSAGE, Verbosity::ERRORS)
+        expect(@streaminator).to receive(:stream_puts).with(ERROR_OUTPUT_WITH_MESSAGE, Verbosity::ERRORS)
         @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
       end
 

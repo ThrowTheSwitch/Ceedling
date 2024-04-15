@@ -165,11 +165,11 @@ class Dependencies < Plugin
     blob = @dependencies[lib_path]
     raise "Could not find dependency '#{lib_path}'" if blob.nil?
     if (blob[:fetch].nil?) || (blob[:fetch][:method].nil?)
-      @ceedling[:streaminator].stdout_puts("No method to fetch #{blob[:name]}", Verbosity::COMPLAIN)
+      @ceedling[:streaminator].stream_puts("No method to fetch #{blob[:name]}", Verbosity::COMPLAIN)
       return
     end
     unless (directory(get_source_path(blob))) #&& !Dir.empty?(get_source_path(blob)))
-      @ceedling[:streaminator].stdout_puts("Path #{get_source_path(blob)} is required", Verbosity::COMPLAIN)
+      @ceedling[:streaminator].stream_puts("Path #{get_source_path(blob)} is required", Verbosity::COMPLAIN)
       return
     end
 
@@ -206,7 +206,7 @@ class Dependencies < Plugin
             end
 
     # Perform the actual fetching
-    @ceedling[:streaminator].stdout_puts("Fetching dependency #{blob[:name]}...", Verbosity::NORMAL)
+    @ceedling[:streaminator].stream_puts("Fetching dependency #{blob[:name]}...", Verbosity::NORMAL)
     Dir.chdir(get_fetch_path(blob)) do
       steps.each do |step|
         @ceedling[:tool_executor].exec( wrap_command(step) )
@@ -220,7 +220,7 @@ class Dependencies < Plugin
 
     # We don't clean anything unless we know how to fetch a new copy
     if (blob[:build].nil? || blob[:build].empty?)
-      @ceedling[:streaminator].stdout_puts("Nothing to build for dependency #{blob[:name]}", Verbosity::NORMAL)
+      @ceedling[:streaminator].stream_puts("Nothing to build for dependency #{blob[:name]}", Verbosity::NORMAL)
       return
     end
 
@@ -228,7 +228,7 @@ class Dependencies < Plugin
     FileUtils.mkdir_p(get_artifact_path(blob)) unless File.exist?(get_artifact_path(blob))
 
     # Perform the build
-    @ceedling[:streaminator].stdout_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
+    @ceedling[:streaminator].stream_puts("Building dependency #{blob[:name]}...", Verbosity::NORMAL)
     Dir.chdir(get_source_path(blob)) do
       blob[:build].each do |step|
         if (step.class == Symbol)
@@ -246,7 +246,7 @@ class Dependencies < Plugin
 
     # We don't clean anything unless we know how to fetch a new copy
     if (blob[:fetch].nil? || blob[:fetch][:method].nil?)
-      @ceedling[:streaminator].stdout_puts("Nothing to clean for dependency #{blob[:name]}", Verbosity::NORMAL)
+      @ceedling[:streaminator].stream_puts("Nothing to clean for dependency #{blob[:name]}", Verbosity::NORMAL)
       return
     end
 
@@ -254,7 +254,7 @@ class Dependencies < Plugin
     artifacts_only = (blob[:fetch][:method] == :none)
 
     # Perform the actual Cleaning
-    @ceedling[:streaminator].stdout_puts("Cleaning dependency #{blob[:name]}...", Verbosity::NORMAL)
+    @ceedling[:streaminator].stream_puts("Cleaning dependency #{blob[:name]}...", Verbosity::NORMAL)
     get_working_paths(blob, artifacts_only).each do |path|
       FileUtils.rm_rf(path) if File.directory?(path)
     end
@@ -266,12 +266,12 @@ class Dependencies < Plugin
 
     # We don't need to deploy anything if there isn't anything to deploy
     if (blob[:artifacts].nil? || blob[:artifacts][:dynamic_libraries].nil? || blob[:artifacts][:dynamic_libraries].empty?)
-      @ceedling[:streaminator].stdout_puts("Nothing to deploy for dependency #{blob[:name]}", Verbosity::NORMAL)
+      @ceedling[:streaminator].stream_puts("Nothing to deploy for dependency #{blob[:name]}", Verbosity::NORMAL)
       return
     end
 
     # Perform the actual Deploying
-    @ceedling[:streaminator].stdout_puts("Deploying dependency #{blob[:name]}...", Verbosity::NORMAL)
+    @ceedling[:streaminator].stream_puts("Deploying dependency #{blob[:name]}...", Verbosity::NORMAL)
     FileUtils.cp( lib_path, File.dirname(PROJECT_RELEASE_BUILD_TARGET) )
   end
 

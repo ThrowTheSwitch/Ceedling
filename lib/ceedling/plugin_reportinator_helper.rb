@@ -69,7 +69,7 @@ class PluginReportinatorHelper
 
   def run_report(stream, template, hash, verbosity)
     output = ERB.new(template, trim_mode: "%<>")
-    @streaminator.stream_puts(stream, output.result(binding()), verbosity)
+    @streaminator.stream_puts(output.result(binding()), verbosity, stream)
   end
   
 end

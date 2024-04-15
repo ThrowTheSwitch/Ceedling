@@ -2164,6 +2164,18 @@ migrated to the `:test_build` and `:release_build` sections.
 
   **Default**: TRUE
 
+* `:use_decorators`
+
+  Configures the output to use optional decorators to bring more joy
+  to your output. This may include emoji, color, or highlights. The
+  options at this time are `:all`, `:none`, and `:auto`. Why `:auto`?
+  Because some platforms (we're looking at certain versions of 
+  Windows) don't have font support at the command prompt for these
+  features... so by default this feature is disabled on that platform
+  while enabled on others.
+
+  **Default**: `:auto`
+
 * `:use_test_preprocessor`
 
   This option allows Ceedling to work with test files that contain

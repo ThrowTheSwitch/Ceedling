@@ -35,7 +35,7 @@ class ToolValidator
     if (executable.nil? or executable.empty?)
       error = "#{name} is missing :executable in its configuration."
       if !boom
-        @streaminator.stderr_puts( 'ERROR: ' + error, Verbosity::ERRORS )
+        @streaminator.stream_puts( 'ERROR: ' + error, Verbosity::ERRORS )
         return false 
       end
 
@@ -94,7 +94,7 @@ class ToolValidator
     end
 
     if !exists
-      error = "#{name} ↳ :executable => `#{executable}` " + error
+      error = "#{name} -> :executable => `#{executable}` " + error
     end
 
     # Raise exception if executable can't be found and boom is set
@@ -104,7 +104,7 @@ class ToolValidator
 
     # Otherwise, log error
     if !exists
-      @streaminator.stderr_puts( 'ERROR: ' + error, Verbosity::ERRORS )
+      @streaminator.stream_puts( 'ERROR: ' + error, Verbosity::ERRORS )
     end
 
     return exists
@@ -117,17 +117,17 @@ class ToolValidator
     if redirect.class == Symbol
       if not StdErrRedirect.constants.map{|constant| constant.to_s}.include?( redirect.to_s.upcase )
         options = StdErrRedirect.constants.map{|constant| ':' + constant.to_s.downcase}.join(', ')
-        error = "#{name} ↳ :stderr_redirect => :#{redirect} is not a recognized option {#{options}}."
+        error = "#{name} -> :stderr_redirect => :#{redirect} is not a recognized option {#{options}}."
 
         # Raise exception if requested
         raise CeedlingException.new( error ) if boom
 
         # Otherwise log error
-        @streaminator.stderr_puts( 'ERROR: ' + error, Verbosity::ERRORS)
+        @streaminator.stream_puts( 'ERROR: ' + error, Verbosity::ERRORS)
         return false        
       end    
     elsif redirect.class != String
-      raise CeedlingException.new( "#{name} ↳ :stderr_redirect is neither a recognized value nor custom string." )
+      raise CeedlingException.new( "#{name} -> :stderr_redirect is neither a recognized value nor custom string." )
     end
 
     return true

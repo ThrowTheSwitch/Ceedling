@@ -98,7 +98,7 @@ class TestInvoker
           compile_defines    = @helper.compile_defines( context:context, filepath:filepath )
           preprocess_defines = @helper.preprocess_defines( test_defines: compile_defines, filepath:filepath )
 
-          @streaminator.stdout_puts( "Collecting search paths, flags, and defines for #{File.basename(filepath)}...", Verbosity::NORMAL)
+          @streaminator.stream_puts( "Collecting search paths, flags, and defines for #{File.basename(filepath)}...", Verbosity::NORMAL)
 
           @lock.synchronize do
             details[:search_paths] = search_paths
@@ -350,12 +350,12 @@ class TestInvoker
     # Runtime errors (parent is Exception) continue on up to be caught by Ruby itself.
     rescue StandardError => e
       @application.register_build_failure
-      @streaminator.stderr_puts("🌱 #{e.class} ==> #{e.message}", Verbosity::ERRORS)
+      @streaminator.stream_puts("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
 
       # Debug backtrace
-      @streaminator.stderr_puts("Backtrace ==>", Verbosity::DEBUG)
+      @streaminator.stream_puts("Backtrace ==>", Verbosity::DEBUG)
       if @verbosinator.should_output?(Verbosity::DEBUG)
-        $stderr.puts(e.backtrace) # Formats properly when directly passed to puts()
+        @streaminator.stream_puts(e.backtrace, Verbosity::DEBUG) # Formats properly when directly passed to puts()
       end
     end
   end

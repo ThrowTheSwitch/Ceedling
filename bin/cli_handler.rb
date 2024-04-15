@@ -2,7 +2,7 @@ require 'ceedling/constants' # From Ceedling application
 
 class CliHandler
 
-  constructor :configinator, :projectinator, :cli_helper, :path_validator, :actions_wrapper, :logger
+  constructor :configinator, :projectinator, :cli_helper, :path_validator, :actions_wrapper, :streaminator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
@@ -24,13 +24,13 @@ class CliHandler
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
-      @logger._print( '🌱 Application ' )
+      @streaminator.stream_puts( 'Ceedling Application ' )
       thor_help.call( command ) if block_given?
       return
     end
 
     # Display Thor-generated help listing
-    @logger._print( '🌱 Application ' )
+    @streaminator.stream_puts( 'Ceedling Application ' )
     thor_help.call( command ) if block_given?
 
     # If it was help for a specific command, we're done
@@ -90,7 +90,7 @@ class CliHandler
       @actions._touch_file( File.join(dest, 'test/support', '.gitkeep') )
     end
     
-    @logger.log( "\n🌱 New project '#{name}' created at #{dest}/\n" )
+    @streaminator.stream_puts( "\nNew project '#{name}' created at #{dest}/\n" )
   end
 
 
@@ -104,7 +104,7 @@ class CliHandler
     end
 
     project_filepath = File.join( path, options[:project] )
-    _, config = @projectinator.load( filepath:project_filepath, silent:true )
+    _, config = @projectinator.load( filepath:project_filepath )
 
     if (@helper.which_ceedling?( config ) == 'gem')
       msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
@@ -124,7 +124,7 @@ class CliHandler
       @helper.copy_docs( ceedling_root, path )
     end
 
-    @logger.log( "\n🌱 Upgraded project at #{path}/\n" )
+    @streaminator.stream_puts( "\nUpgraded project at #{path}/\n" )
   end
 
 
@@ -146,6 +146,16 @@ class CliHandler
     )
 
     log_filepath = @helper.process_logging( options[:log], options[:logfile] )
+    if (config[:project] && config[:project][:use_decorators])
+      case config[:project][:use_decorators]
+      when :all
+        @streaminator.decorate(true)
+      when :none
+        @streaminator.decorate(false)
+      else #includes :auto
+        #nothing more to do. we've already figured out auto
+      end
+    end
 
     # Save references
     app_cfg[:project_config] = config
@@ -200,11 +210,11 @@ class CliHandler
           default_tasks: default_tasks
         )
       else
-        @logger.log( " > Skipped loading Ceedling application" )
+        @streaminator.stream_puts( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
-      @logger.log( "\n🌱 Dumped project configuration to #{filepath}\n" )      
+      @streaminator.stream_puts( "\nDumped project configuration to #{filepath}\n" )      
     end
   end
 
@@ -242,13 +252,13 @@ class CliHandler
       end
     end
 
-    output = "\n🌱 Environment variables:\n"
+    output = "\nEnvironment variables:\n"
 
     env_list.sort.each do |line|
       output << " • #{line}\n"
     end
 
-    @logger.log( output + "\n")
+    @streaminator.stream_puts( output + "\n" )
   end
 
 
@@ -257,11 +267,11 @@ class CliHandler
 
     raise( "No examples projects found") if examples.empty?
 
-    output = "\n🌱 Available example projects:\n"
+    output = "\nAvailable example projects:\n"
 
     examples.each {|example| output << " • #{example}\n" }
 
-    @logger.log( output + "\n" )
+    @streaminator.stream_puts( output + "\n" )
   end
 
 
@@ -294,19 +304,19 @@ class CliHandler
     # Copy in documentation
     @helper.copy_docs( ceedling_root, dest ) if options[:docs]
 
-    @logger.log( "\n🌱 Example project '#{name}' created at #{dest}/\n" )
+    @streaminator.stream_puts( "\nExample project '#{name}' created at #{dest}/\n" )
   end
 
 
   def version()
     require 'ceedling/version'
     version = <<~VERSION
-      🌱 Ceedling => #{Ceedling::Version::CEEDLING}
+         Ceedling => #{Ceedling::Version::CEEDLING}
             CMock => #{Ceedling::Version::CMOCK}
             Unity => #{Ceedling::Version::UNITY}
        CException => #{Ceedling::Version::CEXCEPTION}
     VERSION
-    @logger.log( version )
+    @streaminator.stream_puts( version )
   end
 
 
@@ -319,21 +329,19 @@ class CliHandler
       @configinator.loadinate(
         filepath: filepath,
         mixins: mixins,
-        env: env,
-        silent: true # Suppress project config load logging
+        env: env
       )
 
     # Save reference to loaded configuration
     app_cfg[:project_config] = config
 
-    @logger.log( "🌱 Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes and/or escape sequences in most shells)" )
+    @streaminator.stream_puts( "Ceedling Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes and/or escape sequences in most shells)" )
 
     @helper.load_ceedling(
       project_filepath: project_filepath,
       config: config,
       which: app_cfg[:which_ceedling],
-      default_tasks: app_cfg[:default_tasks],
-      silent: true
+      default_tasks: app_cfg[:default_tasks]
     )
 
     @helper.print_rake_tasks()

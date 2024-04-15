@@ -46,7 +46,7 @@ class PluginManager
 
       report += "\n"
 
-      @streaminator.stderr_puts(report, Verbosity::ERRORS)
+      @streaminator.stream_puts(report, Verbosity::ERRORS)
     end
   end
 
@@ -77,7 +77,7 @@ class PluginManager
   def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
   def post_test_fixture_execute(arg_hash)
     # Special arbitration: Raw test results are printed or taken over by plugins handling the job
-    @streaminator.stdout_puts(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
+    @streaminator.stream_puts(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
     execute_plugins(:post_test_fixture_execute, arg_hash)
   end
 
@@ -108,18 +108,18 @@ class PluginManager
 
     if handlers > 0
       heading = @reportinator.generate_heading( "Plugins (#{handlers}) > :#{method}" )
-      @streaminator.stdout_puts(heading, Verbosity::OBNOXIOUS)
+      @streaminator.stream_puts(heading, Verbosity::OBNOXIOUS)
     end
 
     @plugin_objects.each do |plugin|
       begin
         if plugin.respond_to?(method)
           message = @reportinator.generate_progress( " + #{plugin.name}" )
-          @streaminator.stdout_puts(message, Verbosity::OBNOXIOUS)
+          @streaminator.stream_puts(message, Verbosity::OBNOXIOUS)
           plugin.send(method, *args)
         end
       rescue
-        @streaminator.stderr_puts("Exception raised in plugin `#{plugin.name}` within build hook :#{method}")
+        @streaminator.stream_puts("Exception raised in plugin `#{plugin.name}` within build hook :#{method}")
         raise
       end
     end

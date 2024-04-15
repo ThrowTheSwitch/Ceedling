@@ -169,32 +169,32 @@ class ConfiguratorSetup
     case compile_threads
     when Integer
       if compile_threads < 1
-        @streaminator.stderr_puts("ERROR: [:project][:compile_threads] must be greater than 0", Verbosity::ERRORS)
+        @streaminator.stream_puts("ERROR: [:project][:compile_threads] must be greater than 0", Verbosity::ERRORS)
         valid = false
       end
     when Symbol
       if compile_threads != :auto
-        @streaminator.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+        @streaminator.stream_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
         valid = false
       end
     else
-      @streaminator.stderr_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+      @streaminator.stream_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
       valid = false
     end
 
     case test_threads
     when Integer
       if test_threads < 1
-        @streaminator.stderr_puts("ERROR: [:project][:test_threads] must be greater than 0", Verbosity::ERRORS)
+        @streaminator.stream_puts("ERROR: [:project][:test_threads] must be greater than 0", Verbosity::ERRORS)
         valid = false
       end
     when Symbol
       if test_threads != :auto
-        @streaminator.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+        @streaminator.stream_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
         valid = false
       end
     else
-      @streaminator.stderr_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+      @streaminator.stream_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
       valid = false
     end
 
@@ -208,7 +208,7 @@ class ConfiguratorSetup
       Set.new( @configurator_plugins.programmatic_plugins )
 
     missing_plugins.each do |plugin|
-      @streaminator.stderr_puts("ERROR: Plugin '#{plugin}' not found in built-in or project Ruby load paths. Check load paths and plugin naming and path conventions.", Verbosity::ERRORS)
+      @streaminator.stream_puts("ERROR: Plugin '#{plugin}' not found in built-in or project Ruby load paths. Check load paths and plugin naming and path conventions.", Verbosity::ERRORS)
     end
 
     return ( (missing_plugins.size > 0) ? false : true )

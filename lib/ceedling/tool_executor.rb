@@ -32,7 +32,7 @@ class ToolExecutor
       :stderr_redirect => @tool_executor_helper.stderr_redirection( tool_config, @configurator.project_logging )
       }
 
-    @streaminator.stdout_puts( "Command: #{command}", Verbosity::DEBUG )
+    @streaminator.stream_puts( "Command: #{command}", Verbosity::DEBUG )
 
     return command
   end

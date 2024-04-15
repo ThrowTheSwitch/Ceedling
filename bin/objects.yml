@@ -2,15 +2,33 @@
 # Loaded from ceedling/lib
 file_wrapper:
 
-# Loaded from ceedling/lib
 yaml_wrapper:
 
-# Loaded from ceedling/lib
 config_walkinator:
 
-actions_wrapper:
+stream_wrapper:
 
-logger:
+system_wrapper:
+
+verbosinator:
+
+streaminator_helper:
+
+loginator:
+  compose:
+    - file_wrapper
+    - system_wrapper
+
+streaminator:
+  compose:
+    - streaminator_helper
+    - verbosinator
+    - loginator
+    - stream_wrapper
+
+# Loaded from bin (here)
+
+actions_wrapper:
 
 # Separation of logic from CLI user interface
 cli_handler:
@@ -20,7 +38,7 @@ cli_handler:
     - cli_helper
     - path_validator
     - actions_wrapper
-    - logger
+    - streaminator
 
 cli_helper:
   compose:
@@ -28,28 +46,30 @@ cli_helper:
     - config_walkinator
     - path_validator
     - actions_wrapper
-    - logger
+    - streaminator
 
 path_validator:
   compose:
     - file_wrapper
-    - logger
+    - streaminator
 
 mixinator:
   compose:
     - path_validator
     - yaml_wrapper
-    - logger
+    - streaminator
 
 projectinator:
   compose:
     - file_wrapper
     - path_validator
     - yaml_wrapper
-    - logger
+    - streaminator
 
 configinator:
   compose:
     - config_walkinator
     - projectinator
     - mixinator
+
+
