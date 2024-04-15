@@ -1,3 +1,9 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
 DEFAULT_GCOV_COMPILER_TOOL = {
   :executable => ENV['GCOV_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['GCOV_CC'],

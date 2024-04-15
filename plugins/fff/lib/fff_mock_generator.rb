@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 # Creates mock files from parsed header files that can be linked into applications.
 # The mocks created are compatible with CMock for use with Ceedling.
 

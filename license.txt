@@ -1,4 +1,4 @@
-Copyright (c) 2011-2024 Michael Karlesky, Mark VanderVoord, Greg Williams
+Copyright (c) 2010-2024 Michael Karlesky, Mark VanderVoord, Greg Williams
 
 https://opensource.org/license/mit/
 

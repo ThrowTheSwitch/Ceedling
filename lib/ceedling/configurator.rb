@@ -1,10 +1,15 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'ceedling/defaults'
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
 require 'deep_merge'
-
-
 
 class Configurator
 

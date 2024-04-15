@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 # Most generic beep option across all platforms -- echo the ASCII bell character
 DEFAULT_BEEP_BELL_TOOL = {
   :executable => 'echo'.freeze,                     # Using `echo` shell command / command line application

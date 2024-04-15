@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 # Create a CMock-style parsed header hash. This the type of hash created by
 # CMock when parsing header files for automock generation. It contains all of
 # includes, typedefs and functions (with return types and arguments) parsed from

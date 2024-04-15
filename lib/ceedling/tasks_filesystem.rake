@@ -1,3 +1,9 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
 # rather than require 'rake/clean' & try to override, we replicate for finer control
 CLEAN   = Rake::FileList["**/*~", "**/*.bak"]

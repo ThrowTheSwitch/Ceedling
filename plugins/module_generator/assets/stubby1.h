@@ -1,11 +1,9 @@
-/* ==================================
-|  The purpose of this is to test that
-| the stubbing functionality gets 
-| called correctly by Ceedling. It is
-| the job of CMock's tests to test
-| detailed functionality of this
-| feature.
-===================================*/
+/* =========================================================================
+    Ceedling - Test-Centered Build System for C
+    ThrowTheSwitch.org
+    Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+    SPDX-License-Identifier: MIT
+========================================================================= */
 
 #ifndef STUBBY_H
 #define STUBBY_H

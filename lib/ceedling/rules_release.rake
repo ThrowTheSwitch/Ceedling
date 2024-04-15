@@ -1,3 +1,9 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
 RELEASE_COMPILE_TASK_ROOT  = RELEASE_TASK_ROOT + 'compile:'  unless defined?(RELEASE_COMPILE_TASK_ROOT)
 RELEASE_ASSEMBLE_TASK_ROOT = RELEASE_TASK_ROOT + 'assemble:' unless defined?(RELEASE_ASSEMBLE_TASK_ROOT)

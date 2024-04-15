@@ -1,4 +1,9 @@
-
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
 # :defines:
 #   :test:
@@ -16,8 +21,6 @@
 #   :test:                               # Equivalent to [test]['*'] -- i.e. same defines for all test executables
 #     - TEST
 #     - PLATFORM_B
-
-
 
 class Defineinator
 

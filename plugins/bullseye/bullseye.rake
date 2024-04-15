@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 directory(BULLSEYE_BUILD_OUTPUT_PATH)
 directory(BULLSEYE_RESULTS_PATH)
 directory(BULLSEYE_ARTIFACTS_PATH)
