@@ -317,7 +317,7 @@ A variety of options for [support][TTS-help] exist as well.
 
 ## Online tutorial
 
-Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling to build a C project with test suite. As the tutorial is a number of years old, the content is a bit out of date. That said, it provides an excellent overview of a real project.
+Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling to build a C project with test suite. As the tutorial is a number of years old, the content is a bit out of date. That said, it provides an excellent overview of a real project. Matt is the author of [FFF] and the [FFF plugin][FFF-plugin] for Ceedling.
 
 [ceedling-packet]: docs/CeedlingPacket.md
 [release-notes]: docs/ReleaseNotes.md
@@ -337,11 +337,11 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 ## The basics
 
-### Docker image
+### MadScienceLab Docker Image
 
-Fully packaged [Ceedling Docker images][docker-image] containing Ruby, Ceedling, the GCC toolchain, and more are also available. A Docker container is a self-contained, portable, well-managed alternative to a local installation of Ceedling.
+Fully packaged [Ceedling Docker images][docker-images] containing Ruby, Ceedling, the GCC toolchain, and more are also available. [Docker containers][docker-overview] provide self-contained, portable, well-managed alternative to local installation of tools like Ceedling.
 
-From your local terminal after [installing Docker][docker-install]:
+To run the _MadScienceLab_ container from your local terminal after [installing Docker][docker-install]:
 
 _Note: [Helper scripts are available][docker-image] to simplify your command line and access advanced features._
 
@@ -349,7 +349,9 @@ _Note: [Helper scripts are available][docker-image] to simplify your command lin
  > docker run -it --rm -v $PWD/my/project:/home/dev/project throwtheswitch/madsciencelab:latest
 ```
 
-From within the `madsciencelab` container’s project working directory:
+When the container launches it will drop you into a Z-shell command line that has access to all the tools and utilities available within the container.
+
+To run Ceedling from within the _MadScienceLab_ container’s shell and project working directory:
 
 ```shell
  > ceedling test:all
@@ -357,13 +359,14 @@ From within the `madsciencelab` container’s project working directory:
 
 See the [Docker image documentation][docker-image] for all the details on how to use these containers.
 
+[docker-overview]: https://www.ibm.com/topics/docker
 [docker-install]: https://www.docker.com/products/docker-desktop/
-[docker-image]: https://hub.docker.com/r/throwtheswitch/madsciencelab
+[docker-images]: https://hub.docker.com/r/throwtheswitch/madsciencelab
 
 ### Local installation
 
 1. Install [Ruby]. (Only Ruby 3+ supported.)
-1. Install Ceedling. (All supporting frameworks are included.)
+1. Install Ceedling. All supporting frameworks are included.
    ```shell
    > gem install ceedling
    ```
@@ -396,9 +399,13 @@ See the [Docker image documentation][docker-image] for all the details on how to
 
 See _[CeedlingPacket][ceedling-packet]_ for all the details of your configuration file.
 
+Or, use Ceedling’s built-in `examples` & `example` commands to extract a sample project and reference its project file.
+
 [Ruby]: https://www.ruby-lang.org/
 
-## Getting command line help
+## Using Ceedling’s command line (and related)
+
+### Command line help
 
 For an overview of all commands, it’s as easy as…
 
@@ -412,7 +419,7 @@ For a detailed explanation of a single command…
  > ceedling help <command>
 ```
 
-## Creating a project
+### Creating a project
 
 Creating a project with Ceedling is easy. Simply tell Ceedling the name of the
 project, and it will create a directory with that name and fill it with a
@@ -428,7 +435,7 @@ instantly become part of your test and/or release build. Need a different
 structure? You can modify the `project.yml` file with your new path or 
 tooling setup.
 
-### Installing local documentation
+#### Installing local documentation
 
 Are you just getting started with Ceedling? Maybe you’d like your
 project to be installed with some of its handy [documentation](docs/)? 
@@ -438,7 +445,7 @@ No problem! You can do this when you create a new project…
  > ceedling new --docs MyAwesomeProject
 ```
 
-### Attaching a Ceedling version to your project
+#### Attaching a Ceedling version to your project
 
 Ceedling can be installed as a globally available Ruby gem. Ceedling can 
 also deploy all its guts into your project instead. This allows it to 
@@ -459,7 +466,24 @@ into a new folder `vendor/` inside your project `YourNewProjectName/`.
 It will create the same simple empty directory structure for you with
 `src/` and `test/` folders as the standard `new` command.
 
-## Upgrading / updating Ceedling
+### Running build & plugin tasks
+
+You can view all the build and plugin tasks available to you thanks to your
+Ceedling project file with `ceedling help`. Ceedling’s command line help
+provides a summary list from your project configuration if Ceedling is
+able to find your project file (`ceedling help help` for more on this).
+
+Running Ceedling build tasks tends to look like this…
+
+```shell
+ > ceedling test:all release
+```
+
+```shell
+ > ceedling gcov:all --verbosity=obnoxious --test-case=boot --mixin=code_cruncher_toolchain
+```
+
+### Upgrading / updating Ceedling
 
 You can upgrade to the latest version of Ceedling at any time, automatically
 gaining access to any accompanying updates to Unity, CMock, and CException.
@@ -487,7 +511,7 @@ upgrade to match your latest gem, no problem. Just do the following…
 Just like with the `new` command, an `upgrade` should be executed from 
 within the root directory of your project.
 
-## Git integration
+### Git integration
 
 Are you using Git? You might want Ceedling to create a `.gitignore` 
 that ignores the build folder while retaining control of the artifacts
@@ -534,20 +558,13 @@ Gemfile.lock.
  > sudo gem install bundler -v <version in Gemfile.lock>
 ```
 
-## Running self-tests
+## Running Ceedling’s self-tests
 
 Ceedling uses [RSpec] for its tests.
 
-To run all tests you may run the following from the root of your local 
-Ceedling repository.
-
-```shell
- > bundle exec rake
-```
-
-The above is a time consuming but complete test process. Generally, most
-developers can run the following from the root of your locally cloned 
-repo instead.
+To execute tests you may run the following from the root of your local 
+Ceedling repository. This test suite build option balances test coverage
+with suite execution time.
 
 ```shell
  > rake ci
