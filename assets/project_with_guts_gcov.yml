@@ -31,11 +31,6 @@
   # enable release build (more details in release_build section below)
   :release_build: FALSE
 
-# specify additional yaml files to automatically load. This is helpful if you
-# want to create project files which specify your tools, and then include those
-# shared tool files into each project-specific project.yml file.
-:import: []
-
 # further details to configure the way Ceedling handles test code
 :test_build:
   :use_assembly: FALSE
