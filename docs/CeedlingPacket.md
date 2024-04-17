@@ -2167,12 +2167,17 @@ migrated to the `:test_build` and `:release_build` sections.
 * `:use_decorators`
 
   Configures the output to use optional decorators to bring more joy
-  to your output. This may include emoji, color, or highlights. The
-  options at this time are `:all`, `:none`, and `:auto`. Why `:auto`?
-  Because some platforms (we're looking at certain versions of 
-  Windows) don't have font support at the command prompt for these
-  features... so by default this feature is disabled on that platform
-  while enabled on others.
+  to your output. This may include emoji, color, or highlights.
+
+  The options at this time are `:all`, `:none`, and `:auto`. Why 
+  `:auto`? Because some platforms (we're looking at you, Windows) do 
+  not have default font support in their terminals for these features. 
+  So, by default this feature is disabled on problematic platforms while 
+  enabled on others.
+
+  _Note:_ If you find a monospaced font that provides emojis, etc. and
+  works with Windows’ command prompt, you can (1) Install the font (2)
+  change your command prompt’s font (3) set this option to `:all`.
 
   **Default**: `:auto`
 
@@ -2263,6 +2268,29 @@ migrated to the `:test_build` and `:release_build` sections.
   the limits of certain simulators depended upon by test executables.
 
   **Default**: 1
+
+* `:which_ceedling`
+
+  This is an advanced project option primarily meant for development work
+  on Ceedling itself. This setting tells the code that launches the 
+  Ceedling application where to find the code to launch. It’s not uncommon 
+  in Ceedling development work to have the last production gem installed 
+  while modifying the application code in a locally cloned repository. Or, 
+  you may be bouncing between local versions of Ceedling to troubleshoot
+  changes.
+
+  This value can be `gem` to indicate the command line utility `ceedling` 
+  should launch the application packaged in the installed gem. It can also 
+  be a relative or absolute path in your file system. If it is a path, that
+  path should point to the top-level directory that contains Ceedling’s
+  `bin/` and `lib/` sub-directories.
+
+  _Note:_ If you are working on the code in `bin/` and want to run it,
+  you must take the additional step of specifying the path to `ceedling`
+  in your file system at your command prompt — e.g. 
+  `> my/ceedling/changes/bin/ceedling <args>`.
+
+  **Default**: `gem`
 
 ### Example `:project` YAML blurb
 
