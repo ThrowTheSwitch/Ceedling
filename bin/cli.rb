@@ -29,11 +29,12 @@ require 'ceedling/constants' # From Ceedling application
 ## -----------------
 ## Special / edge cases:
 ##  1. Silent backwards compatibility support for Rake's `-T`.
-##  2. Thor does not recognize "naked" build tasks as application commands
-##     (`ceedling test:all` instead of `ceedling build test:all`). We catch 
-##     this exception and provide the command line back to Thor as a `build` 
-##     command line. This also allows us to ensure Thor processes `build` flags
-##     following naked build tasks that would otherwise be ignored.
+##  2. Thor does not recognize "naked" Rake build tasks as application commands
+##     (`ceedling test:all` instead of `ceedling build test:all`). So, we catch 
+##     this exception and then provide the command line back to Thor as a `build` 
+##     command line. This also allows us to ensure Thor processes `build` option
+##     flags following naked build tasks that would otherwise be ignored if
+##     we simply passed a failing command line to Rake.
 ##
 ## THOR
 ## ----
@@ -82,7 +83,7 @@ module CeedlingTasks
 
   DOC_LOCAL_FLAG = "Install Ceedling plus supporting tools to vendor/"
 
-  DOC_DOCS_FLAG = "Copy documentation to docs/"
+  DOC_DOCS_FLAG = "Copy all documentation to docs/ subdirectory of project"
 
   DOC_PROJECT_FLAG = "Loads the filepath as your base project configuration"
 
@@ -93,18 +94,11 @@ module CeedlingTasks
     platform-appropriate executable script `ceedling` at the root of the 
     project."
 
-  LONGDOC_DOCS_FLAG = "`--docs` copies all tool documentation to a docs/ 
-    subdirectory in the root of the project."
-
-  LONGDOC_PROJECT_FLAG = "`--project` loads the specified project file as your 
-    base configuration."
-
   LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This 
-    flag may be repeated for multiple mixins. A simple mixin name will initiate a 
-    lookup from within mixin load paths specified in your project file and among 
-    Ceedling’s internal mixin load path. A filepath and/or filename (having an 
-    extension) will instead merge the specified mixin configuration YAML file. 
-    See documentation for complete details on mixins.
+    flag may be repeated for multiple mixins. A simple mixin name initiates a 
+    lookup from within mixin load paths in your project file and internally. A 
+    filepath and/or filename (with extension) will instead merge the specified 
+    YAML file. See documentation for complete details.
     \x5> --mixin my_compiler --mixin my/path/mixin.yml"
 
   CEEDLING_EXAMPLES_PATH = File.join( CEEDLING_ROOT, 'examples' )
@@ -134,19 +128,17 @@ module CeedlingTasks
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
-    `ceedling help` provides standard help for all available application commands 
+    `ceedling help` provides summary help for all available application commands 
     and build tasks.
 
-    COMMAND is optional and will produce detailed help for a specific command.
+    COMMAND is optional and will produce detailed help for a specific application command --
+    not a build or plugin task, however.
 
     `ceedling help` also lists the available build operations from loading your 
     project configuration. Optionally, a project filepath and/or mixins may be 
-    provided (see below) to load a different project configuration. If not
-    provided, the default options for loading project configuration will be used.
+    provided to load a different project configuration than the default.
 
-    Optional Flags:
-
-    * #{LONGDOC_PROJECT_FLAG}
+    Notes on Optional Flags:
 
     * #{LONGDOC_MIXIN_FLAG}
     LONGDESC
@@ -167,7 +159,7 @@ module CeedlingTasks
     desc "new NAME [DEST]", "Create a new project structure at optional DEST path"
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
-    method_option :configs, :type => :boolean, :default => true, :desc => "Install starter configuration files"
+    method_option :configs, :type => :boolean, :default => true, :desc => "Install starter project file in project root"
     method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and recreate destination"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     method_option :gitsupport, :type => :boolean, :default => false, :desc => "Create .gitignore / .gitkeep files for convenience"
@@ -176,22 +168,15 @@ module CeedlingTasks
 
     NAME is required and will be the containing directory for the new project.
 
-    DEST is an optional directory path in which to place the new project (e.g. 
-    <DEST>/<name>). The default desintation is your working directory. If the 
-    containing path does not exist, it will be created.
+    DEST is an optional directory path for the new project (e.g. <DEST>/<name>).
+    The default is your working directory. Nonexistent paths will be created.
 
-    Optional Flags:
+    Notes on Optional Flags:
 
     * #{LONGDOC_LOCAL_FLAG}
 
-    * #{LONGDOC_DOCS_FLAG}
-
-    * `--configs` add a starter project configuration file into the root of the 
+    * `--force` completely destroys anything found in the target path for the 
     new project.
-
-    * `--force` overrides protectons preventing a new project from overwriting an 
-    existing project. This flag completely destroys anything found in the target
-    path for the new project.
     LONGDESC
     def new(name, dest=nil)
       # Get unfrozen copies so we can add / modify
@@ -213,17 +198,16 @@ module CeedlingTasks
     PATH is required and should be the root of the project to upgrade.
 
     This command only meaningfully operates on projects wth a local vendored copy 
-    of Ceedlng (in <project>/vendor/) and optionally a local copy of the 
-    documentation (in <project>/docs/).
+    of Ceedlng (in <project>/vendor/) and optionally documentation (in 
+    <project>/docs/).
 
-    Running this command will replace vendored Ceedling with the version carrying
-    out this command. If documentation is found, it will replace it with the bundle
-    accompanying the version of Ceedling carrying out this command.
+    Running this command replaces vendored Ceedling with the version running
+    this command. If docs are found, they will be replaced.
 
     A basic check for project existence looks for vendored ceedlng and a project
     configuration file.
 
-    Optional Flags:
+    Notes on Optional Flags:
 
     * `--project` specifies a filename (optionally with leading path) for the 
     project configuration file used in the project existence check. Otherwise,
@@ -245,8 +229,8 @@ module CeedlingTasks
     desc "build [TASKS...]", "Run build tasks (`build` keyword not required)"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
-    method_option :verbosity, :enum => ['silent', 'errors', 'warnings', VERBOSITY_NORMAL, 'obnoxious', VERBOSITY_DEBUG], :default => VERBOSITY_NORMAL, :aliases => ['-v']
-    method_option :log, :type => :boolean, :default => false, :aliases => ['-l'], :desc => "Enable logging to default filepath"
+    method_option :verbosity, :enum => ['silent', 'errors', 'warnings', VERBOSITY_NORMAL, 'obnoxious', VERBOSITY_DEBUG], :default => VERBOSITY_NORMAL, :aliases => ['-v'], :desc => "Sets logging level"
+    method_option :log, :type => :boolean, :default => false, :aliases => ['-l'], :desc => "Enable logging to default filepath in build directory"
     method_option :logfile, :type => :string, :default => '', :desc => "Enable logging to given filepath"
     method_option :graceful_fail, :type => :boolean, :default => nil, :desc => "Force exit code of 0 for unit test failures"
     method_option :test_case, :type => :string, :default => '', :desc => "Filter for individual unit test names"
@@ -256,36 +240,20 @@ module CeedlingTasks
     long_desc <<-LONGDESC
     `ceedling build` executes build tasks created from your project configuration.
 
-    NOTE: `build` is not required to run tasks. The following usages are equivalent:
+    NOTE: `build` is not required to run tasks. The following are equivalent:
     \x5    > ceedling test:all
     \x5    > ceedling build test:all
 
     TASKS are zero or more build operations created from your project configuration.
-    If no tasks are provided, the built-in default tasks or your :project -> 
+    If no tasks are provided, built-in default tasks or your :project -> 
     :default_tasks will be executed.
 
-    Optional Flags:
-
-    * #{LONGDOC_PROJECT_FLAG}
+    Notes on Optional Flags:
 
     * #{LONGDOC_MIXIN_FLAG}
 
-    * `--verbosity` sets the logging level.
-
-    * `--log` enables logging to the default filename and path location within your 
-    project build directory.
-
-    * `--logfile` enables logging to the specified log filepath 
-    (ex: my/path/file.log).
-
-    * `--graceful-fail` ensures an exit code of 0 even when unit tests fail. See
-    documentation for full details.
-
-    * `--test-case` sets a test case name matcher to run only a subset of test
-    suite’s unit test cases. See documentation for full details.
-
-    * `--exclude-test-case` is the inverse of `--test-case`. See documentation for
-    full details.
+    * `--test-case` and its inverse `--exclude-test-case` set test case name 
+    matchers to run only a subset of the unit test suite. See docs for full details.
     LONGDESC
     def build(*tasks)
       # Get unfrozen copies so we can add / modify
@@ -308,24 +276,20 @@ module CeedlingTasks
     `ceedling dumpconfig` loads your project configuration, including all manipulations & merges,
     and writes the final config to a YAML file.
 
-    FILEPATH is a required path to a destination YAML file. If the containing path does not exist, 
-    it will be created.
+    FILEPATH is a required path to a destination YAML file. A nonexistent path will be created.
 
-    SECTIONS is an optional configuration section “path” that extracts only a portion of a 
-    configuration. The resulting top-level YAML container will be the last element of the path. 
-    The following example will produce a config.yml containing ':test_compiler: {...}'.
-    No section path produces a complete configuration.
+    SECTIONS is an optional config “path” that extracts a portion of a configuration. The 
+    top-level YAML container will be the path’s last element. 
+    The following example will produce config.yml containing ':test_compiler: {...}'.
     \x5> ceedling dumpconfig my/path/config.yml tools test_compiler
 
-    Optional Flags:
-
-    * #{LONGDOC_PROJECT_FLAG}
+    Notes on Optional Flags:
 
     * #{LONGDOC_MIXIN_FLAG}
 
-    * `--app` loads the Ceedling application that adds various settings, merges defaults, loads 
-    configration changes due to plugins, and validates the configuration. Disabling the application
-    dumps the project configuration after any mixins but before any application manipulations.
+    * `--app` loads various settings, merges defaults, loads plugin config changes, and validates 
+    the configuration. Disabling it dumps project config after any mixins but before any 
+    application manipulations.
     LONGDESC
     def dumpconfig(filepath, *sections)
       # Get unfrozen copies so we can add / modify
@@ -348,9 +312,7 @@ module CeedlingTasks
     long_desc <<-LONGDESC
     `ceedling environment` displays all environment variables that have been set for project use.
 
-    Optional Flags:
-
-    * #{LONGDOC_PROJECT_FLAG}
+    Notes on Optional Flags:
 
     * #{LONGDOC_MIXIN_FLAG}
     LONGDESC
@@ -390,18 +352,15 @@ module CeedlingTasks
     is available with the `examples` command. NAME will be the containing directory 
     for the extracted project.
 
-    DEST is an optional directory path in which to place the example project (ex: 
-    <DEST>/<name>). The default desintation is your working directory. If the 
-    containing path does not exist, it will be created.
+    DEST is an optional containing directory path (ex: <DEST>/<name>). The default 
+    is your working directory. A nonexistent path will be created.
 
-    Optional Flags:
+    Notes on Optional Flags:
 
     * #{LONGDOC_LOCAL_FLAG}
 
-    * #{LONGDOC_DOCS_FLAG}
-
     NOTE: `example` is destructive. If the destination path is a previoulsy created
-    example project, `ceedling example` will forcibly overwrite the contents.
+    example project, `ceedling example` will overwrite the contents.
     LONGDESC
     def example(name, dest=nil)
       # Get unfrozen copies so we can add / modify
