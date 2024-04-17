@@ -146,9 +146,9 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{LONGDOC_PROJECT_FLAG}
+    * #{LONGDOC_PROJECT_FLAG}
 
-    • #{LONGDOC_MIXIN_FLAG}
+    * #{LONGDOC_MIXIN_FLAG}
     LONGDESC
     def help(command=nil)
       # Get unfrozen copies so we can add / modify
@@ -182,14 +182,14 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{LONGDOC_LOCAL_FLAG}
+    * #{LONGDOC_LOCAL_FLAG}
 
-    • #{LONGDOC_DOCS_FLAG}
+    * #{LONGDOC_DOCS_FLAG}
 
-    • `--configs` add a starter project configuration file into the root of the 
+    * `--configs` add a starter project configuration file into the root of the 
     new project.
 
-    • `--force` overrides protectons preventing a new project from overwriting an 
+    * `--force` overrides protectons preventing a new project from overwriting an 
     existing project. This flag completely destroys anything found in the target
     path for the new project.
     LONGDESC
@@ -225,7 +225,7 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • `--project` specifies a filename (optionally with leading path) for the 
+    * `--project` specifies a filename (optionally with leading path) for the 
     project configuration file used in the project existence check. Otherwise,
     the default ./#{DEFAULT_PROJECT_FILENAME} at the root of the project is
     checked.
@@ -266,25 +266,25 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{LONGDOC_PROJECT_FLAG}
+    * #{LONGDOC_PROJECT_FLAG}
 
-    • #{LONGDOC_MIXIN_FLAG}
+    * #{LONGDOC_MIXIN_FLAG}
 
-    • `--verbosity` sets the logging level.
+    * `--verbosity` sets the logging level.
 
-    • `--log` enables logging to the default filename and path location within your 
+    * `--log` enables logging to the default filename and path location within your 
     project build directory.
 
-    • `--logfile` enables logging to the specified log filepath 
+    * `--logfile` enables logging to the specified log filepath 
     (ex: my/path/file.log).
 
-    • `--graceful-fail` ensures an exit code of 0 even when unit tests fail. See
+    * `--graceful-fail` ensures an exit code of 0 even when unit tests fail. See
     documentation for full details.
 
-    • `--test-case` sets a test case name matcher to run only a subset of test
+    * `--test-case` sets a test case name matcher to run only a subset of test
     suite’s unit test cases. See documentation for full details.
 
-    • `--exclude-test-case` is the inverse of `--test-case`. See documentation for
+    * `--exclude-test-case` is the inverse of `--test-case`. See documentation for
     full details.
     LONGDESC
     def build(*tasks)
@@ -319,11 +319,11 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{LONGDOC_PROJECT_FLAG}
+    * #{LONGDOC_PROJECT_FLAG}
 
-    • #{LONGDOC_MIXIN_FLAG}
+    * #{LONGDOC_MIXIN_FLAG}
 
-    • `--app` loads the Ceedling application that adds various settings, merges defaults, loads 
+    * `--app` loads the Ceedling application that adds various settings, merges defaults, loads 
     configration changes due to plugins, and validates the configuration. Disabling the application
     dumps the project configuration after any mixins but before any application manipulations.
     LONGDESC
@@ -350,9 +350,9 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{LONGDOC_PROJECT_FLAG}
+    * #{LONGDOC_PROJECT_FLAG}
 
-    • #{LONGDOC_MIXIN_FLAG}
+    * #{LONGDOC_MIXIN_FLAG}
     LONGDESC
     def environment()
       # Get unfrozen copies so we can add / modify
@@ -396,9 +396,9 @@ module CeedlingTasks
 
     Optional Flags:
 
-    • #{LONGDOC_LOCAL_FLAG}
+    * #{LONGDOC_LOCAL_FLAG}
 
-    • #{LONGDOC_DOCS_FLAG}
+    * #{LONGDOC_DOCS_FLAG}
 
     NOTE: `example` is destructive. If the destination path is a previoulsy created
     example project, `ceedling example` will forcibly overwrite the contents.

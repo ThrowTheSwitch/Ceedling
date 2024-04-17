@@ -19,7 +19,7 @@ Ceedling works the way developers want to work. It is flexible and entirely
 command-line driven. It drives code generation and command line tools for you.
 All generated and framework code is easy to see and understand.
 
-Ceedling's features support all types of C development from low-level embedded
+Ceedling’s features support all types of C development from low-level embedded
 to enterprise systems. No tool is perfect, but it can do a lot to help you and
 your team produce quality software.
 
@@ -69,7 +69,7 @@ library builds & dependency management, and more.
   **[Submit an issue][ceedling-issues]** at this repo.
 * Trying to understand features or solve a testing problem? Hit the
   **[discussion forums][forums]**.
-* Paid training, customizations, and support contracts are avaialble by 
+* Paid training, customizations, and support contracts are available by 
   **[contacting ThingamaByte][thingama-contact]**.
 
 The ThrowTheSwitch community follows a **[code of conduct](docs/CODE_OF_CONDUCT.md)**.
@@ -305,7 +305,7 @@ A variety of options for [support][TTS-help] exist as well.
 
 ## Ceedling docs
 
-**[Usage help][ceedling-packet]** (a.k.a. _Ceedling Packet_), **[release notes][release-notes]**, **[breaking changes][breaking-changes]**, a variety of guides, and much more exists in **[docs/](docs/)**.
+**[Usage help][ceedling-packet]** (a.k.a. _Ceedling Packet_), **[release notes][release-notes]**, **[breaking changes][breaking-changes]**, **[changelog][changelog]**, a variety of guides, and much more exists in **[docs/](docs/)**.
 
 ## Library and courses
 
@@ -322,6 +322,7 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 [ceedling-packet]: docs/CeedlingPacket.md
 [release-notes]: docs/ReleaseNotes.md
 [breaking-changes]: docs/BreakingChanges.md
+[changelog]: docs/Changelog.md
 [TTS]: https://throwtheswitch.org
 [library]: http://www.throwtheswitch.org/library
 [running-options]: http://www.throwtheswitch.org/build/which
@@ -338,8 +339,25 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 ### Docker image
 
-A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling, the GCC toolchain, and some helper scripts is also available. A Docker container is a self-contained, portable, well managed alternative to a local installation of Ceedling.
+Fully packaged [Ceedling Docker images][docker-image] containing Ruby, Ceedling, the GCC toolchain, and more are also available. A Docker container is a self-contained, portable, well-managed alternative to a local installation of Ceedling.
 
+From your local terminal after [installing Docker][docker-install]:
+
+_Note: [Helper scripts are available][docker-image] to simplify your command line and access advanced features._
+
+```shell
+ > docker run -it --rm -v $PWD/my/project:/home/dev/project throwtheswitch/madsciencelab:latest
+```
+
+From within the `madsciencelab` container’s project working directory:
+
+```shell
+ > ceedling test:all
+```
+
+See the [Docker image documentation][docker-image] for all the details on how to use these containers.
+
+[docker-install]: https://www.docker.com/products/docker-desktop/
 [docker-image]: https://hub.docker.com/r/throwtheswitch/madsciencelab
 
 ### Local installation
@@ -349,8 +367,12 @@ A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling
    ```shell
    > gem install ceedling
    ```
-1. Create an empty Ceedling project or add a Ceedling project file to
-   the root of your existing project.
+1. Begin crafting your project:
+   1. Create an empty Ceedling project.
+   ```shell
+   > ceedling new <name> [<destination path>]
+   ```
+   1. Or, add a Ceedling project file to the root of an existing code project.
 1. Run tasks like so:
    ```shell
    > ceedling test:all release
@@ -372,46 +394,54 @@ A fully packaged [Ceedling Docker image][docker-image] containing Ruby, Ceedling
     - inc/**
 ```
 
+See _[CeedlingPacket][ceedling-packet]_ for all the details of your configuration file.
+
 [Ruby]: https://www.ruby-lang.org/
+
+## Getting command line help
+
+For an overview of all commands, it’s as easy as…
+
+```sh
+ > ceedling help
+```
+
+For a detailed explanation of a single command…
+
+```sh
+ > ceedling help <command>
+```
 
 ## Creating a project
 
-Creating a project with Ceedling is easy. Simply tell Ceedling the
-name of the project, and it will create a directory with that name
-and fill it with a default subdirectory structure and configuration 
-file.
+Creating a project with Ceedling is easy. Simply tell Ceedling the name of the
+project, and it will create a directory with that name and fill it with a
+default subdirectory structure and configuration file. An optional destination
+path is also possible.
 
 ```shell
  > ceedling new YourNewProjectName
 ```
 
 You can add files to your `src/` and `test/` directories, and they will
-instantly become part of your test build. Need a different structure?
-You can modify the `project.yml` file with your new path or tooling 
-setup.
+instantly become part of your test and/or release build. Need a different 
+structure? You can modify the `project.yml` file with your new path or 
+tooling setup.
 
-You can upgrade to the latest version of Ceedling at any time,
-automatically gaining access to any updates to Unity, CMock, and 
-CException that come with it.
+### Installing local documentation
 
-```shell
- > gem update ceedling
-```
-
-## Installing local documentation
-
-Are you just getting started with Ceedling? Maybe you'd like your
+Are you just getting started with Ceedling? Maybe you’d like your
 project to be installed with some of its handy [documentation](docs/)? 
-No problem! You can do this when you create a new project.
+No problem! You can do this when you create a new project…
 
 ```shell
  > ceedling new --docs MyAwesomeProject
 ```
 
-## Attaching a Ceedling version to your project
+### Attaching a Ceedling version to your project
 
 Ceedling can be installed as a globally available Ruby gem. Ceedling can 
-also deploy all of its guts into your project instead. This allows it to 
+also deploy all its guts into your project instead. This allows it to 
 be used without worrying about external dependencies. More importantly, 
 you don’t have to worry about Ceedling changing outside of your project 
 just because you updated your gems. No need to worry about changes in 
@@ -424,34 +454,44 @@ your project:
  > ceedling new --local YourNewProjectName
 ```
 
-This will install all of Unity, CMock, CException, and Ceedling itsef 
+This will install all of Unity, CMock, CException, and Ceedling itself 
 into a new folder `vendor/` inside your project `YourNewProjectName/`.
-It will still create a simple empty directory structure for you with
-`src/` and `test/` folders.
+It will create the same simple empty directory structure for you with
+`src/` and `test/` folders as the standard `new` command.
 
-If you want to force a locally installed version of Ceedling to upgrade
-to match your latest gem later, no problem. Just do the following:
+## Upgrading / updating Ceedling
+
+You can upgrade to the latest version of Ceedling at any time, automatically
+gaining access to any accompanying updates to Unity, CMock, and CException.
+
+To update a locally installed gem…
+
+```shell
+ > gem update ceedling
+```
+
+Otherwise, if you are using the Docker image, you may upgrade by pulling
+a newer version of the image…
+
+```shell
+ > docker pull throwtheswitch/madsciencelab:<tag>
+```
+
+If you want to force a vendored version of Ceedling inside your project to 
+upgrade to match your latest gem, no problem. Just do the following…
 
 ```shell
  > ceedling upgrade --local YourNewProjectName
 ```
 
 Just like with the `new` command, an `upgrade` should be executed from 
-from within the root directory of your project.
-
-Are you afraid of losing all your local changes when this happens? You 
-can prevent Ceedling from updating your project file by adding 
-`--no-configs`.
-
-```shell
- > ceedling upgrade --local --no-configs YourSweetProject
-```
+within the root directory of your project.
 
 ## Git integration
 
 Are you using Git? You might want Ceedling to create a `.gitignore` 
-which ignores the build folder (while retaining control of the artifacts
-folder). This will also add a `.gitkeep` file to your `test/support` folder.
+that ignores the build folder while retaining control of the artifacts
+folder. This will also add a `.gitkeep` file to your `test/support` folder.
 You can enable this by adding `--gitsupport` to your `new` call.
 
 ```shell
@@ -461,7 +501,9 @@ You can enable this by adding `--gitsupport` to your `new` call.
 
 # 💻 Contributing to Ceedling Development
 
-## Alternate installation
+## Alternate installation for development
+
+After installing Ruby…
 
 ```shell
  > git clone --recursive https://github.com/throwtheswitch/ceedling.git
@@ -471,7 +513,7 @@ You can enable this by adding `--gitsupport` to your `new` call.
 ```
 
 The Ceedling repository incorporates its supporting frameworks and some
-plugins via git submodules. A simple clone may not pull in the latest
+plugins via Git submodules. A simple clone may not pull in the latest
 and greatest.
 
 The `bundle` tool ensures you have all needed Ruby gems installed. If 
@@ -496,19 +538,56 @@ Gemfile.lock.
 
 Ceedling uses [RSpec] for its tests.
 
-To run all tests run the following from the root of your local 
+To run all tests you may run the following from the root of your local 
 Ceedling repository.
 
 ```shell
  > bundle exec rake
 ```
 
-To run individual test files and perform other tasks, use the 
-available Rake tasks. From the root of your local Ceedling repo,
-list those task like this:
+The above is a time consuming but complete test process. Generally, most
+developers can run the following from the root of your locally cloned 
+repo instead.
+
+```shell
+ > rake ci
+```
+
+To run individual test files (Ceedling’s Ruby-based tests, that is) and 
+perform other tasks, use the available Rake tasks. From the root of your 
+local Ceedling repo, list those task like this:
 
 ```shell
  > rake -T
 ```
 
 [RSpec]: https://rspec.info
+
+## Working in `bin/` vs. `lib/`
+
+Most of Ceedling’s functionality is contained in the application code residing 
+in `lib/`. Ceedling’s command line handling, startup configuration, project
+file loading, and mixin handling are contained in a “bootloader” in `bin/`.
+The code in `bin/` is the source of the `ceedling` command line tool and 
+launches the application from `lib/`.
+
+Depending on what you’re working on you may need to run Ceedling using
+a specialized approach.
+
+If you are only working in `lib/`, you can:
+
+1. Run Ceedling using the `ceedling` command line utility you already have 
+   installed. The code in `bin/` will run from your locally installed gem or 
+   from within your Docker container and launch the Ceedling application for 
+   you.
+1. Modify a project file by setting a path value for `:project` ↳ `:which_ceedling` 
+   that points to the local copy of Ceedling you cloned from the Git repository.
+   See _CeedlingPacket_ for details.
+
+If you are working in `bin/`, running `ceedling` at the command line will not
+call your modified code. Instead, you must execute the path to the executable
+`ceedling` in the `bin/` folder of the local Ceedling repository you are 
+working on.
+
+
+

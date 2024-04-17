@@ -262,7 +262,7 @@ class CliHandler
     output = "\nEnvironment variables:\n"
 
     env_list.sort.each do |line|
-      output << " • #{line}\n"
+      output << " * #{line}\n"
     end
 
     @streaminator.stream_puts( output + "\n" )
@@ -276,7 +276,7 @@ class CliHandler
 
     output = "\nAvailable example projects:\n"
 
-    examples.each {|example| output << " • #{example}\n" }
+    examples.each {|example| output << " * #{example}\n" }
 
     @streaminator.stream_puts( output + "\n" )
   end
