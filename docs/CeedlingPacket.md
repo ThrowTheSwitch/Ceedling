@@ -137,7 +137,7 @@ It's just all mixed together.
 1. **[Build Directive Macros][packet-section-12]**
 
    These code macros can help you accomplish your build goals When Ceedling’s 
-   conventions aren't enough.
+   conventions aren’t enough.
 
 1. **[Ceedling Plugins][packet-section-13]**
 
@@ -176,8 +176,8 @@ Ceedling allows you to generate an entire test and release build
 environment for a C project from a single, short YAML configuration 
 file.
 
-Ceedling and its bundled tools, Unity, CMock, and CException, don't 
-want to brag, but they're also quite adept at supporting the tiniest of 
+Ceedling and its bundled tools, Unity, CMock, and CException, don’t 
+want to brag, but they’re also quite adept at supporting the tiniest of 
 embedded processors, the beefiest 64-bit powerhouses available, and 
 everything in between.
 
@@ -298,7 +298,7 @@ your Rakefile).
 ### YAML
 
 [YAML] is a "human friendly data serialization standard for all
-programming languages." It's kinda like a markup language but don't
+programming languages." It's kinda like a markup language but don’t
 call it that. With a YAML library, you can [serialize] data structures
 to and from the file system in a textual, human readable form. Ceedling
 uses a serialized data structure as its configuration input.
@@ -460,8 +460,8 @@ void test_a_different_case(void) {
 
 ### Realistic simple test case
 
-In reality, we're probably not testing the static value of an integer 
-against itself. Instead, we're calling functions in our source code
+In reality, we’re probably not testing the static value of an integer 
+against itself. Instead, we’re calling functions in our source code
 and making assertions against return values.
 
 ```c
@@ -585,7 +585,7 @@ void test_doTheThingYo_should_enableOutputD(void) {
 }
 ```
 
-Remember, the generated mock code you can't see here has a whole bunch 
+Remember, the generated mock code you can’t see here has a whole bunch 
 of smarts and Unity assertions inside it. CMock scans header files and
 then generates mocks (C code) from the function signatures it finds in
 those header files. It's kinda magical.
@@ -826,7 +826,7 @@ are completed once, only step 3 is needed for each new project.
 
 # Now What? How Do I Make It _GO_? The Command Line.
 
-We're getting a little ahead of ourselves here, but it's good
+We’re getting a little ahead of ourselves here, but it's good
 context on how to drive this bus. Everything is done via the command
 line. We'll cover project conventions and how to actually configure
 your project in later sections.
@@ -1522,7 +1522,7 @@ in Ceedling’s `:unity` project settings.
 :unity:
   :defines:
     - UNITY_SUPPORT_64                    # Big memory, big counters, big registers
-    - UNITY_LINE_TYPE=\"unsigned int\"    # Apparently, we're writing lengthy test files,
+    - UNITY_LINE_TYPE=\"unsigned int\"    # Apparently, we’re writing lengthy test files,
     - UNITY_COUNTER_TYPE=\"unsigned int\" # and we've got a ton of test cases in those test files
     - UNITY_FLOAT_TYPE=\"double\"         # You betcha
 ```
@@ -2170,7 +2170,7 @@ migrated to the `:test_build` and `:release_build` sections.
   to your output. This may include emoji, color, or highlights.
 
   The options at this time are `:all`, `:none`, and `:auto`. Why 
-  `:auto`? Because some platforms (we're looking at you, Windows) do 
+  `:auto`? Because some platforms (we’re looking at you, Windows) do 
   not have default font support in their terminals for these features. 
   So, by default this feature is disabled on problematic platforms while 
   enabled on others.
@@ -2308,61 +2308,39 @@ migrated to the `:test_build` and `:release_build` sections.
 
 * `:use_backtrace`
 
-  When a test file runs into a **Segmentation Fault**, the test executable 
-  immediately crashes and further details aren't collected. By default, Ceedling
-  reports a single failure for the entire file, specifying that it segfaulted. 
-  If you are running `gcc` or `Clang` (LLVM), then there is an option to get more
-  detail!
+  When a test executable runs into a ☠️ **Segmentation Fault**, the executable 
+  immediately crashes and no further details for test suite reporting are collected.
+  By default, Ceedling reports a single failure for the entire test file, noting 
+  that it segfaulted.
 
-  Set `:use_backtrace` to `true` and a segfault will trigger Ceedling to 
-  collect backtrace data from test runners. It will then run each test in the
-  faulted test file individually, collecting the pass/fail results as normal, and
-  providing further default on the test that actually faulted.
+  But, fear not. You can bring your dead unit tests back to life. If you are running
+  `gcc` or `clang` (LLVM), then you have an option to get more detail!
+
+  Set `:use_backtrace` to `true` and unit test segfaults will trigger Ceedling to 
+  collect backtrace data from test runners. With this option enabled, Ceedling runs
+  each test case in the faulted test executable individually, collecting the pass/fail
+  results as normal. For any test cases that segfault, Ceedling collects and reports
+  details for the offending code using the [`gdb`][gdb] debugger.
+
+  If this option is enabled, but `gdb` is not available to Ceedling, project 
+  validation will terminate with an error at startup.
 
   **Default**: FALSE
 
-  **Note:**
-
-    The configuration option requires that it be combined with the following:
-    
-    ``` yaml
-    :test_runner:
-      :cmdline_args: true
-    ```
-
-    If a test segfaults when `cmdline_args` has be set to `true`, the debugger will execute 
-    each test independently in order to determine which test(s) cause the segfault. Other 
-    tests will be reported as normal.
-
-    When enabled, .gcno and .gcda files will be generated automatically and the section of the 
-    code under test case causing the segmetation fault will be omitted from Coverage Report.
-
-    The default debugger (gdb)[https://www.sourceware.org/gdb/] can be switched to other
-    debug engines via setting a new configuration under the `:tools` node in your project
-    configuration. By default, this tool is set as follows:
-
-    ```yaml
-   :tools:
-     :backtrace_reporter:
-       :executable: gdb
-       :arguments:
-         - -q
-         - --eval-command run
-         - --eval-command backtrace
-         - --batch
-         - --args
-    ```
-    
-    It is important that the debugging tool should be run as a background task, and with the
-    option to pass additional arguments to the test executable.
+  [gdb]: https://www.sourceware.org/gdb/
 
 ## `:mixins` Configuring mixins to merge
 
 This section of a project configuration file is documented in the
 [discussion of project files and mixins][mixins-config-section].
 
-**_Note:_** A `:mixins` section is only recognized within a base project 
-configuration file. Any `:mixins` sections within mixin files are ignored.
+**_Notes:_**
+
+* A `:mixins` section is only recognized within a base project configuration 
+  file. Any `:mixins` sections within mixin files are ignored.
+* A `:mixins` section in a Ceedling configuration is entirely filtered out of
+  the resulting configuration. That is, it is unavailable for use by plugins
+  and will not be present in any output from `ceedling dumpconfig`.
 
 ## `:test_build` Configuring a test build
 
@@ -3845,7 +3823,7 @@ for the named tool. The full list of fundamental elements for a tool definition
 are documented in the sections that follow along with examples.
 
 Not every numbered parameter listed immediately below must be referenced in a
-Ceedling tool definition. If `${4}` isn't referenced by your custom tool, 
+Ceedling tool definition. If `${4}` isn’t referenced by your custom tool, 
 Ceedling simply skips it while expanding a tool definition into a command line.
 
 The numbered parameters below are references that expand / are replaced with 
@@ -4158,7 +4136,7 @@ Notes on test fixture tooling example:
    and running native executables instead of cross compiling. That is,
    if the output of the linker runs on the host system, then the test
    fixture _is_ `${1}`.
-1. We're using `$stderr` redirection to allow us to capture simulator error 
+1. We’re using `$stderr` redirection to allow us to capture simulator error 
    messages to `$stdout` for display at the run's conclusion.
 
 ### Ceedling tool arguments addition shortcut
@@ -4168,7 +4146,7 @@ what you need. But, darn, you need one extra argument on the command line, and
 you'd love to not override an entire tool definition to tweak it.
 
 We got you. Now, this little feature only allows you to add arguments to the
-end of a tool command line. Not the beginning. And, you can't remove arguments
+end of a tool command line. Not the beginning. And, you can’t remove arguments
 with this hack.
 
 Further, this little feature is a blanket application across all uses of a 
