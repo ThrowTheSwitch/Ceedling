@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'ceedling/constants'
 
 class PluginManager
@@ -6,14 +13,14 @@ class PluginManager
 
   def setup
     @build_fail_registry = []
-    @plugin_objects = [] # so we can preserve order
+    @plugin_objects = [] # List so we can preserve order
   end
 
-  def load_plugin_scripts(script_plugins, system_objects)
+  def load_programmatic_plugins(plugins, system_objects)
     environment = []
 
-    script_plugins.each do |plugin|
-      # protect against instantiating object multiple times due to processing config multiple times (option files, etc)
+    plugins.each do |plugin|
+      # Protect against instantiating object multiple times due to processing config multiple times (option files, etc)
       next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
       begin
         @system_wrapper.require_file( "#{plugin}.rb" )
@@ -21,7 +28,7 @@ class PluginManager
         @plugin_objects << object
         environment += object.environment
 
-        # add plugins to hash of all system objects
+        # Add plugins to hash of all system objects
         system_objects[plugin.downcase.to_sym] = object
       rescue
         puts "Exception raised while trying to load plugin: #{plugin}"
@@ -46,7 +53,7 @@ class PluginManager
 
       report += "\n"
 
-      @streaminator.stderr_puts(report, Verbosity::ERRORS)
+      @streaminator.stream_puts(report, Verbosity::ERRORS)
     end
   end
 
@@ -55,6 +62,12 @@ class PluginManager
   end
 
   #### execute all plugin methods ####
+
+  def pre_mock_preprocess(arg_hash); execute_plugins(:pre_mock_preprocess, arg_hash); end
+  def post_mock_preprocess(arg_hash); execute_plugins(:post_mock_preprocess, arg_hash); end
+
+  def pre_test_preprocess(arg_hash); execute_plugins(:pre_test_preprocess, arg_hash); end
+  def post_test_preprocess(arg_hash); execute_plugins(:post_test_preprocess, arg_hash); end
 
   def pre_mock_generate(arg_hash); execute_plugins(:pre_mock_generate, arg_hash); end
   def post_mock_generate(arg_hash); execute_plugins(:post_mock_generate, arg_hash); end
@@ -70,8 +83,8 @@ class PluginManager
 
   def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
   def post_test_fixture_execute(arg_hash)
-    # special arbitration: raw test results are printed or taken over by plugins handling the job
-    @streaminator.stdout_puts(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
+    # Special arbitration: Raw test results are printed or taken over by plugins handling the job
+    @streaminator.stream_puts(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
     execute_plugins(:post_test_fixture_execute, arg_hash)
   end
 
@@ -94,11 +107,26 @@ class PluginManager
   end
 
   def execute_plugins(method, *args)
+    handlers = 0
+
+    @plugin_objects.each do |plugin|
+      handlers += 1 if plugin.respond_to?(method) 
+    end
+
+    if handlers > 0
+      heading = @reportinator.generate_heading( "Plugins (#{handlers}) > :#{method}" )
+      @streaminator.stream_puts(heading, Verbosity::OBNOXIOUS)
+    end
+
     @plugin_objects.each do |plugin|
       begin
-        plugin.send(method, *args) if plugin.respond_to?(method)
+        if plugin.respond_to?(method)
+          message = @reportinator.generate_progress( " + #{plugin.name}" )
+          @streaminator.stream_puts(message, Verbosity::OBNOXIOUS)
+          plugin.send(method, *args)
+        end
       rescue
-        puts "Exception raised in plugin: #{plugin.name}, in method #{method}"
+        @streaminator.stream_puts("Exception raised in plugin `#{plugin.name}` within build hook :#{method}")
         raise
       end
     end

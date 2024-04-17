@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/tool_executor_helper'
@@ -75,31 +82,6 @@ describe ToolExecutorHelper do
   end
 
 
-  describe '#background_exec_cmdline_prepend' do
-    it 'returns nil if tool_config is nil' do
-      expect(@tool_exe_helper.background_exec_cmdline_prepend(nil)).to be_nil
-    end
-
-    it 'returns nil if tool_config[:background_exec] is nil' do
-      expect(@tool_exe_helper.background_exec_cmdline_prepend({:background_exec =>nil})).to be_nil
-    end
-
-    it 'returns "start" if tool_config[:background_exec] is AUTO on windows' do
-      expect(@sys_wraper).to receive(:windows?).and_return(true)
-      expect(@tool_exe_helper.background_exec_cmdline_prepend({:background_exec =>BackgroundExec::AUTO})).to eq('start')
-    end
-
-    it 'returns nil if tool_config[:background_exec] is AUTO not on windows' do
-      expect(@sys_wraper).to receive(:windows?).and_return(false)
-      expect(@tool_exe_helper.background_exec_cmdline_prepend({:background_exec =>BackgroundExec::AUTO})).to be_nil
-    end
-
-    it 'returns "start" if tool_config[:background_exec] is WIN' do
-      expect(@tool_exe_helper.background_exec_cmdline_prepend({:background_exec =>BackgroundExec::WIN})).to eq('start')
-    end
-  end
-
-
   describe '#osify_path_separators' do
     it 'returns path if system is not windows' do
       exe = '/just/some/executable.out'
@@ -155,51 +137,6 @@ describe ToolExecutorHelper do
     end
   end
 
-
-  describe '#background_exec_cmdline_append' do
-    it 'returns nil if tool_config is nil' do
-      expect(@tool_exe_helper.background_exec_cmdline_append(nil)).to be_nil
-    end
-
-    it 'returns nil if tool_config[:background_exec] is nil' do
-      tool_config = {:background_exec => nil}
-      expect(@tool_exe_helper.background_exec_cmdline_append(tool_config)).to be_nil
-    end
-
-    it 'returns nil if tool_config is set to none' do
-      tool_config = {:background_exec => BackgroundExec::NONE}
-      expect(@tool_exe_helper.background_exec_cmdline_append(tool_config)).to be_nil
-    end
-
-    it 'returns nil if tool_config is set to none' do
-      tool_config = {:background_exec => BackgroundExec::WIN}
-      expect(@tool_exe_helper.background_exec_cmdline_append(tool_config)).to be_nil
-    end
-
-    it 'returns "&" if tool_config is set to UNIX' do
-      tool_config = {:background_exec => BackgroundExec::UNIX}
-      expect(@tool_exe_helper.background_exec_cmdline_append(tool_config)).to eq('&')
-    end
-
-    context 'when tool_config[:background_exec] BackgroundExec:AUTO' do
-      before(:each) do
-        @tool_config = {:background_exec => BackgroundExec::AUTO}
-      end
-
-
-      it 'returns nil if system is windows' do
-        expect(@sys_wraper).to receive(:windows?).and_return(true)
-        expect(@tool_exe_helper.background_exec_cmdline_append(@tool_config)).to be_nil
-      end
-
-      it 'returns "&" if system is not windows' do
-        expect(@sys_wraper).to receive(:windows?).and_return(false)
-        expect(@sys_wraper).to receive(:windows?).and_return(false)
-        expect(@tool_exe_helper.background_exec_cmdline_append(@tool_config)).to eq('&')
-      end     
-    end
-  end
-
   describe '#print_happy_results' do
     context 'when exit code is 0' do
       before(:each) do
@@ -207,24 +144,24 @@ describe ToolExecutorHelper do
       end
 
       it 'and boom is true displays output' do
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
       end
 
       it 'and boom is true with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
       end
 
       it 'and boom is false displays output' do
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
 
       it 'and boom is false with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
     end
@@ -244,13 +181,13 @@ describe ToolExecutorHelper do
       end
 
       it 'and boom is false displays output' do
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT_WITH_STATUS, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_STATUS, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
 
       it 'and boom is false with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stdout_puts).with(HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS, Verbosity::OBNOXIOUS)
+        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
     end
@@ -287,13 +224,13 @@ describe ToolExecutorHelper do
       end
 
       it 'and boom is true displays output' do
-        expect(@streaminator).to receive(:stderr_puts).with(ERROR_OUTPUT, Verbosity::ERRORS)
+        expect(@streaminator).to receive(:stream_puts).with(ERROR_OUTPUT, Verbosity::ERRORS)
         @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
       end
 
       it 'and boom is true with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stderr_puts).with(ERROR_OUTPUT_WITH_MESSAGE, Verbosity::ERRORS)
+        expect(@streaminator).to receive(:stream_puts).with(ERROR_OUTPUT_WITH_MESSAGE, Verbosity::ERRORS)
         @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
       end
 

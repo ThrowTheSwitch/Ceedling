@@ -1,12 +1,17 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 ---
 
 # Notes:
 # This is a fully tested project that demonstrates the use
 # of a timer ISR to blink the on board LED of an Arduino UNO
 :project:
-  :use_exceptions: FALSE
   :use_test_preprocessor: TRUE
-  :use_auxiliary_dependencies: TRUE
   :build_root: build
   :release_build: TRUE
   :test_file_prefix: test_
@@ -38,21 +43,23 @@
     - -:test/support
   :source:
     - src/**
+  :include:
+    - src/**
   :support:
     - test/support
 
+# Compilation symbols to be injected into builds
+# See documentation for advanced options:
+#  - Test name matchers for different symbols per test executable build
+#  - Referencing symbols in multiple lists using advanced YAML
+#  - Specifiying symbols used during test preprocessing
 :defines:
-  # in order to add common defines:
-  #  1) remove the trailing [] from the :common: section
-  #  2) add entries to the :common: section (e.g. :test: has TEST defined)
-  :common: &common_defines []
   :test:
-    - *common_defines
-    - TEST
-    - UNITY_OUTPUT_COLOR #this is just here to make sure it gets removed by ceedling
-  :test_preprocess:
-    - *common_defines
-    - TEST
+    - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
+  :release: []
+
+  # Enable to inject name of a test as a unique compilation symbol into its respective executable build. 
+  :use_test_definition: FALSE 
 
 :tools:
   :release_compiler:
@@ -96,6 +103,6 @@
   :load_paths:
     - "#{Ceedling.load_path}"
   :enabled:
-    - stdout_pretty_tests_report
+    - report_tests_pretty_stdout
     - module_generator
 ...
