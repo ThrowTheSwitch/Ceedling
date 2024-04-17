@@ -1,21 +1,14 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'fileutils'
 require 'tmpdir'
 require 'ceedling/yaml_wrapper'
 require 'spec_helper'
-
-if Gem.ruby_version >= Gem::Version.new("2.5.0")
-  Modulegenerator = Struct.new(:project_root, :source_root, :inc_root, :test_root, keyword_init: true) do
-    def initialize(project_root: "./", source_root: "src/", inc_root: "src/", test_root: "test/")
-      super
-    end
-  end
-else
-  Modulegenerator = Struct.new(:project_root, :source_root, :inc_root, :test_root) do
-    def initialize(project_root: "./", source_root: "src/", inc_root: "src/", test_root: "test/")
-      super(project_root, source_root, inc_root, test_root)
-    end
-  end
-end
 
 def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', 'assets', asset_file_name)
@@ -29,10 +22,11 @@ def convert_slashes(path)
   end
 end
 
-def add_project_settings(project_file_path, settings)
+def add_project_settings(project_file_path, settings, show_final=false)
   yaml_wrapper = YamlWrapper.new
   project_hash = yaml_wrapper.load(project_file_path)
-  project_hash.deep_merge(settings)
+  project_hash.deep_merge!(settings)
+  puts "\n\n#{project_hash.to_yaml}\n\n" if show_final
   yaml_wrapper.dump(project_file_path, project_hash)
 end
 
@@ -69,6 +63,10 @@ class SystemContext
     git_repo = File.expand_path(File.join(File.dirname(__FILE__), '..'))
     bundler_gem_file_data = [ %Q{source "http://rubygems.org/"},
                               %Q{gem "rake"},
+                              %Q{gem "constructor"},
+                              %Q{gem "diy"},
+                              %Q{gem "thor"},
+                              %Q{gem "deep_merge"},
                               %Q{gem "ceedling", :path => '#{git_repo}'}
                             ].join("\n")
 
@@ -143,6 +141,35 @@ class SystemContext
       restore_env
     end
   end
+
+  def modify_project_yml_for_test(prefix, key, new_value)
+    add_line = nil
+    updated = false
+    updated_yml = []
+    File.read('project.yml').split("\n").each_with_index do |line, i|
+      m = line.match /\:#{key.to_s}\:\s*(.*)/
+      unless m.nil?
+        line = line.gsub(m[1], new_value)
+        updated = true
+      end
+
+      m = line.match /(\s*)\:#{prefix.to_s}\:/
+      unless m.nil?
+        add_line = [i+1, m[1]+'  ']
+      end
+
+      updated_yml.append(line)
+    end
+    unless updated
+      if add_line.nil?
+        updated_yml.insert(updated_yml.length - 1, ":#{prefix.to_s}:\n  :#{key.to_s}: #{new_value}")
+      else
+        updated_yml.insert(add_line[0], "#{add_line[1]}:#{key}: #{new_value}")
+      end
+    end
+
+    File.write('project.yml', updated_yml.join("\n"), mode: 'w')
+  end
 end
 
 module CeedlingTestCases
@@ -153,15 +180,15 @@ module CeedlingTestCases
         expect(File.exist?("src")).to eq true
         expect(File.exist?("test")).to eq true
         expect(File.exist?("test/support")).to eq true
-        expect(File.exist?("test/support/.gitkeep")).to eq true
       end
     end
   end
 
-  def has_an_ignore
+  def has_git_support
     @c.with_context do
       Dir.chdir @proj_name do
         expect(File.exist?(".gitignore")).to eq true
+        expect(File.exist?("test/support/.gitkeep")).to eq true
       end
     end
   end
@@ -170,7 +197,7 @@ module CeedlingTestCases
     @c.with_context do
       output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
       expect($?.exitstatus).to match(0)
-      expect(output).to match(/upgraded!/i)
+      expect(output).to match(/Upgraded/i)
       Dir.chdir @proj_name do
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
@@ -192,7 +219,7 @@ module CeedlingTestCases
       File.write("#{@proj_name}/project.yml", updated_prj_yml.join("\n"), mode: 'w')
 
       expect($?.exitstatus).to match(0)
-      expect(output).to match(/upgraded!/i)
+      expect(output).to match(/Upgraded/i)
       Dir.chdir @proj_name do
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
@@ -206,7 +233,7 @@ module CeedlingTestCases
     @c.with_context do
       output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
       expect($?.exitstatus).to match(1)
-      expect(output).to match(/rescue in upgrade/i)
+      expect(output).to match(/Could not find an existing project/i)
     end
   end
 
@@ -321,7 +348,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_unity_printf.c"), 'test/'
         settings = { :unity => { :defines => [ "UNITY_INCLUDE_PRINT_FORMATTED" ] },
-                     :defines => { :test_example_file_unity_printf => [ "TEST" ] }
+                     :defines => { :test => { :example_file_unity_printf => [ "TEST" ] } }
                    }
         add_project_settings("project.yml", settings)
 
@@ -353,38 +380,19 @@ module CeedlingTestCases
     end
   end
 
-  def can_test_projects_with_enabled_preprocessor_directives_with_success
-    @c.with_context do
-      Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
-        settings = { :project => { :use_preprocessor_directives => true },
-                     :unity => { :use_param_tests => true }
-                   }
-        add_project_settings("project.yml", settings)
-
-        output = `bundle exec ruby -S ceedling 2>&1`
-        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
-        expect(output).to match(/TESTED:\s+\d/)
-        expect(output).to match(/PASSED:\s+\d/)
-        expect(output).to match(/FAILED:\s+\d/)
-        expect(output).to match(/IGNORED:\s+\d/)
-      end
-    end
-  end
-
   def can_test_projects_with_test_name_replaced_defines_with_success
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.copy_entry test_asset_path("tests_with_defines/src/"), 'src/'
         FileUtils.cp_r test_asset_path("tests_with_defines/test/."), 'test/'
-        settings = { :defines => { :test => [ "STANDARD_CONFIG" ],
-                                   :test_adc_hardware_special => [ "TEST", "SPECIFIC_CONFIG" ]
-                                 }
+        settings = { :defines => { :test => { '*' => [ "TEST", "STANDARD_CONFIG" ],
+                                   'test_adc_hardware_special.c' => [ "TEST", "SPECIFIC_CONFIG" ],
+                                 } }
                    }
         add_project_settings("project.yml", settings)
 
         output = `bundle exec ruby -S ceedling 2>&1`
-        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect($?.exitstatus).to match(0) # Since a test either passes or is ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
@@ -453,7 +461,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Since a test explodes, we return error here
-        expect(output).to match(/ERROR: Ceedling Failed/)
+        expect(output).to match(/(?:ERROR: Ceedling Failed)|(?:Ceedling could not complete operations because of errors)/)
       end
     end
   end
@@ -468,7 +476,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file_with_mock.c"), 'test/'
 
         output = `bundle exec ruby -S ceedling 2>&1`
-        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect($?.exitstatus).to match(0) # Since a test either passed or was ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
@@ -477,7 +485,7 @@ module CeedlingTestCases
     end
   end
 
-  def uses_raw_output_report_plugin
+  def uses_report_tests_raw_output_log_plugin
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -490,7 +498,7 @@ module CeedlingTestCases
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
         expect(output).to match(/IGNORED:\s+\d/)
-        expect(File.exist?("build/artifacts/test/test_example_file_verbose.log")).to eq true
+        expect(File.exist?("build/artifacts/test/test_example_file_verbose.raw.log")).to eq true
       end
     end
   end
@@ -515,67 +523,13 @@ module CeedlingTestCases
         expect($?.exitstatus).to match(0)
         expect(output).to match(/ceedling clean/i)
         expect(output).to match(/ceedling clobber/i)
-        expect(output).to match(/ceedling logging/i)
         expect(output).to match(/ceedling module:create/i)
         expect(output).to match(/ceedling module:destroy/i)
         expect(output).to match(/ceedling summary/i)
         expect(output).to match(/ceedling test:\*/i)
         expect(output).to match(/ceedling test:all/i)
-        expect(output).to match(/ceedling test:delta/i)
+        #expect(output).to match(/ceedling test:delta/i) #feature temporarily removed
         expect(output).to match(/ceedling version/i)
-      end
-    end
-  end
-
-  def can_use_the_module_plugin
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:create[ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-        output = `bundle exec ruby -S ceedling test:all`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Need to Implement ponies/)
-        output = `bundle exec ruby -S ceedling module:destroy[ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Destroy Complete/i)
-
-        self.can_use_the_module_plugin_path_extension
-        self.can_use_the_module_plugin_with_include_path
-      end
-    end
-  end
-
-  def can_use_the_module_plugin_path_extension
-    @c.with_context do
-      Dir.chdir @proj_name do
-        # Module creation
-        output = `bundle exec ruby -S ceedling module:create[myPonies:ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-        expect(File.exist?("myPonies/src/ponies.c")).to eq true
-        expect(File.exist?("myPonies/src/ponies.h")).to eq true
-        expect(File.exist?("myPonies/test/test_ponies.c")).to eq true
-
-        # add module path to project file
-        settings = { :paths => { :test => [ "myPonies/test" ],
-                                 :source => [ "myPonies/src" ]
-                               }
-                   }
-        add_project_settings("project.yml", settings)
-
-        # See if ceedling finds the test in the subdir
-        output = `bundle exec ruby -S ceedling test:all`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Need to Implement ponies/)
-
-        # Module destruction
-        output = `bundle exec ruby -S ceedling module:destroy[myPonies:ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Destroy Complete/i)
-        expect(File.exist?("myPonies/src/ponies.c")).to eq false
-        expect(File.exist?("myPonies/src/ponies.h")).to eq false
-        expect(File.exist?("myPonies/test/test_ponies.c")).to eq false
       end
     end
   end
@@ -666,7 +620,26 @@ module CeedlingTestCases
     end
   end
 
-  def exlcude_test_case_name_filter_works_and_only_one_test_case_is_executed
+  def confirm_if_notification_for_cmdline_args_not_enabled_is_disabled
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling test:test_example_file_success 2>&1`
+
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+1/)
+        expect(output).not_to match(/please add `:cmdline_args` under :test_runner option/)
+      end
+    end
+  end
+
+  def exclude_test_case_name_filter_works_and_only_one_test_case_is_executed
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -689,7 +662,7 @@ module CeedlingTestCases
     end
   end
 
-  def run_all_test_when_test_case_name_is_passed_but_cmdline_args_are_disabled_with_success
+  def run_all_test_when_test_case_name_is_passed_it_will_autoset_cmdline_args
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -699,136 +672,14 @@ module CeedlingTestCases
         output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers 2>&1`
 
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
-        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+1/)
         expect(output).to match(/FAILED:\s+0/)
-        expect(output).to match(/IGNORED:\s+1/)
-        expect(output).to match(/please add `:cmdline_args` under :test_runner option/)
+        expect(output).to match(/IGNORED:\s+0/)
       end
     end
   end
 
-  def can_use_the_module_plugin_with_include_path
-    @c.with_context do
-      Dir.chdir @proj_name do
-        # add include path to module generator
-        mod_gen = Modulegenerator.new(inc_root: "inc/")
-        settings = { :module_generator => { :project_root => mod_gen.project_root,
-                                            :source_root => mod_gen.source_root,
-                                            :inc_root => mod_gen.inc_root,
-                                            :test_root => mod_gen.test_root
-                                          }
-                   }
-        add_project_settings("project.yml", settings)
-
-        # module creation
-        output = `bundle exec ruby -S ceedling module:create[myPonies:ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-        expect(File.exist?("myPonies/src/ponies.c")).to eq true
-        expect(File.exist?("myPonies/inc/ponies.h")).to eq true
-        expect(File.exist?("myPonies/test/test_ponies.c")).to eq true
-
-        # Module destruction
-        output = `bundle exec ruby -S ceedling module:destroy[myPonies:ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Destroy Complete/i)
-        expect(File.exist?("myPonies/src/ponies.c")).to eq false
-        expect(File.exist?("myPonies/inc/ponies.h")).to eq false
-        expect(File.exist?("myPonies/test/test_ponies.c")).to eq false
-      end
-    end
-  end
-
-  def can_use_the_module_plugin_with_non_default_paths
-    @c.with_context do
-      Dir.chdir @proj_name do
-        # add paths to module generator
-        mod_gen = Modulegenerator.new(source_root: "foo/", inc_root: "bar/", test_root: "barz/")
-        settings = { :module_generator => { :project_root => mod_gen.project_root,
-                                            :source_root => mod_gen.source_root,
-                                            :inc_root => mod_gen.inc_root,
-                                            :test_root => mod_gen.test_root
-                                          }
-                   }
-        add_project_settings("project.yml", settings)
-
-        # module creation
-        output = `bundle exec ruby -S ceedling module:create[ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-        expect(File.exist?("foo/ponies.c")).to eq true
-        expect(File.exist?("bar/ponies.h")).to eq true
-        expect(File.exist?("barz/test_ponies.c")).to eq true
-
-        # Module destruction
-        output = `bundle exec ruby -S ceedling module:destroy[ponies]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Destroy Complete/i)
-        expect(File.exist?("foo/ponies.c")).to eq false
-        expect(File.exist?("bar/ponies.h")).to eq false
-        expect(File.exist?("barz/test_ponies.c")).to eq false
-      end
-    end
-  end
-
-  def handles_creating_the_same_module_twice_using_the_module_plugin
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:create[unicorns]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-
-        output = `bundle exec ruby -S ceedling module:create[unicorns] 2>&1`
-        expect($?.exitstatus).to match(1)
-        expect(output).to match(/ERROR: Ceedling Failed/)
-      end
-    end
-  end
-
-  def handles_creating_the_same_module_twice_using_the_module_plugin_extension
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns]`
-        expect($?.exitstatus).to match(0)
-        expect(output).to match(/Generate Complete/i)
-
-        output = `bundle exec ruby -S ceedling module:create[myUnicorn:unicorns] 2>&1`
-        expect($?.exitstatus).to match(1)
-        expect(output).to match(/ERROR: Ceedling Failed/)
-      end
-    end
-  end
-
-  def handles_destroying_a_module_that_does_not_exist_using_the_module_plugin
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:destroy[unknown]`
-        expect($?.exitstatus).to match(0)
-
-        expect(output).to match(/File src\/unknown\.c does not exist so cannot be removed\./)
-        expect(output).to match(/File src\/unknown\.h does not exist so cannot be removed\./)
-        expect(output).to match(/File test\/test_unknown\.c does not exist so cannot be removed\./)
-        expect(output).to match(/Destroy Complete/)
-
-        self.handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension
-      end
-    end
-  end
-
-  def handles_destroying_a_module_that_does_not_exist_using_the_module_plugin_path_extension
-    @c.with_context do
-      Dir.chdir @proj_name do
-        output = `bundle exec ruby -S ceedling module:destroy[myUnknownModule:unknown]`
-        expect($?.exitstatus).to match(0)
-
-        expect(output).to match(/File myUnknownModule\/src\/unknown\.c does not exist so cannot be removed\./)
-        expect(output).to match(/File myUnknownModule\/src\/unknown\.h does not exist so cannot be removed\./)
-        expect(output).to match(/File myUnknownModule\/test\/test_unknown\.c does not exist so cannot be removed\./)
-        expect(output).to match(/Destroy Complete/)
-      end
-    end
-  end
 
   def test_run_of_projects_fail_because_of_sigsegv_without_report
     @c.with_context do
@@ -839,9 +690,9 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation fault \(core dumped\)/)
-        expect(output).to match(/No tests executed./)
-        expect(!File.exists?('./build/test/results/test_add.fail'))
+        expect(output).to match(/Segmentation Fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(!File.exist?('./build/test/results/test_add.fail'))
       end
     end
   end
@@ -853,30 +704,90 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        add_line = false
-        updated_prj_yml = []
-        File.read('project.yml').split("\n").each do |line|
-          if line =~ /\:project\:/
-            add_line = true
-            updated_prj_yml.append(line)
-          else
-            if add_line
-              updated_prj_yml.append('  :use_backtrace_gdb_reporter: TRUE')
-              add_line = false
-            end
-            updated_prj_yml.append(line)
-          end
-        end
-
-        File.write('project.yml', updated_prj_yml.join("\n"), mode: 'w')
+        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Program received signal SIGSEGV, Segmentation fault./)
+        expect(output).to match(/Segmentation Fault/i)
         expect(output).to match(/Unit test failures./)
-        expect(File.exists?('./build/test/results/test_example_file_sigsegv.fail'))
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
         output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+      end
+    end
+  end
+
+  def execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue_when_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+
+        output = `bundle exec ruby -S ceedling test:all 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Segmentation fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+
+        output = `bundle exec ruby -S ceedling test:all --test_case=test_add_numbers_will_fail 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Segmentation fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+
+        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
+        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+
+        output = `bundle exec ruby -S ceedling test:all --exclude_test_case=add_numbers_adds_numbers 2>&1`
+        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
+        expect(output).to match(/Segmentation fault/i)
+        expect(output).to match(/Unit test failures./)
+        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
+        expect(output).to match(/IGNORED:\s+0/)
       end
     end
   end

@@ -1,5 +1,27 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 ---
 :dependencies:
-  :libraries: []
+  :deps: []
 
+:tools:  
+  :deps_compiler:  
+    :executable: gcc  
+    :arguments:  
+      - -g  
+      - -I"$": COLLECTION_PATHS_DEPS  
+      - -D$: COLLECTION_DEFINES_DEPS  
+      - -c "${1}"  
+      - -o "${2}"  
+  :deps_linker:  
+    :executable: ar  
+    :arguments:  
+      - rcs  
+      - ${2}  
+      - ${1}
 ...
