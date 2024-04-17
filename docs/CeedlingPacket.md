@@ -1,26 +1,197 @@
-[All code is copyright © 2010-2021 Ceedling Project
-by Mike Karlesky, Mark VanderVoord, and Greg Williams.
 
-This Documentation Is Released Under a
-Creative Commons 3.0 Attribution Share-Alike License]
+# Ceedling
 
-What the What?
+All code is copyright © 2010-2023 Ceedling Project
+by Michael Karlesky, Mark VanderVoord, and Greg Williams.
 
-Assembling build environments for C projects - especially with
-automated unit tests - is a pain. Whether it's Make or Rake or Premake
-or what-have-you, set up with an all-purpose build environment
-tool is tedious and requires considerable glue code to pull together
-the necessary tools and libraries. Ceedling allows you to generate
-an entire test and build environment for a C project from a single
-YAML configuration file. Ceedling is written in Ruby and works
-with the Rake build tool plus other goodness like Unity and CMock —
-the unit testing and mocking frameworks for C. Ceedling and
-its complementary tools can support the tiniest of embedded
-processors, the beefiest 64 bit power houses available, and
+This Documentation is released under a
+[Creative Commons 4.0 Attribution Share-Alike Deed][CC4SA].
+
+[CC4SA]: https://creativecommons.org/licenses/by-sa/4.0/deed.en
+
+# Quick Start
+
+Ceedling is a fancypants build system that greatly simplifies building 
+C projects. While it can certainly build release targets, it absolutely 
+shines at running unit test suites.
+
+## Steps
+
+1. Install Ceedling
+1. Create a project
+   1. Use Ceedling to generate an example project, or
+   1. Add a Ceedling project file to the root of an existing project, or
+   1. Create a project from scratch:
+      1. Create a project directory
+      1. Add source code and optionally test code however you'd like it organized
+      1. Create a Ceedling project file in the root of your project directory
+1. Run Ceedling tasks from the working directory of your project
+
+Ceedling requires a command line C toolchain be available in your path. It's 
+flexible enough to work with most anything on any platform. By default, Ceedling 
+is ready to work with [GCC] out of the box (we recommend the [MinGW] project 
+on Windows).
+
+A common build strategy with tooling other than GCC is to use your target 
+toolchain for release builds (with or without Ceedling) but rely on Ceedling + 
+GCC for test builds (more on all this [here][packet-section-2]).
+
+[GCC]: https://gcc.gnu.org
+
+## Ceedling Tasks
+
+Once you have Ceedling installed and a project file, Ceedling tasks go like this:
+
+* `ceedling test:all`, or
+* `ceedling release`, or, if you fancy,
+* `ceedling --verbosity=obnoxious clobber test:all gcov:all release`
+
+## Quick Start Documentation
+
+* [Installation][quick-start-1]
+* [Sample test code file + Example Ceedling projects][quick-start-2]
+* [Simple Ceedling project file][quick-start-3]
+* [Ceedling at the command line][quick-start-4]
+* [All your Ceedling project file options][quick-start-5]
+
+[quick-start-1]: #ceedling-installation--set-up
+[quick-start-2]: #commented-sample-test-file
+[quick-start-3]: #simple-sample-project-file
+[quick-start-4]: #now-what-how-do-i-make-it-go-the-command-line
+[quick-start-5]: #the-almighty-project-configuration-file-in-glorious-yaml
+
+<br/>
+
+---
+
+# Contents
+
+(Be sure to review **[breaking changes](BreakingChanges.md)** if you are working with
+a new release of Ceedling.)
+
+Building test suites in C requires much more scaffolding than for
+a release build. As such, much of Ceedling’s documentation is concerned
+with test builds. But, release build documentation is here too. We promise.
+It's just all mixed together.
+
+1. **[Ceedling, a C Build System for All Your Mad Scientisting Needs][packet-section-1]**
+
+   This section provides lots of background, definitions, and links for Ceedling
+   and its bundled frameworks. It also presents a very simple, example Ceedling
+   project file.
+
+1. **[Ceedling, Unity, and CMock’s Testing Abilities][packet-section-2]**
+
+   This section speaks to the philosophy of and practical options for unit testing
+   code in a variety of scenarios.
+
+1. **[How Does a Test Case Even Work?][packet-section-3]**
+
+   A brief overview of what a test case is and several simple examples illustrating
+   how test cases work.
+
+1. **[Commented Sample Test File][packet-section-4]**
+
+   This sample test file illustrates how to create test cases as well as many of the
+   conventions that Ceedling relies on to do its work. There's also a brief 
+   discussion of what gets compiled and linked to create an executable test.
+
+1. **[Anatomy of a Test Suite][packet-section-5]**
+
+   This documentation explains how a unit test grows up to become a test suite.
+
+1. **[Ceedling Installation & Set Up][packet-section-6]**
+
+   This one is pretty self explanatory.
+
+1. **[Now What? How Do I Make It _GO_? The Command Line.][packet-section-7]**
+
+   Ceedling’s command line.
+
+1. **[Important Conventions & Behaviors][packet-section-8]**
+
+   Much of what Ceedling accomplishes — particularly in testing — is by convention. 
+   Code and files structured in certain ways trigger sophisticated Ceedling features. 
+
+1. **[Using Unity, CMock & CException][packet-section-9]**
+
+   Not only does Ceedling direct the overall build of your code, it also links 
+   together several key tools and frameworks. Those can require configuration of 
+   their own. Ceedling facilitates this.
+
+1. **[How to Load a Project Configuration. You Have Options, My Friend.][packet-section-10]**
+
+   You can use a command line flag, an environment variable, or rely on a default
+   file in your working directory to load your base configuration.
+
+   Once your base project configuration is loaded, you have **_Mixins_** for merging 
+   additional configuration for different build scenarios as needed via command line, 
+   environment variable, and/or your project configuration file.
+
+1. **[The Almighty Ceedling Project Configuration File (in Glorious YAML)][packet-section-11]**
+
+   This is the exhaustive documentation for all of Ceedling’s project file 
+   configuration options — from project paths to command line tools to plugins and
+   much, much more.
+
+1. **[Build Directive Macros][packet-section-12]**
+
+   These code macros can help you accomplish your build goals When Ceedling’s 
+   conventions aren’t enough.
+
+1. **[Ceedling Plugins][packet-section-13]**
+
+   Ceedling is extensible. It includes a number of built-in plugins for code coverage,
+   test report generation, continuous integration reporting, test file scaffolding 
+   generation, sophisticated release builds, and more.
+
+1. **[Global Collections][packet-section-14]**
+
+   Ceedling is built in Ruby. Collections are globally available Ruby lists of paths,
+   files, and more that can be useful for advanced customization of a Ceedling project 
+   file or in creating plugins.
+
+[packet-section-1]:  #ceedling-a-c-build-system-for-all-your-mad-scientisting-needs
+[packet-section-2]:  #ceedling-unity-and-c-mocks-testing-abilities
+[packet-section-3]:  #how-does-a-test-case-even-work
+[packet-section-4]:  #commented-sample-test-file
+[packet-section-5]:  #anatomy-of-a-test-suite
+[packet-section-6]:  #ceedling-installation--set-up
+[packet-section-7]:  #now-what-how-do-i-make-it-go-the-command-line
+[packet-section-8]:  #important-conventions--behaviors
+[packet-section-9]:  #using-unity-cmock--cexception
+[packet-section-10]: #how-to-load-a-project-configuration-you-have-options-my-friend
+[packet-section-11]: #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
+[packet-section-12]: #build-directive-macros
+[packet-section-13]: #ceedling-plugins
+[packet-section-14]: #global-collections
+
+---
+
+<br/>
+
+# Ceedling, a C Build System for All Your Mad Scientisting Needs
+
+Ceedling allows you to generate an entire test and release build 
+environment for a C project from a single, short YAML configuration 
+file.
+
+Ceedling and its bundled tools, Unity, CMock, and CException, don’t 
+want to brag, but they’re also quite adept at supporting the tiniest of 
+embedded processors, the beefiest 64-bit powerhouses available, and 
 everything in between.
 
-For a build project including unit tests and using the default
-toolchain gcc, the configuration file could be as simple as this:
+Assembling build environments for C projects — especially with
+automated unit tests — is a pain. No matter the all-purpose build 
+environment tool you use, configuration is tedious and requires 
+considerable glue code to pull together the necessary tools and 
+libraries to run unit tests. The Ceedling bundle handles all this 
+for you.
+
+## Simple Sample Project File
+
+For a project including Unity/CMock unit tests and using the default 
+toolchain `gcc`, the configuration file could be as simple as this:
 
 ```yaml
 :project:
@@ -32,39 +203,45 @@ toolchain gcc, the configuration file could be as simple as this:
     - tests/**
   :source:
     - source/**
+  :include:
+    - inc/**
 ```
 
-From the command line, to build the release version of your project,
-you would simply run `ceedling release`. To run all your unit tests,
-you would run `ceedling test:all`. That's it!
+From the command line, to run all your unit tests, you would run 
+`ceedling test:all`. To build the release version of your project,
+you would simply run `ceedling release`. That's it!
 
 Of course, many more advanced options allow you to configure
 your project with a variety of features to meet a variety of needs.
 Ceedling can work with practically any command line toolchain
 and directory structure – all by way of the configuration file.
-Further, because Ceedling piggy backs on Rake, you can add your
+Further, because Ceedling piggybacks on Rake, you can add your
 own Rake tasks to accomplish project tasks outside of testing
 and release builds. A facility for plugins also allows you to
-extend Ceedling's capabilities for needs such as custom code
+extend Ceedling’s capabilities for needs such as custom code
 metrics reporting and coverage testing.
 
-What's with this Name?
+## What’s with This Name?
 
 Glad you asked. Ceedling is tailored for unit tested C projects
-and is built upon / around Rake (Rake is a Make replacement implemented
-in the Ruby scripting language). So, we've got C, our Rake, and
-the fertile soil of a build environment in which to grow and tend
-your project and its unit tests. Ta da - _Ceedling_.
+and is built upon Rake (a Make replacement implemented in the Ruby 
+scripting language). So, we've got C, our Rake, and the fertile 
+soil of a build environment in which to grow and tend your project 
+and its unit tests. Ta da - _Ceedling_.
 
-What Do You Mean "tailored for unit tested C projects"?
+## What Do You Mean “Tailored for unit tested C projects”?
 
 Well, we like to write unit tests for our C code to make it lean and
-mean (that whole [Test-Driven Development][tdd]
-thing). Along the way, this style of writing C code spawned two
-tools to make the job easier: a unit test framework for C called
-_Unity_ and a mocking library called _CMock_. And, though it's
-not directly related to testing, a C framework for exception
-handling called _CException_ also came along.
+mean — that whole [Test-Driven Development][tdd] thing.
+
+Along the way, this style of writing C code spawned two
+tools to make the job easier:
+
+1. A unit test framework for C called _Unity_
+1. A mocking library called _CMock_
+
+And, though it's not directly related to testing, a C framework for 
+exception handling called _CException_ also came along.
 
 [tdd]: http://en.wikipedia.org/wiki/Test-driven_development
 
@@ -76,31 +253,41 @@ or created anew for each new project. Ceedling replaces all that
 tedium and rework with a configuration file that ties everything
 together.
 
-Though Ceedling is tailored for unit testing, it can also go right ahead
-and build your final binary release artifact for you as well. Or,
-Ceedling and your tests can live alongside your existing release build
-setup. That said, Ceedling is more powerful as a unit test build
-environment than it is a general purpose release build environment;
-complicated projects including separate bootloaders or multiple library
-builds, etc. are not its strong suit.
+Though Ceedling is tailored for unit testing, it can also go right 
+ahead and build your final binary release artifact for you as well. 
+That said, Ceedling is more powerful as a unit test build environment 
+than it is a general purpose release build environment. Complicated 
+projects including separate bootloaders or multiple library builds, 
+etc. are not necessarily its strong suit (but the 
+[`subprojects`](../plugins/subprojects/README.md) plugin can 
+accomplish quite a bit here).
 
-Hold on. Back up. Ruby? Rake? YAML? Unity? CMock? CException?
+It's quite common and entirely workable to host Ceedling and your 
+test suite alongside your existing release build setup. That is, you 
+can use make, Visual Studio, SCons, Meson, etc. for your release build
+and Ceedling for your test build. Your two build systems will simply
+“point“ to the same project code.
 
-Seem overwhelming? It's not bad at all, and for the benefits tests
+## Hold on. Back up. Ruby? Rake? YAML? Unity? CMock? CException?
+
+Seems overwhelming? It's not bad at all. And, for the benefits testing
 bring us, it's all worth it.
 
-[Ruby][] is a handy scripting
-language like Perl or Python. It's a modern, full featured language
-that happens to be quite handy for accomplishing tasks like code
-generation or automating one's workflow while developing in
-a compiled language such as C.
+### Ruby
+
+[Ruby] is a handy scripting language like Perl or Python. It's a modern, 
+full featured language that happens to be quite handy for accomplishing 
+tasks like code generation or automating one's workflow while developing 
+in a compiled language such as C.
 
 [Ruby]: http://www.ruby-lang.org/en/
 
-[Rake][] is a utility written in Ruby
-for accomplishing dependency tracking and task automation
-common to building software. It's a modern, more flexible replacement
-for [Make][]).
+### Rake
+
+[Rake] is a utility written in Ruby for accomplishing dependency 
+tracking and task automation common to building software. It's a modern, 
+more flexible replacement for [Make]).
+
 Rakefiles are Ruby files, but they contain build targets similar
 in nature to that of Makefiles (but you can also run Ruby code in
 your Rakefile).
@@ -108,16 +295,29 @@ your Rakefile).
 [Rake]: http://rubyrake.org/
 [Make]: http://en.wikipedia.org/wiki/Make_(software)
 
-[YAML][] is a "human friendly data serialization standard for all
-programming languages." It's kinda like a markup language, but don't
-call it that. With a YAML library, you can [serialize][] data structures
+### YAML
+
+[YAML] is a "human friendly data serialization standard for all
+programming languages." It's kinda like a markup language but don’t
+call it that. With a YAML library, you can [serialize] data structures
 to and from the file system in a textual, human readable form. Ceedling
 uses a serialized data structure as its configuration input.
 
+YAML has some advanced features that can greatly 
+[reduce duplication][yaml-anchors-aliases] in a configuration file 
+needed in complex projects. YAML anchors and aliases are beyond the scope
+of this document but may be of use to advanced Ceedling users. Note that 
+Ceedling does anticipate the use of YAML aliases. It proactively flattens 
+YAML lists to remove any list nesting that results from the convenience of
+aliasing one list inside another.
+
 [YAML]: http://en.wikipedia.org/wiki/Yaml
 [serialize]: http://en.wikipedia.org/wiki/Serialization
+[yaml-anchors-aliases]: https://blog.daemonl.com/2016/02/yaml.html
 
-[Unity] is a [unit test framework][test] for C. It provides facilities
+### Unity
+
+[Unity] is a [unit test framework][unit-testing] for C. It provides facilities
 for test assertions, executing tests, and collecting / reporting test
 results. Unity derives its name from its implementation in a single C
 source file (plus two C header files) and from the nature of its
@@ -125,16 +325,26 @@ implementation - Unity will build in any C toolchain and is configurable
 for even the very minimalist of processors.
 
 [Unity]: http://github.com/ThrowTheSwitch/Unity
-[test]: http://en.wikipedia.org/wiki/Unit_testing
+[unit-testing]: http://en.wikipedia.org/wiki/Unit_testing
 
-[CMock] is a tool written in Ruby able to generate entire
-[mock functions][mock] in C code from a given C header file. Mock
-functions are invaluable in [interaction-based unit testing][ut].
+### CMock
+
+[CMock]<sup>†</sup> is a tool written in Ruby able to generate [function mocks & stubs][test-doubles] 
+in C code from a given C header file. Mock functions are invaluable in 
+[interaction-based unit testing][interaction-based-tests].
 CMock's generated C code uses Unity.
 
+<sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports
+[FFF], _Fake Function Framework_, for [fake functions][test-doubles] as an
+alternative to CMock’s mocks and stubs.
+
 [CMock]: http://github.com/ThrowTheSwitch/CMock
-[mock]: http://en.wikipedia.org/wiki/Mock_object
-[ut]: http://martinfowler.com/articles/mocksArentStubs.html
+[test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
+[FFF]: https://github.com/meekrosoft/fff
+[FFF-plugin]: ../plugins/fff
+[interaction-based-tests]: http://martinfowler.com/articles/mocksArentStubs.html
+
+### CException
 
 [CException] is a C source and header file that provide a simple
 [exception mechanism][exn] for C by way of wrapping up the
@@ -146,39 +356,438 @@ up your return call trace.
 [exn]: http://en.wikipedia.org/wiki/Exception_handling
 [setjmp]: http://en.wikipedia.org/wiki/Setjmp.h
 
-Notes
------
+## Notes on Ceedling Dependencies and Bundled Tools
 
-* YAML support is included with Ruby - requires no special installation
-  or configuration.
+* By using the preferred installation option of the Ruby Ceedling gem (see 
+  later installation section), all other Ceedling dependencies will be 
+  installed for you.
 
-* Unity, CMock, and CException are bundled with Ceedling, and
-  Ceedling is designed to glue them all together for your project
-  as seamlessly as possible.
+* Regardless of installation method, Unity, CMock, and CException are bundled 
+  with Ceedling. Ceedling is designed to glue them all together for your 
+  project as seamlessly as possible.
 
+* YAML support is included with Ruby. It requires no special installation
+  or configuration. If your project file contains properly formatted YAML
+  with the recognized names and options (see later sections), you are good 
+  to go.
 
-Installation & Setup: What Exactly Do I Need to Get Started?
-------------------------------------------------------------
+<br/>
 
-As a [Ruby gem](http://docs.rubygems.org/read/chapter/1):
+# Ceedling, Unity, and CMock’s Testing Abilities
 
-1. [Download and install Ruby](http://www.ruby-lang.org/en/downloads/)
+The unit testing Ceedling, Unity, and CMock afford works in practically 
+any context.
 
-2. Use Ruby's command line gem package manager to install Ceedling:
-   `gem install ceedling`
-   (Unity, CMock, and CException come along with Ceedling for free)
+The simplest sort of test suite is one crafted to run on the same host 
+system using the same toolchain as the release artifact under development.
 
-3. Execute Ceedling at command line to create example project
+But, Ceedling, Unity, and CMock were developed for use on a wide variety 
+of systems and include features handy for low-level system development work.
+This is especially of interest to embedded systems developers.
+
+## All your sweet, sweet test suite options
+
+Ceedling, Unity, and CMock help you create and run test suites using any 
+of the following approaches. For more on this topic, please see this 
+[handy dandy article][tts-which-build] and/or follow the links for each 
+item listed below.
+
+[tts-which-build]: https://throwtheswitch.org/build/which
+
+1. **[Native][tts-build-native].** This option builds and runs code on your 
+   host system.
+   1. In the simplest case this means you are testing code that is intended
+      to run on the same sort of system as the test suite. Your test 
+      compiler toolchain is the same as your release compiler toolchain.
+   1. However, a native build can also mean your test compiler is different
+      than your release compiler. With some thought and effort, code for
+      another platform can be tested on your host system. This is often
+      the best approach for embedded and other specialized development.
+1. **[Emulator][tts-build-cross].** In this option, you build your test code with your target's
+   toolchain, and then run the test suite using an emulator provided for
+   that target. This is a good option for embedded and other specialized
+   development — if an emulator is available.
+1. **[On target][tts-build-cross].** The Ceedling bundle of tools can create test suites that
+   run on a target platform directly. Particularly in embedded development
+   — believe it or not — this is often the option of last resort. That is,
+   you should probably go with the other options in this list.
+
+[tts-build-cross]: https://throwtheswitch.org/build/cross 
+[tts-build-native]: https://throwtheswitch.org/build/native
+
+<br/>
+
+# How Does a Test Case Even Work?
+
+## Behold assertions
+
+In its simplest form, a test case is just a C function with no 
+parameters and no return value that packages up logical assertions. 
+If no assertions fail, the test case passes. Technically, an empty
+test case function is a passing test since there can be no failing
+assertions.
+
+Ceedling relies on the [Unity] project for its unit test framework
+(i.e. the thing that provides assertions and counts up passing
+and failing tests).
+
+An assertion is simply a logical comparison of expected and actual
+values. Unity provides a wide variety of different assertions to 
+cover just about any scenario you might encounter. Getting 
+assertions right is actually a bit tricky. Unity does all that 
+hard work for you and has been thoroughly tested itself and battle
+hardened through use by many, many developers.
+
+### Super simple passing test case
+
+```c
+#include "unity.h"
+
+void test_case(void) {
+   TEST_ASSERT_TRUE( (1 == 1) );
+}
+```
+
+### Super simple failing test case
+
+```c
+#include "unity.h"
+
+void test_a_different_case(void) {
+   TEST_ASSERT_TRUE( (1 == 2) );
+}
+```
+
+### Realistic simple test case
+
+In reality, we’re probably not testing the static value of an integer 
+against itself. Instead, we’re calling functions in our source code
+and making assertions against return values.
+
+```c
+#include "unity.h"
+#include "my_math.h"
+
+void test_some_sums(void) {
+   TEST_ASSERT_EQUALS(   5, mySum(  2,   3) );
+   TEST_ASSERT_EQUALS(   6, mySum(  0,   6) );
+   TEST_ASSERT_EQUALS( -12, mySum( 20, -32) );
+}
+```
+
+If an assertion fails, the test case fails. As soon as an assertion
+fails, execution within that test case stops.
+
+Multiple test cases can live in the same test file. When all the
+test cases are run, their results are tallied into simple pass
+and fail metrics with a bit of metadata for failing test cases such 
+as line numbers and names of test cases.
+
+Ceedling and Unity work together to both automatically run your test
+cases and tally up all the results.
+
+### Sample test case output
+
+Successful test suite run:
+
+```
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  49
+PASSED:  49
+FAILED:   0
+IGNORED:  0
+```
+
+A test suite with a failing test:
+
+```
+-------------------
+FAILED TEST SUMMARY
+-------------------
+[test/TestModel.c]
+  Test: testInitShouldCallSchedulerAndTemperatureFilterInit
+  At line (21): "Function TaskScheduler_Init() called more times than expected."
+
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  49
+PASSED:  48
+FAILED:   1
+IGNORED:  0
+```
+
+### Advanced test cases with mocks
+
+Often you want to test not just what a function returns but how
+it interacts with other functions.
+
+The simple test cases above work well at the "edges" of a 
+codebase (libraries, state management, some kinds of I/O, etc.). 
+But, in the messy middle of your code, code calls other code. 
+One way to handle testing this is with [mock functions][mocks] and
+[interaction-based testing][interaction-based-tests].
+
+Mock functions are functions with the same interface as the real 
+code the mocks replace. A mocked function allows you to control 
+how it behaves and wrap up assertions within a higher level idea 
+of expectations.
+
+What is meant by an expectation? Well… We _expect_ a certain 
+function is called with certain arguments and that it will return
+certain values. With the appropriate code inside a mocked function 
+all of this can be managed and checked.
+
+You can write your own mocks, of course. But, it's generally better 
+to rely on something else to do it for you. Ceedling uses the [CMock] 
+framework to perform mocking for you.
+
+Here's some sample code you might want to test:
+
+```c
+#include "other_code.h"
+
+void doTheThingYo(mode_t input) {
+   mode_t result = processMode(input);
+   if (result == MODE_3) {
+      setOutput(OUTPUT_F);
+   }
+   else {
+      setOutput(OUTPUT_D);
+   } 
+}
+```
+
+And, here's what test cases using mocks for that code could look 
+like:
+
+```c
+#include "mock_other_code.h"
+
+void test_doTheThingYo_should_enableOutputF(void) {
+   // Mocks
+   processMode_ExpectAndReturn(MODE_1, MODE_3);
+   setOutput_Expect(OUTPUT_F);
+
+   // Function under test
+   doTheThingYo(MODE_1);
+}
+
+void test_doTheThingYo_should_enableOutputD(void) {
+   // Mocks
+   processMode_ExpectAndReturn(MODE_2, MODE_4);
+   setOutput_Expect(OUTPUT_D);
+
+   // Function under test
+   doTheThingYo(MODE_2);
+}
+```
+
+Remember, the generated mock code you can’t see here has a whole bunch 
+of smarts and Unity assertions inside it. CMock scans header files and
+then generates mocks (C code) from the function signatures it finds in
+those header files. It's kinda magical.
+
+### That was the basics, but you’ll need more
+
+For more on the assertions and mocking shown above, consult the 
+documentation for [Unity] and [CMock] or the resources in
+Ceedling’s [README][/README.md].
+
+Ceedling, Unity, and CMock rely on a variety of
+[conventions to make your life easier][conventions-and-behaviors].
+Read up on these to understand how to build up test cases
+and test suites.
+
+Also take a look at the very next sections for more examples
+and details on how everything fits together.
+
+[conventions-and-behaviors]: #important-conventions--behaviors
+
+<br/>
+
+# Commented Sample Test File
+
+**Here is a beautiful test file to help get you started…**
+
+## Core concepts in code
+
+After absorbing this sample code, you'll have context for much
+of the documentation that follows.
+
+The sample test file below demonstrates the following:
+
+1. Making use of the Unity & CMock test frameworks.
+1. Adding the source under test (`foo.c`) to the final test 
+   executable by convention (`#include "foo.h"`).
+1. Adding two mocks to the final test executable by convention
+   (`#include "mock_bar.h` and `#include "mock_baz.h`).
+1. Adding a source file with no matching header file to the test 
+   executable with a test build directive macro 
+   `TEST_SOURCE_FILE("more.c")`.
+1. Creating two test cases with mock expectations and Unity
+   assertions.
+
+All other conventions and features are documented in the sections
+that follow.
+
+```c
+// test_foo.c -----------------------------------------------
+#include "unity.h"     // Compile/link in Unity test framework
+#include "types.h"     // Header file with no *.c file -- no compilation/linking
+#include "foo.h"       // Corresponding source file, foo.c, under test will be compiled and linked
+#include "mock_bar.h"  // bar.h will be found and mocked as mock_bar.c + compiled/linked in;
+#include "mock_baz.h"  // baz.h will be found and mocked as mock_baz.c + compiled/linked in
+
+TEST_SOURCE_FILE("more.c") // foo.c depends on symbols from more.c, but more.c has no matching more.h
+
+void setUp(void) {}    // Every test file requires this function;
+                       // setUp() is called by the generated runner before each test case function
+
+void tearDown(void) {} // Every test file requires this function;
+                       // tearDown() is called by the generated runner after each test case function
+
+// A test case function
+void test_Foo_Function1_should_Call_Bar_AndGrill(void)
+{
+    Bar_AndGrill_Expect();                    // Function from mock_bar.c that instructs our mocking 
+                                              // framework to expect Bar_AndGrill() to be called once
+    TEST_ASSERT_EQUAL(0xFF, Foo_Function1()); // Foo_Function1() is under test (Unity assertion):
+                                              //  (a) Calls Bar_AndGrill() from bar.h
+                                              //  (b) Returns a byte compared to 0xFF
+}
+
+// Another test case function
+void test_Foo_Function2_should_Call_Baz_Tec(void)
+{
+    Baz_Tec_ExpectAnd_Return(1);       // Function from mock_baz.c that instructs our mocking
+                                       // framework to expect Baz_Tec() to be called once and return 1
+    TEST_ASSERT_TRUE(Foo_Function2()); // Foo_Function2() is under test (Unity assertion)
+                                       //  (a) Calls Baz_Tec() in baz.h
+                                       //  (b) Returns a value that can be compared to boolean true
+}
+
+// end of test_foo.c ----------------------------------------
+```
+
+## Ceedling actions from the sample test code
+
+From the test file specified above Ceedling will generate 
+`test_foo_runner.c`. This runner file will contain `main()` and will call 
+both of the example test case functions.
+
+The final test executable will be `test_foo.exe` (Windows) or `test_foo.out` 
+for Unix-based systems (extensions are configurable. Based on the `#include` 
+list and test directive macro above, the test executable will be the output 
+of the linker having processed `unity.o`, `foo.o`, `mock_bar.o`, `mock_baz.o`, 
+`more.o`, `test_foo.o`, and `test_foo_runner.o`. 
+
+Ceedling finds the needed code files, generates mocks, generates a runner, 
+compiles all the code files, and links everything into the test executable. 
+Ceedling will then run the test executable and collect test results from it 
+to be reported to the developer at the command line.
+
+## Incidentally, Ceedling comes with example projects
+
+Ceedling comes with entire example projects you can extract.
+
+1. Execute `ceedling examples` in your terminal to list available example 
+   projects.
+1. Execute `ceedling example <project> [destination]` to extract the 
+   named example project.
+
+You can inspect the _project.yml_ file and source & test code. Run 
+`ceedling help` from the root of the example projects to see what you can
+do, or just go nuts with `ceedling test:all`.
+
+<br/>
+
+# Anatomy of a Test Suite
+
+A Ceedling test suite is composed of one or more individual test executables.
+
+The [Unity] project provides the actual framework for test case assertions 
+and unit test sucess/failure accounting. If mocks are enabled, [CMock] builds 
+on Unity to generate mock functions from source header files with expectation
+test accounting. Ceedling is the glue that combines these frameworks, your
+project's toolchain, and your source code into a collection of test 
+executables you can run as a singular suite.
+
+## What is a test executable?
+
+Put simply, in a Ceedling test suite, each test file becomes a test executable.
+Your test code file becomes a single test executable.
+
+`test_foo.c` ➡️ `test_foo.out` (or `test_foo.exe` on Windows)
+
+A single test executable generally comprises the following. Each item in this
+list is a C file compiled into an object file. The entire list is linked into
+a final test executable.
+
+* One or more release C code files under test (`foo.c`)
+* `unity.c`.
+* A test C code file (`test_foo.c`).
+* A generated test runner C code file (`test_foo_runner.c`). `main()` is located
+  in the runner.
+* If using mocks:
+   * `cmock.c`
+   * One more mock C code files generated from source header files (`mock_bar.c`)
+
+## Why multiple individual test executables in a suite?
+
+For several reasons:
+
+* This greatly simplifies the building of your tests.
+* C lacks any concept of namespaces or reflection abilities able to segment and 
+  distinguish test cases.
+* This allows the same release code to be built differently under different
+  testing scenarios. Think of how different `#define`s, compiler flags, and
+  linked libraries might come in handy for different tests of the same 
+  release C code. One source file can be built and tested in different ways
+  with multiple test files.
+
+## Ceedling’s role in your test suite
+
+A test executable is not all that hard to create by hand, but it can be tedious,
+repetitive, and error-prone.
+
+What Ceedling provides is an ability to perform the process repeatedly and simply 
+at the push of a button, alleviating the tedium and any forgetfulness. Just as 
+importantly, Ceedling also does all the work of running each of those test 
+executables and tallying all the test results.
+
+<br/>
+
+# Ceedling Installation & Set Up
+
+**How Exactly Do I Get Started?**
+
+The simplest way to get started is to install Ceedling as a Ruby gem. Gems are
+simply prepackaged Ruby-based software. Other options exist, but they are most
+useful for developing Ceedling 
+
+## As a [Ruby gem](http://docs.rubygems.org/read/chapter/1):
+
+1. [Download and install Ruby][ruby-install]. Ruby 3 is required.
+
+1. Use Ruby's command line gem package manager to install Ceedling:
+   `gem install ceedling`. Unity, CMock, and CException come along with 
+   Ceedling at no extra charge.
+
+1. Execute Ceedling at command line to create example project
    or an empty Ceedling project in your filesystem (executing
    `ceedling help` first is, well, helpful).
 
-Gem install notes:
+[ruby-install]: http://www.ruby-lang.org/en/downloads/
 
-1. Steps 1-2 are a one time affair for your local environment.
-   When steps 1-2 are completed once, only step 3 is needed for
-   each new project.
+### Gem install notes
 
-Getting Started after Ceedling is installed:
+Steps 1-2 are a one time affair for your local environment. When steps 1-2 
+are completed once, only step 3 is needed for each new project.
+
+## Getting Started after Ceedling is Installed
 
 1. Once Ceedling is installed, you'll want to start to integrate it with new
    and old projects alike. If you wanted to start to work on a new project
@@ -187,197 +796,240 @@ Getting Started after Ceedling is installed:
    integrate Ceedling into it, you would run `ceedling new bar` and Ceedling
    will create any files and directories it needs to run.
 
-2. Now that you have Ceedling integrated with a project, you can start using it.
+1. Now that you have Ceedling integrated with a project, you can start using it.
    A good starting point to get use to Ceedling either in a new project or an
    existing project is creating a new module to get use to Ceedling by issuing
    the command `ceedling module:create[unicorn]`.
 
-General notes:
+## Grab Bag of Ceedling Notes
 
-1. Certain advanced features of Ceedling rely on gcc and cpp
-   as preprocessing tools. In most linux systems, these tools
+1. Certain advanced features of Ceedling rely on `gcc` and `cpp`
+   as preprocessing tools. In most Linux systems, these tools
    are already available. For Windows environments, we recommend
-   the [mingw project](http://www.mingw.org/) (Minimalist
+   the [MinGW project](http://www.mingw.org/) (Minimalist
    GNU for Windows). This represents an optional, additional
    setup / installation step to complement the list above. Upon
-   installing mingw ensure your system path is updated or set
-   [:environment][:path] in your `project.yml` file (see
-   environment section later in this document).
+   installing MinGW ensure your system path is updated or set
+   `:environment` ↳ `:path` in your project file (see
+   `:environment` section later in this document).
 
-2. To use a project file name other than the default `project.yml`
-   or place the project file in a directory other than the one
-   in which you'll run Rake, create an environment variable
-   `CEEDLING_MAIN_PROJECT_FILE` with your desired project
-   file path.
-
-3. To better understand Rake conventions, Rake execution,
+1. To better understand Rake conventions, Rake execution,
    and Rakefiles, consult the [Rake tutorial, examples, and
    user guide](http://rubyrake.org/).
 
-4. When using Ceedling in Windows environments, a test file name may
+1. When using Ceedling in Windows environments, a test file name may
    not include the sequences “patch” or “setup”. The Windows Installer
    Detection Technology (part of UAC), requires administrator
    privileges to execute file names with these strings.
 
-Now What? How Do I Make It GO?
-------------------------------
+<br/>
 
-We're getting a little ahead of ourselves here, but it's good
+# Now What? How Do I Make It _GO_? The Command Line.
+
+We’re getting a little ahead of ourselves here, but it's good
 context on how to drive this bus. Everything is done via the command
-line. We'll cover conventions and how to actually configure
+line. We'll cover project conventions and how to actually configure
 your project in later sections.
 
-To run tests, build your release artifact, etc., you will be interacting
-with Rake on the command line. Ceedling works with Rake to present
-you with named tasks that coordinate the file generation and
-build steps needed to accomplish something useful. You can also
-add your own independent Rake tasks or create plugins to extend
-Ceedling (more on this later).
+For now, let's talk about the command line.
+
+To run tests, build your release artifact, etc., you will be using the
+trusty command line. Ceedling is transitioning away from being built
+around Rake. As such, right now, interacting with Ceedling at the 
+command line involves two different conventions:
+
+1. **Application Commands.** Application commands tell Ceedling what to
+   to do with your project. These create projects, load project files, 
+   begin builds, output version information, etc. These include rich 
+   help and operate similarly to popular command line tools like `git`.
+1. **Build & Plugin Tasks.** Build tasks actually execute test suites, 
+   run release builds, etc. These tasks are created from your project 
+   file. These are generated through Ceedling's Rake-based code and 
+   conform to its conventions — simplistic help, no option flags, but 
+   bracketed arguments.
+
+In the case of running builds, both come into play at the command line.
+
+## Quick command line example to get you started
+
+To exercise the Ceedling command line quickly, follow these steps after 
+[installing Ceedling](#ceedling-installation--set-up):
+
+1. Open a terminal and chnage directories to a location suitable for
+   an example project.
+1. Execute `ceedling example temp_sensor` in your terminal.
+1. Change directories into the new _temp_sensor/_ directory.
+1. Execute `ceedling test:all` in your terminal.
+1. Take a look at the build and test suite console output as well as 
+   the _project.yml_ file in the root of the example project.
+
+## Ceedling application commands
+
+Ceedling provides robust command line help for application commands.
+Execute `ceedling help` for a summary view of all application commands.
+Execute `ceedling help <command>` for detailed help.
+
+_Note:_ Because the built-in command line help is thorough, we will only briefly
+list and explain the available application commands.
 
 * `ceedling [no arguments]`:
 
-  Run the default Rake task (conveniently recognized by the name default
-  by Rake). Neither Rake nor Ceedling provide a default task. Rake will
-  abort if run without arguments when no default task is defined. You can
-  conveniently define a default task in the Rakefile discussed in the
-  preceding setup & installation section of this document.
+  Runs the default build tasks. Unless set in the project file, Ceedling 
+  uses a default task of `test:all`. To override this behavior, set your 
+  own default tasks in the project file (see later section). 
 
-* `ceedling -T`:
+* `ceedling build <tasks...>` or `ceedling <tasks...>`:
 
-  List all available Rake tasks with descriptions (Rake tasks without
-  descriptions are not listed). -T is a command line switch for Rake and
-  not the same as tasks that follow.
+  Runs the named build tasks. `build` is optional. Various option flags
+  exist to control what project configuration is loaded, verbosity 
+  levels, logging, etc. See next section for build tasks. Of note,
+  this application command provides optional test case filters using
+  traditional option flags (ex. `--test-case=<filter>`) whose contents
+  are provided to Rake test tasks behind the scenes.
 
-* `ceedling <tasks...> --trace`:
+* `ceedling dumpconfig`:
 
-  For advanced users troubleshooting a confusing build error, debug
-  Ceedling or a plugin, --trace provides a stack trace of dependencies
-  walked during task execution and any Ruby failures along the way. Note
-  that --trace is a command line switch for Rake and is not the same as
-  tasks that follow.
+  Process project configuration and write final result to a YAML file. 
+  Various option flags exist to control what project configuration is 
+  loaded.
 
 * `ceedling environment`:
 
-  List all configured environment variable names and string values. This
-  task is helpful in verifying the evaluation of any Ruby expressions in
-  the [:environment] section of your config file. *: Note: Ceedling may
-  set some convenience environment variables by default.*
+  Lists project related environment variables:
+
+  * All configured environment variable names and string values added to
+    your environment from within Ceedling and through the `:environment`
+    section of your configuration. This is especially helpful in 
+    verifying the evaluation of any string replacement expressions in
+    your config entries.
+  * All existing Ceedling-related environment variables set before you
+    ran Ceedling from the command line.
+
+* `ceedling example`:
+
+  Extracts an example project from within Ceedling to your local 
+  filesystem. The available examples are listed with 
+  `ceedling examples`. Various option flags control whether the example
+  contains vendored Ceedling and/or a documentation bundle.
+
+* `ceedling examples`:
+
+  Lists the available examples within Ceedling. To extract an example,
+  use `ceedling example`.
+
+* `ceedling help`:
+
+  Displays summary help for all application commands and detailed help 
+  for each command. `ceedling help` also loads your project 
+  configuration (if available) and lists all build tasks from it. 
+  Various option flags control what project configuration is loaded.
+
+* `ceedling new`:
+
+  Creates a new project structure. Various option flags control whether 
+  the new project contains vendored Ceedling, a documentation bundle,
+  and/or a starter project configuration file.
+
+* `ceedling upgrade`:
+
+  Upgrade vendored installation of Ceedling for an existing project 
+  along with any locally installed documentation bundles.
+
+* `ceedling version`:
+
+  Displays version information for Ceedling and its components.
+
+## Ceedling build tasks
+
+Build task are loaded from your project configuration. Unlike 
+application commands that are fixed, build tasks vary depending on your
+project configuration and the files within your project structure.
 
 * `ceedling paths:*`:
 
-  List all paths collected from [:paths] entries in your YAML config
-  file where * is the name of any section contained in [:paths]. This
+  List all paths collected from `:paths` entries in your YAML config
+  file where `*` is the name of any section contained in `:paths`. This
   task is helpful in verifying the expansion of path wildcards / globs
-  specified in the [:paths] section of your config file.
+  specified in the `:paths` section of your config file.
 
 * `ceedling files:assembly`
-* `ceedling files:include`
+* `ceedling files:header`
 * `ceedling files:source`
 * `ceedling files:support`
 * `ceedling files:test`
 
   List all files and file counts collected from the relevant search
-  paths specified by the [:paths] entries of your YAML config file. The
-  files:assembly task will only be available if assembly support is
-  enabled in the [:release_build] section of your configuration file.
-
-* `ceedling options:*`:
-
-  Load and merge configuration settings into the main project
-  configuration. Each task is named after a `*.yml` file found in the
-  configured options directory. See documentation for the configuration
-  setting [:project][:options_paths] and for options files in advanced
-  topics.
+  paths specified by the `:paths` entries of your YAML config file. The
+  `files:assembly` task will only be available if assembly support is
+  enabled in the `:release_build` or `:test_build` sections of your 
+  configuration file.
 
 * `ceedling test:all`:
 
-  Run all unit tests (rebuilding anything that's changed along the way).
-
-* `ceedling test:build_only`:
-
-  Build all unit tests, object files and executable but not run them.
-
-* `ceedling test:delta`:
-
-  Run only those unit tests for which the source or test files have
-  changed (i.e. incremental build). Note: with the
-  [:project][:use_test_preprocessor] configuration file option set,
-  runner files are always regenerated limiting the total efficiency this
-  text execution option can afford.
+  Run all unit tests.
 
 * `ceedling test:*`:
 
   Execute the named test file or the named source file that has an
-  accompanying test. No path. Examples: ceedling test:foo.c or ceedling
-  test:test_foo.c
+  accompanying test. No path. Examples: `ceedling test:foo`, `ceedling 
+  test:foo.c` or `ceedling test:test_foo.c`
+
+* `ceedling test:* --test-case=<test_case_name> `
+  Execute individual test cases which match `test_case_name`.
+
+  For instance, if you have a test file _test_gpio.c_ containing the following 
+  test cases (test cases are simply `void test_name(void)`:
+
+    - `test_gpio_start`
+    - `test_gpio_configure_proper`
+    - `test_gpio_configure_fail_pin_not_allowed`
+
+  … and you want to run only _configure_ tests, you can call:
+
+    `ceedling test:gpio --test-case=configure`
+
+  **Test case matching notes**
+
+  * Test case matching is on sub-strings. `--test_case=configure` matches on
+    the test cases including the word _configure_, naturally. 
+    `--test-case=gpio` would match all three test cases.
+
+* `ceedling test:* --exclude_test_case=<test_case_name> `
+  Execute test cases which do not match `test_case_name`.
+
+  For instance, if you have file test_gpio.c with defined 3 tests:
+
+    - `test_gpio_start`
+    - `test_gpio_configure_proper`
+    - `test_gpio_configure_fail_pin_not_allowed`
+
+  … and you want to run only start tests, you can call:
+
+    `ceedling test:gpio --exclude_test_case=configure`
+
+  **Test case exclusion matching notes**
+
+  * Exclude matching follows the same sub-string logic as discussed in the
+    preceding section.
 
 * `ceedling test:pattern[*]`:
 
   Execute any tests whose name and/or path match the regular expression
-  pattern (case sensitive). Example: ceedling "test:pattern[(I|i)nit]" will
-  execute all tests named for initialization testing. Note: quotes may
-  be necessary around the ceedling parameter to distinguish regex characters
-  from command line operators.
+  pattern (case sensitive). Example: `ceedling "test:pattern[(I|i)nit]"` 
+  will execute all tests named for initialization testing.
+
+  _Note:_ Quotes are likely necessary around the regex characters or 
+  entire task to distinguish characters from shell command line operators.
 
 * `ceedling test:path[*]`:
 
   Execute any tests whose path contains the given string (case
-  sensitive). Example: ceedling test:path[foo/bar] will execute all tests
-  whose path contains foo/bar. Note: both directory separator characters
-  / and \ are valid.
+  sensitive). Example: `ceedling test:path[foo/bar]` will execute all tests
+  whose path contains foo/bar. _Notes:_
 
-* `ceedling test:* --test_case=<test_case_name> `
-  Execute test case which match **test_case_name**. Option available only after 
-  setting up **cmdline_args** to true under **test_runner** in project.yml:
-    
-    ```
-    :test_runner:
-      :cmdline_args: true
-    ```
-
-  For instance, if you have file test_gpio.c with defined 3 tests:
-
-    - test_gpio_start
-    - test_gpio_configure_proper
-    - test_gpio_configure_fail_pin_not_allowed
-
-  and you want to run only configure tests, you can call:
-
-    ```ceedling test:gpio --test_case=configure```
-
-    ---
-  **Limitation**
-
-    The Unity implementation use test case name as substring which will be search in your test case names. If you pass only **gpio** and your file under test contains **gpio** in the name, it will run all tests from it. This is connected with the logic, how Unity generates test_<file_name_runner.c> files. In such case, it is suggested to use full name of test case.
-
-  ---
-
-* `ceedling test:* --exclude_test_case=<test_case_name> `
-  Execute test case which does not match **test_case_name**. Option available only after 
-  setting up **cmdline_args** to true under **test_runner** in project.yml:
-    
-    ```
-    :test_runner:
-      :cmdline_args: true
-    ```
-
-  For instance, if you have file test_gpio.c with defined 3 tests:
-
-    - test_gpio_start
-    - test_gpio_configure_proper
-    - test_gpio_configure_fail_pin_not_allowed
-
-  and you want to run only start tests, you can call:
-
-    ```ceedling test:gpio --exclude_test_case=configure```
-
-  ---
-  **Limitation**
-
-    The Unity implementation use test case name as substring which will be search in your test case names. If you pass only **gpio** and your file under test contains **gpio** in the name, it will run all tests from it. This is connected with the logic, how Unity generates test_<file_name_runner.c> files. In such case, it is suggested to use full name of test case.
-
-  ---
-
+  1. Both directory separator characters `/` and `\` are valid.
+  1. Quotes may be necessary around the task to distinguish the parameter's
+     characters from shell command line operators.
 
 * `ceedling release`:
 
@@ -387,51 +1039,12 @@ Ceedling (more on this later).
 * `ceedling release:compile:*`:
 
   Sometimes you just need to compile a single file dagnabit. Example:
-  ceedling release:compile:foo.c
+  `ceedling release:compile:foo.c`
 
 * `ceedling release:assemble:*`:
 
   Sometimes you just need to assemble a single file doggonit. Example:
-  ceedling release:assemble:foo.s
-
-* `ceedling module:create[Filename]`:
-* `ceedling module:create[<Path:>Filename]`:
-
-  It's often helpful to create a file automatically. What's better than
-  that? Creating a source file, a header file, and a corresponding test
-  file all in one step!
-
-  There are also patterns which can be specified to automatically generate
-  a bunch of files. Try `ceedling module:create[Poodles,mch]` for example!
-
-  The module generator has several options you can configure.
-  F.e. Generating the source/header/test file in a subdirectory (by adding <Path> when calling module:create).
-  For more info, refer to the [Module Generator](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#module-generator) section.
-
-* `ceedling module:stub[Filename]`:
-* `ceedling module:stub[<Path:>Filename]`:
-
-  So what happens if you've created your API in your header (maybe even using
-  TDD to do so?) and now you need to start to implement the corresponding C
-  module? Why not get a head start by using `ceedilng module:stub[headername]`
-  to automatically create a function skeleton for every function declared in
-  that header? Better yet, you can call this again whenever you add new functions
-  to that header to add just the new functions, leaving the old ones alone!
-
-* `ceedling logging <tasks...>`:
-
-  Enable logging to <build path>/logs. Must come before test and release
-  tasks to log their steps and output. Log names are a concatenation of
-  project, user, and option files loaded. User and option files are
-  documented in the advanced topics section of this document.
-
-* `ceedling verbosity[x] <tasks...>`:
-
-  Change the default verbosity level. [x] ranges from 0 (quiet) to 4
-  (obnoxious). Level [3] is the default. The verbosity task must precede
-  all tasks in the command line list for which output is desired to be
-  seen. Verbosity settings are generally most meaningful in conjunction
-  with test and release tasks.
+  `ceedling release:assemble:foo.s`
 
 * `ceedling summary`:
 
@@ -452,34 +1065,22 @@ Ceedling (more on this later).
   runners, mocks, preprocessor output. Clobber produces no output at the
   command line unless verbosity has been set to an appreciable level.
 
-* `ceedling options:export`:
+## Ceedling Command Line Tasks, Extra Credit
 
-  This allows you to export a snapshot of your current tool configuration
-  as a yaml file. You can specify the name of the file in brackets `[blah.yml]`
-  or let it default to `tools.yml`. In either case, the produced file can be
-  used as the tool configuration for you project if desired, and modified as you
-  wish.
+### Combining Tasks At the Command Line
 
-To better understand Rake conventions, Rake execution, and
-Rakefiles, consult the [Rake tutorial, examples, and user guide][guide].
+Multiple build tasks can be executed at the command line.
 
-[guide]: http://rubyrake.org/
-
-At present, none of Ceedling's commands provide persistence.
-That is, they must each be specified at the command line each time
-they are needed. For instance, Ceedling's verbosity command
-only affects output at the time it's run.
-
-Individual test and release file tasks
-are not listed in `-T` output. Because so many files may be present
-it's unwieldy to list them all.
-
-Multiple rake tasks can be executed at the command line (order
-is executed as provided). For example, `ceedling
-clobber test:all release` will removed all generated files;
-build and run all tests; and then build all source - in that order.
-If any Rake task fails along the way, execution halts before the
+For example, `ceedling
+clobber test:all release` will remove all generated files;
+build and run all tests; and then build all source — in that order.
+If any task fails along the way, execution halts before the
 next task.
+
+Task order is executed as provided and can be important! Running 
+`clobber` after a `test:` or `release:` task will not accomplish much.
+
+### Build Directory and Revision Control
 
 The `clobber` task removes certain build directories in the
 course of deleting generated files. In general, it's best not
@@ -487,18 +1088,19 @@ to add to source control any Ceedling generated directories
 below the root of your top-level build directory. That is, leave
 anything Ceedling & its accompanying tools generate out of source
 control (but go ahead and add the top-level build directory that
-holds all that stuff). Also, since Ceedling is pretty smart about
-what it rebuilds and regenerates, you needn't clobber often.
+holds all that stuff if you want).
 
-Important Conventions
-=====================
+<br/>
 
-Directory Structure, Filenames & Extensions
--------------------------------------------
+# Important Conventions & Behaviors
 
-Much of Ceedling's functionality is driven by collecting files
+**How to get things done and understand what’s happening during builds**
+
+## Directory Structure, Filenames & Extensions
+
+Much of Ceedling’s functionality is driven by collecting files
 matching certain patterns inside the paths it's configured
-to search. See the documentation for the [:extension] section
+to search. See the documentation for the `:extension` section
 of your configuration file (found later in this document) to
 configure the file extensions Ceedling uses to match and collect
 files. Test file naming is covered later in this section.
@@ -509,207 +1111,280 @@ within source directories, or tests and source directories
 can be wholly separated at the top of your project's directory
 tree.
 
-Search Path Order
------------------
+## Search Path / File Collection Ordering
 
-When Ceedling searches for files (e.g. looking for header files
-to mock) or when it provides search paths to any of the default
-gcc toolchain executables, it organizes / prioritizes its search
-paths. The order is always: test paths, support paths, source
-paths, and then include paths. This can be useful, for instance,
-in certain testing scenarios where we desire Ceedling or a compiler
-to find a stand-in header file in our support directory before
-the actual source header file of the same name.
+Path order is important and needed by various functions. Ceedling
+itself needs a path order to find files such as header files
+that get mocked. Tasks are often ordered by the contents of file 
+collections Ceedling builds. Toolchains rely on a search path 
+order to compile code.
 
-This convention only holds when Ceedling is using its default
-tool configurations and / or when tests are involved. If you define
-your own tools in the configuration file (see the [:tools] section
-documented later in this here document), you have complete control
-over what directories are searched and in what order. Further,
-test and support directories are only searched when appropriate.
-That is, when running a release build, test and support directories
-are not used at all.
+Paths are organized and prioritized like this:
 
-Source Files & Binary Release Artifacts
----------------------------------------
+1. Test paths
+1. Support paths
+1. Source paths
+1. Source include paths
+
+Of course, this list is context dependent. A release build pays
+no attention to test or support paths. And, as is documented 
+elsewhere, header file search paths do not incorporate source 
+file paths.
+
+This ordering can be useful to the user in certain testing scenarios 
+where we desire Ceedling or a compiler to find a stand-in header 
+file in our support directory before the actual source header 
+file of the same name in the source include path list.
+
+If you define your own tools in the project configuration file (see 
+the `:tools` section documented later in this here document), you have 
+some control over what directories are searched and in what order.
+
+## Configuring Your Header File Search Paths
+
+Unless your project is relying exclusively on `extern` statements and
+uses no mocks for testing, Ceedling _**must**_ be told where to find 
+header files. Without search path knowledge, mocks cannot be generated, 
+and code cannot be compiled.
+
+Ceedling provides two mechanisms for configuring header file 
+search paths:
+
+1. The [`:paths` ↳ `:include`](#paths--include) section within your 
+   project file. This is available to both test and release builds.
+1. The [`TEST_INCLUDE_PATH(...)`](#test_include_path) build directive 
+   macro. This is only available within test files.
+
+In testing contexts, you have three options for creating the header 
+file search path list used by Ceedling:
+
+1. List all search paths within the `:paths` ↳ `:include` subsection 
+   of your project file. This is the simplest and most common approach.
+1. Create the search paths for each test file using calls to the 
+  `TEST_INCLUDE_PATH(...)` build directive macro within each test file.
+1. Blending the preceding options. In this approach the subsection
+   within your project file acts as a common, base list of search 
+   paths while the build directive macro allows the list to be 
+   expanded upon for each test file. This method is especially helpful 
+   for large and/or complex projects—especially in trimming down 
+   problematically long compiler command lines.
+
+## Conventions for Source Files & Binary Release Artifacts
 
 Your binary release artifact results from the compilation and
 linking of all source files Ceedling finds in the specified source
 directories. At present only source files with a single (configurable)
 extension are recognized. That is, `*.c` and `*.cc` files will not
 both be recognized - only one or the other. See the configuration
-options and defaults in the documentation for the [:extension]
+options and defaults in the documentation for the `:extension`
 sections of your configuration file (found later in this document).
 
-Test Files & Executable Test Fixtures
--------------------------------------
+## Conventions for Test Files & Executable Test Fixtures
 
 Ceedling builds each individual test file with its accompanying
 source file(s) into a single, monolithic test fixture executable.
-Test files are recognized by a naming convention: a (configurable)
-prefix such as "`test_`" in the file name with the same file extension
-as used by your C source files. See the configuration options
-and defaults in the documentation for the [:project] and [:extension]
-sections of your configuration file (found later in this document).
+
+### Test File Naming Convention
+
+Ceedling recognizes test files by a naming convention — a (configurable)
+prefix such as "`test_`" at the beginning of the file name with the same 
+file extension as used by your C source files. See the configuration options
+and defaults in the documentation for the `:project` and `:extension`
+sections of your configuration file (elsewhere in this document).
+
 Depending on your configuration options, Ceedling can recognize
 a variety of test file naming patterns in your test search paths.
-For example: `test_some_super_functionality.c`, `TestYourSourceFile.cc`,
+For example, `test_some_super_functionality.c`, `TestYourSourceFile.cc`,
 or `testing_MyAwesomeCode.C` could each be valid test file
 names. Note, however, that Ceedling can recognize only one test
 file naming convention per project.
 
+### Conventions for Source and Mock Files to Be Compiled & Linked
+
 Ceedling knows what files to compile and link into each individual
-test executable by way of the #include list contained in each
-test file. Any C source files in the configured search directories
-that correspond to the header files included in a test file will
-be compiled and linked into the resulting test fixture executable.
-From this same #include list, Ceedling knows which files to mock
-and compile and link into the test executable (if you use mocks
-in your tests). That was a lot of clauses and information in a very
-few sentences; the example that follows in a bit will make it clearer.
+test executable by way of the `#include` list contained in each
+test file and optional test directive macros.
+
+The `#include` list directs Ceedling in two ways:
+
+1. Any C source files in the configured project directories
+   corresponding to `#include`d header files will be compiled and 
+   linked into the resulting test fixture executable.
+1. If you are using mocks, header files with the appropriate 
+   mocking prefix (e.g. `mock_foo.h`) direct Ceedling to find the
+   source header file (e.g. `foo.h`), generate a mock from it, and
+   compile & link that generated code into into the test executable 
+   as well.
+
+Sometimes the source file you need to add to your test executable has
+no corresponding header file — e.g. `file_abc.h` contains symbols 
+present in `file_xyz.c`. In these cases, you can use the test 
+directive macro `TEST_SOURCE_FILE(...)` to tell Ceedling to compile 
+and link the desired source file into the test executable (see 
+macro documentation elsewhere in this doc).
+
+That was a lot of information and many clauses in a very few 
+sentences; the commented example test file code that follows in a 
+bit will make it clearer.
+
+### Convention for Test Case Functions + Test Runner Generation
 
 By naming your test functions according to convention, Ceedling
-will extract and collect into a runner C file calls to all your
-test case functions. This runner file handles all the execution
-minutiae so that your test file can be quite simple and so that
-you never forget to wire up a test function to be executed. In this
-generated runner lives the `main()` entry point for the resulting
-test executable. There are no configuration options for the
-naming convention of your test case functions. A test case function
-signature must have these three elements: void return, void
-parameter list, and the function name prepended with lowercase
-"`test`". In other words, a test function signature should look
-like this: `void test``[any name you like]``(void)`.
+will extract and collect into a generated test runner C file the 
+appropriate calls to all your test case functions. This runner 
+file handles all the execution minutiae so that your test file 
+can be quite simple. As a bonus, you'll never forget to wire up 
+a test function to be executed.
 
-A commented sample test file follows on the next page. Also, see
-the sample project contained in the Ceedling documentation
-bundle.
+In this generated runner lives the `main()` entry point for the 
+resulting test executable. There are no configurable options for 
+the naming convention of your test case functions.
 
-```c
-// test_foo.c -----------------------------------------------
-#include "unity.h"     // compile/link in Unity test framework
-#include "types.h"     // header file with no *.c file -- no compilation/linking
-#include "foo.h"       // source file foo.c under test
-#include "mock_bar.h"  // bar.h will be found and mocked as mock_bar.c + compiled/linked in;
-                       // foo.c includes bar.h and uses functions declared in it
-#include "mock_baz.h"  // baz.h will be found and mocked as mock_baz.c + compiled/linked in
-                       // foo.c includes baz.h and uses functions declared in it
+A test case function signature must have these elements:
 
+1. `void` return
+1. `void` parameter list
+1. A function name prepended with lowercase "`test`".
 
-void setUp(void) {}    // every test file requires this function;
-                       // setUp() is called by the generated runner before each test case function
+In other words, a test function signature should look like this: 
+`void test<any_name_you_like>(void)`.
 
-void tearDown(void) {} // every test file requires this function;
-                       // tearDown() is called by the generated runner after each test case function
+### Preprocessing behavior for tests
 
-// a test case function
-void test_Foo_Function1_should_Call_Bar_AndGrill(void)
-{
-    Bar_AndGrill_Expect();                    // setup function from mock_bar.c that instructs our
-                                              // framework to expect Bar_AndGrill() to be called once
-    TEST_ASSERT_EQUAL(0xFF, Foo_Function1()); // assertion provided by Unity
-                                              // Foo_Function1() calls Bar_AndGrill() & returns a byte
-}
+Ceedling and CMock are advanced tools that both perform fairly sophisticated
+parsing.
 
-// another test case function
-void test_Foo_Function2_should_Call_Baz_Tec(void)
-{
-    Baz_Tec_ExpectAnd_Return(1);       // setup function provided by mock_baz.c that instructs our
-                                       // framework to expect Baz_Tec() to be called once and return 1
-    TEST_ASSERT_TRUE(Foo_Function2()); // assertion provided by Unity
-}
+However, neither of these tools fully understand the entire C language,
+especially C's preprocessing statements.
 
-// end of test_foo.c ----------------------------------------
+If your test files rely on macros and `#ifdef` conditionals, there's a good
+chance that Ceedling will break on trying to process your test files, or,
+alternatively, your test suite will not execute as expected.
+
+Similarly, generating mocks of header files with macros and `#ifdef`
+conditionals can get weird.
+
+Ceedling includes an optional ability to preprocess test files and header files
+before executing any operations on them. See the `:project` ↳
+`:use_test_preprocessor`). That is, Ceedling will expand preprocessor
+statements in test files before generating test runners from them and will
+expand preprocessor statements in header files before generating mocks from
+them.
+
+This ability uses `gcc`'s preprocessing mode and the `cpp` preprocessor tool to
+strip down / expand test files and headers to their applicable content which
+can then be processed by Ceedling and CMock. They must be in your search path
+if Ceedling’s preprocessing is enabled. Further, Ceedling’s features are
+directly tied to these tools' abilities and options. They should not be
+redefined for other toolchains.
+
+### Execution time (duration) reporting in Ceedling operations & test suites
+
+#### Ceedling’s logged run times
+
+Ceedling logs two execution times for every project run.
+
+It first logs the set up time necessary to process your project file, parse code
+files, build an internal representation of your project, etc. This duration does
+not capture the time necessary to load the Ruby runtime itself.
+
+```
+🌱 Ceedling set up completed in 223 milliseconds
 ```
 
-From the test file specified above Ceedling will generate `test_foo_runner.c`;
-this runner file will contain `main()` and call both of the example
-test case functions.
+Secondly, each Ceedling run also logs the time necessary to run all the tasks 
+you specify at the command line.
 
-The final test executable will be `test_foo.exe` (for Windows
-machines or `test_foo.out` for linux systems - depending on default
-or configured file extensions). Based on the #include list above,
-the test executable will be the output of the linker having processed
-`unity.o`, `foo.o`, `mock_bar.o`, `mock_baz.o`, `test_foo.o`,
-and `test_foo_runner.o`. Ceedling finds the files, generates
-mocks, generates a runner, compiles all the files, and links
-everything into the test executable. Ceedling will then run
-the test executable and collect test results from it to be reported
-to the developer at the command line.
+```
+🌱 Ceedling operations completed in 1.03 seconds
+```
 
-For more on the assertions and mocks shown, consult the documentation
-for Unity and CMock.
+#### Ceedling test suite and Unity test executable run durations
 
-The Magic of Dependency Tracking
---------------------------------
+A test suite comprises one or more Unity test executables (see 
+[Anatomy of a Test Suite][anatomy-test-suite]). Ceedling times indvidual Unity 
+test executable run durations. It also sums these into a total test suite 
+execution time. These duration values are typically used in generating test 
+reports via plugins.
 
-Ceedling is pretty smart in using Rake to build up your project's
-dependencies. This means that Ceedling automagically rebuilds
-all the appropriate files in your project when necessary: when
-your configuration changes, Ceedling or any of the other tools
-are updated, or your source or test files change. For instance,
-if you modify a header file that is mocked, Ceedling will ensure
-that the mock is regenerated and all tests that use that mock are
-rebuilt and re-run when you initiate a relevant testing task.
-When you see things rebuilding, it's for a good reason. Ceedling
-attempts to regenerate and rebuild only what's needed for a given
-execution of a task. In the case of large projects, assembling
-dependencies and acting upon them can cause some delay in executing
-tasks.
+Not all test report formats utilize duration values. For those that do, some
+effort is usually required to map Ceedling duration values to a relevant test 
+suite abstraction within a given test report format.
 
-With one exception, the trigger to rebuild or regenerate a file
-is always a disparity in timestamps between a target file and
-its source - if an input file is newer than its target dependency,
-the target is rebuilt or regenerated. For example, if the C source
-file from which an object file is compiled is newer than that object
-file on disk, recompilation will occur (of course, if no object
-file exists on disk, compilation will always occur). The one
-exception to this dependency behavior is specific to your input
-configuration. Only if your logical configuration changes
-will a system-wide rebuild occur. Reorganizing your input configuration
-or otherwise updating its file timestamp without modifying
-the values within the file will not trigger a rebuild. This behavior
-handles the various ways in which your input configuration can
-change (discussed later in this document) without having changed
-your actual project YAML file.
+Because Ceedling can execute builds with multiple threads, care must be taken
+to interpret test suite duration values — particularly in relation to 
+Ceedling’s logged run times.
 
-Ceedling needs a bit of help to accomplish its magic with deep
-dependencies. Shallow dependencies are straightforward:
-a mock is dependent on the header file from which it's generated,
-a test file is dependent upon the source files it includes (see
-the preceding conventions section), etc. Ceedling handles
-these "out of the box." Deep dependencies are specifically a
-C-related phenomenon and occur as a consequence of include statements
-within C source files. Say a source file includes a header file
-and that header file in turn includes another header file which
-includes still another header file. A change to the deepest header
-file should trigger a recompilation of the source file, a relinking
-of all the object files comprising a test fixture, and a new execution
-of that test fixture.
+In a multi-threaded build it's quite common for the logged Ceedling project run
+time to be less than the total suite time in a test report. In multi-threaded 
+builds on multi-core machines, test executables are run on different processors
+simultaneously. As such, the total on-processor time in a test report can 
+exceed the operation time Ceedling itself logs to the console. Further, because
+multi-threading tends to introduce context switching and processor scheduling 
+overhead, the run duration of a test executable may be reported as longer than
+a in a comparable single-threaded build.
 
-Ceedling can handle deep dependencies but only with the help
-of a C preprocessor. Ceedling is quite capable, but a full C preprocessor
-it ain't. Your project can be configured to use a C preprocessor
-or not. Simple projects or large projects constructed so as to
-be quite flat in their include structure generally don't need
-deep dependency preprocessing - and can enjoy the benefits of
-faster execution. Legacy code, on the other hand, will almost
-always want to be tested with deep preprocessing enabled. Set
-up of the C preprocessor is covered in the documentation for the
-[:project] and [:tools] section of the configuration file (later
-in this document). Ceedling contains all the configuration
-necessary to use the gcc preprocessor by default. That is, as
-long as gcc is in your system search path, deep preprocessing
-of deep dependencies is available to you by simply enabling it
-in your project configuration file.
+[anatomy-test-suite]: #anatomy-of-a-test-suite
 
-Ceedling's Build Output
------------------------
+#### Unity test case run times
+
+Individual test case exection time tracking is specifically a [Unity] feature 
+(see its documentation for more details). If enabled and if your platform 
+supports the time mechanism Unity relies on, Ceedling will automatically 
+collect test case time values — generally made use of by test report plugins.
+
+To enable test case duration measurements, they must be enabled as a Unity
+compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation
+symbols (`:unity` ↳ `:defines`) in your Ceedling project file (see example
+below). Unity test case durations as reported by Ceedling default to 0 if the
+compilation option is not set.
+
+```yaml
+:unity:
+  :defines:
+    - UNITY_INCLUDE_EXEC_TIME
+```
+
+_Note:_ Most test cases are quite short, and most computers are quite fast. As
+ such, Unity test case execution time is often reported as 0 milliseconds as
+ the CPU execution time for a test case typically remains in the microseconds
+ range. Unity would require special rigging that is inconsistently available
+ across platforms to measure test case durations at a finer resolution.
+
+## The Magic of Dependency Tracking
+
+Previous versions of Ceedling used features of Rake to offer
+various kinds of smart rebuilds--that is, only regenerating files, 
+recompiling code files, or relinking executables when changes within 
+the project had occurred since the last build. Optional Ceedling 
+features discovered “deep dependencies” such that, for example, a 
+change in a header file several nested layers deep in `#include` 
+statements would cause all the correct test executables to be 
+updated and run.
+
+These features have been temporarily disabled and/or removed for 
+test suites and remain in limited form for release build while
+Ceedling undergoes a major overhaul.
+
+Please see the [Release Notes](ReleaseNotes.md).
+
+### Notes on (Not So) Smart Rebuids
+
+* New features that are a part of the Ceedling overhaul can 
+  significantly speed up test suite execution and release builds 
+  despite the present behavior of brute force running all build 
+  steps. See the discussion of enabling multi-threaded builds in 
+  later sections.
+
+* When smart rebuilds return, they will further speed up builds as
+  will other planned optimizations.
+
+## Ceedling’s Build Output (Files, That Is)
 
 Ceedling requires a top-level build directory for all the stuff
 that it, the accompanying test tools, and your toolchain generate.
-That build directory's location is configured in the [:project]
-section of your configuration file (discussed later). There
+That build directory's location is configured in the top-level 
+`:project` section of your configuration file (discussed later). There
 can be a ton of generated files. By and large, you can live a full
 and meaningful life knowing absolutely nothing at all about
 the files and directories generated below the root build directory.
@@ -720,7 +1395,7 @@ You'll spare yourself headache if you let Ceedling delete and
 regenerate files and directories in a non-versioned corner
 of your project's filesystem beneath the top-level build directory.
 
-The `artifacts` directory is the one and only directory you may
+The `artifacts/` directory is the one and only directory you may
 want to know about beneath the top-level build directory. The
 subdirectories beneath `artifacts` will hold your binary release
 target output (if your project is configured for release builds)
@@ -729,55 +1404,684 @@ This directory structure was chosen specifically because it
 tends to work nicely with Continuous Integration setups that
 recognize and list build artifacts for retrieval / download.
 
-The Almighty Project Configuration File (in Glorious YAML)
-----------------------------------------------------------
+## Build _Errors_ vs. Test _Failures_. Oh, and Exit Codes.
+
+### Errors vs. Failures
+
+Ceedling will run a specified build until an **_error_**. An error 
+refers to a build step encountering an unrecoverable problem. Files 
+not found, nonexistent paths, compilation errors, missing symbols, 
+plugin exceptions, etc. are all errors that will cause Ceedling 
+to immediately end a build.
+
+A **_failure_** refers to a test failure. That is, an assertion of 
+an expected versus actual value failed within a unit test case. 
+A test failure will not stop a build. Instead, the suite will run 
+to completion with test failures collected and reported along with 
+all test case statistics.
+
+### Ceedling Exit Codes
+
+In its default configuration, Ceedling terminates with an exit code 
+of `1`:
+
+ * On any build error and immediately terminates upon that build 
+   error.
+ * On any test case failure but runs the build to completion and
+   shuts down normally.
+
+This behavior can be especially handy in Continuous Integration 
+environments where you typically want an automated CI build to break 
+upon either build errors or test failures.
+
+If this exit code convention for test failures does not work for you, 
+no problem-o. You may be of the mind that running a test suite to 
+completion should yield a successful exit code (even if tests failed).
+Add the following to your project file to force Ceedling to finish a 
+build with an exit code of 0 even upon test case failures.
+
+```yaml
+# Ceedling terminates with happy `exit(0)` even if test cases fail
+:test_build:
+   :graceful_fail: true
+```
+
+If you use the option for graceful failures in CI, you'll want to
+rig up some kind of logging monitor that scans Ceedling’s test
+summary report sent to `$stdout` and/or a log file. Otherwise, you
+could have a successful build but failing tests.
+
+### Notes on Unity Test Executable Exit Codes
+
+Ceedling works by collecting multiple Unity test executables together 
+into a test suite ([more here](#anatomy-of-a-test-suite).
+
+A Unity test executable's exit code is the number of failed tests. An
+exit code of `0` means all tests passed while anything larger than zero
+is the number of test failures.
+
+Because of platform limitations on how big an exit code number can be
+and because of the logical complexities of distinguishing test failure
+counts from build errors or plugin problems, Ceedling conforms to a
+much simpler exit code convention than Unity: `0` = 🙂 while `1` = ☹️.
+
+<br/>
+
+# Using Unity, CMock & CException
+
+If you jumped ahead to this section but do not follow some of the 
+lingo here, please jump back to an [earlier section for definitions
+and helpful links][helpful-definitions].
+
+[helpful-definitions]: #hold-on-back-up-ruby-rake-yaml-unity-cmock-cexception
+
+## An overview of how Ceedling supports, well, its supporting frameworks
+
+If you are using Ceedling for unit testing, this means you are using Unity,
+the C testing framework. Unity is fully built-in and enabled for test builds.
+It cannot be disabled.
+
+If you want to use mocks in your test cases, then you'll need to configure CMock. 
+CMock is fully supported by Ceedling, enabled by default, but generally requires
+some set up for your project's needs.
+
+If you are incorporating CException into your release artifact, you'll need to
+both enable it and configure it. Enabling CException makes it available in 
+both release builds and test builds.
+
+This section provides a high-level view of how the various tools become
+part of your builds and fit into Ceedling’s configuration file. Ceedling’s 
+configuration file is discussed in detail in the next section.
+
+See [Unity], [CMock], and [CException]'s project documentation for all 
+your configuration options. Ceedling offers facilities for providing these
+frameworks their compilation and configuration settings. Discussing 
+these tools and all their options in detail is beyond the scope of Ceedling 
+documentation.
+
+## Unity Configuration
+
+Unity is wholly compiled C code. As such, its configuration is entirely 
+controlled by a variety of compilation symbols. These can be configured
+in Ceedling’s `:unity` project settings.
+
+### Example Unity configurations
+
+#### Itty bitty processor & toolchain with limited test execution options
+
+```yaml
+:unity:
+  :defines:
+    - UNITY_INT_WIDTH=16   # 16 bit processor without support for 32 bit instructions
+    - UNITY_EXCLUDE_FLOAT  # No floating point unit
+```
+
+#### Great big gorilla processor that grunts and scratches
+
+```yaml
+:unity:
+  :defines:
+    - UNITY_SUPPORT_64                    # Big memory, big counters, big registers
+    - UNITY_LINE_TYPE=\"unsigned int\"    # Apparently, we’re writing lengthy test files,
+    - UNITY_COUNTER_TYPE=\"unsigned int\" # and we've got a ton of test cases in those test files
+    - UNITY_FLOAT_TYPE=\"double\"         # You betcha
+```
+
+#### Example Unity configuration header file
+
+Sometimes, you may want to funnel all Unity configuration options into a 
+header file rather than organize a lengthy `:unity` ↳ `:defines` list. Perhaps your
+symbol definitions include characters needing escape sequences in YAML that are 
+driving you bonkers.
+
+```yaml
+:unity:
+  :defines:
+    - UNITY_INCLUDE_CONFIG_H
+```
+
+```c
+// unity_config.h
+#ifndef UNITY_CONFIG_H
+#define UNITY_CONFIG_H
+
+#include "uart_output.h" // Helper library for your custom environment
+
+#define UNITY_INT_WIDTH 16
+#define UNITY_OUTPUT_START() uart_init(F_CPU, BAUD) // Helper function to init UART
+#define UNITY_OUTPUT_CHAR(a) uart_putchar(a)        // Helper function to forward char via UART
+#define UNITY_OUTPUT_COMPLETE() uart_complete()     // Helper function to inform that test has ended
+
+#endif
+```
+
+### Routing Unity’s report output
+
+Unity defaults to using `putchar()` from C's standard library to 
+display test results.
+
+For more exotic environments than a desktop with a terminal — e.g. 
+running tests directly on a non-PC target — you have options.
+
+For instance, you could create a routine that transmits a character via 
+RS232 or USB. Once you have that routine, you can replace `putchar()` 
+calls in Unity by overriding the function-like macro `UNITY_OUTPUT_CHAR`. 
+
+Even though this override can also be defined in Ceedling YAML, most 
+shell environments do not handle parentheses as command line arguments
+very well. Consult your toolchain and shell documentation.
+
+If redefining the function and macros breaks your command line 
+compilation, all necessary options and functionality can be defined in 
+`unity_config.h`. Unity will need the `UNITY_INCLUDE_CONFIG_H` symbol in the
+`:unity` ↳ `:defines` list of your Ceedling project file (see example above).
+
+## CMock Configuration
+
+CMock is enabled in Ceedling by default. However, no part of it enters a
+test build unless mock generation is triggered in your test files. 
+Triggering mock generation is done by an `#include` convention. See the
+section on [Ceedling conventions and behaviors][conventions] for more.
+
+You are welcome to disable CMock in the `:project` block of your Ceedling
+configuration file. This is typically only useful in special debugging
+scenarios or for Ceedling development itself.
+
+[conventions]: #important-conventions--behaviors
+
+CMock is a mixture of Ruby and C code. CMock's Ruby components generate
+C code for your unit tests. CMock's base C code is compiled and linked into 
+a test executable in the same way that any C file is — including Unity, 
+CException, and generated mock C code, for that matter. 
+
+CMock's code generation can be configured using YAML similar to Ceedling 
+itself. Ceedling’s project file is something of a container for CMock's 
+YAML configuration (Ceedling also uses CMock's configuration, though).
+
+See the documentation for the top-level [`:cmock`][cmock-yaml-config] 
+section within Ceedling’s project file.
+
+[cmock-yaml-config]: #cmock-configure-cmocks-code-generation--compilation
+
+Like Unity and CException, CMock's C components are configured at 
+compilation with symbols managed in your Ceedling project file's 
+`:cmock` ↳ `:defines` section.
+
+### Example CMock configurations
+
+```yaml
+:project:
+  # Shown for completeness -- CMock enabled by default in Ceedling
+  :use_mocks: TRUE
+
+:cmock:
+  :when_no_prototypes: :warn
+  :enforce_strict_ordering: TRUE
+  :defines:
+    # Memory alignment (packing) on 16 bit boundaries
+    - CMOCK_MEM_ALIGN=1
+  :plugins:
+    - :ignore
+  :treat_as:
+    uint8:    HEX8
+    uint16:   HEX16
+    uint32:   UINT32
+    int8:     INT8
+    bool:     UINT8
+```
+
+## CException Configuration
+
+Like Unity, CException is wholly compiled C code. As such, its 
+configuration is entirely controlled by a variety of `#define` symbols. 
+These can be configured in Ceedling’s `:cexception` ↳ `:defines` project 
+settings.
+
+Unlike Unity which is always available in test builds and CMock that 
+defaults to available in test builds, CException must be enabled
+if you wish to use it in your project.
+
+### Example CException configurations
+
+```yaml
+:project:
+  # Enable CException for both test and release builds
+  :use_exceptions: TRUE
+
+:cexception:
+  :defines:
+    # Possible exception codes of -127 to +127 
+    - CEXCEPTION_T='signed char'
+
+```
+
+<br/>
+
+# How to Load a Project Configuration. You Have Options, My Friend.
+
+Ceedling needs a project configuration to accomplish anything for you.
+Ceedling's project configuration is a large in-memory data structure.
+That data structure is loaded from a human-readable file format called
+YAML.
+
+The next section details Ceedling’s project configuration options in 
+YAML. This section explains all your options for loading and modifying 
+project configuration from files to begin with.
+
+## Overview of Project Configuration Loading & Smooshing
+
+Ceedling has a certain pipeline for loading and manipulating the 
+configuration it uses to build your projects. It goes something like
+this:
+
+1. Load the base project configuration from a YAML file.
+1. Merge the base configuration with zero or more Mixins from YAML files.
+1. Load zero or more plugins that alter or merge additional configuration.
+1. Merge in default values to ensure all necessary configuration to run
+   is present.
+
+Ceedling provides reasonably verbose logging at startup telling you which
+configuration files were used and in what order they were merged.
+
+## Options for Loading Your Base Project Configuration
+
+You have three options for telling Ceedling what single base project 
+configuration to load. These options are ordered below according to their
+precedence. If an option higher in the list is present, it is used.
+
+1. Command line option flags
+1. Environment variable
+1. Default file in working directory
+
+### `--project` command line flags
+
+Many of Ceedling's [application commands][packet-section-7] include an 
+optional `--project` flag. When provided, Ceedling will load as its base 
+configuration the YAML filepath provided.
+
+Example: `ceedling --project=my/path/build.yml test:all`
+
+_Note:_ Ceedling loads any relative paths within your configuration in
+relation to your working directory. This can cause a disconnect between
+configuration paths, working directory, and the path to your project 
+file.
+
+If the filepath does not exist, Ceedling terminates with an error.
+
+### Environment variable `CEEDLING_PROJECT_FILE`
+
+If a `--project` flag is not used at the command line, but the 
+environment variable `CEEDLING_PROJECT_FILE` is set, Ceedling will use
+the path it contains to load your project configuration. The path can
+be absolute or relative (to your working directory).
+
+If the filepath does not exist, Ceedling terminates with an error.
+
+### Default _project.yml_ in your working directory
+
+If neither a `--project` command line flag nor the environment variable
+`CEEDLING_PROJECT_FILE` are set, then Ceedling tries to load a file 
+named _project.yml_ in your working directory.
+
+If this file does not exist, Ceedling terminates with an error.
+
+## Applying Mixins to Your Base Project Configuration
+
+Once you have a base configuation loaded, you may want to modify it for
+any number of reasons. Some example scenarios:
+
+* A single project actually contains mutiple build variations. You would
+  like to maintain a common configuration that is shared among build
+  variations.
+* Your repository contains the configuration needed by your Continuous
+  Integration server setup, but this is not fun to run locally. You would
+  like to modify the configuration locally with sources external to your
+  repository.
+* Ceedling's default `gcc` tools do not work for your project needs. You
+  would like the complex tooling configurations you most often need to
+  be maintained separately and shared among projects.
+
+Mixins allow you to merge configuration with your project configuration
+just after the base project file is loaded. The merge is so low-level
+and generic that you can, in fact, load an empty base configuration 
+and merge in entire project configurations through mixins.
+
+## Mixins Example Plus Merging Rules
+
+Let’s start with an example that also explains how mixins are merged.
+Then, the documentation sections that follow will discuss everything
+in detail.
+
+### Mixins Example: Scenario
+
+In this example, we will load a base project configuration and then
+apply three mixins using each of the available means — command line,
+envionment variable, and `:mixins` section in the base project 
+configuration file.
+
+#### Example environment variable
+
+`CEEDLING_MIXIN_1` = `./env.yml`
+
+#### Example command line
+
+`ceedling --project=base.yml --mixin=support/mixins/cmdline.yml <tasks>`
+
+_Note:_ The `--mixin` flag supports more than filepaths and can be used 
+multiple times in the same command line for multiple mixins (see later 
+documentation section). 
+
+The example command line above will produce the following logging output.
+
+```
+🌱 Loaded project configuration from command line argument using base.yml
+ + Merged command line mixin using support/mixins/cmdline.yml
+ + Merged CEEDLING_MIXIN_1 mixin using ./env.yml
+ + Merged project configuration mixin using ./enabled.yml
+```
+
+_Notes_
+
+* The logging output above referencing _enabled.yml_ comes from the 
+  `:mixins` section within the base project configuration file provided below.
+* The resulting configuration in this example is missing settings required
+  by Ceedling. This will cause a validation build error that is not shown
+  here.
+
+### Mixins Example: Configuration files
+
+#### _base.yml_ — Our base project configuration file
+
+Our base project configuration file:
+
+1. Sets up a configuration file-baesd mixin. Ceedling will look for a mixin
+   named _enabled_ in the specified load paths. In this simple configuration
+   that means Ceedling looks for and merges _support/mixins/enabled.yml_.
+1. Creates a `:project` section in our configuration.
+1. Creates a `:plugins` section in our configuration and enables the standard 
+   console test report output plugin.
+
+```yaml
+:mixins:              # `:mixins` section only recognized in base project configuration
+  :enabled:           # `:enabled` list supports names and filepaths
+    - enabled         # Ceedling looks for name as enabled.yml in load paths and merges if found
+  :load_paths:
+    - support/mixins
+
+:project:
+  :build_root: build/
+
+:plugins:
+  :enabled:
+    - report_tests_pretty_stdout
+```
+
+#### _support/mixins/cmdline.yml_ — Mixin via command line filepath flag
+
+This mixin will merge a `:project` section with the existing `:project`
+section from the base project file per the deep merge rules (noted after 
+the examples).
+
+```yaml
+:project:
+  :use_test_preprocessor: TRUE
+  :test_file_prefix: Test
+```
+
+#### _env.yml_ — Mixin via environment variable filepath
+
+This mixin will merge a `:plugins` section with the existing `:plugins`
+section from the base project file per the deep merge rules (noted 
+after the examples).
+
+```yaml
+:plugins:
+  :enabled:
+    - compile_commands_json_db
+```
+
+#### _support/mixins/enabled.yml_ — Mixin via base project configuration file `:mixins` section
+
+This mixin listed in the base configuration project file will merge
+`:project` and `:plugins` sections with those that already exist from
+the base configuration plus earlier mixin merges per the deep merge 
+rules (noted after the examples).
+
+```yaml
+:project:
+  :use_test_preprocessor: FALSE
+
+:plugins:
+  :enabled:
+    - gcov
+```
+
+### Mixins Example: Resulting project configuration
+
+Behold the project configuration following mixin merges:
+
+```yaml
+:project:
+  :build_root: build/           # From base.yml
+  :use_test_preprocessor: TRUE  # Value in support/mixins/cmdline.yml overwrote value from support/mixins/enabled.yml
+  :test_file_prefix: Test       # Added to :project from support/mixins/cmdline.yml
+
+:plugins:
+  :enabled:                     # :plugins ↳ :enabled from two mixins merged with oringal list in base.yml
+    - report_tests_pretty_stdout  # From base.yml
+    - compile_commands_json_db    # From env.yml
+    - gcov                        # From support/mixins/enabled.yml
+
+# Note: Original :mixins section is filtered out of resulting config
+```
+
+### Mixins deep merge rules
+
+Mixins are merged in a specific order. See the next documentation 
+sections for details.
+
+Smooshing of mixin configurations into the base project configuration
+follows a few basic rules:
+
+* If a configuration key/value pair does not already exist at the time
+  of merging, it is added to the configuration.
+* If a simple value — e.g. boolean, string, numeric — already exists 
+  at the time of merging, that value is replaced by the value being
+  merged in.
+* If a container — e.g. list or hash — already exists at the time of a
+  merge, the contents are _combined_. In the case of lists, merged 
+  values are added to the end of the existing list.
+
+## Options for Loading Mixins
+
+You have three options for telling Ceedling what mixins to load. These 
+options are ordered below according to their precedence. A Mixin higher
+in the list is merged earlier. In addition, options higher in the list
+force duplicate mixin filepaths to be ignored lower in the list.
+
+Unlike base project file loading that resolves to a single filepath, 
+multiple mixins can be specified using any or all of these options.
+
+1. Command line option flags
+1. Environment variables
+1. Base project configuration file entries
+
+### `--mixin` command line flags
+
+As already discussed above, many of Ceedling's application commands 
+include an optional `--project` flag. Most of these same commands 
+also recognize optional `--mixin` flags. Note that `--mixin` can be 
+used multiple times in a single command line.
+
+When provided, Ceedling will load the specified YAML file and merge
+it with the base project configuration.
+
+A Mixin flag can contain one of two types of values:
+
+1. A filename or filepath to a mixin yaml file. A filename contains
+   a file extension. A filepath includes a leading directory path.
+1. A simple name (no file extension and no path). This name is used
+   as a lookup in Ceedling's mixin load paths.
+
+Example: `ceedling --project=build.yml --mixin=foo --mixin=bar/mixin.yaml test:all`
+
+Simple mixin names (#2 above) require mixin load paths to search.
+A default mixin load path is always in the list and points to within
+Ceedling itself (in order to host eventual built-in mixins like 
+built-in plugins). User-specified load paths must be added through 
+the `:mixins` section of the base configuration project file. See 
+the [documentation for the `:mixins` section of your project 
+configuration][mixins-config-section] for more details.
+
+Order of precedence is set by the command line mixin order 
+left-to-right.
+
+Filepaths may be relative (in relation to the working directory) or
+absolute.
+
+If the `--mixin` filename or filepath does not exist, Ceedling 
+terminates with an error. If Ceedling cannot find a mixin name in 
+any load paths, it terminates with an error.
+
+[mixins-config-section]: #base-project-configuration-file-mixins-section-entries
+
+### Mixin environment variables
+
+Mixins can also be loaded through environment variables. Ceedling
+recognizes environment variables with a naming scheme of 
+`CEEDLING_MIXIN_#`, where `#` is any number greater than 0.
+
+Precedence among the environment variables is a simple ascending
+sort of the trailing numeric value in the environment variable name.
+For example, `CEEDLING_MIXIN_5` will be merged before 
+`CEEDLING_MIXIN_99`.
+
+Mixin environment variables only hold filepaths. Filepaths may be 
+relative (in relation to the working directory) or absolute.
+
+If the filepath specified by an environment variable does not exist,
+Ceedling terminates with an error.
+
+### Base project configuration file `:mixins` section entries
+
+Ceedling only recognizes a `:mixins` section in your base project
+configuration file. A `:mixins` section in a mixin is ignored. The
+`:mixins` section of a base project configuration file is filtered
+out of the resulting configuration.
+
+The `:mixins` configuration section contains two subsections. Both
+are optional.
+
+* `:enabled`
+
+  An optional array of mixin filenames/filepaths and/or mixin names:
+
+  1. A filename contains a file extension. A filepath includes a 
+     leading directory path. The file content is YAML.
+  1. A simple name (no file extension and no path) is used
+     as a lookup in Ceedling's mixin load paths.
+
+  **Default**: `[]`
+
+* `:load_paths`
+
+  Paths containing mixin files to be searched via mixin names. A mixin
+  filename in a load path has the form _<name>.yml_ by default. If
+  an alternate filename extension has been specified in your project
+  configuration (`:extension` ↳ `:yaml`) it will be used for file
+  lookups in the mixin load paths instead of _.yml_.
+
+  Searches start in the path at the top of the list and end in the 
+  default internal mixin search path.
+
+  Both mixin names in the `:enabled` list (above) and on the command
+  line via `--mixin` flag use this list of load paths for searches.
+  
+  **Default**: `[<Ceedling internal mixin path>]` (This default is
+  always present as the last path in the `:load_paths` list)
+
+Example `:mixins` YAML blurb:
+
+```yaml
+:mixins:
+  :enabled:
+    - foo            # Ceedling looks for foo.yml in proj/mixins & support/
+    - path/bar.yaml  # Ceedling merges this file with base project conig
+  :load_paths:
+    - proj/mixins
+    - support
+```
+
+Relating the above example to command line `--mixin` flag handling:
+
+* A command line flag of `--mixin=foo` is equivalent to the `foo` 
+  entry in the `:enabled` mixin configuration.
+* A command line flag of `--mixin=path/bay.yaml` is equivalent to the 
+  `path/bay.yaml` entry in the `:enabled` mixin configuration.
+* Note that while command line `--mixin` flags work identifically to 
+  entries in `:mixins` ↳ `:enabled`, they are merged first instead of 
+  last in the mixin precedence.
+
+# The Almighty Ceedling Project Configuration File (in Glorious YAML)
+
+## Some YAML Learnin’
 
 Please consult YAML documentation for the finer points of format
 and to understand details of our YAML-based configuration file.
+
 We recommend [Wikipedia's entry on YAML](http://en.wikipedia.org/wiki/Yaml)
 for this. A few highlights from that reference page:
 
 * YAML streams are encoded using the set of printable Unicode
-  characters, either in UTF-8 or UTF-16
+  characters, either in UTF-8 or UTF-16.
 
-* Whitespace indentation is used to denote structure; however
-  tab characters are never allowed as indentation
+* White space indentation is used to denote structure; however,
+  tab characters are never allowed as indentation.
 
-* Comments begin with the number sign ( # ), can start anywhere
+* Comments begin with the number sign (`#`), can start anywhere
   on a line, and continue until the end of the line unless enclosed
-  by quotes
+  by quotes.
 
-* List members are denoted by a leading hyphen ( - ) with one member
-  per line, or enclosed in square brackets ( [ ] ) and separated
-  by comma space ( , )
+* List members are denoted by a leading hyphen (`-`) with one member
+  per line, or enclosed in square brackets (`[...]`) and separated
+  by comma space (`, `).
 
-* Hashes are represented using the colon space ( : ) in the form
-  key: value, either one per line or enclosed in curly braces
-  ( { } ) and separated by comma space ( , )
+* Hashes are represented using colon space (`: `) in the form
+  `key: value`, either one per line or enclosed in curly braces
+  (`{...}`) and separated by comma space (`, `).
 
 * Strings (scalars) are ordinarily unquoted, but may be enclosed
-  in double-quotes ( " ), or single-quotes ( ' )
+  in double-quotes (`"`), or single-quotes (`'`).
 
 * YAML requires that colons and commas used as list separators
   be followed by a space so that scalar values containing embedded
   punctuation can generally be represented without needing
-  to be enclosed in quotes
+  to be enclosed in quotes.
 
-* Repeated nodes are initially denoted by an ampersand ( & ) and
-  thereafter referenced with an asterisk ( * )
+* Repeated nodes are initially denoted by an ampersand (`&`) and
+  thereafter referenced with an asterisk (`*`). These are known as
+  anchors and aliases in YAML speak.
 
-Notes on what follows:
+## Notes on Project File Structure and Documentation That Follows
 
 * Each of the following sections represent top-level entries
-  in the YAML configuration file.
+  in the YAML configuration file. Top-level means the named entries
+  are furthest to the left in the hierarchical configuration file 
+  (not at the literal top of the file).
 
-* Unless explicitly specified in the configuration file, default
-  values are used by Ceedling.
+* Unless explicitly specified in the configuration file by you, 
+  Ceedling uses default values for settings.
 
-* These three settings, at minimum, must be specified:
-  * [:project][:build_root]
-  * [:paths][:source]
-  * [:paths][:test]
+* At minimum, these settings must be specified for a test suite:
+  * `:project` ↳ `:build_root`
+  * `:paths` ↳ `:source`
+  * `:paths` ↳ `:test`
+  * `:paths` ↳ `:include` and/or use of `TEST_INCLUDE_PATH(...)` 
+    build directive macro within your test files
+
+* At minimum, these settings must be specified for a release build:
+  * `:project` ↳ `:build_root`
+  * `:paths` ↳ `:source`
 
 * As much as is possible, Ceedling validates your settings in
   properly formed YAML.
@@ -786,47 +2090,57 @@ Notes on what follows:
   is parsed. This is usually accompanied by a complaint with
   line and column number pointing into the project file.
 
-* Certain advanced features rely on gcc and cpp as preprocessing
-  tools. In most linux systems, these tools are already available.
-  For Windows environments, we recommend the [mingw project](http://www.mingw.org/)
+* Certain advanced features rely on `gcc` and `cpp` as preprocessing
+  tools. In most Linux systems, these tools are already available.
+  For Windows environments, we recommend the [MinGW] project
   (Minimalist GNU for Windows).
 
 * Ceedling is primarily meant as a build tool to support automated
   unit testing. All the heavy lifting is involved there. Creating
   a simple binary release build artifact is quite trivial in
   comparison. Consequently, most default options and the construction
-  of Ceedling itself is skewed towards supporting testing though
+  of Ceedling itself is skewed towards supporting testing, though
   Ceedling can, of course, build your binary release artifact
-  as well. Note that complex binary release artifacts (e.g.
-  application + bootloader or multiple libraries) are beyond
-  Ceedling's release build ability.
+  as well. Note that some complex binary release builds are beyond
+  Ceedling’s abilities. See the Ceedling plugin [subprojects] for
+  extending release build abilities.
 
-Conventions / features of Ceedling-specific YAML:
+[MinGW]: http://www.mingw.org/
+
+## Conventions of Ceedling-specific YAML
 
 * Any second tier setting keys anywhere in YAML whose names end
   in `_path` or `_paths` are automagically processed like all
   Ceedling-specific paths in the YAML to have consistent directory
   separators (i.e. "/") and to take advantage of inline Ruby
-  string expansion (see [:environment] setting below for further
+  string expansion (see `:environment` setting below for further
   explanation of string expansion).
 
-**Let's Be Careful Out There:** Ceedling performs validation
-on the values you set in your configuration file (this assumes
-your YAML is correct and will not fail format parsing, of course).
+## Let’s Be Careful Out There
+
+Ceedling performs validation of the values you set in your 
+configuration file (this assumes your YAML is correct and will 
+not fail format parsing, of course).
+
 That said, validation is limited to only those settings Ceedling
 uses and those that can be reasonably validated. Ceedling does
 not limit what can exist within your configuration file. In this
 way, you can take full advantage of YAML as well as add sections
 and values for use in your own custom plugins (documented later).
+
 The consequence of this is simple but important. A misspelled
-configuration section name or value name is unlikely to cause
-Ceedling any trouble. Ceedling will happily process that section
+configuration section or value name is unlikely to cause Ceedling 
+any trouble. Ceedling will happily process that section
 or value and simply use the properly spelled default maintained
 internally - thus leading to unexpected behavior without warning.
 
-project: global project settings
+## `:project`: Global project settings
 
-* `build_root`:
+**_Note:_** In future versions of Ceedling, test and release build 
+settings presently organized beneath `:project` will be renamed and 
+migrated to the `:test_build` and `:release_build` sections.
+
+* `:build_root`
 
   Top level directory into which generated path structure and files are
   placed. Note: this is one of the handful of configuration values that
@@ -835,15 +2149,14 @@ project: global project settings
 
   **Default**: (none)
 
-* `use_exceptions`:
+* `:default_tasks`
 
-  Configures the build environment to make use of CException. Note that
-  if you do not use exceptions, there's no harm in leaving this as its
-  default value.
+  An array of default build / plugin tasks Ceedling should execute if 
+  none are provided at the command line.
 
-  **Default**: TRUE
+  **Default**: ['test:all']
 
-* `use_mocks`:
+* `:use_mocks`
 
   Configures the build environment to make use of CMock. Note that if
   you do not use mocks, there's no harm in leaving this setting as its
@@ -851,72 +2164,40 @@ project: global project settings
 
   **Default**: TRUE
 
-* `use_test_preprocessor`:
+* `:use_decorators`
+
+  Configures the output to use optional decorators to bring more joy
+  to your output. This may include emoji, color, or highlights.
+
+  The options at this time are `:all`, `:none`, and `:auto`. Why 
+  `:auto`? Because some platforms (we’re looking at you, Windows) do 
+  not have default font support in their terminals for these features. 
+  So, by default this feature is disabled on problematic platforms while 
+  enabled on others.
+
+  _Note:_ If you find a monospaced font that provides emojis, etc. and
+  works with Windows’ command prompt, you can (1) Install the font (2)
+  change your command prompt’s font (3) set this option to `:all`.
+
+  **Default**: `:auto`
+
+* `:use_test_preprocessor`
 
   This option allows Ceedling to work with test files that contain
-  conditional compilation statements (e.g. #ifdef) and header files you
+  conditional compilation statements (e.g. `#ifdef`) and header files you
   wish to mock that contain conditional preprocessor statements and/or
   macros.
 
-  Ceedling and CMock are advanced tools with sophisticated parsers.
-  However, they do not include entire C language preprocessors.
-  Consequently, with this option enabled, Ceedling will use gcc's
-  preprocessing mode and the cpp preprocessor tool to strip down /
-  expand test files and headers to their applicable content which can
-  then be processed by Ceedling and CMock.
+  See the [documentation on test preprocessing][test-preprocessing] for more.
 
-  With this option enabled, the gcc & cpp tools must exist in an
-  accessible system search path and test runner files are always
-  regenerated.
+  With this option enabled, the `gcc` & `cpp` tools must exist in an
+  accessible system search path.
+
+  [test-preprocessing]: #preprocessing-behavior-for-tests
 
   **Default**: FALSE
 
-* `use_preprocessor_directives`:
-
-  After standard preprocessing when `use_test_preprocessor` is used
-  macros are fully expanded to C code. Some features, for example
-  TEST_CASE() or TEST_RANGE() from Unity require not-fully preprocessed
-  file to be detected by Ceedling. To do this gcc directives-only
-  option is used to expand only conditional compilation statements,
-  handle directives, but do not expand macros preprocessor and leave
-  the other content of file untouched.
-
-  With this option enabled, `use_test_preprocessor` must be also enabled
-  and gcc must exist in an accessible system search path. For other
-  compilers behavior can be changed by `test_file_preprocessor_directives`
-  compiler tool.
-
-  **Default**: FALSE
-
-* `use_deep_dependencies`:
-
-  The base rules and tasks that Ceedling creates using Rake capture most
-  of the dependencies within a standard project (e.g. when the source
-  file accompanying a test file changes, the corresponding test fixture
-  executable will be rebuilt when tests are re-run). However, deep
-  dependencies cannot be captured this way. If a typedef or macro
-  changes in a header file three levels of #include statements deep,
-  this option allows the appropriate incremental build actions to occur
-  for both test execution and release builds.
-
-  This is accomplished by using the dependencies discovery mode of gcc.
-  With this option enabled, gcc must exist in an accessible system
-  search path.
-
-  **Default**: FALSE
-
-* `generate_deep_dependencies`:
-
-  When `use_deep_dependencies` is set to TRUE, Ceedling will run a separate
-  build step to generate the deep dependencies. If you are using gcc as your
-  primary compiler, or another compiler that can generate makefile rules as
-  a side effect of compilation, then you can set this to FALSE to avoid the
-  extra build step but still use the deep dependencies data when deciding
-  which source files to rebuild.
-
-  **Default**: TRUE
-
-* `test_file_prefix`:
+* `:test_file_prefix`
 
   Ceedling collects test files by convention from within the test file
   search paths. The convention includes a unique name prefix and a file
@@ -928,98 +2209,218 @@ project: global project settings
 
   **Default**: "test_"
 
-* `options_paths`:
-
-  Just as you may have various build configurations for your source
-  codebase, you may need variations of your project configuration.
-
-  By specifying options paths, Ceedling will search for other project
-  YAML files, make command line tasks available (ceedling options:variation
-  for a variation.yml file), and merge the project configuration of
-  these option files in with the main project file at runtime. See
-  advanced topics.
-
-  Note these Rake tasks at the command line - like verbosity or logging
-  control - must come before the test or release task they are meant to
-  modify.
-
-  **Default**: `[]` (empty)
-
-* `release_build`:
+* `:release_build`
 
   When enabled, a release Rake task is exposed. This configuration
   option requires a corresponding release compiler and linker to be
-  defined (gcc is used as the default).
+  defined (`gcc` is used as the default).
 
-  More release configuration options are available in the release_build
+  Ceedling is primarily concerned with facilitating the complicated 
+  mechanics of automating unit tests. The same mechanisms are easily 
+  capable of building a final release binary artifact (i.e. non test 
+  code — the thing that is your final working software that you execute 
+  on target hardware). That said, if you have complicated release 
+  builds, you should consider a traditional build tool for these.
+  Ceedling shines at executing test suites.
+
+  More release configuration options are available in the `:release_build`
   section.
 
   **Default**: FALSE
 
+* `:compile_threads`
 
-Example `[:project]` YAML blurb
+  A value greater than one enables parallelized build steps. Ceedling
+  creates a number of threads up to `:compile_threads` for build steps.
+  These build steps execute batched operations including but not 
+  limited to mock generation, code compilation, and running test 
+  executables.
+
+  Particularly if your build system includes multiple cores, overall 
+  build time will drop considerably as compared to running a build with 
+  a single thread.
+
+  Tuning the number of threads for peak performance is an art more 
+  than a science. A special value of `:auto` instructs Ceedling to 
+  query the host system's number of virtual cores. To this value it 
+  adds a constant of 4. This is often a good value sufficient to "max
+  out" available resources without overloading available resources.
+
+  `:compile_threads` is used for all release build steps and all test
+  suite build steps except for running the test executables that make
+  up a test suite. See next section for more.
+
+  **Default**: 1
+
+* `:test_threads`
+
+  The behavior of and values for `:test_threads` are identical to 
+  `:compile_threads` with one exception.
+
+  `test_threads:` specifically controls the number of threads used to
+  run the test executables comprising a test suite.
+
+  Why the distinction from `:compile_threads`? Some test suite builds 
+  rely not on native executables but simulators running cross-compiled 
+  code. Some simulators are limited to running only a single instance at 
+  a time. Thus, with this and the previous setting, it becomes possible 
+  to parallelize nearly all of a test suite build while still respecting
+  the limits of certain simulators depended upon by test executables.
+
+  **Default**: 1
+
+* `:which_ceedling`
+
+  This is an advanced project option primarily meant for development work
+  on Ceedling itself. This setting tells the code that launches the 
+  Ceedling application where to find the code to launch. It’s not uncommon 
+  in Ceedling development work to have the last production gem installed 
+  while modifying the application code in a locally cloned repository. Or, 
+  you may be bouncing between local versions of Ceedling to troubleshoot
+  changes.
+
+  This value can be `gem` to indicate the command line utility `ceedling` 
+  should launch the application packaged in the installed gem. It can also 
+  be a relative or absolute path in your file system. If it is a path, that
+  path should point to the top-level directory that contains Ceedling’s
+  `bin/` and `lib/` sub-directories.
+
+  _Note:_ If you are working on the code in `bin/` and want to run it,
+  you must take the additional step of specifying the path to `ceedling`
+  in your file system at your command prompt — e.g. 
+  `> my/ceedling/changes/bin/ceedling <args>`.
+
+  **Default**: `gem`
+
+### Example `:project` YAML blurb
 
 ```yaml
 :project:
   :build_root: project_awesome/build
   :use_exceptions: FALSE
   :use_test_preprocessor: TRUE
-  :use_deep_dependencies: TRUE
   :options_paths:
     - project/options
     - external/shared/options
   :release_build: TRUE
+  :compile_threads: :auto
 ```
 
-Ceedling is primarily concerned with facilitating the somewhat
-complicated mechanics of automating unit tests. The same mechanisms
-are easily capable of building a final release binary artifact
-(i.e. non test code; the thing that is your final working software
-that you execute on target hardware).
+* `:use_backtrace`
 
-* `use_backtrace_gdb_reporter`:
-  Set this value to true if you project use gcc compiler and you want to collect
-  backtrace from test runners which fail with **Segmentation fault** error.
-  The .fail files will contain testsuite with information, which test failed.
-  Backtrace is fully integrated with **junit_tests_report** plugin.
+  When a test executable runs into a ☠️ **Segmentation Fault**, the executable 
+  immediately crashes and no further details for test suite reporting are collected.
+  By default, Ceedling reports a single failure for the entire test file, noting 
+  that it segfaulted.
+
+  But, fear not. You can bring your dead unit tests back to life. If you are running
+  `gcc` or `clang` (LLVM), then you have an option to get more detail!
+
+  Set `:use_backtrace` to `true` and unit test segfaults will trigger Ceedling to 
+  collect backtrace data from test runners. With this option enabled, Ceedling runs
+  each test case in the faulted test executable individually, collecting the pass/fail
+  results as normal. For any test cases that segfault, Ceedling collects and reports
+  details for the offending code using the [`gdb`][gdb] debugger.
+
+  If this option is enabled, but `gdb` is not available to Ceedling, project 
+  validation will terminate with an error at startup.
 
   **Default**: FALSE
 
-* `output`:
+  [gdb]: https://www.sourceware.org/gdb/
+
+## `:mixins` Configuring mixins to merge
+
+This section of a project configuration file is documented in the
+[discussion of project files and mixins][mixins-config-section].
+
+**_Notes:_**
+
+* A `:mixins` section is only recognized within a base project configuration 
+  file. Any `:mixins` sections within mixin files are ignored.
+* A `:mixins` section in a Ceedling configuration is entirely filtered out of
+  the resulting configuration. That is, it is unavailable for use by plugins
+  and will not be present in any output from `ceedling dumpconfig`.
+
+## `:test_build` Configuring a test build
+
+**_Note:_** In future versions of Ceedling, test-related settings presently 
+organized beneath `:project` will be renamed and migrated to this section.
+
+* `:use_assembly`
+
+  This option causes Ceedling to enable an assembler tool and collect a
+  list of assembly file sources for use in a test suite build.
+
+  The default assembler is the GNU tool `as`; it may be overridden in 
+  the `:tools` section.
+
+  In order to inject assembly code into the build of a test executable,
+  two conditions must be true:
+
+  1. The assembly files must be visible to Ceedling by way of `:paths` and
+  `:extension` settings for assembly files.
+  1. Ceedling must be told into which test executable build to insert a
+  given assembly file. The easiest way to do so is with the 
+  `TEST_SOURCE_FILE()` build directive macro (documented in a later section).
+
+  **Default**: FALSE
+
+### Example `:test_build` YAML blurb
+
+```yaml
+:test_build:
+  :use_assembly: TRUE
+```
+
+## `:release_build` Configuring a release build
+
+**_Note:_** In future versions of Ceedling, release build-related settings 
+presently organized beneath `:project` will be renamed and migrated to 
+this section.
+
+* `:output`
 
   The name of your release build binary artifact to be found in <build
   path>/artifacts/release. Ceedling sets the default artifact file
-  extension to that as is explicitly specified in the [:extension]
+  extension to that as is explicitly specified in the `:extension`
   section or as is system specific otherwise.
 
   **Default**: `project.exe` or `project.out`
 
-* `use_assembly`:
+* `:use_assembly`
 
-  If assembly code is present in the source tree, this option causes
-  Ceedling to create appropriate build directories and use an assembler
-  tool (default is the GNU tool as - override available in the [:tools]
-  section.
+  This option causes Ceedling to enable an assembler tool and add any 
+  assembly code present in the project to the release artifact's build.
+
+  The default assembler is the GNU tool `as`; it may be overridden 
+  in the `:tools` section.
+
+  The assembly files must be visible to Ceedling by way of `:paths` and
+  `:extension` settings for assembly files.
 
   **Default**: FALSE
 
-* `artifacts`:
+* `:artifacts`
 
   By default, Ceedling copies to the <build path>/artifacts/release
   directory the output of the release linker and (optionally) a map
   file. Many toolchains produce other important output files as well.
   Adding a file path to this list will cause Ceedling to copy that file
-  to the artifacts directory. The artifacts directory is helpful for
-  organizing important build output files and provides a central place
-  for tools such as Continuous Integration servers to point to build
-  output. Selectively copying files prevents incidental build cruft from
-  needlessly appearing in the artifacts directory. Note that inline Ruby
-  string replacement is available in the artifacts paths (see discussion
-  in the [:environment] section).
+  to the artifacts directory.
+
+  The artifacts directory is helpful for organizing important build 
+  output files and provides a central place for tools such as Continuous 
+  Integration servers to point to build output. Selectively copying 
+  files prevents incidental build cruft from needlessly appearing in the 
+  artifacts directory.
+
+  Note that inline Ruby string replacement is available in the artifacts 
+  paths (see discussion in the `:environment` section).
 
   **Default**: `[]` (empty)
 
-Example `[:release_build]` YAML blurb
+### Example `:release_build` YAML blurb
 
 ```yaml
 :release_build:
@@ -1029,24 +2430,53 @@ Example `[:release_build]` YAML blurb
     - build/release/out/c/top_secret.s19
 ```
 
-**paths**: options controlling search paths for source and header
-(and assembly) files
+## Project `:paths` configuration
 
-* `test`:
+**Paths for build tools and building file collections**
+
+Ceedling relies on various path and file collections to do its work. File
+collections are automagically assembled from paths, matching globs / wildcards,
+and file extensions (see project configuration `:extension`).
+
+Entries in `:paths` help create directory-based bulk file collections. The
+`:files` configuration section is available for filepath-oriented tailoring of
+these buk file collections.
+
+Entries in `:paths` ↳ `:include` also specify search paths for header files.
+
+All of the configuration subsections that follow default to empty lists. In
+YAML, list items can be comma separated within brackets or organized per line
+with a dash. An empty list can only be denoted as `[]`. Typically, you will see
+Ceedling project files use lists broken up per line.
+
+```yaml
+:paths:
+  :support: []    # Empty list (internal default)
+  :source:
+    - files/code  # Typical list format
+
+```
+
+Examples that illustrate the many `:paths` entry features follow all
+the various path-related documentation sections.
+
+* <h3><code>:paths</code> ↳ <code>:test</code></h3>
 
   All C files containing unit test code. Note: this is one of the
-  handful of configuration values that must be set.
+  handful of configuration values that must be set for a test suite.
 
   **Default**: `[]` (empty)
 
-* `source`:
+* <h3><code>:paths</code> ↳ <code>:source</code></h3>
 
-  All C files containing release code (code to be tested). Note: this is
-  one of the handful of configuration values that must be set.
+  All C files containing release code (code to be tested)
+
+  Note: this is one of the handful of configuration values that must 
+  be set for either a release build or test suite.
 
   **Default**: `[]` (empty)
 
-* `support`:
+* <h3><code>:paths</code> ↳ <code>:support</code></h3>
 
   Any C files you might need to aid your unit testing. For example, on
   occasion, you may need to create a header file containing a subset of
@@ -1057,679 +2487,1386 @@ Example `[:release_build]` YAML blurb
 
   **Default**: `[]` (empty)
 
-* `include`:
+* <h3><code>:paths</code> ↳ <code>:include</code></h3>
 
-  Any header files not already in the source search path. Note there's
-    no practical distinction between this search path and the source
-    search path; it's merely to provide options or to support any
-    peculiar source tree organization.
+  See these two important discussions to fully understand your options
+  for header file search paths:
+
+   * [Configuring Your Header File Search Paths][header-file-search-paths]
+   * [`TEST_INCLUDE_PATH(...)` build directive macro][test-include-path-macro]
+
+  [header-file-search-paths]: #configuring-your-header-file-search-paths
+  [test-include-path-macro]: #test_include_path
+
+  This set of paths specifies the locations of your header files. If 
+  your header files are intermixed with source files, you must duplicate 
+  some or all of your `:paths` ↳ `:source` entries here.
+
+  In its simplest use, your include paths list can be exhaustive.
+  That is, you list all path locations where your project's header files
+  reside in this configuration list.
+
+  However, if you have a complex project or many, many include paths that 
+  create problematically long search paths at the compilation command 
+  line, you may treat your `:paths` ↳ `:include` list as a base, common 
+  list. Having established that base list, you can then extend it on a 
+  test-by-test basis with use of the `TEST_INCLUDE_PATH(...)` build 
+  directive macro in your test files.
 
   **Default**: `[]` (empty)
 
-* `test_toolchain_include`:
+* <h3><code>:paths</code> ↳ <code>:test_toolchain_include</code></h3>
 
   System header files needed by the test toolchain - should your
   compiler be unable to find them, finds the wrong system include search
   path, or you need a creative solution to a tricky technical problem.
-  Note that if you configure your own toolchain in the [:tools] section,
+
+  Note that if you configure your own toolchain in the `:tools` section,
   this search path is largely meaningless to you. However, this is a
   convenient way to control the system include path should you rely on
-  the default gcc tools.
+  the default [GCC] tools.
 
   **Default**: `[]` (empty)
 
-* `release_toolchain_include`:
+* <h3><code>:paths</code> ↳ <code>:release_toolchain_include</code></h3>
 
   Same as preceding albeit related to the release toolchain.
 
   **Default**: `[]` (empty)
 
-* `<custom>`
+* <h3><code>:paths</code> ↳ <code>:libraries</code></h3>
+
+  Library search paths. [See `:libraries` section][libraries].
+
+  **Default**: `[]` (empty)
+
+  [libraries]: #libraries
+
+* <h3><code>:paths</code> ↳ <code>:&lt;custom&gt;</code></h3>
 
   Any paths you specify for custom list. List is available to tool
-  configurations and/or plugins. Note a distinction. The preceding names
+  configurations and/or plugins. Note a distinction – the preceding names
   are recognized internally to Ceedling and the path lists are used to
   build collections of files contained in those paths. A custom list is
   just that - a custom list of paths.
 
-Notes on path grammar within the [:paths] section:
+### `:paths` configuration options & notes
 
-* Order of search paths listed in [:paths] is preserved when used by an
-  entry in the [:tools] section
+1. A path can be absolute (fully qualified) or relative.
+1. A path can include a glob matcher (more on this below).
+1. A path can use inline Ruby string replacement (see `:environment` section 
+   for more).
+1. Subtractive paths are possible and useful. See the documentation below.
+1. Path order beneath a subsection (e.g. `:paths` ↳ `:include`) is preserved 
+   when the list is iterated internally or passed to a tool.
 
-* Wherever multiple path lists are combined for use Ceedling prioritizes
-  path groups as follows:
-  test paths, support paths, source paths, include paths.
+### `:paths` Globs
 
-  This can be useful, for instance, in certain testing scenarios where
-  we desire Ceedling or the compiler to find a stand-in header file before
-  the actual source header file of the same name.
+Globs are effectively fancy wildcards. They are not as capable as full regular
+expressions but are easier to use. Various OSs and programming languages
+implement them differently.
 
-* Paths:
+For a quick overview, see this [tutorial][globs-tutorial].
 
-  1. can be absolute or relative
+Ceedling supports globs so you can specify patterns of directories without the
+need to list each and every required path.
 
-  2. can be singly explicit - a single fully specified path
+Ceedling `:paths` globs operate similarlry to [Ruby globs][ruby-globs] except
+that they are limited to matching directories within `:paths` entries and not
+also files. In addition, Ceedling adds a useful convention with certain uses of
+the `*` and `**` operators.
 
-  3. can include a glob operator (more on this below)
+Glob operators include the following: `*`, `**`, `?`, `[-]`, `{,}`.
 
-  4. can use inline Ruby string replacement (see [:environment]
-     section for more)
+* `*`
+   * When used within a character string, `*` is simply a standard wildcard.
+   * When used after a path separator, `/*` matches all subdirectories of depth 1
+     below the parent path, not including the parent path.
+* `**`: All subdirectories recursively discovered below the parent path, not
+  including the parent path. This pattern only makes sense after a path
+  separator `/**`.
+* `?`: Single alphanumeric character wildcard.
+* `[x-y]`: Single alphanumeric character as found in the specified range.
+* `{x, y, ...}`: Matching any of the comma-separated patterns. Two or more 
+  patterns may be listed within the brackets. Patterns may be specific 
+  character sequences or other glob operators.
 
-  5. default as an addition to a specific search list (more on this
-     in the examples)
+Special conventions:
 
-  6. can act to subtract from a glob included in the path list (more
-     on this in the examples)
+* If a globified path ends with `/*` or `/**`, the resulting list of directories
+  also includes the parent directory.
 
-[Globs](http://ruby.about.com/od/beginningruby/a/dir2.htm)
-as used by Ceedling are wildcards for specifying directories
-without the need to list each and every required search path.
-Ceedling globs operate just as Ruby globs except that they are
-limited to matching directories and not files. Glob operators
-include the following * ** ? [-] {,} (note: this list is space separated
-and not comma separated as commas are used within the bracket
-operators).
+See the example `:paths` YAML blurb section.
 
-* `*`:
+[globs-tutotrial]: http://ruby.about.com/od/beginningruby/a/dir2.htm
+[ruby-globs]: https://ruby-doc.org/core-3.0.0/Dir.html#method-c-glob
 
-  All subdirectories of depth 1 below the parent path and including the
-  parent path
+### Subtractive `:paths` entries
 
-* `**`:
+Globs are super duper helpful when you have many paths to list. But, what if a
+single glob gets you 20 nested paths, but you actually want to exclude 2 of
+those paths?
 
-  All subdirectories recursively discovered below the parent path and
-  including the parent path
+Must you revert to listing all 18 paths individually? No, my friend, we've got
+you. Behold, subtractive paths.
 
-* `?`:
+Put simply, with an optional preceding decorator `-:`, you can instruct Ceedling
+to remove certain directory paths from a collection after it builds that
+collection.
 
-  Single alphanumeric character wildcard
+By default, paths are additive. For pretty alignment in your YAML, you may also
+use `+:`, but strictly speaking, it's not necessary.
 
-* `[x-y]`:
+Subtractive paths may be simple paths or globs just like any other path entry.
 
-  Single alphanumeric character as found in the specified range
+See examples below.
 
-* `{x,y}`:
+### Example `:paths` YAML blurbs
 
-  Single alphanumeric character from the specified list
+_Note:_ Ceedling standardizes paths for you. Internally, all paths use forward
+ slash `/` path separators (including on Windows), and Ceedling cleans up
+ trailing path separators to be consistent internally.
 
-Example [:paths] YAML blurbs
+#### Simple `:paths` entries
 
 ```yaml
 :paths:
-  :source:              #together the following comprise all source search paths
-    - project/source/*  #expansion yields all subdirectories of depth 1 plus parent directory
-    - project/lib       #single path
-  :test:                #all test search paths
-    - project/**/test?  #expansion yields any subdirectory found anywhere in the project that
-                        #begins with "test" and contains 5 characters
+  # All <dirs>/*.<source extension> => test/release compilation input
+  :source:
+    - project/src/            # Resulting source list has just two relative directory paths
+    - project/aux             # (Traversal goes no deeper than these simple paths)
 
-:paths:
-  :source:                           #all source search paths
-    - +:project/source/**            #all subdirectories recursively discovered plus parent directory
-    - -:project/source/os/generated  #subtract os/generated directory from expansion of above glob
-                                     #note that '+:' notation is merely aesthetic; default is to add
+  # All <dirs> => compilation search paths + mock search paths
+  :include:                   # All <dirs> => compilation input
+    - project/src/inc         # Include paths are subdirectory of src/
+    - /usr/local/include/foo  # Header files for a prebuilt library at fully qualified path
 
-  :test:                             #all test search paths
-    - project/test/bootloader        #explicit, single search paths (searched in the order specified)
-    - project/test/application
-    - project/test/utilities
-
-  :custom:                           #custom path list
-    - "#{PROJECT_ROOT}/other"        #inline Ruby string expansion
+  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
+  :test:                
+    - ../tests                # Tests have parent directory above working directory
 ```
 
-Globs and inline Ruby string expansion can require trial and
-error to arrive at your intended results. Use the `ceedling paths:*`
-command line options (documented in preceding section) to verify
-your settings.
+#### Common `:paths` globs with subtractive path entries
 
-Ceedling relies on file collections automagically assembled
-from paths, globs, and file extensions. File collections greatly
-simplify project set up. However, sometimes you need to remove
-from or add individual files to those collections.
+```yaml
+:paths:
+  :source:              
+    - +:project/src/**    # Recursive glob yields all subdirectories of any depth plus src/
+    - -:project/src/exp   # Exclude experimental code in exp/ from release or test builds
+                          # `+:` is decoration for pretty alignment; only `-:` changes a list
 
+  :include:
+    - +:project/src/**/inc   # Include every subdirectory inc/ beneath src/
+    - -:project/src/exp/inc  # Remove header files subdirectory for experimental code
+```
 
-* `test`:
+#### Advanced `:paths` entries with globs and string expansion
+
+```yaml
+:paths:
+  :test:                             
+    - test/**/f???             # Every 4 character “f-series" subdirectory beneath test/
+
+  :my_things:                  # Custom path list
+    - "#{PROJECT_ROOT}/other"  # Inline Ruby string expansion using Ceedling global constant
+```
+
+```yaml
+:paths:
+  :test:                             
+    - test/{foo,b*,xyz}  # Path list will include test/foo/, test/xyz/, and any subdirectories 
+                         # beneath test/ beginning with 'b', including just test/b/
+```
+
+Globs and inline Ruby string expansion can require trial and error to arrive at
+your intended results. Ceedling provides as much validation of paths as is 
+practical.
+
+Use the `ceedling paths:*` and `ceedling files:*` command line tasks —
+documented in a preceding section — to verify your settings. (Here `*` is
+shorthand for `test`, `source`, `include`, etc. Confusing? Sorry.)
+
+## `:files` Modify file collections
+
+**File listings for tailoring file collections**
+
+Ceedling relies on file collections to do its work. These file collections are
+automagically assembled from paths, matching globs / wildcards, and file
+extensions (see project configuration `:extension`).
+
+Entries in `:files` accomplish filepath-oriented tailoring of the bulk file
+collections created from `:paths` directory listings and filename pattern
+matching.
+
+On occasion you may need to remove from or add individual files to Ceedling’s
+file collections.
+
+The path grammar documented in the `:paths` configuration section largely
+applies to `:files` path entries - albeit with regard to filepaths and not
+directory paths. The `:files` grammar and YAML examples are documented below.
+
+* <h3><code>:files</code> ↳ <code>:test</code></h3>
 
   Modify the collection of unit test C files.
-
+  
   **Default**: `[]` (empty)
 
-* `source`:
+* <h3><code>:files</code> ↳ <code>:source</code></h3>
 
   Modify the collection of all source files used in unit test builds and release builds.
-
+  
   **Default**: `[]` (empty)
 
-* `assembly`:
+* <h3><code>:files</code> ↳ <code>:assembly</code></h3>
 
   Modify the (optional) collection of assembly files used in release builds.
-
+  
   **Default**: `[]` (empty)
 
-* `include`:
+* <h3><code>:files</code> ↳ <code>:include</code></h3>
 
   Modify the collection of all source header files used in unit test builds (e.g. for mocking) and release builds.
-
+  
   **Default**: `[]` (empty)
 
-* `support`:
+* <h3><code>:files</code> ↳ <code>:support</code></h3>
 
   Modify the collection of supporting C files available to unit tests builds.
-
+  
   **Default**: `[]` (empty)
 
-* `libraries`:
+* <h3><code>:files</code> ↳ <code>:libraries</code></h3>
 
   Add a collection of library paths to be included when linking.
-
+  
   **Default**: `[]` (empty)
 
+### `:files` configuration options & notes
 
-Note: All path grammar documented in [:paths] section applies
-to [:files] path entries - albeit at the file path level and not
-the directory level.
+1. A path can be absolute (fully qualified) or relative.
+1. A path can include a glob matcher (more on this below).
+1. A path can use inline Ruby string replacement (see `:environment` section 
+   for more).
+1. Subtractive paths prepended with a `-:` decorator are possible and useful. 
+   See the documentation below.
 
-Example [:files] YAML blurb
+### `:files` Globs
+
+Globs are effectively fancy wildcards. They are not as capable as full regular
+expressions but are easier to use. Various OSs and programming languages
+implement them differently.
+
+For a quick overview, see this [tutorial][globs-tutorial].
+
+Ceedling supports globs so you can specify patterns of files as well as simple,
+ordinary filepaths.
+
+Ceedling `:files` globs operate identically to [Ruby globs][ruby-globs] except
+that they ignore directory paths. Only filepaths are recognized.
+
+Glob operators include the following: `*`, `**`, `?`, `[-]`, `{,}`.
+
+* `*`
+   * When used within a character string, `*` is simply a standard wildcard.
+   * When used after a path separator, `/*` matches all subdirectories of depth
+     1 below the parent path, not including the parent path.
+* `**`: All subdirectories recursively discovered below the parent path, not
+  including the parent path. This pattern only makes sense after a path
+  separator `/**`.
+* `?`: Single alphanumeric character wildcard.
+* `[x-y]`: Single alphanumeric character as found in the specified range.
+* `{x, y, ...}`: Matching any of the comma-separated patterns. Two or more
+  patterns may be listed within the brackets. Patterns may be specific
+  character sequences or other glob operators.
+
+### Subtractive `:files` entries
+
+Tailoring a file collection includes adding to it but also subtracting from it.
+
+Put simply, with an optional preceding decorator `-:`, you can instruct Ceedling
+to remove certain file paths from a collection after it builds that
+collection.
+
+By default, paths are additive. For pretty alignment in your YAML, you may also
+use `+:`, but strictly speaking, it's not necessary.
+
+Subtractive paths may be simple paths or globs just like any other path entry.
+
+See examples below.
+
+### Example `:files` YAML blurbs
+
+#### Simple `:files` tailoring
 
 ```yaml
+:paths:
+  # All <dirs>/*.<source extension> => test/release compilation input
+  :source:
+    - src/**
+
 :files:
   :source:
-    - callbacks/comm.c        # entry defaults to file addition
-    - +:callbacks/comm*.c     # add all comm files matching glob pattern
-    - -:source/board/atm134.c # not our board
-  :test:
-    - -:test/io/test_output_manager.c # remove unit tests from test build
+    - +:callbacks/serial_comm.c  # Add source code outside src/
+    - -:src/board/atm134.c       # Remove board code
 ```
 
-**environment:** inserts environment variables into the shell
-instance executing configured tools
+#### Advanced `:files` tailoring
 
-Ceedling creates environment variables from any key / value
-pairs in the environment section. Keys become an environment
-variable name in uppercase. The values are strings assigned
-to those environment variables. These value strings are either
-simple string values in YAML or the concatenation of a YAML array.
+```yaml
+:paths:
+  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
+  :test:
+     - test/**
 
-Ceedling is able to execute inline Ruby string substitution
-code to set environment variables. This evaluation occurs when
-the project file is first processed for any environment pair's
-value string including the Ruby string substitution pattern
-`#{…}`. Note that environment value strings that _begin_ with
-this pattern should always be enclosed in quotes. YAML defaults
-to processing unquoted text as a string; quoting text is optional.
-If an environment pair's value string begins with the Ruby string
-substitution pattern, YAML will interpret the string as a Ruby
-comment (because of the `#`). Enclosing each environment value
-string in quotes is a safe practice.
+:files:
+  :test:
+    # Remove every test file anywhere beneath test/ whose name ends with 'Model'. 
+    # String replacement inserts a global constant that is the file extension for 
+    # a C file. This is an anchor for the end of the filename and automaticlly 
+    # uses file extension settings.
+    - "-:test/**/*Model#{EXTENSION_SOURCE}"
 
-[:environment] entries are processed in the configured order
-(later entries can reference earlier entries).
+    # Remove test files at depth 1 beneath test/ with 'analog' anywhere in their names.
+    - -:test/*{A,a}nalog*
 
-Special case: PATH handling
+    # Remove test files at depth 1 beneath test/ that are of an “F series”
+    # test collection FAxxxx, FBxxxx, and FCxxxx where 'x' is any character.
+    - -:test/F[A-C]????
+```
 
-In the specific case of specifying an environment key named _path_,
-an array of string values will be concatenated with the appropriate
-platform-specific path separation character (e.g. ':' on linux,
-';' on Windows). All other instances of environment keys assigned
-YAML arrays use simple concatenation.
+## `:environment:` Insert environment variables into shells running tools
 
-Example [:environment] YAML blurb
+Ceedling creates environment variables from any key / value pairs in the 
+environment section. Keys become an environment variable name in uppercase. The
+values are strings assigned to those environment variables. These value strings 
+are either simple string values in YAML or the concatenation of a YAML array
+of strings.
+
+Ceedling is able to execute inline Ruby string substitution code to set 
+environment variables. This evaluation occurs when the project file is first 
+processed for any environment pair's value string including the Ruby string 
+substitution pattern `#{…}`. Note that environment value entries including this
+pattern should always be enclosed in quotes. YAML defaults to processing 
+unquoted text as a string; quoting text is optional. If an environment entry's 
+value string includes the Ruby string substitution pattern, YAML will interpret 
+the string as a YAML comment (because of the `#`). Enclosing each environment 
+entry value string in quotes is a safe practice.
+
+`:environment` entries are processed in the configured order (later entries 
+can reference earlier entries).
+
+### Special case: `PATH` handling
+
+In the specific case of specifying an environment key named `:path`, an array 
+of string values will be concatenated with the appropriate platform-specific 
+path separation character (i.e. `:` on Unix-variants, `;` on Windows).
+
+All other instances of environment keys assigned a value of a YAML array use 
+simple concatenation.
+
+### Example `:environment` YAML blurb
 
 ```yaml
 :environment:
-  - :license_server: gizmo.intranet        #LICENSE_SERVER set with value "gizmo.intranet"
-  - :license: "#{`license.exe`}"           #LICENSE set to string generated from shelling out to
-                                           #execute license.exe; note use of enclosing quotes
+  - :license_server: gizmo.intranet        # LICENSE_SERVER set with value "gizmo.intranet"
+  - :license: "#{`license.exe`}"           # LICENSE set to string generated from shelling out to
+                                           # xecute license.exe; note use of enclosing quotes to
+                                           # prevent a YAML comment.
 
-  - :path:                                 #concatenated with path separator (see special case above)
-     - Tools/gizmo/bin                     #prepend existing PATH with gizmo path
-     - "#{ENV['PATH']}"                    #pattern #{…} triggers ruby evaluation string substitution
-                                           #note: value string must be quoted because of '#'
+  - :path:                                 # Concatenated with path separator (see special case above)
+     - Tools/gizmo/bin                     # Prepend existing PATH with gizmo path
+     - "#{ENV['PATH']}"                    # Pattern #{…} triggers ruby evaluation string substitution
+                                           # Note: value string must be quoted because of '#' to 
+                                           # prevent a YAML comment.
 
   - :logfile: system/logs/thingamabob.log  #LOGFILE set with path for a log file
 ```
 
-**extension**: configure file name extensions used to collect lists of files searched in [:paths]
+## `:extension` Filename extensions used to collect lists of files searched in `:paths`
 
-* `header`:
+Ceedling uses path lists and wildcard matching against filename extensions to collect file lists.
+
+* `:header`:
 
   C header files
 
   **Default**: .h
 
-* `source`:
+* `:source`:
 
   C code files (whether source or test files)
 
   **Default**: .c
 
-* `assembly`:
+* `:assembly`:
 
-  Assembly files (contents wholly assembly instructions)
+  Assembly files (contents wholly assembler instructions)
 
   **Default**: .s
 
-* `object`:
+* `:object`:
 
   Resulting binary output of C code compiler (and assembler)
 
   **Default**: .o
 
-* `executable`:
+* `:executable`:
 
   Binary executable to be loaded and executed upon target hardware
 
-  **Default**: .exe or .out (Win or linux)
+  **Default**: .exe or .out (Win or Linux)
 
-* `testpass`:
+* `:testpass`:
 
-  Test results file (not likely to ever need a new value)
+  Test results file (not likely to ever need a redefined value)
 
   **Default**: .pass
 
-* `testfail`:
+* `:testfail`:
 
-  Test results file (not likely to ever need a new value)
+  Test results file (not likely to ever need a redefined value)
 
   **Default**: .fail
 
-* `dependencies`:
+* `:dependencies`:
 
-  File containing make-style dependency rules created by gcc preprocessor
+  File containing make-style dependency rules created by the `gcc` preprocessor
 
   **Default**: .d
 
+### Example `:extension` YAML blurb
 
-Example [:extension] YAML blurb
-
-    :extension:
-      :source: .cc
-      :executable: .bin
-
-**defines**: command line defines used in test and release compilation by configured tools
-
-* `test`:
-
-  Defines needed for testing. Useful for:
-
-  1. test files containing conditional compilation statements (i.e.
-  tests active in only certain contexts)
-
-  2. testing legacy source wherein the isolation of source under test
-  afforded by Ceedling and its complementary tools leaves certain
-  symbols unset when source files are compiled in isolation
-
-  **Default**: `[]` (empty)
-
-* `test_preprocess`:
-
-  If [:project][:use_test_preprocessor] or
-  [:project][:use_deep_dependencies] is set and code is structured in a
-  certain way, the gcc preprocessor may need symbol definitions to
-  properly preprocess files to extract function signatures for mocking
-  and extract deep dependencies for incremental builds.
-
-  **Default**: `[]` (empty)
-
-* `<test_name>`:
-
-  Replace standard `test` definitions for specified `<test_name>`definitions. For example:
 ```yaml
-  :defines:
-    :test:
-      - FOO_STANDARD_CONFIG
-    :test_foo_config:
-      - FOO_SPECIFIC_CONFIG
+:extension:
+  :source: .cc
+  :executable: .bin
 ```
-  `ceedling test:foo_config` will now have `FOO_SPECIFIC_CONFIG` defined instead of
-  `FOO_STANDARD_CONFIG`. None of the other tests will have `FOO_SPECIFIC_SPECIFIC`.
 
+## `:defines` Command line symbols used in compilation
+
+Ceedling’s internal, default compiler tool configurations (see later `:tools` section) 
+execute compilation of test and source C files.
+
+These default tool configurations are a one-size-fits-all approach. If you need to add to
+the command line symbols for individual tests or a release build, the `:defines` section 
+allows you to easily do so.
+
+Particularly in testing, symbol definitions in the compilation command line are often needed:
+
+1. You may wish to control aspects of your test suite. Conditional compilation statements
+   can control which test cases execute in which circumstances. (Preprocessing must be 
+   enabled, `:project` ↳ `:use_test_preprocessor`.)
+
+1. Testing means isolating the source code under test. This can leave certain symbols 
+   unset when source files are compiled in isolation. Adding symbol definitions in your
+   Ceedling project file for such cases is one way to meet this need.
+
+Entries in `:defines` modify the command lines for compilers used at build time. In the
+default case, symbols listed beneath `:defines` become `-D<symbol>` arguments.
+
+### `:defines` verification (Ceedling does none)
+
+Ceedling does no verification of your configured `:define` symbols.
+
+Unity, CMock, and CException conditional compilation statements, your toolchain's 
+preprocessor, and/or your toolchain's compiler will complain appropriately if your 
+specified symbols are incorrect, incomplete, or incompatible.
+
+### `:defines` organization: Contexts and Matchers
+
+The basic layout of `:defines` involves the concept of contexts.
+
+General case:
+```yaml
+:defines:
+  :<context>:
+    - <symbol>
+    - ...
+```
+
+Advanced matching for test build handling only:
+```yaml
+:defines:
+  :test:
+    :<matcher>
+      - <symbol>
+      - ...
+```
+
+A context is the build context you want to modify — `:test` or `:release`. Plugins
+can also hook into `:defines` with their own context.
+
+You specify the symbols you want to add to a build step beneath a `:<context>`. In many 
+cases this is a simple YAML list of strings that will become symbols defined in a 
+compiler's command line.
+
+Specifically in the `:test` context you also have the option to create test file matchers 
+that create symbol definitions for some subset of your test build. Note that file 
+matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
+
+* <h3><code>:defines</code> ↳ <code>:release</code></h3>
+
+  This project configuration entry adds the items of a simple YAML list as symbols to 
+  the compilation of every C file in a release build.
+  
   **Default**: `[]` (empty)
 
-* `release`:
+* <h3><code>:defines</code> ↳ <code>:preprocess</code></h3>
 
-  Defines needed for the release build binary artifact.
-
+  This project configuration entry adds the specified items as symbols to any needed 
+  preprocessing of components in a test executable's build. (Preprocessing must be enabled, 
+  `:project` ↳ `:use_test_preprocessor`.)
+  
+  Preprocessing here refers to handling macros, conditional includes, etc. in header files 
+  that are mocked and in complex test files before runners are generated from them.
+  
+  Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus symbol list. Both are documented below.
+  
+  _Note:_ Left unspecified, `:preprocess` symbols default to be identical to `:test` 
+  symbols. Override this behavior by adding `:defines` ↳ `:preprocess` symbols. If you want 
+  no additional symbols for preprocessing regardless of `test` symbols, simply specify an 
+  empty list `[]`.
+  
   **Default**: `[]` (empty)
 
-* `release_preprocess`:
+* <h3><code>:defines</code> ↳ <code>:test</code></h3>
 
-  If [:project][:use_deep_dependencies] is set and code is structured in
-  a certain way, the gcc preprocessor may need symbol definitions to
-  properly preprocess files for incremental release builds due to deep
-  dependencies.
-
+  This project configuration entry adds the specified items as symbols to compilation of C 
+  components in a test executable's build.
+  
+  Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus symbol list. Both are documented below.
+  
   **Default**: `[]` (empty)
 
-* `use_test_definition`:
+* <h3><code>:defines</code> ↳ <code>:&lt;plugin context&gt;</code></h3>
 
-  When this option is used the `-D<test_name>` flag is added to the build option.
+  Some advanced plugins make use of build contexts as well. For instance, the Ceedling 
+  Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
+  that take advantage of Ceedling’s internal mechanisms, you can add to those tools'
+  compilation symbols in the same manner as the built-in contexts.
 
-  **Default**: FALSE
+### `:defines` options
 
-Example [:defines] YAML blurb
+* `:use_test_definition`:
+
+  If enabled, add a symbol to test compilation derived from the test file name. The 
+  resulting symbol is a sanitized, uppercase, ASCII version of the test file name.
+  Any non ASCII characters (e.g. Unicode) are replaced by underscores as are any 
+  non-alphanumeric characters. Underscores and dashes are preserved. The symbol name
+  is wrapped in underscores unless they already exist in the leading and trailing
+  positions. Example: _test_123abc-xyz😵.c_ ➡️ `_TEST_123ABC-XYZ_`.
+
+  **Default**: False
+
+### Simple `:defines` configuration
+
+A simple and common need is configuring conditionally compiled features in a code base.
+The following example illustrates using simple YAML lists for symbol definitions at 
+compile time.
 
 ```yaml
 :defines:
   :test:
-    - UNIT_TESTING  #for select cases in source to allow testing with a changed behavior or interface
-    - OFF=0
-    - ON=1
     - FEATURE_X=ON
-  :source:
+    - PRODUCT_CONFIG_C
+  :release:
     - FEATURE_X=ON
+    - PRODUCT_CONFIG_C
 ```
 
+Given the YAML blurb above, the two symbols will be defined in the compilation command 
+lines for all C files in a test suite build or release build.
 
-**libraries**: command line defines used in test and release compilation by configured tools
+### Advanced `:defines` per-test matchers
 
-Ceedling allows you to pull in specific libraries for the purpose of release and test builds.
-It has a few levels of support for this. Start by adding a :libraries main section in your
-configuration. In this section, you can optionally have the following subsections:
+Ceedling treats each test executable as a mini project. As a reminder, each test file,
+together with all C sources and frameworks, becomes an individual test executable of
+the same name.
 
-* `test`:
+_In the `:test` context only_, symbols may be defined for only those test executable 
+builds that match file name criteria. Matchers match on test file names only, and the 
+specified symbols are added to the build step for all files that are components of 
+matched test executables.
 
-  Library files that should be injected into your tests when linking occurs.
-  These can be specified as either relative or absolute paths. These files MUST
-  exist when the test attempts to build.
+In short, for instance, this means your compilation of _TestA_ can have different 
+symbols than compilation of _TestB_. Those symbols will be applied to every C file 
+that is compiled as part those individual test executable builds. Thus, in fact, with 
+separate test files unit testing the same source C file, you may exercise different 
+conditional compilations of the same source. See the example in the section below.
 
-* `release`:
+#### `:defines` per-test matcher examples with YAML
 
-  Library files that should be injected into your release when linking occurs. These
-  can be specified as either relative or absolute paths. These files MUST exist when
-  the release attempts to build UNLESS you are using the subprojects plugin. In that
-  case, it will attempt to build that library for you as a dynamic dependency.
+Before detailing matcher capabilities and limits, here are examples to illustrate the
+basic ideas of test file name matching.
 
-* `system`:
+This example builds on the previous simple symbol list example. The imagined scenario
+is that of unit testing the same single source C file with different product features 
+enabled.
 
-  These libraries are assumed to be in the tool path somewhere and shouldn't need to be
-  specified. The libraries added here will be injected into releases and tests. For example
-  if you specify `-lm` you can include the math library. The `-l` portion is only necessary
-  if the `:flag` prefix below doesn't specify it already for you other libraries.
+```yaml
+# Imagine three test files all testing aspects of a single source file Comms.c with 
+# different features enabled via conditional compilation.
+:defines:
+  :test:
+    # Tests for FeatureX configuration
+    :CommsFeatureX:      # Matches a C test file name including 'CommsFeatureX'
+      - FEATURE_X=ON
+      - FEATURE_Z=OFF
+      - PRODUCT_CONFIG_C
+    # Tests for FeatureZ configuration
+    :CommsFeatureZ:      # Matches a C test file name including 'CommsFeatureZ'
+      - FEATURE_X=OFF
+      - FEATURE_Z=ON
+      - PRODUCT_CONFIG_C
+    # Tests of base functionality
+    :CommsBase:          # Matches a C test file name including 'CommsBase'
+      - FEATURE_X=OFF
+      - FEATURE_Z=OFF
+      - PRODUCT_BASE
+```
 
-* `flag`:
+This example illustrates each of the test file name matcher types.
 
-  This is the method of adding an argument for each library. For example, gcc really likes
-  it when you specify “-l${1}”
+```yaml
+:defines:
+  :test:
+    :*:                       #  Wildcard: Add '-DA' for compilation all files for all tests
+      - A                  
+    :Model:                   # Substring: Add '-DCHOO' for compilation of all files of any test with 'Model' in its name
+      - CHOO
+    :/M(ain|odel)/:           #     Regex: Add '-DBLESS_YOU' for all files of any test with 'Main' or 'Model' in its name
+      - BLESS_YOU
+    :Comms*Model:             #  Wildcard: Add '-DTHANKS' for all files of any test that have zero or more characters
+      - THANKS                #            between 'Comms' and 'Model'
+```
 
-* `path_flag`:
+#### Using `:defines` per-test matchers
 
-  This is the method of adding an path argument for each library path. For example, gcc really
-  likes it when you specify “-L \"${1}\"”
+These matchers are available:
+
+1. Wildcard (`*`) 
+   1. If specified in isolation, matches all tests.
+   1. If specified within a string, matches any test filename with that 
+      wildcard expansion.
+1. Substring — Matches on part of a test filename (up to all of it, including 
+   full path).
+1. Regex (`/.../`) — Matches test file names against a regular expression.
 
 Notes:
+* Substring filename matching is case sensitive.
+* Wildcard matching is effectively a simplified form of regex. That is, multiple
+  approaches to matching can match the same filename.
 
-* If you've specified your own link step, you are going to want to add ${4} to your argument
-list in the place where library files should be added to the command call. For gcc, this is
-often the very end. Other tools may vary.
+Symbols by matcher are cumulative. This means the symbols from more than one
+matcher can be applied to compilation for the components of any one test
+executable.
 
+Referencing the example above, here are the extra compilation symbols for a
+handful of test executables:
 
-**flags**: configure per-file compilation and linking flags
+* _test_Something_: `-DA`
+* _test_Main_: `-DA -DBLESS_YOU`
+* _test_Model_: `-DA -DCHOO -DBLESS_YOU`
+* _test_CommsSerialModel_: `-DA -DCHOO -DBLESS_YOU -DTHANKS`
 
-Ceedling tools (see later [:tools] section) are used to configure
-compilation and linking of test and source files. These tool
-configurations are a one-size-fits-all approach. Should individual files
-require special compilation or linking flags, the settings in the
-[:flags] section work in conjunction with tool definitions by way of
-argument substitution to achieve this.
+The simple `:defines` list format remains available for the `:test` context. The
+YAML blurb below is equivalent to the plain wildcard matcher above. Of course,
+this format is limited in that it applies symbols to the compilation of all C
+files for all test executables.
 
-* `release`:
+```yaml
+:defines:
+  :test:
+    - A   # Equivalent to wildcard '*' test file matching
+```
 
-  [:compile] or [:link] flags for release build
+#### Distinguishing similar or identical filenames with `:defines` per-test matchers
 
-* `test`:
+You may find yourself needing to distinguish test files with the same name or test 
+files with names whose base naming is identical.
 
-  [:compile] or [:link] flags for test build
+Of course, identical test filenames have a natural distinguishing feature in their 
+containing directory paths. Files of the same name can only exist in different
+directories. As such, your matching must include the path.
 
-Notes:
+```yaml
+:defines:
+  :test:
+    :hardware/test_startup:  # Match any test names beginning with 'test_startup' in hardware/ directory
+      - A                  
+    :network/test_startup:   # Match any test names beginning with 'test_startup' in network/ directory
+      - B
+```
 
-* Ceedling works with the [:release] and [:test] build contexts
-  as-is; plugins can add additional contexts
+It's common in C file naming to use the same base name for multiple files. Given the
+following example list, care must be given to matcher construction to single out
+test_comm_startup.c.
 
-* Only [:compile] and [:link] are recognized operations beneath
-  a context
+* tests/test_comm_hw.c
+* tests/test_comm_startup.c
+* tests/test_comm_startup_timers.c
 
-* File specifiers do not include a path or file extension
+```yaml
+:defines:
+  :test:
+    :test_comm_startup.c: # Full filename with extension distinguishes this file test_comm_startup_timers.c
+      - FOO
+```
 
-* File specifiers are case sensitive (must match original file
-  name)
+The preceding examples use substring matching, but, regular expression matching
+could also be appropriate.
 
-* File specifiers do support regular expressions if encased in quotes
+#### Using YAML anchors & aliases for complex testing scenarios with `:defines`
 
-* '`*`' is a special (optional) file specifier to provide flags
-  to all files not otherwise specified
+See the short but helpful article on [YAML anchors & aliases][yaml-anchors-aliases] to 
+understand these features of YAML.
 
+Particularly in testing complex projects, per-test file matching may only get you so
+far in meeting your symbol definition needs. For instance, you may need to use the 
+same symbols across many test files, but no convenient name matching scheme works. 
+Advanced YAML features can help you copy the same symbols into multiple `:defines` 
+test file matchers.
 
-Example [:flags] YAML blurb
+The following advanced example illustrates how to create a set of file matches for 
+test preprocessing that are identical to test compilation with one addition.
+
+In brief, this example uses YAML to copy all the `:test` file matchers into 
+`:preprocess` and add an additional symbol to the list for all test file
+wildcard matching.
+
+```yaml
+:defines:
+  :test: &config-test-defines  # YAML anchor
+    :*:  &match-all-tests      # YAML anchor
+      - PRODUCT_FEATURE_X
+      - ASSERT_LEVEL=2
+      - USES_RTOS=1
+    :test_foo:
+      - DRIVER_FOO=1u
+    :test_bar:
+      - DRIVER_BAR=5u
+  :preprocess:
+    <<: *config-test-defines   # Insert all :test defines file matchers via YAML alias
+    :*:                        # Override wildcard matching key in copy of *config-test-defines
+      - *match-all-tests       # Copy test defines for all files via YAML alias
+      - RTOS_SPECIAL_THING     # Add single additional symbol to all test executable preprocessing
+                               # test_foo, test_bar, and any other matchers are present because of <<: above
+```
+
+## `:libraries`
+
+Ceedling allows you to pull in specific libraries for release and test builds with a 
+few levels of support.
+
+* <h3><code>:libraries</code> ↳ <code>:test</code></h3>
+
+  Libraries that should be injected into your test builds when linking occurs.
+  
+  These can be specified as naked library names or with relative paths if search paths
+  are specified with `:paths` ↳ `:libraries`. Otherwise, absolute paths may be used
+  here.
+  
+  These library files **must** exist when tests build.
+  
+  **Default**: `[]` (empty)
+
+* <h3><code>:libraries</code> ↳ <code>:release</code></h3>
+
+  Libraries that should be injected into your release build when linking occurs.
+  
+  These can be specified as naked library names or with relative paths if search paths
+  are specified with `:paths` ↳ `:libraries`. Otherwise, absolute paths may be used
+  here.
+  
+  These library files **must** exist when the release build occurs **unless** you 
+  are using the _subprojects_ plugin. In that case, the plugin will attempt to build 
+  the needed library for you as a dependency.
+  
+  **Default**: `[]` (empty)
+
+* <h3><code>:libraries</code> ↳ <code>:system</code></h3>
+
+  Libraries listed here will be injected into releases and tests.
+  
+  These libraries are assumed to be findable by the configured linker tool, should need
+  no path help, and can be specified by common linker shorthand for libraries.
+  
+  For example, specifying `m` will include the math library per the GCC convention. The
+  file itself on a Unix-like system will be `libm` and the `gcc` command line argument 
+  will be `-lm`.
+  
+  **Default**: `[]` (empty)
+
+### `:libraries` options
+
+* `:flag`:
+
+  Command line argument format for specifying a library.
+
+  **Default**: `-l${1}` (GCC format)
+
+* `:path_flag`:
+
+  Command line argument format for adding a library search path.
+
+  Library search paths may be added to your project with `:paths` ↳ `:libraries`.
+
+  **Default**: `-L "${1}”` (GCC format)
+
+### `:libraries` example with YAML blurb
+
+```yaml
+:paths:
+  :libraries:
+    - proj/libs     # Linker library search paths
+
+:libraries:
+  :test:
+    - test/commsstub.lib  # Imagined communication library that logs to console without traffic
+  :release:
+    - release/comms.lib   # Imagined production communication library
+  :system:
+    - math          # Add system math library to test & release builds 
+  :flag: -Lib=${1}  # This linker does not follow the gcc convention
+```
+
+### `:libraries` notes
+
+* If you've specified your own link step, you are going to want to add `${4}` to your 
+  argument list in the position where library files should be added to the command line. 
+  For `gcc`, this is often at the very end. Other tools may vary. See the `:tools` 
+  section for more.
+
+## `:flags` Configure preprocessing, compilation & linking command line flags
+
+Ceedling’s internal, default tool configurations (see later `:tools` section) execute 
+compilation and linking of test and source files among other needs.
+
+These default tool configurations are a one-size-fits-all approach. If you need to add to
+the command line flags for individual tests or a release build, the `:flags` section allows
+you to easily do so.
+
+Entries in `:flags` modify the command lines for tools used at build time.
+
+### Flags organization: Contexts, Operations, and Matchers
+
+The basic layout of `:flags` involves the concepts of contexts and operations.
+
+General case:
+```yaml
+:flags:
+  :<context>:
+    :<operation>:
+      - <flag>
+      - ...
+```
+
+Advanced matching for test build handling only:
+```yaml
+:flags:
+  :test:
+    :<operation>:
+      :<matcher>
+        - <flag>
+        - ...
+```
+
+A context is the build context you want to modify — `:test` or `:release`. Plugins can
+also hook into `:flags` with their own context.
+
+An operation is the build step you wish to modify — `:preprocess`, `:compile`, `:assemble`, 
+or `:link`.
+
+* The `:preprocess` operation is only available in the `:test` context.
+* The `:assemble` operation is only available within the `:test` or `:release` contexts if 
+  assembly support has been enabled in `:test_build` or `:release_build`, respectively, and
+  assembly files are a part of the project.
+
+You specify the flags you want to add to a build step beneath `:<context>` ↳ `:<operation>`.
+In many cases this is a simple YAML list of strings that will become flags in a tool's 
+command line.
+
+Specifically in the `:test` context you also have the option to create test file matchers 
+that apply flags to some subset of your test build. Note that file matchers and the simpler
+flags list format cannot be mixed for `:flags` ↳ `:test`.
+
+* <h3><code>:flags</code> ↳ <code>:release</code> ↳ <code>:compile</code></h3>
+
+  This project configuration entry adds the items of a simple YAML list as flags to 
+  compilation of every C file in a release build.
+  
+  **Default**: `[]` (empty)
+
+* <h3><code>:flags</code> ↳ <code>:release</code> ↳ <code>:link</code></h3>
+
+  This project configuration entry adds the items of a simple YAML list as flags to 
+  the link step of a release build artifact.
+  
+  **Default**: `[]` (empty)
+
+* <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:preprocess</code></h3>
+
+  This project configuration entry adds the specified items as flags to any needed 
+  preprocessing of components in a test executable's build. (Preprocessing must be enabled, 
+  `:project` ↳ `:use_test_preprocessor`.)
+  
+  Preprocessing here refers to handling macros, conditional includes, etc. in header files 
+  that are mocked and in complex test files before runners are generated from them.
+  
+  Flags may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus flag list. Both are documented below.
+  
+  _Note:_ Left unspecified, `:preprocess` flags default to behaving identically to `:compile` 
+  flags. Override this behavior by adding `:test` ↳ `:preprocess` flags. If you want no 
+  additional flags for preprocessing regardless of test compilation flags, simply specify 
+  an empty list `[]`.
+  
+  **Default**: `[]` (empty)
+
+* <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:compile</code></h3>
+
+  This project configuration entry adds the specified items as flags to compilation of C 
+  components in a test executable's build.
+  
+  Flags may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus flag list. Both are documented below.
+  
+  **Default**: `[]` (empty)
+
+* <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:link</code></h3>
+
+  This project configuration entry adds the specified items as flags to the link step of 
+  test executables.
+  
+  Flags may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus flag list. Both are documented below.
+  
+  **Default**: `[]` (empty)
+
+* <h3><code>:flags</code> ↳ <code>:&lt;plugin context&gt;</code></h3>
+
+  Some advanced plugins make use of build contexts as well. For instance, the Ceedling 
+  Gcov plugin uses a context of `:gcov`, surprisingly enough. For any plugins with tools
+  that take advantage of Ceedling’s internal mechanisms, you can add to those tools'
+  flags in the same manner as the built-in contexts and operations.
+
+### Simple `:flags` configuration
+
+A simple and common need is enforcing a particular C standard. The following example
+illustrates simple YAML lists for flags.
 
 ```yaml
 :flags:
   :release:
     :compile:
-      :main:       # add '-Wall' to compilation of main.c
-        - -Wall
-      :fan:        # add '--O2' to compilation of fan.c
-        - --O2
-      :'test_.+':   # add '-pedantic' to all test-files
-        - -pedantic
-      :*:          # add '-foo' to compilation of all files not main.c or fan.c
-        - -foo
+      - -std=c99  # Add `-std=c99` to compilation of all C files in the release build
   :test:
     :compile:
-      :main:       # add '--O1' to compilation of main.c as part of test builds including main.c
-        - --O1
+      - -std=c99  # Add `-std=c99` to the compilation of all C files in all test executables
+```
+
+Given the YAML blurb above, when test or release compilation occurs, the flag specifying 
+the C standard will be in the command line for compilation of all C files.
+
+### Advanced `:flags` per-test matchers
+
+Ceedling treats each test executable as a mini project. As a reminder, each test file,
+together with all C sources and frameworks, becomes an individual test executable of
+the same name.
+
+_In the `:test` context only_, flags can be applied to build step operations — 
+preprocessing, compilation, and linking — for only those test executables that match
+file name criteria. Matchers match on test file names only, and the specified flags 
+are added to the build step for all files that are components of matched test 
+executables.
+
+In short, for instance, this means your compilation of _TestA_ can have different flags
+than compilation of _TestB_. And, in fact, those flags will be applied to every C file
+that is compiled as part those individual test executable builds.
+
+#### `:flags` per-test matcher examples with YAML
+
+Before detailing matcher capabilities and limits, here are examples to illustrate the
+basic ideas of test file name matching.
+
+```yaml
+:flags:
+  :test:
+    :compile:
+      :*:                       #  Wildcard: Add '-foo' for all files for all tests
+        - -foo                  
+      :Model:                   # Substring: Add '-Wall' for all files of any test with 'Model' in its name
+        - -Wall
+      :/M(ain|odel)/:           #     Regex: Add 🏴‍☠️ flag for all files of any test with 'Main' or 'Model' in its name
+        - -🏴‍☠️
+      :Comms*Model:
+        - --freak               #  Wildcard: Add your `--freak` flag for all files of any test name with zero or more
+                                #            characters between 'Comms' and 'Model'
     :link:
-      :test_main:  # add '--bar --baz' to linking of test_main.exe
+      :tests/comm/TestUsart.c:  # Substring: Add '--bar --baz' to the link step of the TestUsart executable
         - --bar
         - --baz
 ```
 
-**import**: Load additional config files
+#### Using `:flags` per-test matchers
 
-In some cases it is nice to have config files (project.yml, options files) which can
-load other config files, for commonly re-used definitions (target processor,
-common code modules, etc).
+These matchers are available:
 
-These can be recursively nested, the included files can include other files.
+1. Wildcard (`*`)
+   1. If specified in isolation, matches all tests.
+   1. If specified within a string, matches any test filename with that 
+      wildcard expansion.
+1. Substring — Matches on part of a test filename (up to all of it, including
+   full path).
+1. Regex (`/.../`) — Matches test file names against a regular expression.
 
-To import config files, either provide an array of files to import, or use hashes to set imports. The former is useful if you do not anticipate needing to replace a given file for different configurations (project: or options:). If you need to replace/remove imports based on different configuration files, use the hashed version. The two methods cannot be mixed in the same .yml.
+Notes:
+* Substring filename matching is case sensitive.
+* Wildcard matching is effectively a simplified form of regex. That is, 
+  multiple approaches to matching can match the same filename.
 
-Example [:import] YAML blurb using array
+Flags by matcher are cumulative. This means the flags from more than one matcher can be 
+applied to an operation on any one test executable.
+
+Referencing the example above, here are the extra compilation flags for a handful of 
+test executables:
+
+* _test_Something_: `-foo`
+* _test_Main_: `-foo -🏴‍☠️`
+* _test_Model_: `-foo -Wall -🏴‍☠️`
+* _test_CommsSerialModel_: `-foo -Wall -🏴‍☠️ --freak`
+
+The simple `:flags` list format remains available for the `:test` context. The YAML 
+blurb below is equivalent to the plain wildcard matcher above. Of course, this format is 
+limited in that it applies flags to all C files for all test executables.
 
 ```yaml
-:import:
-  - path/to/config.yml
-  - path/to/another/config.yml
+:flags:
+  :test:
+    :compile:  # Equivalent to wildcard '*' test file matching
+      - -foo
 ```
-Example [:import] YAML blurb using hashes
+
+#### Distinguishing similar or identical filenames with `:flags` per-test matchers
+
+You may find yourself needing to distinguish test files with the same name or test 
+files with names whose base naming is identical.
+
+Of course, identical test filenames have a natural distinguishing feature in their 
+containing directory paths. Files of the same name can only exist in different
+directories. As such, your matching must include the path.
 
 ```yaml
-:import:
-  :configA: path/to/config.yml
-  :configB: path/to/another/config.yml
+:flags:
+  :test:
+    :compile:
+      :hardware/test_startup:  # Match any test names beginning with 'test_startup' in hardware/ directory
+        - A                  
+      :network/test_startup:   # Match any test names beginning with 'test_startup' in network/ directory
+        - B
 ```
 
+It's common in C file naming to use the same base name for multiple files. Given the
+following example list, care must be given to matcher construction to single out
+test_comm_startup.c.
+
+* tests/test_comm_hw.c
+* tests/test_comm_startup.c
+* tests/test_comm_startup_timers.c
+
+```yaml
+:flags:
+  :test:
+    :compile:
+      :test_comm_startup.c: # Full filename with extension distinguishes this file test_comm_startup_timers.c
+        - FOO
+```
+
+The preceding examples use substring matching, but, regular expression matching
+could also be appropriate.
+
+#### Using YAML anchors & aliases for complex testing scenarios with `:flags`
+
+See the short but helpful article on [YAML anchors & aliases][yaml-anchors-aliases] to 
+understand these features of YAML.
+
+Particularly in testing complex projects, per-test file matching may only get you so
+far in meeting your build step flag needs. For instance, you may need to set various
+flags for operations across many test files, but no convenient name matching scheme 
+works. Advanced YAML features can help you copy the same flags into multiple `:flags` 
+test file matchers.
+
+Please see the discussion in `:defines` for a complete example.
+
+## `:cexception` Configure CException’s features
+
+* `:defines`:
+
+  List of symbols used to configure CException's features in its source and header files 
+  at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a CException C source file is compiled.
+  
+  No symbols must be set unless CException's defaults are inappropriate for your 
+  environment and needs.
+  
+  Note CException must be enabled for it to be added to a release or test build and for 
+  these symbols to be added to a build of CException (see link referenced earlier for more).
+  
+  **Default**: `[]` (empty)
+
+## `:cmock` Configure CMock’s code generation & compilation
 
 Ceedling sets values for a subset of CMock settings. All CMock
 options are available to be set, but only those options set by
 Ceedling in an automated fashion are documented below. See CMock
 documentation.
 
-**cmock**: configure CMock's code generation options and set symbols used to modify CMock's compiled features
-Ceedling sets values for a subset of CMock settings. All CMock options are available to be set, but only those options set by Ceedling in an automated fashion are documented below. See CMock documentation.
+Ceedling sets values for a subset of CMock settings. All CMock 
+options are available to be set, but only those options set by 
+Ceedling in an automated fashion are documented below. 
+See [CMock] documentation.
 
-* `enforce_strict_ordering`:
+* `:enforce_strict_ordering`:
 
   Tests fail if expected call order is not same as source order
 
   **Default**: TRUE
 
-* `mock_path`:
+* `:mock_path`:
 
   Path for generated mocks
 
   **Default**: <build path>/tests/mocks
 
-* `defines`:
+* `:verbosity`:
 
-  List of conditional compilation symbols used to configure CMock's
-  compiled features. See CMock documentation to understand available
-  options. No symbols must be set unless defaults are inappropriate for
-  your specific environment. All symbols are used only by Ceedling to
-  compile CMock C code; contents of [:defines] are ignored by CMock's
-  Ruby code when instantiated.
+  If not set, defaults to Ceedling’s verbosity level
 
+* `:defines`:
+
+  Adds list of symbols used to configure CMock's C code features in its source and header 
+  files at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a CMock C source file is compiled.
+  
+  No symbols must be set unless CMock's defaults are inappropriate for your environment 
+  and needs.
+  
   **Default**: `[]` (empty)
 
-* `verbosity`:
+* `:plugins`:
 
-  If not set, defaults to Ceedling's verbosity level
+  To add to the list Ceedling provides CMock, simply add `:cmock` ↳ `:plugins` 
+  to your configuration and specify your desired additional plugins.
 
-* `plugins`:
+  See [CMock's documentation][cmock-docs] to understand plugin options.
 
-  If [:project][:use_exceptions] is enabled, the internal plugins list is pre-populated with 'cexception'.
+  [cmock-docs]: https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMock_Summary.md
 
-  Whether or not you have included [:cmock][:plugins] in your
-  configuration file, Ceedling automatically adds 'cexception' to the
-  plugin list if exceptions are enabled. To add to the list Ceedling
-  provides CMock, simply add [:cmock][:plugins] to your configuration
-  and specify your desired additional plugins.
+* `:includes`:
 
-  Each of the plugins have their own additional documentation.
-
-
-* `includes`:
-
-  If [:cmock][:unity_helper] set, pre-populated with unity_helper file
+  If `:cmock` ↳ `:unity_helper` set, prepopulated with unity_helper file
   name (no path).
 
-  The [:cmock][:includes] list works identically to the plugins list
+  The `:cmock` ↳ `:includes` list works identically to the plugins list
   above with regard to adding additional files to be inserted within
   mocks as #include statements.
 
+### Notes on Ceedling’s nudges for CMock strict ordering
 
 The last four settings above are directly tied to other Ceedling
-settings; hence, why they are listed and explained here. The
-first setting above, [:enforce_strict_ordering], defaults
-to FALSE within CMock. It is set to TRUE by default in Ceedling
-as our way of encouraging you to use strict ordering. It's a teeny
-bit more expensive in terms of code generated, test execution
-time, and complication in deciphering test failures. However,
-it's good practice. And, of course, you can always disable it
-by overriding the value in the Ceedling YAML configuration file.
+settings; hence, why they are listed and explained here.
 
+The first setting above, `:enforce_strict_ordering`, defaults
+to `FALSE` within CMock. However, it is set to `TRUE` by default 
+in Ceedling as our way of encouraging you to use strict ordering.
 
-**cexception**: configure symbols used to modify CException's compiled features
+Strict ordering is teeny bit more expensive in terms of code 
+generated, test execution time, and complication in deciphering 
+test failures. However, it's good practice. And, of course, you 
+can always disable it by overriding the value in the Ceedling 
+project configuration file.
 
-* `defines`:
+## `:unity` Configure Unity’s features
 
-  List of conditional compilation symbols used to configure CException's
-  features in its source and header files. See CException documentation
-  to understand available options. No symbols must be set unless the
-  defaults are inappropriate for your specific environment.
+* `:defines`:
 
+  Adds list of symbols used to configure Unity's features in its source and header files
+  at compile time.
+  
+  See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
+  configuring and making use of these frameworks in your build.
+  
+  To manage overall command line length, these symbols are only added to compilation when
+  a Unity C source file is compiled.
+  
+  No symbols must be set unless Unity's defaults are inappropriate for your environment 
+  and needs.
+  
   **Default**: `[]` (empty)
 
+## `:test_runner` Configure test runner generation
 
-**unity**: configure symbols used to modify Unity's compiled features
+The format of Ceedling test files — the C files that contain unit test cases — 
+is intentionally simple. It's pure code and all legit, simple C with `#include` 
+statements, test case functions, and optional `setUp()` and `tearDown()` 
+functions.
 
-* `defines`:
+To create test executables, we need a `main()` and a variety of calls to the 
+Unity framework to “hook up” all your test cases into a test suite. You can do
+this by hand, of course, but it's tedious and needed updates are easily 
+forgotten.
 
-  List of conditional compilation symbols used to configure Unity's
-  features in its source and header files. See Unity documentation to
-  understand available options. No symbols must be set unless the
-  defaults are inappropriate for your specific environment. Most Unity
-  defines can be easily configured through the YAML file.
+So, Unity provides a script able to generate a test runner in C for you. It 
+relies on [conventions] used in in your test files. Ceedling takes this a step 
+further by calling this script for you with all the needed parameters.
 
-  **Default**: `[]` (empty)
+Test runner generation is configurable. The `:test_runner` section of your 
+Ceedling project file allows you to pass options to Unity's runner generation 
+script. A YAML hash beneath `:test_runner` is provided directly to that script.
 
-Example [:unity] YAML blurbs
+[Test runner configuration options are documented in the Unity project][unity-runner-options].
+
+Example configuration:
+
 ```yaml
-:unity: #itty bitty processor & toolchain with limited test execution options
-  :defines:
-    - UNITY_INT_WIDTH=16           #16 bit processor without support for 32 bit instructions
-    - UNITY_EXCLUDE_FLOAT          #no floating point unit
-
-:unity: #great big gorilla processor that grunts and scratches
-  :defines:
-    - UNITY_SUPPORT_64                    #big memory, big counters, big registers
-    - UNITY_LINE_TYPE=\"unsigned int\"    #apparently we're using really long test files,
-    - UNITY_COUNTER_TYPE=\"unsigned int\" #and we've got a ton of test cases in those test files
-    - UNITY_FLOAT_TYPE=\"double\"         #you betcha
+:test_runner:
+  # Insert additional #include statements in a generated runner
+  :includes:
+    - Foo.h
+    - Bar.h
 ```
 
+[ceedling-conventions]: #important-conventions--behaviors
+[unity-runner-options]: https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityHelperScriptsGuide.md#options-accepted-by-generate_test_runnerrb
 
-Notes on Unity configuration:
+## `:tools` Configuring command line tools used for build steps
 
-* **Verification** - Ceedling does no verification of your configuration
-  values. In a properly configured setup, your Unity configuration
-  values are processed, collected together with any test define symbols
-  you specify elsewhere, and then passed to your toolchain during test
-  compilation. Unity's conditional compilation statements, your
-  toolchain's preprocessor, and/or your toolchain's compiler will
-  complain appropriately if your specified configuration values are
-  incorrect, incomplete, or incompatible.
+Ceedling requires a variety of tools to work its magic. By default, the GNU 
+toolchain (`gcc`, `cpp`, `as` — and `gcov` via plugin) are configured and ready 
+for use with no additions to your project configuration YAML file.
 
-* **Routing $stdout** - Unity defaults to using `putchar()` in C's
-  standard library to display test results. For more exotic environments
-  than a desktop with a terminal (e.g. running tests directly on a
-  non-PC target), you have options. For example, you could create a
-  routine that transmits a character via RS232 or USB. Once you have
-  that routine, you can replace `putchar()` calls in Unity by overriding
-  the function-like macro `UNITY_OUTPUT_CHAR`. Consult your toolchain
-  and shell documentation. Eventhough this can also be defined in the YAML file
-  most shell environments do not handle parentheses as command line arguments
-  very well. To still be able to add this functionality all necessary
-  options can be defined in the `unity_config.h`. Unity needs to be told to look for
-  the `unity_config.h` in the YAML file, though.
+A few items before we dive in:
 
-Example [:unity] YAML blurbs
+1. Sometimes Ceedling’s built-in tools are _nearly_ what you need but not 
+   quite. If you only need to add some arguments to all uses of tool's command
+   line, Ceedling offers a shortcut to do so. See the 
+   [final section of the `:tools`][tool-args-shortcut] documentation for 
+   details.
+1. If you need fine-grained control of the arguments Ceedling uses in the build
+   steps for test executables, see the documentation for [`:flags`][flags].
+   Ceedling allows you to control the command line arguments for each test 
+   executable build — with a variety of pattern matching options.
+1. If you need to link libraries — your own or standard options — please see 
+   the [top-level `:libraries` section][libraries] available for your 
+   configuration file. Ceedling supports a number of useful options for working
+   with pre-compiled libraries. If your library linking needs are super simple,
+   the shortcut in (1) might be the simplest option.
+
+[flags]: #flags-configure-preprocessing-compilation--linking-command-line-flags
+[tool-args-shortcut]: #ceedling-tool-arguments-addition-shortcut
+
+### Ceedling tools for test suite builds
+
+Our recommended approach to writing and executing test suites relies on the GNU 
+toolchain. _*Yes, even for embedded system work on platforms with their own, 
+proprietary C toolchain.*_ Please see 
+[this section of documentation][sweet-suite] to understand this recommendation 
+among all your options.
+
+You can and sometimes must run a Ceedling test suite in an emulator or on
+target, and Ceedling allows you to do this through tool definitions documented
+here. Generally, you'll likely want to rely on the default definitions.
+
+[sweet-suite]: #all-your-sweet-sweet-test-suite-options
+
+### Ceedling tools for release builds
+
+More often than not, release builds require custom tool definitions. The GNU
+toolchain is configured for Ceeding release builds by default just as with test
+builds. You'll likely need your own definitions for `:release_compiler`, 
+`:release_linker`, and possibly `:release_assembler`.
+
+### Ceedling plugin tools
+
+Ceedling plugins are free to define their own tools that are loaded into your 
+project configuration at startup. Plugin tools are defined using the same 
+mechanisns as Ceedling’s built-in tools and are called the same way. That is,
+all features available to you for working with tools as an end users are
+generally available for working with plugin-based tools. This presumes a 
+plugin author followed guidance and convention in creating any command line 
+actions.
+
+### Ceedling tool definitions
+
+Contained in this section are details on Ceedling’s default tool definitions.
+For sake of space, the entirety of a given definition is not shown. If you need
+to get in the weeds or want a full example, see the file `defaults.rb` in 
+Ceedling’s lib/ directory.
+
+#### Tool definition overview
+
+Listed below are the built-in tool names, corresponding to build steps along 
+with the numbered parameters that Ceedling uses to fill out a full command line
+for the named tool. The full list of fundamental elements for a tool definition
+are documented in the sections that follow along with examples.
+
+Not every numbered parameter listed immediately below must be referenced in a
+Ceedling tool definition. If `${4}` isn’t referenced by your custom tool, 
+Ceedling simply skips it while expanding a tool definition into a command line.
+
+The numbered parameters below are references that expand / are replaced with 
+actual values when the corresponding command line is constructed. If the values
+behind these parameters are lists, Ceedling expands the containing reference
+multiple times with the contents of the value. A conceptual example is 
+instructive…
+
+#### Simplified tool definition / expansion example
+
+A partial tool definition:
+
 ```yaml
-:unity:
-  :defines:
-  	- UNITY_INCLUDE_CONFIG_H
+:tools:
+   :power_drill:
+      :executable: dewalt.exe
+      :arguments:
+         - "--X${3}"
 ```
 
-Example unity_config.h
-```
-#ifndef UNITY_CONFIG_H
-#define UNITY_CONFIG_H
+Let's say that `${3}` is a list inside Ceedling, `[2, 3, 7]`. The expanded tool
+command line for `:tools` ↳ `:power_drill` would look like this:
 
-#include "uart_output.h" //Helper library for your custom environment
-
-#define UNITY_INT_WIDTH 16
-#define UNITY_OUTPUT_START() uart_init(F_CPU, BAUD) //Helperfunction to init UART
-#define UNITY_OUTPUT_CHAR(a) uart_putchar(a) //Helperfunction to forward char via UART
-#define UNITY_OUTPUT_COMPLETE() uart_complete() //Helperfunction to inform that test has ended
-
-#endif
+```shell
+ > dewalt.exe --X2 --X3 --X7
 ```
 
+#### Ceedling’s default build step tool definitions
 
-**tools**: a means for representing command line tools for use under
-Ceedling's automation framework
-
-Ceedling requires a variety of tools to work its magic. By default,
-the GNU toolchain (`gcc`, `cpp`, `as`) are configured and ready for
-use with no additions to the project configuration YAML file.
-However, as most work will require a project-specific toolchain,
-Ceedling provides a generic means for specifying / overriding
-tools.
-
-* `test_compiler`:
+* `:test_compiler`:
 
   Compiler for test & source-under-test code
 
-   - `${1}`: input source
-   - `${2}`: output object
-   - `${3}`: optional output list
-   - `${4}`: optional output dependencies file
+   - `${1}`: Input source
+   - `${2}`: Output object
+   - `${3}`: Optional output list
+   - `${4}`: Optional output dependencies file
+   - `${5}`: Header file search paths
+   - `${6}`: Command line #defines
 
   **Default**: `gcc`
 
-* `test_linker`:
+* `:test_linker`:
 
   Linker to generate test fixture executables
 
@@ -1741,7 +3878,7 @@ tools.
 
   **Default**: `gcc`
 
-* `test_fixture`:
+* `:test_fixture`:
 
   Executable test fixture
 
@@ -1749,7 +3886,7 @@ tools.
 
   **Default**: `${1}`
 
-* `test_includes_preprocessor`:
+* `:test_includes_preprocessor`:
 
   Extractor of #include statements
 
@@ -1757,7 +3894,7 @@ tools.
 
   **Default**: `cpp`
 
-* `test_file_preprocessor`:
+* `:test_file_preprocessor`:
 
   Preprocessor of test files (macros, conditional compilation statements)
    - `${1}`: input source file
@@ -1765,27 +3902,7 @@ tools.
 
   **Default**: `gcc`
 
-* `test_file_preprocessor_directives`:
-
-  Preprocessor of test files to expand only conditional compilation statements,
-  handle directives, but do not expand macros
-
-   - `${1}`: input source file
-   - `${2}`: not-fully preprocessed output source file
-
-  **Default**: `gcc`
-
-* `test_dependencies_generator`:
-
-  Discovers deep dependencies of source & test (for incremental builds)
-
-   - `${1}`: input source file
-   - `${2}`: compiled object filepath
-   - `${3}`: output dependencies file
-
-  **Default**: `gcc`
-
-* `release_compiler`:
+* `:release_compiler`:
 
   Compiler for release source code
 
@@ -1796,7 +3913,7 @@ tools.
 
   **Default**: `gcc`
 
-* `release_assembler`:
+* `:release_assembler`:
 
   Assembler for release assembly code
 
@@ -1805,7 +3922,7 @@ tools.
 
   **Default**: `as`
 
-* `release_linker`:
+* `:release_linker`:
 
   Linker for release source code
 
@@ -1817,88 +3934,80 @@ tools.
 
   **Default**: `gcc`
 
-* `release_dependencies_generator`:
+#### Tool defintion configurable elements
 
-  Discovers deep dependencies of source files (for incremental builds)
+1. `:executable` - Command line executable (required).
 
-   - `${1}`: input source file
-   - `${2}`: compiled object filepath
-   - `${3}`: output dependencies file
+    Note: If an executable contains a space (e.g. `Code Cruncher`), and the 
+    shell executing the command line generated from the tool definition needs 
+    the name quoted, add escaped quotes in the YAML:
 
-  **Default**: `gcc`
+    ```yaml
+    :tools:
+      :test_compiler:
+        :executable: \"Code Cruncher\"
+    ```
 
+1. `:arguments` - List (array of strings) of command line arguments and 
+    substitutions (required).
 
-A Ceedling tool has a handful of configurable elements:
+1. `:name` - Simple name (i.e. "nickname") of tool beyond its
+   executable name. This is optional. If not explicitly set 
+   then Ceedling will form a name from the tool's YAML entry key.
 
-1. [:executable] - Command line executable (required)
-
-2. [:arguments] - List of command line arguments
-   and substitutions (required)
-
-3. [:name] - Simple name (e.g. "nickname") of tool beyond its
-   executable name (if not explicitly set then Ceedling will
-   form a name from the tool's YAML entry name)
-
-4. [:stderr_redirect] - Control of capturing $stderr messages
-   {:none, :auto, :win, :unix, :tcsh}.
-   Defaults to :none if unspecified; create a custom entry by
-   specifying a simple string instead of any of the available
+1. `:stderr_redirect` - Control of capturing `$stderr` messages
+   {`:none`, `:auto`, `:win`, `:unix`, `:tcsh`}.
+   Defaults to `:none` if unspecified. Create a custom entry by
+   specifying a simple string instead of any of the recognized
    symbols.
 
-5. [:background_exec] - Control execution as background process
-   {:none, :auto, :win, :unix}.
-   Defaults to :none if unspecified.
-
-6. [:optional] - By default a tool is required for operation, which
+1. `:optional` - By default a tool is required for operation, which
    means tests will be aborted if the tool is not present. However,
-   you can set this to `TRUE` if it's not needed for testing.
+   you can set this to `true` if it's not needed for testing (e.g.
+   as part of a plugin).
 
+#### Tool element runtime substitution
 
-Tool Element Runtime Substitution
----------------------------------
+To accomplish useful work on multiple files, a configured tool will most often
+require that some number of its arguments or even the executable itself change
+for each run. Consequently, every tool's argument list and executable field
+possess two means for substitution at runtime. Ceedling provides two kinds of
+inline Ruby execution and a notation for populating elements with dynamically
+gathered values within the build environment.
 
-To accomplish useful work on multiple files, a configured tool will most
-often require that some number of its arguments or even the executable
-itself change for each run. Consequently, every tool's argument list and
-executable field possess two means for substitution at runtime. Ceedling
-provides two kinds of inline Ruby execution and a notation for
-populating elements with dynamically gathered values within the build
-environment.
-
-Tool Element Runtime Substitution: Inline Ruby Execution
---------------------------------------------------------
+#### Tool element runtime substitution: Inline Ruby execution
 
 In-line Ruby execution works similarly to that demonstrated for the
-[:environment] section except that substitution occurs as the tool is
-executed and not at the time the configuration file is first scanned.
+`:environment` section except that substitution occurs as the tool is executed
+and not at the time the configuration file is first scanned.
 
-* `#{...}`:
+* `"#{...}"`:
 
-  Ruby string substitution pattern wherein the containing string is
-  expanded to include the string generated by Ruby code between the
-  braces. Multiple instances of this expansion can occur within a single
-  tool element entry string. Note that if this string substitution
-  pattern occurs at the very beginning of a string in the YAML
-  configuration the entire string should be enclosed in quotes (see the
-  [:environment] section for further explanation on this point).
+  Ruby string substitution pattern wherein the containing string is expanded to
+  include the string generated by Ruby code between the braces. Multiple
+  instances of this expansion can occur within a single tool element entry
+  string.
 
-* `{...} `:
+  Note: If this string substitution pattern is used, the entire string should be
+  enclosed in quotes (see the `:environment` section for further explanation on
+  this point).
 
-  If an entire tool element string is enclosed with braces, it signifies
-  that Ceedling should execute the Ruby code contained within those
-  braces. Say you have a collection of paths on disk and some of those
-  paths include spaces. Further suppose that a single tool that must use
-  those paths requires those spaces to be escaped, but all other uses of
-  those paths requires the paths to remain unchanged. You could use this
-  Ceedling feature to insert Ruby code that iterates those paths and
-  escapes those spaces in the array as used by the tool of this example.
+* `{...}`:
 
-Tool Element Runtime Substitution: Notational Substitution
-----------------------------------------------------------
+  If an entire tool element string is enclosed with braces, it signifies that
+  Ceedling should execute the Ruby code contained within those braces. Say you
+  have a collection of paths on disk and some of those paths include spaces.
+  Further suppose that a single tool that must use those paths requires those
+  spaces to be escaped, but all other uses of those paths requires the paths to
+  remain unchanged. You could use this Ceedling feature to insert Ruby code
+  that iterates those paths and escapes those spaces in the array as used by
+  the tool of this example.
 
-A Ceedling tool's other form of dynamic substitution relies on a '$'
-notation. These '$' operators can exist anywhere in a string and can be
-decorated in any way needed. To use a literal '$', escape it as '\\$'.
+#### Tool element runtime substitution: Notational substitution
+
+A Ceedling tool's other form of dynamic substitution relies on a `$`
+notation. These `$` operators can exist anywhere in a string and can be
+decorated in any way needed. To use a literal `$`, escape it as `\\$`.
 
 * `$`:
 
@@ -1912,415 +4021,675 @@ decorated in any way needed. To use a literal '$', escape it as '\\$'.
   that tool will be made with a parameter list of substitution values.
   Each numbered substitution corresponds to a position in a parameter
   list. Ceedling Ruby code expects that configured compiler and linker
-  tools will contain ${1} and ${2} replacement arguments. In the case of
-  a compiler ${1} will be a C code file path, and ${2} will be the file
-  path of the resulting object file. For a linker ${1} will be an array
-  of object files to link, and ${2} will be the resulting binary
-  executable. For an executable test fixture ${1} is either the binary
-  executable itself (when using a local toolchain such as gcc) or a
+  tools will contain `${1}` and `${2}` replacement arguments. In the case of
+  a compiler `${1}` will be a C code file path, and `${2}` will be the file
+  path of the resulting object file. For a linker `${1}` will be an array
+  of object files to link, and `${2}` will be the resulting binary
+  executable. For an executable test fixture `${1}` is either the binary
+  executable itself (when using a local toolchain such as GCC) or a
   binary input file given to a simulator in its arguments.
 
-
-Example [:tools] YAML blurbs
+### Example `:tools` YAML blurb
 
 ```yaml
 :tools:
   :test_compiler:
-     :executable: compiler              #exists in system search path
+     :executable: compiler              # Exists in system search path
      :name: 'acme test compiler'
      :arguments:
-        - -I"$": COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE               #expands to -I search paths
-        - -I"$": COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR   #expands to -I search paths
-        - -D$: COLLECTION_DEFINES_TEST_AND_VENDOR  #expands to all -D defined symbols
-        - --network-license             #simple command line argument
-        - -optimize-level 4             #simple command line argument
-        - "#{`args.exe -m acme.prj`}"   #in-line ruby sub to shell out & build string of arguments
-        - -c ${1}                       #source code input file (Ruby method call param list sub)
-        - -o ${2}                       #object file output (Ruby method call param list sub)
+        - -I"${5}"                      # Expands to -I search paths from `:paths` section + build directive path macros
+        - -D"${6}"                      # Expands to all -D defined symbols from `:defines` section
+        - --network-license             # Simple command line argument
+        - -optimize-level 4             # Simple command line argument
+        - "#{`args.exe -m acme.prj`}"   # In-line Ruby call to shell out & build string of arguments
+        - -c ${1}                       # Source code input file
+        - -o ${2}                       # Object file output
+  
   :test_linker:
-     :executable: /programs/acme/bin/linker.exe    #absolute file path
+     :executable: /programs/acme/bin/linker.exe  # Full file path
      :name: 'acme test linker'
      :arguments:
-        - ${1}               #list of object files to link (Ruby method call param list sub)
-        - -l$-lib:           #inline yaml array substitution to link in foo-lib and bar-lib
+        - ${1}               # List of object files to link
+        - -l$-lib:           # In-line YAML array substitution to link in foo-lib and bar-lib
            - foo
            - bar
-        - -o ${2}            #executable file output (Ruby method call param list sub)
+        - -o ${2}            # Binary output artifact
+  
   :test_fixture:
-     :executable: tools/bin/acme_simulator.exe  #relative file path to command line simulator
+     :executable: tools/bin/acme_simulator.exe  # Relative file path to command line simulator
      :name: 'acme test fixture'
-     :stderr_redirect: :win                     #inform Ceedling what model of $stderr capture to use
+     :stderr_redirect: :win                     # Inform Ceedling what model of $stderr capture to use
      :arguments:
-        - -mem large   #simple command line argument
-        - -f "${1}"    #binary executable input file to simulator (Ruby method call param list sub)
+        - -mem large         # Simple command line argument
+        - -f "${1}"          # Binary executable input file for simulator
 ```
 
-Resulting command line constructions from preceding example [:tools] YAML blurbs
+#### `:tools` example blurb notes
 
-    > compiler -I"/usr/include” -I”project/tests”
-      -I"project/tests/support” -I”project/source” -I”project/include”
-      -DTEST -DLONG_NAMES -network-license -optimize-level 4 arg-foo
-      arg-bar arg-baz -c project/source/source.c -o
-      build/tests/out/source.o
+* `${#}` is a replacement operator expanded by Ceedling with various
+  strings, lists, etc. assembled internally. The meaning of each 
+  number is specific to each predefined default tool (see 
+  documentation above).
 
-[notes: (1.) "arg-foo arg-bar arg-baz" is a fabricated example
-string collected from $stdout as a result of shell execution
-of args.exe
-(2.) the -c and -o arguments are
-fabricated examples simulating a single compilation step for
-a test; ${1} & ${2} are single files]
+* See [search path order][##-search-path-order] to understand how 
+  the `-I"${5}"` term is expanded.
 
-    > \programs\acme\bin\linker.exe thing.o unity.o
-      test_thing_runner.o test_thing.o mock_foo.o mock_bar.o -lfoo-lib
-      -lbar-lib -o build\tests\out\test_thing.exe
-
-[note: in this scenario ${1} is an array of all the object files
-needed to link a test fixture executable]
-
-    > tools\bin\acme_simulator.exe -mem large -f "build\tests\out\test_thing.bin 2>&1”
-
-[note: (1.) :executable could have simply been ${1} - if we were compiling
-and running native executables instead of cross compiling (2.) we're using
-$stderr redirection to allow us to capture simulator error messages to
-$stdout for display at the run's conclusion]
-
-
-Notes:
-
-* The upper case names are Ruby global constants that Ceedling
-  builds
-
-* "COLLECTION_" indicates that Ceedling did some work to assemble
-  the list. For instance, expanding path globs, combining multiple
-  path globs into a convenient summation, etc.
-
-* At present, $stderr redirection is primarily used to capture
+* At present, `$stderr` redirection is primarily used to capture
   errors from test fixtures so that they can be displayed at the
   conclusion of a test run. For instance, if a simulator detects
   a memory access violation or a divide by zero error, this notice
   might go unseen in all the output scrolling past in a terminal.
 
-* The preprocessing tools can each be overridden with non-gcc
-  equivalents. However, this is an advanced feature not yet
-  documented and requires that the replacement toolchain conform
-  to the same conventions used by gcc.
+* The built-in preprocessing tools _can_ be overridden with 
+  non-GCC equivalents. However, this is highly impractical to do
+  as preprocessing features are quite dependent on the 
+  idiosyncrasies and features of the GCC toolchain.
 
-**Ceedling Collection Used in Compilation**:
+#### Example Test Compiler Tooling
 
-* `COLLECTION_PATHS_TEST`:
+Resulting compiler command line construction from preceding example
+`:tools` YAML blurb…
 
-  All test paths
+```shell
+> compiler -I"/usr/include” -I”project/tests”
+  -I"project/tests/support” -I”project/source” -I”project/include”
+  -DTEST -DLONG_NAMES -network-license -optimize-level 4 arg-foo
+  arg-bar arg-baz -c project/source/source.c -o
+  build/tests/out/source.o
+```
 
-* `COLLECTION_PATHS_SOURCE`:
+Notes on compiler tooling example:
 
-  All source paths
+- `arg-foo arg-bar arg-baz` is a fabricated example string collected from 
+  `$stdout` as a result of shell execution of `args.exe`.
+- The `-c` and `-o` arguments are fabricated examples simulating a single 
+  compilation step for a test; `${1}` & `${2}` are single files.
 
-* `COLLECTION_PATHS_INCLUDE`:
+#### Example Test Linker Tooling
 
-  All include paths
+Resulting linker command line construction from preceding example
+`:tools` YAML blurb…
 
-* `COLLECTION_PATHS_SUPPORT`:
+```shell
+> \programs\acme\bin\linker.exe thing.o unity.o
+  test_thing_runner.o test_thing.o mock_foo.o mock_bar.o -lfoo-lib
+  -lbar-lib -o build\tests\out\test_thing.exe
+```
 
-  All test support paths
+Notes on linker tooling example:
 
-* `COLLECTION_PATHS_SOURCE_AND_INCLUDE`:
+- In this scenario `${1}` is an array of all the object files needed to 
+  link a test fixture executable.
 
-  All source and include paths
+#### Example Test Fixture Tooling
 
-* `COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR`:
+Resulting test fixture command line construction from preceding example
+`:tools` YAML blurb…
 
-  All source and include paths + applicable vendor paths (e.g.
-  CException's source path if exceptions enabled)
+```shell
+> tools\bin\acme_simulator.exe -mem large -f "build\tests\out\test_thing.bin 2>&1”
+```
 
-* `COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE`:
+Notes on test fixture tooling example:
 
-  All test toolchain include paths
+1. `:executable` could have simply been `${1}` if we were compiling
+   and running native executables instead of cross compiling. That is,
+   if the output of the linker runs on the host system, then the test
+   fixture _is_ `${1}`.
+1. We’re using `$stderr` redirection to allow us to capture simulator error 
+   messages to `$stdout` for display at the run's conclusion.
 
-* `COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE`:
+### Ceedling tool arguments addition shortcut
 
-  All test, source, and include paths
+Sometimes Ceedling’s default tool defininitions are _this close_ to being just
+what you need. But, darn, you need one extra argument on the command line, and
+you'd love to not override an entire tool definition to tweak it.
 
-* `COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR`:
+We got you. Now, this little feature only allows you to add arguments to the
+end of a tool command line. Not the beginning. And, you can’t remove arguments
+with this hack.
 
-  All test, source, include, and applicable vendor paths (e.g. Unity's
-  source path plus CMock and CException's source paths if mocks and
-  exceptions are enabled)
+Further, this little feature is a blanket application across all uses of a 
+tool. If you need fine-grained control of command line flags in build steps per
+test executable, please see the [`:flags` configuration documentation][flags].
 
-* `COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE`:
+To use this shortcut, simply add a configuration section to your project file 
+at the top-level, `:tools_<tool_to_modify>` ↳ `:arguments`. See the list of 
+tool names at the beginning of the `:tools` documentation to identify the named
+options. Plugins can also include their own tool definitions that can be 
+modified with this same hack.
 
-  All release toolchain include paths
+This example YAML:
 
-* `COLLECTION_DEFINES_TEST_AND_VENDOR`:
+```yaml
+:tools_test_compiler:
+   :arguments:
+      - --flag         # Add `--flag` to the end of all test C file compilation
+```
 
-  All symbols specified in [:defines][:test] + symbols defined for
-  enabled vendor tools - e.g. [:unity][:defines], [:cmock][:defines],
-  and [:cexception][:defines]
+...will produce this command line:
 
-* `COLLECTION_DEFINES_RELEASE_AND_VENDOR`:
+```shell
+ > gcc <default command line> --flag
+```
 
-  All symbols specified in [:defines][:release] plus symbols defined by
-[:cexception][:defines] if exceptions are enabled
+## `:plugins` Ceedling extensions
 
+See the section below dedicated to plugins for more information. This section
+pertains to enabling plugins in your project configuration.
 
-Notes:
+Ceedling includes a number of built-in plugins. See the collection within
+the project at [plugins/][ceedling-plugins] or the [documentation section below](#ceedling-plugins)
+dedicated to Ceedling’s plugins. Each built-in plugin subdirectory includes 
+thorough documentation covering its capabilities and configuration options. 
 
-* Other collections exist within Ceedling. However, they are
-  only useful for advanced features not yet documented.
+_Note_: Many users find that the handy-dandy [Command Hooks plugin][command-hooks] 
+is often enough to meet their needs. This plugin allows you to connect your own
+scripts and command line tools to Ceedling build steps.
 
-* Wherever multiple path lists are combined for use Ceedling prioritizes
-  path groups as follows: test paths, support paths, source paths, include
-  paths.
-  This can be useful, for instance, in certain testing scenarios
-  where we desire Ceedling or the compiler to find a stand-in header file
-  before the actual source header file of the same name.
+[custom-plugins]: PluginDevelopmentGuide.md
+[ceedling-plugins]: ../plugins/
+[command-hooks]: ../plugins/command_hooks/
 
+* `:load_paths`:
 
-**plugins**: Ceedling extensions
+  Base paths to search for plugin subdirectories or extra Ruby functionality.
 
-* `load_paths`:
-
-  Base paths to search for plugin subdirectories or extra ruby functionalit
+  Ceedling maintains the Ruby load path for its built-in plugins. This list of
+  paths allows you to add your own directories for custom plugins or simpler
+  Ruby files referenced by your Ceedling configuration options elsewhere.
 
   **Default**: `[]` (empty)
 
-* `enabled`:
+* `:enabled`:
 
   List of plugins to be used - a plugin's name is identical to the
-  subdirectory that contains it (and the name of certain files within
-  that subdirectory)
+  subdirectory that contains it.
 
   **Default**: `[]` (empty)
-
 
 Plugins can provide a variety of added functionality to Ceedling. In
 general use, it's assumed that at least one reporting plugin will be
-used to format test results. However, if no reporting plugins are
-specified, Ceedling will print to `$stdout` the (quite readable) raw
-test results from all test fixtures executed.
+used to format test results (usually `report_tests_pretty_stdout`).
 
-Example [:plugins] YAML blurb
+If no reporting plugins are specified, Ceedling will print to `$stdout` the
+(quite readable) raw test results from all test fixtures executed.
+
+### Example `:plugins` YAML blurb
 
 ```yaml
 :plugins:
   :load_paths:
-    - project/tools/ceedling/plugins  #home to your collection of plugin directories
-    - project/support                 #maybe home to some ruby code your custom plugins share
+    - project/tools/ceedling/plugins  # Home to your collection of plugin directories.
+    - project/support                 # Home to some ruby code your custom plugins share.
   :enabled:
-    - stdout_pretty_tests_report      #nice test results at your command line
-    - our_custom_code_metrics_report  #maybe you needed line count and complexity metrics, so you
-                                      #created a plugin to scan all your code and collect that info
+    - report_tests_pretty_stdout      # Nice test results at your command line.
+    - our_custom_code_metrics_report  # You created a plugin to scan all code to collect 
+                                      # line counts and complexity metrics. Its name is a
+                                      # subdirectory beneath the first `:load_path` entry.
+
 ```
 
-* `stdout_pretty_tests_report`:
+<br/>
 
-  Prints to $stdout a well-formatted list of ignored and failed tests,
-  final test counts, and any extraneous output (e.g. printf statements
-  or simulator memory errors) collected from executing the test
-  fixtures. Meant to be used with runs at the command line.
+# Build Directive Macros
 
-* `stdout_ide_tests_report`:
+## Overview of Build Directive Macros
 
-  Prints to $stdout simple test results formatted such that an IDE
-  executing test-related Rake tasks can recognize file paths and line
-  numbers in test failures, etc. Thus, you can click a test result in
-  your IDE's execution window and jump to the failure (or ignored test)
-  in your test file (obviously meant to be used with an [IDE like
-  Eclipse][ide], etc).
+Ceedling supports a small number of build directive macros. At present,
+these macros are only for use in test files.
 
-  [ide]: http://throwtheswitch.org/white-papers/using-with-ides.html
+By placing these macros in your test files, you may control aspects of an 
+individual test executable's build from within the test file itself.
 
-* `xml_tests_report`:
+These macros are actually defined in Unity, but they evaluate to empty 
+strings. That is, the macros do nothing. But, by placing them in your 
+test files they communicate instructions to Ceedling when scanned at 
+the beginning of a test build.
 
-  Creates an XML file of test results in the xUnit format (handy for
-  Continuous Integration build servers or as input to other reporting
-  tools). Produces a file report.xml in <build root>/artifacts/tests.
+## `TEST_SOURCE_FILE()`
 
-* `bullseye`:
+### `TEST_SOURCE_FILE()` Purpose
 
-  Adds additional Rake tasks to execute tests with the commercial code
-  coverage tool provided by [Bullseye][]. See readme.txt inside the bullseye
-  plugin directory for configuration and use instructions. Note:
-  Bullseye only works with certain compilers and linkers (healthy list
-  of supported toolchains though).
+The `TEST_SOURCE_FILE()` build directive allows the simple injection of 
+a specific source file into a test executable's build.
 
-  [bullseye]: http://www.bullseye.com
+The Ceedling convention of compiling and linking any C file that 
+corresponds in name to an `#include`d header file does not always work.
+The alternative of `#include`ing a source file directly is ugly and can
+cause other problems.
 
-* `gcov`:
+`TEST_SOURCE_FILE()` is also likely the best method for adding an assembly 
+file to the build of a given test executable — if assembly support is
+enabled for test builds.
 
-  Adds additional Rake tasks to execute tests with the GNU code coverage
-  tool [gcov][]. See readme.txt inside the gcov directory for configuration
-  and use instructions. Only works with GNU compiler and linker.
-
-  [gcov]: http://gcc.gnu.org/onlinedocs/gcc/Gcov.html
-
-* `warnings_report`:
-
-  Scans compiler and linker `$stdout / $stderr` output for the word
-  'warning' (case insensitive). All code warnings (or tool warnings) are
-  logged to a file warnings.log in the appropriate `<build
-  root>/artifacts` directory (e.g. test/ for test tasks, `release/` for a
-  release build, or even `bullseye/` for bullseye runs).
-
-Module Generator
-========================
-Ceedling includes a plugin called module_generator that will create a source, header and test file for you.
-There are several possibilities to configure this plugin through your project.yml to suit your project's needs.
-
-Directory Structure
--------------------------------------------
-
-The default configuration for directory/project structure is:
-```yaml
-:module_generator:
-  :project_root: ./
-  :source_root: src/
-  :test_root: test/
-```
-You can change these variables in your project.yml file to comply with your project's directory structure.
-
-If you call `ceedling module:create`, it will create three files:
-1. A source file in the source_root
-2. A header file in the source_root
-3. A test file in the test_root
-
-If you want your header file to be in another location,
-you can specify the ':inc_root:" in your project.yml file:
-```yaml
-:module_generator:
-  :inc_root: inc/
-```
-The module_generator will then create the header file in your defined ':inc_root:'.
-By default, ':inc_root:' is not defined so the module_generator will use the source_root.
-
-Sometimes, your project can't be divided into a single src, inc, and test folder. You have several directories
-with sources/..., something like this for example:
-<project_root>
- - myDriver
-   - src
-   - inc
-   - test
- - myOtherDriver
-   - src
-   - inc
-   - test
- - ...
-
-Don't worry, you don't have to manually create the source/header/test files.
-The module_generator can accept a path to create a source_root/inc_root/test_root folder with your files:
-`ceedling module:create[<module_root_path>:<module_name>]`
-
-F.e., applied to the above project structure:
-`ceedling module:create[myOtherDriver:driver]`
-This will make the module_generator run in the subdirectory 'myOtherDriver' and generate the module files
-for you in that directory. So, this command will generate the following files:
-1. A source file 'driver.c' in <project_root>/myOtherDriver/<source_root>
-2. A header file 'driver.h' in <project_root>/myOtherDriver/<source_root> (or <inc_root> if specified)
-3. A test file 'test_driver.c' in <project_root>/myOtherDriver/<test_root>
-
-Naming
--------------------------------------------
-By default, the module_generator will generate your files in lowercase.
-`ceedling module:create[mydriver]` and `ceedling module:create[myDriver]`(note the uppercase) will generate the same files:
-1. mydriver.c
-2. mydriver.h
-3. test_mydriver.c
-
-You can configure the module_generator to use a differect naming mechanism through the project.yml:
-```yaml
-:module_generator:
-  :naming: "camel"
-```
-There are other possibilities as well (bumpy, camel, snake, caps).
-Refer to the unity module generator for more info (the unity module generator is used under the hood by module_generator).
-
-
-Boilerplate header
--------------------------------------------
-There are two ways of adding a boilerplate header comment to your generated files:
-* With a defined string in the project.yml file:
-
-```yaml
-:module_generator:
-  :boilerplates:
-    :src: '/* This is Boilerplate code. */'
-```
-
-Using the command **ceedling module:create[foo]** it creates the source module as follows:
+### `TEST_SOURCE_FILE()` Example
 
 ```c
-/* This is Boilerplate code. */
-#include "foo.h"
+// Test file test_mycode.c
+#include "unity.h"
+#include "somefile.h"
+
+// There is no file.h in this project to trigger Ceedling’s convention.
+// Compile file.c and link into test_mycode executable.
+TEST_SOURCE_FILE("foo/bar/file.c")
+
+void setUp(void) {
+  // Do some set up
+}
+
+// ...
 ```
 
-It would be the same for **:tst:** and **:inc:** adding its respective options.
+## `TEST_INCLUDE_PATH()`
 
-* Defining an external file with boileplate code:
+### `TEST_INCLUDE_PATH()` Purpose
 
-```yml
-:module_generator:
-  :boilerplate_files:
-    :src: '<template_folder>\src_boilerplate.txt'
-    :inc: '<template_folder>\inc_boilerplate.txt'
-    :tst: '<template_folder>\tst_boilerplate.txt'
+The `TEST_INCLUDE_PATH()` build directive allows a header search path to
+be injected into the build of an individual test executable.
+
+This is only an additive customization. The path will be added to the 
+base/common path list specified by `:paths`  ↳ `:include` in the project 
+file. If no list is specified in the project file, `TEST_INCLUDE_PATH()` 
+entries will comprise the entire header search path list.
+
+Unless you have a pretty funky C project, at least one search path entry
+— however formed — is necessary for every test executable.
+
+Please see [Configuring Your Header File Search Paths][header-file-search-paths]
+for an overview of Ceedling’s conventions on header file search paths.
+
+[header-file-search-paths]: #configuring-your-header-file-search-paths
+
+### `TEST_INCLUDE_PATH()` Example
+
+```c
+// Test file test_mycode.c
+#include "unity.h"
+#include "somefile.h"
+
+// Add the following to the compiler's -I search paths used to
+// compile all components comprising the test_mycode executable.
+TEST_INCLUDE_PATH("foo/bar/")
+TEST_INCLUDE_PATH("/usr/local/include/baz/")
+
+void setUp(void) {
+  // Do some set up
+}
+
+// ...
 ```
 
-For whatever file names in whichever folder you desire.
+<br/>
 
+# Ceedling Plugins
 
-Advanced Topics (Coming)
-========================
+Ceedling includes a number of plugins. See the collection of built-in [plugins/][ceedling-plugins] 
+or consult the list with summaries and links to documentation in the subsection 
+that follows. Each plugin subdirectory includes full documentation of its 
+capabilities and configuration options.
 
-Modifying Your Configuration without Modifying Your Project File: Option Files & User Files
--------------------------------------------------------------------------------------------
+To enable built-in plugins or your own custom plugins, see the documentation for
+the `:plugins` section in Ceedling project configuation options.
 
-Modifying your project file without modifying your project file
+Many users find that the handy-dandy [Command Hooks plugin][command-hooks] 
+is often enough to meet their needs. This plugin allows you to connect your own
+scripts and tools to Ceedling build steps.
 
-Debugging and/or printf()
--------------------------
+As mentioned, you can create your own plugins. See the [guide][custom-plugins] 
+for how to create custom plugins.
 
-When you gotta get your hands dirty...
+[//]: # (Links in this section already defined above)
 
-Ceedling Plays Nice with Others - Using Ceedling for Tests Alongside Another Release Build Setup
-------------------------------------------------------------------------------------------------
+## Ceedling’s built-in plugins, a directory
 
-You've got options.
+### Ceedling plugin `report_tests_pretty_stdout`
 
-Adding Handy Rake Tasks for Your Project (without Fancy Pants Custom Plugins)
------------------------------------------------------------------------------
+[This plugin][report_tests_pretty_stdout] is meant to tbe the default for
+printing test results to the console. Without it, readable test results are
+still produced but are not nicely formatted and summarized.
 
-Add a file `rakefile.rb` at the root of your project that loads Ceedling. This
-differs whether you are using the gem version or a local Ceedling version.
+Plugin output includes a well-formatted list of summary statistics, ignored and
+failed tests, and any extraneous output (e.g. `printf()` statements or
+simulator memory errors) collected from executing the test fixtures.
 
-Gem Version:
-```ruby
-require('ceedling')
-Ceedling.load_project
-```
+Alternatives to this plugin are:
+ 
+ * `report_tests_ide_stdout`
+ * `report_tests_gtestlike_stdout`
 
-Local Ceedling Version (assuming local ceedling is in `vendor/ceedling`):
-```ruby
-PROJECT_CEEDLING_ROOT = "vendor/ceedling"
-load "#{PROJECT_CEEDLING_ROOT}/lib/ceedling.rb"
-Ceedling.load_project
-```
+Both of the above write to the console test results with a format that is useful
+to IDEs generally in the case of the former, and GTest-aware reporting tools in
+the case of the latter.
 
-Now you simply add your rake task to the file e.g.:
-```ruby
-desc "Print hello world in sh" # Only tasks with description are listed by ceedling -T
-task :hello_world do
-  sh "echo Hello World!"
-end
-```
+[report_tests_pretty_stdout]: ../plugins/report_tests_pretty_stdout
 
-The task can now be called with: `ceedling hello_world` 
+### Ceedling plugin `report_tests_ide_stdout`
 
-Working with Non-Desktop Testing Environments
----------------------------------------------
+[This plugin][report_tests_ide_stdout] prints to the console test results
+formatted similarly to `report_tests_pretty_stdout` with one key difference.
+This plugin's output is formatted such that an IDE executing Ceedling tasks can
+recognize file paths and line numbers in test failures, etc.
 
-For those crazy platforms lacking command line simulators and for which
-cross-compiling on the desktop just ain't gonna get it done.
+This plugin's formatting is often recognized in an IDE's build window and
+automatically linked for file navigation. With such output, you can select a
+test result in your IDE's execution window and jump to the failure (or ignored
+test) in your test file (more on using [IDEs] with Ceedling, Unity, and
+CMock).
 
-Creating Custom Plugins
------------------------
+If enabled, this plugin should be used in place of 
+`report_tests_pretty_stdout`.
 
-Oh boy. This is going to take some explaining.
+[report_tests_ide_stdout]: ../plugins/report_tests_ide_stdout
+
+[IDEs]: https://www.throwtheswitch.org/ide
+
+### Ceedling plugin `report_tests_teamcity_stdout`
+
+[TeamCity] is one of the original Continuous Integration server products.
+
+[This plugin][report_tests_teamcity_stdout] processes test results into TeamCity
+service messages printed to the console. TeamCity's service messages are unique
+to the product and allow the CI server to extract build steps, test results,
+and more from software builds if present.
+
+The output of this plugin is useful in actual CI builds but is unhelpful in
+local developer builds. See the plugin's documentation for options to enable
+this plugin only in CI builds and not in local builds.
+
+[TeamCity]: https://jetbrains.com/teamcity
+[report_tests_teamcity_stdout]: ../plugins/report_tests_teamcity_stdout
+
+### Ceedling plugin `report_tests_gtestlike_stdout`
+
+[This plugin][report_tests_gtestlike_stdout] collects test results and prints
+them to the console in a format that mimics [Google Test's output][gtest-sample-output]. 
+Google Test output is both human readable and recognized
+by a variety of reporting tools, IDEs, and Continuous Integration servers.
+
+If enabled, this plugin should be used in place of
+`report_tests_pretty_stdout`.
+
+[gtest-sample-output]:
+https://subscription.packtpub.com/book/programming/9781800208988/11/ch11lvl1sec31/controlling-output-with-google-test
+[report_tests_gtestlike_stdout]: ../plugins/report_tests_gtestlike_stdout
+
+### Ceedling plugin `command_hooks`
+
+[This plugin][command-hooks] provides a simple means for connecting Ceedling’s build events to
+Ceedling tool entries you define in your project configuration (see `:tools`
+documentation). In this way you can easily connect your own scripts or command
+line utilities to build steps without creating an entire custom plugin.
+
+[//]: # (Links defined in a previous section)
+
+### Ceedling plugin `module_generator`
+
+A pattern emerges in day-to-day unit testing, especially in the practice of
+Test- Driven Development. Again and again, one needs a triplet of a source
+file, header file, and test file — scaffolded in such a way that they refer to
+one another.
+
+[This plugin][module_generator] allows you to save precious minutes by creating
+these templated files for you with convenient command line tasks.
+
+[module_generator]: ../plugins/module_generator
+
+### Ceedling plugin `fff`
+
+The Fake Function Framework, [FFF], is an alternative approach to [test doubles][test-doubles] 
+than that used by CMock.
+
+[This plugin][FFF-plugin] replaces Ceedling generation of CMock-based mocks and
+stubs in your tests with FFF-generated fake functions instead.
+
+[//]: # (FFF links are defined up in an introductory section explaining CMock)
+
+### Ceedling plugin `beep`
+
+[This plugin][beep] provides a simple audio notice when a test build completes suite
+execution or fails due to a build error. It is intended to support developers
+running time-consuming test suites locally (i.e. in the background).
+
+The plugin provides a variety of options for emitting audio notificiations on
+various desktop platforms.
+
+[beep]: ../plugins/beep
+
+### Ceedling plugin `bullseye`
+
+[This plugin][bullseye-plugin] adds additional Ceedling tasks to execute tests
+with code coverage instrumentation provided by the commercial code coverage
+tool provided by [Bullseye]. The Bullseye tool provides visualization and report
+generation from the coverage results produced by an instrumented test suite.
+
+[bullseye]: http://www.bullseye.com
+[bullseye-plugin]: ../plugins/bullseye
+
+### Ceedling plugin `gcov`
+
+[This plugin][gcov-plugin] adds additional Ceedling tasks to execute tests with GNU code
+coverage instrumentation. Coverage reports of various sorts can be generated
+from the coverage results produced by an instrumented test suite.
+
+This plugin manages the use of up to three coverage reporting tools. The GNU
+[gcov] tool provides simple coverage statitics to the console as well as to the
+other supported reporting tools. Optional Python-based [GCovr] and .Net-based
+[ReportGenerator] produce fancy coverage reports in XML, JSON, HTML, etc.
+formats.
+
+[gcov-plugin]: ../plugins/gcov
+[gcov]: http://gcc.gnu.org/onlinedocs/gcc/Gcov.html
+[GCovr]: https://www.gcovr.com/
+[ReportGenerator]: https://reportgenerator.io
+
+### Ceedling plugin `report_tests_log_factory`
+
+[This plugin][report_tests_log_factory] produces any or all of three useful test
+suite reports in JSON, JUnit, or CppUnit format. It further provides a
+mechanism for users to create their own custom reports with a small amount of
+custom Ruby rather than a full plugin.
+
+[report_tests_log_factory]: ../plugins/report_tests_log_factory
+
+### Ceedling plugin `report_build_warnings_log`
+
+[This plugin][report_build_warnings_log] scans the output of build tools for console
+warning notices and produces a simple text file that collects all such warning
+messages.
+
+[report_build_warnings_log]: ../plugins/report_build_warnings_log
+
+### Ceedling plugin `report_tests_raw_output_log`
+
+[This plugin][report_tests_raw_output_log] captures extraneous console output
+generated by test executables — typically for debugging — to log files named
+after the test executables.
+
+[report_tests_raw_output_log]: ../plugins/report_tests_raw_output_log
+
+### Ceedling plugin `subprojects`
+
+[This plugin][subprojects] supports subproject release builds of static
+libraries. It manages differing sets of compiler flags and linker flags that
+fit the needs of different library builds.
+
+[subprojects]: ../plugins/subprojects
+
+### Ceedling plugin `dependencies`
+
+[This plugin][dependencies] manages release build dependencies including
+fetching those dependencies and calling a given dependenc's build process.
+Ultimately, this plugin generates the components needed by your Ceedling
+release build target.
+
+[dependencies]: ../plugins/dependencies
+
+### Ceedling plugin `compile_commands_json_db`
+
+[This plugin][compile_commands_json_db] create a [JSON Compilation Database][json-compilation-database]. 
+This file is useful to [any code editor or IDE][lsp-tools] that implements 
+syntax highlighting, etc. by way of the LLVM project's [`clangd`][clangd] 
+Language Server Protocol conformant language server.
+
+[compile_commands_json_db]: ../plugins/compile_commands_json_db
+[lsp-tools]: https://microsoft.github.io/language-server-protocol/implementors/tools/
+[clangd]: https://clangd.llvm.org
+[json-compilation-database]: https://clang.llvm.org/docs/JSONCompilationDatabase.html
+
+<br/>
+
+# Global Collections
+
+Collections are Ruby arrays and Rake FileLists (that act like 
+arrays). Ceedling did work to populate and assemble these by
+processing the project file, using internal knowledge, 
+expanding path globs, etc. at startup.
+
+Collections are globally available Ruby constants. These 
+constants are documented below. Collections are also available
+via accessors on the `Configurator` object (same names but all
+lower case methods).
+
+Global collections are typically used in Rakefiles, plugins, 
+and Ruby scripts where the contents tend to be especially 
+handy for crafting custom functionality.
+
+Once upon a time collections were a core component of Ceedling.
+As the tool has grown in sophistication and as many of its 
+features now operate per test executable, the utility of and
+number of collections has dwindled. Previously, nearly all
+Ceedling actions happened in bulk and with the same 
+collections used for all tasks. This is no longer true.
+
+* `COLLECTION_PROJECT_OPTIONS`:
+
+  All project option files with path found in the configured 
+  options paths having the configured YAML file extension.
+
+* `COLLECTION_ALL_TESTS`:
+
+  All files with path found in the configured test paths 
+  having the configured source file extension. 
+
+* `COLLECTION_ALL_ASSEMBLY`:
+
+  All files with path found in the configured source and 
+  test support paths having the configured assembly file 
+  extension. 
+
+* `COLLECTION_ALL_SOURCE`:
+
+  All files with path found in the configured source paths 
+  having the configured source file extension. 
+
+* `COLLECTION_ALL_HEADERS`:
+
+  All files with path found in the configured include, 
+  support, and test paths having the configured header file 
+  extension. 
+
+* `COLLECTION_ALL_SUPPORT`:
+
+  All files with path found in the configured test support 
+  paths having the configured source file extension. 
+
+* `COLLECTION_PATHS_INCLUDE`:
+
+  All configured include paths.
+
+* `COLLECTION_PATHS_SOURCE`:
+
+  All configured source paths.
+
+* `COLLECTION_PATHS_SUPPORT`:
+
+  All configured support paths.
+
+* `COLLECTION_PATHS_TEST`:
+
+  All configured test paths.
+
+* `COLLECTION_PATHS_SOURCE_AND_INCLUDE`:
+
+  All configured source and include paths.
+
+* `COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR`:
+
+  All configured source and include paths plus applicable 
+  vendor paths (Unity's source path plus CMock and 
+  CException's source paths if mocks and exceptions are 
+  enabled).
+
+* `COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE`:
+
+  All configured test, support, source, and include paths.
+
+* `COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR`:
+
+  All test, support, source, include, and applicable 
+  vendor paths (Unity's source path plus CMock and 
+  CException's source paths if mocks and exceptions are 
+  enabled).
+
+* `COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE`:
+
+  All configured release toolchain include paths.
+
+* `COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE`:
+
+  All configured test toolchain include paths.
+
+* `COLLECTION_PATHS_VENDOR`:
+
+  Unity's source path plus CMock and CException's source 
+  paths if mocks and exceptions are enabled.
+
+* `COLLECTION_VENDOR_FRAMEWORK_SOURCES`:
+
+  Unity plus CMock, and CException's .c filenames (without 
+  paths) if mocks and exceptions are enabled.
+
+* `COLLECTION_RELEASE_BUILD_INPUT`:
+
+   * All files with path found in the configured source 
+     paths having the configured source file extension.
+   * If exceptions are enabled, the source files for 
+     CException.
+   * If assembly support is enabled, all assembly files 
+     found in the configured paths having the configured 
+     assembly file extension.
+
+* `COLLECTION_EXISTING_TEST_BUILD_INPUT`:
+
+   * All files with path found in the configured source 
+     paths having the configured source file extension.
+   * All files with path found in the configured test 
+     paths having the configured source file extension.
+   * Unity's source files.
+   * If exceptions are enabled, the source files for 
+     CException.
+   * If mocks are enabled, the C source files for CMock.
+   * If assembly support is enabled, all assembly files 
+     found in the configured paths having the configured 
+     assembly file extension.
+
+  This collection does not include .c files generated by 
+  Ceedling and its supporting frameworks at build time 
+  (e.g. test runners and mocks). Further, this collection 
+  does not include source files added to a test 
+  executable's build list with the `TEST_SOURCE_FILE()` 
+  build directive macro.
+
+* `COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS`:
+
+  If exceptions are enabled, CException's .c filenames 
+  (without paths) remapped to configured object file 
+  extension.
+
+* `COLLECTION_TEST_FIXTURE_EXTRA_LINK_OBJECTS`:
+
+  All test support source filenames (without paths) 
+  remapped to configured object file extension.
+
+<br/>
