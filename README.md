@@ -1,15 +1,21 @@
 # Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-_February 16, 2024_ 🚚 **Ceedling 0.32** is a release candidate and will be
- shipping very soon. See the [Release Notes](#docs/ReleaseNotes.md) for a long
- list of improvements and fixes.
+April 18, 2024_ 🚚 **Ceedling 1.0** is a release candidate and will be
+shipping very soon. See the [Release Notes](#docs/ReleaseNotes.md) for an overview
+of a long list of improvements and fixes.
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
 ## Developer-friendly release _and_ test builds
 
 Ceedling can build your release artifact but is especially adept at building
-test suites.
+unit test suites for your C projects — even in tricky embedded systems.
+
+Ceedling and its complementary pieces and parts are and always will be freely
+available and open source. **_[Ceedling Pro][ceedling-pro]_** is a growing list 
+of paid products and services to help you do even more with these tools.
+
+[ceedling-pro]: https://thingamabyte.com/ceedlingpro
 
 ⭐️ **Eager to just get going? Jump to 
 [📚 Documentation & Learning](#-documentation--learning) and
@@ -20,8 +26,8 @@ command-line driven. It drives code generation and command line tools for you.
 All generated and framework code is easy to see and understand.
 
 Ceedling’s features support all types of C development from low-level embedded
-to enterprise systems. No tool is perfect, but it can do a lot to help you and
-your team produce quality software.
+to enterprise systems. No tool is perfect, but Ceedling can do a whole lot to 
+help you and your team produce quality software.
 
 ## Ceedling is a suite of tools
 
@@ -69,15 +75,14 @@ library builds & dependency management, and more.
   **[Submit an issue][ceedling-issues]** at this repo.
 * Trying to understand features or solve a testing problem? Hit the
   **[discussion forums][forums]**.
-* Paid training, customizations, and support contracts are available by 
-  **[contacting ThingamaByte][thingama-contact]**.
+* Paid training, customizations, and support contracts are available through 
+  **[Ceedling Pro][ceedling-pro]**.
 
 The ThrowTheSwitch community follows a **[code of conduct](docs/CODE_OF_CONDUCT.md)**.
 
-Please familiarize yourself with our guideline for **[contributing](docs/CONTRIBUTING.md)** to this project, be it code, reviews, documentation, or reports.
+Please familiarize yourself with our guidelines for **[contributing](docs/CONTRIBUTING.md)** to this project, be it code, reviews, documentation, or reports.
 
-Yes, work has begun on certified versions of the Ceedling suite of tools.
-Again, [reach out to ThingamaByte][thingama-contact] for more.
+Yes, work has begun on certified versions of the Ceedling suite of tools to be available through **[Ceedling Pro][ceedling-pro]**. [Reach out to ThingamaByte][thingama-contact] for more.
 
 [ceedling-issues]: https://github.com/ThrowTheSwitch/Ceedling/issues
 [forums]: https://www.throwtheswitch.org/forums
@@ -299,7 +304,9 @@ IGNORED: 0
 
 # 📚 Documentation & Learning
 
-A variety of options for [support][TTS-help] exist as well.
+A variety of options for [community-based support][TTS-help] exist.
+
+Training and support contracts are available through **_[Ceedling Pro][ceedling-pro]_**
 
 [TTS-help]: https://www.throwtheswitch.org/#help-section
 
