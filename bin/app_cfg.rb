@@ -8,6 +8,8 @@
 # Create our global application configuration option set
 # This approach bridges clean Ruby and Rake
 def get_app_cfg()
+  require "io/console"
+
   app_cfg = {
     # Blank initial value for completeness
     :project_config => {},
@@ -31,6 +33,9 @@ def get_app_cfg()
 
     # Default to `exit(1)` upon failing test cases
     :tests_graceful_fail => false,
+
+    # Get terminal width in columns
+    :terminal_width => (IO.console.winsize)[1],
   }
 
   return app_cfg

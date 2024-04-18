@@ -44,6 +44,10 @@ begin
   # Keep a copy of the command line for edge case CLI hacking (Thor consumes ARGV)
   _ARGV = ARGV.clone
 
+  # Especially on Windows, tell Thor & Rake how wide the terminal is
+  ENV['THOR_COLUMNS'] = CEEDLING_APPCFG[:terminal_width].to_s()
+  ENV['RAKE_COLUMNS'] = ENV['THOR_COLUMNS']
+
   #
   # NOTE: See comment block in cli.rb to understand CLI handling
   # ------------------------------------------------------------
