@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'rbconfig'
+require 'app_cfg'
 require 'ceedling/constants' # From Ceedling application
 
 class CliHelper
@@ -49,48 +50,80 @@ class CliHelper
   end
 
 
-  def which_ceedling?(config)
-    walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
-    return 'gem' if walked[:value].nil?
-    return walked[:value]
+  def which_ceedling?(env:, config:{}, app_cfg:)
+    # Determine which Ceedling we're running (in priority)
+    #  1. If there's an environment variable set, validate it, and return :gem or a path
+    #  2. If :project ↳ :which_ceedling exists in the config, validate it, and return :gem or a path
+    #  3. If there's a vendor/ceedling/ path in our working directory, return it as a path
+    #  4. If nothing is set, default to :gem and return it
+    #  5. Update app_cfg paths if not the gem
+
+    # Nil for prioritized case checking logic blocks that follow
+    which_ceedling = nil
+
+    # Environment variable
+    if !env['WHICH_CEEDLING'].nil?
+      @streaminator.stream_puts( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS )
+      which_ceedling = env['WHICH_CEEDLING'].strip()
+      which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
+    end
+
+    # Configuration file
+    if which_ceedling.nil?
+      walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
+      if !walked[:value].nil?
+        @streaminator.stream_puts( " > Set which Ceedling from config entry :project -> :which_ceedling", Verbosity::OBNOXIOUS )
+        which_ceedling = walked[:value].strip()
+        which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
+      end
+    end
+
+    # Working directory
+    if which_ceedling.nil?
+      if @file_wrapper.directory?( 'vendor/ceedling' )
+        which_ceedling = 'vendor/ceedling'
+        @streaminator.stream_puts( " > Set which Ceedling to be vendored installation", Verbosity::OBNOXIOUS )
+      end
+    end
+
+    # Default to gem
+    if which_ceedling.nil?
+      which_ceedling = :gem
+      @streaminator.stream_puts( " > Defaulting to running Ceedling from Gem", Verbosity::OBNOXIOUS )
+    end
+
+    # Default gem path
+    ceedling_path = app_cfg[:ceedling_root_path]
+
+    if which_ceedling != :gem
+      ceedling_path = which_ceedling
+      @path_validator.standardize_paths( ceedling_path )
+      if !@file_wrapper.directory?( ceedling_path )
+        raise "Configured Ceedling launch path #{ceedling_path}/ does not exist"
+      end
+
+      # Update installation paths
+      app_cfg.set_paths( ceedling_path )
+    end
+
+    @streaminator.stream_puts( " > Launching Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
+
+    return ceedling_path
   end
 
 
-  def load_ceedling(project_filepath:, config:, which:, default_tasks:[])
-    # Determine which Ceedling we're running
-    #  1. Copy the which value passed in (most likely a default determined in the first moments of startup)
-    #  2. If a :project -> :which_ceedling entry exists in the config, use it instead
-    _which = which.dup()
-    walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
-    _which = walked[:value] if !walked[:value].nil?
-
-    @path_validator.standardize_paths( _which )
-
+  def load_ceedling(config:, which:, default_tasks:[])
     # Load Ceedling from the gem
-    if (_which == 'gem')
-      require 'ceedling'
-
+    if (which == :gem)
+      require( 'ceedling' )
     # Load Ceedling from a path
     else
-      # If a relative :which_ceedling, load in relation to project file location
-      if @file_wrapper.relative?( _which )
-        project_path = File.dirname( project_filepath )
-        ceedling_path = File.join( project_path, _which )
-        ceedling_path = File.expand_path( ceedling_path )
-
-        if !@file_wrapper.directory?( ceedling_path )
-          raise "Configuration value :project -> :which_ceedling => '#{_which}' points to a path relative to your project file that contains no Ceedling installation"
-        end
-
-      # Otherwise, :which_ceedling is an absolute path
-      else
-        if !@file_wrapper.exist?( ceedling_path )
-          raise "Configuration value :project -> :which_ceedling => '#{_which}' points to a path that contains no Ceedling installation"
-        end
+      ceedling_path = File.join( File.expand_path( which ), 'lib/ceedling.rb' )
+      if !@file_wrapper.exist?( ceedling_path )
+        raise "Configured Ceedling launch path #{which}/ contains no Ceedling installation"
       end
 
-      require( File.join( ceedling_path, '/lib/ceedling.rb' ) )
-      @streaminator.stream_puts( " > Running Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
+      require( ceedling_path )
     end
 
     # Set default tasks
@@ -99,7 +132,7 @@ class CliHelper
     # Load Ceedling
     Ceedling.load_rakefile()
 
-    # Processing the Rakefile in the preceeding line processes the config hash
+    # Loading the Rakefile manipulates the config hash, return it as a convenience
     return config
   end
 

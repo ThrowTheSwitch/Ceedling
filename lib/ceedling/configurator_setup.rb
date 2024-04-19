@@ -29,14 +29,14 @@ class ConfiguratorSetup
     return this.class.name
   end
 
-  def build_project_config(flattened_config)
+  def build_project_config(ceedling_lib_path, flattened_config)
     ### flesh out config
     @configurator_builder.cleanup( flattened_config )
     @configurator_builder.set_exception_handling( flattened_config )
 
     ### add to hash values we build up from configuration & file system contents
     flattened_config.merge!( @configurator_builder.set_build_paths( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.set_rakefile_components( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.set_rakefile_components( ceedling_lib_path, flattened_config ) )
     flattened_config.merge!( @configurator_builder.set_release_target( flattened_config ) )
     flattened_config.merge!( @configurator_builder.set_build_thread_counts( flattened_config ) )
 

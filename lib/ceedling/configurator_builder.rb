@@ -172,16 +172,18 @@ class ConfiguratorBuilder
   end
 
 
-  def set_rakefile_components(in_hash)
+  def set_rakefile_components(ceedling_lib_path, in_hash)
     out_hash = {
-      :project_rakefile_component_files =>
-        [File.join(CEEDLING_LIB, 'tasks_base.rake'),
-         File.join(CEEDLING_LIB, 'tasks_filesystem.rake'),
-         File.join(CEEDLING_LIB, 'tasks_tests.rake'),
-         File.join(CEEDLING_LIB, 'rules_tests.rake')]}
+      :project_rakefile_component_files => [
+         File.join( ceedling_lib_path, 'tasks_base.rake' ),
+         File.join( ceedling_lib_path, 'tasks_filesystem.rake' ),
+         File.join( ceedling_lib_path, 'tasks_tests.rake' ),
+         File.join( ceedling_lib_path, 'rules_tests.rake' )
+         ]
+      }
 
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'rules_release.rake') if (in_hash[:project_release_build])
-    out_hash[:project_rakefile_component_files] << File.join(CEEDLING_LIB, 'tasks_release.rake') if (in_hash[:project_release_build])
+    out_hash[:project_rakefile_component_files] << File.join( ceedling_lib_path, 'rules_release.rake' ) if (in_hash[:project_release_build])
+    out_hash[:project_rakefile_component_files] << File.join( ceedling_lib_path, 'tasks_release.rake' ) if (in_hash[:project_release_build])
 
     return out_hash
   end

@@ -376,10 +376,10 @@ class Configurator
 
 
   # Create constants and accessors (attached to this object) from given hash
-  def build(config, *keys)
+  def build(build_project_config, config, *keys)
     flattened_config = @configurator_builder.flattenify( config )
 
-    @configurator_setup.build_project_config( flattened_config )
+    @configurator_setup.build_project_config( build_project_config, flattened_config )
 
     @configurator_setup.build_directory_structure( flattened_config )
 

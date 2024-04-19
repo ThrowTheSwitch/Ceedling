@@ -9,7 +9,8 @@ require 'deep_merge'
 
 class Configinator
 
-  MIXINS_BASE_PATH = File.join( CEEDLING_ROOT, 'mixins' )
+  # TODO: Temporary path until built-in mixins load path handling is replaced with internal hash
+  MIXINS_BASE_PATH = '.'
 
   constructor :config_walkinator, :projectinator, :mixinator
 

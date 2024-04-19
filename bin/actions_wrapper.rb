@@ -13,7 +13,7 @@ class ActionsWrapper
   include Thor::Base
   include Thor::Actions
 
-  source_root( CEEDLING_ROOT )
+  # Most important mixin method is Thor::Actions class method `source_root()` we call externally
 
   def _directory(src, *args)
     directory( src, *args )

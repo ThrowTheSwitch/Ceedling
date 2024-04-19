@@ -8,38 +8,47 @@
 
 require 'rubygems'
 
-CEEDLING_ROOT     = File.expand_path( File.join( File.dirname( __FILE__ ), ".." ) )
-CEEDLING_BIN      = File.join( CEEDLING_ROOT, 'bin' )
-CEEDLING_LIB_BASE = File.join( CEEDLING_ROOT, 'lib' )
-CEEDLING_LIB      = File.join( CEEDLING_LIB_BASE, 'ceedling' )
-CEEDLING_VENDOR   = File.join( CEEDLING_ROOT, 'vendor' )
+# Get the path for our current code directory
+ceedling_bin_path = File.expand_path( File.join( File.dirname( __FILE__ ), '..', 'bin' ) )
 
-# Add load path for `require 'ceedling/*'` statements and bin/ code
-$LOAD_PATH.unshift( CEEDLING_BIN, CEEDLING_LIB_BASE )
+# Add load path so we can `require` files in bin/
+$LOAD_PATH.unshift( ceedling_bin_path )
+
+# Pull in our startup configuration code in bin/
+require 'app_cfg'
+CEEDLING_APPCFG = CeedlingAppConfig.new()
+
+# Add load paths for `require 'ceedling/*'` statements in bin/ code
+$LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_base_path] )
 
 require 'cli'          # Located alongside this file in CEEDLING_BIN
 require 'constructor'  # Assumed installed via Ceedling gem dependencies
-require 'app_cfg'      # Located alongside this file in CEEDLING_BIN
-
-CEEDLING_APPCFG = get_app_cfg()
 
 # Entry point
 begin
+  diy_vendor_path = File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'diy/lib' )
+
   # Construct all bootloader objects
   #  1. Add full path to $LOAD_PATH to simplify objects.yml
   #  2. Add vendored DIY to $LOAD_PATH so we can use it
   #  3. Require DIY (used by Ceedling application too)
   #  4. Perform object construction + dependency injection from bin/objects.yml
-  #  5. Remove unneeded / potentially problematic paths from $LOAD_PATH
-  $LOAD_PATH.unshift( CEEDLING_LIB )
-  $LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'diy/lib') )
+  #  5. Remove all paths added to $LOAD_PATH
+  #     (Main application will restore certain paths -- possibly updated by :which_ceedling)
+  $LOAD_PATH.unshift( 
+    CEEDLING_APPCFG[:ceedling_lib_path],
+    diy_vendor_path
+  )
 
   require 'diy'
-  objects = DIY::Context.from_yaml( File.read( File.join( CEEDLING_BIN, 'objects.yml' ) ) )
+  bin_objects_filepath = File.join( ceedling_bin_path, 'objects.yml' )
+  objects = DIY::Context.from_yaml( File.read( bin_objects_filepath ) )
   objects.build_everything()
   
-  $LOAD_PATH.delete( CEEDLING_BIN ) # Loaded in top-level `ceedling` script
-  $LOAD_PATH.delete( CEEDLING_LIB )
+  # Remove all load paths we've relied on (main application will set up load paths again)
+  $LOAD_PATH.delete( ceedling_bin_path )
+  $LOAD_PATH.delete( CEEDLING_APPCFG[:ceedling_lib_path] )
+  $LOAD_PATH.delete( diy_vendor_path )
 
   # Keep a copy of the command line for edge case CLI hacking (Thor consumes ARGV)
   _ARGV = ARGV.clone

@@ -9,8 +9,10 @@ require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/file_path_utils'
 
-#this should be defined already, but not always during system specs
-CEEDLING_VENDOR = File.expand_path(File.dirname(__FILE__) + '/../../vendor') unless defined? CEEDLING_VENDOR
+# Assign a default value for system testing where CEEDLING_APPCFG may not be present
+# TODO: Create code config & test structure that does not internalize a test path like this
+CEEDLING_VENDOR = defined?( CEEDLING_APPCFG ) ? CEEDLING_APPCFG[:ceedling_vendor_path] : File.expand_path( File.dirname(__FILE__) + '/../../vendor' )
+
 CEEDLING_PLUGINS = [] unless defined? CEEDLING_PLUGINS
 
 DEFAULT_TEST_COMPILER_TOOL = {

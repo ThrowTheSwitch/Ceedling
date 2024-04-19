@@ -52,14 +52,14 @@ class CliHandler
 
 
   # Public to be used by `-T` ARGV hack handling
-  def rake_help( env:, app_cfg:)
+  def rake_help(env:, app_cfg:)
     @helper.set_verbosity() # Default to normal
 
     list_rake_tasks( env:env, app_cfg:app_cfg )
   end
 
 
-  def new_project(ceedling_root, options, name, dest)
+  def new_project(env, app_cfg, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( dest )
@@ -74,6 +74,11 @@ class CliHandler
       raise msg
     end unless options[:force]
 
+    # Update app_cfg paths (ignore return value)
+    @helper.which_ceedling?( env:env, app_cfg:app_cfg )
+
+    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+
     # Blow away any existing directories and contents if --force
     @actions.remove_dir( dest ) if options[:force]
 
@@ -83,25 +88,29 @@ class CliHandler
     end
 
     # Vendor the tools and install command line helper scripts
-    @helper.vendor_tools( ceedling_root, dest ) if options[:local]
+    @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
 
     # Copy in documentation
-    @helper.copy_docs( ceedling_root, dest ) if options[:docs]
+    @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
     # Copy / set up project file
-    @helper.create_project_file( ceedling_root, dest, options[:local] ) if options[:configs]
+    @helper.create_project_file( app_cfg[:ceedling_root_path], dest, options[:local] ) if options[:configs]
 
     # Copy Git Ignore file 
     if options[:gitsupport]
-      @actions._copy_file( File.join(ceedling_root,'assets','default_gitignore'), File.join(dest,'.gitignore'), :force => true )
-      @actions._touch_file( File.join(dest, 'test/support', '.gitkeep') )
+      @actions._copy_file(
+        File.join( app_cfg[:ceedling_root_path], 'assets', 'default_gitignore' ),
+        File.join( dest, '.gitignore' ),
+        :force => true
+      )
+      @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
     @streaminator.stream_puts( "\nNew project '#{name}' created at #{dest}/\n" )
   end
 
 
-  def upgrade_project(ceedling_root, options, path)
+  def upgrade_project(env, app_cfg, options, path)
     @path_validator.standardize_paths( path, options[:project] )
 
     # Check for existing project
@@ -110,25 +119,24 @@ class CliHandler
       raise msg
     end
 
-    project_filepath = File.join( path, options[:project] )
-    _, config = @projectinator.load( filepath:project_filepath )
-
-    if (@helper.which_ceedling?( config ) == 'gem')
+    if (@helper.which_ceedling?( env:env, app_cfg:app_cfg ) == :gem)
       msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
       raise msg
     end
 
+    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+
     # Recreate vendored tools
     vendor_path = File.join( path, 'vendor', 'ceedling' )
     @actions.remove_dir( vendor_path )
-    @helper.vendor_tools( ceedling_root, path )
+    @helper.vendor_tools( app_cfg[:ceedling_root_path], path )
 
     # Recreate documentation if we find docs/ subdirectory
     docs_path = File.join( path, 'docs' )
     founds_docs = @helper.project_exists?( path, :&, File.join( 'docs', 'CeedlingPacket.md' ) )
     if founds_docs
       @actions.remove_dir( docs_path )
-      @helper.copy_docs( ceedling_root, path )
+      @helper.copy_docs( app_cfg[:ceedling_root_path], path )
     end
 
     @streaminator.stream_puts( "\nUpgraded project at #{path}/\n" )
@@ -140,7 +148,7 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
 
-    project_filepath, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
 
     default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
@@ -165,27 +173,27 @@ class CliHandler
     end
 
     # Save references
-    app_cfg[:project_config] = config
-    app_cfg[:log_filepath] = log_filepath
-    app_cfg[:include_test_case] = options[:test_case]
-    app_cfg[:exclude_test_case] = options[:exclude_test_case]
+    app_cfg.set_project_config( config )
+    app_cfg.set_log_filepath( log_filepath )
+    app_cfg.set_include_test_case( options[:test_case] )
+    app_cfg.set_exclude_test_case( options[:exclude_test_case] )
 
     # Set graceful_exit from command line & configuration options
-    app_cfg[:tests_graceful_fail] =
-     @helper.process_graceful_fail(
+    app_cfg.set_tests_graceful_fail(
+      @helper.process_graceful_fail(
         config: config,
         cmdline_graceful_fail: options[:graceful_fail],
         tasks: tasks,
         default_tasks: default_tasks
       )
+    )
 
     # Enable setup / operations duration logging in Rake context
-    app_cfg[:stopwatch] = @helper.process_stopwatch( tasks:tasks, default_tasks:default_tasks )
+    app_cfg.set_stopwatch( @helper.process_stopwatch( tasks:tasks, default_tasks:default_tasks ) )
 
     @helper.load_ceedling( 
-      project_filepath: project_filepath,
       config: config,
-      which: app_cfg[:which_ceedling],
+      which: @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg ),
       default_tasks: default_tasks
     )
 
@@ -199,7 +207,7 @@ class CliHandler
 
     @path_validator.standardize_paths( filepath, options[:project], *options[:mixin] )
 
-    project_filepath, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
 
     # Exception handling to ensure we dump the configuration regardless of config validation errors
     begin
@@ -208,12 +216,11 @@ class CliHandler
         default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
         # Save references
-        app_cfg[:project_config] = config
+        app_cfg.set_project_config( config )
 
         config = @helper.load_ceedling( 
-          project_filepath: project_filepath,
           config: config,
-          which: app_cfg[:which_ceedling],
+          which: @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg ),
           default_tasks: default_tasks
         )
       else
@@ -231,15 +238,14 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], *options[:mixin] )
 
-    project_filepath, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
 
     # Save references
-    app_cfg[:project_config] = config
+    app_cfg.set_project_config( config )
 
-    config = @helper.load_ceedling( 
-      project_filepath: project_filepath,
+    config = @helper.load_ceedling(
       config: config,
-      which: app_cfg[:which_ceedling]
+      which: @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
     )
 
     env_list = []
@@ -269,8 +275,11 @@ class CliHandler
   end
 
 
-  def list_examples(examples_path)
-    examples = @helper.lookup_example_projects( examples_path )
+  def list_examples(env, app_cfg)
+    # Process which_ceedling for app_cfg but ignore return
+    @helper.which_ceedling?( env:env, app_cfg:app_cfg )
+
+    examples = @helper.lookup_example_projects( app_cfg[:ceedling_examples_path] )
 
     raise( "No examples projects found") if examples.empty?
 
@@ -282,12 +291,15 @@ class CliHandler
   end
 
 
-  def create_example(ceedling_root, examples_path, options, name, dest)
+  def create_example(env, app_cfg, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( dest )
 
-    examples = @helper.lookup_example_projects( examples_path )
+    # Process which_ceedling for app_cfg but ignore return
+    @helper.which_ceedling?( env:env, app_cfg:app_cfg )
+
+    examples = @helper.lookup_example_projects( app_cfg[:ceedling_examples_path] )
 
     if !examples.include?( name )
       raise( "No example project '#{name}' could be found" )
@@ -301,15 +313,17 @@ class CliHandler
     dest_test     = File.join( dest, 'test' )
     dest_project  = File.join( dest, DEFAULT_PROJECT_FILENAME )
 
+    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+
     @actions._directory( "examples/#{name}/src", dest_src, :force => true )
     @actions._directory( "examples/#{name}/test", dest_test, :force => true )
     @actions._copy_file( "examples/#{name}/#{DEFAULT_PROJECT_FILENAME}", dest_project, :force => true )
 
     # Vendor the tools and install command line helper scripts
-    @helper.vendor_tools( ceedling_root, dest ) if options[:local]
+    @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
 
     # Copy in documentation
-    @helper.copy_docs( ceedling_root, dest ) if options[:docs]
+    @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
     @streaminator.stream_puts( "\nExample project '#{name}' created at #{dest}/\n" )
   end
@@ -332,7 +346,7 @@ class CliHandler
   private
 
   def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[])
-    project_filepath, config = 
+    _, config = 
       @configinator.loadinate(
         filepath: filepath,
         mixins: mixins,
@@ -340,16 +354,15 @@ class CliHandler
       )
 
     # Save reference to loaded configuration
-    app_cfg[:project_config] = config
-
-    @streaminator.stream_puts( "Ceedling Build & Plugin Tasks:\n(Parameterized tasks tend to require enclosing quotes and/or escape sequences in most shells)" )
+    app_cfg.set_project_config( config )
 
     @helper.load_ceedling(
-      project_filepath: project_filepath,
       config: config,
-      which: app_cfg[:which_ceedling],
+      which: @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg ),
       default_tasks: app_cfg[:default_tasks]
     )
+
+    @streaminator.stream_puts( "Ceedling Build & Plugin Tasks:\n(Parameterized tasks tend to need enclosing quotes or escape sequences in most shells)" )
 
     @helper.print_rake_tasks()
   end

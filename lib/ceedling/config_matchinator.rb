@@ -92,8 +92,8 @@ class ConfigMatchinator
     # Look for matcher keys with missing values
     hash.each do |k, v|
       if v == nil
-        path = generate_matcher_path(section, context, operation)
-        error = "ERROR: Missing list of values for [#{path} -> '#{k}' matcher in project configuration."
+        path = generate_matcher_path( section, context, operation )
+        error = "ERROR: Missing list of values for #{path} -> '#{k}' matcher in project configuration."
         raise CeedlingException.new(error)
       end
     end

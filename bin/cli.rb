@@ -101,8 +101,6 @@ module CeedlingTasks
     YAML file. See documentation for complete details.
     \x5> --mixin my_compiler --mixin my/path/mixin.yml"
 
-  CEEDLING_EXAMPLES_PATH = File.join( CEEDLING_ROOT, 'examples' )
-
   class CLI < Thor
     include Thor::Actions
     extend PermissiveCLI
@@ -185,7 +183,7 @@ module CeedlingTasks
 
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
-      @handler.new_project( CEEDLING_ROOT, _options, name, _dest )
+      @handler.new_project( ENV, @app_cfg, _options, name, _dest )
     end
 
 
@@ -198,7 +196,7 @@ module CeedlingTasks
     PATH is required and should be the root of the project to upgrade.
 
     This command only meaningfully operates on projects wth a local vendored copy 
-    of Ceedlng (in <project>/vendor/) and optionally documentation (in 
+    of Ceedling (in <project>/vendor/) and optional documentation (in 
     <project>/docs/).
 
     Running this command replaces vendored Ceedling with the version running
@@ -222,7 +220,7 @@ module CeedlingTasks
 
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
-      @handler.upgrade_project( CEEDLING_ROOT, _options, _path )
+      @handler.upgrade_project( ENV, @app_cfg, _options, _path )
     end
 
 
@@ -336,7 +334,7 @@ module CeedlingTasks
     to extract an example project to your filesystem.
     LONGDESC
     def examples()
-      @handler.list_examples( CEEDLING_EXAMPLES_PATH )
+      @handler.list_examples( ENV, @app_cfg )
     end
 
 
@@ -369,7 +367,7 @@ module CeedlingTasks
 
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
-      @handler.create_example( CEEDLING_ROOT, CEEDLING_EXAMPLES_PATH, _options, name, _dest )
+      @handler.create_example( ENV, @app_cfg, _options, name, _dest )
     end
 
 

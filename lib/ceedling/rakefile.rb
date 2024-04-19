@@ -7,8 +7,9 @@
 
 require 'fileutils'
 
-$LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'unity/auto') )
-$LOAD_PATH.unshift( File.join(CEEDLING_VENDOR, 'cmock/lib') )
+# Add Unity and CMock's Ruby code paths to $LOAD_PATH for runner generation and mocking
+$LOAD_PATH.unshift( File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'unity/auto') )
+$LOAD_PATH.unshift( File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'cmock/lib') )
 
 require 'rake'
 
@@ -59,10 +60,11 @@ begin
   #  1. Add full path to $LOAD_PATH to simplify objects.yml
   #  2. Perform object construction + dependency injection
   #  3. Remove full path from $LOAD_PATH
-  $LOAD_PATH.unshift( CEEDLING_LIB )
-  @ceedling = DIY::Context.from_yaml( File.read( File.join( CEEDLING_LIB, 'objects.yml' ) ) )
+  $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_path] )
+  objects_filepath = File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'objects.yml' )
+  @ceedling = DIY::Context.from_yaml( File.read( objects_filepath ) )
   @ceedling.build_everything()
-  $LOAD_PATH.delete( CEEDLING_LIB )
+  $LOAD_PATH.delete( CEEDLING_APPCFG[:ceedling_lib_path] )
 
   # One-stop shopping for all our setup and such after construction
   @ceedling[:setupinator].ceedling = @ceedling

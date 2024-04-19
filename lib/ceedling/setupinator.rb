@@ -46,7 +46,7 @@ class Setupinator
     @ceedling[:configurator].tools_setup( config_hash )
     @ceedling[:configurator].validate_final( config_hash )
     # Partially flatten config + build Configurator accessors and globals
-    @ceedling[:configurator].build( config_hash, :environment )
+    @ceedling[:configurator].build( app_cfg[:ceedling_lib_path], config_hash, :environment )
 
     @ceedling[:configurator].insert_rake_plugins( @ceedling[:configurator].rake_plugins )
     @ceedling[:configurator].tools_supplement_arguments( config_hash )
