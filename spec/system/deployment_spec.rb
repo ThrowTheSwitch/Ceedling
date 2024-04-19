@@ -99,7 +99,7 @@ describe "Ceedling" do
     it { can_test_projects_with_compile_error }
   end
 
-  describe "ugrade a project's `vendor` directory" do
+  describe "upgrade a project's `vendor` directory" do
     before do
       @c.with_context do
         `bundle exec ruby -S ceedling new --local #{@proj_name} 2>&1`
@@ -138,7 +138,7 @@ describe "Ceedling" do
     it { can_test_projects_with_compile_error }
   end
 
-  describe "Cannot ugrade a non existing project" do
+  describe "Cannot upgrade a non existing project" do
     it { cannot_upgrade_non_existing_project }
   end
 
