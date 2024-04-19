@@ -38,7 +38,7 @@ module Ceedling
       eval("#{name} = '#{a.join(".")}'")
     end
 
-    GEM = "1.0.0"
+    GEM = "0.3.2"
     CEEDLING = GEM
 
     puts CEEDLING if __FILE__ == $0
