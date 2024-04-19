@@ -361,7 +361,7 @@ class CliHelper
     assets_path = File.join( ceedling_root, 'assets' )
 
     # Copy folders from current Ceedling into project
-    %w{plugins lib bin mixins}.each do |folder|
+    %w{plugins lib bin}.each do |folder|
       @actions._directory( 
         File.join( ceedling_root, folder ),
         File.join( vendor_path, folder ),
