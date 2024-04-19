@@ -52,11 +52,18 @@ class CeedlingAppConfig
       # Default to `exit(1)` upon failing test cases
       :tests_graceful_fail => false,
 
-      # Get terminal width in columns
-      :terminal_width => (IO.console.winsize)[1],
+      # Set terminal width (in columns) to a default
+      :terminal_width => 120,
     }
 
     set_paths( ceedling_root_path )
+
+    # Try to query terminal width (not always available on all platforms)
+    begin
+      @app_cfg[:terminal_width] = (IO.console.winsize)[1]
+    rescue
+      # Do nothing; allow default value already set to stand
+    end
   end 
 
   def set_project_config(config)
