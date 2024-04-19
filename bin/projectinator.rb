@@ -23,10 +23,10 @@ class Projectinator
   # Returns:
   #  - Absolute path of project file found and used
   #  - Config hash loaded from project file
-  def load(filepath:nil, env:{})
+  def load(filepath:nil, env:{}, silent:false)
     # Highest priority: command line argument
     if filepath
-      config = load_filepath( filepath, 'from command line argument' )
+      config = load_filepath( filepath, 'from command line argument', silent )
       return File.expand_path( filepath ), config
 
     # Next priority: environment variable
@@ -35,14 +35,15 @@ class Projectinator
       @path_validator.standardize_paths( filepath )
       config = load_filepath( 
         filepath,
-        "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`"
+        "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`",
+        silent
       )
       return File.expand_path( filepath ), config
 
     # Final option: default filepath
     elsif @file_wrapper.exist?( DEFAULT_PROJECT_FILEPATH )
       filepath = DEFAULT_PROJECT_FILEPATH
-      config = load_filepath( filepath, "at default location" )
+      config = load_filepath( filepath, "at default location", silent )
       return File.expand_path( filepath ), config
 
     # If no user provided filepath and the default filepath does not exist,
@@ -60,11 +61,11 @@ class Projectinator
   #  - Simplest, default case simply tries to load default project file location.
   #  - Otherwise, attempts to load a filepath, the default environment variable, 
   #    or both can be specified.
-  def config_available?(filepath:nil, env:{})
+  def config_available?(filepath:nil, env:{}, silent:true)
     available = true
 
     begin
-      load(filepath:filepath, env:env)
+      load(filepath:filepath, env:env, silent:silent)
     rescue
       available = false
     end
@@ -189,7 +190,7 @@ class Projectinator
 
   private
 
-  def load_filepath(filepath, method)
+  def load_filepath(filepath, method, silent)
     begin
       # Load the filepath we settled on as our project configuration
       config = @yaml_wrapper.load( filepath )
@@ -199,7 +200,7 @@ class Projectinator
       config = {} if config.nil?
 
       # Log what the heck we loaded
-      @streaminator.stream_puts( "Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}", Verbosity::DEBUG )
+      @streaminator.stream_puts( "Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}" ) if !silent
 
       return config
     rescue Errno::ENOENT
