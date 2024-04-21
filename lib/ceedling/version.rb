@@ -5,7 +5,10 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/exceptions'
+#
+# version.rb is run:
+#  - As a script to produce a Ceedling version number to $stdout in gem release builds
+#  - As a module of version constants consumed by Ceedling's command line version output
 
 module Ceedling
   module Version
@@ -31,7 +34,7 @@ module Ceedling
           end
         end
       rescue
-        raise CeedlingException.new( "Could not collect version information for vendor component: #{filename}" )
+        raise( "Could not collect version information for vendor component: #{filename}" )
       end
 
       # Splat it to crete the final constant
@@ -41,6 +44,7 @@ module Ceedling
     GEM = "0.3.2"
     CEEDLING = GEM
 
-    puts CEEDLING if __FILE__ == $0
+    # If run as a script, end with printing Ceedling’s version to $stdout
+    puts CEEDLING if (__FILE__ == $0)
   end
 end
