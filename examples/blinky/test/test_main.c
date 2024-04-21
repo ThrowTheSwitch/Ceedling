@@ -1,3 +1,10 @@
+/* =========================================================================
+    Ceedling - Test-Centered Build System for C
+    ThrowTheSwitch.org
+    Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+    SPDX-License-Identifier: MIT
+========================================================================= */
+
 #include "unity.h"
 #include "main.h"
 #include "stub_io.h"
@@ -18,7 +25,7 @@ void test_AppMain_should_call_configure(void)
     AppMain();
 
     /* Verify test results */
-    TEST_ASSERT_EQUAL(0, BlinkTaskReady);
+    TEST_ASSERT_EQUAL_INT(0, BlinkTaskReady);
 }
 void test_AppMain_should_call_configure_and_BlinkTask(void)
 {
@@ -31,7 +38,7 @@ void test_AppMain_should_call_configure_and_BlinkTask(void)
     AppMain();
 
     /* Verify test results */
-    TEST_ASSERT_EQUAL(0, BlinkTaskReady);
+    TEST_ASSERT_EQUAL_INT(0, BlinkTaskReady);
 }
 void test_ISR_should_increment_tick(void)
 {
@@ -43,7 +50,7 @@ void test_ISR_should_increment_tick(void)
     ISR();
 
     /* Verify test results */
-    TEST_ASSERT_EQUAL(1, tick);
+    TEST_ASSERT_EQUAL_INT(1, tick);
 }
 void test_ISR_should_set_blinkReady_increment_tick(void)
 {
@@ -55,6 +62,6 @@ void test_ISR_should_set_blinkReady_increment_tick(void)
     ISR();
 
     /* Verify test results */
-    TEST_ASSERT_EQUAL(1, tick);
-    TEST_ASSERT_EQUAL(1, BlinkTaskReady);
+    TEST_ASSERT_EQUAL_INT(1, tick);
+    TEST_ASSERT_EQUAL_INT(1, BlinkTaskReady);
 }

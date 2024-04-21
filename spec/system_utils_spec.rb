@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'spec_helper'
 require 'ceedling/system_utils'
 
@@ -10,6 +17,8 @@ describe SystemUtils do
 
     @sys_utils = described_class.new({:system_wrapper => @sys_wrapper})
     @sys_utils.setup
+
+    @echo_test_cmd = {:command=>'echo $version'}
   end
  
   describe '#setup' do
@@ -21,7 +30,7 @@ describe SystemUtils do
       expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to eq(nil)
      
 
-      allow(@streaminator).to receive(:shell_backticks).with('echo $version').and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
+      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
       @sys_utils.tcsh_shell?
       
       @sys_utils.setup
@@ -32,24 +41,24 @@ describe SystemUtils do
 
   describe '#tcsh_shell?' do
     it 'returns true if exit code is zero and output contains tcsh' do
-      allow(@streaminator).to receive(:shell_backticks).with('echo $version').and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
+      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
       expect(@sys_utils.tcsh_shell?).to eq(true)
     end
 
     it 'returns false if exit code is not 0' do
-      allow(@streaminator).to receive(:shell_backticks).with('echo $version').and_return({:exit_code => 1, :output =>'tcsh 1234567890'})
+      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 1, :output =>'tcsh 1234567890'})
       expect(@sys_utils.tcsh_shell?).to eq(false)
     end
 
     it 'returns false if output does not contain tcsh' do
-      allow(@streaminator).to receive(:shell_backticks).with('echo $version').and_return({:exit_code => 0, :output =>'???'})
+      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'???'})
       expect(@sys_utils.tcsh_shell?).to eq(false)
     end
 
     it 'returns last value if already run' do
-      allow(@streaminator).to receive(:shell_backticks).with('echo $version').and_return({:exit_code => 1, :output =>'???'})
+      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 1, :output =>'???'})
       expect(@sys_utils.tcsh_shell?).to eq(false)
-      allow(@streaminator).to receive(:shell_backticks).with('echo $version').and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
+      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
       expect(@sys_utils.tcsh_shell?).to eq(false)
     end
   end
