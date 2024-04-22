@@ -24,7 +24,7 @@
 
 class Defineinator
 
-  constructor :configurator, :streaminator, :config_matchinator
+  constructor :configurator, :streaminator, :config_matchinator, :system_wrapper
 
   def setup
     @topkey = :defines
@@ -38,9 +38,16 @@ class Defineinator
   # (But, we can also lookup defines symbol lists within framework configurations--:unity, :cmock, :cexception)
   def defines(topkey:@topkey, subkey:, filepath:nil)
     defines = @config_matchinator.get_config(primary:topkey, secondary:subkey)
+    ret_defines = []
 
-    if defines == nil then return []
-    elsif defines.is_a?(Array) then return defines.flatten # Flatten to handle list-nested YAML aliases
+    if defines == nil
+      ret_defines = []
+    elsif defines.is_a?(Array)
+      defines_parsed = defines.flatten # Flatten to handle list-nested YAML aliases
+      defines_parsed.each do |element|
+        element = element.replace( @system_wrapper.module_eval( element ) ) if (element =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      end
+      ret_defines = defines_parsed
     elsif defines.is_a?(Hash)
       @config_matchinator.validate_matchers(hash:defines, section:@topkey, context:subkey)
 
@@ -51,11 +58,28 @@ class Defineinator
         context: subkey
       }
 
-      return @config_matchinator.matches?(**arg_hash)
+      defines_parsed = @config_matchinator.matches?(**arg_hash)
+      defines_parsed.each do |key, value|
+        key = key.replace( @system_wrapper.module_eval( key ) ) if (key =~ RUBY_STRING_REPLACEMENT_PATTERN)
+        if value.is_a?(Array)
+          value.each do |v|
+            v = v.replace( @system_wrapper.module_eval( v ) ) if (v =~ RUBY_STRING_REPLACEMENT_PATTERN)
+          end
+        elsif value.is_a?(Hash)
+          value.each do |k,v|
+            k = k.replace( @system_wrapper.module_eval( k ) ) if (k =~ RUBY_STRING_REPLACEMENT_PATTERN)
+            v = v.replace( @system_wrapper.module_eval( v ) ) if (v =~ RUBY_STRING_REPLACEMENT_PATTERN)
+          end
+        else
+          value = value.replace( @system_wrapper.module_eval( value ) ) if (value =~ RUBY_STRING_REPLACEMENT_PATTERN)
+        end
+      end
+
+      ret_defines = defines_parsed
     end
 
     # Handle unexpected config element type
-    return []
+    return ret_defines
   end
 
   # Optionally create a command line compilation symbol that is a test file's sanitized/converted name

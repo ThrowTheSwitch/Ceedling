@@ -205,12 +205,14 @@ flaginator:
     - configurator
     - streaminator
     - config_matchinator
+    - system_wrapper
 
 defineinator:
   compose:
     - configurator
     - streaminator
     - config_matchinator
+    - system_wrapper
 
 generator:
   compose:
