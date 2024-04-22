@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-04-02
+# [1.0.0 pre-release] — 2024-04-22
 
 ## 🌟 Added
 
@@ -132,6 +132,14 @@ The most commonly reported bugs have been fixed:
 ### Bug fixes for `beep` plugin
 
 A handful of small bugs in using shell `echo` with the ASCII bell character have been fixed.
+
+### Which Ceedling handling includes new environment variable `WHICH_CEEDLING`
+
+A previously semi-documented feature allowed you to point to a version of Ceedling on disk to run from within your project file, `:project` ↳ `:which_ceedling`.
+
+This feature is primarily of use to Ceedling developers but can be useful in other specialized scenarios. See the documentation in _[CeedlingPacket](CeedlingPacket.md))_ for full deatils as this is an advanced feature.
+
+The existing feature has been improved with logging and validation as well as proper documentation. An environment variable `WHICH_CEEDLING` is now also supported. If set, this variable supersedes any other settings. In the case of `ceedling new` and `ceedling upgrade`, it is the only way to change which Ceedling is in use as a project file either does not exist for the former or is not loaded for the latter.
 
 ## ⚠️ Changed
 

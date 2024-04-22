@@ -134,18 +134,22 @@ It's just all mixed together.
    configuration options — from project paths to command line tools to plugins and
    much, much more.
 
-1. **[Build Directive Macros][packet-section-12]**
+1. **[Which Ceedling][packet-section-12]**
+
+   Sometimes you may need to point to a different Ceedling to run.
+
+1. **[Build Directive Macros][packet-section-13]**
 
    These code macros can help you accomplish your build goals When Ceedling’s 
    conventions aren’t enough.
 
-1. **[Ceedling Plugins][packet-section-13]**
+1. **[Ceedling Plugins][packet-section-14]**
 
    Ceedling is extensible. It includes a number of built-in plugins for code coverage,
    test report generation, continuous integration reporting, test file scaffolding 
    generation, sophisticated release builds, and more.
 
-1. **[Global Collections][packet-section-14]**
+1. **[Global Collections][packet-section-15]**
 
    Ceedling is built in Ruby. Collections are globally available Ruby lists of paths,
    files, and more that can be useful for advanced customization of a Ceedling project 
@@ -162,9 +166,10 @@ It's just all mixed together.
 [packet-section-9]:  #using-unity-cmock--cexception
 [packet-section-10]: #how-to-load-a-project-configuration-you-have-options-my-friend
 [packet-section-11]: #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
-[packet-section-12]: #build-directive-macros
-[packet-section-13]: #ceedling-plugins
-[packet-section-14]: #global-collections
+[packet-section-12]: #which-ceedling
+[packet-section-13]: #build-directive-macros
+[packet-section-14]: #ceedling-plugins
+[packet-section-15]: #global-collections
 
 ---
 
@@ -2273,22 +2278,11 @@ migrated to the `:test_build` and `:release_build` sections.
 
   This is an advanced project option primarily meant for development work
   on Ceedling itself. This setting tells the code that launches the 
-  Ceedling application where to find the code to launch. It’s not uncommon 
-  in Ceedling development work to have the last production gem installed 
-  while modifying the application code in a locally cloned repository. Or, 
-  you may be bouncing between local versions of Ceedling to troubleshoot
-  changes.
+  Ceedling application where to find the code to launch.
 
-  This value can be `gem` to indicate the command line utility `ceedling` 
-  should launch the application packaged in the installed gem. It can also 
-  be a relative or absolute path in your file system. If it is a path, that
-  path should point to the top-level directory that contains Ceedling’s
-  `bin/` and `lib/` sub-directories.
+  This entry can be either a directory path or `gem`.
 
-  _Note:_ If you are working on the code in `bin/` and want to run it,
-  you must take the additional step of specifying the path to `ceedling`
-  in your file system at your command prompt — e.g. 
-  `> my/ceedling/changes/bin/ceedling <args>`.
+  See the section [Which Ceedling](#which_ceedling) for full details.
 
   **Default**: `gem`
 
@@ -4229,6 +4223,83 @@ If no reporting plugins are specified, Ceedling will print to `$stdout` the
                                       # subdirectory beneath the first `:load_path` entry.
 
 ```
+
+<br/>
+
+# Which Ceedling
+
+In certain scenarios you may need to run a different version of Ceedling.
+Typically, Ceedling developers need this ability. But, it could come in
+handy in certain advanced Continuous Integration build scenarios or some
+sort of version behavior comparison.
+
+It’s not uncommon in Ceedling development work to have the last production 
+gem installed while modifying the application code in a locally cloned 
+repository. Or, you may be bouncing between local versions of Ceedling to
+troubleshoot changes.
+
+Which Ceedling handling gives you options on what gets run.
+
+## Which Ceedling background
+
+Ceedling is usually packaged and installed as a Ruby Gem. This gem ends
+up installed in an appropriate place by the `gem` package installer.
+Inside the gem installation is the entire Ceedling project. The `ceedling`
+command line launcher lives in `bin/` while the Ceedling application lives
+in `lib/`. The code in `/bin` manages lots of startup details and base
+configuration. Ultimately, it then launches the main application code from
+`lib/`.
+
+The features and conventions controlling _which ceedling_ dictate which
+application code the `ceedling` command line handler launches.
+
+_Note:_ If you are a developer working on the code in Ceedling’s `bin/` 
+and want to run it while a gem is installed, you must take the additional 
+step of specifying the path to the `ceedling` launcher in your file system.
+
+In Unix-like systems, this will look like:
+`> my/ceedling/changes/bin/ceedling <args>`.
+
+On Windows systems, you may need to run:
+`> ruby my\ceedling\changes\bin\ceedling <args>`.
+
+## Which Ceedling options and precedence
+
+When Ceedling starts up, it evaluates a handful of conditions to determine
+which Ceedling location to launch.
+
+The following are evaluated in order:
+
+1. Environment variable `WHICH_CEEDLING`. If this environment variable is
+   set, its value is used.
+1. Configuration entry `:project` ↳ `:which_ceedling`. If this is set,
+   its value is used.
+1. The path `vendor/ceedling`. If this path exists in your working 
+   directory — typically because of a `--local` vendored installation at
+   project creation — its contents are used to launch Ceedling.
+1. If none of the above exist, the `ceedling` launcher defaults to using
+   the `lib/` directory next to the `bin/` directory from which the 
+   `ceedling` launcher is running. In the typical case this is the default 
+   gem installation.
+
+_Note:_ Configuration entry (2) does not make sense in some scenarios.
+When running `ceedling new`, `ceedling examples`, or `ceedling example` 
+there is no project file to read. Similarly, `ceedling upgrade` does not 
+load a project file; it merely works with the directory structure and 
+contets of a project. In these cases, the environment variable is your
+only option to set which Ceedling to launch.
+
+## Which Ceedling settings
+
+The environment variable and configuration entry for _Which Ceedling_ can
+contain two values:
+
+1. The value `gem` indicates that the command line `ceedling` launcher 
+   should run the application packaged alongside it in `lib/` (these 
+   paths are typically found in the gem installation location).
+1. A relative or absolute path in your file system. Such a path should 
+   point to the top-level directory that contains Ceedling’s `bin/` and 
+   `lib/` sub-directories.
 
 <br/>
 
