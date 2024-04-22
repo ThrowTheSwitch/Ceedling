@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'spec_system_helper'
 require 'gcov/gcov_test_cases_spec'
 
@@ -32,15 +39,18 @@ describe "Ceedling" do
       it { can_test_projects_with_gcov_with_compile_error }
       it { can_fetch_project_help_for_gcov }
       it { can_create_html_report }
+      it { can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_and_cmd_args_set_to_true_for_test_cases_not_causing_crash }
+      it { can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_and_cmd_args_set_to_true_with_zero_coverage }
+      it { can_create_gcov_html_report_from_test_runner_with_enabled_debug_and_cmd_args_set_to_true_with_100_coverage_when_excluding_crashing_test_case }
     end
 
 
-    describe "command: `ceedling example [example]`" do
+    describe "command: `ceedling example temp_sensor`" do
       describe "temp_sensor" do
         before do
           @c.with_context do
             output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
-            expect(output).to match(/created!/)
+            expect(output).to match(/created/)
           end
         end
 
@@ -51,19 +61,15 @@ describe "Ceedling" do
               expect(@output).to match(/TESTED:\s+47/)
               expect(@output).to match(/PASSED:\s+47/)
 
-              expect(@output).to match(/AdcConductor\.c Lines executed:/i)
-              expect(@output).to match(/AdcHardware\.c Lines executed:/i)
-              expect(@output).to match(/AdcModel\.c Lines executed:/i)
-              expect(@output).to match(/Executor\.c Lines executed:/i)
-              expect(@output).to match(/Main\.c Lines executed:/i)
-              expect(@output).to match(/Model\.c Lines executed:/i)
+              expect(@output).to match(/AdcConductor\.c \| Lines executed:/i)
+              expect(@output).to match(/AdcHardware\.c \| Lines executed:/i)
+              expect(@output).to match(/AdcModel\.c \| Lines executed:/i)
+              expect(@output).to match(/Executor\.c \| Lines executed:/i)
+              expect(@output).to match(/Main\.c \| Lines executed:/i)
+              expect(@output).to match(/Model\.c \| Lines executed:/i)
               # there are more, but this is a good place to stop.
 
-              @output = `bundle exec ruby -S ceedling utils:gcov`
-              expect(@output).to match(/For now, creating only an HtmlBasic report\./)
-              expect(@output).to match(/Creating (?:a )?gcov (?:results)?(?:HTML)? report(?:\(s\))? in 'build\/artifacts\/gcov'\.\.\. Done/)
-              expect(File.exist?('build/artifacts/gcov/GcovCoverageResults.html')).to eq true
-
+              expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
             end
           end
         end
