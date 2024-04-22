@@ -54,9 +54,9 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
   s.files        += Dir['vendor/unity/auto/**/*.rb']
   s.files        += Dir['vendor/unity/src/**/*.[ch]']
 
-  s.files      += Dir['**/*']
-  s.test_files  = Dir['test/**/*', 'spec/**/*', 'features/**/*']
-  s.executables = ['ceedling'] # bin/ceedling
+  s.files       += Dir['**/*']
+  s.test_files   = Dir['test/**/*', 'spec/**/*', 'features/**/*']
+  s.executables  = ['ceedling'] # bin/ceedling
 
   s.require_paths = ["lib", "vendor/cmock/lib"]
 end

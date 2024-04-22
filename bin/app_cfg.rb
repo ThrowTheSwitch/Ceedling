@@ -13,8 +13,8 @@ require "io/console"
 class CeedlingAppConfig
 
   def initialize()
-    # Installation location determined from the location of this file
-    ceedling_root_path = File.expand_path( File.join( File.dirname( __FILE__ ), '..' ) )
+    # Default installation location determined from the location of this file
+    ceedling_root_path = File.join( File.dirname( __FILE__ ), '..' )
 
     # Create internal hash of needed values
     @app_cfg = {
@@ -27,11 +27,17 @@ class CeedlingAppConfig
       # Ceedling installation base path + /lib/ceedling
       :ceedling_lib_path => '',
 
+      # Ceedling installation base path + /plugins
+      :ceedling_plugins_path => '',
+
       # Ceedling installation base path + /vendor
       :ceedling_vendor_path => '',
 
       # Ceedling installation base path + /examples
       :ceedling_examples_path => '',
+
+      # Ceedling lib path + lib/ceedling/rakefile.rb
+      :ceedling_rakefile_filepath => '',
 
       # Blank initial value for completeness
       :project_config => {},
@@ -62,7 +68,7 @@ class CeedlingAppConfig
     begin
       @app_cfg[:terminal_width] = (IO.console.winsize)[1]
     rescue
-      # Do nothing; allow default value already set to stand
+      # Do nothing; allow value already set to stand as default
     end
   end 
 
@@ -91,13 +97,18 @@ class CeedlingAppConfig
   end
 
   def set_paths(root_path)
-    lib_base_path = File.join( root_path, 'lib' )
+    _root_path = File.expand_path( root_path )
+    lib_base_path = File.join( _root_path, 'lib' )
+    lib_path = File.join( lib_base_path, 'ceedling' )
 
-    @app_cfg[:ceedling_root_path]     = root_path
+    @app_cfg[:ceedling_root_path]     = _root_path
     @app_cfg[:ceedling_lib_base_path] = lib_base_path
-    @app_cfg[:ceedling_lib_path]      = File.join( lib_base_path, 'ceedling' )
-    @app_cfg[:ceedling_vendor_path]   = File.join( root_path, 'vendor' )
-    @app_cfg[:ceedling_examples_path] = File.join( root_path, 'examples' )
+    @app_cfg[:ceedling_lib_path]      = lib_path
+    @app_cfg[:ceedling_vendor_path]   = File.join( _root_path, 'vendor' )
+    @app_cfg[:ceedling_plugins_path]  = File.join( _root_path, 'plugins' )
+    @app_cfg[:ceedling_examples_path] = File.join( _root_path, 'examples' )
+
+    @app_cfg[:ceedling_rakefile_filepath] = File.join( lib_path, 'rakefile.rb' )
   end
 
   # External accessor to preserve hash-like read accesses

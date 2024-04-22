@@ -122,7 +122,7 @@ describe "Ceedling" do
     it { can_test_projects_with_compile_error }
 
     it { can_upgrade_projects }
-    it { can_upgrade_projects_even_if_test_support_folder_does_not_exists }
+    it { can_upgrade_projects_even_if_test_support_folder_does_not_exist }
     it { contains_a_vendor_directory }
     it { does_not_contain_documentation }
     it { can_fetch_non_project_help }

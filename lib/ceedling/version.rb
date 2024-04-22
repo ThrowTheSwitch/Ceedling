@@ -7,8 +7,9 @@
 
 #
 # version.rb is run:
-#  - As a script to produce a Ceedling version number to $stdout in gem release builds
+#  - As a script to produce a Ceedling version number used in the release build process
 #  - As a module of version constants consumed by Ceedling's command line version output
+#  - As a module of version constants consumed by Ceedling’s gem building process
 
 module Ceedling
   module Version
@@ -41,7 +42,7 @@ module Ceedling
       eval("#{name} = '#{a.join(".")}'")
     end
 
-    GEM = "0.3.2"
+    GEM = "0.32.0"
     CEEDLING = GEM
 
     # If run as a script, end with printing Ceedling’s version to $stdout

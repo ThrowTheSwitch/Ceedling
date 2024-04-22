@@ -207,7 +207,7 @@ module CeedlingTestCases
     end
   end
 
-  def can_upgrade_projects_even_if_test_support_folder_does_not_exists
+  def can_upgrade_projects_even_if_test_support_folder_does_not_exist
     @c.with_context do
       output = `bundle exec ruby -S ceedling upgrade #{@proj_name} 2>&1`
       FileUtils.rm_rf("#{@proj_name}/test/support")
