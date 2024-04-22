@@ -42,7 +42,7 @@ class Setupinator
     @ceedling[:configurator].eval_environment_variables( config_hash )
     @ceedling[:configurator].eval_paths( config_hash )
     @ceedling[:configurator].standardize_paths( config_hash )
-    @ceedling[:configurator].find_and_merge_plugins( config_hash )
+    @ceedling[:configurator].find_and_merge_plugins( app_cfg[:ceedling_plugins_path], config_hash )
     @ceedling[:configurator].tools_setup( config_hash )
     @ceedling[:configurator].validate_final( config_hash )
     # Partially flatten config + build Configurator accessors and globals

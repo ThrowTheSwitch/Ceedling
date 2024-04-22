@@ -198,7 +198,7 @@ class Configurator
   end
 
 
-  def find_and_merge_plugins(config)
+  def find_and_merge_plugins(plugins_load_path, config)
     # Plugins must be loaded before generic path evaluation & magic that happen later.
     # So, perform path magic here as discrete step.
     config[:plugins][:load_paths].each do |path|
@@ -207,7 +207,7 @@ class Configurator
     end
 
     # Add Ceedling's plugins path as load path so built-in plugins can be found
-    config[:plugins][:load_paths] << FilePathUtils::standardize( Ceedling.plugins_load_path )
+    config[:plugins][:load_paths] << plugins_load_path
     config[:plugins][:load_paths].uniq!
 
     paths_hash = @configurator_plugins.process_aux_load_paths(config)

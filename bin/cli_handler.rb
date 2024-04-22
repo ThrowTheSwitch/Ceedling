@@ -74,9 +74,10 @@ class CliHandler
       raise msg
     end unless options[:force]
 
-    # Update app_cfg paths (ignore return value)
+    # Update app_cfg paths (ignore return values)
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
+    # Thor Actions for project tasks use paths in relation to this path
     ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
 
     # Blow away any existing directories and contents if --force
@@ -94,12 +95,12 @@ class CliHandler
     @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
     # Copy / set up project file
-    @helper.create_project_file( app_cfg[:ceedling_root_path], dest, options[:local] ) if options[:configs]
+    @helper.create_project_file( dest, options[:local] ) if options[:configs]
 
     # Copy Git Ignore file 
     if options[:gitsupport]
       @actions._copy_file(
-        File.join( app_cfg[:ceedling_root_path], 'assets', 'default_gitignore' ),
+        File.join( 'assets', 'default_gitignore' ),
         File.join( dest, '.gitignore' ),
         :force => true
       )
@@ -111,19 +112,23 @@ class CliHandler
 
 
   def upgrade_project(env, app_cfg, options, path)
+    @helper.set_verbosity( options[:verbosity] )
+
     @path_validator.standardize_paths( path, options[:project] )
 
     # Check for existing project
-    if !@helper.project_exists?( path, :&, options[:project], 'vendor/ceedling/lib/ceedling.rb' )
+    if !@helper.project_exists?( path, :&, options[:project], 'vendor/ceedling/lib/ceedling/version.rb' )
       msg = "Could not find an existing project at #{path}/."
       raise msg
     end
 
-    if (@helper.which_ceedling?( env:env, app_cfg:app_cfg ) == :gem)
-      msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      raise msg
+    which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
+    if (which == :gem)
+      msg = "NOTICE: Project configuration specifies the Ceedling gem, not vendored Ceedling"
+      @streaminator.stream_puts( msg, Verbosity::NORMAL )
     end
 
+    # Thor Actions for project tasks use paths in relation to this path
     ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
 
     # Recreate vendored tools
@@ -191,9 +196,11 @@ class CliHandler
     # Enable setup / operations duration logging in Rake context
     app_cfg.set_stopwatch( @helper.process_stopwatch( tasks:tasks, default_tasks:default_tasks ) )
 
+    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
+
     @helper.load_ceedling( 
       config: config,
-      which: @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg ),
+      rakefile_path: path,
       default_tasks: default_tasks
     )
 
@@ -218,9 +225,11 @@ class CliHandler
         # Save references
         app_cfg.set_project_config( config )
 
+        _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
+
         config = @helper.load_ceedling( 
           config: config,
-          which: @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg ),
+          rakefile_path: path,
           default_tasks: default_tasks
         )
       else
@@ -243,9 +252,11 @@ class CliHandler
     # Save references
     app_cfg.set_project_config( config )
 
+    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
+
     config = @helper.load_ceedling(
       config: config,
-      which: @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
+      rakefile_path: path
     )
 
     env_list = []
@@ -276,7 +287,7 @@ class CliHandler
 
 
   def list_examples(env, app_cfg)
-    # Process which_ceedling for app_cfg but ignore return
+    # Process which_ceedling for app_cfg modifications but ignore return values
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
     examples = @helper.lookup_example_projects( app_cfg[:ceedling_examples_path] )
@@ -296,7 +307,7 @@ class CliHandler
 
     @path_validator.standardize_paths( dest )
 
-    # Process which_ceedling for app_cfg but ignore return
+    # Process which_ceedling for app_cfg modifications but ignore return values
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
     examples = @helper.lookup_example_projects( app_cfg[:ceedling_examples_path] )
@@ -313,6 +324,7 @@ class CliHandler
     dest_test     = File.join( dest, 'test' )
     dest_project  = File.join( dest, DEFAULT_PROJECT_FILENAME )
 
+    # Thor Actions for project tasks use paths in relation to this path
     ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
 
     @actions._directory( "examples/#{name}/src", dest_src, :force => true )
@@ -356,9 +368,11 @@ class CliHandler
     # Save reference to loaded configuration
     app_cfg.set_project_config( config )
 
+    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
+
     @helper.load_ceedling(
       config: config,
-      which: @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg ),
+      rakefile_path: path,
       default_tasks: app_cfg[:default_tasks]
     )
 

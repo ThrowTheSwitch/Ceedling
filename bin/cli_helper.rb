@@ -33,14 +33,14 @@ class CliHelper
   end
 
 
-  def create_project_file(ceedling_root, dest, local)
+  def create_project_file(dest, local)
     project_filepath = File.join( dest, DEFAULT_PROJECT_FILENAME )
     source_filepath = ''
 
     if local
-      source_filepath = File.join( ceedling_root, 'assets', 'project_with_guts.yml' )
+      source_filepath = File.join( 'assets', 'project_with_guts.yml' )
     else
-      source_filepath = File.join( ceedling_root, 'assets', 'project_as_gem.yml' )
+      source_filepath = File.join( 'assets', 'project_as_gem.yml' )
     end
 
     # Clone the project file and update internal version
@@ -50,6 +50,7 @@ class CliHelper
   end
 
 
+  # Returns two value: (1) symbol :gem or :path and (2) path for Ceedling installation
   def which_ceedling?(env:, config:{}, app_cfg:)
     # Determine which Ceedling we're running (in priority)
     #  1. If there's an environment variable set, validate it, and return :gem or a path
@@ -72,8 +73,8 @@ class CliHelper
     if which_ceedling.nil?
       walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
       if !walked[:value].nil?
-        @streaminator.stream_puts( " > Set which Ceedling from config entry :project -> :which_ceedling", Verbosity::OBNOXIOUS )
         which_ceedling = walked[:value].strip()
+        @streaminator.stream_puts( " > Set which Ceedling from config :project -> :which_ceedling => #{which_ceedling}", Verbosity::OBNOXIOUS )
         which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
       end
     end
@@ -92,45 +93,41 @@ class CliHelper
       @streaminator.stream_puts( " > Defaulting to running Ceedling from Gem", Verbosity::OBNOXIOUS )
     end
 
-    # Default gem path
-    ceedling_path = app_cfg[:ceedling_root_path]
-
-    if which_ceedling != :gem
-      ceedling_path = which_ceedling
-      @path_validator.standardize_paths( ceedling_path )
-      if !@file_wrapper.directory?( ceedling_path )
-        raise "Configured Ceedling launch path #{ceedling_path}/ does not exist"
-      end
-
-      # Update installation paths
-      app_cfg.set_paths( ceedling_path )
+    # If we're launching from the gem, return :gem and initial Rakefile path
+    if which_ceedling == :gem
+      return which_ceedling, app_cfg[:ceedling_rakefile_filepath]
     end
 
+    # Otherwise, handle which_ceedling as a base path
+    ceedling_path = which_ceedling.dup()
+    @path_validator.standardize_paths( ceedling_path )
+    if !@file_wrapper.directory?( ceedling_path )
+      raise "Configured Ceedling launch path #{ceedling_path}/ does not exist"
+    end
+
+    # Update Ceedling installation paths
+    app_cfg.set_paths( ceedling_path )
+
+    # Check updated Ceedling paths
+    if !@file_wrapper.exist?( app_cfg[:ceedling_rakefile_filepath] )
+      raise "Configured Ceedling launch path #{ceedling_path}/ contains no Ceedling installation"
+    end
+
+    # Update variable to full application start path
+    ceedling_path = app_cfg[:ceedling_rakefile_filepath]
+    
     @streaminator.stream_puts( " > Launching Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
 
-    return ceedling_path
+    return :path, ceedling_path
   end
 
 
-  def load_ceedling(config:, which:, default_tasks:[])
-    # Load Ceedling from the gem
-    if (which == :gem)
-      require( 'ceedling' )
-    # Load Ceedling from a path
-    else
-      ceedling_path = File.join( File.expand_path( which ), 'lib/ceedling.rb' )
-      if !@file_wrapper.exist?( ceedling_path )
-        raise "Configured Ceedling launch path #{which}/ contains no Ceedling installation"
-      end
-
-      require( ceedling_path )
-    end
-
+  def load_ceedling(config:, rakefile_path:, default_tasks:[])
     # Set default tasks
     Rake::Task.define_task(:default => default_tasks) if !default_tasks.empty?
 
-    # Load Ceedling
-    Ceedling.load_rakefile()
+    # Load Ceedling application from Rakefile path
+    require( rakefile_path )
 
     # Loading the Rakefile manipulates the config hash, return it as a convenience
     return config
@@ -358,12 +355,11 @@ class CliHelper
 
   def vendor_tools(ceedling_root, dest)
     vendor_path = File.join( dest, 'vendor', 'ceedling' )
-    assets_path = File.join( ceedling_root, 'assets' )
 
     # Copy folders from current Ceedling into project
     %w{plugins lib bin}.each do |folder|
       @actions._directory( 
-        File.join( ceedling_root, folder ),
+        folder,
         File.join( vendor_path, folder ),
         :force => true
       )
@@ -385,7 +381,7 @@ class CliHelper
 
     # Copy necessary subcomponent dirs into project
     components.each do |path|
-      _src = File.join( ceedling_root, path )
+      _src = path
       _dest = File.join( vendor_path, path )
       @actions._directory( _src, _dest, :force => true )
     end
@@ -421,7 +417,7 @@ class CliHelper
     if windows?
       # Windows command prompt launch script
       @actions._copy_file(
-        File.join( assets_path, 'ceedling.cmd'),
+        File.join( 'assets', 'ceedling.cmd'),
         File.join( dest, 'ceedling.cmd'),
         :force => true
       )
@@ -429,7 +425,7 @@ class CliHelper
       # Unix shell launch script
       launch = File.join( dest, 'ceedling')
       @actions._copy_file(
-        File.join( assets_path, 'ceedling'),
+        File.join( 'assets', 'ceedling'),
         launch,
         :force => true
       )
