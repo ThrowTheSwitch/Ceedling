@@ -73,6 +73,60 @@ describe "Ceedling" do
             end
           end
         end
+
+        it "should be able to test a single module (it should INHERIT file-specific flags)" do
+          @c.with_context do
+            Dir.chdir "temp_sensor" do
+              @output = `bundle exec ruby -S ceedling gcov:TemperatureCalculator 2>&1`
+              expect(@output).to match(/TESTED:\s+2/)
+              expect(@output).to match(/PASSED:\s+2/)
+
+              expect(@output).to match(/TemperatureCalculator\.c \| Lines executed:/i)
+            end
+          end
+        end
+
+        it "should be able to test multiple files matching a pattern" do
+          @c.with_context do
+            Dir.chdir "temp_sensor" do
+              @output = `bundle exec ruby -S ceedling gcov:pattern[Temp] 2>&1`
+              expect(@output).to match(/TESTED:\s+6/)
+              expect(@output).to match(/PASSED:\s+6/)
+
+              expect(@output).to match(/TemperatureCalculator\.c \| Lines executed:/i)
+              expect(@output).to match(/TemperatureFilter\.c \| Lines executed:/i)
+            end
+          end
+        end
+
+        it "should be able to test all files matching in a path" do
+          @c.with_context do
+            Dir.chdir "temp_sensor" do
+              @output = `bundle exec ruby -S ceedling gcov:path[adc] 2>&1`
+              expect(@output).to match(/TESTED:\s+15/)
+              expect(@output).to match(/PASSED:\s+15/)
+
+              expect(@output).to match(/AdcConductor\.c \| Lines executed:/i)
+              expect(@output).to match(/AdcHardware\.c \| Lines executed:/i)
+              expect(@output).to match(/AdcModel\.c \| Lines executed:/i)
+            end
+          end
+        end
+
+        it "should be able to test specific test cases in a file" do
+          @c.with_context do
+            Dir.chdir "temp_sensor" do
+              @output = `bundle exec ruby -S ceedling gcov:path[adc] --test-case="RunShouldNot" 2>&1`
+              expect(@output).to match(/TESTED:\s+2/)
+              expect(@output).to match(/PASSED:\s+2/)
+
+              expect(@output).to match(/AdcConductor\.c \| Lines executed:/i)
+              expect(@output).to match(/AdcHardware\.c \| Lines executed:/i)
+              expect(@output).to match(/AdcModel\.c \| Lines executed:/i)
+            end
+          end
+        end
+
       end
     end
   end

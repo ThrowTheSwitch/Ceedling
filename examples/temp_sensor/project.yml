@@ -113,16 +113,11 @@
   :use_test_definition: FALSE 
 
 # Configure additional command line flags provided to tools used in each build step
-# :flags:
-#   :release:
-#     :compile:         # Add '-Wall' and '--02' to compilation of all files in release target
-#       - -Wall
-#       - --O2
-#   :test:
-#     :compile:
-#       '(_|-)special': # Add '-pedantic' to compilation of all files in all test executables with '_special' or '-special' in their names
-#         - -pedantic
-#       '*':            # Add '-foo' to compilation of all files in all test executables
+:flags:
+  :test:
+    :compile:
+      'TemperatureCalculator': 
+        - '-DSUPPLY_VOLTAGE=3.0'
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:

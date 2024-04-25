@@ -206,6 +206,59 @@ describe "Ceedling" do
           end
         end
       end
+
+      it "should be able to test a single module (it includes file-specific flags)" do
+        @c.with_context do
+          Dir.chdir "temp_sensor" do
+            @output = `bundle exec ruby -S ceedling test:TemperatureCalculator 2>&1`
+            expect(@output).to match(/TESTED:\s+2/)
+            expect(@output).to match(/PASSED:\s+2/)
+
+              expect(@output).to match(/TemperatureCalculator\.out/i)
+          end
+        end
+      end
+
+      it "should be able to test multiple files matching a pattern" do
+        @c.with_context do
+          Dir.chdir "temp_sensor" do
+            @output = `bundle exec ruby -S ceedling test:pattern[Temp] 2>&1`
+            expect(@output).to match(/TESTED:\s+6/)
+            expect(@output).to match(/PASSED:\s+6/)
+
+            expect(@output).to match(/TemperatureCalculator\.out/i)
+            expect(@output).to match(/TemperatureFilter\.out/i)
+          end
+        end
+      end
+
+      it "should be able to test all files matching in a path" do
+        @c.with_context do
+          Dir.chdir "temp_sensor" do
+            @output = `bundle exec ruby -S ceedling test:path[adc] 2>&1`
+            expect(@output).to match(/TESTED:\s+15/)
+            expect(@output).to match(/PASSED:\s+15/)
+
+            expect(@output).to match(/AdcModel\.out/i)
+            expect(@output).to match(/AdcHardware\.out/i)
+            expect(@output).to match(/AdcConductor\.out/i)
+          end
+        end
+      end
+
+      it "should be able to test specific test cases in a file" do
+        @c.with_context do
+          Dir.chdir "temp_sensor" do
+            @output = `bundle exec ruby -S ceedling test:path[adc] --test-case="RunShouldNot" 2>&1`
+            expect(@output).to match(/TESTED:\s+2/)
+            expect(@output).to match(/PASSED:\s+2/)
+
+            expect(@output).to match(/AdcModel\.out/i)
+            expect(@output).to match(/AdcHardware\.out/i)
+            expect(@output).to match(/AdcConductor\.out/i)
+          end
+        end
+      end
     end
 
     # # blinky depends on avr-gcc. If you happen to have this installed, go
