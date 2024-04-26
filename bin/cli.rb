@@ -96,9 +96,9 @@ module CeedlingTasks
 
   LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This 
     flag may be repeated for multiple mixins. A simple mixin name initiates a 
-    lookup from within mixin load paths in your project file and internally. A 
-    filepath and/or filename (with extension) will instead merge the specified 
-    YAML file. See documentation for complete details.
+    lookup from within mixin load paths in your project file and among built-in 
+    mixins. A filepath and/or filename (with extension) will instead merge the 
+    specified YAML file. See documentation for complete details.
     \x5> --mixin my_compiler --mixin my/path/mixin.yml"
 
   class CLI < Thor

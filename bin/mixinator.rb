@@ -74,27 +74,45 @@ class Mixinator
     assembly = []
 
     # Build list of hashses to facilitate deduplication
-    cmdline.each {|filepath| assembly << {'command line' => filepath}}
+    cmdline.each {|mixin| assembly << {'command line' => mixin}}
     assembly += env
-    config.each {|filepath| assembly << {'project configuration' => filepath}}
+    config.each {|mixin| assembly << {'project configuration' => mixin}}
 
     # Remove duplicates inline
-    #  1. Expand filepaths to absolute paths for correct deduplication
+    #  1. Expand filepaths to absolute paths for correct deduplication (skip expanding simple mixin names)
     #  2. Remove duplicates
-    assembly.uniq! {|entry| File.expand_path( entry.values.first )}
+    assembly.uniq! do |entry|
+      # If entry is filepath, expand it, otherwise leave entry untouched (it's a mixin name only)
+      @path_validator.filepath?( entry ) ? File.expand_path( entry.values.first ) : entry
+    end
 
     # Return the compacted list (in merge order)
     return assembly
   end
 
-  def merge(config:, mixins:)
+  def merge(builtins:, config:, mixins:)
     mixins.each do |mixin|
       source = mixin.keys.first
       filepath = mixin.values.first
 
-      _mixin = @yaml_wrapper.load( filepath )
+      _mixin = {} # Empty initial value
 
-      # Hnadle an empty mixin (it's unlikely but logically coherent)
+      # Load mixin from filepath if it is a filepath
+      if @path_validator.filepath?( filepath )
+        _mixin = @yaml_wrapper.load( filepath )
+
+        # Log what filepath we used for this mixin
+        @streaminator.stream_puts( " + Merging #{'(empty) ' if _mixin.nil?}#{source} mixin using #{filepath}", Verbosity::OBNOXIOUS )
+
+      # Reference mixin from built-in hash-based mixins
+      else
+        _mixin = builtins[filepath.to_sym()]
+
+        # Log built-in mixin we used
+        @streaminator.stream_puts( " + Merging built-in mixin '#{filepath}' from #{source}", Verbosity::OBNOXIOUS )
+      end
+
+      # Hnadle an empty mixin (it's unlikely but logically coherent and a good safety check)
       _mixin = {} if _mixin.nil?
 
       # Sanitize the mixin config by removing any :mixins section (these should not end up in merges)
@@ -102,9 +120,6 @@ class Mixinator
 
       # Merge this bad boy
       config.deep_merge( _mixin )
-
-      # Log what filepath we used for this mixin
-      @streaminator.stream_puts( " + Merged #{'(empty) ' if _mixin.empty?}#{source} mixin using #{filepath}", Verbosity::OBNOXIOUS )
     end
 
     # Validate final configuration
