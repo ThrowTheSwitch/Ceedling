@@ -9,12 +9,9 @@ require 'deep_merge'
 
 class Configinator
 
-  # TODO: Temporary path until built-in mixins load path handling is replaced with internal hash
-  MIXINS_BASE_PATH = '.'
-
   constructor :config_walkinator, :projectinator, :mixinator
 
-  def loadinate(filepath:nil, mixins:[], env:{})
+  def loadinate(builtin_mixins:, filepath:nil, mixins:[], env:{})
     # Aliases for clarity
     cmdline_filepath = filepath
     cmdline_mixins = mixins || []
@@ -23,10 +20,7 @@ class Configinator
     project_filepath, config = @projectinator.load( filepath:cmdline_filepath, env:env )
 
     # Extract cfg_enabled_mixins mixins list plus load paths list from config
-    cfg_enabled_mixins, cfg_load_paths = @projectinator.extract_mixins(
-      config: config,
-      mixins_base_path: MIXINS_BASE_PATH
-    )
+    cfg_enabled_mixins, cfg_load_paths = @projectinator.extract_mixins( config: config )
 
     # Get our YAML file extension
     yaml_ext = @projectinator.lookup_yaml_extension( config:config )
@@ -44,6 +38,7 @@ class Configinator
     if not @projectinator.validate_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
+      builtins: builtin_mixins,
       source: 'Config :mixins -> :enabled =>',
       yaml_extension: yaml_ext
     )
@@ -54,25 +49,28 @@ class Configinator
     if not @projectinator.validate_mixins(
       mixins: cmdline_mixins,
       load_paths: cfg_load_paths,
+      builtins: builtin_mixins,
       source: 'Mixin',
       yaml_extension: yaml_ext
     )
       raise 'Command line failed validation'
     end
 
-    # Find mixins from project file among load paths
-    # Return ordered list of filepaths
+    # Find mixins in project file among load paths or built-in mixins
+    # Return ordered list of filepaths or built-in mixin names
     config_mixins = @projectinator.lookup_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
+      builtins: builtin_mixins,
       yaml_extension: yaml_ext
     )
 
-    # Find mixins from command line among load paths
-    # Return ordered list of filepaths
+    # Find mixins from command line among load paths or built-in mixins
+    # Return ordered list of filepaths or built-in mixin names
     cmdline_mixins = @projectinator.lookup_mixins(
       mixins: cmdline_mixins,
       load_paths: cfg_load_paths,
+      builtins: builtin_mixins,
       yaml_extension: yaml_ext
     )
 
@@ -90,7 +88,7 @@ class Configinator
     )
 
     # Merge mixins
-    @mixinator.merge( config:config, mixins:mixins_assembled )
+    @mixinator.merge( builtins:builtin_mixins, config:config, mixins:mixins_assembled )
 
     return project_filepath, config
   end

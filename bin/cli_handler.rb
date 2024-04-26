@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'mixins' # Built-in Mixins
 require 'ceedling/constants' # From Ceedling application
 
 class CliHandler
@@ -153,7 +154,7 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
 
-    _, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
@@ -214,7 +215,7 @@ class CliHandler
 
     @path_validator.standardize_paths( filepath, options[:project], *options[:mixin] )
 
-    _, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     # Exception handling to ensure we dump the configuration regardless of config validation errors
     begin
@@ -247,7 +248,7 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], *options[:mixin] )
 
-    _, config = @configinator.loadinate( filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     # Save references
     app_cfg.set_project_config( config )
@@ -360,6 +361,7 @@ class CliHandler
   def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[])
     _, config = 
       @configinator.loadinate(
+        builtin_mixins:BUILTIN_MIXINS,
         filepath: filepath,
         mixins: mixins,
         env: env

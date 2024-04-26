@@ -85,22 +85,18 @@ class Projectinator
 
   # Pick apart a :mixins projcet configuration section and return components
   # Layout mirrors :plugins section
-  def extract_mixins(config:, mixins_base_path:)
-    # Check if our base path exists
-    mixins_base_path = nil unless File.directory?(mixins_base_path)
-
+  def extract_mixins(config:)
     # Get mixins config hash
     _mixins = config[:mixins]
 
     # If no :mixins section, return:
     #  - Empty enabled list
-    #  - Load paths with only the built-in Ceedling mixins/ path
-    return [], [mixins_base_path].compact if _mixins.nil?
+    #  - Empty load paths
+    return [], [] if _mixins.nil?
 
     # Build list of load paths
     # Configured load paths are higher in search path ordering
     load_paths = _mixins[:load_paths] || []
-    load_paths += [mixins_base_path].compact # += forces a copy of configuration section
 
     # Get list of mixins
     enabled = _mixins[:enabled] || []
@@ -128,29 +124,32 @@ class Projectinator
 
 
   # Validate mixins list
-  def validate_mixins(mixins:, load_paths:, source:, yaml_extension:)
+  def validate_mixins(mixins:, load_paths:, builtins:, source:, yaml_extension:)
     validated = true
 
     mixins.each do |mixin|
       # Validate mixin filepaths
-      if !File.extname( mixin ).empty? or mixin.include?( File::SEPARATOR )
+      if @path_validator.filepath?( mixin )
         if !@file_wrapper.exist?( mixin )
           @streaminator.stream_puts( "ERROR: Cannot find mixin at #{mixin}" )
           validated = false
         end
 
-      # Otherwise, validate that mixin name can be found among the load paths
+      # Otherwise, validate that mixin name can be found in load paths or builtins
       else
         found = false
         load_paths.each do |path|
-          if @file_wrapper.exist?( File.join( path, mixin + yaml_extension) )
+          if @file_wrapper.exist?( File.join( path, mixin + yaml_extension ) )
             found = true
             break
           end
         end
 
+        builtins.keys.each {|key| found = true if (mixin == key.to_s)}
+
         if !found
-          @streaminator.stream_puts( "ERROR: #{source} '#{mixin}' cannot be found in the mixin load paths as '#{mixin + yaml_extension}'", Verbosity::ERRORS )
+          msg = "ERROR: #{source} '#{mixin}' cannot be found in mixin load paths as '#{mixin + yaml_extension}' or among built-in mixins"
+          @streaminator.stream_puts( msg, Verbosity::ERRORS )
           validated = false
         end
       end
@@ -160,30 +159,37 @@ class Projectinator
   end
 
 
-  # Yield ordered list of filepaths
-  def lookup_mixins(mixins:, load_paths:, yaml_extension:)
-    filepaths = []
+  # Yield ordered list of filepaths or built-in mixin names
+  def lookup_mixins(mixins:, load_paths:, builtins:, yaml_extension:)
+    _mixins = []
 
-    # Fill results hash with mixin name => mixin filepath
-    # Already validated, so we know the mixin filepath exists
+    # Already validated, so we know:
+    #  1. Any mixin filepaths exists
+    #  2. Built-in mixin names exist in the internal hash
+
+    # Fill filepaths array with filepaths or builtin names
     mixins.each do |mixin|
       # Handle explicit filepaths
-      if !File.extname( mixin ).empty? or mixin.include?( File::SEPARATOR )
-        filepaths << mixin
+      if !@path_validator.filepath?( mixin )
+        _mixins << mixin
+        next # Success, move on
+      end
 
       # Find name in load_paths (we already know it exists from previous validation)
-      else
-        load_paths.each do |path|
-          filepath = File.join( path, mixin + yaml_extension )
-          if @file_wrapper.exist?( filepath )
-            filepaths << filepath
-            break
-          end
+      load_paths.each do |path|
+        filepath = File.join( path, mixin + yaml_extension )
+        if @file_wrapper.exist?( filepath )
+          _mixins << filepath
+          next # Success, move on
         end
       end
+
+      # Finally, just add the unmodified name to the list
+      # It's a built-in mixin
+      _mixins << mixin
     end
 
-    return filepaths
+    return _mixins
   end
 
   ### Private ###

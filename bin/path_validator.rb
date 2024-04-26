@@ -45,4 +45,10 @@ class PathValidator
     end
   end
 
+
+  def filepath?(str)
+    # If argument includes a file extension or a path separator, it's a filepath
+    return (!File.extname( str ).empty?) || (str.include?( File::SEPARATOR ))
+  end
+
 end
