@@ -1,3 +1,4 @@
+
 /* Copyright (c) 2002, Marek Michalkiewicz <marekm@amelek.gda.pl>
    All rights reserved.
 

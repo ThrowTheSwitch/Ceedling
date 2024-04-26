@@ -1,31 +1,34 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
 class Loginator
 
-  constructor :configurator, :project_file_loader, :project_config_manager, :file_wrapper, :system_wrapper
+  attr_reader :project_logging
 
+  constructor :file_wrapper, :system_wrapper
 
-  def setup_log_filepath
-    config_files = []
-    config_files << @project_file_loader.main_file
-    config_files << @project_file_loader.user_file
-    config_files.concat( @project_config_manager.options_files )
-    config_files.compact!
-    config_files.map! { |file| file.ext('') }
-    
-    log_name = config_files.join( '_' )
-
-    @project_log_filepath = File.join( @configurator.project_log_path, log_name.ext('.log') )
+  def setup()
+    @project_logging = false
+    @log_filepath = nil
   end
 
+  def set_logfile( log_filepath )
+    if !log_filepath.empty?
+      @project_logging = true
+      @log_filepath = log_filepath
+    end
+  end
 
-  def log(string, heading=nil)
-    return if (not @configurator.project_logging)
+  def log(string, heading='')
+    return if not @project_logging
   
-    output  = "\n[#{@system_wrapper.time_now}]"
-    output += " :: #{heading}" if (not heading.nil?)
-    output += "\n#{string.strip}\n"
+    output = "#{heading} | #{@system_wrapper.time_now}\n#{string.strip}\n"
 
-    @file_wrapper.write(@project_log_filepath, output, 'a')
+    @file_wrapper.write( @log_filepath, output, 'a' )
   end
   
 end
