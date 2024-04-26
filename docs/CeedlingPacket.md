@@ -1970,21 +1970,24 @@ Ceedling terminates with an error.
 ### Base project configuration file `:mixins` section entries
 
 Ceedling only recognizes a `:mixins` section in your base project
-configuration file. A `:mixins` section in a mixin is ignored. The
-`:mixins` section of a base project configuration file is filtered
+configuration file. A `:mixins` section in a mixin is ignored. In addition,
+the `:mixins` section of a base project configuration file is filtered
 out of the resulting configuration.
 
-The `:mixins` configuration section contains two subsections. Both
-are optional.
+The `:mixins` configuration section can contain up to two subsections.
+Each subsection is optional.
 
 * `:enabled`
 
-  An optional array of mixin filenames/filepaths and/or mixin names:
+  An optional array comprising (A) mixin filenames/filepaths and/or 
+  (B) simple mixin names.
 
   1. A filename contains a file extension. A filepath includes a 
-     leading directory path. The file content is YAML.
+     directory path. The file content is YAML.
   1. A simple name (no file extension and no path) is used
-     as a lookup in Ceedling's mixin load paths.
+     as a file lookup among any configured load paths (see next
+     section) and as a lookup name among Ceedling’s built-in mixins
+     (currently none).
 
   **Default**: `[]`
 
@@ -1996,22 +1999,20 @@ are optional.
   configuration (`:extension` ↳ `:yaml`) it will be used for file
   lookups in the mixin load paths instead of _.yml_.
 
-  Searches start in the path at the top of the list and end in the 
-  default internal mixin search path.
+  Searches start in the path at the top of the list.
 
   Both mixin names in the `:enabled` list (above) and on the command
   line via `--mixin` flag use this list of load paths for searches.
   
-  **Default**: `[<Ceedling internal mixin path>]` (This default is
-  always present as the last path in the `:load_paths` list)
+  **Default**: `[]`
 
 Example `:mixins` YAML blurb:
 
 ```yaml
 :mixins:
   :enabled:
-    - foo            # Ceedling looks for foo.yml in proj/mixins & support/
-    - path/bar.yaml  # Ceedling merges this file with base project conig
+    - foo            # Search for foo.yml in proj/mixins & support/ and 'foo' among built-in mixins
+    - path/bar.yaml  # Merge this file with base project conig
   :load_paths:
     - proj/mixins
     - support
@@ -2021,11 +2022,13 @@ Relating the above example to command line `--mixin` flag handling:
 
 * A command line flag of `--mixin=foo` is equivalent to the `foo` 
   entry in the `:enabled` mixin configuration.
-* A command line flag of `--mixin=path/bay.yaml` is equivalent to the 
-  `path/bay.yaml` entry in the `:enabled` mixin configuration.
-* Note that while command line `--mixin` flags work identifically to 
+* A command line flag of `--mixin=path/bar.yaml` is equivalent to the 
+  `path/bar.yaml` entry in the `:enabled` mixin configuration.
+* Note that while command line `--mixin` flags work identically to 
   entries in `:mixins` ↳ `:enabled`, they are merged first instead of 
   last in the mixin precedence.
+
+<br/>
 
 # The Almighty Ceedling Project Configuration File (in Glorious YAML)
 
