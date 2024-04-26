@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 ---
 # Continuous Integration Workflow: Test case suite run + validation build check
 name: CI
@@ -19,9 +26,18 @@ jobs:
     name: "Unit Tests"
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        ruby: ['2.7', '3.0', '3.1']
+        ruby: ['3.0', '3.1', '3.2']
     steps:
+      # Use a cache for our tools to speed up testing
+      - uses: actions/cache@v3
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+
       # Install Binutils, Multilib, etc
       - name: Install C dev Tools
         run: |
@@ -45,6 +61,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+          
       # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
       - name: Install Ruby Testing Tools
         run: |
@@ -59,12 +76,6 @@ jobs:
         run: |
           bundle exec rake ci
 
-      # Build & Install Gem
-      - name: Build and Install Gem
-        run: |
-          gem build ceedling.gemspec
-          gem install --local ceedling-*.gem
-
       # Run Blinky
       # Disabled because it's set up for avr-gcc
       #- name: Run Tests On Blinky Project
@@ -73,9 +84,95 @@ jobs:
       #    ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
       #    cd ../..
 
+      # Build & Install Gem
+      - name:  build and install Gem
+        run: |
+          gem build ceedling.gemspec
+          gem install --local ceedling-*.gem
+
       # Run Temp Sensor
       - name: Run Tests On Temp Sensor Project
         run: |
           cd examples/temp_sensor
           ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
           cd ../..
+
+      # Run FFF Plugin Tests
+      - name: Run Tests On FFF Plugin
+        run: |
+          cd plugins/fff
+          rake
+          cd ../..
+
+      # Run Module Generator Plugin Tests
+      - name: Run Tests On Module Generator Plugin
+        run: |
+          cd plugins/module_generator
+          rake
+          cd ../..
+
+      # Run Dependencies Plugin Tests
+      - name: Run Tests On Dependency Plugin
+        run: |
+          cd plugins/dependencies
+          rake
+          cd ../..
+
+  # Job: Automatic Minor Releases
+  auto-release:
+    name: "Automatic Minor Releases"
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby: [3.2]
+
+    steps:
+      # Checks out repository under $GITHUB_WORKSPACE
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      # Setup Ruby Testing Tools to do tests on multiple ruby version
+      - name: Setup Ruby Testing Tools
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
+      # Generate the Version + Hash Name
+      - name: version
+        id: versions
+        shell: bash
+        run: |
+          echo "short_ver=$(ruby ./lib/ceedling/version.rb)" >> $GITHUB_ENV
+          echo "full_ver=$(ruby ./lib/ceedling/version.rb)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      # Build Gem
+      - name:  build gem
+        run: |
+          gem build ceedling.gemspec
+
+      # Create Unofficial Release
+      - name: create release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: true
+          release_name: ${{ env.full_ver }}
+          tag_name: ${{ env.full_ver }}
+          body: "automatic generated pre-release for ${{ env.full_ver }}"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # Post Gem to Unofficial Release
+      - name: release gem
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ceedling-${{ env.short_ver }}.gem
+          asset_name: ceedling-${{ env.full_ver }}.gem
+          asset_content_type: test/x-gemfile
