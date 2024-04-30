@@ -40,6 +40,12 @@
   :use_assembly: FALSE
   :artifacts: []
 
+# Specify where to find mixins and any that should be enabled automatically
+:mixins:
+  :enabled: []
+  :load_paths:
+    - mixin
+
 # Plugins are optional Ceedling features which can be enabled. Ceedling supports
 # a variety of plugins which may effect the way things are compiled, reported, 
 # or may provide new command options. Refer to the readme in each plugin for 

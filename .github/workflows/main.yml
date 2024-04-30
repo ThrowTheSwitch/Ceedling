@@ -76,14 +76,6 @@ jobs:
         run: |
           bundle exec rake ci
 
-      # Run Blinky
-      # Disabled because it's set up for avr-gcc
-      #- name: Run Tests On Blinky Project
-      #  run: |
-      #    cd examples/blinky
-      #    ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
-      #    cd ../..
-
       # Build & Install Gem
       - name:  build and install Gem
         run: |

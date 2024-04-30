@@ -323,14 +323,18 @@ class CliHandler
 
     dest_src      = File.join( dest, 'src' )
     dest_test     = File.join( dest, 'test' )
+    dest_mixin    = File.join( dest, 'mixin' )
     dest_project  = File.join( dest, DEFAULT_PROJECT_FILENAME )
+    dest_readme   = File.join( dest, 'README.md' )
 
     # Thor Actions for project tasks use paths in relation to this path
     ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
 
     @actions._directory( "examples/#{name}/src", dest_src, :force => true )
     @actions._directory( "examples/#{name}/test", dest_test, :force => true )
+    @actions._directory( "examples/#{name}/mixin", dest_mixin, :force => true )
     @actions._copy_file( "examples/#{name}/#{DEFAULT_PROJECT_FILENAME}", dest_project, :force => true )
+    @actions._copy_file( "examples/#{name}/README.md", dest_readme, :force => true )
 
     # Vendor the tools and install command line helper scripts
     @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]

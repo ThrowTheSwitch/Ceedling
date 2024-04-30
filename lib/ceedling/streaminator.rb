@@ -32,6 +32,9 @@ class Streaminator
     # write to log as though Verbosity::OBNOXIOUS
     @loginator.log( string, @streaminator_helper.extract_name(stream) )
 
+    # Flatten if needed
+    string = string.flatten.join('\n') if (string.class == Array)
+
     # Only stream when message reaches current verbosity level
     if (@verbosinator.should_output?(verbosity))
 

@@ -30,7 +30,6 @@ describe "Ceedling" do
     end
 
     it "should list out all the examples" do
-      expect(@output).to match(/blinky/)
       expect(@output).to match(/temp_sensor/)
     end
   end
@@ -103,6 +102,40 @@ describe "Ceedling" do
             expect(@output).to match(/AdcModel\.out/i)
             expect(@output).to match(/AdcHardware\.out/i)
             expect(@output).to match(/AdcConductor\.out/i)
+          end
+        end
+      end
+
+      it "should be able to test when using a custom Unity Helper file added by relative-path mixin" do
+        @c.with_context do
+          Dir.chdir "temp_sensor" do
+            @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious --mixin=mixin/add_unity_helper.yml 2>&1`
+            expect(@output).to match(/Merging command line mixin using mixin\/add_unity_helper\.yml/)
+            expect(@output).to match(/TESTED:\s+47/)
+            expect(@output).to match(/PASSED:\s+47/)
+          end
+        end
+      end
+
+      it "should be able to test when using a custom Unity Helper file added by simple-named mixin" do
+        @c.with_context do
+          Dir.chdir "temp_sensor" do
+            @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious --mixin=add_unity_helper 2>&1`
+            expect(@output).to match(/Merging built-in mixin 'add_unity_helper'/)
+            expect(@output).to match(/TESTED:\s+47/)
+            expect(@output).to match(/PASSED:\s+47/)
+          end
+        end
+      end
+
+      it "should be able to test when using a custom Unity Helper file added by env-named mixin" do
+        @c.with_context do
+          ENV['CEEDLING_MIXIN_1'] = 'mixin/add_unity_helper.yml'
+          Dir.chdir "temp_sensor" do
+            @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious 2>&1`
+            expect(@output).to match(/Merging CEEDLING_MIXIN_1 mixin using mixin\/add_unity_helper\.yml/)
+            expect(@output).to match(/TESTED:\s+47/)
+            expect(@output).to match(/PASSED:\s+47/)
           end
         end
       end
