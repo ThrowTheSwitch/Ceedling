@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'ceedling/plugin'
 require 'ceedling/constants'
 class CommandHooks < Plugin
@@ -6,6 +13,10 @@ class CommandHooks < Plugin
 
   def setup
     @config = {
+      :pre_mock_preprocess       => ((defined? TOOLS_PRE_MOCK_PREPROCESS)       ? TOOLS_PRE_MOCK_PREPROCESS       : nil ),
+      :post_mock_preprocess      => ((defined? TOOLS_POST_MOCK_PREPROCESS)      ? TOOLS_POST_MOCK_PREPROCESS      : nil ),
+      :pre_test_preprocess       => ((defined? TOOLS_PRE_TEST_PREPROCESS)       ? TOOLS_PRE_TEST_PREPROCESS       : nil ),
+      :post_test_preprocess      => ((defined? TOOLS_POST_TEST_PREPROCESS)      ? TOOLS_POST_TEST_PREPROCESS      : nil ),
       :pre_mock_generate         => ((defined? TOOLS_PRE_MOCK_GENERATE)         ? TOOLS_PRE_MOCK_GENERATE         : nil ),
       :post_mock_generate        => ((defined? TOOLS_POST_MOCK_GENERATE)        ? TOOLS_POST_MOCK_GENERATE        : nil ),
       :pre_runner_generate       => ((defined? TOOLS_PRE_RUNNER_GENERATE)       ? TOOLS_PRE_RUNNER_GENERATE       : nil ),
@@ -27,9 +38,13 @@ class CommandHooks < Plugin
     @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
   end
 
+  def pre_mock_preprocess(arg_hash);       run_hook(:pre_mock_preprocess,       arg_hash[:header_file] ); end
+  def post_mock_preprocess(arg_hash);      run_hook(:post_mock_preprocess,      arg_hash[:header_file] ); end
+  def pre_test_preprocess(arg_hash);       run_hook(:pre_test_preprocess,       arg_hash[:test_file]   ); end
+  def post_test_preprocess(arg_hash);      run_hook(:post_test_preprocess,      arg_hash[:test_file]   ); end
   def pre_mock_generate(arg_hash);         run_hook(:pre_mock_generate,         arg_hash[:header_file] ); end
   def post_mock_generate(arg_hash);        run_hook(:post_mock_generate,        arg_hash[:header_file] ); end
-  def pre_runner_generate(arg_hash);       run_hook(:pre_runner_generate,       arg_hash[:source     ] ); end
+  def pre_runner_generate(arg_hash);       run_hook(:pre_runner_generate,       arg_hash[:source]      ); end
   def post_runner_generate(arg_hash);      run_hook(:post_runner_generate,      arg_hash[:runner_file] ); end
   def pre_compile_execute(arg_hash);       run_hook(:pre_compile_execute,       arg_hash[:source_file] ); end
   def post_compile_execute(arg_hash);      run_hook(:post_compile_execute,      arg_hash[:object_file] ); end
@@ -61,7 +76,7 @@ class CommandHooks < Plugin
     if (hook[:executable])
       # Handle argument replacemant ({$1}), and get commandline
       cmd = @ceedling[:tool_executor].build_command_line( hook, [], name )
-      shell_result = @ceedling[:tool_executor].exec(cmd[:line], cmd[:options])
+      shell_result = @ceedling[:tool_executor].exec(cmd)
     end
   end
 
@@ -76,15 +91,21 @@ class CommandHooks < Plugin
   #
   def run_hook(which_hook, name="")
     if (@config[which_hook])
-      @ceedling[:streaminator].stdout_puts("Running Hook #{which_hook}...", Verbosity::NORMAL)
-      if (@config[which_hook].is_a? Array)
+      @ceedling[:streaminator].stream_puts("Running command hook #{which_hook}...")
+      
+      # Single tool config
+      if (@config[which_hook].is_a? Hash)
+        run_hook_step( @config[which_hook], name )
+      
+      # Multiple took configs
+      elsif (@config[which_hook].is_a? Array)
         @config[which_hook].each do |hook|
           run_hook_step(hook, name)
         end
-      elsif (@config[which_hook].is_a? Hash)
-        run_hook_step( @config[which_hook], name )
+      
+      # Tool config is bad
       else
-        @ceedling[:streaminator].stdout_puts("Hook #{which_hook} was poorly formed", Verbosity::COMPLAINT)
+        @ceedling[:streaminator].stream_puts("Tool config for command hook #{which_hook} was poorly formed and not run", Verbosity::COMPLAINT)
       end
     end
   end
