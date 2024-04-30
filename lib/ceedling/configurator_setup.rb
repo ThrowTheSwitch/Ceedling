@@ -176,32 +176,32 @@ class ConfiguratorSetup
     case compile_threads
     when Integer
       if compile_threads < 1
-        @streaminator.stream_puts("ERROR: [:project][:compile_threads] must be greater than 0", Verbosity::ERRORS)
+        @streaminator.stream_puts("ERROR: :project ↳ :compile_threads must be greater than 0", Verbosity::ERRORS)
         valid = false
       end
     when Symbol
       if compile_threads != :auto
-        @streaminator.stream_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+        @streaminator.stream_puts("ERROR: :project ↳ :compile_threads is neither an integer nor :auto", Verbosity::ERRORS) 
         valid = false
       end
     else
-      @streaminator.stream_puts("ERROR: [:project][:compile_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+      @streaminator.stream_puts("ERROR: :project ↳ :compile_threads is neither an integer nor :auto", Verbosity::ERRORS) 
       valid = false
     end
 
     case test_threads
     when Integer
       if test_threads < 1
-        @streaminator.stream_puts("ERROR: [:project][:test_threads] must be greater than 0", Verbosity::ERRORS)
+        @streaminator.stream_puts("ERROR: :project ↳ :test_threads must be greater than 0", Verbosity::ERRORS)
         valid = false
       end
     when Symbol
       if test_threads != :auto
-        @streaminator.stream_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+        @streaminator.stream_puts("ERROR: :project ↳ :test_threads is neither an integer nor :auto", Verbosity::ERRORS) 
         valid = false
       end
     else
-      @streaminator.stream_puts("ERROR: [:project][:test_threads] is neither an integer nor :auto", Verbosity::ERRORS) 
+      @streaminator.stream_puts("ERROR: :project ↳ :test_threads is neither an integer nor :auto", Verbosity::ERRORS) 
       valid = false
     end
 

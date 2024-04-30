@@ -51,7 +51,7 @@ class IncludePathinator
 
     if headers.length == 0
       error = "WARNING: No header files found in project.\n" +
-              "Add search paths to [:paths][:include] in your project file and/or use #{UNITY_TEST_INCLUDE_PATH}() in your test files.\n" +
+              "Add search paths to :paths ↳ :include in your project file and/or use #{UNITY_TEST_INCLUDE_PATH}() in your test files.\n" +
               "Verify header files with `ceedling paths:include` and\\or `ceedling files:include`."
       @streaminator.stream_puts(error, Verbosity::COMPLAIN)
     end
