@@ -132,8 +132,8 @@ class ToolExecutor
       args_index = ($2.to_i - 1)
 
       if (args.nil? or args[args_index].nil?)
-        error = "ERROR: Tool '#{tool_name}' expected valid argument data to accompany replacement operator #{$1}."
-        raise CeedlingException.new(error)
+        error = "Tool '#{tool_name}' expected valid argument data to accompany replacement operator #{$1}."
+        raise CeedlingException.new( error )
       end
 
       match = /#{Regexp.escape($1)}/
@@ -146,7 +146,6 @@ class ToolExecutor
 
     # handle inline ruby execution
     if (element =~ RUBY_EVAL_REPLACEMENT_PATTERN)
-      puts("HERE")
       element.replace(eval($1))
     end
 
@@ -178,8 +177,8 @@ class ToolExecutor
     expand = hash[hash.keys[0]]
 
     if (expand.nil?)
-      error = "ERROR: Tool '#{tool_name}' could not expand nil elements for substitution string '#{substitution}'."
-      raise CeedlingException.new(error)
+      error = "Tool '#{tool_name}' could not expand nil elements for substitution string '#{substitution}'."
+      raise CeedlingException.new( error )
     end
 
     # array-ify expansion input if only a single string
@@ -196,19 +195,19 @@ class ToolExecutor
       elsif (@system_wrapper.constants_include?(item))
         const = Object.const_get(item)
         if (const.nil?)
-          error = "ERROR: Tool '#{tool_name}' found constant '#{item}' to be nil."
-          raise CeedlingException.new(error)
+          error = "Tool '#{tool_name}' found constant '#{item}' to be nil."
+          raise CeedlingException.new( error )
         else
           elements << const
         end
       elsif (item.class == Array)
         elements << item
       elsif (item.class == String)
-        error = "ERROR: Tool '#{tool_name}' cannot expand nonexistent value '#{item}' for substitution string '#{substitution}'."
-        raise CeedlingException.new(error)
+        error = "Tool '#{tool_name}' cannot expand nonexistent value '#{item}' for substitution string '#{substitution}'."
+        raise CeedlingException.new( error )
       else
-        error = "ERROR: Tool '#{tool_name}' cannot expand value having type '#{item.class}' for substitution string '#{substitution}'."
-        raise CeedlingException.new(error)
+        error = "Tool '#{tool_name}' cannot expand value having type '#{item.class}' for substitution string '#{substitution}'."
+        raise CeedlingException.new( error )
       end
     end
 

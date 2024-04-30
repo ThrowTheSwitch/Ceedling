@@ -274,7 +274,7 @@ class TestInvokerHelper
         lib_paths )
     rescue ShellExecutionException => ex
       if ex.shell_result[:output] =~ /symbol/i
-        notice =    "NOTICE: If the linker reports missing symbols, the following may be to blame:\n" +
+        notice =    "If the linker reports missing symbols, the following may be to blame:\n" +
                     "  1. This test lacks #include statements corresponding to needed source files (see note below).\n" +
                     "  2. Project file paths omit source files corresponding to #include statements in this test.\n" +
                     "  3. Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n" +
@@ -300,7 +300,7 @@ class TestInvokerHelper
                     "See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.\n\n"
 
         # Print helpful notice
-        @streaminator.stream_puts(notice, Verbosity::COMPLAIN)
+        @streaminator.stream_puts( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
       end
 
       # Re-raise the exception

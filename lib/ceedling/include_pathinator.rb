@@ -28,8 +28,8 @@ class IncludePathinator
         # TODO: When Ceedling's base project path handling is resolved, enable this path redefinition
         # path = File.join( @base_path, path )
         unless @file_wrapper.exist?(path)
-          error = "ERROR: '#{path}' specified by #{UNITY_TEST_INCLUDE_PATH}() within #{test_filepath} not found"
-          raise CeedlingException.new(error)
+          error = "'#{path}' specified by #{UNITY_TEST_INCLUDE_PATH}() within #{test_filepath} not found"
+          raise CeedlingException.new( error )
         end
       end
     end
@@ -50,10 +50,10 @@ class IncludePathinator
     headers.uniq!
 
     if headers.length == 0
-      error = "WARNING: No header files found in project.\n" +
+      error = "No header files found in project.\n" +
               "Add search paths to :paths ↳ :include in your project file and/or use #{UNITY_TEST_INCLUDE_PATH}() in your test files.\n" +
               "Verify header files with `ceedling paths:include` and\\or `ceedling files:include`."
-      @streaminator.stream_puts(error, Verbosity::COMPLAIN)
+      @streaminator.stream_puts( error, Verbosity::COMPLAIN )
     end
 
     return headers

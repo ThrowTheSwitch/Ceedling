@@ -104,7 +104,7 @@ class ReportGeneratorReportinator
           end          
         end
       else
-        @streaminator.stream_puts("\nWARNING: No matching .gcno coverage files found.", Verbosity::COMPLAIN)
+        @streaminator.stream_puts( "No matching .gcno coverage files found", Verbosity::COMPLAIN )
       end
 
     end

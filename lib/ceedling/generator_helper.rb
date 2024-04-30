@@ -21,14 +21,12 @@ class GeneratorHelper
     if (shell_result[:output].nil? or shell_result[:output].strip.empty?)
       error = true
       # mirror style of generic tool_executor failure output
-      notice  = "\n" +
-                "ERROR: Test executable \"#{File.basename(executable)}\" failed.\n" +
+      notice  = "Test executable \"#{File.basename(executable)}\" failed.\n" +
                 "> Produced no output to $stdout.\n"
     elsif ((shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN).nil?)
       error = true
       # mirror style of generic tool_executor failure output
-      notice  = "\n" +
-                "ERROR: Test executable \"#{File.basename(executable)}\" failed.\n" +
+      notice  = "Test executable \"#{File.basename(executable)}\" failed.\n" +
                 "> Produced no final test result counts in $stdout:\n" +
                 "#{shell_result[:output].strip}\n"
     end
@@ -40,7 +38,7 @@ class GeneratorHelper
 
       notice += "> This is often a symptom of a bad memory access in source or test code.\n\n"
 
-      raise CeedlingException.new(notice)
+      raise CeedlingException.new( notice )
     end
   end
   

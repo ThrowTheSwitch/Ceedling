@@ -152,7 +152,7 @@ class Bullseye < Plugin
       results[:coverage][:branches] = $1.to_i
     end
 
-    @ceedling[:plugin_reportinator].run_report($stdout, @coverage_template_all, results)
+    @ceedling[:plugin_reportinator].run_report( @coverage_template_all, results )
   end
 
   def report_per_function_coverage_results(sources)
@@ -169,7 +169,7 @@ class Bullseye < Plugin
       coverage_results = shell_results[:output].deep_clone
       coverage_results.sub!(/.*\n.*\n/,'') # Remove the Bullseye tool banner
       if (coverage_results =~ /warning cov814: report is empty/)
-        coverage_results = "WARNING: #{source} contains no coverage data!\n\n"
+        coverage_results = "#{source} contains no coverage data"
         @ceedling[:streaminator].stream_puts(coverage_results, Verbosity::COMPLAIN)
       else
         coverage_results += "\n"

@@ -37,16 +37,16 @@ namespace GCOV_SYM do
 
   desc 'Run code coverage for all tests'
   task all: [:prepare] do
-    @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS)
+    @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS )
   end
 
   desc 'Run single test w/ coverage ([*] test or source file name, no path).'
   task :* do
-    message = "\nOops! '#{GCOV_ROOT_NAME}:*' isn't a real task. " \
+    message = "Oops! '#{GCOV_ROOT_NAME}:*' isn't a real task. " \
               "Use a real test or source file name (no path) in place of the wildcard.\n" \
-              "Example: rake #{GCOV_ROOT_NAME}:foo.c\n\n"
+              "Example: `ceedling #{GCOV_ROOT_NAME}:foo.c`"
 
-    @ceedling[:streaminator].stream_puts(message)
+    @ceedling[:streaminator].stream_puts( message, Verbosity::ERRORS )
   end
 
   desc 'Run tests by matching regular expression pattern.'
@@ -58,7 +58,7 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:test_invoker].setup_and_invoke(tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS) )
     else
       @ceedling[:streaminator].stream_puts("\nFound no tests matching pattern /#{args.regex}/.")
     end
@@ -73,9 +73,9 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:test_invoker].setup_and_invoke(tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS))
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS) )
     else
-      @ceedling[:streaminator].stream_puts("\nFound no tests including the given path or path component.")
+      @ceedling[:streaminator].stream_puts( 'Found no tests including the given path or path component', Verbosity::ERRORS )
     end
   end
 
@@ -88,7 +88,7 @@ namespace GCOV_SYM do
          end
        ]) do |test|
     @ceedling[:rake_wrapper][:prepare].invoke
-    @ceedling[:test_invoker].setup_and_invoke(tests:[test.source], context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS)
+    @ceedling[:test_invoker].setup_and_invoke( tests:[test.source], context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS )
   end
 end
 

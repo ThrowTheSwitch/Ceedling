@@ -62,8 +62,8 @@ class ConfigMatchinator
       return elem if tertiary.nil?
 
       # Otherwise, if an tertiary is specified but we have an array, go boom
-      error = "ERROR: :#{primary} ↳ :#{secondary} present in project configuration but does not contain :#{tertiary}."
-      raise CeedlingException.new(error)
+      error = ":#{primary} ↳ :#{secondary} present in project configuration but does not contain :#{tertiary}."
+      raise CeedlingException.new( error )
 
     # If [primary][secondary] is a hash
     elsif elem.class == Hash
@@ -81,8 +81,8 @@ class ConfigMatchinator
 
     # If [primary][secondary] is nothing we expect--something other than an array or hash
     else
-      error = "ERROR: :#{primary} ↳ :#{secondary} in project configuration is neither a list nor hash."
-      raise CeedlingException.new(error)
+      error = ":#{primary} ↳ :#{secondary} in project configuration is neither a list nor hash."
+      raise CeedlingException.new( error )
     end
 
     return nil
@@ -93,8 +93,8 @@ class ConfigMatchinator
     hash.each do |k, v|
       if v == nil
         path = generate_matcher_path( section, context, operation )
-        error = "ERROR: Missing list of values for #{path} ↳ '#{k}' matcher in project configuration."
-        raise CeedlingException.new(error)
+        error = "Missing list of values for #{path} ↳ '#{k}' matcher in project configuration."
+        raise CeedlingException.new( error )
       end
     end
   end
@@ -106,7 +106,7 @@ class ConfigMatchinator
     # Sanity check
     if filepath.nil?
       path = generate_matcher_path(section, context, operation)
-      error = "ERROR: #{path} ↳ #{matcher} matching provided nil #{filepath}"
+      error = "#{path} ↳ #{matcher} matching provided nil #{filepath}"
       raise CeedlingException.new(error)
     end
 

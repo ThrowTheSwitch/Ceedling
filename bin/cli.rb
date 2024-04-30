@@ -327,6 +327,7 @@ module CeedlingTasks
     end
 
     desc "examples", "List available example projects"
+    method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
     `ceedling examples` lists the names of the example projects that come packaged with Ceedling.
 
@@ -334,7 +335,12 @@ module CeedlingTasks
     to extract an example project to your filesystem.
     LONGDESC
     def examples()
-      @handler.list_examples( ENV, @app_cfg )
+      # Get unfrozen copies so we can add / modify
+      _options = options.dup()
+
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+
+      @handler.list_examples( ENV, @app_cfg, _options )
     end
 
 

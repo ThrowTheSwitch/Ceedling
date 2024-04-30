@@ -106,7 +106,7 @@ class ToolExecutorHelper
   #
   def print_error_results(command_str, shell_result, boom=true)
     if ((shell_result[:exit_code] != 0) and boom)
-      output  = "ERROR: Shell command failed.\n"
+      output  = "Shell command failed.\n"
       output += "> Shell executed command:\n"
       output += "'#{command_str}'\n"
       output += "> Produced output:\n"             if (not shell_result[:output].empty?)
@@ -115,7 +115,7 @@ class ToolExecutorHelper
       output += "> And then likely crashed.\n"                               if (shell_result[:exit_code] == nil)
       output += "\n"
 
-      @streaminator.stream_puts(output, Verbosity::ERRORS)
+      @streaminator.stream_puts( output, Verbosity::ERRORS )
     end
   end
 end

@@ -6,12 +6,12 @@
 # =========================================================================
 
 class Verbosity
-  SILENT      = 0   # as silent as possible (though there are some messages that must be spit out)
-  ERRORS      = 1   # only errors
-  COMPLAIN    = 2   # spit out errors and warnings/notices
-  NORMAL      = 3   # errors, warnings/notices, standard status messages
-  OBNOXIOUS   = 4   # all messages including extra verbose output (used for lite debugging / verification)
-  DEBUG       = 5   # special extra verbose output for hardcore debugging
+  SILENT      = 0   # As silent as possible (though there are some messages that must be spit out)
+  ERRORS      = 1   # Only errors
+  COMPLAIN    = 2   # Spit out errors and warnings/notices
+  NORMAL      = 3   # Errors, warnings/notices, standard status messages
+  OBNOXIOUS   = 4   # All messages including extra verbose output (used for lite debugging / verification)
+  DEBUG       = 5   # Special extra verbose output for hardcore debugging
 end
 
 VERBOSITY_OPTIONS = { 
@@ -22,6 +22,21 @@ VERBOSITY_OPTIONS = {
   :obnoxious => Verbosity::OBNOXIOUS,
   :debug     => Verbosity::DEBUG,
 }.freeze()
+
+class LogLabels
+  NONE       = 0 # Override logic and settings with no label and no decoration
+  AUTO       = 1 # Default labeling and decorators
+  NOTICE     = 2 # 'NOTICE:'
+  WARNING    = 3 # 'WARNING:'
+  ERROR      = 4 # 'ERROR:'
+  EXCEPTION  = 5 # 'EXCEPTION:'
+  SEGFAULT   = 6 # 'SEGFAULT:'
+  TITLE      = 7 # Seedling decorator only
+
+  # Verbosity levels ERRORS, COMPLAIN, and NORMAL default to certain labels or lack thereof
+  # The above label constarts are available to override Loginator's default AUTO level as needed
+  # See Loginator comments
+end
 
 class DurationCounts
   DAY_MS     = (24 * 60 * 60 * 1000)

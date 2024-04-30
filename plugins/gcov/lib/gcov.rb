@@ -188,16 +188,17 @@ class Gcov < Plugin
 
         # Handle errors instead of raising a shell exception
         if shell_results[:exit_code] != 0
-          debug = "ERROR: gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
-          @ceedling[:streaminator].stream_puts(debug, Verbosity::DEBUG)
-          @ceedling[:streaminator].stream_puts("WARNING: gcov was unable to process coverage for #{filename}\n", Verbosity::COMPLAIN)
+          debug = "gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
+          @ceedling[:streaminator].stream_puts( debug, Verbosity::DEBUG, LogLabels::ERROR )
+          @ceedling[:streaminator].stream_puts( "gcov was unable to process coverage for #{filename}", Verbosity::COMPLAIN )
           next # Skip to next loop iteration
         end
 
         # A source component may have been compiled with coverage but none of its code actually called in a test.
         # In this case, versions of gcov may not produce an error, only blank results.
         if results.empty?
-          @ceedling[:streaminator].stream_puts("NOTICE: No functions called or code paths exercised by test for #{filename}\n", Verbosity::COMPLAIN)
+          msg = "No functions called or code paths exercised by test for #{filename}"
+          @ceedling[:streaminator].stream_puts( msg, Verbosity::COMPLAIN, LogLabels:NOTICE )
           next # Skip to next loop iteration
         end
 
@@ -207,8 +208,8 @@ class Gcov < Plugin
         # Extract (relative) filepath from results and expand to absolute path
         matches = results.match(/File\s+'(.+)'/)
         if matches.nil? or matches.length() != 2
-          msg = "ERROR: Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
-          @ceedling[:streaminator].stream_puts( msg, Verbosity::DEBUG )
+          msg = "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
+          @ceedling[:streaminator].stream_puts( msg, Verbosity::DEBUG, LogLabels:ERROR )
         else
           # Expand to full path from likely partial path to ensure correct matches on source component within gcov results
           _source = File.expand_path(matches[1])
@@ -223,7 +224,7 @@ class Gcov < Plugin
         
         # Otherwise, found no coverage results
         else
-          msg = "WARNING: Found no coverage results for #{test}::#{File.basename(source)}\n"
+          msg = "Found no coverage results for #{test}::#{File.basename(source)}"
           @ceedling[:streaminator].stream_puts( msg, Verbosity::COMPLAIN )
         end
       end

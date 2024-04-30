@@ -27,18 +27,18 @@ class CliHandler
 
   # Thor application help + Rake help (if available)
   def app_help(env, app_cfg, options, command, &thor_help)
-    @helper.set_verbosity( options[:verbosity] )
+    verbosity = @helper.set_verbosity( options[:verbosity] )
 
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
-      @streaminator.stream_puts( 'Ceedling Application ' )
+      @streaminator.out( 'Ceedling Application ', Verbosity::NORMAL, LogLabels::TITLE )
       thor_help.call( command ) if block_given?
       return
     end
 
     # Display Thor-generated help listing
-    @streaminator.stream_puts( 'Ceedling Application ' )
+    @streaminator.out( 'Ceedling Application ', Verbosity::NORMAL, LogLabels::TITLE )
     thor_help.call( command ) if block_given?
 
     # If it was help for a specific command, we're done
@@ -48,7 +48,14 @@ class CliHandler
     @path_validator.standardize_paths( options[:project], *options[:mixin], )
     return if !@projectinator.config_available?( filepath:options[:project], env:env )
 
-    list_rake_tasks( env:env, app_cfg:app_cfg, filepath:options[:project], mixins:options[:mixin] )
+    list_rake_tasks(
+      env:env,
+      app_cfg: app_cfg,
+      filepath: options[:project],
+      mixins: options[:mixin],
+      # Silent Ceedling loading unless debug verbosity
+      silent: !(verbosity == Verbosity::DEBUG)
+    )
   end
 
 
@@ -108,7 +115,8 @@ class CliHandler
       @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
-    @streaminator.stream_puts( "\nNew project '#{name}' created at #{dest}/\n" )
+    @streaminator.out( "\n" )
+    @streaminator.stream_puts( "New project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -125,8 +133,8 @@ class CliHandler
 
     which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
     if (which == :gem)
-      msg = "NOTICE: Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      @streaminator.stream_puts( msg, Verbosity::NORMAL )
+      msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
+      @streaminator.stream_puts( msg, Verbosity::NORMAL, LogLabels::NOTICE )
     end
 
     # Thor Actions for project tasks use paths in relation to this path
@@ -145,7 +153,8 @@ class CliHandler
       @helper.copy_docs( app_cfg[:ceedling_root_path], path )
     end
 
-    @streaminator.stream_puts( "\nUpgraded project at #{path}/\n" )
+    @streaminator.out( "\n" )
+    @streaminator.stream_puts( "Upgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -238,7 +247,9 @@ class CliHandler
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
-      @streaminator.stream_puts( "\nDumped project configuration to #{filepath}\n" )      
+
+      @streaminator.out( "\n" )
+      @streaminator.stream_puts( "Dumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
     end
   end
 
@@ -277,17 +288,20 @@ class CliHandler
       end
     end
 
-    output = "\nEnvironment variables:\n"
+    output = "Environment variables:\n"
 
     env_list.sort.each do |line|
-      output << " * #{line}\n"
+      output << " • #{line}\n"
     end
 
-    @streaminator.stream_puts( output + "\n" )
+    @streaminator.out( "\n" )
+    @streaminator.stream_puts( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
-  def list_examples(env, app_cfg)
+  def list_examples(env, app_cfg, options)
+    @helper.set_verbosity( options[:verbosity] )
+
     # Process which_ceedling for app_cfg modifications but ignore return values
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
@@ -295,11 +309,12 @@ class CliHandler
 
     raise( "No examples projects found") if examples.empty?
 
-    output = "\nAvailable example projects:\n"
+    output = "Available example projects:\n"
 
-    examples.each {|example| output << " * #{example}\n" }
+    examples.each {|example| output << " • #{example}\n" }
 
-    @streaminator.stream_puts( output + "\n" )
+    @streaminator.out( "\n" )
+    @streaminator.stream_puts( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -338,7 +353,8 @@ class CliHandler
     # Copy in documentation
     @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
-    @streaminator.stream_puts( "\nExample project '#{name}' created at #{dest}/\n" )
+    @streaminator.out( "\n" )
+    @streaminator.stream_puts( "Example project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -350,7 +366,7 @@ class CliHandler
             Unity => #{Ceedling::Version::UNITY}
        CException => #{Ceedling::Version::CEXCEPTION}
     VERSION
-    @streaminator.stream_puts( version )
+    @streaminator.stream_puts( version, Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -358,13 +374,14 @@ class CliHandler
 
   private
 
-  def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[])
+  def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[], silent:false)
     _, config = 
       @configinator.loadinate(
         builtin_mixins:BUILTIN_MIXINS,
         filepath: filepath,
         mixins: mixins,
-        env: env
+        env: env,
+        silent: silent
       )
 
     # Save reference to loaded configuration
@@ -378,7 +395,8 @@ class CliHandler
       default_tasks: app_cfg[:default_tasks]
     )
 
-    @streaminator.stream_puts( "Ceedling Build & Plugin Tasks:\n(Parameterized tasks tend to need enclosing quotes or escape sequences in most shells)" )
+    msg = "Ceedling Build & Plugin Tasks:\n(Parameterized tasks tend to need enclosing quotes or escape sequences in most shells)"
+    @streaminator.stream_puts( msg, Verbosity::NORMAL, LogLabels::TITLE )
 
     @helper.print_rake_tasks()
   end

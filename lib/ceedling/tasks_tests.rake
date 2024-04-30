@@ -29,9 +29,9 @@ namespace TEST_SYM do
 
   desc "Run single test ([*] test or source file name, no path)."
   task :* do
-    message = "\nERROR: Oops! '#{TEST_ROOT_NAME}:*' isn't a real task. " +
+    message = "Oops! '#{TEST_ROOT_NAME}:*' isn't a real task. " +
               "Use a real test or source file name (no path) in place of the wildcard.\n" +
-              "Example: rake #{TEST_ROOT_NAME}:foo.c\n\n"
+              "Example: `ceedling #{TEST_ROOT_NAME}:foo.c`"
 
     @ceedling[:streaminator].stream_puts( message, Verbosity::ERRORS )
   end
@@ -50,7 +50,7 @@ namespace TEST_SYM do
     if (matches.size > 0)
       @ceedling[:test_invoker].setup_and_invoke(tests:matches, options:{:force_run => false}.merge(TOOL_COLLECTION_TEST_TASKS))
     else
-      @ceedling[:streaminator].stream_puts( "\nERROR: Found no tests matching pattern /#{args.regex}/.", Verbosity::ERRORS )
+      @ceedling[:streaminator].stream_puts( "Found no tests matching pattern /#{args.regex}/", Verbosity::ERRORS )
     end
   end
 
@@ -63,7 +63,7 @@ namespace TEST_SYM do
     if (matches.size > 0)
       @ceedling[:test_invoker].setup_and_invoke(tests:matches, options:{:force_run => false}.merge(TOOL_COLLECTION_TEST_TASKS))
     else
-      @ceedling[:streaminator].stream_puts( "\nERROR: Found no tests including the given path or path component.", Verbosity::ERRORS )
+      @ceedling[:streaminator].stream_puts( "Found no tests including the given path or path component", Verbosity::ERRORS )
     end
   end
 

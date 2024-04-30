@@ -348,7 +348,7 @@ class GcovrReportinator
       if boom
         raise CeedlingException.new(msg)
       else
-        @streaminator.stream_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
+        @streaminator.stream_puts( msg, Verbosity::COMPLAIN )
         # Clear bit in exit code
         exitcode &= ~2
       end
@@ -360,7 +360,7 @@ class GcovrReportinator
       if boom
         raise CeedlingException.new(msg)
       else
-        @streaminator.stream_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
+        @streaminator.stream_puts( msg, Verbosity::COMPLAIN )
         # Clear bit in exit code
         exitcode &= ~4
       end
@@ -372,7 +372,7 @@ class GcovrReportinator
       if boom
         raise CeedlingException.new(msg)
       else
-        @streaminator.stream_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
+        @streaminator.stream_puts( msg, Verbosity::COMPLAIN )
         # Clear bit in exit code
         exitcode &= ~8
       end
@@ -384,7 +384,7 @@ class GcovrReportinator
       if boom
         raise CeedlingException.new(msg)
       else
-        @streaminator.stream_puts('WARNING: ' + msg, Verbosity::COMPLAIN)
+        @streaminator.stream_puts( msg, Verbosity::COMPLAIN )
         # Clear bit in exit code
         exitcode &= ~16
       end

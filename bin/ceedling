@@ -23,6 +23,37 @@ $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_base_path] )
 
 require 'cli'          # Located alongside this file in CEEDLING_BIN
 require 'constructor'  # Assumed installed via Ceedling gem dependencies
+require 'ceedling/constants'
+
+# Single exception handler for multiple booms
+def bootloader_boom_handler(loginator, exception)
+  $stderr.puts( "\n" )
+  loginator.stream_puts( exception.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
+  $stderr.puts( exception.backtrace ) if ( defined?( PROJECT_DEBUG ) and PROJECT_DEBUG )
+end
+
+
+# Centralized exception handler for:
+#  1. Bootloader (bin/)
+#  2. Application (lib/) last resort / outer exception handling
+def boom_handler(streaminator, exception)
+  $stderr.puts( "\n" )
+
+  if !streaminator.nil?
+    streaminator.stream_puts( exception.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
+    streaminator.stream_puts( "Backtrace ==>", Verbosity::DEBUG )
+    # Output to console the exception backtrace, formatted like Ruby does it
+    streaminator.stream_puts( "#{exception.backtrace.first}: #{exception.message} (#{exception.class})", Verbosity::DEBUG )
+    streaminator.stream_puts( exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"), Verbosity::DEBUG )
+
+  # Something went really wrong... logging isn't even up and running yet
+  else
+    $stderr.puts( "#{exception.class} ==> #{exception.message}" )
+    $stderr.puts( "Backtrace ==>" )
+    $stderr.puts( exception.backtrace )
+  end
+end
+
 
 # Entry point
 begin
@@ -42,6 +73,7 @@ begin
 
   require 'diy'
   bin_objects_filepath = File.join( ceedling_bin_path, 'objects.yml' )
+  objects = {} # Empty initial hash to be redefined (fingers crossed)
   objects = DIY::Context.from_yaml( File.read( bin_objects_filepath ) )
   objects.build_everything()
   
@@ -86,17 +118,23 @@ rescue Thor::UndefinedCommandError
   # and try again by forcing the Thor `build` command at the beginning of the command line.
   # This way, our Thor handling will process option flags and properly pass the Rake tasks 
   # along as well.
-  CeedlingTasks::CLI.start( _ARGV.unshift( 'build' ),
-    {
-      :app_cfg => CEEDLING_APPCFG,
-      :objects => objects,
-    }
-  )
 
-# Bootloader boom handling (ideally this never runs... we failed to build much if we're here)
-rescue StandardError => e
-  $stderr.puts( "\nERROR: #{e.message}" )
-  $stderr.puts( e.backtrace ) if ( defined?( PROJECT_DEBUG ) and PROJECT_DEBUG )
+  # Necessary nested exception handling
+  begin
+    CeedlingTasks::CLI.start( _ARGV.unshift( 'build' ),
+      {
+        :app_cfg => CEEDLING_APPCFG,
+        :objects => objects,
+      }
+    )
+  rescue StandardError => ex
+    boom_handler( objects[:streaminator], ex )
+    exit(1)
+  end
+
+# Bootloader boom handling
+rescue StandardError => ex
+  boom_handler( objects[:streaminator], ex )
   exit(1)
 end
 

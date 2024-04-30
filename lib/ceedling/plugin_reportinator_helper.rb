@@ -74,9 +74,11 @@ class PluginReportinatorHelper
     aggregate[:total_time]       += results[:time]
   end
 
-  def run_report(stream, template, hash, verbosity)
-    output = ERB.new(template, trim_mode: "%<>")
-    @streaminator.stream_puts(output.result(binding()), verbosity, stream)
+  def run_report(template, hash, verbosity)
+    output = ERB.new( template, trim_mode: "%<>" )
+
+    # Run the report template and log result with no log level heading
+    @streaminator.stream_puts( output.result(binding()), verbosity, LogLabels::NONE )
   end
   
 end
