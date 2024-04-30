@@ -239,6 +239,8 @@ class CliHelper
     debug = (verbosity == Verbosity::DEBUG)
     Object.module_eval("PROJECT_DEBUG = debug")
     PROJECT_DEBUG.freeze()
+
+    return verbosity
   end
 
 
