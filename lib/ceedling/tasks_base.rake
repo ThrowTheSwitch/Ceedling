@@ -28,12 +28,6 @@ task :sanity_checks, :level do |t, args|
   @ceedling[:configurator].sanity_checks = check_level
 end
 
-# non advertised catch for calling upgrade in the wrong place
-task :upgrade do
-  puts "WARNING: You're currently IN your project directory. Take a step out and try"
-  puts "again if you'd like to perform an upgrade."
-end
-
 # Do not present task if there's no plugins
 if (not PLUGINS_ENABLED.empty?)
 desc "Execute plugin result summaries (no build triggering)."
