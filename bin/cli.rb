@@ -243,7 +243,7 @@ module CeedlingTasks
     \x5    > ceedling build test:all
 
     TASKS are zero or more build operations created from your project configuration.
-    If no tasks are provided, built-in default tasks or your :project -> 
+    If no tasks are provided, built-in default tasks or your :project ↳ 
     :default_tasks will be executed.
 
     Notes on Optional Flags:

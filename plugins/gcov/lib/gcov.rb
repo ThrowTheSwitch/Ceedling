@@ -238,7 +238,7 @@ class Gcov < Plugin
     config.each do |reportinator|
       if not GCOV_UTILITY_NAMES.map(&:upcase).include?( reportinator.upcase )
         options = GCOV_UTILITY_NAMES.map{ |utility| "'#{utility}'" }.join(', ')
-        msg = "Plugin configuration :gcov -> :utilities => `#{reportinator}` is not a recognized option {#{options}}."
+        msg = "Plugin configuration :gcov ↳ :utilities => `#{reportinator}` is not a recognized option {#{options}}."
         raise CeedlingException.new(msg)
       end
     end

@@ -113,7 +113,7 @@ class Projectinator
   def validate_mixin_load_paths(load_paths)
     validated = @path_validator.validate(
       paths: load_paths,
-      source: 'Config :mixins -> :load_paths',
+      source: 'Config :mixins ↳ :load_paths',
       type: :directory
     )
 

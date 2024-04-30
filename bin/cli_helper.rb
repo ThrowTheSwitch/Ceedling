@@ -74,7 +74,7 @@ class CliHelper
       walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
       if !walked[:value].nil?
         which_ceedling = walked[:value].strip()
-        @streaminator.stream_puts( " > Set which Ceedling from config :project -> :which_ceedling => #{which_ceedling}", Verbosity::OBNOXIOUS )
+        @streaminator.stream_puts( " > Set which Ceedling from config :project ↳ :which_ceedling => #{which_ceedling}", Verbosity::OBNOXIOUS )
         which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
       end
     end
@@ -258,7 +258,7 @@ class CliHelper
       if walked[:value].nil?
         # Reformat list of symbols to list of :<section>s
         _sections.map! {|section| ":#{section.to_s}"}
-        msg = "Cound not find configuration section #{_sections.join(' -> ')}"
+        msg = "Cound not find configuration section #{_sections.join(' ↳ ')}"
         raise(msg)
       end
 

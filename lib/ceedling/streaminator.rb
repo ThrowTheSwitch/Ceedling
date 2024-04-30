@@ -7,6 +7,8 @@
 
 require 'ceedling/constants'
 
+# Streaminator is a convenience object for handling verbosity and writing to the std streams
+
 class Streaminator
 
   constructor :streaminator_helper, :verbosinator, :loginator, :stream_wrapper
@@ -14,9 +16,6 @@ class Streaminator
   def setup()
     $decorate = false if $decorate.nil?
   end
-
-  # for those objects for whom the configurator has already been instantiated,
-  # Streaminator is a convenience object for handling verbosity and writing to the std streams
 
   def stream_puts(string, verbosity=Verbosity::NORMAL, stream=nil)
 
@@ -38,7 +37,7 @@ class Streaminator
       # Apply decorations if supported
       if ($decorate)
         {
-          / -> /      => ' ↳ ',
+          / ↳ /      => ' >> ',
           /^Ceedling/ => '🌱 Ceedling',
         }.each_pair {|k,v| string.gsub!(k,v) }
         if (verbosity == Verbosity::ERRORS)

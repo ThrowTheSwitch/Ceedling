@@ -39,7 +39,7 @@ class Configinator
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
       builtins: builtin_mixins,
-      source: 'Config :mixins -> :enabled =>',
+      source: 'Config :mixins ↳ :enabled =>',
       yaml_extension: yaml_ext
     )
       raise 'Project configuration file section :mixins failed validation'

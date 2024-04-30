@@ -62,7 +62,7 @@ class ConfigMatchinator
       return elem if tertiary.nil?
 
       # Otherwise, if an tertiary is specified but we have an array, go boom
-      error = "ERROR: :#{primary} -> :#{secondary} present in project configuration but does not contain :#{tertiary}."
+      error = "ERROR: :#{primary} ↳ :#{secondary} present in project configuration but does not contain :#{tertiary}."
       raise CeedlingException.new(error)
 
     # If [primary][secondary] is a hash
@@ -81,7 +81,7 @@ class ConfigMatchinator
 
     # If [primary][secondary] is nothing we expect--something other than an array or hash
     else
-      error = "ERROR: :#{primary} -> :#{secondary} in project configuration is neither a list nor hash."
+      error = "ERROR: :#{primary} ↳ :#{secondary} in project configuration is neither a list nor hash."
       raise CeedlingException.new(error)
     end
 
@@ -93,7 +93,7 @@ class ConfigMatchinator
     hash.each do |k, v|
       if v == nil
         path = generate_matcher_path( section, context, operation )
-        error = "ERROR: Missing list of values for #{path} -> '#{k}' matcher in project configuration."
+        error = "ERROR: Missing list of values for #{path} ↳ '#{k}' matcher in project configuration."
         raise CeedlingException.new(error)
       end
     end
@@ -106,7 +106,7 @@ class ConfigMatchinator
     # Sanity check
     if filepath.nil?
       path = generate_matcher_path(section, context, operation)
-      error = "ERROR: #{path} -> #{matcher} matching provided nil #{filepath}"
+      error = "ERROR: #{path} ↳ #{matcher} matching provided nil #{filepath}"
       raise CeedlingException.new(error)
     end
 
@@ -153,7 +153,7 @@ class ConfigMatchinator
         matched_notice(section:section, context:context, operation:operation, matcher:_matcher, filepath:filepath)
       else # No match
         path = generate_matcher_path(section, context, operation)
-        @streaminator.stream_puts("#{path} -> `#{matcher}` did not match #{filepath}", Verbosity::DEBUG)
+        @streaminator.stream_puts("#{path} ↳ `#{matcher}` did not match #{filepath}", Verbosity::DEBUG)
       end
     end
 
@@ -166,7 +166,7 @@ class ConfigMatchinator
 
   def matched_notice(section:, context:, operation:, matcher:, filepath:)
     path = generate_matcher_path(section, context, operation)
-    @streaminator.stream_puts("#{path} -> #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
+    @streaminator.stream_puts("#{path} ↳ #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
   end
 
   def generate_matcher_path(*keys)
