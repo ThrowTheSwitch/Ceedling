@@ -73,11 +73,13 @@ class Loginator
     # Choose appropriate console stream
     stream = get_stream( verbosity, stream )
 
-    # Add labels
-    file_str = format( string.dup(), verbosity, label, false )
+    if @project_logging
+      # Add labels
+      file_str = format( string.dup(), verbosity, label, false )
 
-    # Write to log as though Verbosity::DEBUG (no filtering at all) but without fun characters
-    logfile( sanitize( file_str, false ), extract_stream_name( stream ) )
+      # Write to log as though Verbosity::DEBUG (no filtering at all) but without fun characters
+      logfile( sanitize( file_str, false ), extract_stream_name( stream ) )
+    end
 
     # Only output to console when message reaches current verbosity level
     return if !(@verbosinator.should_output?( verbosity ))
@@ -183,8 +185,6 @@ class Loginator
 
 
   def logfile(string, heading='')
-    return if not @project_logging
-  
     output = "#{heading} | #{@system_wrapper.time_now}\n#{string.strip}\n"
 
     @file_wrapper.write( @log_filepath, output, 'a' )
