@@ -58,12 +58,12 @@ ERROR_OUTPUT_WITH_MESSAGE =
 describe ToolExecutorHelper do
   before(:each) do
     # these will always be mocked
-    @sys_wraper = SystemWrapper.new
-    @sys_utils = SystemUtils.new({:system_wrapper => @sys_wraper})
-    @loginator = loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil, :stream_wrapper => @sys_wraper})
+    @sys_wrapper = SystemWrapper.new
+    @sys_utils = SystemUtils.new({:system_wrapper => @sys_wrapper})
+    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil, :stream_wrapper => nil})
     
     
-    @tool_exe_helper = described_class.new({:loginator => @loginator, :system_utils => @sys_utils, :system_wrapper => @sys_wraper})
+    @tool_exe_helper = described_class.new({:loginator => @loginator, :system_utils => @sys_utils, :system_wrapper => @sys_wrapper})
   end
 
   
@@ -85,13 +85,13 @@ describe ToolExecutorHelper do
   describe '#osify_path_separators' do
     it 'returns path if system is not windows' do
       exe = '/just/some/executable.out'
-      expect(@sys_wraper).to receive(:windows?).and_return(false)
+      expect(@sys_wrapper).to receive(:windows?).and_return(false)
       expect(@tool_exe_helper.osify_path_separators(exe)).to eq(exe)
     end
 
     it 'returns modifed if system is windows' do
       exe = '/just/some/executable.exe'
-      expect(@sys_wraper).to receive(:windows?).and_return(true)
+      expect(@sys_wrapper).to receive(:windows?).and_return(true)
       expect(@tool_exe_helper.osify_path_separators(exe)).to eq("\\just\\some\\executable.exe")
     end
   end
@@ -119,18 +119,18 @@ describe ToolExecutorHelper do
 
 
       it 'returns "2>&1" if system is windows' do
-        expect(@sys_wraper).to receive(:windows?).and_return(true)
+        expect(@sys_wrapper).to receive(:windows?).and_return(true)
         expect(@tool_exe_helper.stderr_redirect_cmdline_append(@tool_config)).to eq('2>&1')
       end
 
       it 'returns "|&" if system is tcsh' do
-        expect(@sys_wraper).to receive(:windows?).and_return(false)
+        expect(@sys_wrapper).to receive(:windows?).and_return(false)
         expect(@sys_utils).to receive(:tcsh_shell?).and_return(true)
         expect(@tool_exe_helper.stderr_redirect_cmdline_append(@tool_config)).to eq('|&')
       end
 
       it 'returns "2>&1" if system is unix' do
-        expect(@sys_wraper).to receive(:windows?).and_return(false)
+        expect(@sys_wrapper).to receive(:windows?).and_return(false)
         expect(@sys_utils).to receive(:tcsh_shell?).and_return(false)
         expect(@tool_exe_helper.stderr_redirect_cmdline_append(@tool_config)).to eq('2>&1')
       end     
