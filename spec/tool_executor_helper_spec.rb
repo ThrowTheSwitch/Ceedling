@@ -39,14 +39,14 @@ HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS =
   "\n".freeze
 
 ERROR_OUTPUT =
-  "ERROR: Shell command failed.\n" +
+  "Shell command failed.\n" +
   "> Shell executed command:\n" +
   "'gcc ab.c'\n" +
   "> And exited with status: [1].\n" +
   "\n"
 
 ERROR_OUTPUT_WITH_MESSAGE =
-  "ERROR: Shell command failed.\n" +
+  "Shell command failed.\n" +
   "> Shell executed command:\n" +
   "'gcc ab.c'\n" +
   "> Produced output:\n" +
