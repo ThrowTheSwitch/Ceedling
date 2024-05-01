@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+# Logging verbosity levels
 class Verbosity
   SILENT      = 0   # As silent as possible (though there are some messages that must be spit out)
   ERRORS      = 1   # Only errors
@@ -23,18 +24,19 @@ VERBOSITY_OPTIONS = {
   :debug     => Verbosity::DEBUG,
 }.freeze()
 
+# Label + decorator options for logging
 class LogLabels
-  NONE       = 0 # Override logic and settings with no label and no decoration
-  AUTO       = 1 # Default labeling and decorators
-  NOTICE     = 2 # 'NOTICE:'
-  WARNING    = 3 # 'WARNING:'
-  ERROR      = 4 # 'ERROR:'
-  EXCEPTION  = 5 # 'EXCEPTION:'
-  SEGFAULT   = 6 # 'SEGFAULT:'
-  TITLE      = 7 # Seedling decorator only
+  NONE       = 0   # Override logic and settings with no label and no decoration
+  AUTO       = 1   # Default labeling and decorators
+  NOTICE     = 2   # 'NOTICE:'
+  WARNING    = 3   # 'WARNING:'
+  ERROR      = 4   # 'ERROR:'
+  EXCEPTION  = 5   # 'EXCEPTION:'
+  SEGFAULT   = 6   # 'SEGFAULT:'
+  TITLE      = 7   # Seedling decorator only
 
-  # Verbosity levels ERRORS, COMPLAIN, and NORMAL default to certain labels or lack thereof
-  # The above label constarts are available to override Loginator's default AUTO level as needed
+  # Verbosity levels ERRORS – DEBUG default to certain labels or lack thereof
+  # The above label constants are available to override Loginator's default AUTO level as needed
   # See Loginator comments
 end
 
