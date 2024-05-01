@@ -11,7 +11,7 @@ require 'ceedling/constants' # for Verbosity enumeration & $stderr redirect enum
 # Helper functions for the tool executor
 class ToolExecutorHelper
 
-  constructor :streaminator, :system_utils, :system_wrapper
+  constructor :loginator, :system_utils, :system_wrapper
 
   ##
   # Returns the stderr redirection based on the config and logging.
@@ -91,7 +91,7 @@ class ToolExecutorHelper
       output += "> And exited with status: [#{shell_result[:exit_code]}].\n" if (shell_result[:exit_code] != 0)
       output += "\n"
 
-      @streaminator.stream_puts(output, Verbosity::OBNOXIOUS)
+      @loginator.log(output, Verbosity::OBNOXIOUS)
     end
   end
 
@@ -115,7 +115,7 @@ class ToolExecutorHelper
       output += "> And then likely crashed.\n"                               if (shell_result[:exit_code] == nil)
       output += "\n"
 
-      @streaminator.stream_puts( output, Verbosity::ERRORS )
+      @loginator.log( output, Verbosity::ERRORS )
     end
   end
 end

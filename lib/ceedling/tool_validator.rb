@@ -13,7 +13,7 @@ require 'ceedling/file_path_utils'  # For glob handling class methods
 
 class ToolValidator
   
-  constructor :file_wrapper, :streaminator, :system_wrapper, :reportinator
+  constructor :file_wrapper, :loginator, :system_wrapper, :reportinator
 
   def validate(tool:, name:nil, extension:EXTENSION_EXECUTABLE, respect_optional:false, boom:false)
     # Redefine name with name inside tool hash if it's not provided
@@ -42,7 +42,7 @@ class ToolValidator
     if (executable.nil? or executable.empty?)
       error = "#{name} is missing :executable in its configuration."
       if !boom
-        @streaminator.stream_puts( error, Verbosity::ERRORS )
+        @loginator.log( error, Verbosity::ERRORS )
         return false 
       end
 
@@ -111,7 +111,7 @@ class ToolValidator
 
     # Otherwise, log error
     if !exists
-      @streaminator.stream_puts( error, Verbosity::ERRORS )
+      @loginator.log( error, Verbosity::ERRORS )
     end
 
     return exists
@@ -130,7 +130,7 @@ class ToolValidator
         raise CeedlingException.new( error ) if boom
 
         # Otherwise log error
-        @streaminator.stream_puts( error, Verbosity::ERRORS )
+        @loginator.log( error, Verbosity::ERRORS )
         return false
       end    
     elsif redirect.class != String

@@ -11,13 +11,13 @@ require 'ceedling/constants' # From Ceedling application
 
 class CliHelper
 
-  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :streaminator
+  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :loginator
 
   def setup
     #Aliases
     @actions = @actions_wrapper
 
-    @streaminator.decorate( !windows? )
+    @loginator.decorate( !windows? )
   end
 
 
@@ -64,7 +64,7 @@ class CliHelper
 
     # Environment variable
     if !env['WHICH_CEEDLING'].nil?
-      @streaminator.stream_puts( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS )
+      @loginator.log( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS )
       which_ceedling = env['WHICH_CEEDLING'].strip()
       which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
     end
@@ -74,7 +74,7 @@ class CliHelper
       walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
       if !walked[:value].nil?
         which_ceedling = walked[:value].strip()
-        @streaminator.stream_puts( " > Set which Ceedling from config :project ↳ :which_ceedling => #{which_ceedling}", Verbosity::OBNOXIOUS )
+        @loginator.log( " > Set which Ceedling from config :project ↳ :which_ceedling => #{which_ceedling}", Verbosity::OBNOXIOUS )
         which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
       end
     end
@@ -83,14 +83,14 @@ class CliHelper
     if which_ceedling.nil?
       if @file_wrapper.directory?( 'vendor/ceedling' )
         which_ceedling = 'vendor/ceedling'
-        @streaminator.stream_puts( " > Set which Ceedling to be vendored installation", Verbosity::OBNOXIOUS )
+        @loginator.log( " > Set which Ceedling to be vendored installation", Verbosity::OBNOXIOUS )
       end
     end
 
     # Default to gem
     if which_ceedling.nil?
       which_ceedling = :gem
-      @streaminator.stream_puts( " > Defaulting to running Ceedling from Gem", Verbosity::OBNOXIOUS )
+      @loginator.log( " > Defaulting to running Ceedling from Gem", Verbosity::OBNOXIOUS )
     end
 
     # If we're launching from the gem, return :gem and initial Rakefile path
@@ -116,7 +116,7 @@ class CliHelper
     # Update variable to full application start path
     ceedling_path = app_cfg[:ceedling_rakefile_filepath]
     
-    @streaminator.stream_puts( " > Launching Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
+    @loginator.log( " > Launching Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
 
     return :path, ceedling_path
   end

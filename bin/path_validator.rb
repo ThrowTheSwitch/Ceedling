@@ -7,7 +7,7 @@
 
 class PathValidator
 
-  constructor :file_wrapper, :streaminator
+  constructor :file_wrapper, :loginator
 
   def validate(paths:, source:, type: :filepath)
     validated = true
@@ -16,20 +16,20 @@ class PathValidator
       # Error out on empty paths
       if path.empty?
         validated = false
-        @streaminator.stream_puts( "#{source} contains an empty path", Verbosity::ERRORS )
+        @loginator.log( "#{source} contains an empty path", Verbosity::ERRORS )
         next
       end
 
       # Error out if path is not a directory / does not exist
       if (type == :directory) and !@file_wrapper.directory?( path )
         validated = false
-        @streaminator.stream_puts( "#{source} '#{path}' does not exist as a directory in the filesystem", Verbosity::ERRORS )
+        @loginator.log( "#{source} '#{path}' does not exist as a directory in the filesystem", Verbosity::ERRORS )
       end
 
       # Error out if filepath does not exist
       if (type == :filepath) and !@file_wrapper.exist?( path )
         validated = false
-        @streaminator.stream_puts( "#{source} '#{path}' does not exist in the filesystem", Verbosity::ERRORS )
+        @loginator.log( "#{source} '#{path}' does not exist in the filesystem", Verbosity::ERRORS )
       end
     end
 

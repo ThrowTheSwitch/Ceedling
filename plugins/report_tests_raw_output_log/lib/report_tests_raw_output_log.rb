@@ -19,7 +19,7 @@ class ReportTestsRawOutputLog < Plugin
 
     # Convenient instance variable references
     @file_wrapper = @ceedling[:file_wrapper]
-    @streaminator = @ceedling[:streaminator]
+    @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
   end
 
@@ -87,14 +87,14 @@ class ReportTestsRawOutputLog < Plugin
 
   def write_logs(hash)
     msg = @reportinator.generate_heading( "Running Raw Tests Output Report" )
-    @streaminator.stream_puts( msg )
+    @loginator.log( msg )
 
     empty = false
 
     @mutex.synchronize { empty = hash.empty? }
 
     if empty
-      @streaminator.stream_puts( "Tests produced no extra console output.\n" )
+      @loginator.log( "Tests produced no extra console output.\n" )
       return
     end
 
@@ -104,7 +104,7 @@ class ReportTestsRawOutputLog < Plugin
           log_filepath = form_log_filepath( context, test )
 
           msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
-          @streaminator.stream_puts( msg )
+          @loginator.log( msg )
 
           File.open( log_filepath, 'w' ) do |f|
             output.each { |line| f << line }
@@ -114,7 +114,7 @@ class ReportTestsRawOutputLog < Plugin
     end
 
     # White space at command line after progress messages
-    @streaminator.stream_puts( '' )
+    @loginator.log( '' )
   end
 
   def form_log_filepath(context, test)

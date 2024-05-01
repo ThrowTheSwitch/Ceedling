@@ -15,7 +15,7 @@ class PluginReportinatorHelper
   
   attr_writer :ceedling
   
-  constructor :configurator, :streaminator, :yaml_wrapper, :file_wrapper
+  constructor :configurator, :loginator, :yaml_wrapper, :file_wrapper
   
   def fetch_results(results_path, options)
     # Create the results filepaths
@@ -78,7 +78,7 @@ class PluginReportinatorHelper
     output = ERB.new( template, trim_mode: "%<>" )
 
     # Run the report template and log result with no log level heading
-    @streaminator.stream_puts( output.result(binding()), verbosity, LogLabels::NONE )
+    @loginator.log( output.result(binding()), verbosity, LogLabels::NONE )
   end
   
 end

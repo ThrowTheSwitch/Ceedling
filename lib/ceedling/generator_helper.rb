@@ -11,7 +11,7 @@ require 'ceedling/exceptions'
 
 class GeneratorHelper
 
-  constructor :streaminator
+  constructor :loginator
 
 
   def test_results_error_handler(executable, shell_result)

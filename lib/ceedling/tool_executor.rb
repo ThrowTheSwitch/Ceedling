@@ -11,7 +11,7 @@ require 'benchmark'
 
 class ToolExecutor
 
-  constructor :configurator, :tool_executor_helper, :streaminator, :verbosinator, :system_wrapper
+  constructor :configurator, :tool_executor_helper, :loginator, :verbosinator, :system_wrapper
 
   # build up a command line from yaml provided config
 
@@ -39,7 +39,7 @@ class ToolExecutor
       :stderr_redirect => @tool_executor_helper.stderr_redirection( tool_config, @configurator.project_logging )
       }
 
-    @streaminator.stream_puts( "Command: #{command}", Verbosity::DEBUG )
+    @loginator.log( "Command: #{command}", Verbosity::DEBUG )
 
     return command
   end

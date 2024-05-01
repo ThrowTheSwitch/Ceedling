@@ -14,7 +14,7 @@ describe PreprocessinatorIncludesHandler do
     @tool_executor          = double('tool_executor')
     @test_context_extractor = double('test_context_extractor')
     @yaml_wrapper           = double('yaml_wrapper')
-    @streaminator           = double('streaminator')
+    @loginator              = double('loginator')
     @reportinator           = double('reportinator')
   end
 
@@ -24,7 +24,7 @@ describe PreprocessinatorIncludesHandler do
       :tool_executor          => @tool_executor,
       :test_context_extractor => @test_context_extractor,
       :yaml_wrapper           => @yaml_wrapper,
-      :streaminator           => @streaminator,
+      :loginator              => @loginator,
       :reportinator           => @reportinator
     )
   end

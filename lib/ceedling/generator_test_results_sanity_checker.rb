@@ -13,7 +13,7 @@ require 'ceedling/exceptions'
 
 class GeneratorTestResultsSanityChecker
 
-  constructor :configurator, :streaminator
+  constructor :configurator, :loginator
   
   def verify(results, unity_exit_code)
   

@@ -11,7 +11,7 @@ require 'ceedling/exceptions'
 
 class FileFinderHelper
 
-  constructor :streaminator
+  constructor :loginator
   
   
   def find_file_in_collection(filename, file_list, complain, original_filepath="")
@@ -94,7 +94,7 @@ class FileFinderHelper
     
   def gripe(filename, extra_message="")
     warning = ["Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
-    @streaminator.stream_puts( warning + extra_message, Verbosity::COMPLAIN )
+    @loginator.log( warning + extra_message, Verbosity::COMPLAIN )
   end
 
 end

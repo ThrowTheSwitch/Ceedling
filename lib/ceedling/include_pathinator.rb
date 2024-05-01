@@ -10,7 +10,7 @@ require 'ceedling/exceptions'
 
 class IncludePathinator
 
-  constructor :configurator, :test_context_extractor, :streaminator, :file_wrapper
+  constructor :configurator, :test_context_extractor, :loginator, :file_wrapper
 
   def setup
     # TODO: When Ceedling's base project path handling is resolved, update this value to automatically 
@@ -53,7 +53,7 @@ class IncludePathinator
       error = "No header files found in project.\n" +
               "Add search paths to :paths ↳ :include in your project file and/or use #{UNITY_TEST_INCLUDE_PATH}() in your test files.\n" +
               "Verify header files with `ceedling paths:include` and\\or `ceedling files:include`."
-      @streaminator.stream_puts( error, Verbosity::COMPLAIN )
+      @loginator.log( error, Verbosity::COMPLAIN )
     end
 
     return headers

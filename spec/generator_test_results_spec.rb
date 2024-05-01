@@ -10,7 +10,7 @@ require 'ceedling/generator_test_results_sanity_checker'
 require 'ceedling/generator_test_results'
 require 'ceedling/yaml_wrapper'
 require 'ceedling/constants'
-require 'ceedling/streaminator'
+require 'ceedling/loginator'
 require 'ceedling/configurator'
 require 'ceedling/debugger_utils'
 
@@ -64,11 +64,11 @@ describe GeneratorTestResults do
   before(:each) do
     # these will always be mocked
     @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :yaml_wrapper => nil, :system_wrapper => nil})
-    @streaminator = Streaminator.new({:streaminator_helper => nil, :verbosinator => nil, :loginator => nil, :stream_wrapper => nil})
+    @loginator = loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil, :stream_wrapper => nil})
     
     # these will always be used as is.
     @yaml_wrapper = YamlWrapper.new
-    @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :streaminator => @streaminator})
+    @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :loginator => @loginator})
     @debugger_utils = DebuggerUtils.new({:configurator => @configurator, :tool_executor => nil, :unity_utils => nil})
 
     @generate_test_results = described_class.new(

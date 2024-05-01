@@ -10,7 +10,7 @@ require 'ceedling/constants' # From Ceedling application
 
 class CliHandler
 
-  constructor :configinator, :projectinator, :cli_helper, :path_validator, :actions_wrapper, :streaminator
+  constructor :configinator, :projectinator, :cli_helper, :path_validator, :actions_wrapper, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
@@ -32,13 +32,13 @@ class CliHandler
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
-      @streaminator.out( 'Ceedling Application ', Verbosity::NORMAL, LogLabels::TITLE )
+      @loginator.out( 'Ceedling Application ', Verbosity::NORMAL, LogLabels::TITLE )
       thor_help.call( command ) if block_given?
       return
     end
 
     # Display Thor-generated help listing
-    @streaminator.out( 'Ceedling Application ', Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.out( 'Ceedling Application ', Verbosity::NORMAL, LogLabels::TITLE )
     thor_help.call( command ) if block_given?
 
     # If it was help for a specific command, we're done
@@ -115,8 +115,8 @@ class CliHandler
       @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
-    @streaminator.out( "\n" )
-    @streaminator.stream_puts( "New project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.out( "\n" )
+    @loginator.log( "New project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -134,7 +134,7 @@ class CliHandler
     which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
     if (which == :gem)
       msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      @streaminator.stream_puts( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
     end
 
     # Thor Actions for project tasks use paths in relation to this path
@@ -153,8 +153,8 @@ class CliHandler
       @helper.copy_docs( app_cfg[:ceedling_root_path], path )
     end
 
-    @streaminator.out( "\n" )
-    @streaminator.stream_puts( "Upgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.out( "\n" )
+    @loginator.log( "Upgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -179,9 +179,9 @@ class CliHandler
     if (config[:project] && config[:project][:use_decorators])
       case config[:project][:use_decorators]
       when :all
-        @streaminator.decorate(true)
+        @loginator.decorate(true)
       when :none
-        @streaminator.decorate(false)
+        @loginator.decorate(false)
       else #includes :auto
         #nothing more to do. we've already figured out auto
       end
@@ -243,13 +243,13 @@ class CliHandler
           default_tasks: default_tasks
         )
       else
-        @streaminator.stream_puts( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
+        @loginator.log( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
 
-      @streaminator.out( "\n" )
-      @streaminator.stream_puts( "Dumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
+      @loginator.out( "\n" )
+      @loginator.log( "Dumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
     end
   end
 
@@ -294,8 +294,8 @@ class CliHandler
       output << " • #{line}\n"
     end
 
-    @streaminator.out( "\n" )
-    @streaminator.stream_puts( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.out( "\n" )
+    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -313,8 +313,8 @@ class CliHandler
 
     examples.each {|example| output << " • #{example}\n" }
 
-    @streaminator.out( "\n" )
-    @streaminator.stream_puts( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.out( "\n" )
+    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -353,8 +353,8 @@ class CliHandler
     # Copy in documentation
     @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
-    @streaminator.out( "\n" )
-    @streaminator.stream_puts( "Example project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.out( "\n" )
+    @loginator.log( "Example project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -366,7 +366,7 @@ class CliHandler
             Unity => #{Ceedling::Version::UNITY}
        CException => #{Ceedling::Version::CEXCEPTION}
     VERSION
-    @streaminator.stream_puts( version, Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( version, Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -396,7 +396,7 @@ class CliHandler
     )
 
     msg = "Ceedling Build & Plugin Tasks:\n(Parameterized tasks tend to need enclosing quotes or escape sequences in most shells)"
-    @streaminator.stream_puts( msg, Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::TITLE )
 
     @helper.print_rake_tasks()
   end

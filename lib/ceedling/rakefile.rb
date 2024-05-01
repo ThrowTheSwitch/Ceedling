@@ -29,8 +29,8 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
 
   return if duration.empty?
 
-  @ceedling[:streaminator].out( "\n" )
-  @ceedling[:streaminator].stream_puts( "Ceedling #{run} completed in #{duration}", Verbosity::NORMAL, LogLabels::TITLE )
+  @ceedling[:loginator].out( "\n" )
+  @ceedling[:loginator].log( "Ceedling #{run} completed in #{duration}", Verbosity::NORMAL, LogLabels::TITLE )
 end
 
 start_time = nil # Outside scope of exception handling
@@ -86,7 +86,7 @@ begin
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
 rescue StandardError => ex
-  boom_handler( @ceedling[:streaminator], ex )
+  boom_handler( @ceedling[:loginator], ex )
   exit(1)
 end
 
@@ -118,17 +118,17 @@ END {
     rescue => ex
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
-      boom_handler( @ceedling[:streaminator], ex )
+      boom_handler( @ceedling[:loginator], ex )
       exit(1)
     end
 
     exit(0)
   else
-    @ceedling[:streaminator].stream_puts( "Ceedling could not complete operations because of errors", Verbosity::ERRORS )
+    @ceedling[:loginator].log( "Ceedling could not complete operations because of errors", Verbosity::ERRORS )
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex
-      boom_handler( @ceedling[:streaminator], ex)
+      boom_handler( @ceedling[:loginator], ex)
     ensure
       exit(1)
     end

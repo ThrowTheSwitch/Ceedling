@@ -17,7 +17,7 @@ require 'ceedling/exceptions'
 
 class ConfigMatchinator
 
-  constructor :configurator, :streaminator, :reportinator
+  constructor :configurator, :loginator, :reportinator
 
   def config_include?(primary:, secondary:, tertiary:nil)
     # Create configurator accessor method
@@ -153,7 +153,7 @@ class ConfigMatchinator
         matched_notice(section:section, context:context, operation:operation, matcher:_matcher, filepath:filepath)
       else # No match
         path = generate_matcher_path(section, context, operation)
-        @streaminator.stream_puts("#{path} ↳ `#{matcher}` did not match #{filepath}", Verbosity::DEBUG)
+        @loginator.log("#{path} ↳ `#{matcher}` did not match #{filepath}", Verbosity::DEBUG)
       end
     end
 
@@ -166,7 +166,7 @@ class ConfigMatchinator
 
   def matched_notice(section:, context:, operation:, matcher:, filepath:)
     path = generate_matcher_path(section, context, operation)
-    @streaminator.stream_puts("#{path} ↳ #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
+    @loginator.log("#{path} ↳ #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
   end
 
   def generate_matcher_path(*keys)

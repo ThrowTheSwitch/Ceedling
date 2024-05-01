@@ -161,12 +161,12 @@ class Gcov < Plugin
 
   def console_coverage_summaries()
     banner = @ceedling[:plugin_reportinator].generate_banner( "#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
-    @ceedling[:streaminator].stream_puts "\n" + banner
+    @ceedling[:loginator].log "\n" + banner
 
     # Iterate over each test run and its list of source files
     @ceedling[:test_invoker].each_test_with_sources do |test, sources|
       heading = @ceedling[:plugin_reportinator].generate_heading( test )
-      @ceedling[:streaminator].stream_puts(heading)
+      @ceedling[:loginator].log(heading)
 
       sources.each do |source|
         filename = File.basename(source)
@@ -189,8 +189,8 @@ class Gcov < Plugin
         # Handle errors instead of raising a shell exception
         if shell_results[:exit_code] != 0
           debug = "gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
-          @ceedling[:streaminator].stream_puts( debug, Verbosity::DEBUG, LogLabels::ERROR )
-          @ceedling[:streaminator].stream_puts( "gcov was unable to process coverage for #{filename}", Verbosity::COMPLAIN )
+          @ceedling[:loginator].log( debug, Verbosity::DEBUG, LogLabels::ERROR )
+          @ceedling[:loginator].log( "gcov was unable to process coverage for #{filename}", Verbosity::COMPLAIN )
           next # Skip to next loop iteration
         end
 
@@ -198,7 +198,7 @@ class Gcov < Plugin
         # In this case, versions of gcov may not produce an error, only blank results.
         if results.empty?
           msg = "No functions called or code paths exercised by test for #{filename}"
-          @ceedling[:streaminator].stream_puts( msg, Verbosity::COMPLAIN, LogLabels:NOTICE )
+          @ceedling[:loginator].log( msg, Verbosity::COMPLAIN, LogLabels:NOTICE )
           next # Skip to next loop iteration
         end
 
@@ -209,7 +209,7 @@ class Gcov < Plugin
         matches = results.match(/File\s+'(.+)'/)
         if matches.nil? or matches.length() != 2
           msg = "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
-          @ceedling[:streaminator].stream_puts( msg, Verbosity::DEBUG, LogLabels:ERROR )
+          @ceedling[:loginator].log( msg, Verbosity::DEBUG, LogLabels:ERROR )
         else
           # Expand to full path from likely partial path to ensure correct matches on source component within gcov results
           _source = File.expand_path(matches[1])
@@ -220,12 +220,12 @@ class Gcov < Plugin
           # Reformat from first line as filename banner to each line of statistics labeled with the filename
           # Only extract the first four lines of the console report (to avoid spidering coverage reports through libs, etc.)
           report = results.lines.to_a[1..4].map { |line| filename + ' | ' + line }.join('')
-          @ceedling[:streaminator].stream_puts(report + "\n")
+          @ceedling[:loginator].log(report + "\n")
         
         # Otherwise, found no coverage results
         else
           msg = "Found no coverage results for #{test}::#{File.basename(source)}"
-          @ceedling[:streaminator].stream_puts( msg, Verbosity::COMPLAIN )
+          @ceedling[:loginator].log( msg, Verbosity::COMPLAIN )
         end
       end
     end

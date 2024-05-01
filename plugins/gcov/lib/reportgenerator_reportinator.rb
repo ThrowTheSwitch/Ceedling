@@ -33,7 +33,7 @@ class ReportGeneratorReportinator
     )
 
     # Convenient instance variable references
-    @streaminator = @ceedling[:streaminator]
+    @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
   end
 
@@ -45,11 +45,11 @@ class ReportGeneratorReportinator
       rg_opts = get_opts(opts)
 
       msg = @reportinator.generate_heading( "Running ReportGenerator Coverage Reports" )
-      @streaminator.stream_puts( msg )
+      @loginator.log( msg )
 
       opts[:gcov_reports].each do |report|
         msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}'")
-        @streaminator.stream_puts( msg )
+        @loginator.log( msg )
       end
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.
@@ -104,7 +104,7 @@ class ReportGeneratorReportinator
           end          
         end
       else
-        @streaminator.stream_puts( "No matching .gcno coverage files found", Verbosity::COMPLAIN )
+        @loginator.log( "No matching .gcno coverage files found", Verbosity::COMPLAIN )
       end
 
     end
@@ -115,7 +115,7 @@ class ReportGeneratorReportinator
     end
 
     # White space log line
-    @streaminator.stream_puts( '' )
+    @loginator.log( '' )
   end
 
 

@@ -45,7 +45,7 @@ class Bullseye < Plugin
     arg_hash = {:tool => TOOLS_BULLSEYE_INSTRUMENTATION, :context => BULLSEYE_SYM, :source => source, :object => object}
     @ceedling[:plugin_manager].pre_compile_execute(arg_hash)
 
-    @ceedling[:streaminator].stream_puts("Compiling #{File.basename(source)} with coverage...")
+    @ceedling[:loginator].log("Compiling #{File.basename(source)} with coverage...")
     compile_command  = 
       @ceedling[:tool_executor].build_command_line(
         TOOLS_BULLSEYE_COMPILER,
@@ -119,10 +119,10 @@ class Bullseye < Plugin
     if BULLSEYE_AUTO_LICENSE
       if (enable)
         args = ['push', 'on']
-        @ceedling[:streaminator].stream_puts("Enabling Bullseye")
+        @ceedling[:loginator].log("Enabling Bullseye")
       else
         args = ['pop']
-        @ceedling[:streaminator].stream_puts("Reverting Bullseye to previous state")
+        @ceedling[:loginator].log("Reverting Bullseye to previous state")
       end
 
       args.each do |arg| 
@@ -157,7 +157,7 @@ class Bullseye < Plugin
 
   def report_per_function_coverage_results(sources)
     banner = @ceedling[:plugin_reportinator].generate_banner( "#{BULLSEYE_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
-    @ceedling[:streaminator].stream_puts "\n" + banner
+    @ceedling[:loginator].log "\n" + banner
 
     coverage_sources = sources.clone
     coverage_sources.delete_if {|item| item =~ /#{CMOCK_MOCK_PREFIX}.+#{EXTENSION_SOURCE}$/}
@@ -170,10 +170,10 @@ class Bullseye < Plugin
       coverage_results.sub!(/.*\n.*\n/,'') # Remove the Bullseye tool banner
       if (coverage_results =~ /warning cov814: report is empty/)
         coverage_results = "#{source} contains no coverage data"
-        @ceedling[:streaminator].stream_puts(coverage_results, Verbosity::COMPLAIN)
+        @ceedling[:loginator].log(coverage_results, Verbosity::COMPLAIN)
       else
         coverage_results += "\n"
-        @ceedling[:streaminator].stream_puts(coverage_results)
+        @ceedling[:loginator].log(coverage_results)
       end
     end
   end
@@ -183,7 +183,7 @@ class Bullseye < Plugin
 
     if (!exist)
       banner = @ceedling[:plugin_reportinator].generate_banner( "#{BULLSEYE_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
-      @ceedling[:streaminator].stream_puts "\n" + banner + "\nNo coverage file.\n\n"
+      @ceedling[:loginator].log "\n" + banner + "\nNo coverage file.\n\n"
     end
     
     return exist

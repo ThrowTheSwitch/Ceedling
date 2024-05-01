@@ -12,7 +12,7 @@ require 'ceedling/file_path_utils'
 desc "Build release target."
 task RELEASE_SYM => [:prepare] do
   header = "Release build '#{File.basename(PROJECT_RELEASE_BUILD_TARGET)}'"
-  @ceedling[:streaminator].stream_puts("\n\n#{header}\n#{'-' * header.length}")  
+  @ceedling[:loginator].log("\n\n#{header}\n#{'-' * header.length}")  
   
   begin
     @ceedling[:plugin_manager].pre_release
@@ -30,13 +30,13 @@ task RELEASE_SYM => [:prepare] do
   rescue StandardError => ex
     @ceedling[:application].register_build_failure
 
-    @ceedling[:streaminator].stream_puts( "#{ex.class} ==> #{ex.message}", Verbosity::ERRORS, LogLabels::EXCEPTION )
+    @ceedling[:loginator].log( "#{ex.class} ==> #{ex.message}", Verbosity::ERRORS, LogLabels::EXCEPTION )
 
     # Debug backtrace
-    @ceedling[:streaminator].stream_puts( "Backtrace ==>", Verbosity::DEBUG )
+    @ceedling[:loginator].log( "Backtrace ==>", Verbosity::DEBUG )
     # Output to console the exception backtrace, formatted like Ruby does it
-    streaminator.stream_puts( "#{ex.backtrace.first}: #{ex.message} (#{ex.class})", Verbosity::DEBUG )
-    streaminator.stream_puts( ex.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"), Verbosity::DEBUG )
+    loginator.log( "#{ex.backtrace.first}: #{ex.message} (#{ex.class})", Verbosity::DEBUG )
+    loginator.log( ex.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"), Verbosity::DEBUG )
   ensure
     @ceedling[:plugin_manager].post_release  
   end

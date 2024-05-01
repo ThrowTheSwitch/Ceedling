@@ -16,7 +16,7 @@ class TestInvoker
               :configurator,
               :test_invoker_helper,
               :plugin_manager,
-              :streaminator,
+              :loginator,
               :build_batchinator,
               :preprocessinator,
               :task_invoker,
@@ -105,7 +105,7 @@ class TestInvoker
           compile_defines    = @helper.compile_defines( context:context, filepath:filepath )
           preprocess_defines = @helper.preprocess_defines( test_defines: compile_defines, filepath:filepath )
 
-          @streaminator.stream_puts( "Collecting search paths, flags, and defines for #{File.basename(filepath)}...", Verbosity::NORMAL)
+          @loginator.log( "Collecting search paths, flags, and defines for #{File.basename(filepath)}...", Verbosity::NORMAL)
 
           @lock.synchronize do
             details[:search_paths] = search_paths
@@ -357,12 +357,12 @@ class TestInvoker
     # Runtime errors (parent is Exception) continue on up to be caught by Ruby itself.
     rescue StandardError => e
       @application.register_build_failure
-      @streaminator.stream_puts("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
+      @loginator.log("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
 
       # Debug backtrace
-      @streaminator.stream_puts("Backtrace ==>", Verbosity::DEBUG)
+      @loginator.log("Backtrace ==>", Verbosity::DEBUG)
       if @verbosinator.should_output?(Verbosity::DEBUG)
-        @streaminator.stream_puts(e.backtrace, Verbosity::DEBUG) # Formats properly when directly passed to puts()
+        @loginator.log(e.backtrace, Verbosity::DEBUG) # Formats properly when directly passed to puts()
       end
     end
   end

@@ -18,18 +18,11 @@ system_wrapper:
 
 verbosinator:
 
-streaminator_helper:
-
 loginator:
   compose:
+    - verbosinator
     - file_wrapper
     - system_wrapper
-
-streaminator:
-  compose:
-    - streaminator_helper
-    - verbosinator
-    - loginator
     - stream_wrapper
 
 # Loaded from bin (here)
@@ -44,7 +37,7 @@ cli_handler:
     - cli_helper
     - path_validator
     - actions_wrapper
-    - streaminator
+    - loginator
 
 cli_helper:
   compose:
@@ -52,25 +45,25 @@ cli_helper:
     - config_walkinator
     - path_validator
     - actions_wrapper
-    - streaminator
+    - loginator
 
 path_validator:
   compose:
     - file_wrapper
-    - streaminator
+    - loginator
 
 mixinator:
   compose:
     - path_validator
     - yaml_wrapper
-    - streaminator
+    - loginator
 
 projectinator:
   compose:
     - file_wrapper
     - path_validator
     - yaml_wrapper
-    - streaminator
+    - loginator
 
 configinator:
   compose:

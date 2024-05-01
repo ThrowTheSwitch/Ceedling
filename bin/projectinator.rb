@@ -13,7 +13,7 @@ class Projectinator
   DEFAULT_PROJECT_FILEPATH = './' + DEFAULT_PROJECT_FILENAME
   DEFAULT_YAML_FILE_EXTENSION = '.yml'
 
-  constructor :file_wrapper, :path_validator, :yaml_wrapper, :streaminator
+  constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator
 
   # Discovers project file path and loads configuration.
   # Precendence of attempts:
@@ -131,7 +131,7 @@ class Projectinator
       # Validate mixin filepaths
       if @path_validator.filepath?( mixin )
         if !@file_wrapper.exist?( mixin )
-          @streaminator.stream_puts( "Cannot find mixin at #{mixin}", Verbosity::ERRORS )
+          @loginator.log( "Cannot find mixin at #{mixin}", Verbosity::ERRORS )
           validated = false
         end
 
@@ -149,7 +149,7 @@ class Projectinator
 
         if !found
           msg = "#{source} '#{mixin}' cannot be found in mixin load paths as '#{mixin + yaml_extension}' or among built-in mixins"
-          @streaminator.stream_puts( msg, Verbosity::ERRORS )
+          @loginator.log( msg, Verbosity::ERRORS )
           validated = false
         end
       end
@@ -208,7 +208,7 @@ class Projectinator
       # Log what the heck we loaded
       if !silent
         msg = "Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}"
-        @streaminator.stream_puts( msg, Verbosity::NORMAL, LogLabels::TITLE )
+        @loginator.log( msg, Verbosity::NORMAL, LogLabels::TITLE )
       end
 
       return config

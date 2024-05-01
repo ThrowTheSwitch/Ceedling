@@ -8,16 +8,16 @@
 require 'spec_helper'
 require 'ceedling/generator_test_results_sanity_checker'
 require 'ceedling/constants'
-require 'ceedling/streaminator'
+require 'ceedling/loginator'
 require 'ceedling/configurator'
 
 describe GeneratorTestResultsSanityChecker do
   before(:each) do
     # this will always be mocked
     @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :yaml_wrapper => nil, :system_wrapper => nil})
-    @streaminator = Streaminator.new({:streaminator_helper => nil, :verbosinator => nil, :loginator => nil, :stream_wrapper => nil})
+    @loginator = loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil, :stream_wrapper => nil})
 
-    @sanity_checker = described_class.new({:configurator => @configurator, :streaminator => @streaminator})
+    @sanity_checker = described_class.new({:configurator => @configurator, :loginator => @loginator})
   
     @results = {}
     @results[:ignores] = ['', '', '']
@@ -53,7 +53,7 @@ describe GeneratorTestResultsSanityChecker do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:ignored] = 0
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stream_puts)
+      allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
 
@@ -61,7 +61,7 @@ describe GeneratorTestResultsSanityChecker do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:failed] = 0
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stream_puts)
+      allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
 
@@ -69,21 +69,21 @@ describe GeneratorTestResultsSanityChecker do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:total] = 0
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stream_puts)
+      allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
 
     it 'rasies error if thorough check fails for error code not 255 not equal' do
       @configurator.sanity_checks = TestResultsSanityChecks::THOROUGH
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stream_puts)
+      allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 2)}.to raise_error(RuntimeError)
     end
 
     it 'rasies error if thorough check fails for error code 255 less than 255' do
       @configurator.sanity_checks = TestResultsSanityChecks::THOROUGH
       allow(@configurator).to receive(:extension_executable).and_return('')
-      allow(@streaminator).to receive(:stream_puts)
+      allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 255)}.to raise_error(RuntimeError)
     end
 

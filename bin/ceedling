@@ -28,7 +28,7 @@ require 'ceedling/constants'
 # Single exception handler for multiple booms
 def bootloader_boom_handler(loginator, exception)
   $stderr.puts( "\n" )
-  loginator.stream_puts( exception.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
+  loginator.log( exception.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
   $stderr.puts( exception.backtrace ) if ( defined?( PROJECT_DEBUG ) and PROJECT_DEBUG )
 end
 
@@ -36,15 +36,15 @@ end
 # Centralized exception handler for:
 #  1. Bootloader (bin/)
 #  2. Application (lib/) last resort / outer exception handling
-def boom_handler(streaminator, exception)
+def boom_handler(loginator, exception)
   $stderr.puts( "\n" )
 
-  if !streaminator.nil?
-    streaminator.stream_puts( exception.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
-    streaminator.stream_puts( "Backtrace ==>", Verbosity::DEBUG )
+  if !loginator.nil?
+    loginator.log( exception.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
+    loginator.log( "Backtrace ==>", Verbosity::DEBUG )
     # Output to console the exception backtrace, formatted like Ruby does it
-    streaminator.stream_puts( "#{exception.backtrace.first}: #{exception.message} (#{exception.class})", Verbosity::DEBUG )
-    streaminator.stream_puts( exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"), Verbosity::DEBUG )
+    loginator.log( "#{exception.backtrace.first}: #{exception.message} (#{exception.class})", Verbosity::DEBUG )
+    loginator.log( exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"), Verbosity::DEBUG )
 
   # Something went really wrong... logging isn't even up and running yet
   else
@@ -128,13 +128,13 @@ rescue Thor::UndefinedCommandError
       }
     )
   rescue StandardError => ex
-    boom_handler( objects[:streaminator], ex )
+    boom_handler( objects[:loginator], ex )
     exit(1)
   end
 
 # Bootloader boom handling
 rescue StandardError => ex
-  boom_handler( objects[:streaminator], ex )
+  boom_handler( objects[:loginator], ex )
   exit(1)
 end
 

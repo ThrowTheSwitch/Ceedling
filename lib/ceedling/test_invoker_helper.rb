@@ -10,7 +10,7 @@ require 'ceedling/exceptions'
 class TestInvokerHelper
 
   constructor :configurator,
-              :streaminator,
+              :loginator,
               :build_batchinator,
               :task_invoker,
               :test_context_extractor,
@@ -300,7 +300,7 @@ class TestInvokerHelper
                     "See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.\n\n"
 
         # Print helpful notice
-        @streaminator.stream_puts( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
       end
 
       # Re-raise the exception
