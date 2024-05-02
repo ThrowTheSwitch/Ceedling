@@ -14,10 +14,11 @@ class CliHelper
   constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :loginator
 
   def setup
-    #Aliases
+    # Aliases
     @actions = @actions_wrapper
 
-    @loginator.decorate( !windows? )
+    # Automatic setting of console printing decorations
+    @loginator.decorate( !windows?() )
   end
 
 
@@ -203,6 +204,35 @@ class CliHelper
 
     return !_tasks.empty?
   end
+
+
+  def process_decoration(env, config={})
+    decorate = false
+
+    # Environment variable takes precedence
+    _env = env['CEEDLING_DECORATORS']
+    if !_env.nil?
+      if (_env == '1' or _env.strip().downcase() == 'true')
+        decorate = true
+      end
+
+      @loginator.decorate( decorate )
+    end
+
+    # Otherwise inspect project configuration (could be blank and gets skipped)
+    walk = @config_walkinator.fetch_value( config, :project, :use_decorators )
+    if (!walk[:value].nil?)
+      case walk[:value]
+      when :all
+        @loginator.decorate( true )
+      when :none
+        @loginator.decorate( false )
+      else #:auto
+        # Retain what was set in `setup()` above based on platform
+      end
+    end
+  end
+
 
   def print_rake_tasks()
     Rake.application.standard_exception_handling do

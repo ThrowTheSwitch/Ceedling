@@ -29,6 +29,9 @@ class CliHandler
   def app_help(env, app_cfg, options, command, &thor_help)
     verbosity = @helper.set_verbosity( options[:verbosity] )
 
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
@@ -69,6 +72,9 @@ class CliHandler
 
   def new_project(env, app_cfg, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
 
     @path_validator.standardize_paths( dest )
 
@@ -123,6 +129,9 @@ class CliHandler
   def upgrade_project(env, app_cfg, options, path)
     @helper.set_verbosity( options[:verbosity] )
 
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     @path_validator.standardize_paths( path, options[:project] )
 
     # Check for existing project
@@ -161,6 +170,9 @@ class CliHandler
   def build(env:, app_cfg:, options:{}, tasks:)
     @helper.set_verbosity( options[:verbosity] )
 
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
@@ -176,16 +188,9 @@ class CliHandler
     )
 
     log_filepath = @helper.process_logging( options[:log], options[:logfile] )
-    if (config[:project] && config[:project][:use_decorators])
-      case config[:project][:use_decorators]
-      when :all
-        @loginator.decorate(true)
-      when :none
-        @loginator.decorate(false)
-      else #includes :auto
-        #nothing more to do. we've already figured out auto
-      end
-    end
+
+    # Handle console output of fun characters again now that we also have configuration
+    @helper.process_decoration( env, config )
 
     # Save references
     app_cfg.set_project_config( config )
@@ -222,9 +227,15 @@ class CliHandler
   def dumpconfig(env, app_cfg, options, filepath, sections)
     @helper.set_verbosity( options[:verbosity] )
 
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     @path_validator.standardize_paths( filepath, options[:project], *options[:mixin] )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    # Handle console output of fun characters again now that we also have configuration
+    @helper.process_decoration( env, config )
 
     # Exception handling to ensure we dump the configuration regardless of config validation errors
     begin
@@ -257,9 +268,15 @@ class CliHandler
   def environment(env, app_cfg, options)
     @helper.set_verbosity( options[:verbosity] )
 
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     @path_validator.standardize_paths( options[:project], *options[:mixin] )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    # Handle console output of fun characters again now that we also have configuration
+    @helper.process_decoration( env, config )
 
     # Save references
     app_cfg.set_project_config( config )
@@ -302,6 +319,9 @@ class CliHandler
   def list_examples(env, app_cfg, options)
     @helper.set_verbosity( options[:verbosity] )
 
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     # Process which_ceedling for app_cfg modifications but ignore return values
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
@@ -320,6 +340,9 @@ class CliHandler
 
   def create_example(env, app_cfg, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
 
     @path_validator.standardize_paths( dest )
 
@@ -359,6 +382,9 @@ class CliHandler
 
 
   def version()
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     require 'ceedling/version'
     version = <<~VERSION
          Ceedling => #{Ceedling::Version::CEEDLING}
@@ -375,6 +401,9 @@ class CliHandler
   private
 
   def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[], silent:false)
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     _, config = 
       @configinator.loadinate(
         builtin_mixins:BUILTIN_MIXINS,
@@ -383,6 +412,9 @@ class CliHandler
         env: env,
         silent: silent
       )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env, config )
 
     # Save reference to loaded configuration
     app_cfg.set_project_config( config )
