@@ -12,11 +12,12 @@ require 'ceedling/constants'
 class Loginator
 
   attr_reader :project_logging
+  attr_writer :decorate
 
   constructor :verbosinator, :stream_wrapper, :file_wrapper, :system_wrapper
 
   def setup()
-    $decorate = false if $decorate.nil?
+    @decorate = false
 
     @replace = {
       # Problematic characters pattern => Simple characters
@@ -90,15 +91,10 @@ class Loginator
     return if !(@verbosinator.should_output?( verbosity ))
 
     # Add labels and fun characters
-    console_str = format( string, verbosity, label, $decorate )
+    console_str = format( string, verbosity, label, @decorate )
 
     # Write to output stream after optionally removing any problematic characters
-    stream.print( sanitize( console_str, $decorate ) )
-  end
-
-
-  def decorate(d)
-    $decorate = d
+    stream.print( sanitize( console_str, @decorate ) )
   end
 
   ### Private ###
