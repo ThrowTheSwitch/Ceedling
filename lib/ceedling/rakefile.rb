@@ -46,9 +46,18 @@ begin
   #  3. Remove full path from $LOAD_PATH
   $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_path] )
   objects_filepath = File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'objects.yml' )
+  
+  # Create object hash and dependency injection context
   @ceedling = {} # Empty hash to be redefined if all goes well
   @ceedling = DIY::Context.from_yaml( File.read( objects_filepath ) )
+
+  # Inject objects already insatantiated from bin/ bootloader before building the rest
+  CEEDLING_HANDOFF_OBJECTS.each_pair {|name,obj| @ceedling.set_object( name.to_s, obj )}
+
+  # Build Ceedling application's objects
   @ceedling.build_everything()
+
+  # Simplify load path after construction
   $LOAD_PATH.delete( CEEDLING_APPCFG[:ceedling_lib_path] )
 
   # One-stop shopping for all our setup and such after construction

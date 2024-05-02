@@ -76,6 +76,21 @@ begin
   objects = {} # Empty initial hash to be redefined (fingers crossed)
   objects = DIY::Context.from_yaml( File.read( bin_objects_filepath ) )
   objects.build_everything()
+
+  # Extract objects shared between bootloader and application
+  # This prevents double instantiation and preserves object state in handoff
+  handoff_objects = {}
+  handoff = [
+    :loginator,
+    :file_wrapper,
+    :yaml_wrapper,
+    :config_walkinator,
+    :stream_wrapper,
+    :system_wrapper,
+    :verbosinator
+  ]
+  CEEDLING_HANDOFF_OBJECTS = handoff_objects
+  handoff.each {|name| handoff_objects[name] = objects[name] }
   
   # Remove all load paths we've relied on (main application will set up load paths again)
   $LOAD_PATH.delete( ceedling_bin_path )

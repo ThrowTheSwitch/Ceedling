@@ -5,7 +5,11 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# Loaded from ceedling/lib
+#
+# Loaded from lib/
+# ----------------
+#
+
 file_wrapper:
 
 yaml_wrapper:
@@ -25,7 +29,10 @@ loginator:
     - system_wrapper
     - stream_wrapper
 
-# Loaded from bin (here)
+#
+# Loaded from bin/
+# ----------------
+#
 
 actions_wrapper:
 
