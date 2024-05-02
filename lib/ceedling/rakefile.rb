@@ -30,7 +30,7 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
   return if duration.empty?
 
   @ceedling[:loginator].out( "\n" )
-  @ceedling[:loginator].log( "Ceedling #{run} completed in #{duration}", Verbosity::NORMAL, LogLabels::TITLE )
+  @ceedling[:loginator].log( "Ceedling #{run} completed in #{duration}", Verbosity::NORMAL, LogLabels::STOPWATCH )
 end
 
 start_time = nil # Outside scope of exception handling

@@ -32,8 +32,10 @@ class LogLabels
   WARNING    = 3   # 'WARNING:'
   ERROR      = 4   # 'ERROR:'
   EXCEPTION  = 5   # 'EXCEPTION:'
-  SEGFAULT   = 6   # 'SEGFAULT:'
-  TITLE      = 7   # Seedling decorator only
+  CONSTRUCT  = 6   # 🚧 decorator only
+  STOPWATCH  = 7   # ⏱️ decorator only
+  SEGFAULT   = 8   # ☠️ decorator only
+  TITLE      = 9   # 🌱 decorator only
 
   # Verbosity levels ERRORS – DEBUG default to certain labels or lack thereof
   # The above label constants are available to override Loginator's default AUTO level as needed

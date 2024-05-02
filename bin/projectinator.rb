@@ -208,7 +208,7 @@ class Projectinator
       # Log what the heck we loaded
       if !silent
         msg = "Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}"
-        @loginator.log( msg, Verbosity::NORMAL, LogLabels::TITLE )
+        @loginator.log( msg, Verbosity::NORMAL, LogLabels::CONSTRUCT )
       end
 
       return config
