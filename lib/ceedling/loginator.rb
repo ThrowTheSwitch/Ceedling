@@ -37,7 +37,7 @@ class Loginator
 
   # log() + out()
   # -----
-  # log() -> add "\n"
+  # log() -> string + "\n"
   # out() -> raw string to stream(s)
   #
   # Write the given string to an optional log file and to the console
@@ -73,11 +73,16 @@ class Loginator
     # Choose appropriate console stream
     stream = get_stream( verbosity, stream )
 
+    # Write to log as though Verbosity::DEBUG (no filtering at all) but without fun characters
     if @project_logging
-      # Add labels
-      file_str = format( string.dup(), verbosity, label, false )
+      file_str = string.dup() # Copy for safe inline modifications
 
-      # Write to log as though Verbosity::DEBUG (no filtering at all) but without fun characters
+      # Add labels
+      file_str = format( file_str, verbosity, label, false )
+
+      # Note: In practice, file-based logging only works with trailing newlines (i.e. `log()` calls)
+      #       `out()` calls will be a little ugly in the log file, but these are typically only
+      #       used for console logging anyhow.
       logfile( sanitize( file_str, false ), extract_stream_name( stream ) )
     end
 
@@ -174,9 +179,9 @@ class Loginator
 
   def extract_stream_name(stream)
     name = case (stream.fileno)
-      when 0 then '#<IO:$stdin>'
-      when 1 then '#<IO:$stdout>'
-      when 2 then '#<IO:$stderr>'
+      when 0 then '<IO:$stdin>'
+      when 1 then '<IO:$stdout>'
+      when 2 then '<IO:$stderr>'
       else stream.inspect
     end
     
@@ -184,8 +189,30 @@ class Loginator
   end
 
 
-  def logfile(string, heading='')
-    output = "#{heading} | #{@system_wrapper.time_now}\n#{string.strip}\n"
+  def logfile(string, stream='')
+    # Ex: '#<IO:$stdout> May  1 22:20:41 2024 | '
+    header = "#{stream} #{@system_wrapper.time_now('%b %e %H:%M:%S %Y')} | "
+
+    # Split any multiline strings so we can align them with the header
+    lines = string.strip.split("\n")
+
+    # Build output string with the first (can be only) line
+    output = "#{header}#{lines[0]}\n"
+
+    # If additional lines in a multiline string, pad them on the left
+    # to align with the header
+    if lines.length > 1
+      lines[1..-1].each {|line| output += ((' ' * header.length) + line + "\n")}
+    end
+
+    # Example output:
+    #
+    # <IO:$stdout> May  1 22:20:40 2024 | Determining Artifacts to Be Built...
+    # <IO:$stdout> May  1 22:20:40 2024 | Building Objects
+    #                                     ----------------
+    # <IO:$stdout> May  1 22:20:40 2024 | Compiling TestUsartModel.c...
+    # <IO:$stdout> May  1 22:20:40 2024 | Compiling TestUsartModel::unity.c...
+    # <IO:$stdout> May  1 22:20:40 2024 | Compiling TestUsartModel::cmock.c...
 
     @file_wrapper.write( @log_filepath, output, 'a' )
   end
