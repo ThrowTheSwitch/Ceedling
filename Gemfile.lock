@@ -3,6 +3,7 @@ GEM
   specs:
     constructor (2.0.0)
     deep_merge (1.2.2)
+    unicode-display_width (2.5.0)
     diff-lcs (1.5.0)
     diy (1.1.2)
       constructor (>= 1.0.0)
@@ -33,6 +34,7 @@ DEPENDENCIES
   constructor
   deep_merge
   diy
+  unicode-display_width
   rake
   require_all
   rr
