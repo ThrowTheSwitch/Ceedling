@@ -16,6 +16,7 @@ gem "diy"
 gem "rr"
 gem "thor"
 gem "deep_merge"
+gem "unicode-display_width"
 
 #these will be used if present, but ignored otherwise
 #gem "curses"
