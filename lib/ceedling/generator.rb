@@ -310,6 +310,7 @@ class Generator
 
     # Handle SegFaults
     if shell_result[:output] =~ /\s*Segmentation\sfault.*/i
+      @loginator.log( "Test executable #{test_name} encountered a segmentation fault", Verbosity::OBNOXIOUS, LogLabels::SEGFAULT )
       if @configurator.project_config_hash[:project_use_backtrace] && @configurator.project_config_hash[:test_runner_cmdline_args]
         # If we have the options and tools to learn more, dig into the details
         shell_result = @debugger_utils.gdb_output_collector(shell_result)
