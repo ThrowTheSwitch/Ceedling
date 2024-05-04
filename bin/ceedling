@@ -25,14 +25,6 @@ require 'cli'          # Located alongside this file in CEEDLING_BIN
 require 'constructor'  # Assumed installed via Ceedling gem dependencies
 require 'ceedling/constants'
 
-# Single exception handler for multiple booms
-def bootloader_boom_handler(loginator, exception)
-  $stderr.puts( "\n" )
-  loginator.log( exception.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
-  $stderr.puts( exception.backtrace ) if ( defined?( PROJECT_DEBUG ) and PROJECT_DEBUG )
-end
-
-
 # Centralized exception handler for:
 #  1. Bootloader (bin/)
 #  2. Application (lib/) last resort / outer exception handling
