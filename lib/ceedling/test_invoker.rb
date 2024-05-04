@@ -357,7 +357,7 @@ class TestInvoker
     # Runtime errors (parent is Exception) continue on up to be caught by Ruby itself.
     rescue StandardError => e
       @application.register_build_failure
-      @loginator.log("#{e.class} ==> #{e.message}", Verbosity::ERRORS)
+      @loginator.log( "#{e.class} ==> #{e.message}", Verbosity::ERRORS, LogLabels::EXCEPTION )
 
       # Debug backtrace
       @loginator.log("Backtrace ==>", Verbosity::DEBUG)
