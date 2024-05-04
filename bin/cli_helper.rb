@@ -18,7 +18,7 @@ class CliHelper
     @actions = @actions_wrapper
 
     # Automatic setting of console printing decorations
-    @loginator.decorate = !windows?()
+    @loginator.decorators = !windows?()
   end
 
 
@@ -216,7 +216,7 @@ class CliHelper
         decorate = true
       end
 
-      @loginator.decorate = decorate
+      @loginator.decorators = decorate
     end
 
     # Otherwise inspect project configuration (could be blank and gets skipped)
@@ -224,9 +224,9 @@ class CliHelper
     if (!walk[:value].nil?)
       case walk[:value]
       when :all
-        @loginator.decorate = true
+        @loginator.decorators = true
       when :none
-        @loginator.decorate = false
+        @loginator.decorators = false
       else #:auto
         # Retain what was set in `setup()` above based on platform
       end

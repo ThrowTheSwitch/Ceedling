@@ -16,7 +16,7 @@ class BuildBatchinator
   # Neaten up a build step with progress message and some scope encapsulation
   def build_step(msg, heading: true, &block)
     if heading
-      msg = @reportinator.generate_heading(msg)
+      msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
     else # Progress message
       msg = "\n" + @reportinator.generate_progress(msg)
     end

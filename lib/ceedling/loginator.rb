@@ -12,12 +12,12 @@ require 'ceedling/constants'
 class Loginator
 
   attr_reader :project_logging
-  attr_writer :decorate
+  attr_writer :decorators
 
   constructor :verbosinator, :stream_wrapper, :file_wrapper, :system_wrapper
 
   def setup()
-    @decorate = false
+    @decorators = false
 
     @replace = {
       # Problematic characters pattern => Simple characters
@@ -91,10 +91,42 @@ class Loginator
     return if !(@verbosinator.should_output?( verbosity ))
 
     # Add labels and fun characters
-    console_str = format( string, verbosity, label, @decorate )
+    console_str = format( string, verbosity, label, @decorators )
 
     # Write to output stream after optionally removing any problematic characters
-    stream.print( sanitize( console_str, @decorate ) )
+    stream.print( sanitize( console_str, @decorators ) )
+  end
+
+
+  def decorate(str, label=LogLabels::NONE)
+    return str if !@decorators
+
+    prepend = ''
+
+    case label
+    when LogLabels::NOTICE
+      prepend = 'ℹ️ '
+    when LogLabels::WARNING
+      prepend = '⚠️ '
+    when LogLabels::ERROR
+      prepend = '🪲 '
+    when LogLabels::EXCEPTION
+      prepend = '🧨 '
+    when LogLabels::CONSTRUCT
+      prepend = '🚧 '
+    when LogLabels::SEGFAULT
+      prepend = '☠️ '
+    when LogLabels::RUN
+      prepend = '👟 '
+    when LogLabels::PASS
+      prepend = '✅ '
+    when LogLabels::FAIL
+      prepend = '❌ '
+    when LogLabels::TITLE
+      prepend = '🌱 '
+    end
+
+    return prepend + str
   end
 
   ### Private ###
@@ -130,22 +162,9 @@ class Loginator
           prepend = '⚠️ '
         end
         # Otherwise, no decorators for verbosity levels
-      when LogLabels::NOTICE
-        prepend = 'ℹ️ '
-      when LogLabels::WARNING
-        prepend = '⚠️ '
-      when LogLabels::ERROR
-        prepend = '🪲 '
-      when LogLabels::EXCEPTION
-        prepend = '🧨 '
-      when LogLabels::CONSTRUCT
-        prepend = '🚧 '
-      when LogLabels::STOPWATCH
-        prepend = '⏱️ '
-      when LogLabels::SEGFAULT
-        prepend = '☠️ '
-      when LogLabels::TITLE
-        prepend = '🌱 '
+      else
+        # If not auto, go get us a decorator
+        prepend = decorate('', label)
       end
     end
 

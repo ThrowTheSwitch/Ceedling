@@ -30,7 +30,7 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
   return if duration.empty?
 
   @ceedling[:loginator].out( "\n" )
-  @ceedling[:loginator].log( "Ceedling #{run} completed in #{duration}", Verbosity::NORMAL, LogLabels::STOPWATCH )
+  @ceedling[:loginator].log( "Ceedling #{run} completed in #{duration}", Verbosity::NORMAL)
 end
 
 start_time = nil # Outside scope of exception handling
@@ -133,7 +133,8 @@ END {
 
     exit(0)
   else
-    @ceedling[:loginator].log( "Ceedling could not complete operations because of errors", Verbosity::ERRORS )
+    msg = "Ceedling could not complete operations because of errors"
+    @ceedling[:loginator].log( msg, Verbosity::ERRORS, LogLabels::TITLE )
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex
