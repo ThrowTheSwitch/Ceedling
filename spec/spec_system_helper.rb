@@ -67,6 +67,7 @@ class SystemContext
                               %Q{gem "diy"},
                               %Q{gem "thor"},
                               %Q{gem "deep_merge"},
+                              %Q{gem "unicode-display_width"},
                               %Q{gem "ceedling", :path => '#{git_repo}'}
                             ].join("\n")
 
