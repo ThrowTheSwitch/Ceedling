@@ -23,6 +23,7 @@ GEM
       rspec-support (~> 3.13.0)
     rspec-support (3.13.1)
     thor (1.3.1)
+    unicode-display_width (2.5.0)
 
 PLATFORMS
   x86_64-darwin-22
@@ -37,6 +38,7 @@ DEPENDENCIES
   rr
   rspec (~> 3.8)
   thor
+  unicode-display_width
 
 BUNDLED WITH
    2.4.17
