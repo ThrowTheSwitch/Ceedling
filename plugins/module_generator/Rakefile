@@ -52,7 +52,7 @@ def assert_file_not_exist(path)
 end
 
 def assert_test_run_contains(expected)
-  retval = `../../../bin/ceedling clobber test:all`
+  retval = `../../../bin/ceedling clobber test:all 2>&1`
   if (retval.include? expected)
     puts "Testing included `#{expected}`"
   else
@@ -61,7 +61,7 @@ def assert_test_run_contains(expected)
 end
 
 def call_create(cmd)
-  retval = `../../../bin/ceedling module:create[#{cmd}]`
+  retval = `../../../bin/ceedling module:create[#{cmd}] 2>&1`
   if retval.match? /Error/i
     raise "Received error when creating:\n#{retval}"
   else
@@ -70,7 +70,7 @@ def call_create(cmd)
 end
 
 def call_destroy(cmd)
-  retval = `../../../bin/ceedling module:destroy[#{cmd}]`
+  retval = `../../../bin/ceedling module:destroy[#{cmd}] 2>&1`
   if retval.match? /Error/i
     raise "Received error when destroying:\n#{retval}"
   else
@@ -79,7 +79,7 @@ def call_destroy(cmd)
 end
 
 def call_stub(cmd)
-  retval = `../../../bin/ceedling module:stub[#{cmd}]`
+  retval = `../../../bin/ceedling module:stub[#{cmd}] 2>&1`
   if retval.match? /Error/i
     raise "Received error when stubbing:\n#{retval}"
   else

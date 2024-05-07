@@ -22,7 +22,7 @@ class Generator
               :file_finder,
               :file_path_utils,
               :reportinator,
-              :streaminator,
+              :loginator,
               :plugin_manager,
               :file_wrapper,
               :debugger_utils,
@@ -56,7 +56,7 @@ class Generator
         module_name: test,
         filename: File.basename(input_filepath)
       )
-      @streaminator.stream_puts(msg, Verbosity::NORMAL)
+      @loginator.log(msg, Verbosity::NORMAL)
 
       cmock = @generator_mocks.manufacture( config )
       cmock.setup_mocks( arg_hash[:header_file] )
@@ -90,7 +90,7 @@ class Generator
       )
 
     msg = @reportinator.generate_progress("Generating runner for #{module_name}")
-    @streaminator.stream_puts(msg, Verbosity::NORMAL)
+    @loginator.log(msg, Verbosity::NORMAL)
 
     # build runner file
     begin
@@ -143,7 +143,7 @@ class Generator
       module_name: module_name,
       filename: File.basename(arg_hash[:source])
       ) if msg.empty?
-    @streaminator.stream_puts(msg, Verbosity::NORMAL)
+    @loginator.log(msg, Verbosity::NORMAL)
 
     command =
       @tool_executor.build_command_line(
@@ -207,7 +207,7 @@ class Generator
       module_name: module_name,
       filename: File.basename(arg_hash[:source])
       ) if msg.empty?
-    @streaminator.stream_puts(msg, Verbosity::NORMAL)
+    @loginator.log(msg, Verbosity::NORMAL)
 
     command =
       @tool_executor.build_command_line( 
@@ -249,7 +249,7 @@ class Generator
     @plugin_manager.pre_link_execute(arg_hash)
 
     msg = @reportinator.generate_progress("Linking #{File.basename(arg_hash[:executable])}")
-    @streaminator.stream_puts(msg, Verbosity::NORMAL)
+    @loginator.log(msg, Verbosity::NORMAL)
 
     command =
       @tool_executor.build_command_line(
@@ -287,7 +287,7 @@ class Generator
     @plugin_manager.pre_test_fixture_execute(arg_hash)
 
     msg = @reportinator.generate_progress("Running #{File.basename(arg_hash[:executable])}")
-    @streaminator.stream_puts(msg, Verbosity::NORMAL)
+    @loginator.log(msg, Verbosity::NORMAL)
 
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results
@@ -310,6 +310,7 @@ class Generator
 
     # Handle SegFaults
     if shell_result[:output] =~ /\s*Segmentation\sfault.*/i
+      @loginator.log( "Test executable #{test_name} encountered a segmentation fault", Verbosity::OBNOXIOUS, LogLabels::SEGFAULT )
       if @configurator.project_config_hash[:project_use_backtrace] && @configurator.project_config_hash[:test_runner_cmdline_args]
         # If we have the options and tools to learn more, dig into the details
         shell_result = @debugger_utils.gdb_output_collector(shell_result)

@@ -36,7 +36,7 @@ desc "Delete all build artifacts and temporary products."
 task(:clean) do
   # because :clean is a prerequisite for :clobber, intelligently display the progress message
   if (not @ceedling[:task_invoker].invoked?(/^clobber$/))
-    @ceedling[:streaminator].stream_puts("\nCleaning build artifacts...\n(For large projects, this task may take a long time to complete)\n\n")
+    @ceedling[:loginator].log("\nCleaning build artifacts...\n(For large projects, this task may take a long time to complete)\n\n")
   end
   CLEAN.each { |fn| REMOVE_FILE_PROC.call(fn) }
 end
@@ -44,7 +44,7 @@ end
 # redefine clobber so we can override how it advertises itself
 desc "Delete all generated files (and build artifacts)."
 task(:clobber => [:clean]) do
-  @ceedling[:streaminator].stream_puts("\nClobbering all generated files...\n(For large projects, this task may take a long time to complete)\n\n")
+  @ceedling[:loginator].log("\nClobbering all generated files...\n(For large projects, this task may take a long time to complete)\n\n")
   CLOBBER.each { |fn| REMOVE_FILE_PROC.call(fn) }
 end
 

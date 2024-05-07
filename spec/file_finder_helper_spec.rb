@@ -8,7 +8,7 @@
 require 'spec_helper'
 require 'ceedling/file_finder_helper'
 require 'ceedling/constants'
-require 'ceedling/streaminator'
+require 'ceedling/loginator'
 
 FILE_LIST = ['some/dir/a.c', 'some/dir/a.h', \
              'another/place/b.c','another/place/b.h',\
@@ -18,9 +18,9 @@ FILE_LIST = ['some/dir/a.c', 'some/dir/a.h', \
 describe FileFinderHelper do
   before(:each) do
     # this will always be mocked
-    @streaminator = Streaminator.new({:streaminator_helper => nil, :verbosinator => nil, :loginator => nil, :stream_wrapper => nil})
+    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil, :stream_wrapper => nil})
 
-    @ff_helper = described_class.new({:streaminator => @streaminator})
+    @ff_helper = described_class.new({:loginator => @loginator})
   end
   
   
@@ -56,14 +56,14 @@ describe FileFinderHelper do
       end
 
       it 'outputs a complaint if complain is warn' do
-        msg = 'WARNING: Found no file `d.c` in search paths.'
-        expect(@streaminator).to receive(:stream_puts).with(msg, Verbosity::COMPLAIN)
+        msg = 'Found no file `d.c` in search paths.'
+        expect(@loginator).to receive(:log).with(msg, Verbosity::COMPLAIN)
         @ff_helper.find_file_in_collection('d.c', FILE_LIST, :warn)
       end
 
       it 'outputs and raises an error if  complain is error' do
-        msg = 'ERROR: Found no file `d.c` in search paths.'
-        allow(@streaminator).to receive(:stream_puts).with(msg, Verbosity::ERRORS) do
+        msg = 'Found no file `d.c` in search paths.'
+        allow(@loginator).to receive(:log).with(msg, Verbosity::ERRORS) do
           expect{@ff_helper.find_file_in_collection('d.c', FILE_LIST, :warn)}.to raise_error
         end
       end

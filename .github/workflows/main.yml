@@ -74,7 +74,7 @@ jobs:
       # Run Tests
       - name: Run All Self Tests
         run: |
-          bundle exec rake ci
+          rake ci
 
       # Build & Install Gem
       - name:  build and install Gem

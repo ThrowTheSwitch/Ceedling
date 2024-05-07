@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-04-22
+# [1.0.0 pre-release] — 2024-05-07
 
 ## 🌟 Added
 
@@ -85,11 +85,11 @@ A community member submitted an [HTML report generation plugin](https://github.c
 
 ### Improved Segfault Handling
 
-Segmentation faults are now reported as failures instead of an error and given as fine of detail as possible for the current feature set. See the docs on `:backtrace` for more!
+Segmentation faults are now reported as failures instead of an error and given as fine of detail as possible for the current feature set. See the project configuration file documentation on `:project` ↳ `:use_backtrace` for more!
 
-### Pretty streamed output
+### Pretty logging output
 
-The output of Ceedling now optionally includes emoji and color. Ceedling will attempt to determine if your platform supports it. You can use `use_decorators` to force the feature on or off.
+Ceedling logging now optionally includes emoji and nice Unicode characters . Ceedling will attempt to determine if your platform supports it. You can use an environment variable `CEEDLING_DECORATORS` or your project configuration `:project` ↳ `:use_decorators` to force the feature on or off.
 
 ## 💪 Fixed
 
@@ -168,6 +168,10 @@ Documentation on Mixins and the new options for loading a project configuration 
 1. The plugin subsystem has incorporated logging to trace plugin activities at high verbosity levels.
 1. Additional events have been added for test preprocessing steps (the popular and useful [`command_hooks` plugin](plugins/command_hooks/README.md) has been updated accordingly).
 1. Built-in plugins have been updated for thread-safety as Ceedling is now able to execute builds with multiple threads.
+
+### Logging improvements
+
+Logging messages are more useful. A variety of logging messages have been added throughout Ceedling builds. Message labels (e.g. `ERROR:`) are now applied automatically). Exception handling is now centralized and significantly cleans up exception messages (backtraces are available with debug verbosity).
 
 ### Exit code options for test suite failures
 

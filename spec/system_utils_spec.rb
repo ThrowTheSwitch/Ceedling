@@ -30,7 +30,7 @@ describe SystemUtils do
       expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to eq(nil)
      
 
-      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
+      allow(@loginator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
       @sys_utils.tcsh_shell?
       
       @sys_utils.setup
@@ -41,24 +41,24 @@ describe SystemUtils do
 
   describe '#tcsh_shell?' do
     it 'returns true if exit code is zero and output contains tcsh' do
-      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
+      allow(@loginator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
       expect(@sys_utils.tcsh_shell?).to eq(true)
     end
 
     it 'returns false if exit code is not 0' do
-      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 1, :output =>'tcsh 1234567890'})
+      allow(@loginator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 1, :output =>'tcsh 1234567890'})
       expect(@sys_utils.tcsh_shell?).to eq(false)
     end
 
     it 'returns false if output does not contain tcsh' do
-      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'???'})
+      allow(@loginator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'???'})
       expect(@sys_utils.tcsh_shell?).to eq(false)
     end
 
     it 'returns last value if already run' do
-      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 1, :output =>'???'})
+      allow(@loginator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 1, :output =>'???'})
       expect(@sys_utils.tcsh_shell?).to eq(false)
-      allow(@streaminator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
+      allow(@loginator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
       expect(@sys_utils.tcsh_shell?).to eq(false)
     end
   end

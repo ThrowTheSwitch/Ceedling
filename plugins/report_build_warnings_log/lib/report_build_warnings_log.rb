@@ -29,7 +29,7 @@ class ReportBuildWarningsLog < Plugin
 
     # Convenient instance variable references
     @file_wrapper = @ceedling[:file_wrapper]
-    @streaminator = @ceedling[:streaminator]
+    @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
   end
 
@@ -103,14 +103,14 @@ class ReportBuildWarningsLog < Plugin
   # Walk warnings hash and write contents to log file(s)
   def write_logs( warnings, filename )
     msg = @reportinator.generate_heading( "Running Warnings Report" )
-    @streaminator.stream_puts( msg )
+    @loginator.log( msg )
 
     empty = false
 
     @mutex.synchronize { empty = warnings.empty? }
 
     if empty
-      @streaminator.stream_puts( "Build produced no warnings.\n" )
+      @loginator.log( "Build produced no warnings.\n" )
       return
     end
 
@@ -119,7 +119,7 @@ class ReportBuildWarningsLog < Plugin
         log_filepath = form_log_filepath( context, filename )
 
         msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
-        @streaminator.stream_puts( msg )
+        @loginator.log( msg )
 
         File.open( log_filepath, 'w' ) do |f|
           hash[:collection].each { |warning| f << warning }
@@ -128,7 +128,7 @@ class ReportBuildWarningsLog < Plugin
     end
 
     # White space at command line after progress messages
-    @streaminator.stream_puts( '' )
+    @loginator.log( '' )
   end
 
   def form_log_filepath(context, filename)

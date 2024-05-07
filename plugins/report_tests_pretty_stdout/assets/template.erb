@@ -46,7 +46,8 @@
 % end
 % total_string = hash[:results][:counts][:total].to_s
 % format_string = "%#{total_string.length}i"
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'OVERALL TEST SUMMARY')%>
+% decorator = (failed > 0) ? LogLabels::FAIL : LogLabels::PASS
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + @loginator.decorate('OVERALL TEST SUMMARY', decorator))%>
 % if (hash[:results][:counts][:total] > 0)
 TESTED:  <%=hash[:results][:counts][:total].to_s%>
 PASSED:  <%=sprintf(format_string, hash[:results][:counts][:passed])%>

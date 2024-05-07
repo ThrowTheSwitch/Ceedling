@@ -11,7 +11,7 @@ require 'ceedling/exceptions'
 
 class FileFinderHelper
 
-  constructor :streaminator
+  constructor :loginator
   
   
   def find_file_in_collection(filename, file_list, complain, original_filepath="")
@@ -88,13 +88,13 @@ class FileFinderHelper
   private
 
   def blow_up(filename, extra_message="")
-    error = ["ERROR: Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
-    raise CeedlingException.new(error)
+    error = ["Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
+    raise CeedlingException.new( error )
   end
     
   def gripe(filename, extra_message="")
-    warning = ["WARNING: Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
-    @streaminator.stream_puts(warning + extra_message, Verbosity::COMPLAIN)
+    warning = ["Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
+    @loginator.log( warning + extra_message, Verbosity::COMPLAIN )
   end
 
 end

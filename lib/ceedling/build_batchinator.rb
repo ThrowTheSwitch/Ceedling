@@ -7,7 +7,7 @@
 
 class BuildBatchinator
 
-  constructor :configurator, :streaminator, :reportinator
+  constructor :configurator, :loginator, :reportinator
 
   def setup
     @queue = Queue.new
@@ -16,12 +16,12 @@ class BuildBatchinator
   # Neaten up a build step with progress message and some scope encapsulation
   def build_step(msg, heading: true, &block)
     if heading
-      msg = @reportinator.generate_heading(msg)
+      msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
     else # Progress message
       msg = "\n" + @reportinator.generate_progress(msg)
     end
 
-    @streaminator.stream_puts(msg, Verbosity::NORMAL)
+    @loginator.log(msg, Verbosity::NORMAL)
 
     yield # Execute build step block
   end

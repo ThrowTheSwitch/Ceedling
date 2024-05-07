@@ -18,10 +18,10 @@ class ReportinatorHelper
   def print_shell_result(shell_result)
     if !(shell_result.nil?)
       msg = "Done in %.3f seconds." % shell_result[:time]
-      @ceedling[:streaminator].stream_puts(msg, Verbosity::NORMAL)
+      @ceedling[:loginator].log(msg, Verbosity::NORMAL)
 
       if !(shell_result[:output].nil?) && (shell_result[:output].length > 0)
-        @ceedling[:streaminator].stream_puts(shell_result[:output], Verbosity::OBNOXIOUS)
+        @ceedling[:loginator].log(shell_result[:output], Verbosity::OBNOXIOUS)
       end
     end
   end

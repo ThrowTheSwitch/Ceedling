@@ -55,8 +55,9 @@ class SystemWrapper
     return ENV[name]
   end
 
-  def time_now
-    return Time.now.asctime
+  def time_now(format=nil)
+    return Time.now.asctime if format.nil?
+    return Time.now.strftime( format )
   end
 
   def shell_capture3(command:, boom:false) 

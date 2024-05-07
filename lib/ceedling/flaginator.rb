@@ -30,7 +30,7 @@
 
 class Flaginator
 
-  constructor :configurator, :streaminator, :config_matchinator
+  constructor :configurator, :loginator, :config_matchinator
 
   def setup
     @section = :flags

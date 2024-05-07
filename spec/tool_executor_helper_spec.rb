@@ -9,7 +9,7 @@ require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/tool_executor_helper'
 require 'ceedling/system_wrapper'
-require 'ceedling/streaminator'
+require 'ceedling/loginator'
 require 'ceedling/system_utils'
 
 HAPPY_OUTPUT =
@@ -39,14 +39,14 @@ HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS =
   "\n".freeze
 
 ERROR_OUTPUT =
-  "ERROR: Shell command failed.\n" +
+  "Shell command failed.\n" +
   "> Shell executed command:\n" +
   "'gcc ab.c'\n" +
   "> And exited with status: [1].\n" +
   "\n"
 
 ERROR_OUTPUT_WITH_MESSAGE =
-  "ERROR: Shell command failed.\n" +
+  "Shell command failed.\n" +
   "> Shell executed command:\n" +
   "'gcc ab.c'\n" +
   "> Produced output:\n" +
@@ -58,12 +58,12 @@ ERROR_OUTPUT_WITH_MESSAGE =
 describe ToolExecutorHelper do
   before(:each) do
     # these will always be mocked
-    @sys_wraper = SystemWrapper.new
-    @sys_utils = SystemUtils.new({:system_wrapper => @sys_wraper})
-    @streaminator = Streaminator.new({:streaminator_helper => nil, :verbosinator => nil, :loginator => nil, :stream_wrapper => @sys_wraper})
+    @sys_wrapper = SystemWrapper.new
+    @sys_utils = SystemUtils.new({:system_wrapper => @sys_wrapper})
+    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil, :stream_wrapper => nil})
     
     
-    @tool_exe_helper = described_class.new({:streaminator => @streaminator, :system_utils => @sys_utils, :system_wrapper => @sys_wraper})
+    @tool_exe_helper = described_class.new({:loginator => @loginator, :system_utils => @sys_utils, :system_wrapper => @sys_wrapper})
   end
 
   
@@ -85,13 +85,13 @@ describe ToolExecutorHelper do
   describe '#osify_path_separators' do
     it 'returns path if system is not windows' do
       exe = '/just/some/executable.out'
-      expect(@sys_wraper).to receive(:windows?).and_return(false)
+      expect(@sys_wrapper).to receive(:windows?).and_return(false)
       expect(@tool_exe_helper.osify_path_separators(exe)).to eq(exe)
     end
 
     it 'returns modifed if system is windows' do
       exe = '/just/some/executable.exe'
-      expect(@sys_wraper).to receive(:windows?).and_return(true)
+      expect(@sys_wrapper).to receive(:windows?).and_return(true)
       expect(@tool_exe_helper.osify_path_separators(exe)).to eq("\\just\\some\\executable.exe")
     end
   end
@@ -119,18 +119,18 @@ describe ToolExecutorHelper do
 
 
       it 'returns "2>&1" if system is windows' do
-        expect(@sys_wraper).to receive(:windows?).and_return(true)
+        expect(@sys_wrapper).to receive(:windows?).and_return(true)
         expect(@tool_exe_helper.stderr_redirect_cmdline_append(@tool_config)).to eq('2>&1')
       end
 
       it 'returns "|&" if system is tcsh' do
-        expect(@sys_wraper).to receive(:windows?).and_return(false)
+        expect(@sys_wrapper).to receive(:windows?).and_return(false)
         expect(@sys_utils).to receive(:tcsh_shell?).and_return(true)
         expect(@tool_exe_helper.stderr_redirect_cmdline_append(@tool_config)).to eq('|&')
       end
 
       it 'returns "2>&1" if system is unix' do
-        expect(@sys_wraper).to receive(:windows?).and_return(false)
+        expect(@sys_wrapper).to receive(:windows?).and_return(false)
         expect(@sys_utils).to receive(:tcsh_shell?).and_return(false)
         expect(@tool_exe_helper.stderr_redirect_cmdline_append(@tool_config)).to eq('2>&1')
       end     
@@ -144,24 +144,24 @@ describe ToolExecutorHelper do
       end
 
       it 'and boom is true displays output' do
-        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
       end
 
       it 'and boom is true with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
       end
 
       it 'and boom is false displays output' do
-        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
 
       it 'and boom is false with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
     end
@@ -181,13 +181,13 @@ describe ToolExecutorHelper do
       end
 
       it 'and boom is false displays output' do
-        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_STATUS, Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT_WITH_STATUS, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
 
       it 'and boom is false with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stream_puts).with(HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS, Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS, Verbosity::OBNOXIOUS)
         @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
       end
     end
@@ -224,13 +224,13 @@ describe ToolExecutorHelper do
       end
 
       it 'and boom is true displays output' do
-        expect(@streaminator).to receive(:stream_puts).with(ERROR_OUTPUT, Verbosity::ERRORS)
+        expect(@loginator).to receive(:log).with(ERROR_OUTPUT, Verbosity::ERRORS)
         @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
       end
 
       it 'and boom is true with message displays output' do
         @shell_result[:output] = "xyz"
-        expect(@streaminator).to receive(:stream_puts).with(ERROR_OUTPUT_WITH_MESSAGE, Verbosity::ERRORS)
+        expect(@loginator).to receive(:log).with(ERROR_OUTPUT_WITH_MESSAGE, Verbosity::ERRORS)
         @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
       end
 

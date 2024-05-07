@@ -50,24 +50,26 @@ class PluginReportinator
       
   def run_test_results_report(hash, verbosity=Verbosity::NORMAL, &block)
     if @test_results_template.nil?
-      raise CeedlingException.new("No test results report template has been set.")
+      raise CeedlingException.new( "No test results report template has been set." )
     end
 
-    run_report( $stdout,
-                @test_results_template,
+    run_report( @test_results_template,
                 hash,
                 verbosity,
                 &block
     )
   end
   
-  def run_report(stream, template, hash=nil, verbosity=Verbosity::NORMAL)
+  def run_report(template, hash=nil, verbosity=Verbosity::NORMAL)
     failure = nil
     failure = yield() if block_given?
   
     @plugin_manager.register_build_failure( failure )
-    
-    @plugin_reportinator_helper.run_report( stream, template, hash, verbosity )
+  
+    # Set verbosity to error level if there were failures
+    verbosity = failure ? Verbosity::ERRORS : Verbosity::NORMAL
+
+    @plugin_reportinator_helper.run_report( template, hash, verbosity )
   end
   
   #

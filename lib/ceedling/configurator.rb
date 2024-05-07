@@ -160,7 +160,7 @@ class Configurator
       tool = config[:tools][name]
 
       if not tool.is_a?(Hash)
-        raise CeedlingException.new("ERROR: Expected configuration for tool :#{name} is a Hash but found #{tool.class}")
+        raise CeedlingException.new( "Expected configuration for tool :#{name} is a Hash but found #{tool.class}" )
       end
 
       # Populate name if not given
@@ -356,7 +356,7 @@ class Configurator
     blotter &= @configurator_setup.validate_required_section_values( config )
 
     if !blotter
-      raise CeedlingException.new("ERROR: Ceedling configuration failed validation")
+      raise CeedlingException.new("Ceedling configuration failed validation")
     end
   end
 
@@ -370,7 +370,7 @@ class Configurator
     blotter &= @configurator_setup.validate_plugins( config )
 
     if !blotter
-      raise CeedlingException.new("ERROR: Ceedling configuration failed validation")
+      raise CeedlingException.new( "Ceedling configuration failed validation" )
     end
   end
 

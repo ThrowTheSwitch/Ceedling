@@ -10,7 +10,7 @@ require 'ceedling/constants' # From Ceedling application
 
 class CliHandler
 
-  constructor :configinator, :projectinator, :cli_helper, :path_validator, :actions_wrapper, :streaminator
+  constructor :configinator, :projectinator, :cli_helper, :path_validator, :actions_wrapper, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
@@ -27,18 +27,21 @@ class CliHandler
 
   # Thor application help + Rake help (if available)
   def app_help(env, app_cfg, options, command, &thor_help)
-    @helper.set_verbosity( options[:verbosity] )
+    verbosity = @helper.set_verbosity( options[:verbosity] )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
 
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
-      @streaminator.stream_puts( 'Ceedling Application ' )
+      @loginator.out( 'Ceedling Application ', Verbosity::NORMAL, LogLabels::TITLE )
       thor_help.call( command ) if block_given?
       return
     end
 
     # Display Thor-generated help listing
-    @streaminator.stream_puts( 'Ceedling Application ' )
+    @loginator.out( 'Ceedling Application ', Verbosity::NORMAL, LogLabels::TITLE )
     thor_help.call( command ) if block_given?
 
     # If it was help for a specific command, we're done
@@ -48,7 +51,14 @@ class CliHandler
     @path_validator.standardize_paths( options[:project], *options[:mixin], )
     return if !@projectinator.config_available?( filepath:options[:project], env:env )
 
-    list_rake_tasks( env:env, app_cfg:app_cfg, filepath:options[:project], mixins:options[:mixin] )
+    list_rake_tasks(
+      env:env,
+      app_cfg: app_cfg,
+      filepath: options[:project],
+      mixins: options[:mixin],
+      # Silent Ceedling loading unless debug verbosity
+      silent: !(verbosity == Verbosity::DEBUG)
+    )
   end
 
 
@@ -62,6 +72,9 @@ class CliHandler
 
   def new_project(env, app_cfg, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
 
     @path_validator.standardize_paths( dest )
 
@@ -108,12 +121,16 @@ class CliHandler
       @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
-    @streaminator.stream_puts( "\nNew project '#{name}' created at #{dest}/\n" )
+    @loginator.out( "\n" )
+    @loginator.log( "New project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
   def upgrade_project(env, app_cfg, options, path)
     @helper.set_verbosity( options[:verbosity] )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
 
     @path_validator.standardize_paths( path, options[:project] )
 
@@ -125,8 +142,8 @@ class CliHandler
 
     which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
     if (which == :gem)
-      msg = "NOTICE: Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      @streaminator.stream_puts( msg, Verbosity::NORMAL )
+      msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
+      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
     end
 
     # Thor Actions for project tasks use paths in relation to this path
@@ -145,12 +162,16 @@ class CliHandler
       @helper.copy_docs( app_cfg[:ceedling_root_path], path )
     end
 
-    @streaminator.stream_puts( "\nUpgraded project at #{path}/\n" )
+    @loginator.out( "\n" )
+    @loginator.log( "Upgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
   def build(env:, app_cfg:, options:{}, tasks:)
     @helper.set_verbosity( options[:verbosity] )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
 
@@ -167,16 +188,9 @@ class CliHandler
     )
 
     log_filepath = @helper.process_logging( options[:log], options[:logfile] )
-    if (config[:project] && config[:project][:use_decorators])
-      case config[:project][:use_decorators]
-      when :all
-        @streaminator.decorate(true)
-      when :none
-        @streaminator.decorate(false)
-      else #includes :auto
-        #nothing more to do. we've already figured out auto
-      end
-    end
+
+    # Handle console output of fun characters again now that we also have configuration
+    @helper.process_decoration( env, config )
 
     # Save references
     app_cfg.set_project_config( config )
@@ -213,9 +227,15 @@ class CliHandler
   def dumpconfig(env, app_cfg, options, filepath, sections)
     @helper.set_verbosity( options[:verbosity] )
 
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     @path_validator.standardize_paths( filepath, options[:project], *options[:mixin] )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    # Handle console output of fun characters again now that we also have configuration
+    @helper.process_decoration( env, config )
 
     # Exception handling to ensure we dump the configuration regardless of config validation errors
     begin
@@ -234,11 +254,13 @@ class CliHandler
           default_tasks: default_tasks
         )
       else
-        @streaminator.stream_puts( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
+        @loginator.log( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
-      @streaminator.stream_puts( "\nDumped project configuration to #{filepath}\n" )      
+
+      @loginator.out( "\n" )
+      @loginator.log( "Dumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
     end
   end
 
@@ -246,9 +268,15 @@ class CliHandler
   def environment(env, app_cfg, options)
     @helper.set_verbosity( options[:verbosity] )
 
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     @path_validator.standardize_paths( options[:project], *options[:mixin] )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    # Handle console output of fun characters again now that we also have configuration
+    @helper.process_decoration( env, config )
 
     # Save references
     app_cfg.set_project_config( config )
@@ -277,17 +305,23 @@ class CliHandler
       end
     end
 
-    output = "\nEnvironment variables:\n"
+    output = "Environment variables:\n"
 
     env_list.sort.each do |line|
-      output << " * #{line}\n"
+      output << " • #{line}\n"
     end
 
-    @streaminator.stream_puts( output + "\n" )
+    @loginator.out( "\n" )
+    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
-  def list_examples(env, app_cfg)
+  def list_examples(env, app_cfg, options)
+    @helper.set_verbosity( options[:verbosity] )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     # Process which_ceedling for app_cfg modifications but ignore return values
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
@@ -295,16 +329,20 @@ class CliHandler
 
     raise( "No examples projects found") if examples.empty?
 
-    output = "\nAvailable example projects:\n"
+    output = "Available example projects:\n"
 
-    examples.each {|example| output << " * #{example}\n" }
+    examples.each {|example| output << " • #{example}\n" }
 
-    @streaminator.stream_puts( output + "\n" )
+    @loginator.out( "\n" )
+    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
   def create_example(env, app_cfg, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
 
     @path_validator.standardize_paths( dest )
 
@@ -342,19 +380,25 @@ class CliHandler
     # Copy in documentation
     @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
-    @streaminator.stream_puts( "\nExample project '#{name}' created at #{dest}/\n" )
+    @loginator.out( "\n" )
+    @loginator.log( "Example project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
-  def version()
+  def version(env)
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     require 'ceedling/version'
     version = <<~VERSION
-         Ceedling => #{Ceedling::Version::CEEDLING}
-            CMock => #{Ceedling::Version::CMOCK}
-            Unity => #{Ceedling::Version::UNITY}
-       CException => #{Ceedling::Version::CEXCEPTION}
+    Welcome to Ceedling!
+
+       Ceedling => #{Ceedling::Version::CEEDLING}
+          CMock => #{Ceedling::Version::CMOCK}
+          Unity => #{Ceedling::Version::UNITY}
+     CException => #{Ceedling::Version::CEXCEPTION}
     VERSION
-    @streaminator.stream_puts( version )
+    @loginator.log( version, Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -362,14 +406,21 @@ class CliHandler
 
   private
 
-  def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[])
+  def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[], silent:false)
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env )
+
     _, config = 
       @configinator.loadinate(
         builtin_mixins:BUILTIN_MIXINS,
         filepath: filepath,
         mixins: mixins,
-        env: env
+        env: env,
+        silent: silent
       )
+
+    # Handle console output of fun characters from environment variable only
+    @helper.process_decoration( env, config )
 
     # Save reference to loaded configuration
     app_cfg.set_project_config( config )
@@ -382,7 +433,8 @@ class CliHandler
       default_tasks: app_cfg[:default_tasks]
     )
 
-    @streaminator.stream_puts( "Ceedling Build & Plugin Tasks:\n(Parameterized tasks tend to need enclosing quotes or escape sequences in most shells)" )
+    msg = "Ceedling Build & Plugin Tasks:\n(Parameterized tasks tend to need enclosing quotes or escape sequences in most shells)"
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::TITLE )
 
     @helper.print_rake_tasks()
   end
