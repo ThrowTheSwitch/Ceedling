@@ -26,10 +26,13 @@ GEM
     unicode-display_width (2.5.0)
 
 PLATFORMS
+  ruby
+  x64-mingw32
   x86_64-darwin-22
+  x86_64-linux
 
 DEPENDENCIES
-  bundler
+  bundler (~> 2.5)
   constructor
   deep_merge
   diy
@@ -41,4 +44,4 @@ DEPENDENCIES
   unicode-display_width
 
 BUNDLED WITH
-   2.4.17
+   2.5.10

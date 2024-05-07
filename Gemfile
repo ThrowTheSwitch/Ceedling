@@ -7,7 +7,7 @@
 
 source "http://rubygems.org/"
 
-gem "bundler"
+gem "bundler", "~> 2.5"
 gem "rake"
 gem "rspec", "~> 3.8"
 gem "require_all"
