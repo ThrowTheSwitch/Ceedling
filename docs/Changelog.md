@@ -19,6 +19,16 @@ As was explained in the _[Highlights](#-Highlights)_, Ceedling can now run its i
 
 Enabling this speedup requires either or both of two simple configuration settings. See Ceedling’s [documentation](CeedlingPacket.md) for `:project` ↳ `:compile_threads` and `:project` ↳ `:test_threads`.
 
+### A proper command line
+
+Ceedling now offers a full command line interface with rich help, useful order-independent option flags, and more.
+
+The existing `new`, `upgrade`, `example`, and `exampples` commands remain but have been improved. For those commands that support it, you may now specify the project file to load (see new, related mixins feature discussed elsewhere), log file to write to, exit code handling behavior, and more from the command line.
+
+Try `ceedling help` and then `ceedling help <command>` to get started.
+
+See the _[Release Notes](ReleaseNotes.md)_ and _[CeedlingPacket](CeedlingPacket.md)_ for more on the new and improved command line.
+
 ### `TEST_INCLUDE_PATH(...)` & `TEST_SOURCE_FILE(...)`
 
 Issue [#743](https://github.com/ThrowTheSwitch/Ceedling/issues/743)
@@ -59,11 +69,11 @@ All the options for loading and modifying a project configuration are thoroughly
 
 Issue [#43](https://github.com/ThrowTheSwitch/Ceedling/issues/43)
 
-Each test executable is now built as a mini project. Using improved `:flags` handling and an updated section format within Ceedling’s project file, you have much better options for specifying flags presented to the various tools within your build, particulary within test builds.
+Each test executable is now built as a mini project. Using improved `:flags` handling and an updated section format within Ceedling’s project configuration, you have much better options for specifying flags presented to the various tools within your build, particulary within test builds.
 
 ### More better `:defines` handling
 
-Each test executable is now built as a mini project. Using improved `:defines` handling and an updated section format within Ceedling’s project file, you have much better options for specifying symbols used in your builds' compilation steps, particulary within test builds.
+Each test executable is now built as a mini project. Using improved `:defines` handling and an updated section format within Ceedling’s project configuration, you have much better options for specifying symbols used in your builds' compilation steps, particulary within test builds.
 
 One powerful new feature is the ability to test the same source file built differently for different tests. Imagine a source file has three different conditional compilation sections. You can now write unit tests for each of those sections without complicated gymnastics to cause your test suite to build and run properly.
 
@@ -105,7 +115,7 @@ Much glorious filepath and pathfile handling now abounds:
 * Matching globs were advertised in the documentation (erroneously, incidentally) but lacked full programmatic support.
 * Ceedling now tells you if your matching patterns don't work. Unfortunately, all Ceedling can determine is if a particular pattern yielded 0 results.
 
-### Bug fixes for command line tasks `files:header` and `files:support`
+### Bug fixes for command line build tasks `files:header` and `files:support`
 
 Longstanding bugs produced duplicate and sometimes incorrect lists of header files. Similarly, support file lists were not properly expanded from globs. Both of these problems have been fixed. The `files:header` command line task has replaced the `files:include` task.
 

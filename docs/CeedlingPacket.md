@@ -874,8 +874,8 @@ Ceedling provides robust command line help for application commands.
 Execute `ceedling help` for a summary view of all application commands.
 Execute `ceedling help <command>` for detailed help.
 
-_Note:_ Because the built-in command line help is thorough, we will only briefly
-list and explain the available application commands.
+_Note:_ Because the built-in command line help is thorough, we will only 
+briefly list and explain the available application commands.
 
 * `ceedling [no arguments]`:
 
@@ -885,18 +885,20 @@ list and explain the available application commands.
 
 * `ceedling build <tasks...>` or `ceedling <tasks...>`:
 
-  Runs the named build tasks. `build` is optional. Various option flags
-  exist to control what project configuration is loaded, verbosity 
-  levels, logging, etc. See next section for build tasks. Of note,
-  this application command provides optional test case filters using
-  traditional option flags (ex. `--test-case=<filter>`) whose contents
-  are provided to Rake test tasks behind the scenes.
+  Runs the named build tasks. `build` is optional (i.e. `ceedling test:all` 
+  is equivalent to `ceedling build test:all`). Various option flags
+  exist to control project configuration loading, verbosity levels, 
+  logging, test task filters, etc.
+
+  See next section to understand the build & plugin tasks this application
+  command is able to execute. Run `ceedling help build` to understand all
+  the command line flags that work with build & plugin tasks.
 
 * `ceedling dumpconfig`:
 
   Process project configuration and write final result to a YAML file. 
-  Various option flags exist to control what project configuration is 
-  loaded.
+  Various option flags exist to control project configuration loading,
+  configuration manipulation, and configuration sub-section extraction.
 
 * `ceedling environment`:
 
@@ -944,11 +946,14 @@ list and explain the available application commands.
 
   Displays version information for Ceedling and its components.
 
-## Ceedling build tasks
+## Ceedling build & plugin tasks
 
 Build task are loaded from your project configuration. Unlike 
 application commands that are fixed, build tasks vary depending on your
 project configuration and the files within your project structure.
+
+Ultimately, build & plugin tasks are executed by the `build` application
+command (but the `build` keyword can be omitted — see above).
 
 * `ceedling paths:*`:
 
