@@ -227,7 +227,7 @@ module CeedlingTasks
     desc "build [TASKS...]", "Run build tasks (`build` keyword not required)"
     method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
-    method_option :verbosity, :enum => ['silent', 'errors', 'warnings', VERBOSITY_NORMAL, 'obnoxious', VERBOSITY_DEBUG], :default => VERBOSITY_NORMAL, :aliases => ['-v'], :desc => "Sets logging level"
+    method_option :verbosity, :type => :string, :default => VERBOSITY_NORMAL, :aliases => ['-v'], :desc => "Sets logging level"
     method_option :log, :type => :boolean, :default => false, :aliases => ['-l'], :desc => "Enable logging to default filepath in build directory"
     method_option :logfile, :type => :string, :default => '', :desc => "Enable logging to given filepath"
     method_option :graceful_fail, :type => :boolean, :default => nil, :desc => "Force exit code of 0 for unit test failures"

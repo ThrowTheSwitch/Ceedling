@@ -100,6 +100,8 @@ class SystemContext
     end
   end
 
+  ############################################################
+  # Functions for manipulating environment settings during tests:
   def backup_env
     # Force a deep clone. Hacktacular, but works.
 
@@ -302,6 +304,44 @@ module CeedlingTestCases
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
         expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  def can_test_projects_with_named_verbosity
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling --verbosity=obnoxious 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+
+        expect(output).to match (/:post_test_fixture_execute/)
+      end
+    end
+  end
+
+  def can_test_projects_with_numerical_verbosity
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling -v=4 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+
+        expect(output).to match (/:post_test_fixture_execute/)
       end
     end
   end
