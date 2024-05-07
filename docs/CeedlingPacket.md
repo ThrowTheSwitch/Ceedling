@@ -2183,9 +2183,13 @@ migrated to the `:test_build` and `:release_build` sections.
   So, by default this feature is disabled on problematic platforms while 
   enabled on others.
 
-  _Note:_ If you find a monospaced font that provides emojis, etc. and
-  works with Windows’ command prompt, you can (1) Install the font (2)
-  change your command prompt’s font (3) set this option to `:all`.
+  _Notes:_
+  * A complementary environment variable `CEEDLING_DECORATORS` takes 
+    precedence over the project configuration setting. It merely forces
+    decorators on or off with a `true` (`1`) or `false` (`0`) string value.
+  * If you find a monospaced font that provides emojis, etc. and
+    works with Windows’ command prompt, you can (1) Install the font (2)
+    change your command prompt’s font (3) set this option to `:all`.
 
   **Default**: `:auto`
 
