@@ -380,7 +380,7 @@ module CeedlingTasks
     desc "version", "Display version details for Ceedling components"
     # No long_desc() needed
     def version()
-      @handler.version()
+      @handler.version( ENV )
     end
 
   end

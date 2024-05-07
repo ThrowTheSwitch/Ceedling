@@ -381,16 +381,18 @@ class CliHandler
   end
 
 
-  def version()
+  def version(env)
     # Handle console output of fun characters from environment variable only
     @helper.process_decoration( env )
 
     require 'ceedling/version'
     version = <<~VERSION
-         Ceedling => #{Ceedling::Version::CEEDLING}
-            CMock => #{Ceedling::Version::CMOCK}
-            Unity => #{Ceedling::Version::UNITY}
-       CException => #{Ceedling::Version::CEXCEPTION}
+    Welcome to Ceedling!
+
+       Ceedling => #{Ceedling::Version::CEEDLING}
+          CMock => #{Ceedling::Version::CMOCK}
+          Unity => #{Ceedling::Version::UNITY}
+     CException => #{Ceedling::Version::CEXCEPTION}
     VERSION
     @loginator.log( version, Verbosity::NORMAL, LogLabels::TITLE )
   end
