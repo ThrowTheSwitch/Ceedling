@@ -574,7 +574,7 @@ Ceedling repository. This test suite build option balances test coverage
 with suite execution time.
 
 ```shell
- > rake ci
+ > rake spec
 ```
 
 To run individual test files (Ceedling’s Ruby-based tests, that is) and 
