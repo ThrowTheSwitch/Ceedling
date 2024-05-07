@@ -1,5 +1,11 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
-DEPENDENCIES_LIBRARIES.each do |deplib|
+DEPENDENCIES_DEPS.each do |deplib|
 
   # Look up the name of this dependency library
   deplib_name = @ceedling[DEPENDENCIES_SYM].get_name(deplib)
@@ -13,6 +19,7 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   all_deps = @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
              @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib) +
              @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) +
+             @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib) +
              @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
 
   # Add a rule for building the actual libraries from dependency list
@@ -24,8 +31,9 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
 
       # We double-check that it doesn't already exist, because this process sometimes
       # produces multiple files, but they may have already been flagged as invoked
-      unless (File.exist?(path))
-
+      if (File.exist?(path))
+        @ceedling[:streaminator].stream_puts("Nothing to do for dependency #{path}", Verbosity::OBNOXIOUS)
+      else
         # Set Environment Variables, Fetch, and Build
         @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
         @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
@@ -36,13 +44,15 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
 
   # Add a rule for building the source and includes from dependency list
   (@ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) +
+   @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib) +
    @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
   ).each do |libpath|
     task libpath do |filetask|
-      path = filetask.name
+      path = File.expand_path(filetask.name)
 
-      unless (File.file?(path) || File.directory?(path))
-
+      if (File.file?(path) || File.directory?(path))
+        @ceedling[:streaminator].stream_puts("Nothing to do for dependency #{path}", Verbosity::OBNOXIOUS)
+      else
         # Set Environment Variables, Fetch, and Build
         @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
         @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
@@ -74,11 +84,15 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
 
     namespace :fetch do
       # Add task to directly clobber this dependency
-      task(deplib_name) do
+      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_source_path(deplib)) do
         @ceedling[DEPENDENCIES_SYM].fetch_if_required(deplib_name)
       end
     end
   end
+
+
+  # grab our own reference to the main configuration hash
+  project_config = @ceedling[:configurator].project_config_hash
 
   # Add source files to our list of things to build during release
   source_files = @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
@@ -92,10 +106,6 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   dynamic_libs = @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
   task RELEASE_SYM => dynamic_libs
 
-  # Add the include dirs / files to our list of dependencies for release
-  headers = @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib)
-  task RELEASE_SYM => headers
-
   # Paths to Libraries need to be Added to the Lib Path List
   all_libs = static_libs + dynamic_libs
   PATHS_LIBRARIES ||= []
@@ -108,6 +118,8 @@ DEPENDENCIES_LIBRARIES.each do |deplib|
   all_libs.each {|lib| LIBRARIES_SYSTEM << File.basename(lib,'.*').sub(/^lib/,'') }
   LIBRARIES_SYSTEM.uniq!
   LIBRARIES_SYSTEM.reject!{|s| s.empty?}
+
+  task :prepare => all_deps
 end
 
 # Add any artifact:include or :source folders to our release & test includes paths so linking and mocking work.
@@ -116,16 +128,16 @@ end
 # Add tasks for building or cleaning ALL depencies
 namespace DEPENDENCIES_SYM do
   desc "Deploy missing dependencies."
-  task :deploy => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:deploy:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :deploy => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:deploy:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 
   desc "Build any missing dependencies."
-  task :make => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:make:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :make => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:make:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 
   desc "Clean all dependencies."
-  task :clean => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:clean:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :clean => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:clean:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 
   desc "Fetch all dependencies."
-  task :fetch => DEPENDENCIES_LIBRARIES.map{|deplib| "#{DEPENDENCIES_SYM}:fetch:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :fetch => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:fetch:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
 end
 
 namespace :files do
@@ -133,7 +145,7 @@ namespace :files do
   task :dependencies do
     puts "dependency files:"
     deps = []
-    DEPENDENCIES_LIBRARIES.each do |deplib|
+    DEPENDENCIES_DEPS.each do |deplib|
       deps << @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib)
       deps << @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
     end
@@ -143,5 +155,3 @@ namespace :files do
   end
 end
 
-# Make sure that we build dependencies before attempting to tackle any of the unit tests
-Rake::Task[:test_deps].enhance ['dependencies:make']
