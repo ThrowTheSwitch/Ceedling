@@ -63,38 +63,44 @@ class Loginator
   #  - Any problematic console characters in a message are replaced with
   #    simpler variants
 
-  def log(string, verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
+  def log(message, verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
+    # Flatten if needed
+    message = message.flatten.join("\n") if (message.class == Array)
+
     # Call out() with string contatenated with "\n" (unless it aready ends with a newline)
-    string += "\n" unless string.end_with?( "\n" )
-    out( string, verbosity, label, stream )
+    message += "\n" unless message.end_with?( "\n" )
+    out( message, verbosity, label, stream )
   end
 
 
-  def out(string, verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
+  def out(message, verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
     # Choose appropriate console stream
     stream = get_stream( verbosity, stream )
 
+    # Flatten if needed
+    message = message.flatten.join("\n") if (message.class == Array)
+
     # Write to log as though Verbosity::DEBUG (no filtering at all) but without fun characters
     if @project_logging
-      file_str = string.dup() # Copy for safe inline modifications
+      file_msg = message.dup() # Copy for safe inline modifications
 
       # Add labels
-      file_str = format( file_str, verbosity, label, false )
+      file_msg = format( file_msg, verbosity, label, false )
 
       # Note: In practice, file-based logging only works with trailing newlines (i.e. `log()` calls)
       #       `out()` calls will be a little ugly in the log file, but these are typically only
       #       used for console logging anyhow.
-      logfile( sanitize( file_str, false ), extract_stream_name( stream ) )
+      logfile( sanitize( file_msg, false ), extract_stream_name( stream ) )
     end
 
     # Only output to console when message reaches current verbosity level
     return if !(@verbosinator.should_output?( verbosity ))
 
     # Add labels and fun characters
-    console_str = format( string, verbosity, label, @decorators )
+    console_msg = format( message, verbosity, label, @decorators )
 
     # Write to output stream after optionally removing any problematic characters
-    stream.print( sanitize( console_str, @decorators ) )
+    stream.print( sanitize( console_msg, @decorators ) )
   end
 
 
