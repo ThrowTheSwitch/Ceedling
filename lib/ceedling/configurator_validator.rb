@@ -13,7 +13,7 @@ require 'ceedling/file_path_utils'  # for glob handling class methods
 
 class ConfiguratorValidator
   
-  constructor :config_walkinator, :file_wrapper, :streaminator, :system_wrapper, :reportinator, :tool_validator
+  constructor :config_walkinator, :file_wrapper, :loginator, :system_wrapper, :reportinator, :tool_validator
 
   # Walk into config hash verify existence of data at key depth
   def exists?(config, *keys)
@@ -22,7 +22,7 @@ class ConfiguratorValidator
 
     if (not exist)
       walk = @reportinator.generate_config_walk( keys )
-      @streaminator.stream_puts("ERROR: Required config file entry #{walk} does not exist.", Verbosity::ERRORS )    
+      @loginator.log( "Required config file entry #{walk} does not exist.", Verbosity::ERRORS )    
     end
     
     return exist
@@ -47,7 +47,7 @@ class ConfiguratorValidator
       # If (partial) path does not exist, complain
       if (not @file_wrapper.exist?( _path ))
         walk = @reportinator.generate_config_walk( keys, hash[:depth] )
-        @streaminator.stream_puts("ERROR: Config path #{walk} => '#{_path}' does not exist in the filesystem.", Verbosity::ERRORS ) 
+        @loginator.log( "Config path #{walk} => '#{_path}' does not exist in the filesystem.", Verbosity::ERRORS ) 
         exist = false
       end 
     end
@@ -76,8 +76,8 @@ class ConfiguratorValidator
 
       if @file_wrapper.exist?( _path ) and !@file_wrapper.directory?( _path )
         # Path is a simple filepath (not a directory)
-        warning = "WARNING: #{walk} => '#{_path}' is a filepath and will be ignored (FYI :paths is directory-oriented while :files is file-oriented)"
-        @streaminator.stream_puts( warning, Verbosity::COMPLAIN )
+        warning = "#{walk} => '#{_path}' is a filepath and will be ignored (FYI :paths is directory-oriented while :files is file-oriented)"
+        @loginator.log( warning, Verbosity::COMPLAIN )
 
         next # Skip to next path
       end
@@ -98,8 +98,8 @@ class ConfiguratorValidator
       # Path did not work -- must be malformed glob or glob referencing path that does not exist.
       # (An earlier step validates all simple directory paths).
       if dirs.empty?
-        error = "ERROR: #{walk} => '#{_path}' yielded no directories -- matching glob is malformed or directories do not exist"
-        @streaminator.stream_puts( error, Verbosity::ERRORS )
+        error = "#{walk} => '#{_path}' yielded no directories -- matching glob is malformed or directories do not exist"
+        @loginator.log( error, Verbosity::ERRORS )
         valid = false
       end
     end
@@ -126,8 +126,8 @@ class ConfiguratorValidator
 
       if @file_wrapper.exist?( _path ) and @file_wrapper.directory?( _path )
         # Path is a simple directory path (and is naturally ignored by FileList without a glob pattern)
-        warning = "WARNING: #{walk} => '#{_path}' is a directory path and will be ignored (FYI :files is file-oriented while :paths is directory-oriented)"
-        @streaminator.stream_puts( warning, Verbosity::COMPLAIN )
+        warning = "#{walk} => '#{_path}' is a directory path and will be ignored (FYI :files is file-oriented while :paths is directory-oriented)"
+        @loginator.log( warning, Verbosity::COMPLAIN )
 
         next # Skip to next path
       end      
@@ -136,8 +136,8 @@ class ConfiguratorValidator
 
       # If file list is empty, complain
       if (filelist.size == 0)
-        error = "#{walk} => 'ERROR: #{_path}' yielded no files -- matching glob is malformed or files do not exist"
-        @streaminator.stream_puts( error, Verbosity::ERRORS ) 
+        error = "#{walk} => '#{_path}' yielded no files -- matching glob is malformed or files do not exist"
+        @loginator.log( error, Verbosity::ERRORS ) 
         valid = false
       end 
     end
@@ -152,7 +152,7 @@ class ConfiguratorValidator
     
     if (not @file_wrapper.exist?(validate_path))
       walk = @reportinator.generate_config_walk( keys, keys.size )
-      @streaminator.stream_puts("ERROR: Config path '#{validate_path}' associated with #{walk} does not exist in the filesystem.", Verbosity::ERRORS ) 
+      @loginator.log("Config path '#{validate_path}' associated with #{walk} does not exist in the filesystem.", Verbosity::ERRORS ) 
       return false
     end 
     

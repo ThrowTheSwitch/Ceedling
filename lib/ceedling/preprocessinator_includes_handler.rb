@@ -7,7 +7,7 @@
 
 class PreprocessinatorIncludesHandler
 
-  constructor :configurator, :tool_executor, :test_context_extractor, :yaml_wrapper, :streaminator, :reportinator
+  constructor :configurator, :tool_executor, :test_context_extractor, :yaml_wrapper, :loginator, :reportinator
 
   ##
   ## Includes Extraction Overview
@@ -55,7 +55,7 @@ class PreprocessinatorIncludesHandler
       module_name: test,
       filename: File.basename(filepath)
       )
-    @streaminator.stream_puts(msg, Verbosity::NORMAL)
+    @loginator.log(msg, Verbosity::NORMAL)
 
     # Extract shallow includes with preprocessor and fallback regex
     shallow = extract_shallow_includes(
@@ -195,7 +195,7 @@ class PreprocessinatorIncludesHandler
     # Look for the first line of the make rule output.
     if not make_rules =~ make_rule_matcher
       msg = "Preprocessor #include extraction failed: #{shell_result[:output]}"
-      @streaminator.stream_puts(msg, Verbosity::DEBUG)
+      @loginator.log(msg, Verbosity::DEBUG)
 
       return false, []
     end
@@ -215,7 +215,7 @@ class PreprocessinatorIncludesHandler
       module_name: test,
       filename: File.basename( filepath )
       )
-    @streaminator.stream_puts(msg, Verbosity::NORMAL)
+    @loginator.log(msg, Verbosity::NORMAL)
 
     # Use abilities of @test_context_extractor to extract the #includes via regex on the file
     return @test_context_extractor.scan_includes( filepath )

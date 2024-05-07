@@ -109,7 +109,7 @@ class UnityUtils
     if test_case_filters and !cmdline_args
       # Blow up if filters are in use but test runner command line arguments are not enabled
       msg = 'Unity test case filters cannot be used as configured. ' +
-            'Enable :test_runner -> :cmdline_args in your project configuration.'
+            'Enable :test_runner ↳ :cmdline_args in your project configuration.'
 
       raise CeedlingException.new( msg )
     end

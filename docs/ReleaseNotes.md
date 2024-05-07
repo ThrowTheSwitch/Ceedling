@@ -67,9 +67,17 @@ Until this release, Ceedling depended on Rake for most of its command line handl
 
 Ceedling now offers a full command line interface with rich help, useful order-independent option flags, and more.
 
-The existing `new`, `upgrade`, and `example` commands remain but have been improved. You may now even specify the project file to load, log file to write to, and exit code handling behavior from the command line.
+The existing `new`, `upgrade`, `example`, and `exampples` commands remain but have been improved. For those commands that support it, you may now specify the project file to load (see new, related mixins feature discussed elsewhere), log file to write to, exit code handling behavior, and more from the command line.
 
 Try `ceedling help` and then `ceedling help <command>` to get started.
+
+**_Important Notes on the New Command Line:_**
+
+* The new and improved features for running build tasks — loading a project file, merging mixins, verbosity handling, etc. — are documented within the application command `build` keyword. A build command line such as the following is now possible: `ceedling test:all --verbosity obnoxious --logfile my/path/build.log`. Run `ceedling help build` to learn more and definitely see the next bullet point as well.
+* The `build` keyword is assumed by Ceedling. That is, it’s optional. `ceedling test:all` is the same as `ceedling build test:all`. The `build` keyword handling tells the Ceedling application to execute the named build task dynamically generated from your project configuration. 
+* In the transition to remove Rake from Ceedling, two categories of command line interactions now exist. Note this distinction in the `help` headings.
+   1. **Application Commands** — `help`, `build`, `new`, `upgrade`, `environment`, `examples`, `example`, `dumpconfig`, and `version`. These have full help via `ceedling help <command>` and a variety of useful command line switches that conform to typical command line conventions.
+   1. **Build & Plugin Tasks** — Operations dynamically generated from your project configuration. These have only summary help (listed in `ceedling help`) and work just as they previously did. Common command line tasks including `ceedling test:all` and `ceedling release` are in this category.
 
 ### Medium Deal Highlights 🥈
 

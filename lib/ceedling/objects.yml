@@ -68,20 +68,20 @@ tool_executor:
   compose:
     - configurator
     - tool_executor_helper
-    - streaminator
+    - loginator
     - verbosinator
     - system_wrapper
 
 tool_executor_helper:
   compose:
-    - streaminator
+    - loginator
     - system_utils
     - system_wrapper
 
 tool_validator:
   compose:
     - file_wrapper
-    - streaminator
+    - loginator
     - system_wrapper
     - reportinator
 
@@ -98,7 +98,7 @@ configurator_setup:
     - configurator_builder
     - configurator_validator
     - configurator_plugins
-    - streaminator
+    - loginator
     - file_wrapper
 
 configurator_plugins:
@@ -110,7 +110,7 @@ configurator_validator:
   compose:
     - config_walkinator
     - file_wrapper
-    - streaminator
+    - loginator
     - system_wrapper
     - reportinator
     - tool_validator
@@ -123,17 +123,10 @@ configurator_builder:
 
 loginator:
   compose:
+    - verbosinator
     - file_wrapper
     - system_wrapper
-
-streaminator:
-  compose:
-    - streaminator_helper
-    - verbosinator
-    - loginator
     - stream_wrapper
-
-streaminator_helper:
 
 setupinator:
 
@@ -141,7 +134,7 @@ plugin_manager:
   compose:
     - configurator
     - plugin_manager_helper
-    - streaminator
+    - loginator
     - reportinator
     - system_wrapper
 
@@ -156,7 +149,7 @@ plugin_reportinator:
 plugin_reportinator_helper:
   compose:
     - configurator
-    - streaminator
+    - loginator
     - yaml_wrapper
     - file_wrapper
 
@@ -173,7 +166,7 @@ file_finder:
     - yaml_wrapper
 
 file_finder_helper:
-  compose: streaminator
+  compose: loginator
 
 test_context_extractor:
   compose:
@@ -184,7 +177,7 @@ include_pathinator:
   compose:
     - configurator
     - test_context_extractor
-    - streaminator
+    - loginator
     - file_wrapper
 
 task_invoker:
@@ -197,19 +190,19 @@ task_invoker:
 config_matchinator:
   compose:
     - configurator
-    - streaminator
+    - loginator
     - reportinator
 
 flaginator:
   compose:
     - configurator
-    - streaminator
+    - loginator
     - config_matchinator
 
 defineinator:
   compose:
     - configurator
-    - streaminator
+    - loginator
     - config_matchinator
 
 generator:
@@ -225,7 +218,7 @@ generator:
     - file_finder
     - file_path_utils
     - reportinator
-    - streaminator
+    - loginator
     - plugin_manager
     - file_wrapper
     - unity_utils
@@ -233,7 +226,7 @@ generator:
 
 generator_helper:
   compose:
-    - streaminator
+    - loginator
 
 generator_test_results:
   compose:
@@ -245,7 +238,7 @@ generator_test_results:
 generator_test_results_sanity_checker:
   compose:
     - configurator
-    - streaminator
+    - loginator
 
 generator_mocks:
   compose:
@@ -277,7 +270,7 @@ preprocessinator:
     - plugin_manager
     - configurator
     - test_context_extractor
-    - streaminator
+    - loginator
     - reportinator
     - rake_wrapper
 
@@ -287,7 +280,7 @@ preprocessinator_includes_handler:
     - tool_executor
     - test_context_extractor
     - yaml_wrapper
-    - streaminator
+    - loginator
     - reportinator
 
 preprocessinator_file_handler:
@@ -298,14 +291,14 @@ preprocessinator_file_handler:
     - tool_executor
     - file_path_utils
     - file_wrapper
-    - streaminator
+    - loginator
 
 preprocessinator_extractor:
 
 build_batchinator:
   compose:
     - configurator
-    - streaminator
+    - loginator
     - reportinator
 
 test_invoker:
@@ -315,7 +308,7 @@ test_invoker:
     - test_invoker_helper
     - plugin_manager
     - build_batchinator
-    - streaminator
+    - loginator
     - preprocessinator
     - task_invoker
     - generator
@@ -327,7 +320,7 @@ test_invoker:
 test_invoker_helper:
   compose:
     - configurator
-    - streaminator
+    - loginator
     - build_batchinator
     - task_invoker
     - test_context_extractor

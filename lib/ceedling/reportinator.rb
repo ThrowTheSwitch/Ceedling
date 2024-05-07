@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'unicode/display_width'
+
 ##
 # Pretifies reports
 class Reportinator
@@ -87,14 +89,14 @@ class Reportinator
     # ---------
     # <Message>
     # ---------
-    dash_count = ((width.nil?) ? message.strip.length : width)
+    dash_count = ((width.nil?) ? Unicode::DisplayWidth.of( message.strip ) : width)
     return "#{'-' * dash_count}\n#{message}\n#{'-' * dash_count}\n"
   end
 
   def generate_heading(message)
     # <Message>
     # ---------
-    return "\n#{message}\n#{'-' * message.length}"
+    return "\n#{message}\n#{'-' * Unicode::DisplayWidth.of( message.strip )}"
   end
 
   def generate_progress(message)
@@ -116,7 +118,7 @@ class Reportinator
     _keys = keys.clone
     _keys = _keys.slice(0, depth) if depth > 0
     _keys.reject! { |key| key.nil? }
-    return _keys.map{|key| ":#{key}"}.join(' -> ')
+    return _keys.map{|key| ":#{key}"}.join(' ↳ ')
   end
 
 end

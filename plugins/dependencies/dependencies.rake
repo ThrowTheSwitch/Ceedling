@@ -32,7 +32,7 @@ DEPENDENCIES_DEPS.each do |deplib|
       # We double-check that it doesn't already exist, because this process sometimes
       # produces multiple files, but they may have already been flagged as invoked
       if (File.exist?(path))
-        @ceedling[:streaminator].stream_puts("Nothing to do for dependency #{path}", Verbosity::OBNOXIOUS)
+        @ceedling[:loginator].log("Nothing to do for dependency #{path}", Verbosity::OBNOXIOUS)
       else
         # Set Environment Variables, Fetch, and Build
         @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
@@ -51,7 +51,7 @@ DEPENDENCIES_DEPS.each do |deplib|
       path = File.expand_path(filetask.name)
 
       if (File.file?(path) || File.directory?(path))
-        @ceedling[:streaminator].stream_puts("Nothing to do for dependency #{path}", Verbosity::OBNOXIOUS)
+        @ceedling[:loginator].log("Nothing to do for dependency #{path}", Verbosity::OBNOXIOUS)
       else
         # Set Environment Variables, Fetch, and Build
         @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)

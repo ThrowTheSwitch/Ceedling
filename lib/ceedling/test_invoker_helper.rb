@@ -10,7 +10,7 @@ require 'ceedling/exceptions'
 class TestInvokerHelper
 
   constructor :configurator,
-              :streaminator,
+              :loginator,
               :build_batchinator,
               :task_invoker,
               :test_context_extractor,
@@ -274,7 +274,7 @@ class TestInvokerHelper
         lib_paths )
     rescue ShellExecutionException => ex
       if ex.shell_result[:output] =~ /symbol/i
-        notice =    "NOTICE: If the linker reports missing symbols, the following may be to blame:\n" +
+        notice =    "If the linker reports missing symbols, the following may be to blame:\n" +
                     "  1. This test lacks #include statements corresponding to needed source files (see note below).\n" +
                     "  2. Project file paths omit source files corresponding to #include statements in this test.\n" +
                     "  3. Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n" +
@@ -294,13 +294,13 @@ class TestInvokerHelper
         notice +=   "\n"
         notice +=   "OPTIONS:\n" +
                     "  1. Doublecheck this test's #include statements.\n" +
-                    "  2. Simplify complex macros or fully specify symbols for this test in :project -> :defines.\n" +
+                    "  2. Simplify complex macros or fully specify symbols for this test in :project ↳ :defines.\n" +
                     "  3. If no header file corresponds to the needed source file, use the #{UNITY_TEST_SOURCE_FILE}()\n" +
                     "     build diective macro in this test to inject a source file into the build.\n\n" +
                     "See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.\n\n"
 
         # Print helpful notice
-        @streaminator.stream_puts(notice, Verbosity::COMPLAIN)
+        @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
       end
 
       # Re-raise the exception

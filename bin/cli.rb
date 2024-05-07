@@ -243,7 +243,7 @@ module CeedlingTasks
     \x5    > ceedling build test:all
 
     TASKS are zero or more build operations created from your project configuration.
-    If no tasks are provided, built-in default tasks or your :project -> 
+    If no tasks are provided, built-in default tasks or your :project ↳ 
     :default_tasks will be executed.
 
     Notes on Optional Flags:
@@ -327,6 +327,7 @@ module CeedlingTasks
     end
 
     desc "examples", "List available example projects"
+    method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc <<-LONGDESC
     `ceedling examples` lists the names of the example projects that come packaged with Ceedling.
 
@@ -334,7 +335,12 @@ module CeedlingTasks
     to extract an example project to your filesystem.
     LONGDESC
     def examples()
-      @handler.list_examples( ENV, @app_cfg )
+      # Get unfrozen copies so we can add / modify
+      _options = options.dup()
+
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+
+      @handler.list_examples( ENV, @app_cfg, _options )
     end
 
 
@@ -374,7 +380,7 @@ module CeedlingTasks
     desc "version", "Display version details for Ceedling components"
     # No long_desc() needed
     def version()
-      @handler.version()
+      @handler.version( ENV )
     end
 
   end

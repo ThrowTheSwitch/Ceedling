@@ -91,7 +91,7 @@ class CommandHooks < Plugin
   #
   def run_hook(which_hook, name="")
     if (@config[which_hook])
-      @ceedling[:streaminator].stream_puts("Running command hook #{which_hook}...")
+      @ceedling[:loginator].log("Running command hook #{which_hook}...")
       
       # Single tool config
       if (@config[which_hook].is_a? Hash)
@@ -105,7 +105,7 @@ class CommandHooks < Plugin
       
       # Tool config is bad
       else
-        @ceedling[:streaminator].stream_puts("Tool config for command hook #{which_hook} was poorly formed and not run", Verbosity::COMPLAINT)
+        @ceedling[:loginator].log("Tool config for command hook #{which_hook} was poorly formed and not run", Verbosity::COMPLAINT)
       end
     end
   end

@@ -5,13 +5,14 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+# Logging verbosity levels
 class Verbosity
-  SILENT      = 0   # as silent as possible (though there are some messages that must be spit out)
-  ERRORS      = 1   # only errors
-  COMPLAIN    = 2   # spit out errors and warnings/notices
-  NORMAL      = 3   # errors, warnings/notices, standard status messages
-  OBNOXIOUS   = 4   # all messages including extra verbose output (used for lite debugging / verification)
-  DEBUG       = 5   # special extra verbose output for hardcore debugging
+  SILENT      = 0   # As silent as possible (though there are some messages that must be spit out)
+  ERRORS      = 1   # Only errors
+  COMPLAIN    = 2   # Spit out errors and warnings/notices
+  NORMAL      = 3   # Errors, warnings/notices, standard status messages
+  OBNOXIOUS   = 4   # All messages including extra verbose output (used for lite debugging / verification)
+  DEBUG       = 5   # Special extra verbose output for hardcore debugging
 end
 
 VERBOSITY_OPTIONS = { 
@@ -22,6 +23,26 @@ VERBOSITY_OPTIONS = {
   :obnoxious => Verbosity::OBNOXIOUS,
   :debug     => Verbosity::DEBUG,
 }.freeze()
+
+# Label + decorator options for logging
+class LogLabels
+  NONE       =  0  # Override logic and settings with no label and no decoration
+  AUTO       =  1  # Default labeling and decorators
+  NOTICE     =  2  # decorator + 'NOTICE:'
+  WARNING    =  3  # decorator + 'WARNING:'
+  ERROR      =  4  # decorator + 'ERROR:'
+  EXCEPTION  =  5  # decorator + 'EXCEPTION:'
+  CONSTRUCT  =  6  # decorator only
+  RUN        =  7  # decorator only
+  SEGFAULT   =  8  # decorator only
+  PASS       =  9  # decorator only
+  FAIL       = 10  # decorator only
+  TITLE      = 11  # decorator only
+
+  # Verbosity levels ERRORS – DEBUG default to certain labels or lack thereof
+  # The above label constants are available to override Loginator's default AUTO level as needed
+  # See Loginator comments
+end
 
 class DurationCounts
   DAY_MS     = (24 * 60 * 60 * 1000)

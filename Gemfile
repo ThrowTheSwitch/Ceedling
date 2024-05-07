@@ -7,7 +7,7 @@
 
 source "http://rubygems.org/"
 
-gem "bundler"
+gem "bundler", "~> 2.5"
 gem "rake"
 gem "rspec", "~> 3.8"
 gem "require_all"
@@ -16,6 +16,7 @@ gem "diy"
 gem "rr"
 gem "thor"
 gem "deep_merge"
+gem "unicode-display_width"
 
 #these will be used if present, but ignored otherwise
 #gem "curses"

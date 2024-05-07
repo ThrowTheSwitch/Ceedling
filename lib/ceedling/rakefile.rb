@@ -29,24 +29,8 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
 
   return if duration.empty?
 
-  @ceedling[:streaminator].stream_puts( "\nCeedling #{run} completed in #{duration}" )
-end
-
-# Centralized last resort, outer exception handling
-def boom_handler(exception:, debug:)
-  if !@ceedling.nil? && !@ceedling[:streaminator].nil?
-    @ceedling[:streaminator].stream_puts("#{exception.class} ==> #{exception.message}", Verbosity::ERRORS)
-    if debug
-      @ceedling[:streaminator].stream_puts("Backtrace ==>", Verbosity::ERRORS)
-      @ceedling[:streaminator].stream_puts(exception.backtrace, Verbosity::ERRORS)
-    end
-  else
-    # something went really wrong... streaming isn't even up and running yet
-    $stderr.puts("#{exception.class} ==> #{exception.message}")
-    $stderr.puts("Backtrace ==>")
-    $stderr.puts(exception.backtrace)
-  end
-  exit(1)
+  @ceedling[:loginator].out( "\n" )
+  @ceedling[:loginator].log( "Ceedling #{run} completed in #{duration}", Verbosity::NORMAL)
 end
 
 start_time = nil # Outside scope of exception handling
@@ -62,8 +46,18 @@ begin
   #  3. Remove full path from $LOAD_PATH
   $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_path] )
   objects_filepath = File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'objects.yml' )
+  
+  # Create object hash and dependency injection context
+  @ceedling = {} # Empty hash to be redefined if all goes well
   @ceedling = DIY::Context.from_yaml( File.read( objects_filepath ) )
+
+  # Inject objects already insatantiated from bin/ bootloader before building the rest
+  CEEDLING_HANDOFF_OBJECTS.each_pair {|name,obj| @ceedling.set_object( name.to_s, obj )}
+
+  # Build Ceedling application's objects
   @ceedling.build_everything()
+
+  # Simplify load path after construction
   $LOAD_PATH.delete( CEEDLING_APPCFG[:ceedling_lib_path] )
 
   # One-stop shopping for all our setup and such after construction
@@ -100,8 +94,9 @@ begin
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
-rescue StandardError => e
-  boom_handler( exception:e, debug:(defined?(PROJECT_DEBUG) && PROJECT_DEBUG) )
+rescue StandardError => ex
+  boom_handler( @ceedling[:loginator], ex )
+  exit(1)
 end
 
 def test_failures_handler()
@@ -132,17 +127,18 @@ END {
     rescue => ex
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
-      boom_handler( exception:ex, debug:(defined?(PROJECT_DEBUG) && PROJECT_DEBUG) )
+      boom_handler( @ceedling[:loginator], ex )
       exit(1)
     end
 
     exit(0)
   else
-    @ceedling[:streaminator].stream_puts("\nERROR: Ceedling could not complete operations because of errors.", Verbosity::ERRORS)
+    msg = "Ceedling could not complete operations because of errors"
+    @ceedling[:loginator].log( msg, Verbosity::ERRORS, LogLabels::TITLE )
     begin
       @ceedling[:plugin_manager].post_error
     rescue => ex
-      boom_handler( exception:ex, debug:(defined?(PROJECT_DEBUG) && PROJECT_DEBUG) )
+      boom_handler( @ceedling[:loginator], ex)
     ensure
       exit(1)
     end

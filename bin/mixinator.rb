@@ -9,7 +9,7 @@ require 'deep_merge'
 
 class Mixinator
 
-  constructor :path_validator, :yaml_wrapper, :streaminator
+  constructor :path_validator, :yaml_wrapper, :loginator
 
   def setup
     # ...
@@ -102,14 +102,14 @@ class Mixinator
         _mixin = @yaml_wrapper.load( filepath )
 
         # Log what filepath we used for this mixin
-        @streaminator.stream_puts( " + Merging #{'(empty) ' if _mixin.nil?}#{source} mixin using #{filepath}", Verbosity::OBNOXIOUS )
+        @loginator.log( " + Merging #{'(empty) ' if _mixin.nil?}#{source} mixin using #{filepath}", Verbosity::OBNOXIOUS )
 
       # Reference mixin from built-in hash-based mixins
       else
         _mixin = builtins[filepath.to_sym()]
 
         # Log built-in mixin we used
-        @streaminator.stream_puts( " + Merging built-in mixin '#{filepath}' from #{source}", Verbosity::OBNOXIOUS )
+        @loginator.log( " + Merging built-in mixin '#{filepath}' from #{source}", Verbosity::OBNOXIOUS )
       end
 
       # Hnadle an empty mixin (it's unlikely but logically coherent and a good safety check)

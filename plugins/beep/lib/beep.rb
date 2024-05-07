@@ -32,13 +32,13 @@ class Beep < Plugin
     
     # Ensure configuration option is an actual tool
     if @tools[:beep_on_done].nil?
-      error = "Option :#{beep_config[:on_done]} for :beep -> :on_done plugin configuration does not map to a tool."
+      error = "Option :#{beep_config[:on_done]} for :beep ↳ :on_done plugin configuration does not map to a tool."
       raise CeedlingException.new( error )
     end
     
     # Ensure configuration option is an actual tool
     if @tools[:beep_on_error].nil?
-      error = "Option :#{beep_config[:on_done]} for :beep -> :on_error plugin configuration does not map to a tool."
+      error = "Option :#{beep_config[:on_done]} for :beep ↳ :on_error plugin configuration does not map to a tool."
       raise CeedlingException.new( error )
     end
 

@@ -11,13 +11,14 @@ require 'ceedling/constants' # From Ceedling application
 
 class CliHelper
 
-  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :streaminator
+  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :loginator
 
   def setup
-    #Aliases
+    # Aliases
     @actions = @actions_wrapper
 
-    @streaminator.decorate( !windows? )
+    # Automatic setting of console printing decorations
+    @loginator.decorators = !windows?()
   end
 
 
@@ -64,7 +65,7 @@ class CliHelper
 
     # Environment variable
     if !env['WHICH_CEEDLING'].nil?
-      @streaminator.stream_puts( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS )
+      @loginator.log( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS )
       which_ceedling = env['WHICH_CEEDLING'].strip()
       which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
     end
@@ -74,7 +75,7 @@ class CliHelper
       walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
       if !walked[:value].nil?
         which_ceedling = walked[:value].strip()
-        @streaminator.stream_puts( " > Set which Ceedling from config :project -> :which_ceedling => #{which_ceedling}", Verbosity::OBNOXIOUS )
+        @loginator.log( " > Set which Ceedling from config :project ↳ :which_ceedling => #{which_ceedling}", Verbosity::OBNOXIOUS )
         which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
       end
     end
@@ -83,14 +84,14 @@ class CliHelper
     if which_ceedling.nil?
       if @file_wrapper.directory?( 'vendor/ceedling' )
         which_ceedling = 'vendor/ceedling'
-        @streaminator.stream_puts( " > Set which Ceedling to be vendored installation", Verbosity::OBNOXIOUS )
+        @loginator.log( " > Set which Ceedling to be vendored installation", Verbosity::OBNOXIOUS )
       end
     end
 
     # Default to gem
     if which_ceedling.nil?
       which_ceedling = :gem
-      @streaminator.stream_puts( " > Defaulting to running Ceedling from Gem", Verbosity::OBNOXIOUS )
+      @loginator.log( " > Defaulting to running Ceedling from Gem", Verbosity::OBNOXIOUS )
     end
 
     # If we're launching from the gem, return :gem and initial Rakefile path
@@ -116,7 +117,7 @@ class CliHelper
     # Update variable to full application start path
     ceedling_path = app_cfg[:ceedling_rakefile_filepath]
     
-    @streaminator.stream_puts( " > Launching Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
+    @loginator.log( " > Launching Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
 
     return :path, ceedling_path
   end
@@ -204,6 +205,35 @@ class CliHelper
     return !_tasks.empty?
   end
 
+
+  def process_decoration(env, config={})
+    decorate = false
+
+    # Environment variable takes precedence
+    _env = env['CEEDLING_DECORATORS']
+    if !_env.nil?
+      if (_env == '1' or _env.strip().downcase() == 'true')
+        decorate = true
+      end
+
+      @loginator.decorators = decorate
+    end
+
+    # Otherwise inspect project configuration (could be blank and gets skipped)
+    walk = @config_walkinator.fetch_value( config, :project, :use_decorators )
+    if (!walk[:value].nil?)
+      case walk[:value]
+      when :all
+        @loginator.decorators = true
+      when :none
+        @loginator.decorators = false
+      else #:auto
+        # Retain what was set in `setup()` above based on platform
+      end
+    end
+  end
+
+
   def print_rake_tasks()
     Rake.application.standard_exception_handling do
       # (This required digging into Rake internals a bit.)
@@ -247,6 +277,8 @@ class CliHelper
     debug = (verbosity == Verbosity::DEBUG)
     Object.module_eval("PROJECT_DEBUG = debug")
     PROJECT_DEBUG.freeze()
+
+    return verbosity
   end
 
 
@@ -266,7 +298,7 @@ class CliHelper
       if walked[:value].nil?
         # Reformat list of symbols to list of :<section>s
         _sections.map! {|section| ":#{section.to_s}"}
-        msg = "Cound not find configuration section #{_sections.join(' -> ')}"
+        msg = "Cound not find configuration section #{_sections.join(' ↳ ')}"
         raise(msg)
       end
 
