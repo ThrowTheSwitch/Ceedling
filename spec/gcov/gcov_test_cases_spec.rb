@@ -207,8 +207,8 @@ module GcovTestCases
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
-        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
+                                       :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -238,8 +238,8 @@ module GcovTestCases
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
-        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
+                                       :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -269,7 +269,7 @@ module GcovTestCases
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
-        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.merge_project_yml_for_test({:test_runner => { :cmdline_args => true }})
 
         add_test_case = "\nvoid test_difference_between_two_numbers(void)\n"\
                         "{\n" \

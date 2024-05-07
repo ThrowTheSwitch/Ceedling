@@ -22,14 +22,6 @@ def convert_slashes(path)
   end
 end
 
-def add_project_settings(project_file_path, settings, show_final=false)
-  yaml_wrapper = YamlWrapper.new
-  project_hash = yaml_wrapper.load(project_file_path)
-  project_hash.deep_merge!(settings)
-  puts "\n\n#{project_hash.to_yaml}\n\n" if show_final
-  yaml_wrapper.dump(project_file_path, project_hash)
-end
-
 class GemDirLayout
   attr_reader :gem_dir_base_name
 
@@ -142,34 +134,26 @@ class SystemContext
     end
   end
 
-  def modify_project_yml_for_test(prefix, key, new_value)
-    add_line = nil
-    updated = false
-    updated_yml = []
-    File.read('project.yml').split("\n").each_with_index do |line, i|
-      m = line.match /\:#{key.to_s}\:\s*(.*)/
-      unless m.nil?
-        line = line.gsub(m[1], new_value)
-        updated = true
-      end
-
-      m = line.match /(\s*)\:#{prefix.to_s}\:/
-      unless m.nil?
-        add_line = [i+1, m[1]+'  ']
-      end
-
-      updated_yml.append(line)
-    end
-    unless updated
-      if add_line.nil?
-        updated_yml.insert(updated_yml.length - 1, ":#{prefix.to_s}:\n  :#{key.to_s}: #{new_value}")
-      else
-        updated_yml.insert(add_line[0], "#{add_line[1]}:#{key}: #{new_value}")
-      end
-    end
-
-    File.write('project.yml', updated_yml.join("\n"), mode: 'w')
+  ############################################################
+  # Functions for manipulating project.yml files during tests:
+  def merge_project_yml_for_test(settings, show_final=false)
+    yaml_wrapper = YamlWrapper.new
+    project_hash = yaml_wrapper.load('project.yml')
+    project_hash.deep_merge!(settings)
+    puts "\n\n#{project_hash.to_yaml}\n\n" if show_final
+    yaml_wrapper.dump('project.yml', project_hash)
   end
+
+  def append_project_yml_for_test(new_args)
+    fake_prj_yml= "#{File.read('project.yml')}\n#{new_args}"
+    File.write('project.yml', fake_prj_yml, mode: 'w')
+  end
+
+  def uncomment_project_yml_option_for_test(option)
+    fake_prj_yml= File.read('project.yml').gsub(/\##{option}/,option)
+    File.write('project.yml', fake_prj_yml, mode: 'w')
+  end
+  ############################################################
 end
 
 module CeedlingTestCases
@@ -329,7 +313,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
         settings = { :unity => { :defines => [ "UNITY_INCLUDE_EXEC_TIME" ] } }
-        add_project_settings("project.yml", settings)
+        @c.merge_project_yml_for_test(settings)
 
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
@@ -350,7 +334,7 @@ module CeedlingTestCases
         settings = { :unity => { :defines => [ "UNITY_INCLUDE_PRINT_FORMATTED" ] },
                      :defines => { :test => { :example_file_unity_printf => [ "TEST" ] } }
                    }
-        add_project_settings("project.yml", settings)
+        @c.merge_project_yml_for_test(settings)
 
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
@@ -368,7 +352,7 @@ module CeedlingTestCases
         FileUtils.copy_entry test_asset_path("auto_link_deep_dependencies/src/"), 'src/'
         FileUtils.cp_r test_asset_path("auto_link_deep_dependencies/test/."), 'test/'
         settings = { :project => { :auto_link_deep_dependencies => true } }
-        add_project_settings("project.yml", settings)
+        @c.merge_project_yml_for_test(settings)
 
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
@@ -389,7 +373,7 @@ module CeedlingTestCases
                                    'test_adc_hardware_special.c' => [ "TEST", "SPECIFIC_CONFIG" ],
                                  } }
                    }
-        add_project_settings("project.yml", settings)
+        @c.merge_project_yml_for_test(settings)
 
         output = `bundle exec ruby -S ceedling 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either passes or is ignored, we return success here
@@ -492,6 +476,8 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_verbose.c"), 'test/'
 
+        @c.uncomment_project_yml_option_for_test('- report_tests_raw_output_log')
+
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
@@ -542,9 +528,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
         enable_unity_extra_args = "\n:test_runner:\n"\
                                   "  :cmdline_args: true\n"
-        fake_prj_yml= File.read('project.yml').split("\n")
-        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
-        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+        @c.append_project_yml_for_test(enable_unity_extra_args)
 
         output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=test_add_numbers_adds_numbers 2>&1`
 
@@ -565,9 +549,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
         enable_unity_extra_args = "\n:test_runner:\n"\
                                   "  :cmdline_args: true\n"
-        fake_prj_yml= File.read('project.yml').split("\n")
-        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
-        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+        @c.append_project_yml_for_test(enable_unity_extra_args)
 
         output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers 2>&1`
 
@@ -588,9 +570,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
         enable_unity_extra_args = "\n:test_runner:\n"\
                                   "  :cmdline_args: true\n"
-        fake_prj_yml= File.read('project.yml').split("\n")
-        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
-        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+        @c.append_project_yml_for_test(enable_unity_extra_args)
 
         output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=zumzum 2>&1`
 
@@ -608,9 +588,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
         enable_unity_extra_args = "\n:test_runner:\n"\
                                   "  :cmdline_args: true\n"
-        fake_prj_yml= File.read('project.yml').split("\n")
-        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
-        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+        @c.append_project_yml_for_test(enable_unity_extra_args)
 
         output = `bundle exec ruby -S ceedling test:test_example_file_success --test_case=_adds_numbers --exclude_test_case=_adds_numbers 2>&1`
 
@@ -647,9 +625,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
         enable_unity_extra_args = "\n:test_runner:\n"\
                                   "  :cmdline_args: true\n"
-        fake_prj_yml= File.read('project.yml').split("\n")
-        fake_prj_yml.insert(fake_prj_yml.length() -1, enable_unity_extra_args)
-        File.write('project.yml', fake_prj_yml.join("\n"), mode: 'w')
+        @c.append_project_yml_for_test(enable_unity_extra_args)
 
         output = `bundle exec ruby -S ceedling test:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
 
@@ -704,7 +680,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => true }})
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -724,8 +700,8 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
-        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
+                                       :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -749,8 +725,8 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
-        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
+                                       :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling test:all --test_case=test_add_numbers_will_fail 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
@@ -774,8 +750,8 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
 
-        @c.modify_project_yml_for_test(:project, :use_backtrace, 'TRUE')
-        @c.modify_project_yml_for_test(:test_runner, :cmdline_args, 'TRUE')
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
+                                       :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling test:all --exclude_test_case=add_numbers_adds_numbers 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called

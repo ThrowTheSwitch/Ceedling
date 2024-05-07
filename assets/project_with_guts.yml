@@ -64,13 +64,21 @@
     #- fake_function_framework        # use FFF instead of CMock
 
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
-    #- test_suite_reporter
-    - report_tests_raw_output_log
-    - report_tests_pretty_stdout
-    #- report_tests_ide_stdout
+    #- report_build_warnings_log
     #- report_tests_gtestlike_stdout
-    #- teamcity_tests_report
-    #- warnings_report
+    #- report_tests_ide_stdout
+    #- report_tests_log_factory
+    - report_tests_pretty_stdout
+    #- report_tests_raw_output_log
+    #- report_tests_teamcity_stdout
+
+# Specify which reports you'd like from the log factory
+:report_tests_log_factory:
+  :reports:
+    - json 
+    - junit 
+    - cppunit 
+    - html 
 
 # override the default extensions for your system and toolchain
 :extension:
