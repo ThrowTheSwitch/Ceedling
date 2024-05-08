@@ -18,8 +18,8 @@ class PluginManagerHelper
 		return include
   end
 
-  def instantiate_plugin_script(plugin, system_objects, name)
-    return eval("#{plugin}.new(system_objects, name)")
+  def instantiate_plugin(plugin, system_objects, name, root_path)
+    return eval( "#{plugin}.new(system_objects, name, root_path)" )
   end
 
 end

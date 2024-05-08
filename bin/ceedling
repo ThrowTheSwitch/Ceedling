@@ -21,7 +21,6 @@ CEEDLING_APPCFG = CeedlingAppConfig.new()
 # Add load paths for `require 'ceedling/*'` statements in bin/ code
 $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_base_path] )
 
-require 'cli'          # Located alongside this file in CEEDLING_BIN
 require 'constructor'  # Assumed installed via Ceedling gem dependencies
 require 'ceedling/constants'
 
@@ -77,12 +76,17 @@ begin
     :file_wrapper,
     :yaml_wrapper,
     :config_walkinator,
-    :stream_wrapper,
     :system_wrapper,
     :verbosinator
   ]
   CEEDLING_HANDOFF_OBJECTS = handoff_objects
   handoff.each {|name| handoff_objects[name] = objects[name] }
+
+  # Load Thor-based top-level CLI after:
+  #  1. CEEDLING_BIN load path set
+  #  2. `objects` hash filled with DIY output
+  #  3. CEEDLING_HANDOFF_OBJECTS global is set
+  require 'cli'
   
   # Remove all load paths we've relied on (main application will set up load paths again)
   $LOAD_PATH.delete( ceedling_bin_path )

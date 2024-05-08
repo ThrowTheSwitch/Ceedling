@@ -16,8 +16,6 @@ DEPENDENCIES_SYM       = DEPENDENCIES_ROOT_NAME.to_sym
 class Dependencies < Plugin
 
   def setup
-    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
-
     # Set up a fast way to look up dependencies by name or static lib path
     @dependencies = {}
     @dynamic_libraries = []

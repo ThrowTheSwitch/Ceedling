@@ -64,7 +64,7 @@ describe GeneratorTestResults do
   before(:each) do
     # these will always be mocked
     @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :yaml_wrapper => nil, :system_wrapper => nil})
-    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil, :stream_wrapper => nil})
+    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
     
     # these will always be used as is.
     @yaml_wrapper = YamlWrapper.new

@@ -19,20 +19,25 @@ class PluginManager
   def load_programmatic_plugins(plugins, system_objects)
     environment = []
 
-    plugins.each do |plugin|
+    plugins.each do |hash|
       # Protect against instantiating object multiple times due to processing config multiple times (option files, etc)
-      next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
+      next if (@plugin_manager_helper.include?( @plugin_objects, hash[:plugin] ) )
       begin
-        @system_wrapper.require_file( "#{plugin}.rb" )
-        object = @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects, plugin )
+        @system_wrapper.require_file( "#{hash[:plugin]}.rb" )
+        object = @plugin_manager_helper.instantiate_plugin( 
+          camelize( hash[:plugin] ),
+          system_objects,
+          hash[:plugin],
+          hash[:root_path]
+        )
         @plugin_objects << object
         environment += object.environment
 
         # Add plugins to hash of all system objects
-        system_objects[plugin.downcase.to_sym] = object
+        system_objects[hash[:plugin].downcase().to_sym()] = object
       rescue
-        puts "Exception raised while trying to load plugin: #{plugin}"
-        raise
+        @loginator.log( "Exception raised while trying to load plugin: #{hash[:plugin]}", Verbosity::ERRORS )
+        raise # Raise again for backtrace, etc.
       end
     end
 
@@ -53,7 +58,7 @@ class PluginManager
 
       report += "\n"
 
-      @loginator.log(report, Verbosity::ERRORS)
+      @loginator.log( report, Verbosity::ERRORS )
     end
   end
 
@@ -84,7 +89,7 @@ class PluginManager
   def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
   def post_test_fixture_execute(arg_hash)
     # Special arbitration: Raw test results are printed or taken over by plugins handling the job
-    @loginator.log(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
+    @loginator.log( arg_hash[:shell_result][:output] ) if @configurator.plugins_display_raw_test_results
     execute_plugins(:post_test_fixture_execute, arg_hash)
   end
 
@@ -107,27 +112,16 @@ class PluginManager
   end
 
   def execute_plugins(method, *args)
-    handlers = 0
-
-    @plugin_objects.each do |plugin|
-      handlers += 1 if plugin.respond_to?(method) 
-    end
-
-    if handlers > 0
-      heading = @reportinator.generate_heading( "Plugins (#{handlers}) > :#{method}" )
-      @loginator.log(heading, Verbosity::OBNOXIOUS)
-    end
-
     @plugin_objects.each do |plugin|
       begin
         if plugin.respond_to?(method)
-          message = @reportinator.generate_progress( " + #{plugin.name}" )
-          @loginator.log(message, Verbosity::OBNOXIOUS)
+          message = @reportinator.generate_progress( "Plugin | #{camelize( plugin.name )} > :#{method}" )
+          @loginator.log( message, Verbosity::OBNOXIOUS )
           plugin.send(method, *args)
         end
       rescue
-        @loginator.log("Exception raised in plugin `#{plugin.name}` within build hook :#{method}")
-        raise
+        @loginator.log( "Exception raised in plugin `#{plugin.name}` within build hook :#{method}", Verbosity::ERRORS )
+        raise # Raise again for backtrace, etc.
       end
     end
   end

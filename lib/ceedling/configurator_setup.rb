@@ -212,10 +212,11 @@ class ConfiguratorSetup
     missing_plugins =
       Set.new( config[:plugins][:enabled] ) -
       Set.new( @configurator_plugins.rake_plugins ) -
-      Set.new( @configurator_plugins.programmatic_plugins )
+      Set.new( @configurator_plugins.programmatic_plugins.map {|p| p[:plugin]} )
 
     missing_plugins.each do |plugin|
-      @loginator.log("Plugin '#{plugin}' not found in built-in or project Ruby load paths. Check load paths and plugin naming and path conventions.", Verbosity::ERRORS)
+      message = "Plugin '#{plugin}' not found in built-in or project Ruby load paths. Check load paths and plugin naming and path conventions."
+      @loginator.log( message, Verbosity::ERRORS )
     end
 
     return ( (missing_plugins.size > 0) ? false : true )

@@ -13,8 +13,6 @@ file_wrapper:
 
 file_system_wrapper:
 
-stream_wrapper:
-
 rake_wrapper:
 
 yaml_wrapper:
@@ -126,7 +124,6 @@ loginator:
     - verbosinator
     - file_wrapper
     - system_wrapper
-    - stream_wrapper
 
 setupinator:
 

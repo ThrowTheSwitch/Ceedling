@@ -18,7 +18,7 @@ FILE_LIST = ['some/dir/a.c', 'some/dir/a.h', \
 describe FileFinderHelper do
   before(:each) do
     # this will always be mocked
-    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil, :stream_wrapper => nil})
+    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
 
     @ff_helper = described_class.new({:loginator => @loginator})
   end

@@ -5,20 +5,16 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'rbconfig'
 require 'app_cfg'
 require 'ceedling/constants' # From Ceedling application
 
 class CliHelper
 
-  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :loginator
+  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :loginator, :system_wrapper
 
   def setup
     # Aliases
     @actions = @actions_wrapper
-
-    # Automatic setting of console printing decorations
-    @loginator.decorators = !windows?()
   end
 
 
@@ -206,34 +202,6 @@ class CliHelper
   end
 
 
-  def process_decoration(env, config={})
-    decorate = false
-
-    # Environment variable takes precedence
-    _env = env['CEEDLING_DECORATORS']
-    if !_env.nil?
-      if (_env == '1' or _env.strip().downcase() == 'true')
-        decorate = true
-      end
-
-      @loginator.decorators = decorate
-    end
-
-    # Otherwise inspect project configuration (could be blank and gets skipped)
-    walk = @config_walkinator.fetch_value( config, :project, :use_decorators )
-    if (!walk[:value].nil?)
-      case walk[:value]
-      when :all
-        @loginator.decorators = true
-      when :none
-        @loginator.decorators = false
-      else #:auto
-        # Retain what was set in `setup()` above based on platform
-      end
-    end
-  end
-
-
   def print_rake_tasks()
     Rake.application.standard_exception_handling do
       # (This required digging into Rake internals a bit.)
@@ -406,7 +374,7 @@ class CliHelper
     end
 
     # Mark ceedling as an executable
-    @actions._chmod( File.join( vendor_path, 'bin', 'ceedling' ), 0755 ) unless windows?
+    @actions._chmod( File.join( vendor_path, 'bin', 'ceedling' ), 0755 ) unless @system_wrapper.windows?
 
     # Assembly necessary subcomponent dirs
     components = [
@@ -454,7 +422,7 @@ class CliHelper
     end
 
     # Create executable helper scripts in project root
-    if windows?
+    if @system_wrapper.windows?
       # Windows command prompt launch script
       @actions._copy_file(
         File.join( 'assets', 'ceedling.cmd'),
@@ -471,15 +439,6 @@ class CliHelper
       )
       @actions._chmod( launch, 0755 )
     end
-  end
-
-  ### Private ###
-
-  private
-
-  def windows?
-    return ((RbConfig::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false) if defined?( RbConfig )
-    return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
   end
 
 end
