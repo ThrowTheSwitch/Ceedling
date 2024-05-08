@@ -85,16 +85,16 @@ class ConfiguratorPlugins
   end
 
 
-  # Gather up just names of .rb `Plugin` subclasses that exist in plugin paths + lib/
+  # Gather up names of .rb `Plugin` subclasses and root paths that exist in plugin paths + lib/
   def find_programmatic_plugins(config, plugin_paths)
     @programmatic_plugins = []
 
     config[:plugins][:enabled].each do |plugin|
       if path = plugin_paths[(plugin + '_path').to_sym]
-        script_plugin_path = File.join(path, "lib", "#{plugin}.rb")
+        plugin_path = File.join( path, "lib", "#{plugin}.rb" )
 
-        if @file_wrapper.exist?(script_plugin_path)
-          @programmatic_plugins << plugin
+        if @file_wrapper.exist?(plugin_path)
+          @programmatic_plugins << {:plugin => plugin, :root_path => path}
         end
       end
     end

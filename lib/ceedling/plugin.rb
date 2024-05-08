@@ -9,9 +9,10 @@ class Plugin
   attr_reader :name, :environment
   attr_accessor :plugin_objects
 
-  def initialize(system_objects, name)
+  def initialize(system_objects, name, root_path)
     @environment = []
     @ceedling = system_objects
+    @plugin_root_path = root_path
     @name = name
     self.setup
   end

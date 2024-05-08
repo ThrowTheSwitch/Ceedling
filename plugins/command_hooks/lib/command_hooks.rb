@@ -35,7 +35,6 @@ class CommandHooks < Plugin
       :post_build                => ((defined? TOOLS_POST_BUILD)                ? TOOLS_POST_BUILD                : nil ),
       :post_error                => ((defined? TOOLS_POST_ERROR)                ? TOOLS_POST_ERROR                : nil ),
     }
-    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
   end
 
   def pre_mock_preprocess(arg_hash);       run_hook(:pre_mock_preprocess,       arg_hash[:header_file] ); end

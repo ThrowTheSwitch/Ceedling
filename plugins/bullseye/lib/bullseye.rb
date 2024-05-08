@@ -26,8 +26,7 @@ class Bullseye < Plugin
   def setup
     @result_list = []
     @environment = [ {:covfile => File.join( BULLSEYE_ARTIFACTS_PATH, 'test.cov' )} ]
-    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
-    @coverage_template_all = @ceedling[:file_wrapper].read(File.join(@plugin_root, 'assets/template.erb'))
+    @coverage_template_all = @ceedling[:file_wrapper].read( File.join( @plugin_root_path, 'assets/template.erb' ) )
   end
 
   def config

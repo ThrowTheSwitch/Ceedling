@@ -16,8 +16,7 @@ class ReportTestsPrettyStdout < Plugin
     @mutex = Mutex.new
     
     # Fetch the test results template for this plugin
-    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
-    template = @ceedling[:file_wrapper].read(File.join(@plugin_root, 'assets/template.erb'))
+    template = @ceedling[:file_wrapper].read( File.join( @plugin_root_path, 'assets/template.erb' ) )
 
     # Set the report template
     @ceedling[:plugin_reportinator].register_test_results_template( template )

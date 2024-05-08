@@ -10,11 +10,9 @@ require 'fff_mock_generator'
 
 class Fff < Plugin
 
-  # Set up Ceedling to use this plugin.
+  # Set up Ceedling to use this plugin
   def setup
-    # Get the location of this plugin.
-    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
-    puts "Using fake function framework (fff)..."
+    @ceedling[:loginator].log( "Using Fake Function Framework (fff)...", Verbosity::OBNOXIOUS )
   end
 
   def post_runner_generate(arg_hash)
@@ -53,7 +51,7 @@ class FffCMockWrapper
 
   def generate_mock(header_file_to_mock, folder=nil)
       module_name = File.basename(header_file_to_mock, '.h')
-      puts "Creating mock for #{module_name}..." unless @silent
+      @ceedling[:loginator].log( "Creating fake functions for #{module_name}..." ) unless @silent
       mock_name = @cm_config.mock_prefix + module_name + @cm_config.mock_suffix
       mock_path = @cm_config.mock_path + (folder.nil? ? '' : File.join(folder,''))
       if @cm_config.subdir
@@ -68,8 +66,8 @@ class FffCMockWrapper
       # Create the directory if it doesn't exist.
       mkdir_p full_path_for_mock.pathmap("%d")
 
-      # Generate the mock header file.
-      puts "Creating mock: #{full_path_for_mock}.h"
+      # Generate the fake function header file.
+      @ceedling[:loginator].log( "Creating fake functions: #{full_path_for_mock}.h" )
 
       # Create the mock header.
       File.open("#{full_path_for_mock}.h", 'w') do |f|
