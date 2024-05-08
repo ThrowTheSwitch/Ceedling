@@ -106,10 +106,7 @@ class SystemContext
   ############################################################
   # Functions for manipulating environment settings during tests:
   def backup_env
-    # Force a deep clone. Hacktacular, but works.
-
-    yaml_wrapper = YamlWrapper.new
-    @_env = yaml_wrapper.load_string(ENV.to_hash.to_yaml)
+    @_env = ENV.to_hash
   end
 
   def reduce_env(destroy_keys=[])
@@ -123,6 +120,10 @@ class SystemContext
 
   def restore_env
     if @_env
+      # delete environment variables we've added since we started
+      ENV.to_hash.each_pair {|k,v| ENV.delete(k) unless @_env.include?(k) }
+
+      # restore environment variables we've modified since we started
       @_env.each_pair {|k,v| ENV[k] = v}
     else
       raise InvalidBackupEnv.new
