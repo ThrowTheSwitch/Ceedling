@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 class PreprocessinatorExtractor
   def extract_base_file_from_preprocessed_expansion(filepath)
     # preprocessing by way of toolchain preprocessor expands macros, eliminates
@@ -8,7 +15,6 @@ class PreprocessinatorExtractor
     # iterate through all lines and alternate between extract and ignore modes
     # all lines between a '#'line containing file name of our filepath and the
     # next '#'line should be extracted
-
     base_name  = File.basename(filepath)
     not_pragma = /^#(?!pragma\b)/ # preprocessor directive that's not a #pragma
     pattern    = /^#.*(\s|\/|\\|\")#{Regexp.escape(base_name)}/
