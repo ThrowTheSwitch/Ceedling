@@ -14,10 +14,26 @@ class Loginator
   attr_reader :project_logging
   attr_writer :decorators
 
-  constructor :verbosinator, :stream_wrapper, :file_wrapper, :system_wrapper
+  constructor :verbosinator, :file_wrapper, :system_wrapper
 
   def setup()
     @decorators = false
+
+    # Friendly robustification for certain testing scenarios
+    unless @system_wrapper.nil?
+      # Automatic setting of console printing decorations based on platform
+      @decorators = !@system_wrapper.windows?()
+
+      # Environment variable takes precedence over automatic setting
+      _env = @system_wrapper.env_get('CEEDLING_DECORATORS') if !@system_wrapper.nil?
+      if !_env.nil?
+        if (_env == '1' or _env.strip().downcase() == 'true')
+          @decorators = true
+        elsif (_env == '0' or _env.strip().downcase() == 'false')
+          @decorators = false
+        end
+      end
+    end
 
     @replace = {
       # Problematic characters pattern => Simple characters
@@ -29,6 +45,7 @@ class Loginator
     @log_filepath = nil
   end
 
+
   def set_logfile( log_filepath )
     if !log_filepath.empty?
       @project_logging = true
@@ -36,10 +53,9 @@ class Loginator
     end
   end
 
-  # log() + out()
+
+  # log()
   # -----
-  # log() -> string + "\n"
-  # out() -> raw string to stream(s)
   #
   # Write the given string to an optional log file and to the console
   #  - Logging statements to a file are always at the highest verbosity
@@ -63,22 +79,15 @@ class Loginator
   #  - Any problematic console characters in a message are replaced with
   #    simpler variants
 
-  def log(message, verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
-    # Flatten if needed
-    message = message.flatten.join("\n") if (message.class == Array)
-
-    # Call out() with string contatenated with "\n" (unless it aready ends with a newline)
-    message += "\n" unless message.end_with?( "\n" )
-    out( message, verbosity, label, stream )
-  end
-
-
-  def out(message, verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
+  def log(message="\n", verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
     # Choose appropriate console stream
     stream = get_stream( verbosity, stream )
 
     # Flatten if needed
     message = message.flatten.join("\n") if (message.class == Array)
+
+    # Message contatenated with "\n" (unless it aready ends with a newline)
+    message += "\n" unless message.end_with?( "\n" )
 
     # Write to log as though Verbosity::DEBUG (no filtering at all) but without fun characters
     if @project_logging
@@ -135,6 +144,17 @@ class Loginator
     return prepend + str
   end
 
+
+  def sanitize(string, decorate=nil)
+    # Redefine `decorate` to @decorators value by default,
+    # otherwise use the argument as an override value
+    decorate = @decorators if decorate.nil?
+
+    # Remove problematic console characters in-place if decoration disabled
+    @replace.each_pair {|k,v| string.gsub!( k, v) } if (decorate == false)
+    return string
+  end
+
   ### Private ###
 
   private
@@ -151,6 +171,7 @@ class Loginator
 
     return stream
   end
+
 
   def format(string, verbosity, label, decorate)
     prepend = ''
@@ -197,11 +218,6 @@ class Loginator
     return prepend + string
   end
 
-  def sanitize(string, decorate)
-    # Remove problematic console characters in-place if decoration disabled
-    @replace.each_pair {|k,v| string.gsub!( k, v) } if (decorate == false)
-    return string
-  end
 
   def extract_stream_name(stream)
     name = case (stream.fileno)
@@ -242,6 +258,5 @@ class Loginator
 
     @file_wrapper.write( @log_filepath, output, 'a' )
   end
-
 
 end

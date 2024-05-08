@@ -15,7 +15,7 @@ describe GeneratorTestResultsSanityChecker do
   before(:each) do
     # this will always be mocked
     @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :yaml_wrapper => nil, :system_wrapper => nil})
-    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil, :stream_wrapper => nil})
+    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
 
     @sanity_checker = described_class.new({:configurator => @configurator, :loginator => @loginator})
   

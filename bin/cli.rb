@@ -55,8 +55,26 @@ require 'ceedling/constants' # From Ceedling application
 ##
 
 
+##
+## This Class
+## ==========
+##
+## The nature of Thor more-or-less requires this class to be used as a class
+## and not as an insantiated object. This shows up in a variety of ways:
+##  * The calling convention is `CeedlingTasks::CLI.start( ARGV )`
+##  * Many of the methods necessary to configure the CLI class are class
+##    methods in Thor and are called that way.
+##
+## The nature of Thor both requires and allows for some slightly ugly or
+## brittle code -- relying on globals, etc.
+##
+## Because of this, care has been taken that this class contains as little
+## logic as possible and is the funnel for any and all necessary global 
+## references and other little oddball needs.
+##
 
-# Special handler to prevent Thor from barfing on unrecognized CLI arguments 
+
+# Special handling to prevent Thor from barfing on unrecognized CLI arguments 
 # (i.e. Rake tasks)
 module PermissiveCLI
   def self.extended(base)
@@ -64,15 +82,32 @@ module PermissiveCLI
     base.check_unknown_options!
   end
 
+  # Redefine the Thor CLI entrypoint and exception handling
   def start(args, config={})
+    # Copy args as Thor changes them within the call chain of dispatch()
+    _args = args.clone()
+
+    # Call Thor's handlers as it does in start()
     config[:shell] ||= Thor::Base.shell.new
     dispatch(nil, args, nil, config)
-  rescue Thor::UndefinedCommandError
-    # Eat unhandled command errors
-    #  - No error message
-    #  - No `exit()`
-    #  - Re-raise to allow Rake task CLI handling elsewhere
-    raise
+
+  # Handle undefined commands at top-level and for `help <command>`
+  rescue Thor::UndefinedCommandError => ex
+    # Handle `help` for an argument that is not an application command such as `new` or `build`
+    if _args[0].downcase() == 'help'
+
+      # Raise ftal StandardError to differentiate from UndefinedCommandError
+      msg = "Argument '#{_args[1]}' is not a recognized application command with detailed help. " +
+            "It may be a build / plugin task without detailed help or simply a goof."
+      raise( msg )
+
+    # Otherwise, eat unhandled command errors
+    else
+      #  - No error message
+      #  - No `exit()`
+      #  - Re-raise to allow special, external CLI handling logic
+      raise ex
+    end
   end
 end
 
@@ -109,7 +144,7 @@ module CeedlingTasks
     def self.exit_on_failure?() true end
 
     # Allow `build` to be omitted in command line
-    default_task :build
+    default_command( :build )
 
     # Intercept construction to extract configuration and injected dependencies
     def initialize(args, config, options)
@@ -117,6 +152,11 @@ module CeedlingTasks
 
       @app_cfg = options[:app_cfg]
       @handler = options[:objects][:cli_handler]
+
+      @loginator = options[:objects][:loginator]
+
+      # Set the name for labelling CLI interactions
+      CLI::package_name( @loginator.decorate( 'Ceedling application', LogLabels::TITLE ) )
     end
 
 
@@ -125,21 +165,23 @@ module CeedlingTasks
     method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
-    long_desc <<-LONGDESC
-    `ceedling help` provides summary help for all available application commands 
-    and build tasks.
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling help` provides summary help for all available application commands 
+      and build tasks.
 
-    COMMAND is optional and will produce detailed help for a specific application command --
-    not a build or plugin task, however.
+      COMMAND is optional and will produce detailed help for a specific application command --
+      not a build or plugin task, however.
 
-    `ceedling help` also lists the available build operations from loading your 
-    project configuration. Optionally, a project filepath and/or mixins may be 
-    provided to load a different project configuration than the default.
+      `ceedling help` also lists the available build operations from loading your 
+      project configuration. Optionally, a project filepath and/or mixins may be 
+      provided to load a different project configuration than the default.
 
-    Notes on Optional Flags:
+      Notes on Optional Flags:
 
-    * #{LONGDOC_MIXIN_FLAG}
-    LONGDESC
+      • #{LONGDOC_MIXIN_FLAG}
+      LONGDESC
+    ) )
     def help(command=nil)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -161,21 +203,23 @@ module CeedlingTasks
     method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and recreate destination"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     method_option :gitsupport, :type => :boolean, :default => false, :desc => "Create .gitignore / .gitkeep files for convenience"
-    long_desc <<-LONGDESC
-    `ceedling new` creates a new project structure.
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling new` creates a new project structure.
 
-    NAME is required and will be the containing directory for the new project.
+      NAME is required and will be the containing directory for the new project.
 
-    DEST is an optional directory path for the new project (e.g. <DEST>/<name>).
-    The default is your working directory. Nonexistent paths will be created.
+      DEST is an optional directory path for the new project (e.g. <DEST>/<name>).
+      The default is your working directory. Nonexistent paths will be created.
 
-    Notes on Optional Flags:
+      Notes on Optional Flags:
 
-    * #{LONGDOC_LOCAL_FLAG}
+      • #{LONGDOC_LOCAL_FLAG}
 
-    * `--force` completely destroys anything found in the target path for the 
-    new project.
-    LONGDESC
+      • `--force` completely destroys anything found in the target path for the 
+      new project.
+      LONGDESC
+    ) )
     def new(name, dest=nil)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -190,28 +234,30 @@ module CeedlingTasks
     desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project at PATH"
     method_option :project, :type => :string, :default => DEFAULT_PROJECT_FILENAME, :desc => "Project filename"
     method_option :debug, :type => :boolean, :default => false, :hide => true
-    long_desc <<-LONGDESC
-    `ceedling upgrade` updates an existing project.
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling upgrade` updates an existing project.
 
-    PATH is required and should be the root of the project to upgrade.
+      PATH is required and should be the root of the project to upgrade.
 
-    This command only meaningfully operates on projects wth a local vendored copy 
-    of Ceedling (in <project>/vendor/) and optional documentation (in 
-    <project>/docs/).
+      This command only meaningfully operates on projects wth a local vendored copy 
+      of Ceedling (in <project>/vendor/) and optional documentation (in 
+      <project>/docs/).
 
-    Running this command replaces vendored Ceedling with the version running
-    this command. If docs are found, they will be replaced.
+      Running this command replaces vendored Ceedling with the version running
+      this command. If docs are found, they will be replaced.
 
-    A basic check for project existence looks for vendored ceedlng and a project
-    configuration file.
+      A basic check for project existence looks for vendored ceedlng and a project
+      configuration file.
 
-    Notes on Optional Flags:
+      Notes on Optional Flags:
 
-    * `--project` specifies a filename (optionally with leading path) for the 
-    project configuration file used in the project existence check. Otherwise,
-    the default ./#{DEFAULT_PROJECT_FILENAME} at the root of the project is
-    checked.
-    LONGDESC
+      • `--project` specifies a filename (optionally with leading path) for the 
+      project configuration file used in the project existence check. Otherwise,
+      the default ./#{DEFAULT_PROJECT_FILENAME} at the root of the project is
+      checked.
+      LONGDESC
+    ) )
     def upgrade(path)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -235,24 +281,26 @@ module CeedlingTasks
     method_option :exclude_test_case, :type => :string, :default => '', :desc => "Prevent matched unit test names from running"
     # Include for consistency with other commands (override --verbosity)
     method_option :debug, :type => :boolean, :default => false, :hide => true
-    long_desc <<-LONGDESC
-    `ceedling build` executes build tasks created from your project configuration.
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling build` executes build tasks created from your project configuration.
 
-    NOTE: `build` is not required to run tasks. The following are equivalent:
-    \x5    > ceedling test:all
-    \x5    > ceedling build test:all
+      NOTE: `build` is not required to run tasks. The following are equivalent:
+      \x5    > ceedling test:all
+      \x5    > ceedling build test:all
 
-    TASKS are zero or more build operations created from your project configuration.
-    If no tasks are provided, built-in default tasks or your :project ↳ 
-    :default_tasks will be executed.
+      TASKS are zero or more build operations created from your project configuration.
+      If no tasks are provided, built-in default tasks or your :project ↳ 
+      :default_tasks will be executed.
 
-    Notes on Optional Flags:
+      Notes on Optional Flags:
 
-    * #{LONGDOC_MIXIN_FLAG}
+      • #{LONGDOC_MIXIN_FLAG}
 
-    * `--test-case` and its inverse `--exclude-test-case` set test case name 
-    matchers to run only a subset of the unit test suite. See docs for full details.
-    LONGDESC
+      • `--test-case` and its inverse `--exclude-test-case` set test case name 
+      matchers to run only a subset of the unit test suite. See docs for full details.
+      LONGDESC
+    ) )
     def build(*tasks)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -270,25 +318,27 @@ module CeedlingTasks
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :app, :type => :boolean, :default => true, :desc => "Runs Ceedling application and its config manipulations"
     method_option :debug, :type => :boolean, :default => false, :hide => true
-    long_desc <<-LONGDESC
-    `ceedling dumpconfig` loads your project configuration, including all manipulations & merges,
-    and writes the final config to a YAML file.
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling dumpconfig` loads your project configuration, including all manipulations & merges,
+      and writes the final config to a YAML file.
 
-    FILEPATH is a required path to a destination YAML file. A nonexistent path will be created.
+      FILEPATH is a required path to a destination YAML file. A nonexistent path will be created.
 
-    SECTIONS is an optional config “path” that extracts a portion of a configuration. The 
-    top-level YAML container will be the path’s last element. 
-    The following example will produce config.yml containing ':test_compiler: {...}'.
-    \x5> ceedling dumpconfig my/path/config.yml tools test_compiler
+      SECTIONS is an optional config “path” that extracts a portion of a configuration. The 
+      top-level YAML container will be the path’s last element. 
+      The following example will produce config.yml containing ':test_compiler: {...}'.
+      \x5> ceedling dumpconfig my/path/config.yml tools test_compiler
 
-    Notes on Optional Flags:
+      Notes on Optional Flags:
 
-    * #{LONGDOC_MIXIN_FLAG}
+      • #{LONGDOC_MIXIN_FLAG}
 
-    * `--app` loads various settings, merges defaults, loads plugin config changes, and validates 
-    the configuration. Disabling it dumps project config after any mixins but before any 
-    application manipulations.
-    LONGDESC
+      • `--app` loads various settings, merges defaults, loads plugin config changes, and validates 
+      the configuration. Disabling it dumps project config after any mixins but before any 
+      application manipulations.
+      LONGDESC
+    ) )
     def dumpconfig(filepath, *sections)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -307,13 +357,15 @@ module CeedlingTasks
     method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
-    long_desc <<-LONGDESC
-    `ceedling environment` displays all environment variables that have been set for project use.
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling environment` displays all environment variables that have been set for project use.
 
-    Notes on Optional Flags:
+      Notes on Optional Flags:
 
-    * #{LONGDOC_MIXIN_FLAG}
-    LONGDESC
+      * #{LONGDOC_MIXIN_FLAG}
+      LONGDESC
+    ) )
     def environment()
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -328,12 +380,14 @@ module CeedlingTasks
 
     desc "examples", "List available example projects"
     method_option :debug, :type => :boolean, :default => false, :hide => true
-    long_desc <<-LONGDESC
-    `ceedling examples` lists the names of the example projects that come packaged with Ceedling.
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling examples` lists the names of the example projects that come packaged with Ceedling.
 
-    The output of this list is most useful when used by the `ceedling example` (no ‘s’) command 
-    to extract an example project to your filesystem.
-    LONGDESC
+      The output of this list is most useful when used by the `ceedling example` (no ‘s’) command 
+      to extract an example project to your filesystem.
+      LONGDESC
+    ) )
     def examples()
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -348,24 +402,26 @@ module CeedlingTasks
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
-    long_desc <<-LONGDESC
-    `ceedling example` extracts the named example project from within Ceedling to 
-    your filesystem.
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling example` extracts the named example project from within Ceedling to 
+      your filesystem.
 
-    NAME is required to specify the example to extract. A list of example projects
-    is available with the `examples` command. NAME will be the containing directory 
-    for the extracted project.
+      NAME is required to specify the example to extract. A list of example projects
+      is available with the `examples` command. NAME will be the containing directory 
+      for the extracted project.
 
-    DEST is an optional containing directory path (ex: <DEST>/<name>). The default 
-    is your working directory. A nonexistent path will be created.
+      DEST is an optional containing directory path (ex: <DEST>/<name>). The default 
+      is your working directory. A nonexistent path will be created.
 
-    Notes on Optional Flags:
+      Notes on Optional Flags:
 
-    * #{LONGDOC_LOCAL_FLAG}
+      • #{LONGDOC_LOCAL_FLAG}
 
-    NOTE: `example` is destructive. If the destination path is a previoulsy created
-    example project, `ceedling example` will overwrite the contents.
-    LONGDESC
+      NOTE: `example` is destructive. If the destination path is a previoulsy created
+      example project, `ceedling example` will overwrite the contents.
+      LONGDESC
+    ) )
     def example(name, dest=nil)
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
@@ -380,7 +436,7 @@ module CeedlingTasks
     desc "version", "Display version details for Ceedling components"
     # No long_desc() needed
     def version()
-      @handler.version( ENV )
+      @handler.version()
     end
 
   end

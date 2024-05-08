@@ -16,8 +16,6 @@ yaml_wrapper:
 
 config_walkinator:
 
-stream_wrapper:
-
 system_wrapper:
 
 verbosinator:
@@ -27,7 +25,6 @@ loginator:
     - verbosinator
     - file_wrapper
     - system_wrapper
-    - stream_wrapper
 
 #
 # Loaded from bin/
@@ -53,6 +50,7 @@ cli_helper:
     - path_validator
     - actions_wrapper
     - loginator
+    - system_wrapper
 
 path_validator:
   compose:
