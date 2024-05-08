@@ -63,7 +63,6 @@ by Ceedling. The following is a typical configuration example:
       - '"${1}"'
   :bullseye_browser:
     :executable: CoverageBrowser
-    :background_exec: :auto
     :optional: TRUE
     :arguments:
       - '"$"': ENVIRONMENT_COVFILE
