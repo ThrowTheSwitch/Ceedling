@@ -51,7 +51,7 @@ class FffCMockWrapper
 
   def generate_mock(header_file_to_mock, folder=nil)
       module_name = File.basename(header_file_to_mock, '.h')
-      @ceedling[:loginator].log( "Creating fake functions for #{module_name}..." ) unless @silent
+      puts( "Creating fake functions for #{module_name}..." ) unless @silent
       mock_name = @cm_config.mock_prefix + module_name + @cm_config.mock_suffix
       mock_path = @cm_config.mock_path + (folder.nil? ? '' : File.join(folder,''))
       if @cm_config.subdir
@@ -67,7 +67,7 @@ class FffCMockWrapper
       mkdir_p full_path_for_mock.pathmap("%d")
 
       # Generate the fake function header file.
-      @ceedling[:loginator].log( "Creating fake functions: #{full_path_for_mock}.h" )
+      puts( "Creating fake functions: #{full_path_for_mock}.h" )
 
       # Create the mock header.
       File.open("#{full_path_for_mock}.h", 'w') do |f|
