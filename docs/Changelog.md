@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-05-07
+# [1.0.0 pre-release] — 2024-05-10
 
 ## 🌟 Added
 
@@ -233,6 +233,23 @@ See the [gcov plugin’s documentation](plugins/gcov/README.md).
 1. The plugin more properly uses looging and system shell calls.
 
 ## 👋 Removed
+
+### `verbosity` and `log` command line tasks
+
+These command line features were implemented using Rake. That is, they were Rake tasks, not command line switches, and they were subject to the peculiarities of Rake tasks. Specifically, order mattered — these tasks had to precede build tasks they were to affect — and `verbosity` required a non-standard parameter convention for numeric values.
+
+These command line tasks no longer exist. They are now proper command line flags. These are most useful (and, in the case of logging, only availble) with Ceedling’s new `build` command line argument. The `build` command takes a list of build & plugin tasks to run. It is now complmented by `--verbosity`, `--log`, and `--logfile` flags. See the detailed help at `ceedling help build` for these.
+
+The `build` keyword is optional. That is, omitting it is allowed and operates largely equivalent to the historical Ceedling command line.
+
+The previous command line of `ceedling verbosity[4] test:all release` or `ceedling verbosity:obnoxious test:all release` can now be any of the following:
+
+* `ceedling test:all release --verbosity=obnoxious`
+* `ceedling test:all release -v 4`
+* `ceedling --verbosity=obnoxious test:all release`
+* `ceedling -v 4 test:all release`
+
+Note that in the above list Ceedling is actually executing as though `ceedling build <args>` were entered at the command line. It is entirely acceptable to use the full form. The above list is provided as its form is the simplest to enter and consistent with previous versions of Ceedling.
 
 ### `options:` tasks
 
