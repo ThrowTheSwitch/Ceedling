@@ -849,11 +849,14 @@ command line involves two different conventions:
    help and operate similarly to popular command line tools like `git`.
 1. **Build & Plugin Tasks.** Build tasks actually execute test suites, 
    run release builds, etc. These tasks are created from your project 
-   file. These are generated through Ceedling's Rake-based code and 
+   file. These are generated through Ceedling’s Rake-based code and 
    conform to its conventions — simplistic help, no option flags, but 
    bracketed arguments.
 
 In the case of running builds, both come into play at the command line.
+
+The two classes of command line arguments are clearly labelled in the
+summary of all commands provided by `ceedling help`.
 
 ## Quick command line example to get you started
 
@@ -862,9 +865,12 @@ To exercise the Ceedling command line quickly, follow these steps after
 
 1. Open a terminal and chnage directories to a location suitable for
    an example project.
-1. Execute `ceedling example temp_sensor` in your terminal.
+1. Execute `ceedling example temp_sensor` in your terminal. The `example`
+   argument is an application command.
 1. Change directories into the new _temp_sensor/_ directory.
-1. Execute `ceedling test:all` in your terminal.
+1. Execute `ceedling test:all` in your terminal. The `test:all` is a
+   build task executed by the default (and omitted) `build` application
+   command.
 1. Take a look at the build and test suite console output as well as 
    the _project.yml_ file in the root of the example project.
 
@@ -2164,10 +2170,26 @@ migrated to the `:test_build` and `:release_build` sections.
 
 * `:default_tasks`
 
-  An array of default build / plugin tasks Ceedling should execute if 
+  A list of default build / plugin tasks Ceedling should execute if 
   none are provided at the command line.
 
+  _Note:_ These are build & plugin tasks (e.g. `test:all` and `clobber`).
+  These are not application commands (e.g. `dumpconfig`) or command 
+  line flags (e.g. `--verbosity`). See the documentation 
+  [on using the command line][command-line] to understand the distinction 
+  between application commands and build & plugin tasks.
+
+  Example YAML:
+  ```yaml
+  :project:
+    :default_tasks:
+      - clobber
+      - test:all
+      - release
+  ```
   **Default**: ['test:all']
+
+  [command-line]: #now-what-how-do-i-make-it-go-the-command-line
 
 * `:use_mocks`
 
