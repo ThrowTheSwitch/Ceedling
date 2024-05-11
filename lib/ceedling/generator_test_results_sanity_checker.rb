@@ -1,17 +1,25 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'rubygems'
 require 'rake' # for ext() method
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 
 class GeneratorTestResultsSanityChecker
 
-  constructor :configurator, :streaminator
+  constructor :configurator, :loginator
   
   def verify(results, unity_exit_code)
   
     # do no sanity checking if it's disabled
     return if (@configurator.sanity_checks == TestResultsSanityChecks::NONE)
-    raise "results nil or empty" if results.nil? || results.empty?
+    raise CeedlingException.new( "Test results nil or empty" ) if results.nil? || results.empty?
 
     ceedling_ignores_count   = results[:ignores].size 
     ceedling_failures_count  = results[:failures].size
@@ -48,17 +56,14 @@ class GeneratorTestResultsSanityChecker
   
   def sanity_check_warning(file, message)
     unless defined?(CEEDLING_IGNORE_SANITY_CHECK)
-      notice = "\n" + 
-               "ERROR: Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable)}' finds that #{message}\n" +
+      notice = "Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable)}' finds that #{message}\n" +
                "  Possible causes:\n" +
                "    1. Your test + source dereferenced a null pointer.\n" +
                "    2. Your test + source indexed past the end of a buffer.\n" +
                "    3. Your test + source committed a memory access violation.\n" +
                "    4. Your test fixture produced an exit code of 0 despite execution ending prematurely.\n" +
-               "  Sanity check failures of test results are usually a symptom of interrupted test execution.\n\n"
-      
-      @streaminator.stderr_puts( notice )
-      raise
+               "  Sanity check failures of test results are usually a symptom of interrupted test execution.\n\n"      
+      raise CeedlingException.new( notice )
     end
   end
 

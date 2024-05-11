@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'ceedling/plugin'
 require 'ceedling/constants'
 
@@ -19,13 +26,13 @@ class Bullseye < Plugin
   def setup
     @result_list = []
     @environment = [ {:covfile => File.join( BULLSEYE_ARTIFACTS_PATH, 'test.cov' )} ]
-    @plugin_root = File.expand_path(File.join(File.dirname(__FILE__), '..'))
-    @coverage_template_all = @ceedling[:file_wrapper].read(File.join(@plugin_root, 'assets/template.erb'))
+    @coverage_template_all = @ceedling[:file_wrapper].read( File.join( @plugin_root_path, 'assets/template.erb' ) )
   end
 
   def config
     {
       :project_test_build_output_path     => BULLSEYE_BUILD_OUTPUT_PATH,
+      :project_test_build_output_c_path   => BULLSEYE_BUILD_OUTPUT_PATH,
       :project_test_results_path          => BULLSEYE_RESULTS_PATH,
       :project_test_dependencies_path     => BULLSEYE_DEPENDENCIES_PATH,
       :defines_test                       => DEFINES_TEST + ['CODE_COVERAGE'],
@@ -37,7 +44,7 @@ class Bullseye < Plugin
     arg_hash = {:tool => TOOLS_BULLSEYE_INSTRUMENTATION, :context => BULLSEYE_SYM, :source => source, :object => object}
     @ceedling[:plugin_manager].pre_compile_execute(arg_hash)
 
-    @ceedling[:streaminator].stdout_puts("Compiling #{File.basename(source)} with coverage...")
+    @ceedling[:loginator].log("Compiling #{File.basename(source)} with coverage...")
     compile_command  = 
       @ceedling[:tool_executor].build_command_line(
         TOOLS_BULLSEYE_COMPILER,
@@ -81,7 +88,7 @@ class Bullseye < Plugin
     return if (verify_coverage_file() == false)
     if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
       command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC, [])
-      shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+      shell_result = @ceedling[:tool_executor].exec( command )
       report_coverage_results_all(shell_result[:output])
     else
       report_per_function_coverage_results(@ceedling[:test_invoker].sources)
@@ -103,7 +110,7 @@ class Bullseye < Plugin
     
     # coverage results
     command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC)
-    shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+    shell_result = @ceedling[:tool_executor].exec( command )
     report_coverage_results_all(shell_result[:output])
   end
   
@@ -111,15 +118,15 @@ class Bullseye < Plugin
     if BULLSEYE_AUTO_LICENSE
       if (enable)
         args = ['push', 'on']
-        @ceedling[:streaminator].stdout_puts("Enabling Bullseye")
+        @ceedling[:loginator].log("Enabling Bullseye")
       else
         args = ['pop']
-        @ceedling[:streaminator].stdout_puts("Reverting Bullseye to previous state")
+        @ceedling[:loginator].log("Reverting Bullseye to previous state")
       end
 
       args.each do |arg| 
         command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BUILD_ENABLE_DISABLE, [], arg)
-        shell_result = @ceedling[:tool_executor].exec(command[:line], command[:options])
+        shell_result = @ceedling[:tool_executor].exec( command )
       end
 
     end
@@ -144,12 +151,12 @@ class Bullseye < Plugin
       results[:coverage][:branches] = $1.to_i
     end
 
-    @ceedling[:plugin_reportinator].run_report($stdout, @coverage_template_all, results)
+    @ceedling[:plugin_reportinator].run_report( @coverage_template_all, results )
   end
 
   def report_per_function_coverage_results(sources)
     banner = @ceedling[:plugin_reportinator].generate_banner( "#{BULLSEYE_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
-    @ceedling[:streaminator].stdout_puts "\n" + banner
+    @ceedling[:loginator].log "\n" + banner
 
     coverage_sources = sources.clone
     coverage_sources.delete_if {|item| item =~ /#{CMOCK_MOCK_PREFIX}.+#{EXTENSION_SOURCE}$/}
@@ -157,15 +164,15 @@ class Bullseye < Plugin
 
     coverage_sources.each do |source|
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, [], source)
-      shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
+      shell_results    = @ceedling[:tool_executor].exec( command )
       coverage_results = shell_results[:output].deep_clone
       coverage_results.sub!(/.*\n.*\n/,'') # Remove the Bullseye tool banner
       if (coverage_results =~ /warning cov814: report is empty/)
-        coverage_results = "WARNING: #{source} contains no coverage data!\n\n"
-        @ceedling[:streaminator].stdout_puts(coverage_results, Verbosity::COMPLAIN)
+        coverage_results = "#{source} contains no coverage data"
+        @ceedling[:loginator].log(coverage_results, Verbosity::COMPLAIN)
       else
         coverage_results += "\n"
-        @ceedling[:streaminator].stdout_puts(coverage_results)
+        @ceedling[:loginator].log(coverage_results)
       end
     end
   end
@@ -175,7 +182,7 @@ class Bullseye < Plugin
 
     if (!exist)
       banner = @ceedling[:plugin_reportinator].generate_banner( "#{BULLSEYE_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
-      @ceedling[:streaminator].stdout_puts "\n" + banner + "\nNo coverage file.\n\n"
+      @ceedling[:loginator].log "\n" + banner + "\nNo coverage file.\n\n"
     end
     
     return exist
