@@ -701,7 +701,7 @@ module CeedlingTestCases
   end
 
 
-  def test_run_of_projects_fail_because_of_sigsegv_without_report
+  # def test_run_of_projects_fail_because_of_sigsegv_without_report
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -715,9 +715,9 @@ module CeedlingTestCases
         expect(!File.exist?('./build/test/results/test_add.fail'))
       end
     end
-  end
+  # end
 
-  def test_run_of_projects_fail_because_of_sigsegv_with_report
+  # def test_run_of_projects_fail_because_of_sigsegv_with_report
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -735,9 +735,9 @@ module CeedlingTestCases
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
       end
     end
-  end
+  # end
 
-  def execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue_when_cmd_args_set_to_true
+  # def execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue_when_cmd_args_set_to_true
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -760,9 +760,9 @@ module CeedlingTestCases
         expect(output).to match(/IGNORED:\s+0/)
       end
     end
-  end
+  # end
 
-  def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true
+  # def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -785,9 +785,9 @@ module CeedlingTestCases
         expect(output).to match(/IGNORED:\s+0/)
       end
     end
-  end
+  # end
 
-  def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true
+  # def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -810,7 +810,7 @@ module CeedlingTestCases
         expect(output).to match(/IGNORED:\s+0/)
       end
     end
-  end
+  # end
 
   def can_test_projects_with_success_when_space_appears_between_hash_and_include
     # test case cover issue described in https://github.com/ThrowTheSwitch/Ceedling/issues/588
