@@ -84,28 +84,28 @@ jobs:
   #         gem install --local ceedling-*.gem
 
   #     # Run Temp Sensor
-  #     - name: Run Tests On Temp Sensor Project
+  #     - name: Run Tests on temp_sensor Project
   #       run: |
   #         cd examples/temp_sensor
   #         ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
   #         cd ../..
 
   #     # Run FFF Plugin Tests
-  #     - name: Run Tests On FFF Plugin
+  #     - name: Run Tests on FFF Plugin
   #       run: |
   #         cd plugins/fff
   #         rake
   #         cd ../..
 
   #     # Run Module Generator Plugin Tests
-  #     - name: Run Tests On Module Generator Plugin
+  #     - name: Run Tests on Module Generator Plugin
   #       run: |
   #         cd plugins/module_generator
   #         rake
   #         cd ../..
 
   #     # Run Dependencies Plugin Tests
-  #     - name: Run Tests On Dependency Plugin
+  #     - name: Run Tests on Dependency Plugin
   #       run: |
   #         cd plugins/dependencies
   #         rake
@@ -177,28 +177,28 @@ jobs:
           gem install --local ceedling-*.gem
 
       # Run Temp Sensor
-      - name: Run Tests On Temp Sensor Project
+      - name: Run Tests on temp_sensor Project
         run: |
           cd examples/temp_sensor
           ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
           cd ../..
 
       # Run FFF Plugin Tests
-      - name: Run Tests On FFF Plugin
+      - name: Run Tests on FFF Plugin
         run: |
           cd plugins/fff
           rake
           cd ../..
 
       # Run Module Generator Plugin Tests
-      - name: Run Tests On Module Generator Plugin
+      - name: Run Tests on Module Generator Plugin
         run: |
           cd plugins/module_generator
           rake
           cd ../..
 
       # Run Dependencies Plugin Tests
-      - name: Run Tests On Dependency Plugin
+      - name: Run Tests on Dependency Plugin
         run: |
           cd plugins/dependencies
           rake

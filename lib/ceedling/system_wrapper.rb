@@ -66,17 +66,19 @@ class SystemWrapper
     # Parts of Process::Status's behavior is similar to an integer exit code in
     # some operations but not all.
     exit_code = 0
+    stdout, stderr = ''
+    status = nil
     begin
       # Run the command but absorb any exceptions and capture error info instead
       stdout, stderr, status = Open3.capture3( command )
     rescue => err
-      stderr = err
+      stderr = err.to_s
       exit_code = -1
     end
 
     # If boom, then capture the actual exit code, otherwise leave it as zero
     # as though execution succeeded
-    exit_code = status.exitstatus.freeze if boom
+    exit_code = status.exitstatus.freeze if boom and !status.nil?
 
     # (Re)set the system exit code
     $exit_code = exit_code
