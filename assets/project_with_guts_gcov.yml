@@ -232,7 +232,7 @@
 :gcov:
   :utilities:
     - gcovr           # Use gcovr to create the specified reports (default).
-    #- ReportGenerator # Use ReportGenerator to create the specified reports.
+    - ReportGenerator # Use ReportGenerator to create the specified reports.
   :reports: # Specify one or more reports to generate.
     # Make an HTML summary report.
     - HtmlBasic

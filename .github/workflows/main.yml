@@ -152,12 +152,12 @@ jobs:
           bundle install
 
       # Install GCovr for Gcov plugin
-      - name: Install GCovr
+      - name: Install GCovr for Gcov plugin
         run: |
           pip install gcovr
 
       # Install ReportGenerator for Gcov plugin
-      - name: Install Ruby Testing Tools
+      - name: Install ReportGenerator for Gcov plugin
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
@@ -202,8 +202,10 @@ jobs:
 
   # Job: Automatic Minor Releases
   # auto-release:
-  #   name: "Automatic Minor Releases"
-  #   needs: [unit-tests]
+  #   name: "Automatic Minor Release"
+  #   needs:
+  #     - unit-tests-linux
+  #     - unit-tests-windows
   #   runs-on: ubuntu-latest
   #   strategy:
   #     matrix:
