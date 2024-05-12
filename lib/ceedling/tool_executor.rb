@@ -88,6 +88,20 @@ class ToolExecutor
   end
 
 
+  def segfault?(shell_result)
+    return true if (shell_result[:output] =~ /\s*Segmentation\sfault.*/i)
+
+    # Assuming that all platforms other than Windows are Unix-like (including Cygwin)
+    # Unix Signal 11 ==> SIGSEGV
+    return true if (shell_result[:status].termsig == 11) and !@system_wrapper.windows?
+
+    # TODO: Confirm this with PR #856 author (unclear where exit status 3 comes from)
+    # return true if (shell_result[:status].exitstatus == 3)
+
+    return false
+  end
+
+
   private #############################
 
 

@@ -66,8 +66,10 @@ class SystemWrapper
     # Parts of Process::Status's behavior is similar to an integer exit code in
     # some operations but not all.
     exit_code = 0
-    stdout, stderr = ''
-    status = nil
+
+    stdout, stderr = '' # Safe initialization defaults
+    status = nil        # Safe initialization default
+    
     begin
       # Run the command but absorb any exceptions and capture error info instead
       stdout, stderr, status = Open3.capture3( command )
