@@ -46,11 +46,6 @@ jobs:
   #         sudo apt-get install --assume-yes --quiet gcc-multilib gdb dotnet-sdk-8.0
   #         sudo dotnet tool install --global dotnet-reportgenerator-globaltool
 
-  #     # Install GCovr
-  #     - name: Install GCovr
-  #       run: |
-  #         sudo pip install gcovr
-
   #     # Checks out repository under $GITHUB_WORKSPACE
   #     - name: Checkout Latest Repo
   #       uses: actions/checkout@v2
@@ -72,6 +67,11 @@ jobs:
   #         bundle update
   #         bundle install
 
+  #     # Install GCovr for Gcov plugin
+  #     - name: Install GCovr
+  #       run: |
+  #         sudo pip install gcovr
+
   #     # Run Tests
   #     - name: Run All Self Tests
   #       run: |
@@ -83,11 +83,11 @@ jobs:
   #         gem build ceedling.gemspec
   #         gem install --local ceedling-*.gem
 
-  #     # Run Temp Sensor
+  #     # Run temp_sensor
   #     - name: Run Tests on temp_sensor Project
   #       run: |
   #         cd examples/temp_sensor
-  #         ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
+  #         ceedling test:all
   #         cd ../..
 
   #     # Run FFF Plugin Tests
@@ -121,26 +121,16 @@ jobs:
         ruby: ['3.0', '3.1', '3.2']
     steps:
       # Use a cache for our tools to speed up testing
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
             bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
 
-      # Install Binutils, Multilib, etc
-      # - name: Install C dev & Plugin Tools
-      #   run: |
-      #     sudo apt-get update -qq
-      #     sudo apt-get install --assume-yes --quiet gcc-multilib gdb dotnet-sdk-8.0
-      #     sudo dotnet tool install --global dotnet-reportgenerator-globaltool
-
-      # sudo apt-get install --assume-yes --quiet gcc-multilib gdb dotnet-sdk-8.0
-      # sudo dotnet tool install --global dotnet-reportgenerator-globaltool
-
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -150,7 +140,8 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           
-      # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
+      # Install Ruby Testing Tools
+      # Bundler version should match the one in Gemfile.lock
       - name: Install Ruby Testing Tools
         shell: bash
         run: |
@@ -160,10 +151,15 @@ jobs:
           bundle update
           bundle install
 
-      # Install GCovr
+      # Install GCovr for Gcov plugin
       - name: Install GCovr
         run: |
           pip install gcovr
+
+      # Install ReportGenerator for Gcov plugin
+      - name: Install Ruby Testing Tools
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
 
       # Run Tests
       - name: Run All Self Tests
@@ -176,11 +172,11 @@ jobs:
           gem build ceedling.gemspec
           gem install --local ceedling-*.gem
 
-      # Run Temp Sensor
+      # Run temp_sensor example project
       - name: Run Tests on temp_sensor Project
         run: |
           cd examples/temp_sensor
-          ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
+          ceedling test:all
           cd ../..
 
       # Run FFF Plugin Tests
