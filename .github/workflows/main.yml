@@ -16,100 +16,105 @@ on:
     branches:
       - 'master'
       - 'test/**'
-      - 'exp/**'
+      - 'dev/**'
   pull_request:
     branches: [ master ]
   workflow_dispatch:
 
 jobs:
-  # # Job: Linux unit test suite
-  # unit-tests-linux:
-  #   name: "Linux Unit Test Suite"
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       ruby: ['3.0', '3.1', '3.2']
-  #   steps:
-  #     # Use a cache for our tools to speed up testing
-  #     - uses: actions/cache@v3
-  #       with:
-  #         path: vendor/bundle
-  #         key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
-  #         restore-keys: |
-  #           bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+  # Job: Linux unit test suite
+  unit-tests-linux:
+    name: "Linux Unit Test Suite"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.0', '3.1', '3.2']
+    steps:
+      # Use a cache for our tools to speed up testing
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
 
-  #     # Install Binutils, Multilib, etc
-  #     - name: Install C dev & Plugin Tools
-  #       run: |
-  #         sudo apt-get update -qq
-  #         sudo apt-get install --assume-yes --quiet gcc-multilib gdb dotnet-sdk-8.0
-  #         sudo dotnet tool install --global dotnet-reportgenerator-globaltool
+      # Install Binutils, Multilib, etc
+      # - name: Install C dev & Plugin Tools
+      #   run: |
+      #     sudo apt-get update -qq
+      #     sudo apt-get install --assume-yes --quiet gcc-multilib gdb dotnet-sdk-8.0
+      #     sudo dotnet tool install --global dotnet-reportgenerator-globaltool
 
-  #     # Checks out repository under $GITHUB_WORKSPACE
-  #     - name: Checkout Latest Repo
-  #       uses: actions/checkout@v2
-  #       with:
-  #         submodules: recursive
+      # Checks out repository under $GITHUB_WORKSPACE
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-  #     # Setup Ruby Testing Tools to do tests on multiple ruby version
-  #     - name: Setup Ruby Testing Tools
-  #       uses: ruby/setup-ruby@v1
-  #       with:
-  #         ruby-version: ${{ matrix.ruby }}
+      # Setup Ruby Testing Tools to do tests on multiple ruby version
+      - name: Setup Ruby Testing Tools
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
           
-  #     # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
-  #     - name: Install Ruby Testing Tools
-  #       run: |
-  #         gem install rspec
-  #         gem install rubocop -v 0.57.2
-  #         gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
-  #         bundle update
-  #         bundle install
+      # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
+      - name: Install Ruby Testing Tools
+        run: |
+          gem install rspec
+          gem install rubocop -v 0.57.2
+          gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
+          bundle update
+          bundle install
 
-  #     # Install GCovr for Gcov plugin
-  #     - name: Install GCovr
-  #       run: |
-  #         sudo pip install gcovr
+      # Install GCovr for Gcov plugin
+      - name: Install GCovr for Gcov plugin
+        run: |
+          sudo pip install gcovr
 
-  #     # Run Tests
-  #     - name: Run All Self Tests
-  #       run: |
-  #         rake ci
+      # Install ReportGenerator for Gcov plugin
+      - name: Install ReportGenerator for Gcov plugin
+        run: |
+          sudo dotnet tool install --global dotnet-reportgenerator-globaltool
 
-  #     # Build & Install Gem
-  #     - name:  build and install Gem
-  #       run: |
-  #         gem build ceedling.gemspec
-  #         gem install --local ceedling-*.gem
+      # Run Tests
+      - name: Run All Self Tests
+        run: |
+          rake ci
 
-  #     # Run temp_sensor
-  #     - name: Run Tests on temp_sensor Project
-  #       run: |
-  #         cd examples/temp_sensor
-  #         ceedling test:all
-  #         cd ../..
+      # Build & Install Gem
+      - name:  build and install Gem
+        run: |
+          gem build ceedling.gemspec
+          gem install --local ceedling-*.gem
 
-  #     # Run FFF Plugin Tests
-  #     - name: Run Tests on FFF Plugin
-  #       run: |
-  #         cd plugins/fff
-  #         rake
-  #         cd ../..
+      # Run temp_sensor
+      - name: Run Tests on temp_sensor Project
+        run: |
+          cd examples/temp_sensor
+          ceedling test:all
+          cd ../..
 
-  #     # Run Module Generator Plugin Tests
-  #     - name: Run Tests on Module Generator Plugin
-  #       run: |
-  #         cd plugins/module_generator
-  #         rake
-  #         cd ../..
+      # Run FFF Plugin Tests
+      - name: Run Tests on FFF Plugin
+        run: |
+          cd plugins/fff
+          rake
+          cd ../..
 
-  #     # Run Dependencies Plugin Tests
-  #     - name: Run Tests on Dependency Plugin
-  #       run: |
-  #         cd plugins/dependencies
-  #         rake
-  #         cd ../..
+      # Run Module Generator Plugin Tests
+      - name: Run Tests on Module Generator Plugin
+        run: |
+          cd plugins/module_generator
+          rake
+          cd ../..
+
+      # Run Dependencies Plugin Tests
+      - name: Run Tests on Dependency Plugin
+        run: |
+          cd plugins/dependencies
+          rake
+          cd ../..
 
   # Job: Windows unit test suite
   unit-tests-windows:
@@ -135,7 +140,7 @@ jobs:
           submodules: recursive
 
       # Setup Ruby Testing Tools to do tests on multiple ruby version
-      - name: Setup Ruby Testing Tools
+      - name: Set Up Ruby Testing Tools
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -167,7 +172,7 @@ jobs:
           rake ci
 
       # Build & Install Gem
-      - name:  build and install Gem
+      - name:  Build and Install Gem
         run: |
           gem build ceedling.gemspec
           gem install --local ceedling-*.gem
@@ -200,7 +205,7 @@ jobs:
           rake
           cd ../..
 
-  # Job: Automatic Minor Releases
+  # Job: Automatic Minor Release
   # auto-release:
   #   name: "Automatic Minor Release"
   #   needs:
@@ -214,7 +219,7 @@ jobs:
   #   steps:
   #     # Checks out repository under $GITHUB_WORKSPACE
   #     - name: Checkout Latest Repo
-  #       uses: actions/checkout@v2
+  #       uses: actions/checkout@v4
   #       with:
   #         submodules: recursive
 
