@@ -78,7 +78,7 @@ jobs:
         run: |
           mkdir --parents $HOME/.dotnet/tools
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
-          sudo dotnet tool install --global dotnet-reportgenerator-globaltool
+          dotnet tool install --global dotnet-reportgenerator-globaltool
 
       # Run Tests
       - name: Run All Self Tests
