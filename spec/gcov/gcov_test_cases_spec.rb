@@ -194,8 +194,9 @@ module GcovTestCases
 
         output = `bundle exec ruby -S ceedling gcov:all`
         expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
+        expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
         expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
-        expect(File.exist?('build/artifacts/gcov/reportgenerator/summary.htm')).to eq true
+        expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
       end
     end
   end
@@ -223,10 +224,10 @@ module GcovTestCases
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:5?0.00% of 4/)
-
         expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
-        expect(output).to match(/Done/)
+        expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
         expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
+        expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
       end
     end
   end
@@ -256,8 +257,9 @@ module GcovTestCases
         expect(output).to match(/example_file.c \| Lines executed:0.00% of 4/)
 
         expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
-        expect(output).to match(/Done/)
+        expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
         expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
+        expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
       end
     end
   end
@@ -291,8 +293,9 @@ module GcovTestCases
         expect(output).to match(/example_file.c \| Lines executed:100.00% of 4/)
 
         expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
-        expect(output).to match(/Done/)
+        expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
         expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
+        expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
       end
     end
   end
