@@ -75,6 +75,7 @@ tool_executor_helper:
     - loginator
     - system_utils
     - system_wrapper
+    - verbosinator
 
 tool_validator:
   compose:
