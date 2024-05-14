@@ -161,7 +161,7 @@ class DebuggerUtils
           test_output = test_output.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
           test_output = "#{file_name}:#{line}:#{test_case_name}:FAIL: #{test_output}"
         else
-          test_output = "ERR:1:#{test_case_name}:FAIL: Segmentation Fault"
+          test_output = "ERR:1:#{test_case_name}:FAIL:Test Executable Crashed"
         end
 
         # Mark test as failure

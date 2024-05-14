@@ -29,7 +29,7 @@ class GeneratorHelper
   def log_test_results_crash(test_name, executable, shell_result)
     runner = File.basename(executable)
 
-    notice = "Test executable #{test_name} [`#{runner}`] seems to have crashed"
+    notice = "Test executable `#{runner}` seems to have crashed"
     @loginator.log( notice, Verbosity::ERRORS, LogLabels::CRASH )
 
     log = false
