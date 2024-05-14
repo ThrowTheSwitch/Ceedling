@@ -239,15 +239,15 @@ class PreprocessinatorIncludesHandler
     ##  - Files directly #include'd in the file being preprocessed are at depth 1 ('.')
     ##
     ## Notes:
-    ##  - Because search paths and defines are provided, error-free executiion is assumed.
+    ##  - Because search paths and defines are provided, error-free execution is assumed.
     ##    If the preprocessor fails, issues exist that will cause full compilation to fail.
     ##  - Unfortuantely, because of ordering and nesting effects, a file directly #include'd may
     ##    not be listed at depth 1 ('.'). Instead, it may end up listed at greater depth beneath 
     ##    another #include'd file if both files reference it. That is, there is no way
     ##    to give the preprocessor full context and ask for only the files directly 
     ##    #include'd in the file being processed.
-    ##  - The preprocessor outputs the -H #include listing to STDERR. We must redirect to
-    ##    STDOOUT in order to access the full output.
+    ##  - The preprocessor outputs the -H #include listing to STDERR. ToolExecutor does this
+    ##    by default in creating the shell result output.
     ##  - Since we're using search paths, all #included files will include paths. Depending on
     ##    circumstances, this could yield a list with generated mocks with full build paths.
     ##
@@ -279,11 +279,12 @@ class PreprocessinatorIncludesHandler
         filepath,
         include_paths,
         defines
-        )
+      )
 
-    # Redirect -H output to STDERR to STDOUT so we can access it in the execution results
-    command[:options][:stderr_redirect] = StdErrRedirect::AUTO
-
+    # Let the preprocessor do as much as possible
+    # We'll extract nothing if a catastrophic error, but we'll see it in debug logging
+    # Any real problems will be flagged by actual compilation step
+    command[:options][:boom] = false
 
     shell_result = @tool_executor.exec( command )
 
