@@ -80,7 +80,9 @@ class ToolExecutor
       raise ShellExecutionException.new(
         shell_result: shell_result,
         # Titleize the command's name--each word is capitalized and any underscores replaced with spaces
-        message: "'#{command[:name].split(/ |\_/).map(&:capitalize).join(" ")}' (#{command[:executable]}) exited with an error"
+        message: "'#{command[:name].split(/ |\_/).map(&:capitalize).join(" ")}' " +
+                 "(#{command[:executable]}) " +
+                 "terminated with exit code [#{shell_result[:exit_code]}]"
         )
     end
 
