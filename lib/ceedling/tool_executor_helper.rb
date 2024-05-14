@@ -89,9 +89,6 @@ class ToolExecutorHelper
 
     # Detailed debug logging
     if @verbosinator.should_output?( Verbosity::DEBUG )
-      output +=   "> Produced output: "
-      output += shell_result[:output].empty? ? "<empty>\n" : "\n#{shell_result[:output].chomp("\n")}\n"
-
       output +=   "> With $stdout: "
       output += shell_result[:stdout].empty? ? "<empty>\n" : "\n#{shell_result[:stdout].to_s.chomp("\n")}\n"
 
