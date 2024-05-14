@@ -49,8 +49,8 @@ describe "Ceedling" do
     it { can_test_projects_with_named_verbosity }
     it { can_test_projects_with_numerical_verbosity }
     it { uses_report_tests_raw_output_log_plugin }
-    it { test_run_of_projects_fail_because_of_sigsegv_without_report }
-    it { test_run_of_projects_fail_because_of_sigsegv_with_report }
+    it { test_run_of_projects_fail_because_of_crash_without_report }
+    it { test_run_of_projects_fail_because_of_crash_with_report }
     it { execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue_when_cmd_args_set_to_true }
     it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true }
     it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true }
