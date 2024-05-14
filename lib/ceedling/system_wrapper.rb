@@ -65,7 +65,7 @@ class SystemWrapper
     # by the more capable and robust Process::Status.
     # Parts of Process::Status's behavior is similar to an integer exit code in
     # some operations but not all.
-    exit_code = nil
+    exit_code = 0
 
     stdout, stderr = '' # Safe initialization defaults
     status = nil        # Safe initialization default
@@ -81,6 +81,9 @@ class SystemWrapper
     # If boom, then capture the actual exit code, otherwise leave it as zero
     # as though execution succeeded
     exit_code = status.exitstatus.freeze if boom and !status.nil?
+
+    # (Re)set the global system exit code so everything matches
+    $exit_code = exit_code
 
     return {
       # Combine stdout & stderr streams for complete output
