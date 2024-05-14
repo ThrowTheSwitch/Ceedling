@@ -72,10 +72,10 @@ class ToolExecutor
       shell_result[:output].gsub!(/\033\[\d\dm/,'')
     end
 
-    @tool_executor_helper.print_happy_results( command_line, shell_result, options[:boom] )
-    @tool_executor_helper.print_error_results( command_line, shell_result, options[:boom] )
+    @tool_executor_helper.log_results( command_line, shell_result )
 
-    # Go boom if exit code is not 0 and we want to debug (in some cases we don't want a non-0 exit code to raise)
+    # Go boom if exit code is not 0 and that code means a fatal error
+    # (Sometimes we don't want a non-0 exit code to cause an exception as the exit code may not mean a build-ending failure)
     if ((shell_result[:exit_code] != 0) and options[:boom])
       raise ShellExecutionException.new(
         shell_result: shell_result,
@@ -86,21 +86,6 @@ class ToolExecutor
 
     return shell_result
   end
-
-
-  def segfault?(shell_result)
-    return true if (shell_result[:output] =~ /\s*Segmentation\sfault.*/i)
-
-    # Assuming that all platforms other than Windows are Unix-like (including Cygwin)
-    # Unix Signal 11 ==> SIGSEGV
-    return true if (shell_result[:status].termsig == 11) and !@system_wrapper.windows?
-
-    # TODO: Confirm this with PR #856 author (unclear where exit status 3 comes from)
-    # return true if (shell_result[:status].exitstatus == 3)
-
-    return false
-  end
-
 
   private #############################
 
