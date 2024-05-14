@@ -206,19 +206,19 @@ module GcovTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
                                        :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
-        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation fault/i)
+        expect($?.exitstatus).to match(1) # Test should fail because of crash
+        expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/gcov/results/test_example_file_sigsegv.fail'))
-        output_rd = File.read('./build/gcov/results/test_example_file_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(File.exist?('./build/gcov/results/test_example_file_crash.fail'))
+        output_rd = File.read('./build/gcov/results/test_example_file_crash.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
@@ -237,19 +237,19 @@ module GcovTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
                                        :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
-        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation fault/i)
+        expect($?.exitstatus).to match(1) # Test should fail because of crash
+        expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/gcov/results/test_example_file_sigsegv.fail'))
-        output_rd = File.read('./build/gcov/results/test_example_file_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(File.exist?('./build/gcov/results/test_example_file_crash.fail'))
+        output_rd = File.read('./build/gcov/results/test_example_file_crash.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+0/)
         expect(output).to match(/FAILED:\s+1/)
@@ -269,7 +269,7 @@ module GcovTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
         @c.merge_project_yml_for_test({:test_runner => { :cmdline_args => true }})
@@ -279,13 +279,13 @@ module GcovTestCases
                         "  TEST_ASSERT_EQUAL_INT(0, difference_between_numbers(1,1));\n" \
                         "}\n"
         
-        updated_test_file = File.read('test/test_example_file_sigsegv.c').split("\n")
+        updated_test_file = File.read('test/test_example_file_crash.c').split("\n")
         updated_test_file.insert(updated_test_file.length(), add_test_case)
-        File.write('test/test_example_file_sigsegv.c', updated_test_file.join("\n"), mode: 'w')
+        File.write('test/test_example_file_crash.c', updated_test_file.join("\n"), mode: 'w')
 
         output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_will_fail 2>&1`
         expect($?.exitstatus).to match(0)
-        expect(File.exist?('./build/gcov/results/test_example_file_sigsegv.pass'))
+        expect(File.exist?('./build/gcov/results/test_example_file_crash.pass'))
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+2/)
         expect(output).to match(/FAILED:\s+0/)

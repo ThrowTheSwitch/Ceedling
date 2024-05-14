@@ -701,38 +701,38 @@ module CeedlingTestCases
   end
 
 
-  def test_run_of_projects_fail_because_of_sigsegv_without_report
+  def test_run_of_projects_fail_because_of_crash_without_report
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
-        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation Fault/i)
+        expect($?.exitstatus).to match(1) # Test should fail because of crash
+        expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures./)
         expect(!File.exist?('./build/test/results/test_add.fail'))
       end
     end
   end
 
-  def test_run_of_projects_fail_because_of_sigsegv_with_report
+  def test_run_of_projects_fail_because_of_crash_with_report
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => true }})
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
-        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation Fault/i)
+        expect($?.exitstatus).to match(1) # Test should fail because of crash
+        expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(File.exist?('./build/test/results/test_example_file_crash.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_crash.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
       end
     end
   end
@@ -742,18 +742,18 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
                                        :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
-        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation fault/i)
+        expect($?.exitstatus).to match(1) # Test should fail because of crash
+        expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(File.exist?('./build/test/results/test_example_file_crash.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_crash.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
@@ -767,18 +767,18 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
                                        :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling test:all --test_case=test_add_numbers_will_fail 2>&1`
-        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation fault/i)
+        expect($?.exitstatus).to match(1) # Test should fail because of crash
+        expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(File.exist?('./build/test/results/test_example_file_crash.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_crash.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
@@ -792,18 +792,18 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
                                        :test_runner => { :cmdline_args => true }})
 
         output = `bundle exec ruby -S ceedling test:all --exclude_test_case=add_numbers_adds_numbers 2>&1`
-        expect($?.exitstatus).to match(1) # Test should fail as sigsegv is called
-        expect(output).to match(/Segmentation fault/i)
+        expect($?.exitstatus).to match(1) # Test should fail because of crash
+        expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/test/results/test_example_file_sigsegv.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_sigsegv.c\:14/ )
+        expect(File.exist?('./build/test/results/test_example_file_crash.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_crash.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)

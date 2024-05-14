@@ -29,6 +29,11 @@ class Generator
               :unity_utils
 
 
+  def setup()
+    # Alias
+    @helper = @generator_helper
+  end
+
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
     arg_hash = {
       :header_file => input_filepath,
@@ -299,42 +304,44 @@ class Generator
     # Apply additional test case filters 
     command[:line] += @unity_utils.collect_test_runner_additional_args
 
-    # Enable collecting GCOV results even when segmenatation fault is appearing
-    # The gcda and gcno files will be generated for a test cases which doesn't
-    # cause segmentation fault
+    # Enable collecting GCOV results even for crashes
+    # The gcda and gcno files will be generated for test executable that doesn't cause a crash
     @debugger_utils.enable_gcov_with_gdb_and_cmdargs(command)
 
-    # Run the test itself (allow it to fail. we'll analyze it in a moment)
+    # Run the test executable itself
+    # We allow it to fail without an exception.
+    # We'll analyze its results apart from tool_executor
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command )
 
-    # Handle SegFaults
-    if @tool_executor.segfault?( shell_result )
-      @loginator.log( "Test executable #{test_name} encountered a segmentation fault", Verbosity::OBNOXIOUS, LogLabels::SEGFAULT )
+    # Handle crashes
+    if @helper.test_crash?( shell_result )
+      @helper.log_test_results_crash( test_name, executable, shell_result )
+
       if @configurator.project_config_hash[:project_use_backtrace] && @configurator.project_config_hash[:test_runner_cmdline_args]
         # If we have the options and tools to learn more, dig into the details
-        shell_result = @debugger_utils.gdb_output_collector(shell_result)
+        shell_result = @debugger_utils.gdb_output_collector( shell_result )
       else
-        # Otherwise, call a segfault a single failure so it shows up in the report
+        # Otherwise, call a crash a single failure so it shows up in the report
         source = File.basename(executable).ext(@configurator.extension_source)
-        shell_result[:output] = "#{source}:1:test_Unknown:FAIL:Segmentation Fault" 
+        shell_result[:output] = "#{source}:1:test_Unknown:FAIL:Test Executable Crashed" 
         shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
         shell_result[:exit_code] = 1
       end
-    else
-      # Don't Let The Failure Count Make Us Believe Things Aren't Working
-      @generator_helper.test_results_error_handler(executable, shell_result)
     end
 
-    processed = @generator_test_results.process_and_write_results( shell_result,
-                                                                   arg_hash[:result_file],
-                                                                   @file_finder.find_test_from_file_path(arg_hash[:executable]) )
+    processed = @generator_test_results.process_and_write_results( 
+      shell_result,
+      arg_hash[:result_file],
+      @file_finder.find_test_from_file_path(arg_hash[:executable])
+    )
 
     arg_hash[:result_file]  = processed[:result_file]
     arg_hash[:results]      = processed[:results]
-    arg_hash[:shell_result] = shell_result # for raw output display if no plugins for formatted display
+    # For raw output display if no plugins enabled for nice display
+    arg_hash[:shell_result] = shell_result
 
-    @plugin_manager.post_test_fixture_execute(arg_hash)
+    @plugin_manager.post_test_fixture_execute( arg_hash )
   end
 
 end

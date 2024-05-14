@@ -129,7 +129,7 @@ class Loginator
       prepend = '🧨 '
     when LogLabels::CONSTRUCT
       prepend = '🚧 '
-    when LogLabels::SEGFAULT
+    when LogLabels::CRASH
       prepend = '☠️ '
     when LogLabels::RUN
       prepend = '👟 '
@@ -212,6 +212,8 @@ class Loginator
       prepend += 'ERROR: '
     when LogLabels::EXCEPTION
       prepend += 'EXCEPTION: '
+    when LogLabels::CRASH
+      prepend += 'ERROR: '
     # Otherwise no headings for decorator-only messages
     end
 
