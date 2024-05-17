@@ -25,7 +25,7 @@ class Generator
               :loginator,
               :plugin_manager,
               :file_wrapper,
-              :debugger_utils,
+              :backtrace,
               :unity_utils
 
 
@@ -299,7 +299,7 @@ class Generator
     command = @tool_executor.build_command_line(arg_hash[:tool], [], arg_hash[:executable])
 
     # Configure debugger
-    @debugger_utils.configure_debugger(command)
+    @backtrace.configure_debugger(command)
 
     # Apply additional test case filters 
     command[:line] += @unity_utils.collect_test_runner_additional_args
@@ -314,15 +314,15 @@ class Generator
     if @helper.test_crash?( shell_result )
       @helper.log_test_results_crash( test_name, executable, shell_result )
 
-      if @configurator.project_config_hash[:project_use_backtrace] && @configurator.project_config_hash[:test_runner_cmdline_args]
+      case @configurator.project_config_hash[:project_use_backtrace]
+      when :gdb
         # If we have the options and tools to learn more, dig into the details
-        shell_result = @debugger_utils.gdb_output_collector( shell_result )
+        shell_result = @backtrace.gdb_output_collector( shell_result )
+      when :simple
+        # TODO: Identify problematic test just from iterating with test case filters
       else
         # Otherwise, call a crash a single failure so it shows up in the report
-        source = File.basename(executable).ext(@configurator.extension_source)
-        shell_result[:output] = "#{source}:1:test_Unknown:FAIL:Test Executable Crashed" 
-        shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
-        shell_result[:exit_code] = 1
+        shell_result = @generator_test_results.create_crash_failure( executable, shell_result )
       end
     end
 

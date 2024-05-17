@@ -14,7 +14,7 @@
   # optional features. If you don't need them, keep them turned off for performance
   :use_mocks: TRUE
   :use_test_preprocessor: TRUE
-  :use_backtrace: FALSE
+  :use_backtrace: :none
 
   # tweak the way ceedling handles automatic tasks
   :build_root: build

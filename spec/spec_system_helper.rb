@@ -724,7 +724,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
 
-        @c.merge_project_yml_for_test({:project => { :use_backtrace => true }})
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :none }})
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail because of crash
@@ -744,8 +744,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
 
-        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
-                                       :test_runner => { :cmdline_args => true }})
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
         output = `bundle exec ruby -S ceedling test:all 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail because of crash
@@ -769,8 +768,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
 
-        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
-                                       :test_runner => { :cmdline_args => true }})
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
         output = `bundle exec ruby -S ceedling test:all --test_case=test_add_numbers_will_fail 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail because of crash
@@ -794,8 +792,7 @@ module CeedlingTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
 
-        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
-                                       :test_runner => { :cmdline_args => true }})
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
         output = `bundle exec ruby -S ceedling test:all --exclude_test_case=add_numbers_adds_numbers 2>&1`
         expect($?.exitstatus).to match(1) # Test should fail because of crash

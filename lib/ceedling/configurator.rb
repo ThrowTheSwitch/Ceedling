@@ -153,8 +153,12 @@ class Configurator
   end
 
 
-  # Grab tool names from yaml and insert into tool structures so available for error messages.
-  # Set up default values.
+  # Process our tools
+  #  - :tools entries
+  #    - Insert missing names for
+  #    - Handle inline Ruby string substitution
+  #    - Handle needed defaults
+  #  - Configure test runner from backtrace configuration
   def tools_setup(config)
     config[:tools].each_key do |name|
       tool = config[:tools][name]
@@ -166,16 +170,22 @@ class Configurator
       # Populate name if not given
       tool[:name] = name.to_s if (tool[:name].nil?)
 
-      # handle inline ruby string substitution in executable
+      # Handle inline Ruby string substitution in executable
       if (tool[:executable] =~ RUBY_STRING_REPLACEMENT_PATTERN)
         tool[:executable].replace(@system_wrapper.module_eval(tool[:executable]))
       end
 
-      # populate stderr redirect option
+      # Populate $stderr redirect option
       tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
 
-      # populate optional option to control verification of executable in search paths
+      # Populate optional option to control verification of executable in search paths
       tool[:optional] = false if (tool[:optional].nil?)
+    end
+
+    use_backtrace = config[:project][:use_backtrace]
+    # TODO: Remove :gdb once it and :simple are disentangled
+    if (use_backtrace == :gdb) or (use_backtrace == :simple)
+      config[:test_runner][:cmdline_args] = true
     end
   end
 
@@ -366,6 +376,7 @@ class Configurator
     blotter = true
     blotter &= @configurator_setup.validate_paths( config )
     blotter &= @configurator_setup.validate_tools( config )
+    blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
     blotter &= @configurator_setup.validate_plugins( config )
 

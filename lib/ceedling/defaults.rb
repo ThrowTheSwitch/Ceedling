@@ -225,6 +225,8 @@ DEFAULT_RELEASE_LINKER_TOOL = {
 DEFAULT_BACKTRACE_TOOL = {
   :executable => ENV['GDB'].nil? ? FilePathUtils.os_executable_ext('gdb').freeze : ENV['GDB'],
   :name => 'default_backtrace_reporter'.freeze,
+  # Must be optional because validation is contingent on backtrace configuration.
+  # (Don't break a build if `gdb` is unavailable but backtrace does not require it.)
   :optional => true.freeze,
   :arguments => [
     '-q',
@@ -296,7 +298,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :use_test_preprocessor => false,
       :test_file_prefix => 'test_',
       :release_build => false,
-      :use_backtrace => false,
+      :use_backtrace => :none,
       :debug => false
     },
 

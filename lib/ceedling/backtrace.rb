@@ -5,10 +5,9 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# The debugger utils class,
 # Store functions and variables helping to parse debugger output and
 # prepare output understandable by report generators
-class DebuggerUtils
+class Backtrace
   constructor :configurator,
               :tool_executor,
               :unity_utils

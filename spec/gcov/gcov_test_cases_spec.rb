@@ -211,8 +211,7 @@ module GcovTestCases
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
-        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
-                                       :test_runner => { :cmdline_args => true }})
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         expect($?.exitstatus).to match(1) # Ceedling should exit with error because of failed test due to crash
@@ -242,8 +241,7 @@ module GcovTestCases
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
-        @c.merge_project_yml_for_test({:project => { :use_backtrace => true },
-                                       :test_runner => { :cmdline_args => true }})
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
         output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
         expect($?.exitstatus).to match(1) # Ceedling should exit with error because of failed test due to crash
