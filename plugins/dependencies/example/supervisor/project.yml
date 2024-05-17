@@ -139,10 +139,6 @@
   :defines:
     - UNITY_EXCLUDE_FLOAT
 
-# Configuration options specify to Unity's test runner generator
-:test_runner:
-  :cmdline_args: FALSE
-
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.
 :environment: []

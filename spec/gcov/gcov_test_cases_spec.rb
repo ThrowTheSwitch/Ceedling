@@ -203,7 +203,7 @@ module GcovTestCases
     end
   end
 
-  def can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_and_cmd_args_set_to_true_for_test_cases_not_causing_crash
+  def can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_for_test_cases_not_causing_crash
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -233,7 +233,7 @@ module GcovTestCases
     end
   end
 
-  def can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_and_cmd_args_set_to_true_with_zero_coverage
+  def can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_with_zero_coverage
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -264,15 +264,13 @@ module GcovTestCases
     end
   end
 
-  def can_create_gcov_html_report_from_test_runner_with_enabled_debug_and_cmd_args_set_to_true_with_100_coverage_when_excluding_crashing_test_case
+  def can_create_gcov_html_report_from_test_runner_with_enabled_debug_with_100_coverage_when_excluding_crashing_test_case
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
-
-        @c.merge_project_yml_for_test({:test_runner => { :cmdline_args => true }})
 
         add_test_case = "\nvoid test_difference_between_two_numbers(void)\n"\
                         "{\n" \
