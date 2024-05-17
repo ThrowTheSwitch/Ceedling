@@ -22,6 +22,8 @@ class ToolExecutor
     command[:name] = tool_config[:name]
     command[:executable] = tool_config[:executable]
 
+    command[:options] = {} # Blank to hold options set before `exec()` processes
+
     # Basic premise is to iterate top to bottom through arguments using '$' as
     # a string replacement indicator to expand globals or inline yaml arrays
     # into command line arguments via substitution strings.
@@ -34,10 +36,6 @@ class ToolExecutor
       extra_params.join(' ').strip,
       build_arguments(tool_config[:name], tool_config[:arguments], *args),
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
-
-    command[:options] = {
-      :stderr_redirect => @tool_executor_helper.stderr_redirection( tool_config, @configurator.project_logging )
-      }
 
     @loginator.log( "Command: #{command}", Verbosity::DEBUG )
 

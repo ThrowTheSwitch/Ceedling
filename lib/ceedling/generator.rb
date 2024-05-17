@@ -304,10 +304,6 @@ class Generator
     # Apply additional test case filters 
     command[:line] += @unity_utils.collect_test_runner_additional_args
 
-    # Enable collecting GCOV results even for crashes
-    # The gcda and gcno files will be generated for test executable that doesn't cause a crash
-    @debugger_utils.enable_gcov_with_gdb_and_cmdargs(command)
-
     # Run the test executable itself
     # We allow it to fail without an exception.
     # We'll analyze its results apart from tool_executor

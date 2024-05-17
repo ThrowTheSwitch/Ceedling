@@ -14,24 +14,6 @@ class ToolExecutorHelper
   constructor :loginator, :system_utils, :system_wrapper, :verbosinator
 
   ##
-  # Returns the stderr redirection based on the config and logging.
-  # ==== Attributes
-  #
-  # * _tool_config_:  A hash containing config information.
-  # * _logging_:  A boolean representing if logging is enabled or not.
-  #
-  def stderr_redirection(tool_config, logging)
-    # if there's no logging enabled, return :stderr_redirect unmodified
-    return tool_config[:stderr_redirect] if (not logging)
-
-    # if there is logging enabled but the redirect is a custom value (not enum), return the custom string
-    return tool_config[:stderr_redirect] if (tool_config[:stderr_redirect].class == String)
-
-    # if logging is enabled but there's no custom string, return the AUTO enumeration so $stderr goes into the log
-    return StdErrRedirect::AUTO
-  end
-
-  ##
   # Modifies an executables path based on platform.
   # ==== Attributes
   #

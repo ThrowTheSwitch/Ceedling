@@ -88,21 +88,6 @@ class DebuggerUtils
     test_runner_tc
   end
 
-  # Update stderr output stream to auto, to collect segmentation fault for
-  # test execution with gcov tool
-  #
-  # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
-  def enable_gcov_with_gdb_and_cmdargs(command)
-    if @configurator.project_config_hash[:project_use_backtrace] &&
-       @configurator.project_config_hash[:test_runner_cmdline_args]
-       command[:options][:stderr_redirect] = if [:none, StdErrRedirect::NONE].include? @configurator.project_config_hash[:tools_backtrace_reporter][:stderr_redirect]
-                                               DEFAULT_BACKTRACE_TOOL[:stderr_redirect]
-                                             else
-                                               @configurator.project_config_hash[:tools_backtrace_reporter][:stderr_redirect]
-                                             end
-    end
-  end
-
   # Support function to collect backtrace from gdb.
   # If test_runner_cmdline_args is set, function it will try to run each of test separately
   # and create output String similar to non segmentation fault execution but with notification

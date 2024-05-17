@@ -18,7 +18,6 @@ CEEDLING_PLUGINS = [] unless defined? CEEDLING_PLUGINS
 DEFAULT_TEST_COMPILER_TOOL = {
   :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
   :name => 'default_test_compiler'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['CPPFLAGS'].nil? ? "" : ENV['CPPFLAGS'].split,
@@ -38,7 +37,6 @@ DEFAULT_TEST_COMPILER_TOOL = {
 DEFAULT_TEST_ASSEMBLER_TOOL = {
   :executable => ENV['TEST_AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['TEST_AS'],
   :name => 'default_test_assembler'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['TEST_ASFLAGS'].nil? ? "" : ENV['TEST_ASFLAGS'].split,
@@ -52,7 +50,6 @@ DEFAULT_TEST_ASSEMBLER_TOOL = {
 DEFAULT_TEST_LINKER_TOOL = {
   :executable => ENV['TEST_CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CCLD'],
   :name => 'default_test_linker'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['TEST_CFLAGS'].nil? ? "" : ENV['TEST_CFLAGS'].split,
@@ -69,7 +66,6 @@ DEFAULT_TEST_LINKER_TOOL = {
 DEFAULT_TEST_FIXTURE_TOOL = {
   :executable => '${1}'.freeze,
   :name => 'default_test_fixture'.freeze,
-  :stderr_redirect => StdErrRedirect::AUTO.freeze,
   :optional => false.freeze,
   :arguments => [].freeze
   }
@@ -77,7 +73,6 @@ DEFAULT_TEST_FIXTURE_TOOL = {
 DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
   :name => 'default_test_shallow_includes_preprocessor'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['TEST_CPPFLAGS'].nil? ? "" : ENV['TEST_CPPFLAGS'].split,
@@ -96,7 +91,6 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
 DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
   :name => 'default_test_nested_includes_preprocessor'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['TEST_CPPFLAGS'].nil? ? "" : ENV['TEST_CPPFLAGS'].split,
@@ -116,7 +110,6 @@ DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
 DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
   :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
   :name => 'default_test_file_preprocessor'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['TEST_CPPFLAGS'].nil? ? "" : ENV['TEST_CPPFLAGS'].split,
@@ -141,7 +134,6 @@ end
 DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => ENV['TEST_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['TEST_CC'],
   :name => 'default_test_dependencies_generator'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['TEST_CPPFLAGS'].nil? ? "" : ENV['TEST_CPPFLAGS'].split,
@@ -163,7 +155,6 @@ DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
 DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => ENV['RELEASE_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['RELEASE_CC'],
   :name => 'default_release_dependencies_generator'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['RELEASE_CPPFLAGS'].nil? ? "" : ENV['RELEASE_CPPFLAGS'].split,
@@ -187,7 +178,6 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
 DEFAULT_RELEASE_COMPILER_TOOL = {
   :executable => ENV['RELEASE_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['RELEASE_CC'],
   :name => 'default_release_compiler'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['RELEASE_CPPFLAGS'].nil? ? "" : ENV['RELEASE_CPPFLAGS'].split,
@@ -206,7 +196,6 @@ DEFAULT_RELEASE_COMPILER_TOOL = {
 DEFAULT_RELEASE_ASSEMBLER_TOOL = {
   :executable => ENV['RELEASE_AS'].nil? ? FilePathUtils.os_executable_ext('as').freeze : ENV['RELEASE_AS'],
   :name => 'default_release_assembler'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['RELEASE_ASFLAGS'].nil? ? "" : ENV['RELEASE_ASFLAGS'].split,
@@ -220,7 +209,6 @@ DEFAULT_RELEASE_ASSEMBLER_TOOL = {
 DEFAULT_RELEASE_LINKER_TOOL = {
   :executable => ENV['RELEASE_CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['RELEASE_CCLD'],
   :name => 'default_release_linker'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     ENV['RELEASE_CFLAGS'].nil? ? "" : ENV['RELEASE_CFLAGS'].split,
@@ -237,7 +225,6 @@ DEFAULT_RELEASE_LINKER_TOOL = {
 DEFAULT_BACKTRACE_TOOL = {
   :executable => ENV['GDB'].nil? ? FilePathUtils.os_executable_ext('gdb').freeze : ENV['GDB'],
   :name => 'default_backtrace_reporter'.freeze,
-  :stderr_redirect => StdErrRedirect::AUTO.freeze,
   :optional => true.freeze,
   :arguments => [
     '-q',

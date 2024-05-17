@@ -32,20 +32,6 @@ describe ToolExecutorHelper do
     )
   end
   
-  describe '#stderr_redirection' do
-    it 'returns stderr_redirect if logging is false' do
-      expect(@tool_exe_helper.stderr_redirection({:stderr_redirect => StdErrRedirect::NONE}, false)).to eq(StdErrRedirect::NONE)
-    end
-
-    it 'returns stderr_redirect if logging is true and is a string' do
-      expect(@tool_exe_helper.stderr_redirection({:stderr_redirect => 'abc'}, true)).to eq('abc')
-    end
-
-    it 'returns AUTO if logging is true and stderr_redirect is not a string' do
-      expect(@tool_exe_helper.stderr_redirection({:stderr_redirect => StdErrRedirect::NONE}, true)).to eq(StdErrRedirect::AUTO)
-    end
-  end
-
 
   describe '#osify_path_separators' do
     it 'returns path if system is not windows' do

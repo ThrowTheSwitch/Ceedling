@@ -19,7 +19,7 @@ class PreprocessinatorFileHandler
       preprocessed_filepath,
       defines,
       include_paths
-      )
+    )
     
     shell_result = @tool_executor.exec( command )
 
