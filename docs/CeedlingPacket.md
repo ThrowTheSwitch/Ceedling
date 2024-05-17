@@ -2336,24 +2336,28 @@ migrated to the `:test_build` and `:release_build` sections.
 
 * `:use_backtrace`
 
-  When a test executable runs into a ☠️ **Segmentation Fault**, the executable 
-  immediately crashes and no further details for test suite reporting are collected.
-  By default, Ceedling reports a single failure for the entire test file, noting 
-  that it segfaulted.
+  When a test executable encounters a ☠️ **Segmentation Fault** or other crash 
+  condition, the executable immediately terminates and no further details for 
+  test suite reporting are collected. By default, Ceedling reports a single 
+  failure for the entire test file, noting that it crashed.
 
-  But, fear not. You can bring your dead unit tests back to life. If you are running
-  `gcc` or `clang` (LLVM), then you have an option to get more detail!
+  But, fear not. You can bring your dead unit tests back to life.
 
-  Set `:use_backtrace` to `true` and unit test segfaults will trigger Ceedling to 
-  collect backtrace data from test runners. With this option enabled, Ceedling runs
-  each test case in the faulted test executable individually, collecting the pass/fail
-  results as normal. For any test cases that segfault, Ceedling collects and reports
-  details for the offending code using the [`gdb`][gdb] debugger.
+  You have three options for this setting:
 
-  If this option is enabled, but `gdb` is not available to Ceedling, project 
-  validation will terminate with an error at startup.
+  1. `:none` is the default and will produce the test failure report described
+     above.
+  1. `:simple` causes Ceedling to re-run each test case in the test executable
+     individually to identify and report the problematic test case(s).
+  1. `:gdb` uses the [`gdb`][gdb] debugger to identify and report the 
+     troublesome line of code triggering the crash. If this option is enabled, 
+     but `gdb` is not available to Ceedling, project validation will terminate 
+     with an error at startup.
 
-  **Default**: FALSE
+  May 17, 2024: While `:simple` is a recognized value only the `:none` and 
+  `:gdb` options are currently implemented.
+
+  **Default**: :none
 
   [gdb]: https://www.sourceware.org/gdb/
 
