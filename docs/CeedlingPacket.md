@@ -3985,14 +3985,23 @@ command line for `:tools` ↳ `:power_drill` would look like this:
 
 1. `:stderr_redirect` - Control of capturing `$stderr` messages
    {`:none`, `:auto`, `:win`, `:unix`, `:tcsh`}.
-   Defaults to `:none` if unspecified. Create a custom entry by
+   Defaults to `:none` if unspecified. You may create a custom entry by
    specifying a simple string instead of any of the recognized
-   symbols.
+   symbols. As an example, the `:unix` symbol maps to the string `2>&1`
+   that is automatically inserted at the end of a command line.
 
-1. `:optional` - By default a tool is required for operation, which
-   means tests will be aborted if the tool is not present. However,
-   you can set this to `true` if it's not needed for testing (e.g.
-   as part of a plugin).
+   This option is rarely necessary. `$stderr` redirection was originally 
+   often needed in early versions of Ceedling. Shell output stream handling
+   is now automatically handled. This option is preserved for possible edge 
+   cases.
+
+1. `:optional` - By default a tool you define is required for operation. This
+   means a build will be aborted if Ceedling cannot find your tool’s executable 
+   in your  environment. However, setting `:optional` to `true` causes this 
+   check to be skipped. This is most often needed in plugin scenarios where a 
+   tool is only needed if an accompanying configuration option requires it. In 
+   such cases, a programmatic option available in plugin Ruby code using the
+   Ceedling class `ToolValidator` exists to process tool definitions as needed.
 
 #### Tool element runtime substitution
 
