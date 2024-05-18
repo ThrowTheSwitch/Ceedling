@@ -186,7 +186,7 @@ module GcovTestCases
     end
   end
 
-  def can_create_html_report
+  def can_create_html_reports
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
@@ -203,7 +203,7 @@ module GcovTestCases
     end
   end
 
-  def can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_for_test_cases_not_causing_crash
+  def can_create_html_reports_from_crashing_test_runner_with_enabled_debug_for_test_cases_not_causing_crash
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -233,7 +233,7 @@ module GcovTestCases
     end
   end
 
-  def can_create_gcov_html_report_from_crashing_test_runner_with_enabled_debug_with_zero_coverage
+  def can_create_html_reports_from_crashing_test_runner_with_enabled_debug_with_zero_coverage
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -264,7 +264,7 @@ module GcovTestCases
     end
   end
 
-  def can_create_gcov_html_report_from_test_runner_with_enabled_debug_with_100_coverage_when_excluding_crashing_test_case
+  def can_create_html_reports_from_test_runner_with_enabled_debug_with_100_coverage_when_excluding_crashing_test_case
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'

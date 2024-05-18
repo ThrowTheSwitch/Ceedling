@@ -51,8 +51,8 @@ describe "Ceedling" do
     it { test_run_of_projects_fail_because_of_crash_without_report }
     it { test_run_of_projects_fail_because_of_crash_with_report }
     it { execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue }
-    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument }
-    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument }
+    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug }
+    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug }
     it { confirm_if_notification_for_cmdline_args_not_enabled_is_disabled }
     it { can_run_single_test_with_full_test_case_name_from_test_file_with_success }
     it { can_run_single_test_with_partial_test_case_name_from_test_file_with_success }
