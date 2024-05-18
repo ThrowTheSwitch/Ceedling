@@ -7,6 +7,9 @@
 
 source "http://rubygems.org/"
 
+Encoding.default_external = Encoding::UTF_8
+Encoding.default_internal = Encoding::UTF_8
+
 gem "bundler", "~> 2.5"
 gem "rake"
 gem "rspec", "~> 3.8"
