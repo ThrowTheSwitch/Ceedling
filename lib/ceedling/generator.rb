@@ -320,7 +320,7 @@ class Generator
         shell_result = @backtrace.gdb_output_collector( shell_result )
       when :simple
         # TODO: Identify problematic test just from iterating with test case filters
-      else
+      else # :none
         # Otherwise, call a crash a single failure so it shows up in the report
         shell_result = @generator_test_results.create_crash_failure( executable, shell_result )
       end

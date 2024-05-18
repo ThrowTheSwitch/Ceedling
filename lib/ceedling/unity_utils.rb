@@ -19,7 +19,7 @@ class UnityUtils
     @test_case_excl = ''
     @test_runner_defines = []
 
-    # Refering to Unity implementation of the parser implemented in the unit.c :
+    # Refering to Unity implementation of the parser implemented in the unity.c :
     #
     # case 'l': /* list tests */
     # case 'f': /* filter tests with name including this string */

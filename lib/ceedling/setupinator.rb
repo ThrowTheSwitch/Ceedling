@@ -39,6 +39,7 @@ class Setupinator
     @ceedling[:configurator].populate_defaults( config_hash )
     @ceedling[:configurator].populate_unity_defaults( config_hash )
     @ceedling[:configurator].populate_cmock_defaults( config_hash )
+    @ceedling[:configurator].configure_test_runner_generation( config_hash )
     @ceedling[:configurator].eval_environment_variables( config_hash )
     @ceedling[:configurator].eval_paths( config_hash )
     @ceedling[:configurator].standardize_paths( config_hash )

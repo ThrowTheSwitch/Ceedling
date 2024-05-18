@@ -104,18 +104,21 @@ class Configurator
 
 
   def populate_unity_defaults(config)
-      unity = config[:unity] || {}
-      @runner_config = unity.merge(config[:test_runner] || {})
+    # Do nothing
   end
 
+
   def populate_cmock_defaults(config)
-    # cmock has its own internal defaults handling, but we need to set these specific values
+    # Cmock has its own internal defaults handling, but we need to set these specific values
     # so they're present for the build environment to access;
-    # note: these need to end up in the hash given to initialize cmock for this to be successful
+    # Note: These need to end up in the hash given to initialize cmock for this to be successful
     cmock = config[:cmock] || {}
 
-    # yes, we're duplicating the default mock_prefix in cmock, but it's because we need CMOCK_MOCK_PREFIX always available in Ceedling's environment
+    # Yes, we're duplicating the defaults in CMock, but it's because:
+    #  (A) We always need CMOCK_MOCK_PREFIX in Ceedling's environment
+    #  (B) Test runner generator uses these same configuration values
     cmock[:mock_prefix] = 'Mock' if (cmock[:mock_prefix].nil?)
+    cmock[:mock_suffix] = ''     if (cmock[:mock_suffix].nil?)
 
     # just because strict ordering is the way to go
     cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
@@ -137,18 +140,37 @@ class Configurator
       cmock[:includes].uniq!
     end
 
-    @runner_config = cmock.merge(@runner_config || config[:test_runner] || {})
-
     @cmock_config = cmock
   end
 
 
+  def configure_test_runner_generation(config)
+    use_backtrace = config[:project][:use_backtrace]
+
+    # TODO: Potentially update once :gdb and :simple are disentangled
+    if (use_backtrace == :gdb) or (use_backtrace == :simple)
+      config[:test_runner][:cmdline_args] = true
+    end
+
+    # Copy CMock options needed by test runner generation
+    config[:test_runner][:mock_prefix] = config[:cmock][:mock_prefix]
+    config[:test_runner][:mock_suffix] = config[:cmock][:mock_suffix]
+    config[:test_runner][:enforce_strict_ordering] = config[:cmock][:enforce_strict_ordering]
+
+    @runner_config = config[:test_runner]
+  end
+
+
   def get_runner_config
+    # Clone because test runner generation is not thread-safe;
+    # The runner generator is manufactured for each use with configuration changes for each use.
     return @runner_config.clone
   end
 
 
   def get_cmock_config
+    # Clone because test mock generation is not thread-safe;
+    # The mock generator is manufactured for each use with configuration changes for each use.
     return @cmock_config.clone
   end
 
@@ -180,12 +202,6 @@ class Configurator
 
       # Populate optional option to control verification of executable in search paths
       tool[:optional] = false if (tool[:optional].nil?)
-    end
-
-    use_backtrace = config[:project][:use_backtrace]
-    # TODO: Remove :gdb once it and :simple are disentangled
-    if (use_backtrace == :gdb) or (use_backtrace == :simple)
-      config[:test_runner][:cmdline_args] = true
     end
   end
 
