@@ -46,7 +46,9 @@ class FileWrapper
   end
 
   def directory_listing(glob)
-    return Dir.glob(glob, File::FNM_PATHNAME) # Case insensitive globs
+    # Note: `sort()` to ensure platform-independent directory listings (Github Issue #860)
+    # FNM_PATHNAME => Case insensitive globs
+    return Dir.glob(glob, File::FNM_PATHNAME).sort()
   end
 
   def rm_f(filepath, options={})
