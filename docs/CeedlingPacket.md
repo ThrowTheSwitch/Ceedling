@@ -2336,24 +2336,28 @@ migrated to the `:test_build` and `:release_build` sections.
 
 * `:use_backtrace`
 
-  When a test executable runs into a ☠️ **Segmentation Fault**, the executable 
-  immediately crashes and no further details for test suite reporting are collected.
-  By default, Ceedling reports a single failure for the entire test file, noting 
-  that it segfaulted.
+  When a test executable encounters a ☠️ **Segmentation Fault** or other crash 
+  condition, the executable immediately terminates and no further details for 
+  test suite reporting are collected. By default, Ceedling reports a single 
+  failure for the entire test file, noting that it crashed.
 
-  But, fear not. You can bring your dead unit tests back to life. If you are running
-  `gcc` or `clang` (LLVM), then you have an option to get more detail!
+  But, fear not. You can bring your dead unit tests back to life.
 
-  Set `:use_backtrace` to `true` and unit test segfaults will trigger Ceedling to 
-  collect backtrace data from test runners. With this option enabled, Ceedling runs
-  each test case in the faulted test executable individually, collecting the pass/fail
-  results as normal. For any test cases that segfault, Ceedling collects and reports
-  details for the offending code using the [`gdb`][gdb] debugger.
+  You have three options for this setting:
 
-  If this option is enabled, but `gdb` is not available to Ceedling, project 
-  validation will terminate with an error at startup.
+  1. `:none` is the default and will produce the test failure report described
+     above.
+  1. `:simple` causes Ceedling to re-run each test case in the test executable
+     individually to identify and report the problematic test case(s).
+  1. `:gdb` uses the [`gdb`][gdb] debugger to identify and report the 
+     troublesome line of code triggering the crash. If this option is enabled, 
+     but `gdb` is not available to Ceedling, project validation will terminate 
+     with an error at startup.
 
-  **Default**: FALSE
+  May 17, 2024: While `:simple` is a recognized value only the `:none` and 
+  `:gdb` options are currently implemented.
+
+  **Default**: :none
 
   [gdb]: https://www.sourceware.org/gdb/
 
@@ -3985,14 +3989,23 @@ command line for `:tools` ↳ `:power_drill` would look like this:
 
 1. `:stderr_redirect` - Control of capturing `$stderr` messages
    {`:none`, `:auto`, `:win`, `:unix`, `:tcsh`}.
-   Defaults to `:none` if unspecified. Create a custom entry by
+   Defaults to `:none` if unspecified. You may create a custom entry by
    specifying a simple string instead of any of the recognized
-   symbols.
+   symbols. As an example, the `:unix` symbol maps to the string `2>&1`
+   that is automatically inserted at the end of a command line.
 
-1. `:optional` - By default a tool is required for operation, which
-   means tests will be aborted if the tool is not present. However,
-   you can set this to `true` if it's not needed for testing (e.g.
-   as part of a plugin).
+   This option is rarely necessary. `$stderr` redirection was originally 
+   often needed in early versions of Ceedling. Shell output stream handling
+   is now automatically handled. This option is preserved for possible edge 
+   cases.
+
+1. `:optional` - By default a tool you define is required for operation. This
+   means a build will be aborted if Ceedling cannot find your tool’s executable 
+   in your  environment. However, setting `:optional` to `true` causes this 
+   check to be skipped. This is most often needed in plugin scenarios where a 
+   tool is only needed if an accompanying configuration option requires it. In 
+   such cases, a programmatic option available in plugin Ruby code using the
+   Ceedling class `ToolValidator` exists to process tool definitions as needed.
 
 #### Tool element runtime substitution
 

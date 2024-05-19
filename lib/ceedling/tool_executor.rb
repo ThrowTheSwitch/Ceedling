@@ -22,6 +22,8 @@ class ToolExecutor
     command[:name] = tool_config[:name]
     command[:executable] = tool_config[:executable]
 
+    command[:options] = {} # Blank to hold options set before `exec()` processes
+
     # Basic premise is to iterate top to bottom through arguments using '$' as
     # a string replacement indicator to expand globals or inline yaml arrays
     # into command line arguments via substitution strings.
@@ -34,10 +36,6 @@ class ToolExecutor
       extra_params.join(' ').strip,
       build_arguments(tool_config[:name], tool_config[:arguments], *args),
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
-
-    command[:options] = {
-      :stderr_redirect => @tool_executor_helper.stderr_redirection( tool_config, @configurator.project_logging )
-      }
 
     @loginator.log( "Command: #{command}", Verbosity::DEBUG )
 
@@ -72,21 +70,22 @@ class ToolExecutor
       shell_result[:output].gsub!(/\033\[\d\dm/,'')
     end
 
-    @tool_executor_helper.print_happy_results( command_line, shell_result, options[:boom] )
-    @tool_executor_helper.print_error_results( command_line, shell_result, options[:boom] )
+    @tool_executor_helper.log_results( command_line, shell_result )
 
-    # Go boom if exit code is not 0 and we want to debug (in some cases we don't want a non-0 exit code to raise)
+    # Go boom if exit code is not 0 and that code means a fatal error
+    # (Sometimes we don't want a non-0 exit code to cause an exception as the exit code may not mean a build-ending failure)
     if ((shell_result[:exit_code] != 0) and options[:boom])
       raise ShellExecutionException.new(
         shell_result: shell_result,
         # Titleize the command's name--each word is capitalized and any underscores replaced with spaces
-        message: "'#{command[:name].split(/ |\_/).map(&:capitalize).join(" ")}' (#{command[:executable]}) exited with an error"
+        message: "'#{command[:name].split(/ |\_/).map(&:capitalize).join(" ")}' " +
+                 "(#{command[:executable]}) " +
+                 "terminated with exit code [#{shell_result[:exit_code]}]"
         )
     end
 
     return shell_result
   end
-
 
   private #############################
 

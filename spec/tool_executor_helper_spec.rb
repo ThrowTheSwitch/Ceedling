@@ -11,48 +11,7 @@ require 'ceedling/tool_executor_helper'
 require 'ceedling/system_wrapper'
 require 'ceedling/loginator'
 require 'ceedling/system_utils'
-
-HAPPY_OUTPUT =
-  "> Shell executed command:\n" +
-  "'gcc ab.c'\n" +
-  "\n".freeze
-
-HAPPY_OUTPUT_WITH_STATUS =
-  "> Shell executed command:\n" +
-  "'gcc ab.c'\n" +
-  "> And exited with status: [1].\n" +
-  "\n".freeze
-
-HAPPY_OUTPUT_WITH_MESSAGE =
-  "> Shell executed command:\n" +
-  "'gcc ab.c'\n" +
-  "> Produced output:\n" +
-  "xyz\n" +
-  "\n".freeze
-
-HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS =
-  "> Shell executed command:\n" +
-  "'gcc ab.c'\n" +
-  "> Produced output:\n" +
-  "xyz\n" +
-  "> And exited with status: [1].\n" +
-  "\n".freeze
-
-ERROR_OUTPUT =
-  "Shell command failed.\n" +
-  "> Shell executed command:\n" +
-  "'gcc ab.c'\n" +
-  "> And exited with status: [1].\n" +
-  "\n"
-
-ERROR_OUTPUT_WITH_MESSAGE =
-  "Shell command failed.\n" +
-  "> Shell executed command:\n" +
-  "'gcc ab.c'\n" +
-  "> Produced output:\n" +
-  "xyz\n" +
-  "> And exited with status: [1].\n" +
-  "\n"
+require 'ceedling/verbosinator'
 
 
 describe ToolExecutorHelper do
@@ -61,26 +20,18 @@ describe ToolExecutorHelper do
     @sys_wrapper = SystemWrapper.new
     @sys_utils = SystemUtils.new({:system_wrapper => @sys_wrapper})
     @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
+    @verbosinator = Verbosinator.new()
     
-    
-    @tool_exe_helper = described_class.new({:loginator => @loginator, :system_utils => @sys_utils, :system_wrapper => @sys_wrapper})
+    @tool_exe_helper = described_class.new(
+      {
+        :loginator => @loginator,
+        :system_utils => @sys_utils,
+        :system_wrapper => @sys_wrapper,
+        :verbosinator => @verbosinator
+      }
+    )
   end
-
   
-  describe '#stderr_redirection' do
-    it 'returns stderr_redirect if logging is false' do
-      expect(@tool_exe_helper.stderr_redirection({:stderr_redirect => StdErrRedirect::NONE}, false)).to eq(StdErrRedirect::NONE)
-    end
-
-    it 'returns stderr_redirect if logging is true and is a string' do
-      expect(@tool_exe_helper.stderr_redirection({:stderr_redirect => 'abc'}, true)).to eq('abc')
-    end
-
-    it 'returns AUTO if logging is true and stderr_redirect is not a string' do
-      expect(@tool_exe_helper.stderr_redirection({:stderr_redirect => StdErrRedirect::NONE}, true)).to eq(StdErrRedirect::AUTO)
-    end
-  end
-
 
   describe '#osify_path_separators' do
     it 'returns path if system is not windows' do
@@ -137,111 +88,132 @@ describe ToolExecutorHelper do
     end
   end
 
-  describe '#print_happy_results' do
-    context 'when exit code is 0' do
+  describe '#log_results' do
+    it 'insufficient logging verbosity' do
+      # Do nothing
+      expect(@verbosinator).to receive(:should_output?).with(Verbosity::OBNOXIOUS).and_return(false)
+      @tool_exe_helper.log_results("gcc ab.c", {})
+    end
+
+    context 'when debug logging' do
       before(:each) do
-        @shell_result = {:exit_code => 0, :output => ""}
+        expect(@verbosinator).to receive(:should_output?).with(Verbosity::OBNOXIOUS).and_return(true)
+        expect(@verbosinator).to receive(:should_output?).with(Verbosity::DEBUG).and_return(true)
+        @shell_result = {:status => '<status>'}
       end
 
-      it 'and boom is true displays output' do
-        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
-        @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
+      it 'and $stderr and $stdout are both empty' do
+        @shell_result[:stderr] = ''
+        @shell_result[:stdout] = ''
+
+        message =
+          "> Shell executed command:\n" +
+          "`gcc ab.c`\n" +
+          "> With $stdout: <empty>\n" +
+          "> With $stderr: <empty>\n" +
+          "> And terminated with status: <status>\n"
+
+        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
+        expect(@loginator).to receive(:log).with(message, Verbosity::DEBUG)
+        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
+
+        @tool_exe_helper.log_results("gcc ab.c", @shell_result)
       end
 
-      it 'and boom is true with message displays output' do
-        @shell_result[:output] = "xyz"
-        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
-        @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
+      it 'and $stderr is not empty' do
+        @shell_result[:stderr] = "error output\n\n\n"
+        @shell_result[:stdout] = ''
+
+        message =
+          "> Shell executed command:\n" +
+          "`test.exe`\n" +
+          "> With $stdout: <empty>\n" +
+          "> With $stderr: \nerror output\n" +
+          "> And terminated with status: <status>\n"
+
+        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
+        expect(@loginator).to receive(:log).with(message, Verbosity::DEBUG)
+        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
+
+        @tool_exe_helper.log_results("test.exe", @shell_result)
       end
 
-      it 'and boom is false displays output' do
-        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT, Verbosity::OBNOXIOUS)
-        @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
-      end
+      it 'and $stdout is not empty' do
+        @shell_result[:stderr] = ''
+        @shell_result[:stdout] = "output\n\n\n"
 
-      it 'and boom is false with message displays output' do
-        @shell_result[:output] = "xyz"
-        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT_WITH_MESSAGE, Verbosity::OBNOXIOUS)
-        @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
+        message =
+          "> Shell executed command:\n" +
+          "`utility --flag`\n" +
+          "> With $stdout: \noutput\n" +
+          "> With $stderr: <empty>\n" +
+          "> And terminated with status: <status>\n"
+
+        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
+        expect(@loginator).to receive(:log).with(message, Verbosity::DEBUG)
+        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
+
+        @tool_exe_helper.log_results("utility --flag", @shell_result)
       end
     end
 
-    context 'when exit code is not 0' do
+    context 'when obnoxious logging' do
       before(:each) do
-        @shell_result = {:exit_code => 1, :output => ""}
+        expect(@verbosinator).to receive(:should_output?).with(Verbosity::OBNOXIOUS).and_return(true)
+        expect(@verbosinator).to receive(:should_output?).with(Verbosity::DEBUG).and_return(false)
+        @shell_result = {}
       end
 
-      it 'and boom is true does not displays output' do
-        @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
+      it 'and executable probably crashed' do
+        @shell_result[:output] = ''
+        @shell_result[:exit_code] = nil
+
+        message =
+          "> Shell executed command:\n" +
+          "`gcc ab.c`\n" +
+          "> And exited prematurely\n"
+
+        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with(message, Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
+
+        @tool_exe_helper.log_results("gcc ab.c", @shell_result)
       end
 
-      it 'and boom is true with message does not displays output' do
-        @shell_result[:output] = "xyz"
-        @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, true)
+      it 'and executable produced output and zero exit code' do
+        @shell_result[:output] = 'some output'
+        @shell_result[:exit_code] = 0
+
+        message =
+          "> Shell executed command:\n" +
+          "`test.exe --a_flag`\n" +
+          "> Produced output:\nsome output\n" +
+          "> And terminated with exit code: [0]\n"
+
+        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with(message, Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
+
+        @tool_exe_helper.log_results("test.exe --a_flag", @shell_result)
       end
 
-      it 'and boom is false displays output' do
-        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT_WITH_STATUS, Verbosity::OBNOXIOUS)
-        @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
-      end
+      it 'and executable produced output and non-zero exit code' do
+        @shell_result[:output] = 'some more output'
+        @shell_result[:exit_code] = 37
 
-      it 'and boom is false with message displays output' do
-        @shell_result[:output] = "xyz"
-        expect(@loginator).to receive(:log).with(HAPPY_OUTPUT_WITH_MESSAGE_AND_STATUS, Verbosity::OBNOXIOUS)
-        @tool_exe_helper.print_happy_results("gcc ab.c", @shell_result, false)
+        message =
+          "> Shell executed command:\n" +
+          "`utility.out args`\n" +
+          "> Produced output:\nsome more output\n" +
+          "> And terminated with exit code: [37]\n"
+
+        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with(message, Verbosity::OBNOXIOUS)
+        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
+
+        @tool_exe_helper.log_results("utility.out args", @shell_result)
       end
     end
-  end
 
-  describe '#print_error_results' do
-    context 'when exit code is 0' do
-      before(:each) do
-        @shell_result = {:exit_code => 0, :output => ""}
-      end
-
-      it 'and boom is true does not display output' do
-        @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
-      end
-
-      it 'and boom is true with message does not display output' do
-        @shell_result[:output] = "xyz"
-        @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
-      end
-
-      it 'and boom is false does not display output' do
-        @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, false)
-      end
-
-      it 'and boom is false with message does not display output' do
-        @shell_result[:output] = "xyz"
-        @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, false)
-      end
-    end
-
-    context 'when exit code is non 0' do
-      before(:each) do
-        @shell_result = {:exit_code => 1, :output => ""}
-      end
-
-      it 'and boom is true displays output' do
-        expect(@loginator).to receive(:log).with(ERROR_OUTPUT, Verbosity::ERRORS)
-        @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
-      end
-
-      it 'and boom is true with message displays output' do
-        @shell_result[:output] = "xyz"
-        expect(@loginator).to receive(:log).with(ERROR_OUTPUT_WITH_MESSAGE, Verbosity::ERRORS)
-        @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, true)
-      end
-
-      it 'and boom is false dose not display output' do
-        @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, false)
-      end
-
-      it 'and boom is false with message does not display output' do
-        @shell_result[:output] = "xyz"
-        @tool_exe_helper.print_error_results("gcc ab.c", @shell_result, false)
-      end
-    end
   end
 end

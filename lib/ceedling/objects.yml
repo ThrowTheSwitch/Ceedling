@@ -44,7 +44,7 @@ unity_utils:
   compose:
      - configurator
 
-debugger_utils:
+backtrace:
   compose:
      - configurator
      - tool_executor
@@ -75,6 +75,7 @@ tool_executor_helper:
     - loginator
     - system_utils
     - system_wrapper
+    - verbosinator
 
 tool_validator:
   compose:
@@ -219,7 +220,7 @@ generator:
     - plugin_manager
     - file_wrapper
     - unity_utils
-    - debugger_utils
+    - backtrace
 
 generator_helper:
   compose:
@@ -230,7 +231,7 @@ generator_test_results:
     - configurator
     - generator_test_results_sanity_checker
     - yaml_wrapper
-    - debugger_utils
+    - backtrace
 
 generator_test_results_sanity_checker:
   compose:

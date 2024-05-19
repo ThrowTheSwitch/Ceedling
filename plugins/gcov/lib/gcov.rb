@@ -198,7 +198,7 @@ class Gcov < Plugin
         # In this case, versions of gcov may not produce an error, only blank results.
         if results.empty?
           msg = "No functions called or code paths exercised by test for #{filename}"
-          @ceedling[:loginator].log( msg, Verbosity::COMPLAIN, LogLabels:NOTICE )
+          @ceedling[:loginator].log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
           next # Skip to next loop iteration
         end
 
@@ -209,7 +209,7 @@ class Gcov < Plugin
         matches = results.match(/File\s+'(.+)'/)
         if matches.nil? or matches.length() != 2
           msg = "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
-          @ceedling[:loginator].log( msg, Verbosity::DEBUG, LogLabels:ERROR )
+          @ceedling[:loginator].log( msg, Verbosity::DEBUG, LogLabels::ERROR )
         else
           # Expand to full path from likely partial path to ensure correct matches on source component within gcov results
           _source = File.expand_path(matches[1])

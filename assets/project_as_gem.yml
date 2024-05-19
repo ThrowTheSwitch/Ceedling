@@ -14,7 +14,7 @@
   # optional features. If you don't need them, keep them turned off for performance
   :use_mocks: TRUE
   :use_test_preprocessor: TRUE
-  :use_backtrace: FALSE
+  :use_backtrace: :none
   :use_decorators: :auto #Decorate Ceedling's output text. Your options are :auto, :all, or :none
 
   # tweak the way ceedling handles automatic tasks
@@ -320,73 +320,61 @@
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :test_linker: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :test_assembler: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :test_fixture: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :test_includes_preprocessor: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :test_file_preprocessor: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :test_file_preprocessor_directives: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :test_dependencies_generator: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :release_compiler: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :release_linker: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :release_assembler: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 #   :release_dependencies_generator: 
 #     :executable:
 #     :arguments: []
 #     :name: 
-#     :stderr_redirect: :auto
 #     :optional: FALSE
 # #These tools can be filled out when command_hooks plugin is enabled
 #   :pre_mock_preprocess

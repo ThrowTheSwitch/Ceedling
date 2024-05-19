@@ -14,7 +14,7 @@
   # optional features. If you don't need them, keep them turned off for performance
   :use_mocks: TRUE
   :use_test_preprocessor: TRUE
-  :use_backtrace: FALSE
+  :use_backtrace: :none
 
   # tweak the way ceedling handles automatic tasks
   :build_root: build
@@ -138,10 +138,6 @@
 :unity:
   :defines:
     - UNITY_EXCLUDE_FLOAT
-
-# Configuration options specify to Unity's test runner generator
-:test_runner:
-  :cmdline_args: FALSE
 
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.

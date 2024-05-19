@@ -8,7 +8,6 @@
 DEFAULT_GCOV_COMPILER_TOOL = {
   :executable => ENV['GCOV_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['GCOV_CC'],
   :name => 'default_gcov_compiler'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     "-g".freeze,
@@ -31,7 +30,6 @@ DEFAULT_GCOV_COMPILER_TOOL = {
 DEFAULT_GCOV_LINKER_TOOL = {
   :executable => ENV['GCOV_CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['GCOV_CCLD'],
   :name => 'default_gcov_linker'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => false.freeze,
   :arguments => [
     "-g".freeze,
@@ -50,7 +48,6 @@ DEFAULT_GCOV_LINKER_TOOL = {
 DEFAULT_GCOV_FIXTURE_TOOL = {
   :executable => '${1}'.freeze,
   :name => 'default_gcov_fixture'.freeze,
-  :stderr_redirect => StdErrRedirect::AUTO.freeze,
   :optional => false.freeze,
   :arguments => [].freeze
   }
@@ -59,7 +56,6 @@ DEFAULT_GCOV_FIXTURE_TOOL = {
 DEFAULT_GCOV_SUMMARY_TOOL = {
   :executable => ENV['GCOV_SUMMARY'].nil? ? FilePathUtils.os_executable_ext('gcov').freeze : ENV['GCOV_SUMMARY'],
   :name => 'default_gcov_summary'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => true.freeze,
   :arguments => [
     "-n".freeze,
@@ -74,7 +70,6 @@ DEFAULT_GCOV_SUMMARY_TOOL = {
 DEFAULT_GCOV_REPORT_TOOL = {
   :executable => ENV['GCOV_REPORT'].nil? ? FilePathUtils.os_executable_ext('gcov').freeze : ENV['GCOV_REPORT'],
   :name => 'default_gcov_report'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => true.freeze,
   :arguments => [
     "-b".freeze,
@@ -90,7 +85,6 @@ DEFAULT_GCOV_GCOVR_REPORT_TOOL = {
   # No extension handling -- `gcovr` is generally an extensionless Python script
   :executable => ENV['GCOVR'].nil? ? 'gcovr'.freeze : ENV['GCOVR'],
   :name => 'default_gcov_gcovr_report'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => true.freeze,
   :arguments => [
     "${1}".freeze
@@ -101,7 +95,6 @@ DEFAULT_GCOV_GCOVR_REPORT_TOOL = {
 DEFAULT_GCOV_REPORTGENERATOR_REPORT_TOOL = {
   :executable => ENV['REPORTGENERATOR'].nil? ? FilePathUtils.os_executable_ext('reportgenerator').freeze : ENV['REPORTGENERATOR'],
   :name => 'default_gcov_reportgenerator_report'.freeze,
-  :stderr_redirect => StdErrRedirect::NONE.freeze,
   :optional => true.freeze,
   :arguments => [
     "${1}".freeze

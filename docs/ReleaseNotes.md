@@ -7,7 +7,7 @@ These release notes are complemented by two other documents:
 
 ---
 
-# 1.0.0 pre-release — April 2, 2024
+# 1.0.0 pre-release — May 17, 2024
 
 ## 🏴‍☠️ Avast, Breaking Changes, Ye Scallywags!
 
@@ -93,9 +93,11 @@ The previously undocumented build directive macro `TEST_FILE(...)` has been rena
 
 Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing (expanding macros in test files and header files to be mocked) is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling’s long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release.
 
-#### Segfault Handling
+#### Crash Handling
 
-Previously, if a test executable ran into a segmentation fault (usually caused by memory issues in the code), the entire test executable would report nothing and an error would be reported. This behavior has been improved so that segfaults result in rerunning each test individually to narrow down which test caused the problem. Each segfault is reported with its own failure. Also, the `:use_backtrace` option can be enabled if `gdb` is properly installed and configured, so that the specific line that caused the segfault can be reported.
+Previously, if a test executable ran into a segmentation fault (usually caused by memory issues in the code), the entire test executable would report nothing and an error would be reported. This behavior has been expanded to handle any crash condition and further improved. Optionally, a crashed test executable can be automatically rerun for each test case individually to narrow down which test caused the problem. Each crash is reported with its own failure. If `gdb` is properly installed and configured the specific line that caused the crash can be reported.
+
+See _[CeedlingPacket](CeedlingPacket.md))_ for the new `:project` ↳ `:use_backtrace` feature to control how much detail is extracted from a crashed test executable to help you find the cause.
 
 #### Documentation
 

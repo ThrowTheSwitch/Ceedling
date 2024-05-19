@@ -84,7 +84,7 @@ class FilePathCollectionUtils
       (Pathname.new( path ).relative_path_from( @working_dir_path )).to_s()
     end
 
-    return paths.sort()
+    return paths
   end
 
 
@@ -110,8 +110,7 @@ class FilePathCollectionUtils
       filepaths = []
 
       # Expand path by pattern as needed and add only filepaths to working list
-      # Note: `sort()` becuase of Github Issue #860
-      @file_wrapper.directory_listing( path ).sort.each do |entry|
+      @file_wrapper.directory_listing( path ).each do |entry|
         filepaths << File.expand_path( entry ) if !@file_wrapper.directory?( entry )
       end
 

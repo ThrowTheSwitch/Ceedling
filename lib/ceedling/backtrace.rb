@@ -5,10 +5,9 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# The debugger utils class,
 # Store functions and variables helping to parse debugger output and
 # prepare output understandable by report generators
-class DebuggerUtils
+class Backtrace
   constructor :configurator,
               :tool_executor,
               :unity_utils
@@ -88,21 +87,6 @@ class DebuggerUtils
     test_runner_tc
   end
 
-  # Update stderr output stream to auto, to collect segmentation fault for
-  # test execution with gcov tool
-  #
-  # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
-  def enable_gcov_with_gdb_and_cmdargs(command)
-    if @configurator.project_config_hash[:project_use_backtrace] &&
-       @configurator.project_config_hash[:test_runner_cmdline_args]
-       command[:options][:stderr_redirect] = if [:none, StdErrRedirect::NONE].include? @configurator.project_config_hash[:tools_backtrace_reporter][:stderr_redirect]
-                                               DEFAULT_BACKTRACE_TOOL[:stderr_redirect]
-                                             else
-                                               @configurator.project_config_hash[:tools_backtrace_reporter][:stderr_redirect]
-                                             end
-    end
-  end
-
   # Support function to collect backtrace from gdb.
   # If test_runner_cmdline_args is set, function it will try to run each of test separately
   # and create output String similar to non segmentation fault execution but with notification
@@ -161,7 +145,7 @@ class DebuggerUtils
           test_output = test_output.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
           test_output = "#{file_name}:#{line}:#{test_case_name}:FAIL: #{test_output}"
         else
-          test_output = "ERR:1:#{test_case_name}:FAIL: Segmentation Fault"
+          test_output = "ERR:1:#{test_case_name}:FAIL:Test Executable Crashed"
         end
 
         # Mark test as failure

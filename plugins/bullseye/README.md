@@ -55,7 +55,6 @@ by Ceedling. The following is a typical configuration example:
       - -w140
   :bullseye_report_covfn:
     :executable: covfn
-    :stderr_redirect: :auto
     :arguments:
       - '--file $': ENVIRONMENT_COVFILE
       - --width 120

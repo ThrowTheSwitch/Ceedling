@@ -58,7 +58,7 @@ class PluginManager
 
       report += "\n"
 
-      @loginator.log( report, Verbosity::ERRORS )
+      @loginator.log( report, Verbosity::ERRORS, LogLabels::NONE )
     end
   end
 

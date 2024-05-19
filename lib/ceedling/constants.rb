@@ -34,7 +34,7 @@ class LogLabels
   EXCEPTION  =  5  # decorator + 'EXCEPTION:'
   CONSTRUCT  =  6  # decorator only
   RUN        =  7  # decorator only
-  SEGFAULT   =  8  # decorator only
+  CRASH      =  8  # decorator only
   PASS       =  9  # decorator only
   FAIL       = 10  # decorator only
   TITLE      = 11  # decorator only

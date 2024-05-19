@@ -48,18 +48,18 @@ describe "Ceedling" do
     it { can_test_projects_with_named_verbosity }
     it { can_test_projects_with_numerical_verbosity }
     it { uses_report_tests_raw_output_log_plugin }
-    it { test_run_of_projects_fail_because_of_sigsegv_without_report }
-    it { test_run_of_projects_fail_because_of_sigsegv_with_report }
-    it { execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue_when_cmd_args_set_to_true }
-    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true }
-    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug_and_cmd_args_set_to_true }
+    it { test_run_of_projects_fail_because_of_crash_without_report }
+    it { test_run_of_projects_fail_because_of_crash_with_report }
+    it { execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue }
+    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug }
+    it { execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug }
     it { confirm_if_notification_for_cmdline_args_not_enabled_is_disabled }
-    it { can_run_single_test_with_full_test_case_name_from_test_file_with_success_cmdline_args_are_enabled }
-    it { can_run_single_test_with_partiall_test_case_name_from_test_file_with_enabled_cmdline_args_success }
+    it { can_run_single_test_with_full_test_case_name_from_test_file_with_success }
+    it { can_run_single_test_with_partial_test_case_name_from_test_file_with_success }
     it { exclude_test_case_name_filter_works_and_only_one_test_case_is_executed }
-    it { none_of_test_is_executed_if_test_case_name_passed_does_not_fit_defined_in_test_file_and_cmdline_args_are_enabled }
+    it { none_of_test_is_executed_if_test_case_name_passed_does_not_fit_defined_in_test_file }
     it { none_of_test_is_executed_if_test_case_name_and_exclude_test_case_name_is_the_same }
-    it { run_all_test_when_test_case_name_is_passed_it_will_autoset_cmdline_args }
+    it { run_one_testcase_from_one_test_file_when_test_case_name_is_passed }
   end
 
 end

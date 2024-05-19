@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-05-10
+# [1.0.0 pre-release] — 2024-05-17
 
 ## 🌟 Added
 
@@ -65,6 +65,12 @@ You may now:
 
 All the options for loading and modifying a project configuration are thoroughly documented in _[CeedlingPacket](CeedlingPacket.md))_.
 
+### Broader crash detection in test suites and new backtrace abilities
+
+Previously Ceedling had a limited ability to detect and report segmentation faults and primarily on Unix-like platforms. This has been expanded and improved to crash detection more broadly. Invalid memory accesses, stack overflows, heap errors, and branching problems can all lead to crashed test executables. Ceedling is now able to detect these across platforms and report on them appropriately.
+
+See _[CeedlingPacket](CeedlingPacket.md))_ for the new `:project` ↳ `:use_backtrace` feature to control how much detail is extracted from a crashed test executable to help you find the cause.
+
 ### More better `:flags` handling
 
 Issue [#43](https://github.com/ThrowTheSwitch/Ceedling/issues/43)
@@ -95,7 +101,7 @@ A community member submitted an [HTML report generation plugin](https://github.c
 
 ### Improved Segfault Handling
 
-Segmentation faults are now reported as failures instead of an error and given as fine of detail as possible for the current feature set. See the project configuration file documentation on `:project` ↳ `:use_backtrace` for more!
+Segmentation faults are now reported as failures instead of an error with as much detail as possible. See the project configuration file documentation on `:project` ↳ `:use_backtrace` for more!
 
 ### Pretty logging output
 
@@ -195,6 +201,10 @@ This configuration option has moved but is now [documented](CeedlingPacket.md). 
 :test_build:
   :graceful_fail: TRUE
 ```
+
+### Improved Segfault Handling in Test Suites
+
+Segmentation faults are now reported as failures instead of an error with as much detail as possible. See the project configuration file documentation discussing the `:project` ↳ `:use_backtrace` option for more!
 
 ### JUnit, XML & JSON test report plugins consolidation
 

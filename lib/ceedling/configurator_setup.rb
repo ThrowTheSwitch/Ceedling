@@ -155,13 +155,34 @@ class ConfiguratorSetup
       valid &= @configurator_validator.validate_tool( config:config, key:tool )
     end
 
-    use_backtrace = config[:project][:use_backtrace]
-    if use_backtrace
+    if config[:project][:use_backtrace] == :gdb
       valid &= @configurator_validator.validate_tool(
         config:config,
         key: :backtrace_reporter,
-        respect_optional: !use_backtrace # If enabled, force validation of tool
+        respect_optional: false
       )
+    end
+
+    return valid
+  end
+
+  def validate_backtrace(config)
+    valid = true
+
+    use_backtrace = config[:project][:use_backtrace]
+
+    case use_backtrace
+    when :none
+      # Do nothing
+    when :simple
+      # TODO: Remove when :simple support is completed
+      @loginator.log( ":project ↳ :use_backtrace => :simple is not yet supported", Verbosity::ERRORS )      
+      valid = false
+    when :gdb
+      # Do nothing
+    else
+      @loginator.log( ":project ↳ :use_backtrace is '#{use_backtrace}' but must be :none, :simple, or :gdb", Verbosity::ERRORS )      
+      valid = false
     end
 
     return valid

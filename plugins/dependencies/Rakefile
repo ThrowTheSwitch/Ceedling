@@ -7,6 +7,15 @@
 
 require 'rake'
 
+require 'rbconfig'
+
+def windows?()
+  return (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
+end
+
+# Add `ruby` to the command line on Windows to execute the Ruby-based shell script bin/ceedling
+CEEDLING_CLI_EXEC = "#{'ruby ' if windows?}../../../../bin/ceedling"
+
 def prep_test
 end
 
@@ -24,6 +33,8 @@ def assert_file_contains(path, expected)
     if actual.match?(expected)
       puts "File #{path} exists and contains specified contents."
     else
+      puts "Expected content: #{expected}" # Debug logging
+      puts "Actual content: #{actual}" # Debug logging
       raise "File #{path} exists but doesn't contain specified contents."
     end
   else
@@ -40,16 +51,17 @@ def assert_file_not_exist(path)
 end
 
 def assert_cmd_return(cmd, expected)
-  retval = `ruby ../../../../bin/ceedling #{cmd}`
+  retval = `#{CEEDLING_CLI_EXEC} #{cmd}`
   if (retval.include? expected)
     puts "Testing included `#{expected}`"
   else
+    puts retval # Debug logging
     raise "Testing did not include `#{expected}`"
   end
 end
 
 def assert_cmd_not_return(cmd, expected)
-  retval = `ruby ../../../../bin/ceedling #{cmd}`
+  retval = `#{CEEDLING_CLI_EXEC} #{cmd}`
   if (!retval.include? expected)
     puts "Testing didn't included `#{expected}`"
   else
