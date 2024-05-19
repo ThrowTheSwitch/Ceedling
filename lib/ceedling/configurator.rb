@@ -104,7 +104,9 @@ class Configurator
 
 
   def populate_unity_defaults(config)
-    # Do nothing
+    unity = config[:unity] || {}
+
+    unity[:defines] = [] if (unity[:defines].nil?)
   end
 
 
@@ -152,10 +154,13 @@ class Configurator
       config[:test_runner][:cmdline_args] = true
     end
 
-    # Copy CMock options needed by test runner generation
+    # Copy CMock options used by test runner generation
     config[:test_runner][:mock_prefix] = config[:cmock][:mock_prefix]
     config[:test_runner][:mock_suffix] = config[:cmock][:mock_suffix]
     config[:test_runner][:enforce_strict_ordering] = config[:cmock][:enforce_strict_ordering]
+
+    # Merge Unity options used by test runner generation
+    config[:test_runner][:defines] += config[:unity][:defines]
 
     @runner_config = config[:test_runner]
   end
