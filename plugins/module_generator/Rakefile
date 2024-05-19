@@ -73,8 +73,8 @@ end
 
 def call_create(cmd)
   retval = `#{CEEDLING_CLI_EXEC} module:create[#{cmd}] 2>&1`
+  puts retval # Debug logging
   if retval.match? /Error/i
-    puts retval # Debug logging
     raise "Received error when creating:\n#{retval}"
   else
     puts "Created #{cmd}"
@@ -83,8 +83,8 @@ end
 
 def call_destroy(cmd)
   retval = `#{CEEDLING_CLI_EXEC} module:destroy[#{cmd}] 2>&1`
+  puts retval # Debug logging
   if retval.match? /Error/i
-    puts retval # Debug logging
     raise "Received error when destroying:\n#{retval}"
   else
     puts "Destroyed #{cmd}"
@@ -93,8 +93,8 @@ end
 
 def call_stub(cmd)
   retval = `#{CEEDLING_CLI_EXEC} module:stub[#{cmd}] 2>&1`
+  puts retval # Debug logging
   if retval.match? /Error/i
-    puts retval # Debug logging
     raise "Received error when stubbing:\n#{retval}"
   else
     puts "Stubbed #{cmd}"
@@ -113,8 +113,8 @@ task :integration_test do
     # It should be added to first path on list of each category
     puts "\nVerifying Default Create:"
     call_create("a_file")
-    assert_file_exist("s/a_file.c")
-    assert_file_exist("i/a_file.h")
+    assert_file_exist("s/rev/a_file.c")
+    assert_file_exist("i/rev/a_file.h")
     assert_file_exist("sub/t/test_a_file.c")
     assert_test_run_contains("TESTED:  1")
 
@@ -144,16 +144,16 @@ task :integration_test do
 
     # Are other essentials being injected
     puts "\nVerifying Guts:"
-    assert_file_contains("s/a_file.c", "#include \"a_file.h\"")
-    assert_file_contains("i/a_file.h", "#ifndef A_FILE_H")
+    assert_file_contains("s/rev/a_file.c", "#include \"a_file.h\"")
+    assert_file_contains("i/rev/a_file.h", "#ifndef A_FILE_H")
     assert_file_contains("sub/t/test_a_file.c", "test_a_file_NeedToImplement")
 
     # Destroy a module without path. 
     # It should be removed from first path on list of each category
     puts "\nVerifying Default Destroy:"
     call_destroy("a_file")
-    assert_file_not_exist("s/a_file.c")
-    assert_file_not_exist("i/a_file.h")
+    assert_file_not_exist("s/rev/a_file.c")
+    assert_file_not_exist("i/rev/a_file.h")
     assert_file_not_exist("sub/t/test_a_file.c")
     assert_test_run_contains("TESTED:  2")
 
@@ -168,33 +168,33 @@ task :integration_test do
 
     # Make sure that we can destroy modules properly when the directory
     # pattern is subdirs under the src, inc, and test folders
-    # puts "\nVerifying Reverse Subdirectory Destroy:"
-    # call_destroy("rev:c_file")
-    # assert_file_not_exist("s/rev/c_file.c")
-    # assert_file_not_exist("i/rev/c_file.h")
-    # assert_file_not_exist("t/rev/test_c_file.c")
-    # assert_test_run_contains("No tests executed")
+    puts "\nVerifying Reverse Subdirectory Destroy:"
+    call_destroy("rev:c_file")
+    assert_file_not_exist("s/rev/c_file.c")
+    assert_file_not_exist("i/rev/c_file.h")
+    assert_file_not_exist("t/rev/test_c_file.c")
+    assert_test_run_contains("No tests executed")
 
     # Verify stubbing functionality can make a new source file
     puts "\nVerifying Stubbing:"
     prep_stub(1)
     call_stub("i:stubby")
-    assert_file_contains("s/stubby.c","void shorty")
+    assert_file_contains("s/rev/stubby.c","void shorty")
 
     # Verify stubbing functionality can update a source file
     puts "\nVerifying Stub Updating:"
     prep_stub(2)
     call_stub("i:stubby")
-    assert_file_contains("s/stubby.c","void shorty")
-    assert_file_contains("s/stubby.c","void shrimpy")
-    assert_file_contains("s/stubby.c","int tiny")
+    assert_file_contains("s/rev/stubby.c","void shorty")
+    assert_file_contains("s/rev/stubby.c","void shrimpy")
+    assert_file_contains("s/rev/stubby.c","int tiny")
 
     # Make sure that we can destroy modules properly even when the
     # entire set doesn't exist
     puts "\nVerifying Partial Destroy:"
     call_destroy("i:stubby")
-    assert_file_not_exist("s/stubby.c")
-    assert_file_not_exist("i/stubby.h")
+    assert_file_not_exist("s/rev/stubby.c")
+    assert_file_not_exist("i/rev/stubby.h")
     prep_test
 
     puts "\nPASSES MODULE SELF-TESTS"
