@@ -14,6 +14,30 @@ require 'pp'
 
 module GcovTestCases
 
+  def determine_reports_to_test
+    @gcov_reports = []
+
+    begin
+      `gcovr --version 2>&1`
+      @gcov_reports << :gcovr if $?.exitstatus == 0
+    rescue
+      puts "No GCOVR exec to test against"
+    end
+
+    begin
+      `reportgenerator --version 2>&1`
+      @gcov_reports << :reportgenerator if $?.exitstatus == 0
+    rescue
+      puts "No ReportGenerator exec to test against"
+    end
+  end
+
+  def prep_project_yml_for_coverage
+    FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+    @c.comment_project_yml_option_for_test("- gcovr") unless @gcov_reports.include? :gcovr
+    @c.uncomment_project_yml_option_for_test("- ReportGenerator") if @gcov_reports.include? :reportgenerator
+  end
+
   def _add_gcov_section_in_project(project_file_path, name, values)
     project_file_contents = File.readlines(project_file_path)
     name_index = project_file_contents.index(":gcov:\n")
@@ -60,7 +84,7 @@ module GcovTestCases
   def can_test_projects_with_gcov_with_success
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+        prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
@@ -78,7 +102,7 @@ module GcovTestCases
   def can_test_projects_with_gcov_with_fail
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+        prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
@@ -96,7 +120,7 @@ module GcovTestCases
   # def can_test_projects_with_gcov_with_fail_because_of_uncovered_files
   #   @c.with_context do
   #     Dir.chdir @proj_name do
-  #       FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+  #       prep_project_yml_for_coverage
   #       add_gcov_option("abort_on_uncovered", "TRUE")
   #       FileUtils.cp test_asset_path("example_file.h"), 'src/'
   #       FileUtils.cp test_asset_path("example_file.c"), 'src/'
@@ -116,7 +140,7 @@ module GcovTestCases
   # def can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list
   #   @c.with_context do
   #     Dir.chdir @proj_name do
-  #       FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+  #       prep_project_yml_for_coverage
   #       add_gcov_option("abort_on_uncovered", "TRUE")
   #       add_gcov_section("uncovered_ignore_list", ["src/foo_file.c"])
   #       FileUtils.cp test_asset_path("example_file.h"), "src/"
@@ -138,7 +162,7 @@ module GcovTestCases
   # def can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list_with_globs
   #   @c.with_context do
   #     Dir.chdir @proj_name do
-  #       FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+  #       prep_project_yml_for_coverage
   #       add_gcov_option("abort_on_uncovered", "TRUE")
   #       add_gcov_section("uncovered_ignore_list", ["src/B/**"])
   #       FileUtils.mkdir_p(["src/A", "src/B/C"])
@@ -162,7 +186,7 @@ module GcovTestCases
   def can_test_projects_with_gcov_with_compile_error
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+        prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_boom.c"), 'test/'
@@ -177,8 +201,8 @@ module GcovTestCases
   def can_fetch_project_help_for_gcov
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
-        output = `bundle exec ruby -S ceedling help`
+        prep_project_yml_for_coverage
+        output = `bundle exec ruby -S ceedling help 2>&1`
         expect($?.exitstatus).to match(0)
         expect(output).to match(/ceedling gcov:\*/i)
         expect(output).to match(/ceedling gcov:all/i)
@@ -189,16 +213,20 @@ module GcovTestCases
   def can_create_html_reports
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), "project.yml"
+        prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = `bundle exec ruby -S ceedling gcov:all`
-        expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
-        expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
-        expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
-        expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        if @gcov_reports.include? :gcovr
+          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
+          expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
+        end
+        if @gcov_reports.include? :modulegenerator
+          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
+          expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
+        end
       end
     end
   end
@@ -206,10 +234,10 @@ module GcovTestCases
   def can_create_html_reports_from_crashing_test_runner_with_enabled_debug_for_test_cases_not_causing_crash
     @c.with_context do
       Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
-        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -225,10 +253,14 @@ module GcovTestCases
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:5?0.00% of 4/)
-        expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
-        expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
-        expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
-        expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
+        if @gcov_reports.include? :gcovr
+          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
+          expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
+        end
+        if @gcov_reports.include? :modulegenerator
+          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
+          expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
+        end
       end
     end
   end
@@ -236,10 +268,10 @@ module GcovTestCases
   def can_create_html_reports_from_crashing_test_runner_with_enabled_debug_with_zero_coverage
     @c.with_context do
       Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
-        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -256,10 +288,14 @@ module GcovTestCases
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:0.00% of 4/)
 
-        expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
-        expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
-        expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
-        expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
+        if @gcov_reports.include? :gcovr
+          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
+          expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
+        end
+        if @gcov_reports.include? :modulegenerator
+          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
+          expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
+        end
       end
     end
   end
@@ -267,10 +303,10 @@ module GcovTestCases
   def can_create_html_reports_from_test_runner_with_enabled_debug_with_100_coverage_when_excluding_crashing_test_case
     @c.with_context do
       Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
-        FileUtils.cp test_asset_path("project_with_guts_gcov.yml"), 'project.yml'
 
         add_test_case = "\nvoid test_difference_between_two_numbers(void)\n"\
                         "{\n" \
@@ -290,10 +326,14 @@ module GcovTestCases
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:100.00% of 4/)
 
-        expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
-        expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
-        expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
-        expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
+        if @gcov_reports.include? :gcovr
+          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
+          expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
+        end
+        if @gcov_reports.include? :modulegenerator
+          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
+          expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
+        end
       end
     end
   end

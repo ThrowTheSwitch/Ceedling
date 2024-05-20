@@ -13,6 +13,7 @@ describe "Ceedling" do
     include CeedlingTestCases
     include GcovTestCases
     before :all do
+      determine_reports_to_test
       @c = SystemContext.new
       @c.deploy_gem
     end

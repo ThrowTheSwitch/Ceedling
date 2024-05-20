@@ -163,6 +163,11 @@ class SystemContext
     fake_prj_yml= File.read('project.yml').gsub(/\##{option}/,option)
     File.write('project.yml', fake_prj_yml, mode: 'w')
   end
+
+  def comment_project_yml_option_for_test(option)
+    fake_prj_yml= File.read('project.yml').gsub(/#{option}/,"##{option}")
+    File.write('project.yml', fake_prj_yml, mode: 'w')
+  end
   ############################################################
 end
 
