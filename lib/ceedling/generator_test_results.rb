@@ -1,10 +1,17 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'rubygems'
 require 'rake' # for .ext()
 require 'ceedling/constants'
 
 class GeneratorTestResults
 
-  constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper
+  constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper, :backtrace
 
   def process_and_write_results(unity_shell_result, results_file, test_file)
     output_file = results_file
@@ -23,7 +30,7 @@ class GeneratorTestResults
       results[:counts][:ignored] = $3.to_i
       results[:counts][:passed] = (results[:counts][:total] - results[:counts][:failed] - results[:counts][:ignored])
     else
-      if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+      if @configurator.project_config_hash[:project_use_backtrace]
         # Accessing this code block we expect failure during test execution
         # which should be connected with SIGSEGV
         results[:counts][:total] = 1   # Set to one as the amount of test is unknown in segfault, and one of the test is failing
@@ -43,28 +50,28 @@ class GeneratorTestResults
 
     # remove test statistics lines
     output_string = unity_shell_result[:output].sub(TEST_STDOUT_STATISTICS_PATTERN, '')
-
     output_string.lines do |line|
       # process unity output
-      case line.chomp!
+      case line.chomp
       when /(:IGNORE)/
         elements = extract_line_elements(line, results[:source][:file])
-        results[:ignores] << elements[0]
+        results[:ignores] << elements[0] 
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:PASS$)/
         elements = extract_line_elements(line, results[:source][:file])
-        results[:successes] << elements[0]
+        results[:successes] << elements[0] 
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:PASS \(.* ms\)$)/
         elements = extract_line_elements(line, results[:source][:file])
-        results[:successes] << elements[0]
+        results[:successes] << elements[0] 
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:FAIL)/
         elements = extract_line_elements(line, results[:source][:file])
+        elements[0][:test] = @backtrace.restore_new_line_character_in_flatten_log(elements[0][:test])
         results[:failures] << elements[0]
         results[:stdout] << elements[1] if (!elements[1].nil?)
       else # collect up all other
-        if !@configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+        if !@configurator.project_config_hash[:project_use_backtrace]
           results[:stdout] << line.chomp
         end
       end
@@ -74,9 +81,21 @@ class GeneratorTestResults
 
     output_file = results_file.ext(@configurator.extension_testfail) if (results[:counts][:failed] > 0)
 
+    results[:failures].each do |failure|
+      failure[:message] = @backtrace.unflat_debugger_log(failure[:message])
+    end
     @yaml_wrapper.dump(output_file, results)
 
     return { :result_file => output_file, :result => results }
+  end
+
+  def create_crash_failure( executable, shell_result )
+    source = File.basename(executable).ext(@configurator.extension_source)
+    shell_result[:output] = "#{source}:1:test_Unknown:FAIL:Test Executable Crashed" 
+    shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
+    shell_result[:exit_code] = 1
+
+    return shell_result
   end
 
   private
@@ -101,7 +120,9 @@ class GeneratorTestResults
 
     if (line =~ stdout_regex)
       stdout = $1.clone
-      line.sub!(/#{Regexp.escape(stdout)}/, '')
+      unless @configurator.project_config_hash[:project_use_backtrace]
+        line.sub!(/#{Regexp.escape(stdout)}/, '')
+      end
     end
 
     # collect up test results minus and extra output
@@ -112,8 +133,14 @@ class GeneratorTestResults
       unity_test_time = $1.to_f / 1000
       elements[-1].sub!(/ \((\d*(?:\.\d*)?) ms\)/, '')
     end
+    if elements[3..-1]
+      message = (elements[3..-1].join(':')).strip
+      message = @backtrace.unflat_debugger_log(message)
+    else
+      message = nil
+    end
 
-    return {:test => elements[1], :line => elements[0].to_i, :message => (elements[3..-1].join(':')).strip, :unity_test_time => unity_test_time}, stdout if elements.size >= 3
+    return {:test => elements[1], :line => elements[0].to_i, :message => message, :unity_test_time => unity_test_time}, stdout if elements.size >= 3
     return {:test => '???', :line => -1, :message => nil, :unity_test_time => unity_test_time} #fallback safe option. TODO better handling
   end
 
