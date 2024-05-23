@@ -2153,7 +2153,13 @@ Ceedling is able to execute inline Ruby string substitution code within the
 entries of certain project file configuration elements.
 
 This evaluation occurs when the project file is loaded and processed into a
-data structure for use by the Ceedling application. 
+data structure for use by the Ceedling application.
+
+_Note:_ One good option for validating and troubleshooting inline Ruby string 
+exapnsion is use of `ceedling dumpconfig` at the command line. This application
+command causes your project configuration to be processed and written to a 
+YAML file with any inline Ruby string expansions, well, expanded along with 
+defaults set, plugin actions applied, etc.
 
 #### Ruby string expansion syntax
 
