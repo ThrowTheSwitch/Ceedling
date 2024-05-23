@@ -7,7 +7,7 @@ These release notes are complemented by two other documents:
 
 ---
 
-# 1.0.0 pre-release — May 17, 2024
+# 1.0.0 pre-release — May 23, 2024
 
 ## 🏴‍☠️ Avast, Breaking Changes, Ye Scallywags!
 
@@ -115,8 +115,8 @@ There’s more to be done, but Ceedling’s documentation is more complete and a
 - The historically unwieldy `verbosity` command line task now comes in two flavors. The original recipe numeric parameterized version (e.g. `[4]`) exist as is. The new extra crispy recipe includes — funny enough — verbose task names `verbosity:silent`, `verbosity:errors`, `verbosity:complain`, `verbosity:normal`, `verbosity:obnoxious`, `verbosity:debug`. 
 - This release marks the beginning of the end for Rake as a backbone of Ceedling. Over many years it has become clear that Rake’s design assumptions hamper building the sorts of features Ceedling’s users want, Rake’s command line structure creates a messy user experience for a full application built around it, and Rake’s quirks cause maintenance challenges. Particularly for test suites, much of Ceedling’s (invisible) dependence on Rake has been removed in this release. Much more remains to be done, including replicating some of the abilities Rake offers.
 - This is the first ever release of Ceedling with proper release notes. Hello, there! Release notes will be a regular part of future Ceedling updates. If you haven't noticed already, this edition of the notes are detailed and quite lengthy. This is entirely due to how extensive the changes are in the 1.0.0 release. Future releases will have far shorter notes.
-- The `fake_function_framework` plugin has been renamed simply `fff`
-- Optional output decorators have been added for your output stream enjoyment (see `:use_decorators`)
+- The `fake_function_framework` plugin has been renamed simply `fff`.
+- Optional Unicode and emoji decorators have been added for your output stream enjoyment. See the documentation for logging decorators in _[CeedlingPacket](CeedlingPacket.md)_.
 
 ## 🚨 Important Changes in Behavior to Be Aware Of
 

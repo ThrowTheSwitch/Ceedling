@@ -40,6 +40,7 @@ class Setupinator
     @ceedling[:configurator].populate_unity_defaults( config_hash )
     @ceedling[:configurator].populate_cmock_defaults( config_hash )
     @ceedling[:configurator].configure_test_runner_generation( config_hash )
+    # Evaluate environment vars before sections that might reference them with inline Ruby string expansion
     @ceedling[:configurator].eval_environment_variables( config_hash )
     @ceedling[:configurator].eval_paths( config_hash )
     @ceedling[:configurator].eval_flags( config_hash )
