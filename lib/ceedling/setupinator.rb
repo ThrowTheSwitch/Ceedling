@@ -42,6 +42,8 @@ class Setupinator
     @ceedling[:configurator].configure_test_runner_generation( config_hash )
     @ceedling[:configurator].eval_environment_variables( config_hash )
     @ceedling[:configurator].eval_paths( config_hash )
+    @ceedling[:configurator].eval_flags( config_hash )
+    @ceedling[:configurator].eval_defines( config_hash )
     @ceedling[:configurator].standardize_paths( config_hash )
     @ceedling[:configurator].find_and_merge_plugins( app_cfg[:ceedling_plugins_path], config_hash )
     @ceedling[:configurator].tools_setup( config_hash )
