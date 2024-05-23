@@ -69,6 +69,7 @@ projectinator:
     - path_validator
     - yaml_wrapper
     - loginator
+    - system_wrapper
 
 configinator:
   compose:

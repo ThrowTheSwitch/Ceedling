@@ -169,7 +169,7 @@ Not all Pull Requests require these things, but here's a great list of things to
 
 ## :heart: Who Loves Emoji?
 
-Commit comments, Issues, Feature Requests... they can all use a little sprucing up, right? Consider using the following emoji for a mix of function and :sparkles: dazzle!
+Commit comments, Issues, Feature Requests... they can all use a little sprucing up, right? Consider using the following emoji for a mix of function and :sparkles: dazzle! We encourage loosely following the conventions of [gitmoji](https://gitmoji.dev) for contributing to Ceedling.
 
   - actions
     - :seedling: `:seedling:` (or other plants) when growing new features. Choose your fav! :cactus: :herb: :evergreen_tree: :palm_tree: :deciduous_tree: :blossom: 

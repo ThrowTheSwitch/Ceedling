@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-05-17
+# [1.0.0 pre-release] — 2024-05-23
 
 ## 🌟 Added
 
@@ -83,6 +83,12 @@ Each test executable is now built as a mini project. Using improved `:defines` h
 
 One powerful new feature is the ability to test the same source file built differently for different tests. Imagine a source file has three different conditional compilation sections. You can now write unit tests for each of those sections without complicated gymnastics to cause your test suite to build and run properly.
 
+### Inline Ruby string expansion for `:flags` and `:defines` configuration entries
+
+Inline Ruby string expansion has been, well, expanded for use in `:flags` and `:defines` entries to complement existing such functionality in `:environment`, `:paths`, `:tools`, etc.
+
+The previously distributed documentation for inline Ruby string expansion has been collected into a single subsection within the project file documentation and improved.
+
 ### `report_tests_log_factory` plugin
 
 This new plugin consolidates a handful of previously discrete report gernation plugins into a single plugin that also enables low-code, custom, end-user created reports.
@@ -105,7 +111,7 @@ Segmentation faults are now reported as failures instead of an error with as muc
 
 ### Pretty logging output
 
-Ceedling logging now optionally includes emoji and nice Unicode characters . Ceedling will attempt to determine if your platform supports it. You can use an environment variable `CEEDLING_DECORATORS` or your project configuration `:project` ↳ `:use_decorators` to force the feature on or off.
+Ceedling logging now optionally includes emoji and nice Unicode characters. Ceedling will attempt to determine if your platform supports it. You can use the environment variable `CEEDLING_DECORATORS` to force the feature on or off. See the documentation for logging decorators in _[CeedlingPacket](CeedlingPacket.md)_.
 
 ## 💪 Fixed
 

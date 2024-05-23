@@ -352,6 +352,20 @@ class Configurator
   end
 
 
+  # Handle any Ruby string replacement for :flags string arrays
+  def eval_flags(config)
+    # Descend down to array of command line flags strings regardless of depth in config block
+    traverse_hash_eval_string_arrays( config[:flags] )
+  end
+
+
+  # Handle any Ruby string replacement for :defines string arrays
+  def eval_defines(config)
+    # Descend down to array of #define strings regardless of depth in config block
+    traverse_hash_eval_string_arrays( config[:defines] )
+  end
+
+
   def standardize_paths(config)
     # Individual paths that don't follow `_path` convention processed here
     paths = [
@@ -486,6 +500,7 @@ class Configurator
     container[entry] = [value]  if value.kind_of?( String )
   end
 
+
   def collect_path_list( container )
     paths = []
 
@@ -497,6 +512,7 @@ class Configurator
     
     return paths.flatten()
   end
+
 
   def eval_path_entries( container )
     paths = []
@@ -510,6 +526,27 @@ class Configurator
 
     paths.each do |path|
       path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+    end
+  end
+
+
+  # Traverse configuration tree recursively to find terminal leaf nodes that are a list of strings;
+  # expand in place any string with the Ruby string replacement pattern.
+  def traverse_hash_eval_string_arrays(config)
+    case config
+
+    when Array
+      # If it's an array of strings, process it
+      if config.all? { |item| item.is_a?( String ) }
+        # Expand in place each string item in the array
+        config.each do |item|
+          item.replace( @system_wrapper.module_eval( item ) ) if (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
+        end
+      end
+
+    when Hash
+      # Recurse
+      config.each_value { |value| traverse_hash_eval_string_arrays( value ) }
     end
   end
 
