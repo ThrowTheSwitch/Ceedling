@@ -8,6 +8,7 @@ class FileFinderHelper
   
   def find_file_in_collection(file_name, file_list, complain, extra_message="")
     file_to_find = nil
+    similar_file = nil
     
     file_list.each do |item|
       base_file = File.basename(item)
@@ -19,16 +20,21 @@ class FileFinderHelper
           file_to_find = item
           break
         else
-          blow_up(file_name, "However, a filename having different capitalization was found: '#{item}'.")
+          similar_file = item
         end
       end
       
     end
     
     if file_to_find.nil?
+      if similar_file.nil?
+        combined_messages = extra_message
+      else
+        combined_messages = "However, a filename having different capitalization was found: '#{simiar_file}'." + extra_message
+      end
       case (complain)
-        when :error then blow_up(file_name, extra_message) 
-        when :warn  then gripe(file_name, extra_message)
+        when :error then blow_up(file_name, combined_messages) 
+        when :warn  then gripe(file_name, combined_messages)
         #when :ignore then      
       end
     end
