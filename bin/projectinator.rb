@@ -13,7 +13,7 @@ class Projectinator
   DEFAULT_PROJECT_FILEPATH = './' + DEFAULT_PROJECT_FILENAME
   DEFAULT_YAML_FILE_EXTENSION = '.yml'
 
-  constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator
+  constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator, :system_wrapper
 
   # Discovers project file path and loads configuration.
   # Precendence of attempts:
@@ -102,6 +102,15 @@ class Projectinator
     enabled = _mixins[:enabled] || []
     enabled = enabled.clone # Ensure it's a copy of configuration section
 
+    # Handle any inline Ruby string expansion
+    load_paths.each do |load_path|
+      load_path.replace( @system_wrapper.module_eval( load_path ) ) if (load_path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+    end
+
+    enabled.each do |mixin|
+      mixin.replace( @system_wrapper.module_eval( mixin ) ) if (mixin =~ RUBY_STRING_REPLACEMENT_PATTERN)
+    end
+
     # Remove the :mixins section of the configuration
     config.delete( :mixins )
 
@@ -113,7 +122,7 @@ class Projectinator
   def validate_mixin_load_paths(load_paths)
     validated = @path_validator.validate(
       paths: load_paths,
-      source: 'Config :mixins ↳ :load_paths',
+      source: 'Config :mixins ↳ :load_paths =>',
       type: :directory
     )
 
