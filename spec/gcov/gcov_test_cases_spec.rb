@@ -117,6 +117,7 @@ module GcovTestCases
     end
   end
 
+  # TODO: Restore this test when the :abort_on_uncovered option is restored in the Gcov plugin
   # def can_test_projects_with_gcov_with_fail_because_of_uncovered_files
   #   @c.with_context do
   #     Dir.chdir @proj_name do
@@ -137,6 +138,7 @@ module GcovTestCases
   #   end
   # end
 
+  # TODO: Restore this test when the :abort_on_uncovered option is restored in the Gcov plugin
   # def can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list
   #   @c.with_context do
   #     Dir.chdir @proj_name do
@@ -159,6 +161,7 @@ module GcovTestCases
   #   end
   # end
 
+  # TODO: Restore this test when the :abort_on_uncovered option is restored in the Gcov plugin
   # def can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list_with_globs
   #   @c.with_context do
   #     Dir.chdir @proj_name do

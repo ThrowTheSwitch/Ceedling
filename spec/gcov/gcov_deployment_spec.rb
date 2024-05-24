@@ -34,7 +34,7 @@ describe "Ceedling" do
 
       it { can_test_projects_with_gcov_with_success }
       it { can_test_projects_with_gcov_with_fail }
-      # TODO: Resolve how Gcov plugin works with uncovered files
+      # TODO: Restore these tests when the :abort_on_uncovered option is restored in the Gcov plugin
       # it { can_test_projects_with_gcov_with_fail_because_of_uncovered_files }
       # it { can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list }
       # it { can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list_with_globs }
