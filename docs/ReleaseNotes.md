@@ -7,7 +7,7 @@ These release notes are complemented by two other documents:
 
 ---
 
-# 1.0.0 pre-release — May 23, 2024
+# 1.0.0 pre-release — May 24, 2024
 
 ## 🏴‍☠️ Avast, Breaking Changes, Ye Scallywags!
 
@@ -43,7 +43,7 @@ The following new features (discussed in later sections) contribute to this new 
 
 - `TEST_INCLUDE_PATH(...)`. This build directive macro can be used within a test file to tell Ceedling which header search paths should be used during compilation. These paths are only used for compiling the files that comprise that test executable.
 - `:defines` handling. `#define`s are now specified for the compilation of all modules comprising a test executable. Matching is only against test file names but now includes wildcard and regular expression options.
-- `:flags` handling. Flags (e.g. `-std=c99`) are now specified for the build steps—preprocessing, compilation, and linking—of all modules comprising a test executable. Matching is only against test file names and now includes more sensible and robust wildcard and regular expression options.
+- `:flags` handling. Flags (e.g. `-std=c99`) are now specified for the build steps — preprocessing, compilation, and linking — of all modules comprising a test executable. Matching is only against test file names and now includes more sensible and robust wildcard and regular expression options.
 
 #### Mixins for configuration variations
 
@@ -91,7 +91,7 @@ The previously undocumented build directive macro `TEST_FILE(...)` has been rena
 
 #### Preprocessing improvements
 
-Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing (expanding macros in test files and header files to be mocked) is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling’s long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release.
+Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing (expanding macros in test files and header files to be mocked) is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling’s long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release (some of it has been temporarily removed).
 
 #### Crash Handling
 
