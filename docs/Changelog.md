@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-05-23
+# [1.0.0 pre-release] — 2024-05-24
 
 ## 🌟 Added
 
@@ -286,13 +286,11 @@ Note that release builds do retain a fair amount of smart rebuild capabilities. 
 
 ### Preprocessor support for Unity’s `TEST_CASE()` and `TEST_RANGE()`
 
-The project configuration option `:use_preprocessor_directives` is no longer recognized.
+Unity’s features `TEST_CASE()` and `TEST_RANGE()` continue to work but only when `:use_test_preprocessor` is disabled. The previous project configuration option `:use_preprocessor_directives` that preserved them when preprocessing is enabled is no longer recognized.
 
-**_Note:_** Unity’s features `TEST_CASE()` and `TEST_RANGE()` continue to work but only when `:use_test_preprocessor` is disabled.
+`TEST_CASE()` and `TEST_RANGE()` are macros that disappear when the preprocessor digests a test file. After preprocessing, they no longer exist in the test file that is compiled.
 
-`TEST_CASE()` and `TEST_RANGE()` are do-nothing macros that disappear when the preprocessor digests a test file.
-
-In future revisions of Ceedling, support for `TEST_CASE()` and `TEST_RANGE()` when preprocessing is enabled will be brought back.
+In future revisions of Ceedling, support for `TEST_CASE()` and `TEST_RANGE()` when preprocessing is enabled will be brought back (very likely without a dedicated configuration option — hopefully, we’ll get it to just work™️).
 
 ### Removed background task execution
 
@@ -304,15 +302,21 @@ Colored build output and test results in your terminal is glorious. Long ago the
 
 Ceedling’s logging will eventually be updated to rely on a proper logging library. This will provide a number of important features along with greater speed and stability for the tool as a whole. This will also be the opportunity to add robust terminal text coloring support.
 
-### Bullseye Plugin temporarily disabled
+### Bullseye code coverage plugin temporarily disabled
 
-The gcov plugin has been updated and improved, but its proprietary counterpart, the [Bullseye](https://www.bullseye.com) plugin, is not presently functional. The needed fixes and updates require a software license that we do not (yet) have.
+The Gcov plugin has been updated and improved, but its proprietary counterpart, the [Bullseye](https://www.bullseye.com) plugin, is not presently functional. The needed fixes and updates require a software license that we do not (yet) have.
 
-### Gcov Plugin’s support for deprecated features removed
+### Gcov plugin’s support for deprecated features removed
 
 The configuration format for the `gcovr` utility changed when support for the `reportgenerator` utility was added. A format that accomodated a more uniform and common layout was adopted. However, support for the older, deprecated `gcovr`-only configuration was maintained. This support for the deprecated `gcovr` configuration format has been removed.
 
 Please consult the [gcov plugin’s documentation](plugins/gcov/README.md) to update any old-style `gcovr` configurations.
+
+### Gcov plugin’s `:abort_on_uncovered` option temporarily removed
+
+Like Ceedling’s preprocessing features, the Gcov plugin had grown in features and complexity over time. The plugin had become difficult to maintain and some of its features had become user unfriendly at best and misleading at worst.
+
+The Gcov plugin’s `:abort_on_uncovered` option plus the related `:uncovered_ignore_list` option were not preserved in this release. They will be brought back after some noodling on how to make these features user friendly again.
 
 ### Undocumented environment variable `CEEDLING_USER_PROJECT_FILE` support removed
 
