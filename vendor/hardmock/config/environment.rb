@@ -1,3 +1,11 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+
 # The path to the root directory of your application.
 APP_ROOT = File.join(File.dirname(__FILE__), '..')
 
