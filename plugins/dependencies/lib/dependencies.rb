@@ -7,6 +7,7 @@
 
 require 'ceedling/plugin'
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 require 'pathname'
 
 DEPENDENCIES_ROOT_NAME = 'dependencies'
@@ -15,7 +16,7 @@ DEPENDENCIES_SYM       = DEPENDENCIES_ROOT_NAME.to_sym
 
 class Dependencies < Plugin
 
-  def setup
+  def setup()
     # Set up a fast way to look up dependencies by name or static lib path
     @dependencies = {}
     @dynamic_libraries = []
@@ -32,6 +33,9 @@ class Dependencies < Plugin
 
       @dynamic_libraries += get_dynamic_libraries_for_dependency(deplib)
     end
+
+    # Validate fetch tools per the configuration
+    @dependencies.each {|_, config| validate_fetch_tools( config )}
   end
 
   def config()
@@ -54,7 +58,7 @@ class Dependencies < Plugin
   end
 
   def get_name(deplib)
-    raise "Each dependency must have a name!" if deplib[:name].nil?
+    raise CeedlingException.new( "Each dependency must have a name!" ) if deplib[:name].nil?
     return deplib[:name].gsub(/\W*/,'')
   end
 
@@ -135,7 +139,7 @@ class Dependencies < Plugin
 
   def set_env_if_required(lib_path)
     blob = @dependencies[lib_path]
-    raise "Could not find dependency '#{lib_path}'" if blob.nil?
+    raise CeedlingException.new( "Could not find dependency '#{lib_path}'" ) if blob.nil?
     return if (blob[:environment].nil?)
     return if (blob[:environment].empty?)
 
@@ -154,74 +158,135 @@ class Dependencies < Plugin
     end
   end
 
-  def wrap_command(cmd)
-    if (cmd.class == String)
-      cmd = { 
-        :name => cmd.split(/\s+/)[0],
-        :executable => cmd.split(/\s+/)[0],
-        :line => cmd, 
-        :options => { :boom => true } 
-      } 
-    end
-    return cmd
+  def generate_command_line(cmdline, name=nil)
+    # Break apart command line at white spaces
+    cmdline_items = cmdline.split(/\s+/)
+
+    # Even though it may seem redundant to build a command line we already have,
+    # we do so for possible argument expansion/substitution and, more importantly, logging output.
+
+    # Construct a tool configuration
+    tool_config = { 
+      # Use tool name if provided, otherwise, grab something from the command line
+      :name => name.nil? ? cmdline_items[0] : name,
+
+      # Extract executable as first item on the command line
+      :executable => cmdline_items[0],
+
+      # Extract remaining arguments if there are any
+      :arguments => (cmdline_items.length > 1) ? cmdline_items[1..-1] : []
+    }
+
+    # Construct a command from our tool configuration
+    command = @ceedling[:tool_executor].build_command_line( tool_config, [] )
+
+    return command
   end
 
   def fetch_if_required(lib_path)
     blob = @dependencies[lib_path]
-    raise "Could not find dependency '#{lib_path}'" if blob.nil?
+
+    raise CeedlingException.new( "Could not find dependency '#{lib_path}'" ) if blob.nil?
+
     if (blob[:fetch].nil?) || (blob[:fetch][:method].nil?)
-      @ceedling[:loginator].log("No method to fetch #{blob[:name]}", Verbosity::COMPLAIN)
+      @ceedling[:loginator].log("No fetch method for dependency '#{blob[:name]}'", Verbosity::COMPLAIN)
       return
     end
-    unless (directory(get_source_path(blob))) #&& !Dir.empty?(get_source_path(blob)))
+
+    unless (directory(get_source_path(blob)))
       @ceedling[:loginator].log("Path #{get_source_path(blob)} is required", Verbosity::COMPLAIN)
       return
     end
 
     FileUtils.mkdir_p(get_fetch_path(blob)) unless File.exist?(get_fetch_path(blob))
 
-    steps = case blob[:fetch][:method]
-            when :none
-              []
-            when :zip
-              [ "unzip -o #{blob[:fetch][:source]}" ]
-            when :tar_gzip
-              [ "tar -xvzf #{blob[:fetch][:source]} -C ./" ]
-            when :git
-              branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
-              branch = ("-b " + branch) unless branch.empty?
-              unless blob[:fetch][:hash].nil?
-                # Do a deep clone to ensure the commit we want is available
-                retval = [ "git clone #{branch} #{blob[:fetch][:source]} ." ]
-                # Checkout the specified commit
-                retval << "git checkout #{blob[:fetch][:hash]}"
-              else
-                # Do a thin clone
-                retval = [ "git clone #{branch} --depth 1 #{blob[:fetch][:source]} ." ]
-              end
-            when :svn
-              revision = blob[:fetch][:revision] || ''
-              revision = ("--revision " + branch) unless branch.empty?
-              retval = [ "svn checkout #{revision} #{blob[:fetch][:source]} ." ]
-              retval
-            when :custom
-              blob[:fetch][:executable]
-            else
-              raise "Unknown fetch method '#{blob[:fetch][:method]}' for dependency '#{blob[:name]}'"
-            end
+    steps = []
+
+    # Tools already validated within `setup()`
+    case blob[:fetch][:method]
+    when :none
+      # Do nothing
+
+    when :zip
+      steps <<
+      @ceedling[:tool_executor].build_command_line(
+        TOOLS_DEPS_ZIP,
+        [],
+        blob[:fetch][:source]
+      )
+
+    when :tar_gzip
+      steps <<
+      @ceedling[:tool_executor].build_command_line(
+        TOOLS_DEPS_TARGZIP,
+        [],
+        blob[:fetch][:source]
+      )
+
+    when :git
+      branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
+      branch = '-b ' + branch unless branch.empty?
+
+      unless blob[:fetch][:hash].nil?
+        # Do a deep clone to ensure the commit we want is available
+        steps <<
+        @ceedling[:tool_executor].build_command_line(
+          TOOLS_DEPS_GIT_CLONE,
+          [],
+          branch,
+          '', # No depth
+          blob[:fetch][:source]
+        )
+
+        # Checkout the specified commit
+        steps <<
+        @ceedling[:tool_executor].build_command_line(
+          TOOLS_DEPS_GIT_CHECKOUT,
+          [],
+          blob[:fetch][:hash]
+        )
+      else
+        # Do a thin clone
+        steps <<
+        @ceedling[:tool_executor].build_command_line(
+          TOOLS_DEPS_GIT_CLONE,
+          [],
+          branch,
+          '--depth 1',
+          blob[:fetch][:source]
+        )
+      end
+    
+    when :svn
+      revision = blob[:fetch][:revision] || ''
+      revision = '--revision ' + revision unless revision.empty?
+
+      steps <<
+      @ceedling[:tool_executor].build_command_line(
+        TOOLS_DEPS_SUBVERSION,
+        [],
+        revision,
+        blob[:fetch][:source]
+      )
+    
+    when :custom
+      blob[:fetch][:executable].each.with_index(1) do |cmdline, index|
+        steps << generate_command_line( cmdline, "Dependencies custom command \##{index}" )
+      end
+    end
 
     # Perform the actual fetching
     @ceedling[:loginator].log("Fetching dependency #{blob[:name]}...", Verbosity::NORMAL)
     Dir.chdir(get_fetch_path(blob)) do
       steps.each do |step|
-        @ceedling[:tool_executor].exec( wrap_command(step) )
+        @ceedling[:tool_executor].exec( step )
       end
     end
   end
 
   def build_if_required(lib_path)
     blob = @dependencies[lib_path]
-    raise "Could not find dependency '#{lib_path}'" if blob.nil?
+    raise CeedlingException.new( "Could not find dependency '#{lib_path}'" ) if blob.nil?
 
     # We don't clean anything unless we know how to fetch a new copy
     if (blob[:build].nil? || blob[:build].empty?)
@@ -239,7 +304,7 @@ class Dependencies < Plugin
         if (step.class == Symbol)
           exec_dependency_builtin_command(step, blob)
         else
-          @ceedling[:tool_executor].exec( wrap_command(step) )
+          @ceedling[:tool_executor].exec( generate_command_line(step) )
         end
       end
     end
@@ -247,7 +312,7 @@ class Dependencies < Plugin
 
   def clean_if_required(lib_path)
     blob = @dependencies[lib_path]
-    raise "Could not find dependency '#{lib_path}'" if blob.nil?
+    raise CeedlingException.new( "Could not find dependency '#{lib_path}'" ) if blob.nil?
 
     # We don't clean anything unless we know how to fetch a new copy
     if (blob[:fetch].nil? || blob[:fetch][:method].nil?)
@@ -267,7 +332,7 @@ class Dependencies < Plugin
 
   def deploy_if_required(lib_path)
     blob = @dependencies[lib_path]
-    raise "Could not find dependency '#{lib_path}'" if blob.nil?
+    raise CeedlingException.new( "Could not find dependency '#{lib_path}'" ) if blob.nil?
 
     # We don't need to deploy anything if there isn't anything to deploy
     if (blob[:artifacts].nil? || blob[:artifacts][:dynamic_libraries].nil? || blob[:artifacts][:dynamic_libraries].empty?)
@@ -318,7 +383,7 @@ class Dependencies < Plugin
     when :build_lib # We are going to use our defined deps tools to build this library
       build_lib(blob)
     else 
-      raise "No such build action as #{step.inspect} for dependency #{blob[:name]}" 
+      raise CeedlingException.new( "No such build action as #{step.inspect} for dependency #{blob[:name]}" ) 
     end
   end
 
@@ -335,11 +400,11 @@ class Dependencies < Plugin
 
     # Verify there is an artifact that we're building that makes sense
     libs = []
-    raise "No library artifacts specified for dependency #{name}" unless blob.include?(:artifacts)
+    raise CeedlingException.new( "No library artifacts specified for dependency #{name}" ) unless blob.include?(:artifacts)
     libs += blob[:artifacts][:static_libraries] if blob[:artifacts].include?(:static_libraries)
     libs += blob[:artifacts][:static_libraries] if blob[:artifacts].include?(:static_libraries)
     libs = libs.flatten.uniq
-    raise "No library artifacts specified for dependency #{name}" if libs.empty?
+    raise CeedlingException.new( "No library artifacts specified for dependency #{name}" ) if libs.empty?
     lib = libs[0]
 
     # Find all the source, header, and assembly files 
@@ -350,10 +415,10 @@ class Dependencies < Plugin
     end
 
     # Do we have what we need to do this?
-    raise "Nothing to build" if (asm.empty? and src.empty?)
-    raise "No assembler specified for building dependency #{name}" unless (defined?(TOOLS_DEPS_ASSEMBLER) || asm.empty?)
-    raise "No compiler specified for building dependency #{name}" unless (defined?(TOOLS_DEPS_COMPILER) || src.empty?)
-    raise "No linker specified for building dependency #{name}" unless defined?(TOOLS_DEPS_LINKER)
+    raise CeedlingException.new( "Nothing to build" ) if (asm.empty? and src.empty?)
+    raise CeedlingException.new( "No assembler specified for building dependency #{name}" ) unless (defined?(TOOLS_DEPS_ASSEMBLER) || asm.empty?)
+    raise CeedlingException.new( "No compiler specified for building dependency #{name}" ) unless (defined?(TOOLS_DEPS_COMPILER) || src.empty?)
+    raise CeedlingException.new( "No linker specified for building dependency #{name}" ) unless defined?(TOOLS_DEPS_LINKER)
 
     # Build all the source files
     src.each do |src_file|
@@ -421,6 +486,39 @@ class Dependencies < Plugin
     Object.send(:remove_const, constant.to_sym) if (Object.const_defined? constant)  
     Object.const_set(constant, new_value)  
   end
+
+  ### Private ###
+
+  private
+
+  def validate_fetch_tools(blob)
+    return if blob[:fetch].nil? || blob[:fetch][:method].nil?
+
+    case blob[:fetch][:method]
+    when :none
+      # Do nothing
+
+    when :zip
+      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_ZIP, boom:true )
+
+    when :tar_gzip
+      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_TARGZIP, boom:true )
+
+    when :git
+      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_GIT_CLONE, boom:true )
+      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_GIT_CHECKOUT, boom: true )
+
+    when :svn
+      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_SUBVERSION, boom: true )
+
+    when :custom
+      # Do nothing
+
+    else
+      raise CeedlingException.new( "Unknown fetch method '#{blob[:fetch][:method]}' for dependency '#{blob[:name]}'" )
+    end
+  end
+
 end
 
 
