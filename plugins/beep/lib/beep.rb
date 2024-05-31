@@ -60,7 +60,9 @@ class Beep < Plugin
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_done],
       [],
-      ["ceedling build done"]) # Only used by tools with `${1}` replacement argument
+      # Only used by tools with `${1}` replacement argument
+      'ceedling build done'
+    )
 
 
     # Verbosity is enabled to allow shell output (primarily for sake of the bell character)
@@ -72,8 +74,9 @@ class Beep < Plugin
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_error],
       [],
-      ["ceedling build error"]) # Only used by tools with `${1}` replacement argument
-
+      # Only used by tools with `${1}` replacement argument
+      'ceedling build error'
+    )
 
     # Verbosity is enabled to allow shell output (primarily for sake of the bell character)
     @ceedling[:system_wrapper].shell_system( command: command[:line], verbose: true )
