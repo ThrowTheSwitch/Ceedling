@@ -60,6 +60,8 @@ class SystemWrapper
     return Time.now.strftime( format )
   end
 
+  # If set, `boom` allows a non-zero exit code in results.
+  # Otherwise, disabled `boom` forces a success exit code but collects errors.
   def shell_capture3(command:, boom:false) 
     # Beginning with later versions of Ruby2, simple exit codes were replaced
     # by the more capable and robust Process::Status.
@@ -70,16 +72,10 @@ class SystemWrapper
     stdout, stderr = '' # Safe initialization defaults
     status = nil        # Safe initialization default
     
-    begin
-      # Run the command but absorb any exceptions and capture error info instead
-      stdout, stderr, status = Open3.capture3( command )
-    rescue => err
-      stderr = err.to_s
-      exit_code = nil
-    end
+    stdout, stderr, status = Open3.capture3( command )
 
-    # If boom, then capture the actual exit code, otherwise leave it as zero
-    # as though execution succeeded
+    # If boom, then capture the actual exit code.
+    # Otherwise, leave it as zero as though execution succeeded.
     exit_code = status.exitstatus.freeze if boom and !status.nil?
 
     # (Re)set the global system exit code so everything matches

@@ -24,15 +24,19 @@ containing header files that might want to be included by your release project.
 
 So how does all this magic work?
 
-First, you need to add the `:dependencies` plugin to your list. Then, we'll add a new
-section called :dependencies. There, you can list as many dependencies as you desire. Each
-has a series of fields which help Ceedling to understand your needs. Many of them are
-optional. If you don't need that feature, just don't include it! In the end, it'll look
-something like this:
+First, you need to add the Dependencies plugin to your list of enabled plugins. Then, we'll 
+add a new comfiguration section called `:dependencies`. There, you can list as many 
+dependencies as you desire. Each has a series of fields that help Ceedling to understand 
+your needs. Many of them are optional. If you don't need that feature, just don't include 
+it! In the end, it'll look something like this:
 
-```
+```yaml
+:plugins:
+  :enabled:
+    - dependencies
+
 :dependencies:
-  :libraries:
+  :deps:
     - :name: WolfSSL
       :paths:
         :fetch:        third_party/wolfssl/source
@@ -116,11 +120,11 @@ couple of fields:
   - `:git` -- This tells Ceedling that we want to clone a git repo to our source path.
   - `:svn` -- This tells Ceedling that we want to checkout a subversion repo to our source path.
   - `:custom` -- This tells Ceedling that we want to use a custom command or commands to fetch the code.
-- `:source` -- This is the path or url to fetch code when using the zip, gzip or git method.
-- `:tag`/`:branch` -- This is the specific tag or branch that you wish to retrieve (git only. optional).
-- `:hash` -- This is the specific SHA1 hash you want to fetch (git only. optional, requires a deep clone).
-- `:revision` -- This is the specific revision you want to fetch (svn only. optional).
-- `:executable` -- This is a list of commands to execute when using the `:custom` method
+- `:source` -- This is the path or url to fetch code when using the `:zip`, `:gzip` or `:git` method.
+- `:tag`/`:branch` -- This is the specific tag or branch that you wish to retrieve (`:git` only, optional).
+- `:hash` -- This is the specific SHA1 hash you want to fetch (`:git` only, optional and triggers a deep clone).
+- `:revision` -- This is the specific revision you want to fetch (`:svn` only, optional).
+- `:executable` -- This is a YAML list of commands to execute when using the `:custom` method
 
 Some notes:
 
@@ -131,16 +135,24 @@ Environment Variables
 ---------------------
 
 Many build systems support customization through environment variables. By specifying
-an array of environment variables, Ceedling will customize the shell environment before
-calling the build process.
+an array of environment variables, the Dependencies plugin will customize the shell environment 
+before calling the build process.
+
+Note that Ceedling’s project configuration includes a top-level `:environment` sections itself.
+The top-level `:environment` section is for all of Ceedling. The `:environment` section nested 
+within a specific dependency’s configuration is only for the shell environment used to process
+that dependency. The format and abilities of the two `:environment` configuration sections are
+also different.
 
 Environment variables may be specified in three ways. Let's look at one of each:
 
-```
-  :environment:
-    - ARCHITECTURE=ARM9
-    - CFLAGS+=-DADD_AWESOMENESS
-    - CFLAGS-=-DWASTE
+```yaml
+:dependencies:
+  <a dependency configuration>:
+    :environment:
+      - ARCHITECTURE=ARM9
+      - CFLAGS+=-DADD_AWESOMENESS
+      - CFLAGS-=-DWASTE
 ```
 
 In the first example, you see the most straightforward method. The environment variable
@@ -260,7 +272,7 @@ Custom Tools
 
 You can optionally specify a compiler, assembler, and linker, just as you would a release build:
 
-```
+```yaml
 :tools:
   :deps_compiler:
     :executable: gcc
@@ -282,7 +294,7 @@ Then, once created, you can reference these tools in your build steps by using t
 of a series of strings to explain all the steps. Ceedling will understand that it should build all the specified
 source and/or assembly files into the specified library:
 
-```
+```yaml
 :dependencies:
   :deps:
     - :name: CaptainCrunch

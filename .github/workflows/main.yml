@@ -118,7 +118,7 @@ jobs:
           cd ../..
 
       # Run Dependencies Plugin Tests
-      - name: Run Tests on Dependency Plugin
+      - name: Run Tests on Dependencies Plugin
         run: |
           cd plugins/dependencies
           rake
@@ -207,7 +207,7 @@ jobs:
           cd ../..
 
       # Run Dependencies Plugin Tests
-      - name: Run Tests on Dependency Plugin
+      - name: Run Tests on Dependencies Plugin
         run: |
           cd plugins/dependencies
           rake

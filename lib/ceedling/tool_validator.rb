@@ -36,7 +36,8 @@ class ToolValidator
     exists = false
     error = ''
 
-    executable = tool[:executable]
+    # Get unfrozen copy so we can modify for our processing
+    executable = tool[:executable].dup()
 
     # Handle a missing :executable
     if (executable.nil? or executable.empty?)
@@ -88,7 +89,7 @@ class ToolValidator
       end
 
       # Construct end of error message
-      error = "does not exist in system search paths." if not exists
+      error = "does not exist in system search paths" if not exists
       
     # If there is a path included, check that explicit filepath exists
     else
@@ -96,7 +97,7 @@ class ToolValidator
         exists = true
       else
         # Construct end of error message
-        error = "does not exist on disk." if not exists
+        error = "does not exist on disk" if not exists
       end      
     end
 
@@ -121,10 +122,14 @@ class ToolValidator
     error = ''
     redirect = tool[:stderr_redirect]
 
+    # If no redirect set at all, it's cool
+    return if redirect.nil?
+
+    # Otherwise, process the redirect that's been set
     if redirect.class == Symbol
       if not StdErrRedirect.constants.map{|constant| constant.to_s}.include?( redirect.to_s.upcase )
         options = StdErrRedirect.constants.map{|constant| ':' + constant.to_s.downcase}.join(', ')
-        error = "#{name} ↳ :stderr_redirect => :#{redirect} is not a recognized option {#{options}}."
+        error = "#{name} ↳ :stderr_redirect => :#{redirect} is not a recognized option {#{options}}"
 
         # Raise exception if requested
         raise CeedlingException.new( error ) if boom
@@ -134,7 +139,7 @@ class ToolValidator
         return false
       end    
     elsif redirect.class != String
-      raise CeedlingException.new( "#{name} ↳ :stderr_redirect is neither a recognized value nor custom string." )
+      raise CeedlingException.new( "#{name} ↳ :stderr_redirect is neither a recognized value nor custom string" )
     end
 
     return true
