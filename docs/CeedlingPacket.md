@@ -4423,12 +4423,28 @@ a specific source file into a test executable's build.
 
 The Ceedling convention of compiling and linking any C file that 
 corresponds in name to an `#include`d header file does not always work.
-The alternative of `#include`ing a source file directly is ugly and can
-cause other problems.
+The alternative of `#include`ing a C source file directly is ugly and can
+cause various build problems with duplicated symbols, etc.
 
 `TEST_SOURCE_FILE()` is also likely the best method for adding an assembly 
 file to the build of a given test executable — if assembly support is
 enabled for test builds.
+
+### `TEST_SOURCE_FILE()` Usage
+
+The argument for the `TEST_SOURCE_FILE()` build directive macro is a 
+single filename or filepath as a string enclosed in quotation marks. Use
+forward slashes for path separators. The filename or filepath must be 
+present within Ceedling’s source file collection.
+
+To understand your source file collection:
+
+- See the documentation for project file configuration section [`:paths`](#project-paths-configuration).
+- Dump a listing your project’s source files with the command line task
+  `ceedling files:source`.
+
+Multiple uses of `TEST_SOURCE_FILE()` are perfectly fine. You’ll likely
+want one per line within your test file.
 
 ### `TEST_SOURCE_FILE()` Example
 
@@ -4455,16 +4471,30 @@ void setUp(void) {
 The `TEST_INCLUDE_PATH()` build directive allows a header search path to
 be injected into the build of an individual test executable.
 
-This is only an additive customization. The path will be added to the 
-base/common path list specified by `:paths`  ↳ `:include` in the project 
-file. If no list is specified in the project file, `TEST_INCLUDE_PATH()` 
-entries will comprise the entire header search path list.
+### `TEST_INCLUDE_PATH()` Usage
 
-Unless you have a pretty funky C project, at least one search path entry
-— however formed — is necessary for every test executable.
+`TEST_INCLUDE_PATH()` entries in your test file are only an additive customization.
+The path will be added to the base/common path list specified by 
+`:paths`  ↳ `:include` in the project file. If no list is specified in the project 
+file, `TEST_INCLUDE_PATH()` entries will comprise the entire header search path list.
 
-Please see [Configuring Your Header File Search Paths][header-file-search-paths]
+The argument for the `TEST_INCLUDE_PATH()` build directive macro is a single 
+filepath as a string enclosed in quotation marks. Use forward slashes for 
+path separators.
+
+Unless you have a pretty funky C project, generally, at least one search path entry
+is necessary for every test executable. That path can come from a `:paths`  ↳ `:include`
+entry in your project configuration or by using `TEST_INCLUDE_PATH()` in your test
+file. Please see [Configuring Your Header File Search Paths][header-file-search-paths]
 for an overview of Ceedling’s conventions on header file search paths.
+
+At present, a limitation of the `TEST_INCLUDE_PATH()` build directive macro is that
+paths are relative to the working directory from which you are executing `ceedling`.
+A change to your working directory could require updates to the path arguments of
+all instances of `TEST_INCLUDE_PATH()`.
+
+Multiple uses of `TEST_INCLUDE_PATH()` are perfectly fine. You’ll likely want one 
+per line within your test file.
 
 [header-file-search-paths]: #configuring-your-header-file-search-paths
 
