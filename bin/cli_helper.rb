@@ -203,22 +203,18 @@ class CliHelper
 
 
   def print_rake_tasks()
-    Rake.application.standard_exception_handling do
-      # (This required digging into Rake internals a bit.)
-      Rake.application.define_singleton_method(:name=) {|n| @name = n}
-      Rake.application.name = 'ceedling'
-      Rake.application.options.show_tasks = :tasks
-      Rake.application.options.show_task_pattern = /^(?!.*build).*$/
-      Rake.application.display_tasks_and_comments()
-    end
+    # (This required digging into Rake internals a bit.)
+    Rake.application.define_singleton_method(:name=) {|n| @name = n}
+    Rake.application.name = 'ceedling'
+    Rake.application.options.show_tasks = :tasks
+    Rake.application.options.show_task_pattern = /^(?!.*build).*$/
+    Rake.application.display_tasks_and_comments()
   end
 
 
   def run_rake_tasks(tasks)
-    Rake.application.standard_exception_handling do
-      Rake.application.collect_command_line_tasks( tasks )
-      Rake.application.top_level()
-    end
+    Rake.application.collect_command_line_tasks( tasks )
+    Rake.application.top_level()
   end
 
 
@@ -401,10 +397,10 @@ class CliHelper
       'vendor/unity',
       'vendor/cmock',
       'vendor/c_exception',
+      'vendor/diy'
     ].each do |src|
+      # Look up licenses using a Glob as capitalization can be inconsistent
       glob = File.join( ceedling_root, src, 'license.txt' )
-
-      # Look up licenses (use glob as capitalization can be inconsistent)
       listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
       
       # Safety check on nil references since we explicitly reference first element
