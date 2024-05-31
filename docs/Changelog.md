@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-05-24
+# [1.0.0 pre-release] — 2024-05-31
 
 ## 🌟 Added
 
@@ -113,6 +113,10 @@ Segmentation faults are now reported as failures instead of an error with as muc
 
 Ceedling logging now optionally includes emoji and nice Unicode characters. Ceedling will attempt to determine if your platform supports it. You can use the environment variable `CEEDLING_DECORATORS` to force the feature on or off. See the documentation for logging decorators in _[CeedlingPacket](CeedlingPacket.md)_.
 
+### Vendored license files
+
+The application commands `ceedling new` and `ceedling upgrade` at the command line provide project creation and management functions. Optionally, these commands can vendor tools and libraries locally alongside your project. These vendoring options now include license files along with the source of the vendored tools and libraries.
+
 ## 💪 Fixed
 
 ### `:paths` and `:files` handling bug fixes and clarification
@@ -211,6 +215,10 @@ This configuration option has moved but is now [documented](CeedlingPacket.md). 
 ### Improved Segfault Handling in Test Suites
 
 Segmentation faults are now reported as failures instead of an error with as much detail as possible. See the project configuration file documentation discussing the `:project` ↳ `:use_backtrace` option for more!
+
+### Altered local documentation file directory structure
+
+The application commands `ceedling new` and `ceedling upgrade` at the command line provide options for local copies of documentation when creating or upgrading a project. Previous versions of Ceedling used a flat file structure for the _docs/_ directory. Ceedling now uses subdirectories to organize plugin and tool documentation within the _docs/_ directory for clearer organization and preserving original filenames.
 
 ### JUnit, XML & JSON test report plugins consolidation
 
