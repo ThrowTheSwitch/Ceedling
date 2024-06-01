@@ -433,7 +433,7 @@ module CeedlingTasks
     end
 
 
-    desc "version", "Display version details for Ceedling components"
+    desc "version", "Display version details of app components (also `--version` or `-v`)"
     # No long_desc() needed
     def version()
       @handler.version()

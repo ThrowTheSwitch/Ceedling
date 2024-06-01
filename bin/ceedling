@@ -105,10 +105,20 @@ begin
   # ------------------------------------------------------------
   #
 
-  # Backwards compatibility command line hack to silently preserve Rake `-T` CLI handling
-  if (ARGV.size() == 1 and ARGV[0] == '-T')
-    # Call Rake task listing handler w/ default handling of project file and mixins
-    objects[:cli_handler].rake_help( env:ENV, app_cfg:CEEDLING_APPCFG )
+  # Command line filtering hacks
+  #  - Backwards compatibility to silently preserve Rake `-T` CLI handling
+  #  - Add in common `--version` or `-v` version handling
+  # Note: This `if` logic is necessary to ensure any other argument lists of size 1 end up with Thor
+  if (ARGV.size() == 1) and (ARGV[0] == '-T' or ARGV[0] == '--version' or ARGV[0] == '-v')
+    case ARGV[0]
+    when '-T'
+      # Call Rake task listing handler w/ default handling of project file and mixins
+      objects[:cli_handler].rake_help( env:ENV, app_cfg:CEEDLING_APPCFG )
+
+    when '--version', '-v'
+      # Call Ceedling's version handler directly
+      objects[:cli_handler].version()
+    end      
 
   # Run command line args through Thor (including "naked" Rake tasks)
   else
