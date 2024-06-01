@@ -4474,19 +4474,19 @@ be injected into the build of an individual test executable.
 ### `TEST_INCLUDE_PATH()` Usage
 
 `TEST_INCLUDE_PATH()` entries in your test file are only an additive customization.
-The path will be added to the base/common path list specified by 
+The path will be added to the base / common path list specified by 
 `:paths`  ↳ `:include` in the project file. If no list is specified in the project 
 file, `TEST_INCLUDE_PATH()` entries will comprise the entire header search path list.
-
-The argument for the `TEST_INCLUDE_PATH()` build directive macro is a single 
-filepath as a string enclosed in quotation marks. Use forward slashes for 
-path separators.
 
 Unless you have a pretty funky C project, generally, at least one search path entry
 is necessary for every test executable. That path can come from a `:paths`  ↳ `:include`
 entry in your project configuration or by using `TEST_INCLUDE_PATH()` in your test
 file. Please see [Configuring Your Header File Search Paths][header-file-search-paths]
 for an overview of Ceedling’s conventions on header file search paths.
+
+The argument for the `TEST_INCLUDE_PATH()` build directive macro is a single 
+filepath as a string enclosed in quotation marks. Use forward slashes for 
+path separators.
 
 At present, a limitation of the `TEST_INCLUDE_PATH()` build directive macro is that
 paths are relative to the working directory from which you are executing `ceedling`.
