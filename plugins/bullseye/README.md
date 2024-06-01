@@ -1,5 +1,12 @@
-ceedling-bullseye
-=================
+Bullseye Code Coverage Plugin
+=============================
+
+# June 1, 2024 Bullseye Plugin Disabled
+
+Until the Bullseye Plugin can be updated for compatibility with Ceedling >= 1.0.0,
+it has been disabled.
+
+(The key hurdle is access to a license for the proprietary Bullseye coverage tooling.)
 
 # Plugin Overview
 

@@ -7,6 +7,7 @@
 
 require 'ceedling/plugin'
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 BULLSEYE_ROOT_NAME         = 'bullseye'
 BULLSEYE_TASK_ROOT         = BULLSEYE_ROOT_NAME + ':'
@@ -24,6 +25,7 @@ BULLSEYE_IGNORE_SOURCES    = ['unity', 'cmock', 'cexception']
 class Bullseye < Plugin
 
   def setup
+    raise CeedlingException.new( "The Bullseye plugin is disabled until it can be updated for this version of Ceedling" )
     @result_list = []
     @environment = [ {:covfile => File.join( BULLSEYE_ARTIFACTS_PATH, 'test.cov' )} ]
     @coverage_template_all = @ceedling[:file_wrapper].read( File.join( @plugin_root_path, 'assets/template.erb' ) )
