@@ -89,11 +89,14 @@ class TestInvoker
           if @configurator.project_use_test_preprocessor
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros" )
             @loginator.log( msg )
+
             # Just build directive macros (other context collected in later steps with help of preprocessing)
             @context_extractor.collect_simple_context( filepath, :build_directive_macros )
           else
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
             @loginator.log( msg )
+
+            # Collect the works
             @context_extractor.collect_simple_context( filepath, :build_directive_macros, :includes, :test_runner_details )
           end
 
@@ -150,7 +153,7 @@ class TestInvoker
           }
 
           msg = @reportinator.generate_module_progress(
-            operation: 'Preprocessing #include statements',
+            operation: 'Preprocessing #include statements for',
             module_name: arg_hash[:test],
             filename: File.basename( arg_hash[:filepath] )
           )

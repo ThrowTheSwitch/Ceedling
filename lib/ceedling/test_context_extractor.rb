@@ -9,7 +9,7 @@ require 'generator_test_runner' # From lib/ not vendor/unity/auto
 
 class TestContextExtractor
 
-  constructor :configurator, :file_wrapper
+  constructor :configurator, :file_wrapper, :loginator
 
   def setup
     @header_includes     = {}
@@ -53,6 +53,19 @@ class TestContextExtractor
       filepath: test_filepath,
       test_runner_generator: unity_test_runner_generator
     )
+
+    msg = "Test cases found in #{test_filepath}:"
+    test_cases = unity_test_runner_generator.test_cases
+    if test_cases.empty?
+      msg += " <none>"
+    else
+      msg += "\n"
+      test_cases.each do |test_case|
+        msg += " - #{test_case[:line_number]}:#{test_case[:test]}()\n"
+      end
+    end
+
+    @loginator.log( msg, Verbosity::DEBUG )
   end
 
   # Scan for all includes

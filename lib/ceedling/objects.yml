@@ -170,6 +170,7 @@ test_context_extractor:
   compose:
     - configurator
     - file_wrapper
+    - loginator
 
 include_pathinator:
   compose:
