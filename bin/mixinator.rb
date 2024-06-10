@@ -83,7 +83,8 @@ class Mixinator
     #  2. Remove duplicates
     assembly.uniq! do |entry|
       # If entry is filepath, expand it, otherwise leave entry untouched (it's a mixin name only)
-      @path_validator.filepath?( entry ) ? File.expand_path( entry.values.first ) : entry
+      mixin = entry.values.first
+      @path_validator.filepath?( mixin ) ? File.expand_path( mixin ) : mixin
     end
 
     # Return the compacted list (in merge order)
