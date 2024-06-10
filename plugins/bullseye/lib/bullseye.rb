@@ -25,6 +25,7 @@ BULLSEYE_IGNORE_SOURCES    = ['unity', 'cmock', 'cexception']
 class Bullseye < Plugin
 
   def setup
+    # TODO: Remove `raise` when Bullseye plugin has been updated for Ceedling >= 1.0.0
     raise CeedlingException.new( "The Bullseye plugin is disabled until it can be updated for this version of Ceedling" )
     @result_list = []
     @environment = [ {:covfile => File.join( BULLSEYE_ARTIFACTS_PATH, 'test.cov' )} ]
