@@ -16,6 +16,7 @@ class TestInvoker
               :configurator,
               :test_invoker_helper,
               :plugin_manager,
+              :reportinator,
               :loginator,
               :build_batchinator,
               :preprocessinator,
@@ -36,6 +37,7 @@ class TestInvoker
     # Aliases for brevity in code that follows
     @helper = @test_invoker_helper
     @batchinator = @build_batchinator
+    @context_extractor = @test_context_extractor
   end
 
   def setup_and_invoke(tests:, context:TEST_SYM, options:{})
@@ -78,10 +80,23 @@ class TestInvoker
         @helper.clean_test_results( results_path, @testables.map{ |_, t| t[:name] } )
       end
 
-      # Collect in-test build directives, etc. from test files
-      @batchinator.build_step("Extracting Build Directive Macros") do
+      # Collect in-test build directives, #include statements, and test cases from test files.
+      # (Actions depend on preprocessing configuration)
+      @batchinator.build_step("Collecting Test Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
-          @preprocessinator.extract_test_build_directives( filepath:details[:filepath] )
+          filepath = details[:filepath]
+
+          if @configurator.project_use_test_preprocessor
+            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros" )
+            @loginator.log( msg )
+            # Just build directive macros (other context collected in later steps with help of preprocessing)
+            @context_extractor.collect_simple_context( filepath, :build_directive_macros )
+          else
+            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
+            @loginator.log( msg )
+            @context_extractor.collect_simple_context( filepath, :build_directive_macros, :includes, :test_runner_details )
+          end
+
         end
 
         # Validate test build directive paths via TEST_INCLUDE_PATH() & augment header file collection from the same
@@ -105,7 +120,12 @@ class TestInvoker
           compile_defines    = @helper.compile_defines( context:context, filepath:filepath )
           preprocess_defines = @helper.preprocess_defines( test_defines: compile_defines, filepath:filepath )
 
-          @loginator.log( "Collecting search paths, flags, and defines for #{File.basename(filepath)}...", Verbosity::NORMAL)
+          msg = @reportinator.generate_module_progress(
+            operation: 'Collecting search paths, flags, and defines',
+            module_name: details[:name],
+            filename: File.basename( details[:filepath] )
+          )
+          @loginator.log( msg )
 
           @lock.synchronize do
             details[:search_paths] = search_paths
@@ -119,7 +139,7 @@ class TestInvoker
       end
 
       # Collect include statements & mocks from test files
-      @batchinator.build_step("Collecting Testing Context") do
+      @batchinator.build_step("Collecting Test Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           arg_hash = {
             filepath:      details[:filepath],
@@ -129,9 +149,16 @@ class TestInvoker
             defines:       details[:preprocess_defines]
           }
 
-          @preprocessinator.extract_testing_context(**arg_hash)
+          msg = @reportinator.generate_module_progress(
+            operation: 'Preprocessing #include statements',
+            module_name: arg_hash[:test],
+            filename: File.basename( arg_hash[:filepath] )
+          )
+          @loginator.log( msg )
+
+          @helper.extract_include_directives( arg_hash )
         end
-      end
+      end if @configurator.project_use_test_preprocessor
 
       # Determine Runners & Mocks For All Tests
       @batchinator.build_step("Determining Files to be Generated", heading: false) do
@@ -139,7 +166,7 @@ class TestInvoker
           runner_filepath = @file_path_utils.form_runner_filepath_from_test( details[:filepath] )
           
           mocks = {}
-          mocks_list = @configurator.project_use_mocks ? @test_context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
+          mocks_list = @configurator.project_use_mocks ? @context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
           mocks_list.each do |name|
             source = @helper.find_header_input_for_mock_file( name, details[:search_paths] )
             preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
@@ -212,7 +239,7 @@ class TestInvoker
       } if @configurator.project_use_mocks
 
       # Preprocess test files
-      @batchinator.build_step("Preprocessing for Test Runners") {
+      @batchinator.build_step("Preprocessing Test Files") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
 
           arg_hash = {
@@ -225,8 +252,23 @@ class TestInvoker
 
           filepath = @preprocessinator.preprocess_test_file(**arg_hash)
 
-          # Replace default input with preprocessed fle
+          # Replace default input with preprocessed file
           @lock.synchronize { details[:runner][:input_filepath] = filepath }
+        end
+      } if @configurator.project_use_test_preprocessor
+
+      # Collect test case names
+      @batchinator.build_step("Collecting Test Context") {
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+
+        msg = @reportinator.generate_module_progress(
+          operation: 'Parsing test case names',
+          module_name: details[:name],
+          filename: File.basename( details[:filepath] )
+        ) 
+        @loginator.log( msg )
+
+        @context_extractor.collect_test_runner_details( details[:filepath], details[:runner][:input_filepath] )
         end
       } if @configurator.project_use_test_preprocessor
 

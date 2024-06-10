@@ -8,9 +8,7 @@
 # Store functions and variables helping to parse debugger output and
 # prepare output understandable by report generators
 class Backtrace
-  constructor :configurator,
-              :tool_executor,
-              :unity_utils
+  constructor :configurator, :tool_executor, :unity_utils
 
   def setup
     @new_line_tag = '$$$'
@@ -59,34 +57,6 @@ class Backtrace
     end
   end
 
-  # Collect list of test cases from test_runner
-  # and apply filters basing at passed :
-  # --test_case
-  # --exclude_test_case
-  # input arguments
-  #
-  # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
-  # @return Array - list of the test_cases defined in test_file_runner
-  def collect_list_of_test_cases(command)
-    all_test_names = command.clone 
-    all_test_names[:line] += @unity_utils.additional_test_run_args( '', :list_test_cases )
-    test_list = @tool_executor.exec(all_test_names)
-    test_runner_tc = test_list[:output].split("\n").drop(1)
-
-    # Clean collected test case names
-    # Filter tests which contain test_case_name passed by `--test_case` argument
-    if !@configurator.include_test_case.empty?
-      test_runner_tc.delete_if { |i| !(i =~ /#{@configurator.include_test_case}/) }
-    end
-
-    # Filter tests which contain test_case_name passed by `--exclude_test_case` argument
-    if !@configurator.exclude_test_case.empty?
-      test_runner_tc.delete_if { |i| i =~ /#{@configurator.exclude_test_case}/ }
-    end
-
-    test_runner_tc
-  end
-
   # Support function to collect backtrace from gdb.
   # If test_runner_cmdline_args is set, function it will try to run each of test separately
   # and create output String similar to non segmentation fault execution but with notification
@@ -94,7 +64,7 @@ class Backtrace
   #
   # @param [hash, #shell_result] - output shell created by calling @tool_executor.exec
   # @return hash - updated shell_result passed as argument
-  def gdb_output_collector(shell_result)
+  def gdb_output_collector(shell_result, test_cases)
     test_case_result_collector = @test_result_collector_struct.new(
       passed: 0,
       failed: 0,
@@ -105,18 +75,17 @@ class Backtrace
     # Reset time
     shell_result[:time] = 0
 
-    test_case_list_to_execute = collect_list_of_test_cases(@command_line)
-    test_case_list_to_execute.each do |test_case_name|
+    test_case_list_to_execute = filter_test_cases( test_cases )
+    test_case_list_to_execute.each do |test_case|
       test_run_cmd = @command_line.clone
-      test_run_cmd_with_args = test_run_cmd[:line] + @unity_utils.additional_test_run_args( test_case_name, :test_case )
-      test_output, exec_time = collect_cmd_output_with_gdb(test_run_cmd, test_run_cmd_with_args, test_case_name)
+      test_run_cmd_with_args = test_run_cmd[:line] + @unity_utils.additional_test_run_args( test_case[:test], :test_case )
+      test_output, exec_time = collect_cmd_output_with_gdb(test_run_cmd, test_run_cmd_with_args, test_case[:test])
 
       # Concatenate execution time between tests
-      # running tests serpatatelly might increase total execution time
+      # (Running tests serpatately increases total execution time)
       shell_result[:time] += exec_time
 
-      # Concatenate test results from single test runs, which not crash
-      # to create proper output for further parser
+      # Concatenate successful single test runs
       m = test_output.match /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
       if m
         test_output = "#{m[1]}:#{m[2]}:#{m[3]}:#{m[4]}#{m[5]}"
@@ -127,25 +96,26 @@ class Backtrace
         elsif test_output =~ /:FAIL:/
           test_case_result_collector[:failed] += 1
         end
-      else
-        # <-- Parse Segmentatation Fault output section -->
 
-        # Collect file_name and line in which Segmentation faulted test is beginning
-        m = test_output.match /#{test_case_name}\s*\(\)\sat\s(.*):(\d+)\n/
+      # Process crashed test case details
+      else
+        # Collect file_name and line in which crash occurred
+        m = test_output.match /#{test_case[:test]}\s*\(\)\sat\s(.*):(\d+)\n/
         if m
           # Remove path from file_name
           file_name = m[1].to_s.split('/').last.split('\\').last
-          # Save line number
+          
+          # Line number
           line = m[2]
 
           # Replace:
           # - '\n' by @new_line_tag to make gdb output flat
           # - ':' by @colon_tag to avoid test results problems
           # to enable parsing output for default generator_test_results regex
-          test_output = test_output.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
-          test_output = "#{file_name}:#{line}:#{test_case_name}:FAIL: #{test_output}"
+          # test_output = test_output.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
+          test_output = "#{file_name}:#{line}:#{test_case[:test]}:FAIL: #{test_output}"
         else
-          test_output = "ERR:1:#{test_case_name}:FAIL:Test Executable Crashed"
+          test_output = "ERR:#{test_case[:line_number]}:#{test_case[:test]}:FAIL:Test Case Crashed"
         end
 
         # Mark test as failure
@@ -171,6 +141,17 @@ class Backtrace
     shell_result
   end
 
+  # Unflat segmentation fault log
+  #
+  # @param(String, #text) - string containing flatten output log
+  # @return [String, #output] - output with restored colon and new line character
+  def unflat_debugger_log(text)
+    text = restore_new_line_character_in_flatten_log(text)
+    text = restore_colon_character_in_flatten_log(text)
+    text = text.gsub('"',"'") # Replace " character by ' for junit_xml reporter
+    text
+  end
+
   # Restore new line under flatten log
   #
   # @param(String, #text) - string containing flatten output log
@@ -181,6 +162,30 @@ class Backtrace
       text = text.gsub(@new_line_tag, "\n")
     end
     text
+  end
+
+  ### Private ###
+  private
+
+  # Filter list of test cases:
+  #  --test_case
+  #  --exclude_test_case
+  #
+  # @return Array - list of the test_case hashses {:test, :line_number}
+  def filter_test_cases(test_cases)
+    _test_cases = test_cases.clone 
+
+    # Filter tests which contain test_case_name passed by `--test_case` argument
+    if !@configurator.include_test_case.empty?
+      _test_cases.delete_if { |i| !(i[:test] =~ /#{@configurator.include_test_case}/) }
+    end
+
+    # Filter tests which contain test_case_name passed by `--exclude_test_case` argument
+    if !@configurator.exclude_test_case.empty?
+      _test_cases.delete_if { |i| i[:test] =~ /#{@configurator.exclude_test_case}/ }
+    end
+
+    return _test_cases
   end
 
   # Restore colon character under flatten log
@@ -195,14 +200,4 @@ class Backtrace
     text
   end
 
-  # Unflat segmentation fault log
-  #
-  # @param(String, #text) - string containing flatten output log
-  # @return [String, #output] - output with restored colon and new line character
-  def unflat_debugger_log(text)
-    text = restore_new_line_character_in_flatten_log(text)
-    text = restore_colon_character_in_flatten_log(text)
-    text = text.gsub('"',"'") # Replace " character by ' for junit_xml reporter
-    text
-  end
 end

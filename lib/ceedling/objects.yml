@@ -209,7 +209,6 @@ generator:
     - generator_helper
     - preprocessinator
     - generator_mocks
-    - generator_test_runner
     - generator_test_results
     - test_context_extractor
     - tool_executor
@@ -241,12 +240,6 @@ generator_test_results_sanity_checker:
 generator_mocks:
   compose:
     - configurator
-
-generator_test_runner:
-  compose:
-    - configurator
-    - file_path_utils
-    - file_wrapper
 
 dependinator:
   compose:
@@ -306,6 +299,7 @@ test_invoker:
     - test_invoker_helper
     - plugin_manager
     - build_batchinator
+    - reportinator
     - loginator
     - preprocessinator
     - task_invoker
@@ -323,6 +317,7 @@ test_invoker_helper:
     - task_invoker
     - test_context_extractor
     - include_pathinator
+    - preprocessinator
     - defineinator
     - flaginator
     - file_finder

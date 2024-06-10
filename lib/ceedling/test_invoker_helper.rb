@@ -15,6 +15,7 @@ class TestInvokerHelper
               :task_invoker,
               :test_context_extractor,
               :include_pathinator,
+              :preprocessinator,
               :defineinator,
               :flaginator,
               :file_finder,
@@ -32,6 +33,14 @@ class TestInvokerHelper
     @include_pathinator.validate_test_build_directive_paths
     headers = @include_pathinator.validate_header_files_collection
     @include_pathinator.augment_environment_header_files(headers)
+  end
+
+  def extract_include_directives(arg_hash)
+    # Run test file through preprocessor to parse out include statements and then collect header files, mocks, etc.
+    includes = @preprocessinator.preprocess_includes( **arg_hash )
+
+    # Store the include statements we found
+    @test_context_extractor.ingest_includes( arg_hash[:filepath], includes )
   end
 
   def validate_build_directive_source_files(test:, filepath:)
