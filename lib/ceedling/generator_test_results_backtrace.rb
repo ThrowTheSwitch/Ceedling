@@ -265,7 +265,7 @@ class GeneratorTestResultsBacktrace
     if (crash_result[:exit_code] == 0) and (crash_result[:output] =~ /(?:PASS|FAIL|IGNORE)/)
       [crash_result[:output], crash_result[:time].to_f]
     else
-      ["#{gdb_file_name.split(/\w+/)[0]}:1:#{test_case[:test] || '?<unknown>'}:FAIL: #{crash_result[:output]}", 0.0]
+      ["#{gdb_file_name.split(/\w+/)[0]}:1:#{test_case || '?<unknown>'}:FAIL: #{crash_result[:output]}", 0.0]
     end
   end
 
