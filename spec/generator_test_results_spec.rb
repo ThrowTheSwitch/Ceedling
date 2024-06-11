@@ -76,7 +76,7 @@ describe GeneratorTestResults do
         :configurator => @configurator,
         :generator_test_results_sanity_checker => @sanity_checker,
         :yaml_wrapper => @yaml_wrapper,
-        :backtrace => @backtrace
+        :generator_test_results_backtrace => @backtrace
       }
     )
   end
