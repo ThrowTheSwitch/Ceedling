@@ -244,7 +244,9 @@ DEFAULT_BACKTRACE_TOOL = {
     '--eval-command run',
     '--eval-command backtrace',
     '--batch',
-    '--args'
+    '--args',
+    '${1}',
+    '-n ${2}'
     ].freeze
   }
 

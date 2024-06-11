@@ -8,31 +8,13 @@
 # Store functions and variables helping to parse debugger output and
 # prepare output understandable by report generators
 class GeneratorTestResultsBacktrace
-  constructor :configurator, :tool_executor, :unity_utils
+  constructor :configurator, :tool_executor
 
   def setup()
     @new_line_tag = '$$$'
     @colon_tag = '!!!'
-    @command_line = nil
 
     @RESULTS_COLLECTOR = Struct.new(:passed, :failed, :ignored, :output, keyword_init:true)
-  end
-
-  # Copy original command line generated from @tool_executor.build_command_line
-  # to use command line without command line extra args not needed by debugger
-  #
-  # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
-  def configure_debugger(command)
-    # Make a clone of clean command hash
-    # for further calls done for collecting segmentation fault
-    if @configurator.project_config_hash[:project_use_backtrace] &&
-       @configurator.project_config_hash[:test_runner_cmdline_args]
-      @command_line = command.clone
-    elsif @configurator.project_config_hash[:project_use_backtrace]
-      # If command_lines are not enabled, do not clone but create reference to command
-      # line
-      @command_line = command
-    end
   end
 
   def do_simple(filename, executable, shell_result, test_cases)
@@ -42,10 +24,9 @@ class GeneratorTestResultsBacktrace
     # Reset time
     shell_result[:time] = 0
 
-    total_tests = 0
-
     # Revise test case list with any matches and excludes and iterate
-    filter_test_cases( test_cases ).each do |test_case|
+    test_cases = filter_test_cases( test_cases )
+    test_cases.each do |test_case|
       # Build the test fixture to run with our test case of interest
       command = @tool_executor.build_command_line(
         @configurator.tools_test_fixture_simple_backtrace, [],
@@ -55,7 +36,6 @@ class GeneratorTestResultsBacktrace
       # Things are gonna go boom, so ignore booms to get output
       command[:options][:boom] = false
 
-      exec_time = 0
       test_output = ''
 
       crash_result = @tool_executor.exec( command )
@@ -63,40 +43,34 @@ class GeneratorTestResultsBacktrace
       # Successful test result
       if (crash_result[:output] =~ /:(PASS|FAIL|IGNORE):?/)
         test_output = crash_result[:output]
-        exec_time = crash_result[:time].to_f()
       # Crash case
       else
         test_output = "#{filename}:1:#{test_case[:name]}:FAIL:#{crash_result[:output]}"
-        exec_time = 0.0
       end
 
-      # Concatenate execution time between tests
-      # (Running tests separately increases total execution time)
-      shell_result[:time] += exec_time
+      # Sum execution time for each test case
+      # Note: Running tests serpatately increases total execution time)
+      shell_result[:time] += crash_result[:time].to_f()
 
-      # Process single test run stats
+      # Process single test case stats
       case test_output
       # Success test case
       when /(^#{filename}.+:PASS\s*$)/
         test_case_results[:passed]  += 1
         test_output = $1 # Grab regex match
-        total_tests += 1
 
       # Ignored test case
       when /(^#{filename}.+:IGNORE\s*$)/
         test_case_results[:ignored] += 1
         test_output = $1 # Grab regex match
-        total_tests += 1
 
       when /(^#{filename}.+:FAIL(:.+)?\s*$)/
         test_case_results[:failed]  += 1
         test_output = $1 # Grab regex match
-        total_tests += 1
 
       else # Crash failure case
         test_case_results[:failed]  += 1
         test_output = "ERR:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test Case Crashed"
-        total_tests += 1
       end
 
       # Collect up real and stand-in test results output
@@ -107,10 +81,10 @@ class GeneratorTestResultsBacktrace
     shell_result[:exit_code] = test_case_results[:failed]
     shell_result[:output] =
       regenerate_test_executable_stdout(
-        total: total_tests,
+        total:   test_cases.size(),
         ignored: test_case_results[:ignored],
-        failed: test_case_results[:failed],
-        output: test_case_results[:output]
+        failed:  test_case_results[:failed],
+        output:  test_case_results[:output]
       )
 
     return shell_result
@@ -123,80 +97,81 @@ class GeneratorTestResultsBacktrace
   #
   # @param [hash, #shell_result] - output shell created by calling @tool_executor.exec
   # @return hash - updated shell_result passed as argument
-  def gdb_output_collector(shell_result, test_cases)
-    test_case_result_collector = @RESULTS_COLLECTOR.new(
-      passed: 0,
-      failed: 0,
-      ignored: 0,
-      output: []
-    )
+  def do_gdb(filename, executable, shell_result, test_cases)
+    # Clean stats tracker
+    test_case_results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
 
     # Reset time
     shell_result[:time] = 0
 
-    test_case_list_to_execute = filter_test_cases( test_cases )
-    test_case_list_to_execute.each do |test_case|
-      test_run_cmd = @command_line.clone
-      test_run_cmd_with_args = test_run_cmd[:line] + @unity_utils.additional_test_run_args( test_case[:test], :test_case )
-      test_output, exec_time = collect_cmd_output_with_gdb(test_run_cmd, test_run_cmd_with_args, test_case[:test])
+    test_cases = filter_test_cases( test_cases )
 
-      # Concatenate execution time between tests
-      # (Running tests serpatately increases total execution time)
-      shell_result[:time] += exec_time
+    # Revise test case list with any matches and excludes and iterate
+    test_cases.each do |test_case|
+      # Build the test fixture to run with our test case of interest
+      command = @tool_executor.build_command_line(
+        @configurator.tools_backtrace_reporter, [],
+        executable,
+        test_case[:test]
+      )
+      # Things are gonna go boom, so ignore booms to get output
+      command[:options][:boom] = false
 
-      # Concatenate successful single test runs
+      crash_result = @tool_executor.exec( command )
+
+      test_output = crash_result[:output]
+
+      # Sum execution time for each test case
+      # Note: Running tests serpatately increases total execution time)
+      shell_result[:time] += crash_result[:time].to_f()
+
+      # Process successful single test case runs
       m = test_output.match /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
       if m
         test_output = "#{m[1]}:#{m[2]}:#{m[3]}:#{m[4]}#{m[5]}"
         if test_output =~ /:PASS/
-          test_case_result_collector[:passed] += 1
+          test_case_results[:passed] += 1
         elsif test_output =~ /:IGNORE/
-          test_case_result_collector[:ignored] += 1
+          test_case_results[:ignored] += 1
         elsif test_output =~ /:FAIL:/
-          test_case_result_collector[:failed] += 1
+          test_case_results[:failed] += 1
         end
 
       # Process crashed test case details
       else
         # Collect file_name and line in which crash occurred
-        m = test_output.match /#{test_case[:test]}\s*\(\)\sat\s(.*):(\d+)\n/
-        if m
-          # Remove path from file_name
-          file_name = m[1].to_s.split('/').last.split('\\').last
-          
+        m = test_output.match /#{test_case[:test]}\s*\(\)\sat\s.*:(\d+)\n/
+        if m          
           # Line number
-          line = m[2]
+          line = m[1]
+
+          crash_report = filter_gdb_test_report( test_output, test_case[:test], filename )
 
           # Replace:
           # - '\n' by @new_line_tag to make gdb output flat
           # - ':' by @colon_tag to avoid test results problems
           # to enable parsing output for default generator_test_results regex
-          # test_output = test_output.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
-          test_output = "#{file_name}:#{line}:#{test_case[:test]}:FAIL: #{test_output}"
+          test_output = crash_report.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
+          test_output = "#{filename}:#{line}:#{test_case[:test]}:FAIL: Test Case Crashed >> #{test_output}"
         else
-          test_output = "ERR:#{test_case[:line_number]}:#{test_case[:test]}:FAIL:Test Case Crashed"
+          test_output = "ERR:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test Case Crashed"
         end
 
         # Mark test as failure
-        test_case_result_collector[:failed] += 1
+        test_case_results[:failed] += 1
       end
-      test_case_result_collector[:output].append("#{test_output}\r\n")
+      test_case_results[:output].append("#{test_output}\r\n")
     end
 
-    template = "\n-----------------------\n" \
-               "\n#{(test_case_result_collector[:passed] + \
-                     test_case_result_collector[:failed] + \
-                     test_case_result_collector[:ignored])} " \
-                "Tests #{test_case_result_collector[:failed]} " \
-                "Failures #{test_case_result_collector[:ignored]} Ignored\n\n"
-
-    template += if test_case_result_collector[:failed] > 0
-                  "FAIL\n"
-                else
-                  "OK\n"
-                end
-    shell_result[:output] = test_case_result_collector[:output].join('') + template
-
+    # Reset shell result exit code and output
+    shell_result[:exit_code] = test_case_results[:failed]
+    shell_result[:output] =
+      regenerate_test_executable_stdout(
+        total:   test_cases.size(),
+        ignored: test_case_results[:ignored],
+        failed:  test_case_results[:failed],
+        output:  test_case_results[:output]
+      )
     return shell_result
   end
 
@@ -247,26 +222,31 @@ class GeneratorTestResultsBacktrace
     return _test_cases
   end
 
-  # Execute test_runner file under gdb and return:
-  # - output -> stderr and stdout
-  # - time -> execution of single test
-  #
-  # @param [hash, #command] - Command line generated from @tool_executor.build_command_line
-  # @return [String, #output] - output from binary execution
-  # @return [Float, #time] - time execution of the binary file
-  def collect_cmd_output_with_gdb(command, cmd, test_case=nil)
-    gdb_file_name = @configurator.project_config_hash[:tools_backtrace_reporter][:executable]
-    gdb_extra_args = @configurator.project_config_hash[:tools_backtrace_reporter][:arguments]
-    gdb_extra_args = gdb_extra_args.join(' ')
+  def filter_gdb_test_report( report, test_case, filename )
+    lines = report.split( "\n" )
 
-    gdb_exec_cmd = command.clone 
-    gdb_exec_cmd[:line] = "#{gdb_file_name} #{gdb_extra_args} #{cmd}"
-    crash_result = @tool_executor.exec(gdb_exec_cmd)
-    if (crash_result[:exit_code] == 0) and (crash_result[:output] =~ /(?:PASS|FAIL|IGNORE)/)
-      [crash_result[:output], crash_result[:time].to_f]
-    else
-      ["#{gdb_file_name.split(/\w+/)[0]}:1:#{test_case || '?<unknown>'}:FAIL: #{crash_result[:output]}", 0.0]
+    report_start_index = 0
+    report_end_index = 0
+
+    # Find last occurrence of `test_case() at filename`
+    lines.each_with_index do |line, index|
+      if line =~ /#{test_case}.+at.+#{filename}/
+        report_end_index = index
+      end
     end
+
+    # Work up the report to find the top of the containing text block
+    report_end_index.downto(0).to_a().each do |index|
+      if lines[index].empty?
+        # Look for a blank line, and adjust index to last text line
+        report_start_index = (index + 1)
+        break
+      end
+    end
+
+    length = (report_end_index - report_start_index) + 1
+
+    return lines[report_start_index, length].join( "\n" )
   end
 
   # Restore colon character under flatten log

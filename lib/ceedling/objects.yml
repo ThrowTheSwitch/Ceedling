@@ -231,7 +231,6 @@ generator_test_results_backtrace:
   compose:
      - configurator
      - tool_executor
-     - unity_utils
 
 generator_test_results_sanity_checker:
   compose:

@@ -15,8 +15,8 @@ class UnityUtils
   constructor :configurator
 
   def setup
-    @test_case_incl = ''
-    @test_case_excl = ''
+    @test_case_incl = nil
+    @test_case_excl = nil
     @test_runner_defines = []
 
     # Refering to Unity implementation of the parser implemented in the unity.c :
@@ -65,8 +65,8 @@ class UnityUtils
   # Return test case arguments
   #
   # @return [String] formatted arguments for test file
-  def collect_test_runner_additional_args
-    "#{@test_case_incl} #{@test_case_excl}"
+  def collect_test_runner_additional_args()
+    return [ @test_case_incl, @test_case_excl ].compact()
   end
 
   # Parse passed by user arguments
@@ -76,16 +76,16 @@ class UnityUtils
 
     @test_runner_defines << 'UNITY_USE_COMMAND_LINE_ARGS'
 
-    if !@configurator.include_test_case.nil? && !@configurator.include_test_case.empty?
-      @test_case_incl += additional_test_run_args( @configurator.include_test_case, :test_case )
+    if !@configurator.include_test_case.empty?
+      @test_case_incl = additional_test_run_args( @configurator.include_test_case, :test_case )
     end
 
-    if !@configurator.exclude_test_case.nil? && !@configurator.exclude_test_case.empty?
-      @test_case_excl += additional_test_run_args( @configurator.exclude_test_case, :exclude_test_case )
+    if !@configurator.exclude_test_case.empty?
+      @test_case_excl = additional_test_run_args( @configurator.exclude_test_case, :exclude_test_case )
     end
   end
 
-  # Return UNITY_USE_COMMAND_LINE_ARGS define required by Unity to compile unity with enabled cmd line arguments
+  # Return UNITY_USE_COMMAND_LINE_ARGS define required by Unity to compile executable with enabled cmd line arguments
   #
   # @return [Array] - empty if cmdline_args is not set
   def grab_additional_defines_based_on_configuration()

@@ -293,13 +293,13 @@ class Generator
 
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results
-    command = @tool_executor.build_command_line( arg_hash[:tool], [], arg_hash[:executable] )
-
-    # Configure debugger
-    @backtrace.configure_debugger(command)
-
-    # Apply additional test case filters 
-    command[:line] += @unity_utils.collect_test_runner_additional_args
+    command = 
+      @tool_executor.build_command_line(
+        arg_hash[:tool],
+        # Apply additional test case filters 
+        @unity_utils.collect_test_runner_additional_args(),
+        arg_hash[:executable]
+      )
 
     # Run the test executable itself
     # We allow it to fail without an exception.
@@ -311,11 +311,15 @@ class Generator
     if @helper.test_crash?( shell_result )
       @helper.log_test_results_crash( test_name, executable, shell_result )
 
+      filename = File.basename( test_filepath )
+
       case @configurator.project_config_hash[:project_use_backtrace]
       # If we have the options and tools to learn more, dig into the details
       when :gdb
         shell_result = 
-          @backtrace.gdb_output_collector(
+          @backtrace.do_gdb(
+            filename,
+            executable,
             shell_result,
             @test_context_extractor.lookup_test_cases( test_filepath )
           )
@@ -324,7 +328,7 @@ class Generator
       when :simple
         shell_result = 
           @backtrace.do_simple(
-            File.basename( test_filepath ),
+            filename,
             executable,
             shell_result,
             @test_context_extractor.lookup_test_cases( test_filepath )
@@ -333,7 +337,7 @@ class Generator
       else # :none
         # Otherwise, call a crash a single failure so it shows up in the report
         shell_result = @generator_test_results.create_crash_failure(
-          File.basename( test_filepath ),
+          filename,
           shell_result
         )
       end
