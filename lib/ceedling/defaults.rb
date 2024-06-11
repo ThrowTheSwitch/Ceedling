@@ -64,10 +64,21 @@ DEFAULT_TEST_LINKER_TOOL = {
   }
 
 DEFAULT_TEST_FIXTURE_TOOL = {
+  # Unity test runner executable
   :executable => '${1}'.freeze,
   :name => 'default_test_fixture'.freeze,
   :optional => false.freeze,
   :arguments => [].freeze
+  }
+
+DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
+  # Unity test runner executable
+  :executable => '${1}'.freeze,
+  :name => 'default_test_fixture_simple_backtrace'.freeze,
+  :optional => false.freeze,
+  :arguments => [
+    '-n ${2}' # Exact test case name matching flag
+    ].freeze
   }
 
 DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
@@ -237,12 +248,12 @@ DEFAULT_BACKTRACE_TOOL = {
     ].freeze
   }
 
-
 DEFAULT_TOOLS_TEST = {
   :tools => {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
     :test_linker   => DEFAULT_TEST_LINKER_TOOL,
     :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
+    :test_fixture_simple_backtrace => DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL,
     :backtrace_reporter => DEFAULT_BACKTRACE_TOOL,
     }
   }
@@ -298,7 +309,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :use_test_preprocessor => false,
       :test_file_prefix => 'test_',
       :release_build => false,
-      :use_backtrace => :none,
+      :use_backtrace => :simple,
       :debug => false
     },
 

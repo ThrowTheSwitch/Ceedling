@@ -17,6 +17,7 @@ class Generator
               :preprocessinator,
               :generator_mocks,
               :generator_test_results,
+              :generator_test_results_backtrace,
               :test_context_extractor,
               :tool_executor,
               :file_finder,
@@ -25,13 +26,13 @@ class Generator
               :loginator,
               :plugin_manager,
               :file_wrapper,
-              :backtrace,
               :unity_utils
 
 
   def setup()
-    # Alias
+    # Aliases
     @helper = @generator_helper
+    @backtrace = @generator_test_results_backtrace
   end
 
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
@@ -285,14 +286,14 @@ class Generator
       :result_file => result
     }
 
-    @plugin_manager.pre_test_fixture_execute(arg_hash)
+    @plugin_manager.pre_test_fixture_execute( arg_hash )
 
-    msg = @reportinator.generate_progress("Running #{File.basename(arg_hash[:executable])}")
+    msg = @reportinator.generate_progress( "Running #{File.basename(arg_hash[:executable])}" )
     @loginator.log( msg )
 
     # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results
-    command = @tool_executor.build_command_line(arg_hash[:tool], [], arg_hash[:executable])
+    command = @tool_executor.build_command_line( arg_hash[:tool], [], arg_hash[:executable] )
 
     # Configure debugger
     @backtrace.configure_debugger(command)
@@ -324,14 +325,17 @@ class Generator
         shell_result = 
           @backtrace.do_simple(
             File.basename( test_filepath ),
-            command,
+            executable,
             shell_result,
             @test_context_extractor.lookup_test_cases( test_filepath )
           )
 
       else # :none
         # Otherwise, call a crash a single failure so it shows up in the report
-        shell_result = @generator_test_results.create_crash_failure( executable, shell_result )
+        shell_result = @generator_test_results.create_crash_failure(
+          File.basename( test_filepath ),
+          shell_result
+        )
       end
     end
 

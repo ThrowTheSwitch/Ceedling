@@ -134,3 +134,16 @@ TESTS_BASE_PATH   = TEST_ROOT_NAME
 RELEASE_BASE_PATH = RELEASE_ROOT_NAME
 
 VENDORS_FILES = %w(unity UnityHelper cmock CException).freeze
+
+# Ruby Here
+UNITY_TEST_RESULTS_TEMPLATE = <<~UNITY_TEST_RESULTS
+  %{output}
+
+  -----------------------
+  %{total} Tests %{failed} Failures %{ignored} Ignored
+  %{result}
+UNITY_TEST_RESULTS
+
+
+
+

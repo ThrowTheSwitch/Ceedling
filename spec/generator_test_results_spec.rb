@@ -12,7 +12,7 @@ require 'ceedling/yaml_wrapper'
 require 'ceedling/constants'
 require 'ceedling/loginator'
 require 'ceedling/configurator'
-require 'ceedling/backtrace'
+require 'ceedling/generator_test_results_backtrace'
 
 NORMAL_OUTPUT =
   "Verbose output one\n" +
@@ -69,7 +69,7 @@ describe GeneratorTestResults do
     # these will always be used as is.
     @yaml_wrapper = YamlWrapper.new
     @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :loginator => @loginator})
-    @backtrace = Backtrace.new({:configurator => @configurator, :tool_executor => nil, :unity_utils => nil})
+    @backtrace = GeneratorTestResultsBacktrace.new({:configurator => @configurator, :tool_executor => nil, :unity_utils => nil})
 
     @generate_test_results = described_class.new(
       {

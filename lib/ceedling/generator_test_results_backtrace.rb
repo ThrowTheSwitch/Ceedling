@@ -7,15 +7,15 @@
 
 # Store functions and variables helping to parse debugger output and
 # prepare output understandable by report generators
-class Backtrace
+class GeneratorTestResultsBacktrace
   constructor :configurator, :tool_executor, :unity_utils
 
-  def setup
+  def setup()
     @new_line_tag = '$$$'
     @colon_tag = '!!!'
     @command_line = nil
-    @test_result_collector_struct = 
-      Struct.new(:passed, :failed, :ignored, :output, keyword_init: true)
+
+    @RESULTS_COLLECTOR = Struct.new(:passed, :failed, :ignored, :output, keyword_init:true)
   end
 
   # Copy original command line generated from @tool_executor.build_command_line
@@ -35,73 +35,83 @@ class Backtrace
     end
   end
 
-  def do_simple(filename, command, shell_result, test_cases)
-    test_case_results = @test_result_collector_struct.new(
-      passed: 0,
-      failed: 0,
-      ignored: 0,
-      output: []
-    )
+  def do_simple(filename, executable, shell_result, test_cases)
+    # Clean stats tracker
+    test_case_results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
 
     # Reset time
     shell_result[:time] = 0
 
+    total_tests = 0
+
+    # Revise test case list with any matches and excludes and iterate
     filter_test_cases( test_cases ).each do |test_case|
-      test_run_cmd = command.clone
-      test_run_cmd[:line] += @unity_utils.additional_test_run_args( test_case[:test], :test_case )
+      # Build the test fixture to run with our test case of interest
+      command = @tool_executor.build_command_line(
+        @configurator.tools_test_fixture_simple_backtrace, [],
+        executable,
+        test_case[:test]
+      )
+      # Things are gonna go boom, so ignore booms to get output
+      command[:options][:boom] = false
 
       exec_time = 0
       test_output = ''
 
+      crash_result = @tool_executor.exec( command )
 
-      crash_result = @tool_executor.exec(test_run_cmd)
-      if (crash_result[:output] =~ /(?:PASS|FAIL|IGNORE)/)
+      # Successful test result
+      if (crash_result[:output] =~ /:(PASS|FAIL|IGNORE):?/)
         test_output = crash_result[:output]
         exec_time = crash_result[:time].to_f()
+      # Crash case
       else
         test_output = "#{filename}:1:#{test_case[:name]}:FAIL:#{crash_result[:output]}"
         exec_time = 0.0
       end
 
       # Concatenate execution time between tests
-      # (Running tests serpatately increases total execution time)
+      # (Running tests separately increases total execution time)
       shell_result[:time] += exec_time
 
-      # Concatenate successful single test runs
-      m = test_output.match /([\S]+):(\d+):([\S]+):(IGNORE|PASS|FAIL:)(.*)/
-      if m
-        test_output = "#{m[1]}:#{m[2]}:#{m[3]}:#{m[4]}#{m[5]}"
-        if test_output =~ /:PASS/
-          test_case_results[:passed] += 1
-        elsif test_output =~ /:IGNORE/
-          test_case_results[:ignored] += 1
-        elsif test_output =~ /:FAIL:/
-          test_case_results[:failed] += 1
-        end
+      # Process single test run stats
+      case test_output
+      # Success test case
+      when /(^#{filename}.+:PASS\s*$)/
+        test_case_results[:passed]  += 1
+        test_output = $1 # Grab regex match
+        total_tests += 1
 
-      # Process crashed test case details
-      else
-        test_output = "ERR:#{test_case[:line_number]}:#{test_case[:test]}:FAIL:Test Case Crashed"
+      # Ignored test case
+      when /(^#{filename}.+:IGNORE\s*$)/
+        test_case_results[:ignored] += 1
+        test_output = $1 # Grab regex match
+        total_tests += 1
 
-        # Mark test as failure
-        test_case_results[:failed] += 1
+      when /(^#{filename}.+:FAIL(:.+)?\s*$)/
+        test_case_results[:failed]  += 1
+        test_output = $1 # Grab regex match
+        total_tests += 1
+
+      else # Crash failure case
+        test_case_results[:failed]  += 1
+        test_output = "ERR:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test Case Crashed"
+        total_tests += 1
       end
-      test_case_results[:output].append("#{test_output}\r\n")
+
+      # Collect up real and stand-in test results output
+      test_case_results[:output].append( test_output )
     end
 
-    template = "\n-----------------------\n" \
-               "\n#{(test_case_results[:passed] + \
-                     test_case_results[:failed] + \
-                     test_case_results[:ignored])} " \
-                "Tests #{test_case_results[:failed]} " \
-                "Failures #{test_case_results[:ignored]} Ignored\n\n"
-
-    template += if test_case_results[:failed] > 0
-                  "FAIL\n"
-                else
-                  "OK\n"
-                end
-    shell_result[:output] = test_case_results[:output].join('') + template
+    # Reset shell result exit code and output
+    shell_result[:exit_code] = test_case_results[:failed]
+    shell_result[:output] =
+      regenerate_test_executable_stdout(
+        total: total_tests,
+        ignored: test_case_results[:ignored],
+        failed: test_case_results[:failed],
+        output: test_case_results[:output]
+      )
 
     return shell_result
   end
@@ -114,7 +124,7 @@ class Backtrace
   # @param [hash, #shell_result] - output shell created by calling @tool_executor.exec
   # @return hash - updated shell_result passed as argument
   def gdb_output_collector(shell_result, test_cases)
-    test_case_result_collector = @test_result_collector_struct.new(
+    test_case_result_collector = @RESULTS_COLLECTOR.new(
       passed: 0,
       failed: 0,
       ignored: 0,
@@ -255,7 +265,7 @@ class Backtrace
     if (crash_result[:exit_code] == 0) and (crash_result[:output] =~ /(?:PASS|FAIL|IGNORE)/)
       [crash_result[:output], crash_result[:time].to_f]
     else
-      ["#{gdb_file_name.split(/\w+/)[0]}:1:#{test_case || 'test_Unknown'}:FAIL:#{crash_result[:output]}", 0.0]
+      ["#{gdb_file_name.split(/\w+/)[0]}:1:#{test_case[:test] || '?<unknown>'}:FAIL: #{crash_result[:output]}", 0.0]
     end
   end
 
@@ -269,6 +279,19 @@ class Backtrace
       text = text.gsub(@colon_tag, ':')
     end
     text
+  end
+
+  # TODO: When :gdb handling updates finished, refactor to use equivalent method in GeneratorTestResults
+  def regenerate_test_executable_stdout(total:, failed:, ignored:, output:[])
+    values = {
+      :total => total,
+      :failed => failed,
+      :ignored => ignored,
+      :output => output.map {|line| line.strip()}.join("\n"),
+      :result => (failed > 0) ? 'FAIL' : 'OK'
+    }
+
+    return UNITY_TEST_RESULTS_TEMPLATE % values
   end
 
 end

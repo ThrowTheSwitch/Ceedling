@@ -44,12 +44,6 @@ unity_utils:
   compose:
      - configurator
 
-backtrace:
-  compose:
-     - configurator
-     - tool_executor
-     - unity_utils
-
 cacheinator:
   compose:
     - cacheinator_helper
@@ -220,7 +214,7 @@ generator:
     - plugin_manager
     - file_wrapper
     - unity_utils
-    - backtrace
+    - generator_test_results_backtrace
 
 generator_helper:
   compose:
@@ -231,7 +225,13 @@ generator_test_results:
     - configurator
     - generator_test_results_sanity_checker
     - yaml_wrapper
-    - backtrace
+    - generator_test_results_backtrace
+
+generator_test_results_backtrace:
+  compose:
+     - configurator
+     - tool_executor
+     - unity_utils
 
 generator_test_results_sanity_checker:
   compose:
