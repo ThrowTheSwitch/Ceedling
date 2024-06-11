@@ -175,9 +175,7 @@ class ConfiguratorSetup
     when :none
       # Do nothing
     when :simple
-      # TODO: Remove when :simple support is completed
-      @loginator.log( ":project ↳ :use_backtrace => :simple is not yet supported", Verbosity::ERRORS )      
-      valid = false
+      # Do nothing
     when :gdb
       # Do nothing
     else

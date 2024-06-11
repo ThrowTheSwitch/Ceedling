@@ -311,15 +311,24 @@ class Generator
       @helper.log_test_results_crash( test_name, executable, shell_result )
 
       case @configurator.project_config_hash[:project_use_backtrace]
+      # If we have the options and tools to learn more, dig into the details
       when :gdb
-        # If we have the options and tools to learn more, dig into the details
         shell_result = 
           @backtrace.gdb_output_collector(
             shell_result,
             @test_context_extractor.lookup_test_cases( test_filepath )
           )
+
+      # Simple test-case-by-test-case exercise
       when :simple
-        # TODO: Identify problematic test just from iterating with test case filters
+        shell_result = 
+          @backtrace.do_simple(
+            File.basename( test_filepath ),
+            command,
+            shell_result,
+            @test_context_extractor.lookup_test_cases( test_filepath )
+          )
+
       else # :none
         # Otherwise, call a crash a single failure so it shows up in the report
         shell_result = @generator_test_results.create_crash_failure( executable, shell_result )

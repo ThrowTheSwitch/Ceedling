@@ -98,6 +98,8 @@ class GeneratorTestResults
     return shell_result
   end
 
+  ### Private ### 
+  
   private
 
   def get_results_structure
