@@ -1,35 +1,37 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'ceedling/exceptions'
+
 # The Unity utils class,
 # Store functions to enable test execution of single test case under test file
 # and additional warning definitions
 class UnityUtils
-  attr_reader :test_runner_disabled_replay, :arg_option_map
-  attr_accessor :test_case_incl, :test_case_excl, :not_supported
 
   constructor :configurator
 
   def setup
-    @test_runner_disabled_replay = "NOTICE: \n" \
-     "The option[s]: %<opt>.s \ncannot be applied." \
-     'To enable it, please add `:cmdline_args` under' \
-     ' :test_runner option in your project.yml.'
     @test_case_incl = ''
     @test_case_excl = ''
-    @not_supported = ''
+    @test_runner_defines = []
 
-    # Refering to Unity implementation of the parser implemented in the unit.c :
+    # Refering to Unity implementation of the parser implemented in the unity.c :
     #
     # case 'l': /* list tests */
-    # case 'n': /* include tests with name including this string */
-    # case 'f': /* an alias for -n */
+    # case 'f': /* filter tests with name including this string */
     # case 'q': /* quiet */
     # case 'v': /* verbose */
     # case 'x': /* exclude tests with name including this string */
     @arg_option_map =
       {
-        'test_case' => 'n',
-        'list_test_cases' => 'l',
-        'run_tests_verbose' => 'v',
-        'exclude_test_case' => 'x'
+        :test_case         => 'f',
+        :list_test_cases   => 'l',
+        :run_tests_verbose => 'v',
+        :exclude_test_case => 'x'
       }
   end
 
@@ -51,12 +53,13 @@ class UnityUtils
 
     return nil if argument.nil?
 
-    raise TypeError, 'option expects an arg_option_map key' unless \
-      option.is_a?(String)
-    raise 'Unknown Unity argument option' unless \
-      @arg_option_map.key?(option)
+    if !@arg_option_map.key?(option)
+      keys = @arg_option_map.keys.map{|key| ':' + key.to_s}.join(', ')
+      error = "option argument must be a known key {#{keys}}"
+      raise TypeError.new( error )
+    end
 
-    " -#{@arg_option_map[option]} #{argument} "
+    return " -#{@arg_option_map[option]} #{argument}"
   end
 
   # Return test case arguments
@@ -67,43 +70,50 @@ class UnityUtils
   end
 
   # Parse passed by user arguments
-  def create_test_runner_additional_args
-    if ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
-      if @configurator.project_config_hash[:test_runner_cmdline_args]
-        @test_case_incl += additional_test_run_args(
-          ENV['CEEDLING_INCLUDE_TEST_CASE_NAME'],
-          'test_case')
-      else
-        @not_supported += "\n\t--test_case"
-      end
+  def process_test_runner_build_options()
+    # Blow up immediately if things aren't right
+    return if !test_runner_cmdline_args_configured?()
+
+    @test_runner_defines << 'UNITY_USE_COMMAND_LINE_ARGS'
+
+    if !@configurator.include_test_case.nil? && !@configurator.include_test_case.empty?
+      @test_case_incl += additional_test_run_args( @configurator.include_test_case, :test_case )
     end
 
-    if ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME']
-      if @configurator.project_config_hash[:test_runner_cmdline_args]
-        @test_case_excl += additional_test_run_args(
-          ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'],
-          'exclude_test_case')
-      else
-        @not_supported += "\n\t--exclude_test_case"
-      end
-    end
-
-    if ENV['CEEDLING_EXCLUDE_TEST_CASE_NAME'] || ENV['CEEDLING_INCLUDE_TEST_CASE_NAME']
-      print_warning_about_not_enabled_cmdline_args
+    if !@configurator.exclude_test_case.nil? && !@configurator.exclude_test_case.empty?
+      @test_case_excl += additional_test_run_args( @configurator.exclude_test_case, :exclude_test_case )
     end
   end
 
-  # Return UNITY_USE_COMMAND_LINE_ARGS define required by Unity to
-  # compile unity with enabled cmd line arguments
+  # Return UNITY_USE_COMMAND_LINE_ARGS define required by Unity to compile unity with enabled cmd line arguments
   #
   # @return [Array] - empty if cmdline_args is not set
-  def self.update_defines_if_args_enables(in_hash)
-    in_hash[:test_runner_cmdline_args] ? ['UNITY_USE_COMMAND_LINE_ARGS'] : []
+  def grab_additional_defines_based_on_configuration()
+    return @test_runner_defines
   end
 
-  # Print on output console warning about lack of support for single test run
-  # if cmdline_args is not set to true in project.yml file, that
-  def print_warning_about_not_enabled_cmdline_args
-    puts(format(@test_runner_disabled_replay, opt: @not_supported)) unless @not_supported.empty?
+  ### Private ###
+
+  private
+
+  # Raise exception if lacking support for test case matching
+  def test_runner_cmdline_args_configured?()
+    # Command line arguments configured
+    cmdline_args = @configurator.test_runner_cmdline_args
+
+    # Test case filters in use
+    test_case_filters = (!@configurator.include_test_case.nil? && !@configurator.include_test_case.empty?) || 
+                        (!@configurator.exclude_test_case.nil? && !@configurator.exclude_test_case.empty?)
+
+    # Test case filters are in use but test runner command line arguments are not enabled
+    if test_case_filters and !cmdline_args
+      # Blow up if filters are in use but test runner command line arguments are not enabled
+      msg = 'Unity test case filters cannot be used as configured. ' +
+            'Enable :test_runner ↳ :cmdline_args in your project configuration.'
+
+      raise CeedlingException.new( msg )
+    end
+
+    return cmdline_args
   end
 end

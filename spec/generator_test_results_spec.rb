@@ -1,11 +1,18 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'spec_helper'
 require 'ceedling/generator_test_results_sanity_checker'
 require 'ceedling/generator_test_results'
 require 'ceedling/yaml_wrapper'
 require 'ceedling/constants'
-require 'ceedling/streaminator'
+require 'ceedling/loginator'
 require 'ceedling/configurator'
-require 'ceedling/debugger_utils'
+require 'ceedling/backtrace'
 
 NORMAL_OUTPUT =
   "Verbose output one\n" +
@@ -56,20 +63,20 @@ TEST_OUT_FILE_FAIL = 'out.fail'
 describe GeneratorTestResults do
   before(:each) do
     # these will always be mocked
-    @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :cmock_builder => nil, :yaml_wrapper => nil, :system_wrapper => nil})
-    @streaminator = Streaminator.new({:streaminator_helper => nil, :verbosinator => nil, :loginator => nil, :stream_wrapper => nil})
+    @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :yaml_wrapper => nil, :system_wrapper => nil})
+    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
     
     # these will always be used as is.
     @yaml_wrapper = YamlWrapper.new
-    @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :streaminator => @streaminator})
-    @debugger_utils = DebuggerUtils.new({:configurator => @configurator, :tool_executor => nil, :unity_utils => nil})
+    @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :loginator => @loginator})
+    @backtrace = Backtrace.new({:configurator => @configurator, :tool_executor => nil, :unity_utils => nil})
 
     @generate_test_results = described_class.new(
       {
         :configurator => @configurator,
         :generator_test_results_sanity_checker => @sanity_checker,
         :yaml_wrapper => @yaml_wrapper,
-        :debugger_utils => @debugger_utils
+        :backtrace => @backtrace
       }
     )
   end

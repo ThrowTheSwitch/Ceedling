@@ -1,10 +1,17 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'rubygems'
 require 'rake' # for .ext()
 require 'ceedling/constants'
 
 class GeneratorTestResults
 
-  constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper, :debugger_utils
+  constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper, :backtrace
 
   def process_and_write_results(unity_shell_result, results_file, test_file)
     output_file = results_file
@@ -23,7 +30,7 @@ class GeneratorTestResults
       results[:counts][:ignored] = $3.to_i
       results[:counts][:passed] = (results[:counts][:total] - results[:counts][:failed] - results[:counts][:ignored])
     else
-      if @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+      if @configurator.project_config_hash[:project_use_backtrace]
         # Accessing this code block we expect failure during test execution
         # which should be connected with SIGSEGV
         results[:counts][:total] = 1   # Set to one as the amount of test is unknown in segfault, and one of the test is failing
@@ -60,11 +67,11 @@ class GeneratorTestResults
         results[:stdout] << elements[1] if (!elements[1].nil?)
       when /(:FAIL)/
         elements = extract_line_elements(line, results[:source][:file])
-        elements[0][:test] = @debugger_utils.restore_new_line_character_in_flatten_log(elements[0][:test])
+        elements[0][:test] = @backtrace.restore_new_line_character_in_flatten_log(elements[0][:test])
         results[:failures] << elements[0]
         results[:stdout] << elements[1] if (!elements[1].nil?)
       else # collect up all other
-        if !@configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+        if !@configurator.project_config_hash[:project_use_backtrace]
           results[:stdout] << line.chomp
         end
       end
@@ -75,11 +82,20 @@ class GeneratorTestResults
     output_file = results_file.ext(@configurator.extension_testfail) if (results[:counts][:failed] > 0)
 
     results[:failures].each do |failure|
-      failure[:message] = @debugger_utils.unflat_debugger_log(failure[:message])
+      failure[:message] = @backtrace.unflat_debugger_log(failure[:message])
     end
     @yaml_wrapper.dump(output_file, results)
 
     return { :result_file => output_file, :result => results }
+  end
+
+  def create_crash_failure( executable, shell_result )
+    source = File.basename(executable).ext(@configurator.extension_source)
+    shell_result[:output] = "#{source}:1:test_Unknown:FAIL:Test Executable Crashed" 
+    shell_result[:output] += "\n-----------------------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
+    shell_result[:exit_code] = 1
+
+    return shell_result
   end
 
   private
@@ -104,7 +120,7 @@ class GeneratorTestResults
 
     if (line =~ stdout_regex)
       stdout = $1.clone
-      unless @configurator.project_config_hash[:project_use_backtrace_gdb_reporter]
+      unless @configurator.project_config_hash[:project_use_backtrace]
         line.sub!(/#{Regexp.escape(stdout)}/, '')
       end
     end
@@ -119,7 +135,7 @@ class GeneratorTestResults
     end
     if elements[3..-1]
       message = (elements[3..-1].join(':')).strip
-      message = @debugger_utils.unflat_debugger_log(message)
+      message = @backtrace.unflat_debugger_log(message)
     else
       message = nil
     end

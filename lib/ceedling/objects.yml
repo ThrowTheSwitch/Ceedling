@@ -1,9 +1,17 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+application:
+  compose:
+    - system_wrapper
 
 file_wrapper:
 
 file_system_wrapper:
-
-stream_wrapper:
 
 rake_wrapper:
 
@@ -11,7 +19,7 @@ yaml_wrapper:
 
 system_wrapper:
 
-cmock_builder:
+config_walkinator:
 
 reportinator:
 
@@ -28,32 +36,19 @@ file_path_utils:
     - configurator
     - file_wrapper
 
-file_system_utils:
-  compose: file_wrapper
-
-project_file_loader:
+file_path_collection_utils:
   compose:
-    - yaml_wrapper
-    - stream_wrapper
-    - system_wrapper
     - file_wrapper
 
 unity_utils:
   compose:
      - configurator
 
-debugger_utils:
+backtrace:
   compose:
      - configurator
      - tool_executor
      - unity_utils
-
-project_config_manager:
-  compose:
-    - cacheinator
-    - configurator
-    - yaml_wrapper
-    - file_wrapper
 
 cacheinator:
   compose:
@@ -71,21 +66,29 @@ tool_executor:
   compose:
     - configurator
     - tool_executor_helper
-    - streaminator
+    - loginator
+    - verbosinator
     - system_wrapper
 
 tool_executor_helper:
   compose:
-    - streaminator
+    - loginator
     - system_utils
     - system_wrapper
+    - verbosinator
+
+tool_validator:
+  compose:
+    - file_wrapper
+    - loginator
+    - system_wrapper
+    - reportinator
 
 configurator:
   compose:
     - configurator_setup
     - configurator_plugins
     - configurator_builder
-    - cmock_builder
     - yaml_wrapper
     - system_wrapper
 
@@ -94,52 +97,42 @@ configurator_setup:
     - configurator_builder
     - configurator_validator
     - configurator_plugins
-    - stream_wrapper
+    - loginator
+    - file_wrapper
 
 configurator_plugins:
   compose:
-    - stream_wrapper
     - file_wrapper
     - system_wrapper
 
 configurator_validator:
   compose:
+    - config_walkinator
     - file_wrapper
-    - stream_wrapper
+    - loginator
     - system_wrapper
+    - reportinator
+    - tool_validator
 
 configurator_builder:
   compose:
-    - file_system_utils
+    - file_path_collection_utils
     - file_wrapper
     - system_wrapper
 
 loginator:
   compose:
-    - configurator
-    - project_file_loader
-    - project_config_manager
+    - verbosinator
     - file_wrapper
     - system_wrapper
 
-streaminator:
-  compose:
-    - streaminator_helper
-    - verbosinator
-    - loginator
-    - stream_wrapper
-
-streaminator_helper:
-
 setupinator:
-
-plugin_builder:
 
 plugin_manager:
   compose:
     - configurator
     - plugin_manager_helper
-    - streaminator
+    - loginator
     - reportinator
     - system_wrapper
 
@@ -154,12 +147,12 @@ plugin_reportinator:
 plugin_reportinator_helper:
   compose:
     - configurator
-    - streaminator
+    - loginator
     - yaml_wrapper
     - file_wrapper
 
 verbosinator:
-  compose: configurator
+  # compose: configurator
 
 file_finder:
   compose:
@@ -171,59 +164,83 @@ file_finder:
     - yaml_wrapper
 
 file_finder_helper:
-  compose: streaminator
+  compose: loginator
 
-test_includes_extractor:
+test_context_extractor:
   compose:
     - configurator
-    - yaml_wrapper
+    - file_wrapper
+
+include_pathinator:
+  compose:
+    - configurator
+    - test_context_extractor
+    - loginator
     - file_wrapper
 
 task_invoker:
   compose:
     - dependinator
+    - build_batchinator
     - rake_utils
     - rake_wrapper
-    - project_config_manager
+
+config_matchinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
 
 flaginator:
   compose:
     - configurator
+    - loginator
+    - config_matchinator
+
+defineinator:
+  compose:
+    - configurator
+    - loginator
+    - config_matchinator
 
 generator:
   compose:
     - configurator
     - generator_helper
     - preprocessinator
-    - cmock_builder
+    - generator_mocks
     - generator_test_runner
     - generator_test_results
-    - flaginator
-    - test_includes_extractor
+    - test_context_extractor
     - tool_executor
     - file_finder
     - file_path_utils
-    - streaminator
+    - reportinator
+    - loginator
     - plugin_manager
     - file_wrapper
     - unity_utils
-    - debugger_utils
+    - backtrace
 
 generator_helper:
   compose:
-    - streaminator
+    - loginator
 
 generator_test_results:
   compose:
     - configurator
     - generator_test_results_sanity_checker
     - yaml_wrapper
-    - debugger_utils
+    - backtrace
 
 generator_test_results_sanity_checker:
   compose:
     - configurator
-    - streaminator
+    - loginator
+
+generator_mocks:
+  compose:
+    - configurator
 
 generator_test_runner:
   compose:
@@ -234,8 +251,7 @@ generator_test_runner:
 dependinator:
   compose:
     - configurator
-    - project_config_manager
-    - test_includes_extractor
+    - test_context_extractor
     - file_path_utils 
     - rake_wrapper
     - file_wrapper
@@ -247,62 +263,78 @@ preprocessinator:
     - task_invoker
     - file_finder
     - file_path_utils
+    - file_wrapper
     - yaml_wrapper
-    - project_config_manager
+    - plugin_manager
     - configurator
-    - test_includes_extractor
+    - test_context_extractor
+    - loginator
+    - reportinator
     - rake_wrapper
 
 preprocessinator_includes_handler:
   compose:
     - configurator
     - tool_executor
-    - task_invoker
-    - file_path_utils
+    - test_context_extractor
     - yaml_wrapper
-    - file_wrapper
-    - file_finder
+    - loginator
+    - reportinator
 
 preprocessinator_file_handler:
   compose:
     - preprocessinator_extractor
     - configurator
+    - flaginator
     - tool_executor
     - file_path_utils
     - file_wrapper
+    - loginator
 
 preprocessinator_extractor:
 
+build_batchinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+
 test_invoker:
   compose:
+    - application
     - configurator
     - test_invoker_helper
     - plugin_manager
-    - streaminator
+    - build_batchinator
+    - loginator
     - preprocessinator
     - task_invoker
-    - dependinator
-    - project_config_manager
-    - build_invoker_utils
+    - generator
+    - test_context_extractor
     - file_path_utils
     - file_wrapper
+    - verbosinator
 
 test_invoker_helper:
   compose:
     - configurator
+    - loginator
+    - build_batchinator
     - task_invoker
-    - test_includes_extractor
+    - test_context_extractor
+    - include_pathinator
+    - defineinator
+    - flaginator
     - file_finder
     - file_path_utils
     - file_wrapper
     - generator
-    - rake_wrapper
+    - unity_utils
 
 release_invoker:
   compose:
     - configurator
     - release_invoker_helper
-    - build_invoker_utils
     - dependinator
     - task_invoker
     - file_path_utils
@@ -313,10 +345,5 @@ release_invoker_helper:
     - configurator
     - dependinator
     - task_invoker
-
-build_invoker_utils:
-  compose:
-    - configurator
-    - streaminator
 
 erb_wrapper:

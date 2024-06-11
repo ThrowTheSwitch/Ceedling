@@ -1,282 +1,437 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'ceedling/constants'
-require 'ceedling/par_map'
-require 'thread'
+require 'fileutils'
 
 class TestInvoker
 
   attr_reader :sources, :tests, :mocks
 
-  constructor :configurator,
+  constructor :application,
+              :configurator,
               :test_invoker_helper,
               :plugin_manager,
-              :streaminator,
+              :loginator,
+              :build_batchinator,
               :preprocessinator,
               :task_invoker,
-              :dependinator,
-              :project_config_manager,
-              :build_invoker_utils,
+              :generator,
+              :test_context_extractor,
               :file_path_utils,
-              :file_wrapper
+              :file_wrapper,
+              :verbosinator
 
   def setup
-    @sources = []
-    @tests   = []
-    @mocks   = []
-    @lock    = Mutex.new
+    # Master data structure for all test activities
+    @testables = {}
+
+    # For thread-safe operations on @testables
+    @lock = Mutex.new
+
+    # Aliases for brevity in code that follows
+    @helper = @test_invoker_helper
+    @batchinator = @build_batchinator
   end
 
+  def setup_and_invoke(tests:, context:TEST_SYM, options:{})
+    # Wrap everything in an exception handler
+    begin
+      # Begin fleshing out the testables data structure
+      @batchinator.build_step("Preparing Build Paths", heading: false) do
+        results_path = File.join( @configurator.project_build_root, context.to_s, 'results' )
 
-  # Convert libraries configuration form YAML configuration
-  # into a string that can be given to the compiler.
-  def convert_libraries_to_arguments()
-    args = ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
-    if (defined? LIBRARIES_FLAG)
-      args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) }
-    end
-    return args
-  end
+        @batchinator.exec(workload: :compile, things: tests) do |filepath|
+          filepath = filepath.to_s
+          key = testable_symbolize(filepath)
+          name = key.to_s
+          build_path = File.join( @configurator.project_build_root, context.to_s, 'out', name )
+          mocks_path = File.join( @configurator.cmock_mock_path, name )
+          preprocess_includes_path = File.join( @configurator.project_test_preprocess_includes_path, name )
+          preprocess_files_path    = File.join( @configurator.project_test_preprocess_files_path, name )
 
-  def get_library_paths_to_arguments()
-    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []).clone : []
-    if (defined? LIBRARIES_PATH_FLAG)
-      paths.map! {|v| LIBRARIES_PATH_FLAG.gsub(/\$\{1\}/, v) }
-    end
-    return paths
-  end
+          @lock.synchronize do
+            @testables[key] = {
+              :filepath => filepath,
+              :name => name,
+              :paths => {}
+            }
 
-  def setup_and_invoke(tests, context=TEST_SYM, options={:force_run => true, :build_only => false})
-
-    @tests = tests
-
-    @project_config_manager.process_test_config_change
-
-    # Create Storage For Works In Progress
-    testables = {}
-    mock_list = []
-    runner_list = []
-    @tests.each do |test|
-      testables[test] = {}
-    end
-
-    # Group definition sets into collections
-    collections = []
-    general_collection = { :tests   => tests.clone,
-                           :build   => @configurator.project_test_build_output_path,
-                           :defines => COLLECTION_DEFINES_TEST_AND_VENDOR.clone }  
-    test_specific_defines = @configurator.project_config_hash.keys.select {|k| k.to_s.match /defines_\w+/}
-    if test_specific_defines.size > 0
-      @streaminator.stdout_puts("\nCollecting Definitions", Verbosity::NORMAL)
-      @streaminator.stdout_puts("------------------------", Verbosity::NORMAL) 
-      par_map(PROJECT_TEST_THREADS, @tests) do |test|
-        test_name ="#{File.basename(test)}".chomp('.c')
-        def_test_key="defines_#{test_name.downcase}".to_sym
-        has_specific_defines = test_specific_defines.include?(def_test_key)
-
-        if has_specific_defines || @configurator.defines_use_test_definition
-          @streaminator.stdout_puts("Updating test definitions for #{test_name}", Verbosity::NORMAL)
-          defs_bkp = Array.new(COLLECTION_DEFINES_TEST_AND_VENDOR)
-          tst_defs_cfg = Array.new(defs_bkp)
-          if has_specific_defines
-            tst_defs_cfg.replace(@configurator.project_config_hash[def_test_key])
-            tst_defs_cfg .concat(COLLECTION_DEFINES_VENDOR) if COLLECTION_DEFINES_VENDOR
-          end
-          if @configurator.defines_use_test_definition
-            tst_defs_cfg << File.basename(test, ".*").strip.upcase.sub(/@.*$/, "")
+            paths = @testables[key][:paths]
+            paths[:build] = build_path
+            paths[:results] = results_path
+            paths[:mocks] = mocks_path if @configurator.project_use_mocks
+            if @configurator.project_use_test_preprocessor
+              paths[:preprocess_incudes] = preprocess_includes_path
+              paths[:preprocess_files] = preprocess_files_path
+            end
           end
 
-          # add this to our collection of things to build
-          collections << { :tests => [ test ],
-                           :build => has_specific_defines ? File.join(@configurator.project_test_build_output_path, test_name) : @configurator.project_test_build_output_path,
-                           :defines => tst_defs_cfg }
+          @testables[key][:paths].each {|_, path| @file_wrapper.mkdir(path) }
+        end
 
-          # remove this test from the general collection
-          general_collection[:tests].delete(test)
+        # Remove any left over test results from previous runs
+        @helper.clean_test_results( results_path, @testables.map{ |_, t| t[:name] } )
+      end
+
+      # Collect in-test build directives, etc. from test files
+      @batchinator.build_step("Extracting Build Directive Macros") do
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          @preprocessinator.extract_test_build_directives( filepath:details[:filepath] )
+        end
+
+        # Validate test build directive paths via TEST_INCLUDE_PATH() & augment header file collection from the same
+        @helper.process_project_include_paths()
+
+        # Validate test build directive source file entries via TEST_SOURCE_FILE()
+        @testables.each do |_, details|
+          @helper.validate_build_directive_source_files( test:details[:name], filepath:details[:filepath] )
         end
       end
-    end
 
-    # add a general collection if there are any files remaining for it
-    collections << general_collection unless general_collection[:tests].empty?
+      # Fill out testables data structure with build context
+      @batchinator.build_step("Ingesting Test Configurations") do
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          filepath = details[:filepath]
 
-    # Run Each Collection
-      #TODO: eventually, if we pass ALL arguments to the build system, this can be done in parallel
-    collections.each do |collection|
+          search_paths       = @helper.search_paths( filepath, details[:name] )
+          compile_flags      = @helper.flags( context:context, operation:OPERATION_COMPILE_SYM, filepath:filepath )
+          assembler_flags    = @helper.flags( context:context, operation:OPERATION_ASSEMBLE_SYM, filepath:filepath )
+          link_flags         = @helper.flags( context:context, operation:OPERATION_LINK_SYM, filepath:filepath )
+          compile_defines    = @helper.compile_defines( context:context, filepath:filepath )
+          preprocess_defines = @helper.preprocess_defines( test_defines: compile_defines, filepath:filepath )
 
-      # Switch to the things that make this collection unique
-      COLLECTION_DEFINES_TEST_AND_VENDOR.replace( collection[:defines] )
-      @configurator.project_config_hash[:project_test_build_output_path] = collection[:build]
-      @file_wrapper.mkdir(@configurator.project_test_build_output_path)
+          @loginator.log( "Collecting search paths, flags, and defines for #{File.basename(filepath)}...", Verbosity::NORMAL)
 
-      # Determine Includes from Test Files
-      @streaminator.stdout_puts("\nGetting Includes From Test Files", Verbosity::NORMAL)
-      @streaminator.stdout_puts("--------------------------------", Verbosity::NORMAL)
-      par_map(PROJECT_TEST_THREADS, collection[:tests]) do |test|
-        @preprocessinator.preprocess_test_file( test )
+          @lock.synchronize do
+            details[:search_paths] = search_paths
+            details[:compile_flags] = compile_flags
+            details[:assembler_flags] = assembler_flags
+            details[:link_flags] = link_flags
+            details[:compile_defines] = compile_defines
+            details[:preprocess_defines] = preprocess_defines
+          end
+        end
+      end
+
+      # Collect include statements & mocks from test files
+      @batchinator.build_step("Collecting Testing Context") do
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          arg_hash = {
+            filepath:      details[:filepath],
+            test:          details[:name],
+            flags:         details[:compile_flags],
+            include_paths: details[:search_paths],
+            defines:       details[:preprocess_defines]
+          }
+
+          @preprocessinator.extract_testing_context(**arg_hash)
+        end
       end
 
       # Determine Runners & Mocks For All Tests
-      @streaminator.stdout_puts("\nDetermining Requirements", Verbosity::NORMAL)
-      par_map(PROJECT_TEST_THREADS, collection[:tests]) do |test|
-        test_runner = @file_path_utils.form_runner_filepath_from_test( test )
-        test_mock_list = @preprocessinator.fetch_mock_list_for_test_file( test )
+      @batchinator.build_step("Determining Files to be Generated", heading: false) do
+        @batchinator.exec(workload: :compile, things: @testables) do |test, details|
+          runner_filepath = @file_path_utils.form_runner_filepath_from_test( details[:filepath] )
+          
+          mocks = {}
+          mocks_list = @configurator.project_use_mocks ? @test_context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
+          mocks_list.each do |name|
+            source = @helper.find_header_input_for_mock_file( name, details[:search_paths] )
+            preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
+            mocks[name.to_sym] = {
+              :name => name,
+              :source => source,
+              :input => (@configurator.project_use_test_preprocessor ? preprocessed_input : source)
+            }
+          end
 
-        @lock.synchronize do
-          testables[test][:runner] = test_runner
-          testables[test][:mock_list] = test_mock_list
-          mock_list += testables[test][:mock_list]
-          runner_list << test_runner
-        end
-      end
-      mock_list.uniq!
-      runner_list.uniq!
+          @lock.synchronize do
+            details[:runner] = {
+              :output_filepath => runner_filepath,
+              :input_filepath => details[:filepath]  # Default of the test file
+            }
+            details[:mocks] = mocks
+            details[:mock_list] = mocks_list
 
-      # Preprocess Header Files
-      if @configurator.project_use_test_preprocessor
-        @streaminator.stdout_puts("\nPreprocessing Header Files", Verbosity::NORMAL)
-        @streaminator.stdout_puts("--------------------------", Verbosity::NORMAL)
-        mockable_headers = @file_path_utils.form_preprocessed_mockable_headers_filelist(mock_list) 
-        par_map(PROJECT_TEST_THREADS, mockable_headers) do |mockable_header|
-          @preprocessinator.preprocess_mockable_header( mockable_header )
-        end
-      end
-
-      # Generate Mocks For All Tests
-      @streaminator.stdout_puts("\nGenerating Mocks", Verbosity::NORMAL)
-      @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
-      @test_invoker_helper.generate_mocks_now(mock_list)
-      #@task_invoker.invoke_test_mocks( mock_list )
-      @mocks.concat( mock_list )
-
-      # Preprocess Test Files
-      @streaminator.stdout_puts("\nPreprocess Test Files", Verbosity::NORMAL)
-      #@streaminator.stdout_puts("---------------------", Verbosity::NORMAL) if @configurator.project_use_auxiliary_dependencies
-      par_map(PROJECT_TEST_THREADS, collection[:tests]) do |test|   
-        @preprocessinator.preprocess_remainder(test)     
-      end
-
-      # Determine Objects Required For Each Test
-      @streaminator.stdout_puts("\nDetermining Objects to Be Built", Verbosity::NORMAL)
-      core_testables = []
-      object_list = []
-      par_map(PROJECT_TEST_THREADS, collection[:tests]) do |test|        
-        # collect up test fixture pieces & parts
-        test_sources      = @test_invoker_helper.extract_sources( test )
-        test_extras       = @configurator.collection_test_fixture_extra_link_objects
-        test_core         = [test] + testables[test][:mock_list] + test_sources
-        test_objects      = @file_path_utils.form_test_build_objects_filelist( [testables[test][:runner]] + test_core + test_extras ).uniq
-        test_pass         = @file_path_utils.form_pass_results_filepath( test )
-        test_fail         = @file_path_utils.form_fail_results_filepath( test )
-
-        # identify all the objects shall not be linked and then remove them from objects list.
-        test_no_link_objects = @file_path_utils.form_test_build_objects_filelist(@preprocessinator.preprocess_shallow_source_includes( test ))
-        test_objects = test_objects.uniq - test_no_link_objects
-
-        @lock.synchronize do
-          testables[test][:sources]         = test_sources
-          testables[test][:extras]          = test_extras
-          testables[test][:core]            = test_core
-          testables[test][:objects]         = test_objects
-          testables[test][:no_link_objects] = test_no_link_objects
-          testables[test][:results_pass]    = test_pass
-          testables[test][:results_fail]    = test_fail
-
-          core_testables += test_core
-          object_list += test_objects
-        end
-
-        # remove results files for the tests we plan to run
-        @test_invoker_helper.clean_results( {:pass => test_pass, :fail => test_fail}, options )
-
-      end
-      core_testables.uniq!
-      object_list.uniq!
-
-      # clean results files so we have a missing file with which to kick off rake's dependency rules
-      if @configurator.project_use_deep_dependencies
-        @streaminator.stdout_puts("\nGenerating Dependencies", Verbosity::NORMAL)
-        @streaminator.stdout_puts("-----------------------", Verbosity::NORMAL)
-      end 
-      par_map(PROJECT_TEST_THREADS, core_testables) do |dependency|
-        @test_invoker_helper.process_deep_dependencies( dependency ) do |dep|
-          @dependinator.load_test_object_deep_dependencies( dep)
-        end
-      end
-
-      # Build Runners For All Tests
-      @streaminator.stdout_puts("\nGenerating Runners", Verbosity::NORMAL)
-      @streaminator.stdout_puts("------------------", Verbosity::NORMAL)
-      @test_invoker_helper.generate_runners_now(runner_list)
-      #par_map(PROJECT_TEST_THREADS, collection[:tests]) do |test|
-      #  @task_invoker.invoke_test_runner( testables[test][:runner] )
-      #end
-
-      # Update All Dependencies
-      @streaminator.stdout_puts("\nPreparing to Build", Verbosity::NORMAL)
-      par_map(PROJECT_TEST_THREADS, collection[:tests]) do |test|
-        # enhance object file dependencies to capture externalities influencing regeneration
-        @dependinator.enhance_test_build_object_dependencies( testables[test][:objects] )
-
-        # associate object files with executable
-        @dependinator.enhance_test_executable_dependencies( test, testables[test][:objects] )
-      end
-
-      # Build All Test objects
-      @streaminator.stdout_puts("\nBuilding Objects", Verbosity::NORMAL)
-      @streaminator.stdout_puts("----------------", Verbosity::NORMAL)
-      @test_invoker_helper.generate_objects_now(object_list, options)
-      #@task_invoker.invoke_test_objects(object_list)
-
-      # Create Final Tests And/Or Executable Links
-      @streaminator.stdout_puts("\nBuilding Test Executables", Verbosity::NORMAL)
-      @streaminator.stdout_puts("-------------------------", Verbosity::NORMAL)
-      lib_args = convert_libraries_to_arguments()
-      lib_paths = get_library_paths_to_arguments()
-      @test_invoker_helper.generate_executables_now(collection[:tests], testables, lib_args, lib_paths, options)
-
-      # Execute Final Tests
-      unless options[:build_only]
-        @streaminator.stdout_puts("\nExecuting", Verbosity::NORMAL)
-        @streaminator.stdout_puts("---------", Verbosity::NORMAL)
-        par_map(PROJECT_TEST_THREADS, collection[:tests]) do |test|
-          begin
-            @plugin_manager.pre_test( test )
-            test_name ="#{File.basename(test)}".chomp('.c')
-            @test_invoker_helper.run_fixture_now( testables[test][:results_pass], options )
-          rescue => e
-            @build_invoker_utils.process_exception( e, context )
-          ensure
-
-            @lock.synchronize do
-              @sources.concat( testables[test][:sources] )
-            end
-            @plugin_manager.post_test( test )
+            # Trigger pre_test plugin hook after having assembled all testing context
+            @plugin_manager.pre_test( details[:filepath] )
           end
         end
       end
 
-      # If not the final collection, invalidate files so they'll be rebuilt collection
-      if collection != general_collection
-        @test_invoker_helper.invalidate_objects(object_list)
+      # Create inverted/flattened mock lookup list to take advantage of threading
+      # (Iterating each testable and mock list instead would limits the number of simultaneous mocking threads)
+      mocks = []
+      if @configurator.project_use_mocks
+        @testables.each do |_, details|
+          details[:mocks].each do |name, elems|
+            mocks << {:name => name, :details => elems, :testable => details}
+          end
+        end
       end
 
-    # this collection has finished
+      # Preprocess Header Files
+      @batchinator.build_step("Preprocessing for Mocks") {
+        @batchinator.exec(workload: :compile, things: mocks) do |mock|
+          details = mock[:details]
+          testable = mock[:testable]
+
+          arg_hash = {
+            filepath:      details[:source],
+            test:          testable[:name],
+            flags:         testable[:compile_flags],
+            include_paths: testable[:search_paths],
+            defines:       testable[:preprocess_defines]
+          }
+
+          @preprocessinator.preprocess_mockable_header_file(**arg_hash)
+        end
+      } if @configurator.project_use_mocks and @configurator.project_use_test_preprocessor
+
+      # Generate mocks for all tests
+      @batchinator.build_step("Mocking") {
+        @batchinator.exec(workload: :compile, things: mocks) do |mock| 
+          details = mock[:details]
+          testable = mock[:testable]
+
+          arg_hash = {
+            context:        TEST_SYM,
+            mock:           mock[:name],
+            test:           testable[:name],
+            input_filepath: details[:input],
+            output_path:    testable[:paths][:mocks]
+          }
+
+          @generator.generate_mock(**arg_hash)
+        end
+      } if @configurator.project_use_mocks
+
+      # Preprocess test files
+      @batchinator.build_step("Preprocessing for Test Runners") {
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+
+          arg_hash = {
+            filepath:      details[:filepath],
+            test:          details[:name],
+            flags:         details[:compile_flags],
+            include_paths: details[:search_paths],
+            defines:       details[:preprocess_defines]
+          }
+
+          filepath = @preprocessinator.preprocess_test_file(**arg_hash)
+
+          # Replace default input with preprocessed fle
+          @lock.synchronize { details[:runner][:input_filepath] = filepath }
+        end
+      } if @configurator.project_use_test_preprocessor
+
+      # Build runners for all tests
+      @batchinator.build_step("Test Runners") do
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          arg_hash = {
+            context:         TEST_SYM,
+            mock_list:       details[:mock_list],
+            test_filepath:   details[:filepath],
+            input_filepath:  details[:runner][:input_filepath],
+            runner_filepath: details[:runner][:output_filepath]            
+          }
+
+          @generator.generate_test_runner(**arg_hash)
+        end
+      end
+
+      # Determine objects required for each test
+      @batchinator.build_step("Determining Artifacts to Be Built", heading: false) do
+        @batchinator.exec(workload: :compile, things: @testables) do |test, details|
+          # Source files referenced by conventions or specified by build directives in a test file
+          test_sources       = @test_invoker_helper.extract_sources( details[:filepath] )
+          test_core          = test_sources + details[:mock_list]
+
+          # When we have a mock and an include for the same file, the mock wins
+          test_core.delete_if do |v| 
+            mock_of_this_file = "#{@configurator.cmock_mock_prefix}#{File.basename(v,'.*')}"
+            details[:mock_list].include?(mock_of_this_file)
+          end
+          
+          # CMock + Unity + CException
+          test_frameworks    = @helper.collect_test_framework_sources
+          
+          # Extra suport source files (e.g. microcontroller startup code needed by simulator)
+          test_support       = @configurator.collection_all_support
+
+          compilations       =  []
+          compilations       << details[:filepath]
+          compilations       += test_core
+          compilations       << details[:runner][:output_filepath]
+          compilations       += test_frameworks
+          compilations       += test_support
+          compilations.uniq!
+
+          test_objects       = @file_path_utils.form_test_build_objects_filelist( details[:paths][:build], compilations )
+
+          test_executable    = @file_path_utils.form_test_executable_filepath( details[:paths][:build], details[:filepath] )
+          test_pass          = @file_path_utils.form_pass_results_filepath( details[:paths][:results], details[:filepath] )
+          test_fail          = @file_path_utils.form_fail_results_filepath( details[:paths][:results], details[:filepath] )
+
+          # Identify all the objects shall not be linked and then remove them from objects list.
+          test_no_link_objects = 
+            @file_path_utils.form_test_build_objects_filelist(
+              details[:paths][:build],
+              @helper.fetch_shallow_source_includes( details[:filepath] ))
+          
+          test_objects = test_objects.uniq - test_no_link_objects
+
+          @lock.synchronize do
+            details[:sources]         = test_sources
+            details[:frameworks]      = test_frameworks
+            details[:core]            = test_core
+            details[:objects]         = test_objects
+            details[:executable]      = test_executable
+            details[:no_link_objects] = test_no_link_objects
+            details[:results_pass]    = test_pass
+            details[:results_fail]    = test_fail
+          end
+        end
+      end
+
+      # Build All Test objects
+      @batchinator.build_step("Building Objects") do
+        # FYI: Temporarily removed direct object generation to allow rake invoke() to execute custom compilations (plugins, special cases)
+        # @test_invoker_helper.generate_objects_now(object_list, options)
+        @testables.each do |_, details|
+          @task_invoker.invoke_test_objects(test: details[:name], objects:details[:objects])
+        end
+      end
+
+      # Create test binary
+      @batchinator.build_step("Building Test Executables") do
+        lib_args = @helper.convert_libraries_to_arguments()
+        lib_paths = @helper.get_library_paths_to_arguments()
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          arg_hash = {
+            context:    context,
+            build_path: details[:paths][:build],
+            executable: details[:executable],
+            objects:    details[:objects],
+            flags:      details[:link_flags],
+            lib_args:   lib_args,
+            lib_paths:  lib_paths,
+            options:    options            
+          }
+
+          @test_invoker_helper.generate_executable_now(**arg_hash)
+        end
+      end
+
+      # Execute Final Tests
+      @batchinator.build_step("Executing") {
+        @batchinator.exec(workload: :test, things: @testables) do |_, details|
+          begin
+            arg_hash = {
+              context:        context,
+              test_name:      details[:name],
+              test_filepath:  details[:filepath],
+              executable:     details[:executable],
+              result:         details[:results_pass],
+              options:        options              
+            }
+
+            @test_invoker_helper.run_fixture_now(**arg_hash)
+
+          # Handle exceptions so we can ensure post_test() is called.
+          # A lone `ensure` includes an implicit rescuing of StandardError 
+          # with the exception continuing up the call trace.
+          ensure
+            @plugin_manager.post_test( details[:filepath] )
+          end
+        end
+      } unless options[:build_only]
+
+    # Handle application-level exceptions.
+    # StandardError is the parent class of all application-level exceptions.
+    # Runtime errors (parent is Exception) continue on up to be caught by Ruby itself.
+    rescue StandardError => e
+      @application.register_build_failure
+      @loginator.log( "#{e.class} ==> #{e.message}", Verbosity::ERRORS, LogLabels::EXCEPTION )
+
+      # Debug backtrace
+      @loginator.log("Backtrace ==>", Verbosity::DEBUG)
+      if @verbosinator.should_output?(Verbosity::DEBUG)
+        @loginator.log(e.backtrace, Verbosity::DEBUG) # Formats properly when directly passed to puts()
+      end
     end
-
-    # post-process collected mock list
-    @mocks.uniq!
-
-    # post-process collected sources list
-    @sources.uniq!
   end
 
+  def each_test_with_sources
+    @testables.each do |test, details|
+      yield(test.to_s, lookup_sources(test:test))
+    end
+  end
 
-  def refresh_deep_dependencies
-    @file_wrapper.rm_f(
-      @file_wrapper.directory_listing(
-        File.join( @configurator.project_test_dependencies_path, '*' + @configurator.extension_dependencies ) ) )
+  def lookup_sources(test:)
+    _test = test.is_a?(Symbol) ? test : test.to_sym
+    return (@testables[_test])[:sources]
+  end
 
-    @test_invoker_helper.process_deep_dependencies(
-      (@configurator.collection_all_tests + @configurator.collection_all_source).uniq )
+  def compile_test_component(tool:, context:TEST_SYM, test:, source:, object:, msg:nil)
+    testable = @testables[test]
+    filepath = testable[:filepath]
+    defines = testable[:compile_defines]
+
+    # Tailor search path--remove duplicates and reduce list to only those needed by vendor / support file compilation
+    search_paths = @helper.tailor_search_paths(search_paths:testable[:search_paths], filepath:source)
+
+    # C files (user-configured extension or core framework file extensions)
+    if @file_wrapper.extname(source) != @configurator.extension_assembly
+      flags = testable[:compile_flags]
+
+      arg_hash = {
+        tool:         tool,
+        module_name:  test,
+        context:      context,
+        source:       source,
+        object:       object,
+        search_paths: search_paths,
+        flags:        flags,
+        defines:      defines,
+        list:         @file_path_utils.form_test_build_list_filepath( object ),
+        dependencies: @file_path_utils.form_test_dependencies_filepath( object ),
+        msg:          msg
+      }
+
+      @generator.generate_object_file_c(**arg_hash)
+
+    # Assembly files
+    elsif @configurator.test_build_use_assembly
+      flags = testable[:assembler_flags]
+
+      arg_hash = {
+        tool:         tool,
+        module_name:  test,
+        context:      context,
+        source:       source,
+        object:       object,
+        search_paths: search_paths,
+        flags:        flags,
+        defines:      defines, # Generally ignored by assemblers
+        list:         @file_path_utils.form_test_build_list_filepath( object ),
+        dependencies: @file_path_utils.form_test_dependencies_filepath( object ),
+        msg:          msg
+      }
+
+      @generator.generate_object_file_asm(**arg_hash)
+    end
+  end
+
+  private
+
+  def testable_symbolize(filepath)
+    return (File.basename( filepath ).ext('')).to_sym
   end
 
 end

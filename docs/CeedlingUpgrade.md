@@ -17,7 +17,7 @@ you might have to download the gem from rubygems.org and then install it manuall
 gem update ceedling --local=ceedling-filename.zip
 ```
 
-## Step 2: Udpate Projects Using Ceedling
+## Step 2: Update Projects Using Ceedling
 
 When you set up your project(s), it was either configured to use the gem directly, or it was
 configured to install itself locally (often into a vendor directory).

@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 ---
 :project:
   # how to use ceedling. If you're not sure, leave this as `gem` and `?`
@@ -7,10 +14,8 @@
   # optional features. If you don't need them, keep them turned off for performance
   :use_mocks: TRUE
   :use_test_preprocessor: TRUE
-  :use_preprocessor_directives: FALSE
-  :use_deep_dependencies: FALSE
-  :use_auxiliary_dependencies: TRUE
-  :use_backtrace_gdb_reporter: FALSE
+  :use_backtrace: :none
+  :use_decorators: :auto #Decorate Ceedling's output text. Your options are :auto, :all, or :none
 
   # tweak the way ceedling handles automatic tasks
   :build_root: build
@@ -23,28 +28,23 @@
   :test_threads: 8
   :compile_threads: 8
 
-  # you can specify different yaml config files which modify the existing one
-  :options_paths: []
-
   # enable release build (more details in release_build section below)
   :release_build: FALSE
 
-# specify additional yaml files to automatically load. This is helpful if you
-# want to create project files which specify your tools, and then include those
-# shared tool files into each project-specific project.yml file.
-:import: []
+# Specify where to find mixins and any that should be enabled automatically
+:mixins:
+  :enabled: []
+  :load_paths: []
 
 # further details to configure the way Ceedling handles test code
 :test_build:
   :use_assembly: FALSE
-  :toolchain_include: []
 
 # further details to configure the way Ceedling handles release code
 :release_build:
   :output: MyApp.out
   :use_assembly: FALSE
   :artifacts: []
-  :toolchain_include: []
 
 # Plugins are optional Ceedling features which can be enabled. Ceedling supports
 # a variety of plugins which may effect the way things are compiled, reported, 
@@ -54,26 +54,31 @@
   :load_paths: []
   :enabled:
     #- beep                           # beeps when finished, so you don't waste time waiting for ceedling
-    - module_generator               # handy for quickly creating source, header, and test templates
+    - module_generator                # handy for quickly creating source, header, and test templates
     #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
-    #- compile_commands_json          # generate a compile_commands.json file
+    #- compile_commands_json_db          # generate a compile_commands.json file
     #- dependencies                   # automatically fetch 3rd party libraries, etc.
     #- subprojects                    # managing builds and test for static libraries
     #- fake_function_framework        # use FFF instead of CMock
 
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
-    #- colour_report
-    #- json_tests_report
-    #- junit_tests_report
-    - raw_output_report
-    - stdout_pretty_tests_report
-    #- stdout_ide_tests_report
-    #- stdout_gtestlike_tests_report
-    #- teamcity_tests_report
-    #- warnings_report
-    #- xml_tests_report
+    #- report_build_warnings_log
+    #- report_tests_gtestlike_stdout
+    #- report_tests_ide_stdout
+    #- report_tests_log_factory
+    - report_tests_pretty_stdout
+    #- report_tests_raw_output_log
+    #- report_tests_teamcity_stdout
+
+# Specify which reports you'd like from the log factory
+:report_tests_log_factory:
+  :reports:
+    - json 
+    - junit 
+    - cppunit 
+    - html 
 
 # override the default extensions for your system and toolchain
 :extension:
@@ -95,6 +100,8 @@
     - -:test/support
   :source:
     - src/**
+  :include:
+    - src/** # In simple projects, this entry often duplicates :source
   :support:
     - test/support
   :libraries: []
@@ -106,54 +113,89 @@
   :test: []
   :source: []
 
-# Defines to be injected into the builds
-#   in order to add common defines:
-#     1) remove the trailing [] from the :common: section
-#     2) add entries to the :common: section (e.g. :test: has TEST defined)
+# Compilation symbols to be injected into builds
+# See documentation for advanced options:
+#  - Test name matchers for different symbols per test executable build
+#  - Referencing symbols in multiple lists using advanced YAML
+#  - Specifiying symbols used during test preprocessing
 :defines:
-  :common: &common_defines []
   :test:
-    - *common_defines
-    - TEST
-  :test_preprocess:
-    - *common_defines
-    - TEST
+    - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
   :release: []
-  :release_preprocess: []
 
-  # enable to have the name of the test defined with each test build. 
-  # this is SLOW as it requires all files to be rebuilt for each test module
+  # Enable to inject name of a test as a unique compilation symbol into its respective executable build. 
   :use_test_definition: FALSE 
 
-# flags allows you to configure the flags used when calling the different tools in 
-# your toolchain. It can be used to override flags for specific files. Overriding flags 
-# here is easier than building a new tool from scratch, but it only applies to when 
-# you're calling gcc
+# Configure additional command line flags provided to tools used in each build step
 # :flags:
 #   :release:
+#     :compile:         # Add '-Wall' and '--02' to compilation of all files in release target
+#       - -Wall
+#       - --O2
+#   :test:
 #     :compile:
-#       'main': 
-#         - -Wall
-#         - --O2
-#       'test_.+':   # add '-pedantic' to all test-files
+#       '(_|-)special': # Add '-pedantic' to compilation of all files in all test executables with '_special' or '-special' in their names
 #         - -pedantic
-#       '*':          # add '-foo' to compilation of all files not main.c or test files
+#       '*':            # Add '-foo' to compilation of all files in all test executables
 #         - -foo
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:
-  :mock_prefix: mock_
-  :when_no_prototypes: :warn
-  :enforce_strict_ordering: TRUE
-  :plugins:
+  # Core conffiguration
+  :plugins:                        # What plugins should be used by CMock?
     - :ignore
     - :callback
-  :treat_as:
+  :verbosity:  2                   # the options being 0 errors only, 1 warnings and errors, 2 normal info, 3 verbose
+  :when_no_prototypes:  :warn      # the options being :ignore, :warn, or :erro
+
+  # File configuration
+  :mock_path:  './build/mocks'     # Subdirectory to store mocks when generated (default: mocks)
+  :skeleton_path:  ''              # Subdirectory to store stubs when generated (default: '')
+  :mock_prefix:  'mock_'           # Prefix to append to filenames for mocks
+  :mock_suffix:  ''                # Suffix to append to filenames for mocks
+
+  # Parser configuration
+  :strippables:  ['(?:__attribute__\s*\([ (]*.*?[ )]*\)+)']
+  :attributes:
+     - __ramfunc
+     - __irq
+     - __fiq
+     - register
+     - extern
+  :c_calling_conventions:
+     - __stdcall
+     - __cdecl
+     - __fastcall
+  :treat_externs:  :exclude        # the options being :include or :exclud
+  :treat_inlines:  :exclude        # the options being :include or :exclud
+
+  # Type handling configuration
+  #:unity_helper_path: ''          # specify a string of where to find a unity_helper.h file to discover custom type assertions
+  :treat_as:                       # optionally add additional types to map custom types
     uint8:    HEX8
     uint16:   HEX16
     uint32:   UINT32
     int8:     INT8
     bool:     UINT8
+  #:treat_as_array:  {}            # hint to cmock that these types are pointers to something
+  #:treat_as_void:  []             # hint to cmock that these types are actually aliases of void
+  :memcmp_if_unknown:  true        # allow cmock to use the memory comparison assertions for unknown types
+  :when_ptr:  :compare_data        # hint to cmock how to handle pointers in general, the options being :compare_ptr, :compare_data, or :smart
+
+  # Mock generation configuration
+  :weak:  ''                       # Symbol to use to declare weak functions
+  :enforce_strict_ordering: true   # Do we want cmock to enforce ordering of all function calls?
+  :fail_on_unexpected_calls: true  # Do we want cmock to fail when it encounters a function call that wasn't expected?
+  :callback_include_count: true    # Do we want cmock to include the number of calls to this callback, when using callbacks?
+  :callback_after_arg_check: false # Do we want cmock to enforce an argument check first when using a callback?
+  #:includes: []                   # You can add additional includes here, or specify the location with the options below
+  #:includes_h_pre_orig_header: [] 
+  #:includes_h_post_orig_header: []
+  #:includes_c_pre_header:  []
+  #:includes_c_post_header:  []
+  #:array_size_type:  []            # Specify a type or types that should be used for array lengths
+  #:array_size_name:  'size|len'    # Specify a name or names that CMock might automatically recognize as the length of an array
+  :exclude_setjmp_h:  false        # Don't use setjmp when running CMock. Note that this might result in late reporting or out-of-order failures.
 
 # Configuration options specific to Unity. 
 :unity:
@@ -225,8 +267,11 @@
 #   :naming: :snake #options: :bumpy, :camel, :caps, or :snake
 #   :includes:
 #     :tst: []
-#     :src: []:module_generator:
-#   :boilerplates: ""
+#     :src: []
+#   :boilerplates: 
+#     :src: ""
+#     :inc: ""
+#     :tst: ""
 
 # :dependencies:
 #   :libraries:
@@ -266,100 +311,79 @@
 # TOOLCHAIN CONFIGURATION
 ################################################################
 
+
 #:tools:
 # Ceedling defaults to using gcc for compiling, linking, etc.
 # As [:tools] is blank, gcc will be used (so long as it's in your system path)
 # See documentation to configure a given toolchain for use
 # :tools:
-#   :test:
-#     :compiler: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :linker: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :assembler: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :fixture: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :includes_preprocessor: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :file_preprocessor: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :file_preprocessor_directives: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :dependencies_generator: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#   :release:
-#     :compiler: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :linker: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :assembler: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
-#     :dependencies_generator: 
-#       :executable:
-#       :arguments: []
-#       :name: 
-#       :stderr_redirect: :auto
-#       :background_exec: :auto
-#       :optional: FALSE
+#   :test_compiler: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :test_linker: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :test_assembler: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :test_fixture: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :test_includes_preprocessor: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :test_file_preprocessor: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :test_file_preprocessor_directives: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :test_dependencies_generator: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :release_compiler: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :release_linker: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :release_assembler: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
+#   :release_dependencies_generator: 
+#     :executable:
+#     :arguments: []
+#     :name: 
+#     :optional: FALSE
 # #These tools can be filled out when command_hooks plugin is enabled
+#   :pre_mock_preprocess
+#   :post_mock_preprocess
 #   :pre_mock_generate
 #   :post_mock_generate
+#   :pre_runner_preprocess
+#   :post_runner_preprocess
 #   :pre_runner_generate
 #   :post_runner_generate
 #   :pre_compile_execute
@@ -373,4 +397,5 @@
 #   :post_release
 #   :pre_build
 #   :post_build
+#   :post_error
 ...
