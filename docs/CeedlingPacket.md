@@ -2397,26 +2397,36 @@ migrated to the `:test_build` and `:release_build` sections.
 
   When a test executable encounters a ☠️ **Segmentation Fault** or other crash 
   condition, the executable immediately terminates and no further details for 
-  test suite reporting are collected. By default, Ceedling reports a single 
-  failure for the entire test file, noting that it crashed.
+  test suite reporting are collected.
 
   But, fear not. You can bring your dead unit tests back to life.
 
+  By default, in the case of a crash, Ceedling reruns the test executable for
+  each test case using a special mode to isolate that test case. In this way
+  Ceedling can iteratively identify which test cases are causing the crash or
+  exercising release code that is causing the crash. Ceedling then assembles
+  the final test reporting results from these individual test case runs.
+
   You have three options for this setting:
 
-  1. `:none` is the default and will produce the test failure report described
-     above.
-  1. `:simple` causes Ceedling to re-run each test case in the test executable
-     individually to identify and report the problematic test case(s).
+  1. `:none` will simply cause a test report to list each test case as failed
+     due to a test executable crash.
+  1. `:simple` causes Ceedling to re-run each test case in the 
+     test executable individually to identify and report the problematic 
+     test case(s). This is the default option and is described above.
   1. `:gdb` uses the [`gdb`][gdb] debugger to identify and report the 
      troublesome line of code triggering the crash. If this option is enabled, 
-     but `gdb` is not available to Ceedling, project validation will terminate 
-     with an error at startup.
+     but `gdb` is not available to Ceedling, project configuration validation 
+     will terminate with an error at startup.
 
-  May 17, 2024: While `:simple` is a recognized value only the `:none` and 
-  `:gdb` options are currently implemented.
+  **_Note:_** The default of `:simple` only works in an environment capable of
+  using command line arguments (passed to the test executable). If you are
+  targeting a simulator with your test executable binaries, `:simple` is
+  unlikely to work for you. In the simplest case, you may simply fall back to
+  `:none`. With some work and using Ceedling’s various features, much more 
+  sophisticated options might be possible.
 
-  **Default**: :none
+  **Default**: `:simple`
 
   [gdb]: https://www.sourceware.org/gdb/
 
