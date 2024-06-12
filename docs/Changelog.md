@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-05-31
+# [1.0.0 pre-release] — 2024-06-12
 
 ## 🌟 Added
 
@@ -68,6 +68,8 @@ All the options for loading and modifying a project configuration are thoroughly
 ### Broader crash detection in test suites and new backtrace abilities
 
 Previously Ceedling had a limited ability to detect and report segmentation faults and primarily on Unix-like platforms. This has been expanded and improved to crash detection more broadly. Invalid memory accesses, stack overflows, heap errors, and branching problems can all lead to crashed test executables. Ceedling is now able to detect these across platforms and report on them appropriately.
+
+Ceedling defaults to executing this new behavior. Optionally, it can be disabled or its reporting enhanced further by enabling the use of `gdb`.
 
 See _[CeedlingPacket](CeedlingPacket.md))_ for the new `:project` ↳ `:use_backtrace` feature to control how much detail is extracted from a crashed test executable to help you find the cause.
 
