@@ -20,11 +20,11 @@
 [<%=ignore[:source][:file]%>]
 %     ignore[:collection].each do |item|
   Test: <%=item[:test]%>
-% if (not item[:message].empty?)
+%       if (not item[:message].empty?)
   At line (<%=item[:line]%>): "<%=item[:message]%>"
-% else
+%       else
   At line (<%=item[:line]%>)
-% end
+%       end
 
 %     end
 %   end
@@ -34,12 +34,15 @@
 %   hash[:results][:failures].each do |failure|
 [<%=failure[:source][:file]%>]
 %     failure[:collection].each do |item|
+%       header = "At line (#{item[:line]}):"
   Test: <%=item[:test]%>
-% if (not item[:message].empty?)
-  At line (<%=item[:line]%>): "<%=item[:message]%>"
-% else
-  At line (<%=item[:line]%>)
-% end
+%       if (not item[:message].empty?)
+          <%-# Cause multline error messages to wrap with indentation aligned with line header %>
+%         msg = item[:message].split("\n").enum_for(:each_with_index).map{|line,i| ((i >= 1) ? (' ' * (header.size + 3)) : '') + line}.join("\n")
+  <%=header%> "<%=msg%>"
+%       else
+  <%=header%>
+%       end
 
 %     end
 %   end
