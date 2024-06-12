@@ -179,18 +179,15 @@ class Projectinator
     # Fill filepaths array with filepaths or builtin names
     mixins.each do |mixin|
       # Handle explicit filepaths
-      if !@path_validator.filepath?( mixin )
+      if @path_validator.filepath?( mixin )
         _mixins << mixin
         next # Success, move on
       end
 
       # Find name in load_paths (we already know it exists from previous validation)
-      load_paths.each do |path|
+      next if load_paths.any? do |path|
         filepath = File.join( path, mixin + yaml_extension )
-        if @file_wrapper.exist?( filepath )
-          _mixins << filepath
-          next # Success, move on
-        end
+        @file_wrapper.exist?( filepath ) && (_mixins << filepath)
       end
 
       # Finally, just add the unmodified name to the list
