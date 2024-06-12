@@ -69,7 +69,7 @@ describe GeneratorTestResults do
     # these will always be used as is.
     @yaml_wrapper = YamlWrapper.new
     @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :loginator => @loginator})
-    @backtrace = GeneratorTestResultsBacktrace.new({:configurator => @configurator, :tool_executor => nil, :unity_utils => nil})
+    @backtrace = GeneratorTestResultsBacktrace.new({:configurator => @configurator, :tool_executor => nil})
 
     @generate_test_results = described_class.new(
       {
