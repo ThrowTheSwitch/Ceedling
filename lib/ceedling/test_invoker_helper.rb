@@ -22,7 +22,7 @@ class TestInvokerHelper
               :file_path_utils,
               :file_wrapper,
               :generator,
-              :unity_utils
+              :test_runner_manager
 
   def setup
     # Alias for brevity
@@ -105,7 +105,7 @@ class TestInvokerHelper
     defines += @defineinator.defines( topkey:CEXCEPTION_SYM, subkey: :defines )
 
     # Injected defines (based on other settings)
-    defines += @unity_utils.grab_additional_defines_based_on_configuration
+    defines += @test_runner_manager.collect_defines
 
     return defines.uniq
   end

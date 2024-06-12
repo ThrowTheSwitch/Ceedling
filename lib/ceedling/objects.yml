@@ -40,7 +40,7 @@ file_path_collection_utils:
   compose:
     - file_wrapper
 
-unity_utils:
+test_runner_manager:
   compose:
      - configurator
 
@@ -213,7 +213,7 @@ generator:
     - loginator
     - plugin_manager
     - file_wrapper
-    - unity_utils
+    - test_runner_manager
     - generator_test_results_backtrace
 
 generator_helper:
@@ -324,7 +324,7 @@ test_invoker_helper:
     - file_path_utils
     - file_wrapper
     - generator
-    - unity_utils
+    - test_runner_manager
 
 release_invoker:
   compose:

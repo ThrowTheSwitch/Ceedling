@@ -26,7 +26,7 @@ class Generator
               :loginator,
               :plugin_manager,
               :file_wrapper,
-              :unity_utils
+              :test_runner_manager
 
 
   def setup()
@@ -291,13 +291,14 @@ class Generator
     msg = @reportinator.generate_progress( "Running #{File.basename(arg_hash[:executable])}" )
     @loginator.log( msg )
 
-    # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
-    # so that we can run all tests and collect all results
+    # Unity's exit code is equivalent to the number of failed tests.
+    # We tell @tool_executor not to fail out if there are failures
+    # so that we can run all tests and collect all results.
     command = 
       @tool_executor.build_command_line(
         arg_hash[:tool],
         # Apply additional test case filters 
-        @unity_utils.collect_test_runner_additional_args(),
+        @test_runner_manager.collect_cmdline_args(),
         arg_hash[:executable]
       )
 
@@ -312,7 +313,10 @@ class Generator
       @helper.log_test_results_crash( test_name, executable, shell_result )
 
       filename = File.basename( test_filepath )
+
+      # Lookup test cases and filter based on any matchers specified for the build task
       test_cases = @test_context_extractor.lookup_test_cases( test_filepath )
+      test_cases = @generator_test_results.filter_test_cases( test_cases )
 
       case @configurator.project_config_hash[:project_use_backtrace]
       # If we have the options and tools to learn more, dig into the details

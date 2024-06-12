@@ -65,7 +65,7 @@ class Setupinator
     @ceedling[:plugin_reportinator].set_system_objects( @ceedling )
 
     # Process options for additional test runner #defines and test runner command line arguments
-    @ceedling[:unity_utils].process_test_runner_build_options()
+    @ceedling[:test_runner_manager].validate_and_configure_options()
 
     # Logging set up
     @ceedling[:loginator].set_logfile( form_log_filepath( log_filepath ) )

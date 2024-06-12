@@ -20,8 +20,7 @@ class GeneratorTestResultsBacktrace
     # Reset time
     shell_result[:time] = 0
 
-    # Revise test case list with any matches and excludes and iterate
-    test_cases = filter_test_cases( test_cases )
+    # Iterate on test cases
     test_cases.each do |test_case|
       # Build the test fixture to run with our test case of interest
       command = @tool_executor.build_command_line(
@@ -83,9 +82,7 @@ class GeneratorTestResultsBacktrace
     # Reset time
     shell_result[:time] = 0
 
-    # Revise test case list with any matches and excludes and iterate
-    test_cases = filter_test_cases( test_cases )
-
+    # Iterate on test cases
     test_cases.each do |test_case|
       # Build the test fixture to run with our test case of interest
       command = @tool_executor.build_command_line(
@@ -126,20 +123,19 @@ class GeneratorTestResultsBacktrace
         # Collect file_name and line in which crash occurred
         matched = crash_result[:output].match( /#{test_case[:test]}\s*\(\)\sat.+#{filename}:(\d+)\n/ )
 
-        # If we find an error report line containing `test_case() at filename.c:###`
+        # If we found an error report line containing `test_case() at filename.c:###` in `gdb` output
         if matched
           # Line number
           line_number = matched[1]
 
-          # Filter the `gdb` $stdout report
+          # Filter the `gdb` $stdout report to find most important lines of text
           crash_report = filter_gdb_test_report( crash_result[:output], test_case[:test], filename )
 
-          # Replace:
-          # - '\n' by @new_line_tag to make gdb output flat
-          # - ':' by @colon_tag to avoid test results problems
-          # to enable parsing output for default generator_test_results regex
-          # test_output = crash_report.gsub("\n", @new_line_tag).gsub(':', @colon_tag)
-          test_output = crash_report.gsub( "\n", '\n')
+          # Unity’s test executable output is line oriented.
+          # Multi-line output is not possible (it looks like random `printf()` statements to the results parser)
+          # "Encode" actual newlines as literal "\n"s (slash-n) to be handled by the test results parser.
+          test_output = crash_report.gsub( "\n", '\n' )
+
           test_output = "#{filename}:#{line_number}:#{test_case[:test]}:FAIL: Test case crashed >> #{test_output}"
 
         # Otherwise communicate that `gdb` failed to produce a usable report
@@ -160,33 +156,12 @@ class GeneratorTestResultsBacktrace
         failed:  test_case_results[:failed],
         output:  test_case_results[:output]
       )
-    puts shell_result[:output]
+
     return shell_result
   end
 
   ### Private ###
   private
-
-  # Filter list of test cases:
-  #  --test_case
-  #  --exclude_test_case
-  #
-  # @return Array - list of the test_case hashses {:test, :line_number}
-  def filter_test_cases(test_cases)
-    _test_cases = test_cases.clone 
-
-    # Filter tests which contain test_case_name passed by `--test_case` argument
-    if !@configurator.include_test_case.empty?
-      _test_cases.delete_if { |i| !(i[:test] =~ /#{@configurator.include_test_case}/) }
-    end
-
-    # Filter tests which contain test_case_name passed by `--exclude_test_case` argument
-    if !@configurator.exclude_test_case.empty?
-      _test_cases.delete_if { |i| i[:test] =~ /#{@configurator.exclude_test_case}/ }
-    end
-
-    return _test_cases
-  end
 
   def filter_gdb_test_report( report, test_case, filename )
     lines = report.split( "\n" )

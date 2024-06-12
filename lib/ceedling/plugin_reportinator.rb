@@ -37,6 +37,51 @@ class PluginReportinator
     return @reportinator.generate_heading(message)
   end
 
+  ##
+  ## Sample Test Results Output File (YAML)
+  ## ======================================
+  ##
+  ## TestUsartModel.fail:
+  ## ---
+  ## :source:
+  ##   :file: test/TestUsartModel.c
+  ##   :dirname: test
+  ##   :basename: TestUsartModel.c
+  ## :successes:
+  ## - :test: testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting
+  ##   :line: 24
+  ##   :message: ''
+  ##   :unity_test_time: 0
+  ## - :test: testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately
+  ##   :line: 49
+  ##   :message: ''
+  ##   :unity_test_time: 0
+  ## - :test: testShouldReturnErrorMessageUponInvalidTemperatureValue
+  ##   :line: 55
+  ##   :message: ''
+  ##   :unity_test_time: 0
+  ## - :test: testShouldReturnWakeupMessage
+  ##   :line: 61
+  ##   :message: ''
+  ##   :unity_test_time: 0
+  ## :failures:
+  ## - :test: testFail
+  ##   :line: 39
+  ##   :message: Expected 2 Was 3
+  ##   :unity_test_time: 0
+  ## :ignores:
+  ## - :test: testIgnore
+  ##   :line: 34
+  ##   :message: ''
+  ##   :unity_test_time: 0
+  ## :counts:
+  ##   :total: 6
+  ##   :passed: 4
+  ##   :failed: 1
+  ##   :ignored: 1
+  ## :stdout: []
+  ## :time: 0.006512000225484371
+
   def assemble_test_results(results_list, options={:boom => false})
     aggregated_results = new_results()
 
@@ -53,10 +98,11 @@ class PluginReportinator
       raise CeedlingException.new( "No test results report template has been set." )
     end
 
-    run_report( @test_results_template,
-                hash,
-                verbosity,
-                &block
+    run_report(
+      @test_results_template,
+      hash,
+      verbosity,
+      &block
     )
   end
   
