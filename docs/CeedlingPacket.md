@@ -2379,20 +2379,6 @@ migrated to the `:test_build` and `:release_build` sections.
 
   **Default**: `gem`
 
-### Example `:project` YAML blurb
-
-```yaml
-:project:
-  :build_root: project_awesome/build
-  :use_exceptions: FALSE
-  :use_test_preprocessor: TRUE
-  :options_paths:
-    - project/options
-    - external/shared/options
-  :release_build: TRUE
-  :compile_threads: :auto
-```
-
 * `:use_backtrace`
 
   When a test executable encounters a ☠️ **Segmentation Fault** or other crash 
@@ -2411,24 +2397,126 @@ migrated to the `:test_build` and `:release_build` sections.
 
   1. `:none` will simply cause a test report to list each test case as failed
      due to a test executable crash.
+
+     Sample Ceedling run output with backtrace `:none`:
+
+     ```
+     👟 Executing
+     ------------
+     Running TestUsartModel.out...
+     ☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
+
+     -------------------
+     FAILED TEST SUMMARY
+     -------------------
+     [test/TestUsartModel.c]
+       Test: testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting
+       At line (24): "Test executable crashed"
+
+       Test: testCrash
+       At line (37): "Test executable crashed"
+
+       Test: testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately
+       At line (44): "Test executable crashed"
+
+       Test: testShouldReturnErrorMessageUponInvalidTemperatureValue
+       At line (50): "Test executable crashed"
+
+       Test: testShouldReturnWakeupMessage
+       At line (56): "Test executable crashed"
+
+     -----------------------
+     ❌ OVERALL TEST SUMMARY
+     -----------------------
+     TESTED:  5
+     PASSED:  0
+     FAILED:  5
+     IGNORED: 0
+     ```
+
   1. `:simple` causes Ceedling to re-run each test case in the 
      test executable individually to identify and report the problematic 
      test case(s). This is the default option and is described above.
+
+     Sample Ceedling run output with backtrace `:simple`:
+
+     ```
+     👟 Executing
+     ------------
+     Running TestUsartModel.out...
+     ☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
+     
+     -------------------
+     FAILED TEST SUMMARY
+     -------------------
+     [test/TestUsartModel.c]
+       Test: testCrash
+       At line (37): "Test case crashed"
+     
+     -----------------------
+     ❌ OVERALL TEST SUMMARY
+     -----------------------
+     TESTED:  5
+     PASSED:  4
+     FAILED:  1
+     IGNORED: 0
+     ```
+
   1. `:gdb` uses the [`gdb`][gdb] debugger to identify and report the 
      troublesome line of code triggering the crash. If this option is enabled, 
      but `gdb` is not available to Ceedling, project configuration validation 
      will terminate with an error at startup.
+
+     Sample Ceedling run output with backtrace `:gdb`:
+
+     ```
+     👟 Executing
+     ------------
+     Running TestUsartModel.out...
+     ☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
+     
+     -------------------
+     FAILED TEST SUMMARY
+     -------------------
+     [test/TestUsartModel.c]
+       Test: testCrash
+       At line (40): "Test case crashed >> Program received signal SIGSEGV, Segmentation fault.
+                     0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
+                     40    uint32_t i = *nullptr;"
+     
+     -----------------------
+     ❌ OVERALL TEST SUMMARY
+     -----------------------
+     TESTED:  5
+     PASSED:  4
+     FAILED:  1
+     IGNORED: 0
+     ```
 
   **_Note:_** The default of `:simple` only works in an environment capable of
   using command line arguments (passed to the test executable). If you are
   targeting a simulator with your test executable binaries, `:simple` is
   unlikely to work for you. In the simplest case, you may simply fall back to
   `:none`. With some work and using Ceedling’s various features, much more 
-  sophisticated options might be possible.
+  sophisticated options are possible.
 
   **Default**: `:simple`
 
   [gdb]: https://www.sourceware.org/gdb/
+
+### Example `:project` YAML blurb
+
+```yaml
+:project:
+  :build_root: project_awesome/build
+  :use_exceptions: FALSE
+  :use_test_preprocessor: TRUE
+  :options_paths:
+    - project/options
+    - external/shared/options
+  :release_build: TRUE
+  :compile_threads: :auto
+```
 
 ## `:mixins` Configuring mixins to merge
 
