@@ -75,7 +75,7 @@ class PluginReportinatorHelper
   end
 
   def run_report(template, hash, verbosity)
-    output = ERB.new( template, trim_mode: "%<>-" )
+    output = ERB.new( template, trim_mode: "%<>" )
 
     # Run the report template and log result with no log level heading
     @loginator.log( output.result(binding()), verbosity, LogLabels::NONE )

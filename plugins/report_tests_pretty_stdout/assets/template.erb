@@ -37,7 +37,7 @@
 %       header = "At line (#{item[:line]}):"
   Test: <%=item[:test]%>
 %       if (not item[:message].empty?)
-          <%-# Cause multline error messages to wrap with indentation aligned with line header %>
+%         # Cause multline error messages to wrap with indentation aligned with line header
 %         msg = item[:message].split("\n").enum_for(:each_with_index).map{|line,i| ((i >= 1) ? (' ' * (header.size + 3)) : '') + line}.join("\n")
   <%=header%> "<%=msg%>"
 %       else
