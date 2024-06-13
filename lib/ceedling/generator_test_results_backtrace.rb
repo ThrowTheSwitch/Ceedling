@@ -166,25 +166,26 @@ class GeneratorTestResultsBacktrace
   ### Private ###
   private
 
-  def filter_gdb_test_report( report, test_case, filename )
-    # Sample `gdb` backtrace output
-    # =============================
-    # [Thread debugging using libthread_db enabled]
-    # Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+  def filter_gdb_test_report(report, test_case, filename)
+    #       Sample `gdb` backtrace output
+    #       =============================
+    #       [Thread debugging using libthread_db enabled]
+    #       Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
     #
-    # Program received signal SIGSEGV, Segmentation fault.
-    # 0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
-    # 40    uint32_t i = *nullptr;
-    # #0  0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
-    # #1  0x0000555999f674de in run_test (func=0x555999f661e7 <testCrash>, name=0x555999f6b2e0 "testCrash", line_num=37) at build/test/runners/TestUsartModel_runner.c:76
-    # #2  0x0000555999f6766b in main (argc=3, argv=0x7fff917e2c98) at build/test/runners/TestUsartModel_runner.c:117
+    # [1] > Program received signal SIGSEGV, Segmentation fault.
+    #       0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
+    # [2] > 40    uint32_t i = *nullptr;
+    #       #0  0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
+    #       #1  0x0000555999f674de in run_test (func=0x555999f661e7 <testCrash>, name=0x555999f6b2e0 "testCrash", line_num=37) at build/test/runners/TestUsartModel_runner.c:76
+    #       #2  0x0000555999f6766b in main (argc=3, argv=0x7fff917e2c98) at build/test/runners/TestUsartModel_runner.c:117
 
     lines = report.split( "\n" )
 
-    report_start_index = 0
-    report_end_index = 0
+    # Safe defaults to extract entire report
+    report_start_index = 0                # [1]
+    report_end_index   = (lines.size()-1) # [2]
 
-    # Find line preceding last occurrence of `<test_case> () at <filename>`;
+    # Find line preceding last `<test_case> () at <filename>`, [2];
     # it is the offending line of code.
     # We don't need the rest of the call trace -- it's just from the runner 
     # up to the crashed test case.
@@ -194,12 +195,12 @@ class GeneratorTestResultsBacktrace
       end
     end
 
-    # Work back up from end index to find top line of the containing text block.
-    # Go until we find a blank line; then increment the index back down a line.
+    # Work up from [2] to find top line of the containing text block, [1].
+    # Go until we find a blank line; then increment index back down a line.
     # This lops off any unneeded preamble.
     report_end_index.downto(0).to_a().each do |index|
       if lines[index].empty?
-        # Look for a blank line and adjust index to previous line of text
+        # Look for a blank line and adjust index to next line of text
         report_start_index = (index + 1)
         break
       end
