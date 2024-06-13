@@ -257,7 +257,7 @@ class GeneratorTestResults
       :test => elements[1],
       :line => elements[0].to_i,
       # Decode any multline strings
-      :message => message.nil? ? nil : message.gsub( '\n', "\n" ),
+      :message => message.nil? ? nil : message.gsub( NEWLINE_TOKEN, "\n" ),
       :unity_test_time => unity_test_time
     }
 

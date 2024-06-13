@@ -64,20 +64,18 @@ DEFAULT_TEST_LINKER_TOOL = {
   }
 
 DEFAULT_TEST_FIXTURE_TOOL = {
-  # Unity test runner executable
-  :executable => '${1}'.freeze,
+  :executable => '${1}'.freeze, # Unity test runner executable
   :name => 'default_test_fixture'.freeze,
   :optional => false.freeze,
   :arguments => [].freeze
   }
 
 DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
-  # Unity test runner executable
-  :executable => '${1}'.freeze,
+  :executable => '${1}'.freeze, # Unity test runner executable
   :name => 'default_test_fixture_simple_backtrace'.freeze,
   :optional => false.freeze,
   :arguments => [
-    '-n ${2}' # Exact test case name matching flag
+    '-n ${2}'.freeze # Exact test case name matching flag
     ].freeze
   }
 
@@ -240,13 +238,13 @@ DEFAULT_BACKTRACE_TOOL = {
   # (Don't break a build if `gdb` is unavailable but backtrace does not require it.)
   :optional => true.freeze,
   :arguments => [
-    '-q',
-    '--eval-command run',
-    '--eval-command backtrace',
-    '--batch',
-    '--args',
-    '${1}',
-    '-n ${2}'
+    '-q'.freeze,
+    '--batch'.freeze,
+    '--eval-command run'.freeze,
+    "--command \"${1}\"".freeze, # Debug script file to run
+    '--args'.freeze,
+    '${2}'.freeze,               # Test executable
+    '-n ${3}'.freeze             # Exact test case name matching flag
     ].freeze
   }
 

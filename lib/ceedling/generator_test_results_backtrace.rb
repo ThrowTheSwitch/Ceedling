@@ -76,6 +76,8 @@ class GeneratorTestResultsBacktrace
   end
 
   def do_gdb(filename, executable, shell_result, test_cases)
+    gdb_script_filepath = File.join( @configurator.project_build_tests_root, BACKTRACE_GDB_SCRIPT_FILE )
+
     # Clean stats tracker
     test_case_results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
 
@@ -87,6 +89,7 @@ class GeneratorTestResultsBacktrace
       # Build the test fixture to run with our test case of interest
       command = @tool_executor.build_command_line(
         @configurator.tools_backtrace_reporter, [],
+        gdb_script_filepath,
         executable,
         test_case[:test]
       )
@@ -133,8 +136,8 @@ class GeneratorTestResultsBacktrace
 
           # Unity’s test executable output is line oriented.
           # Multi-line output is not possible (it looks like random `printf()` statements to the results parser)
-          # "Encode" actual newlines as literal "\n"s (slash-n) to be handled by the test results parser.
-          test_output = crash_report.gsub( "\n", '\n' )
+          # "Encode" newlines in multiline string to be handled by the test results parser.
+          test_output = crash_report.gsub( "\n", NEWLINE_TOKEN )
 
           test_output = "#{filename}:#{line_number}:#{test_case[:test]}:FAIL: Test case crashed >> #{test_output}"
 
@@ -164,19 +167,36 @@ class GeneratorTestResultsBacktrace
   private
 
   def filter_gdb_test_report( report, test_case, filename )
+    # Sample `gdb` backtrace output
+    # =============================
+    # [Thread debugging using libthread_db enabled]
+    # Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+    #
+    # Program received signal SIGSEGV, Segmentation fault.
+    # 0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
+    # 40    uint32_t i = *nullptr;
+    # #0  0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
+    # #1  0x0000555999f674de in run_test (func=0x555999f661e7 <testCrash>, name=0x555999f6b2e0 "testCrash", line_num=37) at build/test/runners/TestUsartModel_runner.c:76
+    # #2  0x0000555999f6766b in main (argc=3, argv=0x7fff917e2c98) at build/test/runners/TestUsartModel_runner.c:117
+
     lines = report.split( "\n" )
 
     report_start_index = 0
     report_end_index = 0
 
-    # Find line before last occurrence of `<test_case>() at <filename>`
+    # Find line preceding last occurrence of `<test_case> () at <filename>`;
+    # it is the offending line of code.
+    # We don't need the rest of the call trace -- it's just from the runner 
+    # up to the crashed test case.
     lines.each_with_index do |line, index|
       if line =~ /#{test_case}.+at.+#{filename}/
         report_end_index = (index - 1) unless (index == 0)
       end
     end
 
-    # Work up the report to find the top of the containing text block
+    # Work back up from end index to find top line of the containing text block.
+    # Go until we find a blank line; then increment the index back down a line.
+    # This lops off any unneeded preamble.
     report_end_index.downto(0).to_a().each do |index|
       if lines[index].empty?
         # Look for a blank line and adjust index to previous line of text
@@ -187,6 +207,7 @@ class GeneratorTestResultsBacktrace
 
     length = (report_end_index - report_start_index) + 1
 
+    # Reconstitute the report from the extracted lines
     return lines[report_start_index, length].join( "\n" )
   end
 

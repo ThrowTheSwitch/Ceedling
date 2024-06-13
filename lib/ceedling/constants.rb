@@ -65,6 +65,9 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
+# Escaped newline literal (literally double-slash-n) for "encoding" multiline strings as single string
+NEWLINE_TOKEN = '\\n'
+
 DEFAULT_PROJECT_FILENAME = 'project.yml'
 
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
@@ -100,6 +103,8 @@ CMOCK_C_FILE    = 'cmock.c'
 CMOCK_H_FILE    = 'cmock.h'
 
 DEFAULT_CEEDLING_LOGFILE = 'ceedling.log'
+
+BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
 
 INPUT_CONFIGURATION_CACHE_FILE     = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
 DEFINES_DEPENDENCY_CACHE_FILE      = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files
