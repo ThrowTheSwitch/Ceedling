@@ -121,7 +121,7 @@ describe "Ceedling" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
             @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious --mixin=add_unity_helper 2>&1`
-            expect(@output).to match(/Merging built-in mixin 'add_unity_helper'/)
+            expect(@output).to match(/Merging command line mixin using mixin\/add_unity_helper\.yml/)
             expect(@output).to match(/TESTED:\s+47/)
             expect(@output).to match(/PASSED:\s+47/)
           end
