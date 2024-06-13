@@ -2393,7 +2393,7 @@ migrated to the `:test_build` and `:release_build` sections.
   exercising release code that is causing the crash. Ceedling then assembles
   the final test reporting results from these individual test case runs.
 
-  You have three options for this setting:
+  You have three options for this setting, `:none`, `:simple` or `:gdb`:
 
   1. `:none` will simply cause a test report to list each test case as failed
      due to a test executable crash.
