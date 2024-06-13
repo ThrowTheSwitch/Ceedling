@@ -40,10 +40,10 @@ class PreprocessinatorIncludesHandler
   ##  II. Extract a full list of #includes by spidering out into nested headers and processing all macros, etc.
   ##      This is the greedy approach.
   ##
-  ## III. Find #includes common to (I) and (II). THe results of (I) should limit the potentially lengthy
+  ## III. Find #includes common to (I) and (II). The results of (I) should limit the potentially lengthy
   ##      results of (II). The complete and accurate list of (II) should cut out any mistaken entries in (I).
   ##
-  ##  IV. I–III are not foolproof. A purely greedy approach or a prely conservative approach will cause symbol 
+  ##  IV. I–III are not foolproof. A purely greedy approach or a purely conservative approach will cause symbol 
   ##      conflicts, missing symbols, etc. The blended and balanced approach should come quite close to an 
   ##      accurate list of shallow includes. Edge cases and gaps will cause trouble. Other Ceedling features 
   ##      should provide the tools to intervene. 
@@ -185,8 +185,9 @@ class PreprocessinatorIncludesHandler
         defines
         )
 
-
-    command[:options][:boom] = false # Assume errors and do not raise an exception
+    # Assume possible errors so we have best shot at extracting results from preprocessing.
+    # Full code compilation will catch any breaking code errors
+    command[:options][:boom] = false
     shell_result = @tool_executor.exec( command )
 
     make_rules = shell_result[:output]
@@ -218,7 +219,7 @@ class PreprocessinatorIncludesHandler
     @loginator.log(msg, Verbosity::NORMAL)
 
     # Use abilities of @test_context_extractor to extract the #includes via regex on the file
-    return @test_context_extractor.scan_includes( filepath )
+    return @test_context_extractor.extract_includes( filepath )
   end
 
   def extract_nested_includes(filepath:, include_paths:, flags:, defines:, shallow:false)

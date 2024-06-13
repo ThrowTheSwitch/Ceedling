@@ -5,68 +5,95 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/exceptions'
+require 'ceedling/generator_test_runner' # From lib/ not vendor/unity/auto
+
 class TestContextExtractor
 
-  constructor :configurator, :file_wrapper
+  constructor :configurator, :file_wrapper, :loginator
 
   def setup
-    @header_includes   = {}
-    @source_includes   = {}
-    @source_extras     = {}
-    @mocks             = {}
-    @include_paths     = {}
-    @all_include_paths = []
+    @header_includes     = {}
+    @source_includes     = {}
+    @source_extras       = {}
+    @test_runner_details = {} # Test case lists & Unity runner generator instances
+    @mocks               = {}
+    @include_paths       = {}
+    @all_include_paths   = []
 
     @lock = Mutex.new
   end
 
+  def collect_simple_context( filepath, *args )
+    content = @file_wrapper.read( filepath )
+    content = sanitize_encoding( content )
+    content_no_comments = remove_comments( content )
 
-  # Scan for & store build directives
-  #  - TEST_SOURCE_FILE()
-  #  - TEST_INCLUDE_PATH()
-  def collect_build_directives(filepath)
-    include_paths, source_extras = extract_build_directives( filepath, @file_wrapper.read(filepath) )
-    ingest_build_directives(
-      filepath:filepath,
-      include_paths:include_paths,
-      source_extras:source_extras
-      )
+    args.each do |context|
+      case context
+      when :build_directive_macros
+        collect_build_directives( filepath, content_no_comments )
+
+      when :includes
+        collect_includes( filepath, content_no_comments )
+
+      when :test_runner_details
+        _collect_test_runner_details( filepath, content )
+
+      else
+        raise CeedlingException.new( "Unrecognized test context for collection :#{context}" )
+      end
+    end
   end
 
-  # Scan for & store includes (.h & .c) and mocks
-  def collect_includes(filepath)
-    includes = extract_includes( filepath, @file_wrapper.read(filepath) )
-    ingest_includes(filepath, includes)
+  def collect_test_runner_details(test_filepath, input_filepath=nil)
+    _collect_test_runner_details(
+      test_filepath,
+      @file_wrapper.read( test_filepath ),
+      input_filepath.nil? ? nil : @file_wrapper.read( input_filepath )
+    )
   end
 
   # Scan for all includes
-  def scan_includes(filepath)
-    return extract_includes( filepath, @file_wrapper.read(filepath) )
+  def extract_includes(filepath)
+    content = @file_wrapper.read( filepath )
+    content = sanitize_encoding( content )
+    content = remove_comments( content )
+
+    return extract_includes( filepath, content )
   end
 
   # Header includes of test file with file extension
   def lookup_header_includes_list(filepath)
-    return @header_includes[form_file_key(filepath)] || []
+    return @header_includes[form_file_key( filepath )] || []
   end
 
   # Include paths of test file specified with TEST_INCLUDE_PATH()
   def lookup_include_paths_list(filepath)
-    return @include_paths[form_file_key(filepath)] || []
+    return @include_paths[form_file_key( filepath )] || []
   end
 
   # Source header_includes within test file
   def lookup_source_includes_list(filepath)
-    return @source_includes[form_file_key(filepath)] || []
+    return @source_includes[form_file_key( filepath )] || []
   end
 
   # Source extras via TEST_SOURCE_FILE() within test file
   def lookup_build_directive_sources_list(filepath)
-    return @source_extras[form_file_key(filepath)] || []
+    return @source_extras[form_file_key( filepath )] || []
+  end
+
+  def lookup_test_cases(filepath)
+    return @test_runner_details[form_file_key( filepath )][:test_cases] || []
+  end
+
+  def lookup_test_runner_generator(filepath)
+    return @test_runner_details[form_file_key( filepath )][:generator]
   end
 
   # Mocks within test file with no file extension
   def lookup_raw_mock_list(filepath)
-    return @mocks[form_file_key(filepath)] || []
+    return @mocks[form_file_key( filepath )] || []
   end
 
   def lookup_all_include_paths
@@ -79,7 +106,7 @@ class TestContextExtractor
 
   def ingest_includes(filepath, includes)
     mock_prefix = @configurator.cmock_mock_prefix
-    file_key    = form_file_key(filepath)
+    file_key    = form_file_key( filepath )
     
     mocks   = []
     headers = []
@@ -110,11 +137,33 @@ class TestContextExtractor
 
   private #################################
 
+  # Scan for & store build directives
+  #  - TEST_SOURCE_FILE()
+  #  - TEST_INCLUDE_PATH()
+  #
+  # Note: This method is private unlike other `collect_ ()` methods. It is always
+  #       called in the context collection process by way of `collect_context()`.
+  def collect_build_directives(filepath, content)
+    include_paths, source_extras = extract_build_directives( filepath, content )
+
+    ingest_build_directives(
+      filepath: filepath,
+      include_paths: include_paths,
+      source_extras: source_extras
+    )
+  end
+
+  # Scan for & store includes (.h & .c) and mocks
+  # Note: This method is private unlike other `collect_ ()` methods. It is only 
+  #       called by way of `collect_context()`.
+  def collect_includes(filepath, content)
+    includes = _extract_includes( filepath, content )
+    ingest_includes( filepath, includes )
+  end
+
   def extract_build_directives(filepath, content)
     include_paths = []
     source_extras = []
-
-    content = remove_comments(content)
 
     content.split("\n").each do |line|
       # Look for TEST_INCLUDE_PATH("<*>") statements
@@ -129,11 +178,8 @@ class TestContextExtractor
     return include_paths.uniq, source_extras.uniq
   end
 
-  def extract_includes(filepath, content)
+  def _extract_includes(filepath, content)
     includes = []
-
-    content = check_encoding(content)
-    content = remove_comments(content)
 
     content.split("\n").each do |line|
       # Look for #include statements
@@ -144,8 +190,34 @@ class TestContextExtractor
     return includes.uniq
   end
 
+  def _collect_test_runner_details(filepath, test_content, input_content=nil)
+    unity_test_runner_generator = GeneratorTestRunner.new(
+      config: @configurator.get_runner_config,
+      test_file_contents: test_content,
+      preprocessed_file_contents: input_content
+    )
+
+    ingest_test_runner_details(
+      filepath: filepath,
+      test_runner_generator: unity_test_runner_generator
+    )
+
+    msg = "Test cases found in #{filepath}:"
+    test_cases = unity_test_runner_generator.test_cases
+    if test_cases.empty?
+      msg += " <none>"
+    else
+      msg += "\n"
+      test_cases.each do |test_case|
+        msg += " - #{test_case[:line_number]}:#{test_case[:test]}()\n"
+      end
+    end
+
+    @loginator.log( msg, Verbosity::DEBUG )
+  end
+
   def ingest_build_directives(filepath:, include_paths:, source_extras:)
-    key = form_file_key(filepath)
+    key = form_file_key( filepath )
 
     @lock.synchronize do
       @include_paths[key] = include_paths
@@ -160,8 +232,19 @@ class TestContextExtractor
     end
   end
 
+  def ingest_test_runner_details(filepath:, test_runner_generator:)
+    key = form_file_key( filepath )
+
+    @lock.synchronize do
+      @test_runner_details[key] = {
+        :test_cases => test_runner_generator.test_cases,
+        :generator => test_runner_generator
+      }
+    end
+  end
+
   # Note: This method modifies encoding in place (encode!) in an attempt to reduce long string copies
-  def check_encoding(content)
+  def sanitize_encoding(content)
     if not content.valid_encoding?
       content.encode!("UTF-16be", :invalid=>:replace, :replace=>"?").encode('UTF-8')
     end
@@ -170,16 +253,18 @@ class TestContextExtractor
 
   # Note: This method is destructive to argument content in an attempt to reduce memory usage
   def remove_comments(content)
+    _content = content.clone
+
     # Remove line comments
-    content.gsub!(/\/\/.*$/, '')
+    _content.gsub!(/\/\/.*$/, '')
 
     # Remove block comments
-    content.gsub!(/\/\*.*?\*\//m, '')
+    _content.gsub!(/\/\*.*?\*\//m, '')
 
-    return content
+    return _content
   end
 
-  def form_file_key(filepath)
+  def form_file_key( filepath )
     return filepath.to_s.to_sym
   end
 

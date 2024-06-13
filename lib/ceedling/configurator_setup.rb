@@ -49,7 +49,7 @@ class ConfiguratorSetup
     end
   end
 
-  def vendor_frameworks(flattened_config)
+  def vendor_frameworks_and_support_files(ceedling_lib_path, flattened_config)
     # Copy Unity C files into build/vendor directory structure
     @file_wrapper.cp_r(
       # '/.' to cause cp_r to copy directory contents
@@ -70,10 +70,16 @@ class ConfiguratorSetup
       File.join( flattened_config[:cexception_vendor_path], CEXCEPTION_LIB_PATH, '/.' ),
       flattened_config[:project_build_vendor_cexception_path]
     ) if flattened_config[:project_use_exceptions]
+
+    # Copy backtrace debugging script into build/test directory structure
+    @file_wrapper.cp_r(
+      File.join( ceedling_lib_path, BACKTRACE_GDB_SCRIPT_FILE ),
+      flattened_config[:project_build_tests_root]
+    ) if flattened_config[:project_use_backtrace] == :gdb
   end
 
   def build_project_collections(flattened_config)
-    ### iterate through all entries in paths section and expand any & all globs to actual paths
+    # Iterate through all entries in paths section and expand any & all globs to actual paths
     flattened_config.merge!( @configurator_builder.expand_all_path_globs( flattened_config ) )
 
     flattened_config.merge!( @configurator_builder.collect_vendor_paths( flattened_config ) )
@@ -175,9 +181,7 @@ class ConfiguratorSetup
     when :none
       # Do nothing
     when :simple
-      # TODO: Remove when :simple support is completed
-      @loginator.log( ":project ↳ :use_backtrace => :simple is not yet supported", Verbosity::ERRORS )      
-      valid = false
+      # Do nothing
     when :gdb
       # Do nothing
     else

@@ -77,11 +77,9 @@ class ToolExecutor
     if ((shell_result[:exit_code] != 0) and options[:boom])
       raise ShellExecutionException.new(
         shell_result: shell_result,
-        # Titleize the command's name--each word is capitalized and any underscores replaced with spaces
-        message: "'#{command[:name].split(/ |\_/).map(&:capitalize).join(" ")}' " +
-                 "(#{command[:executable]}) " +
-                 "terminated with exit code [#{shell_result[:exit_code]}]"
-        )
+        # Titleize the command's name -- each word is capitalized and any underscores replaced with spaces
+        name: "'#{command[:name].split(/ |\_/).map(&:capitalize).join(" ")}' " + "(#{command[:executable]})"
+      )
     end
 
     return shell_result

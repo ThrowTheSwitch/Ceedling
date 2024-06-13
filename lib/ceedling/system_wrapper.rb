@@ -125,7 +125,8 @@ class SystemWrapper
   end
 
   def add_load_path(path)
-    $LOAD_PATH.unshift(path)
+    # Prevent trouble with string freezing by dup()ing paths here
+    $LOAD_PATH.unshift( path.dup() )
   end
 
   def require_file(path)

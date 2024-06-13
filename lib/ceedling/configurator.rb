@@ -422,15 +422,15 @@ class Configurator
 
 
   # Create constants and accessors (attached to this object) from given hash
-  def build(build_project_config, config, *keys)
+  def build(ceedling_lib_path, config, *keys)
     flattened_config = @configurator_builder.flattenify( config )
 
-    @configurator_setup.build_project_config( build_project_config, flattened_config )
+    @configurator_setup.build_project_config( ceedling_lib_path, flattened_config )
 
     @configurator_setup.build_directory_structure( flattened_config )
 
     # Copy Unity, CMock, CException into vendor directory within build directory
-    @configurator_setup.vendor_frameworks( flattened_config )
+    @configurator_setup.vendor_frameworks_and_support_files( ceedling_lib_path, flattened_config )
 
     @configurator_setup.build_project_collections( flattened_config )
 

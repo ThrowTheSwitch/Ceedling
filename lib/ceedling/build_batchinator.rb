@@ -18,10 +18,10 @@ class BuildBatchinator
     if heading
       msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
     else # Progress message
-      msg = "\n" + @reportinator.generate_progress(msg)
+      msg = "\n" + @reportinator.generate_progress( @loginator.decorate( msg, LogLabels::RUN ) )
     end
 
-    @loginator.log(msg, Verbosity::NORMAL)
+    @loginator.log( msg )
 
     yield # Execute build step block
   end

@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 require 'ceedling/file_path_utils'
 require 'rake'
 
@@ -15,8 +16,8 @@ class Generator
               :generator_helper,
               :preprocessinator,
               :generator_mocks,
-              :generator_test_runner,
               :generator_test_results,
+              :generator_test_results_backtrace,
               :test_context_extractor,
               :tool_executor,
               :file_finder,
@@ -25,13 +26,13 @@ class Generator
               :loginator,
               :plugin_manager,
               :file_wrapper,
-              :backtrace,
-              :unity_utils
+              :test_runner_manager
 
 
   def setup()
-    # Alias
+    # Aliases
     @helper = @generator_helper
+    @backtrace = @generator_test_results_backtrace
   end
 
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
@@ -61,7 +62,7 @@ class Generator
         module_name: test,
         filename: File.basename(input_filepath)
       )
-      @loginator.log(msg, Verbosity::NORMAL)
+      @loginator.log( msg )
 
       cmock = @generator_mocks.manufacture( config )
       cmock.setup_mocks( arg_hash[:header_file] )
@@ -72,7 +73,6 @@ class Generator
     end
   end
 
-  # test_filepath may be either preprocessed test file or original test file
   def generate_test_runner(context:, mock_list:, test_filepath:, input_filepath:, runner_filepath:)
     arg_hash = {
       :context => context,
@@ -80,31 +80,30 @@ class Generator
       :input_file => input_filepath,
       :runner_file => runner_filepath}
 
-    @plugin_manager.pre_runner_generate(arg_hash)
+    @plugin_manager.pre_runner_generate( arg_hash )
 
-    # Instantiate the test runner generator each time needed for thread safety
-    # TODO: Make UnityTestRunnerGenerator thread-safe
-    generator = @generator_test_runner.manufacture()
-
-    # collect info we need
+    # Collect info we need
     module_name = File.basename( arg_hash[:test_file] )
-    test_cases  = @generator_test_runner.find_test_cases(
-      generator: generator,
-      test_filepath:  arg_hash[:test_file],
-      input_filepath: arg_hash[:input_file]
-      )
 
     msg = @reportinator.generate_progress("Generating runner for #{module_name}")
-    @loginator.log(msg, Verbosity::NORMAL)
+    @loginator.log( msg )
 
-    # build runner file
+    unity_test_runner_generator = 
+      @test_context_extractor.lookup_test_runner_generator( test_filepath )
+
+    if unity_test_runner_generator.nil?
+      msg = "Could not find test runner generator for #{test_filepath}"
+      raise CeedlingException.new( msg )
+    end
+
+    # Build runner file
     begin
-      @generator_test_runner.generate(
-        generator: generator,
+      unity_test_runner_generator.generate(
         module_name: module_name,
         runner_filepath: runner_filepath,
-        test_cases: test_cases,
-        mock_list: mock_list)
+        mock_list: mock_list,
+        header_extension: @configurator.extension_header
+      )
     rescue
       raise
     ensure
@@ -148,7 +147,7 @@ class Generator
       module_name: module_name,
       filename: File.basename(arg_hash[:source])
       ) if msg.empty?
-    @loginator.log(msg, Verbosity::NORMAL)
+    @loginator.log( msg )
 
     command =
       @tool_executor.build_command_line(
@@ -161,7 +160,6 @@ class Generator
         arg_hash[:search_paths],
         arg_hash[:defines]
       )
-
 
     begin
       shell_result = @tool_executor.exec( command )
@@ -212,7 +210,7 @@ class Generator
       module_name: module_name,
       filename: File.basename(arg_hash[:source])
       ) if msg.empty?
-    @loginator.log(msg, Verbosity::NORMAL)
+    @loginator.log( msg )
 
     command =
       @tool_executor.build_command_line( 
@@ -225,7 +223,6 @@ class Generator
         arg_hash[:list],
         arg_hash[:dependencies]
       )
-
 
     begin
       shell_result = @tool_executor.exec( command )
@@ -254,7 +251,7 @@ class Generator
     @plugin_manager.pre_link_execute(arg_hash)
 
     msg = @reportinator.generate_progress("Linking #{File.basename(arg_hash[:executable])}")
-    @loginator.log(msg, Verbosity::NORMAL)
+    @loginator.log( msg )
 
     command =
       @tool_executor.build_command_line(
@@ -289,20 +286,21 @@ class Generator
       :result_file => result
     }
 
-    @plugin_manager.pre_test_fixture_execute(arg_hash)
+    @plugin_manager.pre_test_fixture_execute( arg_hash )
 
-    msg = @reportinator.generate_progress("Running #{File.basename(arg_hash[:executable])}")
-    @loginator.log(msg, Verbosity::NORMAL)
+    msg = @reportinator.generate_progress( "Running #{File.basename(arg_hash[:executable])}" )
+    @loginator.log( msg )
 
-    # Unity's exit code is equivalent to the number of failed tests, so we tell @tool_executor not to fail out if there are failures
-    # so that we can run all tests and collect all results
-    command = @tool_executor.build_command_line(arg_hash[:tool], [], arg_hash[:executable])
-
-    # Configure debugger
-    @backtrace.configure_debugger(command)
-
-    # Apply additional test case filters 
-    command[:line] += @unity_utils.collect_test_runner_additional_args
+    # Unity's exit code is equivalent to the number of failed tests.
+    # We tell @tool_executor not to fail out if there are failures
+    # so that we can run all tests and collect all results.
+    command = 
+      @tool_executor.build_command_line(
+        arg_hash[:tool],
+        # Apply additional test case filters 
+        @test_runner_manager.collect_cmdline_args(),
+        arg_hash[:executable]
+      )
 
     # Run the test executable itself
     # We allow it to fail without an exception.
@@ -314,19 +312,35 @@ class Generator
     if @helper.test_crash?( shell_result )
       @helper.log_test_results_crash( test_name, executable, shell_result )
 
+      filename = File.basename( test_filepath )
+
+      # Lookup test cases and filter based on any matchers specified for the build task
+      test_cases = @test_context_extractor.lookup_test_cases( test_filepath )
+      test_cases = @generator_test_results.filter_test_cases( test_cases )
+
       case @configurator.project_config_hash[:project_use_backtrace]
+      # If we have the options and tools to learn more, dig into the details
       when :gdb
-        # If we have the options and tools to learn more, dig into the details
-        shell_result = @backtrace.gdb_output_collector( shell_result )
+        shell_result = 
+          @backtrace.do_gdb( filename, executable, shell_result, test_cases )
+
+      # Simple test-case-by-test-case exercise
       when :simple
-        # TODO: Identify problematic test just from iterating with test case filters
+        shell_result = 
+          @backtrace.do_simple( filename, executable, shell_result, test_cases )
+
       else # :none
         # Otherwise, call a crash a single failure so it shows up in the report
-        shell_result = @generator_test_results.create_crash_failure( executable, shell_result )
+        shell_result = @generator_test_results.create_crash_failure(
+          filename,
+          shell_result,
+          test_cases
+        )
       end
     end
 
     processed = @generator_test_results.process_and_write_results( 
+      executable,
       shell_result,
       arg_hash[:result_file],
       @file_finder.find_test_from_file_path(arg_hash[:executable])

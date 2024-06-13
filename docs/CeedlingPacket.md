@@ -2397,26 +2397,36 @@ migrated to the `:test_build` and `:release_build` sections.
 
   When a test executable encounters a ☠️ **Segmentation Fault** or other crash 
   condition, the executable immediately terminates and no further details for 
-  test suite reporting are collected. By default, Ceedling reports a single 
-  failure for the entire test file, noting that it crashed.
+  test suite reporting are collected.
 
   But, fear not. You can bring your dead unit tests back to life.
 
+  By default, in the case of a crash, Ceedling reruns the test executable for
+  each test case using a special mode to isolate that test case. In this way
+  Ceedling can iteratively identify which test cases are causing the crash or
+  exercising release code that is causing the crash. Ceedling then assembles
+  the final test reporting results from these individual test case runs.
+
   You have three options for this setting:
 
-  1. `:none` is the default and will produce the test failure report described
-     above.
-  1. `:simple` causes Ceedling to re-run each test case in the test executable
-     individually to identify and report the problematic test case(s).
+  1. `:none` will simply cause a test report to list each test case as failed
+     due to a test executable crash.
+  1. `:simple` causes Ceedling to re-run each test case in the 
+     test executable individually to identify and report the problematic 
+     test case(s). This is the default option and is described above.
   1. `:gdb` uses the [`gdb`][gdb] debugger to identify and report the 
      troublesome line of code triggering the crash. If this option is enabled, 
-     but `gdb` is not available to Ceedling, project validation will terminate 
-     with an error at startup.
+     but `gdb` is not available to Ceedling, project configuration validation 
+     will terminate with an error at startup.
 
-  May 17, 2024: While `:simple` is a recognized value only the `:none` and 
-  `:gdb` options are currently implemented.
+  **_Note:_** The default of `:simple` only works in an environment capable of
+  using command line arguments (passed to the test executable). If you are
+  targeting a simulator with your test executable binaries, `:simple` is
+  unlikely to work for you. In the simplest case, you may simply fall back to
+  `:none`. With some work and using Ceedling’s various features, much more 
+  sophisticated options might be possible.
 
-  **Default**: :none
+  **Default**: `:simple`
 
   [gdb]: https://www.sourceware.org/gdb/
 
@@ -3807,25 +3817,37 @@ project configuration file.
 
 ## `:test_runner` Configure test runner generation
 
-The format of Ceedling test files — the C files that contain unit test cases — 
-is intentionally simple. It's pure code and all legit, simple C with `#include` 
+The format of Ceedling test files — the C files that contain unit test cases —
+is intentionally simple. It's pure code and all legit, simple C with `#include`
 statements, test case functions, and optional `setUp()` and `tearDown()` 
 functions.
 
-To create test executables, we need a `main()` and a variety of calls to the 
+To create test executables, we need a `main()` and a variety of calls to the
 Unity framework to “hook up” all your test cases into a test suite. You can do
-this by hand, of course, but it's tedious and needed updates are easily 
+this by hand, of course, but it's tedious and needed updates are easily
 forgotten.
 
-So, Unity provides a script able to generate a test runner in C for you. It 
-relies on [conventions] used in in your test files. Ceedling takes this a step 
+So, Unity provides a script able to generate a test runner in C for you. It
+relies on [conventions] used in in your test files. Ceedling takes this a step
 further by calling this script for you with all the needed parameters.
 
-Test runner generation is configurable. The `:test_runner` section of your 
-Ceedling project file allows you to pass options to Unity's runner generation 
-script. A YAML hash beneath `:test_runner` is provided directly to that script.
+Test runner generation is configurable. The `:test_runner` section of your
+Ceedling project file allows you to pass options to Unity's runner generation
+script. A YAML hash beneath `:test_runner` is provided directly to that
+script.
 
 [Test runner configuration options are documented in the Unity project][unity-runner-options].
+
+Unless you have fairly advanced or unique needs, this project configuration is
+generally not needed.
+
+**_Note:_** In previous versions of Ceedling, the test runner option
+   `:cmdline_args` was needed for certain advanced test suite features. This
+   option is still needed, but Ceedling automatically sets it for you in the
+   scenarios requiring it. Be aware that this option works well in desktop,
+   native testing but is generally unsupported by emulators running test
+   executables (the idea of command line arguments passed to an executable is
+   generally only possible with desktop command line terminals.)
 
 Example configuration:
 

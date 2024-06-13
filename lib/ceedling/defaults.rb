@@ -64,10 +64,19 @@ DEFAULT_TEST_LINKER_TOOL = {
   }
 
 DEFAULT_TEST_FIXTURE_TOOL = {
-  :executable => '${1}'.freeze,
+  :executable => '${1}'.freeze, # Unity test runner executable
   :name => 'default_test_fixture'.freeze,
   :optional => false.freeze,
   :arguments => [].freeze
+  }
+
+DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
+  :executable => '${1}'.freeze, # Unity test runner executable
+  :name => 'default_test_fixture_simple_backtrace'.freeze,
+  :optional => false.freeze,
+  :arguments => [
+    '-n ${2}'.freeze # Exact test case name matching flag
+    ].freeze
   }
 
 DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
@@ -229,20 +238,22 @@ DEFAULT_BACKTRACE_TOOL = {
   # (Don't break a build if `gdb` is unavailable but backtrace does not require it.)
   :optional => true.freeze,
   :arguments => [
-    '-q',
-    '--eval-command run',
-    '--eval-command backtrace',
-    '--batch',
-    '--args'
+    '-q'.freeze,
+    '--batch'.freeze,
+    '--eval-command run'.freeze,
+    "--command \"${1}\"".freeze, # Debug script file to run
+    '--args'.freeze,
+    '${2}'.freeze,               # Test executable
+    '-n ${3}'.freeze             # Exact test case name matching flag
     ].freeze
   }
-
 
 DEFAULT_TOOLS_TEST = {
   :tools => {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
     :test_linker   => DEFAULT_TEST_LINKER_TOOL,
     :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
+    :test_fixture_simple_backtrace => DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL,
     :backtrace_reporter => DEFAULT_BACKTRACE_TOOL,
     }
   }
@@ -298,7 +309,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :use_test_preprocessor => false,
       :test_file_prefix => 'test_',
       :release_build => false,
-      :use_backtrace => :none,
+      :use_backtrace => :simple,
       :debug => false
     },
 

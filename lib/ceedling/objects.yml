@@ -40,15 +40,9 @@ file_path_collection_utils:
   compose:
     - file_wrapper
 
-unity_utils:
+test_runner_manager:
   compose:
      - configurator
-
-backtrace:
-  compose:
-     - configurator
-     - tool_executor
-     - unity_utils
 
 cacheinator:
   compose:
@@ -170,6 +164,7 @@ test_context_extractor:
   compose:
     - configurator
     - file_wrapper
+    - loginator
 
 include_pathinator:
   compose:
@@ -209,7 +204,6 @@ generator:
     - generator_helper
     - preprocessinator
     - generator_mocks
-    - generator_test_runner
     - generator_test_results
     - test_context_extractor
     - tool_executor
@@ -219,8 +213,8 @@ generator:
     - loginator
     - plugin_manager
     - file_wrapper
-    - unity_utils
-    - backtrace
+    - test_runner_manager
+    - generator_test_results_backtrace
 
 generator_helper:
   compose:
@@ -231,7 +225,12 @@ generator_test_results:
     - configurator
     - generator_test_results_sanity_checker
     - yaml_wrapper
-    - backtrace
+
+generator_test_results_backtrace:
+  compose:
+     - configurator
+     - tool_executor
+     - generator_test_results
 
 generator_test_results_sanity_checker:
   compose:
@@ -241,12 +240,6 @@ generator_test_results_sanity_checker:
 generator_mocks:
   compose:
     - configurator
-
-generator_test_runner:
-  compose:
-    - configurator
-    - file_path_utils
-    - file_wrapper
 
 dependinator:
   compose:
@@ -306,6 +299,7 @@ test_invoker:
     - test_invoker_helper
     - plugin_manager
     - build_batchinator
+    - reportinator
     - loginator
     - preprocessinator
     - task_invoker
@@ -323,13 +317,14 @@ test_invoker_helper:
     - task_invoker
     - test_context_extractor
     - include_pathinator
+    - preprocessinator
     - defineinator
     - flaginator
     - file_finder
     - file_path_utils
     - file_wrapper
     - generator
-    - unity_utils
+    - test_runner_manager
 
 release_invoker:
   compose:
