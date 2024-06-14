@@ -1,10 +1,10 @@
 ceedling-module-generator
 =========================
 
-## Overview
+## Plugin Overview
 
 The module_generator plugin adds a pair of new commands to Ceedling, allowing
-you to make or remove modules according to predefined templates. WIth a single call,
+you to make or remove modules according to predefined templates. With a single call,
 Ceedling can generate a source, header, and test file for a new module. If given a
 pattern, it can even create a series of submodules to support specific design patterns.
 Finally, it can just as easily remove related modules, avoiding the need to delete
@@ -22,6 +22,8 @@ specified a different default (see configuration). It will create three files:
 `MadScience.c`, `MadScience.h`, and `TestMadScience.c`. *NOTE* that it is important that
 there are no spaces between the brackets. We know, it's annoying... but it's the rules.
 
+### Patterns
+
 You can also create an entire pattern of files. To do that, just add a second argument
 to the pattern ID. Something like this:
 
@@ -33,6 +35,70 @@ In this example, we'd create 9 files total: 3 headers, 3 source files, and 3 tes
 files would be named `SecretLairModel`, `SecretLairConductor`, and `SecretLairHardware`. Isn't
 that nice?
 
+### Paths
+
+But what if I don't want it to place my new files in the default location?
+
+It can do that too! You can give it a hint as to where to find your files. The pattern matching
+here is fairly basic, but it is usually sufficient. It works perfectly if your directory structure
+matches a common pattern. For example, let's say you issue this command:
+
+```
+ceedling module:create[lab:SecretLair,mch]
+```
+
+Say your directory structure looks like this:
+
+```
+:paths:
+  :source:
+    - lab/src
+    - lair/src
+    - other/src
+  :test:
+    - lab/test
+    - lair/test
+    - other/test
+```
+
+In this case, the `lab:` hint would make the module generator guess you want your files here:
+
+ - source files: `lab/src` (because it's a close match)
+ - include files: `lab/src` (because no include paths were listed)
+ - test files: `lab/test` (because it's a close match)
+
+Instead, if your directory structure looks like this:
+
+```
+:paths:
+  :source:
+    - src/**   #this might contain subfolders lab, lair, and other
+  :include:
+    - inc/**   #again, this might contain subfolders lab, lair, other, and shared
+  :test:
+    - test
+```
+
+In this case, the `lab:` hint would make the module generator guess you want your files here:
+
+ - source files: `src/lab` (because it's a close match)
+ - include files: `inc/lab` (because it's a close match)
+ - test files: `test` (because there wasn't a close match, and this was the first entry on our list)
+
+You can see that more complicated structures will have files placed in the wrong place from time to
+time... no worries... you can move the file after it's created... but if your project has any kind of 
+consistent structure, the guessing engine does a good job of making it work.
+
+Three more quick notes about the path-matching:
+
+1. You can give multiple ordered hints that map roughly to folder nesting! `lab:secret:lair` will 
+   happily match to put `lair.c` in a folder like `my/lab/secret/`.
+
+2. Whenever the matcher fails to find a good candidate (or if it finds multiple equally good 
+   candidates), it will always guess in the order you have the paths listed in your project.yml file
+
+## Stubbing
+
 Similarly, you can create stubs for all functions in a header file just by making a single call
 to your handy `stub` feature, like this:
 
@@ -40,8 +106,8 @@ to your handy `stub` feature, like this:
 ceedling module:stub[SecretLair]
 ```
 
-This call will look in SecretLair.h and will generate a file SecretLair.c that contains a stub
-for each function declared in the header! Even better, if SecretLair.c already exists, it will
+This call will look in `SecretLair.h` and will generate a file `SecretLair.c` that contains a stub
+for each function declared in the header! Even better, if `SecretLair.c` already exists, it will
 add only new functions, leaving your existing calls alone so that it doesn't cause any problems.
 
 ## Configuration
@@ -57,9 +123,15 @@ follows the default ceedling structure... but what if you have a different struc
 ```
 :module_generator:
   :project_root: ./
-  :source_root: source/
-  :inc_root: includes/
-  :test_root: tests/
+  :naming: :bumpy
+  :includes: 
+    - :src: []
+    - :inc: []
+    - :tst: []
+  :boilerplates:
+    - :src: ""
+    - :inc: ""
+    - :tst: ""
 ```
 
 Now I've redirected the location where modules are going to be generated.
@@ -82,15 +154,28 @@ by adding to the `:includes` array. For example:
 ### Boilerplates
 
 You can specify the actual boilerplate used for each of your files. This is the handy place to
-put that corporate copyright notice (or maybe a copyleft notice, if that's your perference?)
+put that corporate copyright notice (or maybe a copyleft notice, if that's your preference?)
+
+Notice there is a separate template for source files, include files, and test files. Also, 
+your boilerplates can optionally contain `%1$s` which will inject the filename into that spot.
 
 ```
 :module_generator:
-  :boilerplates: |
-    /***************************
-    * This file is Awesome.    *
-    * That is All.             *
-    ***************************/
+  :boilerplates: 
+    :src: |
+      /***************************
+      * %1$s
+      * This file is Awesome.
+      * That is All.
+      ***************************/
+    :inc: |
+      /***************************
+      * Header. Woo.             *
+      ***************************/
+    :tst: |
+      /***************************
+      * My Awesome Test For %1$s
+      ***************************/
 ```
 
 ### Test Defines

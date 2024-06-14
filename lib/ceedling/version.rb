@@ -1,56 +1,51 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
-# @private
+#
+# version.rb is run:
+#  - As a script to produce a Ceedling version number used in the release build process
+#  - As a module of version constants consumed by Ceedling's command line version output
+#  - As a module of version constants consumed by Ceedling’s gem building process
+
 module Ceedling
   module Version
-    { "UNITY" => File.join("unity","src","unity.h"),
-      "CMOCK" => File.join("cmock","src","cmock.h"),
-      "CEXCEPTION" => File.join("c_exception","lib","CException.h")
+    # If this file is loaded, we know it is next to the vendor path to use for version lookups
+    vendor_path = File.expand_path( File.join( File.dirname( __FILE__ ), '../../vendor' ) )
+
+    # Anonymous hash
+    {
+      'UNITY' => File.join( 'unity', 'src', 'unity.h' ),
+      'CMOCK' => File.join( 'cmock', 'src', 'cmock.h' ),
+      'CEXCEPTION' => File.join( 'c_exception', 'lib', 'CException.h' )
     }.each_pair do |name, path|
-      # Check for local or global version of vendor directory in order to look up versions
-      path1 = File.expand_path( File.join("..","..","vendor",path) )
-      path2 = File.expand_path( File.join(File.dirname(__FILE__),"..","..","vendor",path) )
-      filename = if (File.exist?(path1))
-        path1
-      elsif (File.exist?(path2))
-        path2
-      elsif File.exist?(CEEDLING_VENDOR)
-        path3 = File.expand_path( File.join(CEEDLING_VENDOR,path) )
-        if (File.exist?(path3))
-          path3
-        else
-          basepath = File.join( CEEDLING_VENDOR, path.split(/\\\//)[0], 'release')
-          begin
-            [ @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'version.info') ).strip,
-              @ceedling[:file_wrapper].read( File.join(base_path, 'release', 'build.info') ).strip ].join('.')
-          rescue
-            "#{name}"
-          end
-        end
-      else
-        module_eval("#{name} = 'unknown'")
-        continue
-      end
+      filename = File.join( vendor_path, path )
 
       # Actually look up the versions
       a = [0,0,0]
+
       begin
-        File.readlines(filename).each do |line|
-          ["VERSION_MAJOR", "VERSION_MINOR", "VERSION_BUILD"].each_with_index do |field, i|
+        File.readlines( filename ).each do |line|
+          ['VERSION_MAJOR', 'VERSION_MINOR', 'VERSION_BUILD'].each_with_index do |field, i|
             m = line.match(/#{name}_#{field}\s+(\d+)/)
             a[i] = m[1] unless (m.nil?)
           end
         end
       rescue
-        abort("Can't collect data for vendor component: \"#{filename}\" . \nPlease check your setup.")
+        raise( "Could not collect version information for vendor component: #{filename}" )
       end
 
-      # splat it to return the final value
+      # Splat it to crete the final constant
       eval("#{name} = '#{a.join(".")}'")
     end
 
     GEM = "0.32.0"
     CEEDLING = GEM
 
-    puts CEEDLING if __FILE__ == $0
+    # If run as a script, end with printing Ceedling’s version to $stdout
+    puts CEEDLING if (__FILE__ == $0)
   end
 end

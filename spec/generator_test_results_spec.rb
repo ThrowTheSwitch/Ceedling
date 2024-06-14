@@ -1,11 +1,17 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'spec_helper'
 require 'ceedling/generator_test_results_sanity_checker'
 require 'ceedling/generator_test_results'
 require 'ceedling/yaml_wrapper'
 require 'ceedling/constants'
-require 'ceedling/streaminator'
+require 'ceedling/loginator'
 require 'ceedling/configurator'
-require 'ceedling/debugger_utils'
 
 NORMAL_OUTPUT =
   "Verbose output one\n" +
@@ -56,20 +62,18 @@ TEST_OUT_FILE_FAIL = 'out.fail'
 describe GeneratorTestResults do
   before(:each) do
     # these will always be mocked
-    @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :cmock_builder => nil, :yaml_wrapper => nil, :system_wrapper => nil})
-    @streaminator = Streaminator.new({:streaminator_helper => nil, :verbosinator => nil, :loginator => nil, :stream_wrapper => nil})
+    @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :yaml_wrapper => nil, :system_wrapper => nil})
+    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
     
     # these will always be used as is.
     @yaml_wrapper = YamlWrapper.new
-    @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :streaminator => @streaminator})
-    @debugger_utils = DebuggerUtils.new({:configurator => @configurator, :tool_executor => nil, :unity_utils => nil})
+    @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :loginator => @loginator})
 
     @generate_test_results = described_class.new(
       {
         :configurator => @configurator,
         :generator_test_results_sanity_checker => @sanity_checker,
-        :yaml_wrapper => @yaml_wrapper,
-        :debugger_utils => @debugger_utils
+        :yaml_wrapper => @yaml_wrapper
       }
     )
   end
@@ -81,38 +85,37 @@ describe GeneratorTestResults do
   end
   
   describe '#process_and_write_results' do
-    it 'handles an empty input' do
-      @generate_test_results.process_and_write_results({:output => ''}, TEST_OUT_FILE, 'some/place/test_example.c')
-      expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example_empty.pass'))
+    it 'raises on an empty input' do
+      expect{ 
+        @generate_test_results.process_and_write_results('test_example.out', {:output => ''}, TEST_OUT_FILE, 'some/place/test_example.c')
+      }.to raise_error( /Could not parse/i )
+    end
+
+    it 'raises on mangled test output' do
+      expect{ 
+        @generate_test_results.process_and_write_results('test_example.out', {:output => MANGLED_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
+      }.to raise_error( /Could not parse/i )
     end
 
     it 'handles a normal test output' do
-      @generate_test_results.process_and_write_results({:output => NORMAL_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
+      @generate_test_results.process_and_write_results('test_example.out', {:output => NORMAL_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
       expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example.pass'))
     end
 
     it 'handles a normal test output with time' do
-      @generate_test_results.process_and_write_results({:output => NORMAL_OUTPUT, :time => 0.01234}, TEST_OUT_FILE, 'some/place/test_example.c')
+      @generate_test_results.process_and_write_results('test_example.out', {:output => NORMAL_OUTPUT, :time => 0.01234}, TEST_OUT_FILE, 'some/place/test_example.c')
       expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example_with_time.pass'))
     end
 
     it 'handles a normal test output with ignores' do
-      @generate_test_results.process_and_write_results({:output => IGNORE_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
+      @generate_test_results.process_and_write_results('test_example.out', {:output => IGNORE_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
       expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example_ignore.pass'))
     end
 
     it 'handles a normal test output with failures' do
       allow(@configurator).to receive(:extension_testfail).and_return('.fail')
-      @generate_test_results.process_and_write_results({:output => FAIL_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
+      @generate_test_results.process_and_write_results('test_example.out', {:output => FAIL_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
       expect(IO.read(TEST_OUT_FILE_FAIL)).to eq(IO.read('spec/support/test_example.fail'))
     end
-
-    it 'handles a mangled test output as gracefully as it can' do
-      @generate_test_results.process_and_write_results({:output => MANGLED_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
-      test_file = IO.read(TEST_OUT_FILE).gsub(/\s+/m,' ')
-      exp_file = IO.read('spec/support/test_example_mangled.pass').gsub(/\s+/m,' ')
-      expect(test_file).to eq(exp_file)
-    end
-
   end
 end

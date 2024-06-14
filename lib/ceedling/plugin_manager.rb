@@ -1,31 +1,43 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'ceedling/constants'
 
 class PluginManager
 
-  constructor :configurator, :plugin_manager_helper, :streaminator, :reportinator, :system_wrapper
+  constructor :configurator, :plugin_manager_helper, :loginator, :reportinator, :system_wrapper
 
   def setup
     @build_fail_registry = []
-    @plugin_objects = [] # so we can preserve order
+    @plugin_objects = [] # List so we can preserve order
   end
 
-  def load_plugin_scripts(script_plugins, system_objects)
+  def load_programmatic_plugins(plugins, system_objects)
     environment = []
 
-    script_plugins.each do |plugin|
-      # protect against instantiating object multiple times due to processing config multiple times (option files, etc)
-      next if (@plugin_manager_helper.include?(@plugin_objects, plugin))
+    plugins.each do |hash|
+      # Protect against instantiating object multiple times due to processing config multiple times (option files, etc)
+      next if (@plugin_manager_helper.include?( @plugin_objects, hash[:plugin] ) )
       begin
-        @system_wrapper.require_file( "#{plugin}.rb" )
-        object = @plugin_manager_helper.instantiate_plugin_script( camelize(plugin), system_objects, plugin )
+        @system_wrapper.require_file( "#{hash[:plugin]}.rb" )
+        object = @plugin_manager_helper.instantiate_plugin( 
+          camelize( hash[:plugin] ),
+          system_objects,
+          hash[:plugin],
+          hash[:root_path]
+        )
         @plugin_objects << object
         environment += object.environment
 
-        # add plugins to hash of all system objects
-        system_objects[plugin.downcase.to_sym] = object
+        # Add plugins to hash of all system objects
+        system_objects[hash[:plugin].downcase().to_sym()] = object
       rescue
-        puts "Exception raised while trying to load plugin: #{plugin}"
-        raise
+        @loginator.log( "Exception raised while trying to load plugin: #{hash[:plugin]}", Verbosity::ERRORS )
+        raise # Raise again for backtrace, etc.
       end
     end
 
@@ -46,7 +58,7 @@ class PluginManager
 
       report += "\n"
 
-      @streaminator.stderr_puts(report, Verbosity::ERRORS)
+      @loginator.log( report, Verbosity::ERRORS, LogLabels::NONE )
     end
   end
 
@@ -55,6 +67,12 @@ class PluginManager
   end
 
   #### execute all plugin methods ####
+
+  def pre_mock_preprocess(arg_hash); execute_plugins(:pre_mock_preprocess, arg_hash); end
+  def post_mock_preprocess(arg_hash); execute_plugins(:post_mock_preprocess, arg_hash); end
+
+  def pre_test_preprocess(arg_hash); execute_plugins(:pre_test_preprocess, arg_hash); end
+  def post_test_preprocess(arg_hash); execute_plugins(:post_test_preprocess, arg_hash); end
 
   def pre_mock_generate(arg_hash); execute_plugins(:pre_mock_generate, arg_hash); end
   def post_mock_generate(arg_hash); execute_plugins(:post_mock_generate, arg_hash); end
@@ -70,8 +88,8 @@ class PluginManager
 
   def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
   def post_test_fixture_execute(arg_hash)
-    # special arbitration: raw test results are printed or taken over by plugins handling the job
-    @streaminator.stdout_puts(arg_hash[:shell_result][:output]) if (@configurator.plugins_display_raw_test_results)
+    # Special arbitration: Raw test results are printed or taken over by plugins handling the job
+    @loginator.log( arg_hash[:shell_result][:output] ) if @configurator.plugins_display_raw_test_results
     execute_plugins(:post_test_fixture_execute, arg_hash)
   end
 
@@ -96,10 +114,14 @@ class PluginManager
   def execute_plugins(method, *args)
     @plugin_objects.each do |plugin|
       begin
-        plugin.send(method, *args) if plugin.respond_to?(method)
+        if plugin.respond_to?(method)
+          message = @reportinator.generate_progress( "Plugin | #{camelize( plugin.name )} > :#{method}" )
+          @loginator.log( message, Verbosity::OBNOXIOUS )
+          plugin.send(method, *args)
+        end
       rescue
-        puts "Exception raised in plugin: #{plugin.name}, in method #{method}"
-        raise
+        @loginator.log( "Exception raised in plugin `#{plugin.name}` within build hook :#{method}", Verbosity::ERRORS )
+        raise # Raise again for backtrace, etc.
       end
     end
   end
