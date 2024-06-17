@@ -154,6 +154,9 @@ In addition, a previously undocumented feature for merging a second configuratio
 
 Thorough documentation on Mixins and the new options for loading a project configuration can be found in _[CeedlingPacket](CeedlingPacket.md))_.
 
+## `command_hooks` plugin tools configuration
+
+Previously, Command Hooks tools were defined under `:tools` section, now they must be defined under top-level `:command_hooks` section in project configuration.
 
 # Subprojects Plugin Replaced
 
