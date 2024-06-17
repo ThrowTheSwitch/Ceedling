@@ -47,7 +47,9 @@ class CommandHooks < Plugin
     )
     
     unless config_exists
-      raise CeedlingException.new("Missing configuration :command_hooks")
+      name = @ceedling[:reportinator].generate_config_walk([COMMAND_HOOKS_SYM])
+      error = "Missing configuration #{name}"
+      raise CeedlingException.new(error)
     end
     
     @config = project_config[COMMAND_HOOKS_SYM]
@@ -95,14 +97,16 @@ class CommandHooks < Plugin
   #
   def validate_config(config)
     unless config.is_a?(Hash)
-      error = "Expected configuration :command_hooks to be a Hash but found #{config.class}"
+      name = @ceedling[:reportinator].generate_config_walk([COMMAND_HOOKS_SYM])
+      error = "Expected configuration #{name} to be a Hash but found #{config.class}"
       raise CeedlingException.new(error)
     end
     
     unknown_hooks = config.keys - COMMAND_HOOKS_LIST
     
     unknown_hooks.each do |not_a_hook|
-      error = "Unrecognized hook '#{not_a_hook}'."
+      name = @ceedling[:reportinator].generate_config_walk([COMMAND_HOOKS_SYM, not_a_hook])
+      error = "Unrecognized option: #{name}"
       @ceedling[:loginator].log(error, Verbosity::ERRORS)
     end
     
