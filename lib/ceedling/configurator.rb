@@ -16,12 +16,12 @@ class Configurator
   attr_reader :project_config_hash, :programmatic_plugins, :rake_plugins
   attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case
 
-  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper) do
+  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper, :loginator, :reportinator) do
     @project_logging = false
     @sanity_checks   = TestResultsSanityChecks::NORMAL
   end
 
-  def setup
+  def setup()
     # Cmock config reference to provide to CMock for mock generation
     @cmock_config = {} # Default empty hash, replaced by reference below
 
@@ -90,6 +90,9 @@ class Configurator
   # The default values defined in defaults.rb (eg. DEFAULT_TOOLS_TEST) are populated
   # into @param config
   def merge_tools_defaults(config, default_config)
+    msg = @reportinator.generate_progress( 'Collecting default tool configurations' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     default_config.deep_merge( DEFAULT_TOOLS_TEST.deep_clone() )
 
     default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone() ) if (config[:project][:use_test_preprocessor])
@@ -104,6 +107,11 @@ class Configurator
     # Cmock has its own internal defaults handling, but we need to set these specific values
     # so they're present for the build environment to access;
     # Note: these need to end up in the hash given to initialize cmock for this to be successful
+
+    return if !config[:project][:use_mocks]
+
+    msg = @reportinator.generate_progress( 'Collecting CMock defaults' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     # Populate defaults with CMock internal settings
     default_cmock = default_config[:cmock] || {}
@@ -139,16 +147,31 @@ class Configurator
   end
 
 
-  def merge_plugins_defaults(paths_hash, config, default_config)  
+  def merge_plugins_defaults(paths_hash, config, default_config)
     # Config YAML defaults plugins
     plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash )
     
     # Config Ruby-based hash defaults plugins
     plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
 
+    if (!plugin_yml_defaults.empty? or !plugin_hash_defaults.empty?)
+      msg = @reportinator.generate_progress( 'Collecting plugin defaults' )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+    end
+
+    if !@configurator_plugins.plugin_yml_defaults.empty?
+      msg = " > Plugin YAML defaults: " + @configurator_plugins.plugin_yml_defaults.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
+    end
+
     # Load base configuration values (defaults) from YAML
     plugin_yml_defaults.each do |defaults|
       default_config.deep_merge( @yaml_wrapper.load( defaults ) )
+    end
+
+    if !@configurator_plugins.plugin_hash_defaults.empty?
+      msg = " > Plugin Ruby hash defaults: " + @configurator_plugins.plugin_hash_defaults.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
     end
 
     # Load base configuration values (defaults) as hash from Ruby
@@ -167,6 +190,12 @@ class Configurator
   def populate_cmock_config(config)
     # Populate config with CMock config
     cmock = config[:cmock] || {}
+    @cmock_config = cmock
+
+    return if !config[:project][:use_mocks]
+
+    msg = @reportinator.generate_progress( 'Processing CMock configuration' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     cmock[:plugins] = [] if (cmock[:plugins].nil?)
     cmock[:plugins].map! { |plugin| plugin.to_sym() }
@@ -181,11 +210,22 @@ class Configurator
       cmock[:includes].uniq!
     end
 
-    @cmock_config = cmock
+    @loginator.log( "CMock configuration: #{cmock}", Verbosity::DEBUG )
+  end
+
+
+  def populate_defaults( config_hash, defaults_hash )
+    msg = @reportinator.generate_progress( 'Populating project configuration with collected default values' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )    
+
+    @configurator_builder.populate_defaults( config_hash, defaults_hash )
   end
 
 
   def populate_test_runner_generation_config(config)
+    msg = @reportinator.generate_progress( 'Populating test runner generation settings' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )    
+
     use_backtrace = config[:project][:use_backtrace]
 
     # Force command line argument option for any backtrace option
@@ -226,6 +266,9 @@ class Configurator
   #    - Handle needed defaults
   #  - Configure test runner from backtrace configuration
   def populate_tools_config(config)
+    msg = @reportinator.generate_progress( 'Populating tool definition settings and expanding any string replacements' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     config[:tools].each_key do |name|
       tool = config[:tools][name]
 
@@ -250,33 +293,62 @@ class Configurator
   end
 
 
+  # Smoosh in extra arguments specified at top-level of config.
+  # This is useful for tweaking arguments for tools (where argument order does not matter).
+  # Arguments are squirted in at *end* of list.
   def populate_tools_supplemental_arguments(config)
-    tools_name_prefix = 'tools_'
-    config[:tools].each_key do |name|
-      tool = @project_config_hash[(tools_name_prefix + name.to_s).to_sym]
+    msg = @reportinator.generate_progress( 'Processing tool definition supplemental arguments' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-      # Smoosh in extra arguments specified at top-level of config
-      # (useful for plugins & default gcc tools if argument order does not matter).
-      # Arguments are squirted in at *end* of list.
-      top_level_tool = (tools_name_prefix + name.to_s).to_sym
-      if (not config[top_level_tool].nil?)
-         # Adding and flattening is not a good idea -- might over-flatten if 
-         # there's array nesting in tool args.
-         tool[:arguments].concat( config[top_level_tool][:arguments] )
+    prefix = 'tools_'
+    config[:tools].each do |key, tool|
+      name = key.to_s()
+
+      # Supplemental tool definition 
+      supplemental = config[(prefix + name).to_sym]
+
+      if (not supplemental.nil?)
+        args_to_add = supplemental[:arguments]
+
+        msg = " > #{name}: Arguments " + args_to_add.map{|arg| "\"#{arg}\""}.join( ', ' )
+        @loginator.log( msg, Verbosity::DEBUG )
+
+        # Adding and flattening is not a good idea -- might over-flatten if array nesting in tool args
+        tool[:arguments].concat( args_to_add )
       end
     end
   end
 
 
   def merge_plugins_config(paths_hash, plugins_load_path, config)
+    msg = @reportinator.generate_progress( 'Discovering plugins' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     # Rake-based plugins
     @rake_plugins = @configurator_plugins.find_rake_plugins( config, paths_hash )
+    if !@configurator_plugins.rake_plugins.empty?
+      msg = " > Rake plugins: " + @configurator_plugins.rake_plugins.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
+    end
 
     # Ruby `Plugin` subclass programmatic plugins
     @programmatic_plugins = @configurator_plugins.find_programmatic_plugins( config, paths_hash )
+    if !@configurator_plugins.programmatic_plugins.empty?
+      msg = " > Programmatic plugins: " + @configurator_plugins.programmatic_plugins.map{|p| p[:plugin]}.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
+    end
     
     # Config plugins
     config_plugins = @configurator_plugins.find_config_plugins( config, paths_hash )
+    if !@configurator_plugins.config_plugins.empty?
+      msg = " > Config plugins: " + @configurator_plugins.config_plugins.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
+    end
+
+    if !config_plugins.empty?
+      msg = @reportinator.generate_progress( 'Merging plugin configurations' )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+    end
 
     # Merge plugin configuration values (like Ceedling project file)
     config_plugins.each do |plugin|
@@ -290,7 +362,7 @@ class Configurator
         end
       end
 
-      config.deep_merge(plugin_config)
+      config.deep_merge( plugin_config )
     end
 
     # Set special plugin setting for results printing if unset
@@ -305,6 +377,9 @@ class Configurator
   # (Each entry within the :environment array is a hash)
   def eval_environment_variables(config)
     return if config[:environment].nil?
+
+    msg = @reportinator.generate_progress( 'Processing environment variables' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     config[:environment].each do |hash|
       key   = hash.keys[0] # Get first (should be only) environment variable entry
@@ -339,9 +414,12 @@ class Configurator
   end
 
 
-  # Eval config path lists (convert strings to array of size 1) and handle any Ruby string replacement
+  # Eval config path lists (convert any strings to array of size 1) and handle any Ruby string replacement
   def eval_paths(config)
     # :plugins ↳ :load_paths already handled
+
+    msg = @reportinator.generate_progress( 'Processing path entries and expanding any string replacements' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     eval_path_entries( config[:project][:build_root] )
     eval_path_entries( config[:release_build][:artifacts] )
@@ -366,6 +444,9 @@ class Configurator
 
   # Handle any Ruby string replacement for :flags string arrays
   def eval_flags(config)
+    msg = @reportinator.generate_progress( 'Expanding any string replacements in :flags entries' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     # Descend down to array of command line flags strings regardless of depth in config block
     traverse_hash_eval_string_arrays( config[:flags] )
   end
@@ -373,12 +454,18 @@ class Configurator
 
   # Handle any Ruby string replacement for :defines string arrays
   def eval_defines(config)
+    msg = @reportinator.generate_progress( 'Expanding any string replacements in :defines entries' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     # Descend down to array of #define strings regardless of depth in config block
     traverse_hash_eval_string_arrays( config[:defines] )
   end
 
 
   def standardize_paths(config)
+    msg = @reportinator.generate_progress( 'Standardizing all paths' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     # Individual paths that don't follow `_path` convention processed here
     paths = [
       config[:project][:build_root],

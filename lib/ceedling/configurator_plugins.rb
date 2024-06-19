@@ -11,11 +11,14 @@ class ConfiguratorPlugins
 
   constructor :file_wrapper, :system_wrapper
 
-  attr_reader :rake_plugins, :programmatic_plugins
+  attr_reader :rake_plugins, :programmatic_plugins, :config_plugins, :plugin_yml_defaults, :plugin_hash_defaults
 
   def setup
-    @rake_plugins   = []
+    @rake_plugins = []
     @programmatic_plugins = []
+    @config_plugins = []
+    @plugin_yml_defaults = []
+    @plugin_hash_defaults = []
   end
 
 
@@ -74,7 +77,7 @@ class ConfiguratorPlugins
     config[:plugins][:enabled].each do |plugin|
       if path = plugin_paths[(plugin + '_path').to_sym]
         rake_plugin_path = File.join(path, "#{plugin}.rake")
-        if (@file_wrapper.exist?(rake_plugin_path))
+        if @file_wrapper.exist?( rake_plugin_path )
           plugins_with_path << rake_plugin_path
           @rake_plugins << plugin
         end
@@ -93,7 +96,7 @@ class ConfiguratorPlugins
       if path = plugin_paths[(plugin + '_path').to_sym]
         plugin_path = File.join( path, "lib", "#{plugin}.rb" )
 
-        if @file_wrapper.exist?(plugin_path)
+        if @file_wrapper.exist?( plugin_path )
           @programmatic_plugins << {:plugin => plugin, :root_path => path}
         end
       end
@@ -105,13 +108,15 @@ class ConfiguratorPlugins
 
   # Gather up and return config .yml filepaths that exist in plugin paths + config/
   def find_config_plugins(config, plugin_paths)
+    @config_plugins = []
     plugins_with_path = []
 
     config[:plugins][:enabled].each do |plugin|
       if path = plugin_paths[(plugin + '_path').to_sym]
         config_plugin_path = File.join(path, "config", "#{plugin}.yml")
 
-        if @file_wrapper.exist?(config_plugin_path)
+        if @file_wrapper.exist?( config_plugin_path )
+          @config_plugins << plugin
           plugins_with_path << config_plugin_path
         end
       end
@@ -129,8 +134,9 @@ class ConfiguratorPlugins
       if path = plugin_paths[(plugin + '_path').to_sym]
         default_path = File.join(path, 'config', 'defaults.yml')
 
-        if @file_wrapper.exist?(default_path)
+        if @file_wrapper.exist?( default_path )
           defaults_with_path << default_path
+          @plugin_yml_defaults << plugin
         end
       end
     end
@@ -145,11 +151,12 @@ class ConfiguratorPlugins
     config[:plugins][:enabled].each do |plugin|
       if path = plugin_paths[(plugin + '_path').to_sym]
         default_path = File.join(path, "config", "defaults_#{plugin}.rb")
-        if @file_wrapper.exist?(default_path)
+        if @file_wrapper.exist?( default_path )
           @system_wrapper.require_file( "defaults_#{plugin}.rb" )
 
           object = eval("get_default_config()")
           defaults_hash << object
+          @plugin_hash_defaults << plugin
         end
       end
     end

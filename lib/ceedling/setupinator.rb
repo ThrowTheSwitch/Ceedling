@@ -22,14 +22,16 @@ class Setupinator
   end
 
 
+  # Injector method for setting Ceedling application object hash
   def ceedling=(value)
-    # Application objects hash
+    # Capture application objects hash as instance variable
     @ceedling = value
 
-    # References for brevity
+    # Get our dependencies from object hash rather than DIY constructor
+    # This is a shortcut / validates aspects of our setup
     @configurator         = value[:configurator]
     @loginator            = value[:loginator]
-    @configurator_builder = value[:configurator_builder]
+    @reportinator         = value[:reportinator]
     @plugin_manager       = value[:plugin_manager]
     @plugin_reportinator  = value[:plugin_reportinator]
     @test_runner_manager  = value[:test_runner_manager]
@@ -55,6 +57,8 @@ class Setupinator
     @loginator.set_logfile( form_log_filepath( app_cfg[:log_filepath] ) )
     @configurator.project_logging = @loginator.project_logging
 
+    log_step( 'Validating configuration contains minimum required sections', heading:false )
+
     # Complain early about anything essential that's missing
     @configurator.validate_essential( config_hash )
 
@@ -64,6 +68,8 @@ class Setupinator
     ##
     ## 2. Handle core user configuration
     ##
+
+    log_step( 'Core Project Configuration Handling' )
 
     # Evaluate environment vars before plugin configurations that might reference with inline Ruby string expansion
     @configurator.eval_environment_variables( config_hash )
@@ -80,6 +86,8 @@ class Setupinator
     ## 3. Collect and apply defaults to user configuration
     ##
 
+    log_step( 'Assembling Default Settings' )
+
     # Assemble defaults
     defaults_hash = DEFAULT_CEEDLING_PROJECT_CONFIG.deep_clone()
     @configurator.merge_tools_defaults( config_hash, defaults_hash )
@@ -87,11 +95,13 @@ class Setupinator
     @configurator.merge_plugins_defaults( plugins_paths_hash, config_hash, defaults_hash )
 
     # Set any essential missing or plugin values in configuration with assembled default values
-    @configurator_builder.populate_defaults( config_hash, defaults_hash )
+    @configurator.populate_defaults( config_hash, defaults_hash )
 
     ##
     ## 4. Fill out / modify remaining configuration from user configuration + defaults
     ##
+
+    log_step( 'Completing Project Configuration' )
 
     # Configure test runner generation
     @configurator.populate_test_runner_generation_config( config_hash )
@@ -117,11 +127,15 @@ class Setupinator
     ## 5. Validate configuration
     ##
 
+    log_step( 'Validating final project configuration', heading:false )
+
     @configurator.validate_final( config_hash, app_cfg )
 
     ##
     ## 6. Flatten configuration + process it into globals and accessors
     ##
+
+    # Skip logging this step as the end user doesn't care about this internal preparation
 
     # Partially flatten config + build Configurator accessors and globals
     @configurator.build( app_cfg[:ceedling_lib_path], config_hash, :environment )
@@ -129,6 +143,9 @@ class Setupinator
     ##
     ## 7. Final plugins handling
     ##
+
+    # Detailed logging already happend for plugin processing
+    log_step( 'Loading plugins', heading:false )
 
     @configurator.insert_rake_plugins( @configurator.rake_plugins )
     
@@ -163,5 +180,17 @@ private
     # Otherwise, log filepath includes a directory (that's already been created)
     return log_filepath
   end
+
+  # Neaten up a build step with progress message and some scope encapsulation
+  def log_step(msg, heading:true)
+    if heading
+      msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+    else # Progress message
+      msg = "\n" + @reportinator.generate_progress( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+    end
+
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+  end
+
 
 end
