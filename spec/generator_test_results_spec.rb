@@ -62,8 +62,17 @@ TEST_OUT_FILE_FAIL = 'out.fail'
 describe GeneratorTestResults do
   before(:each) do
     # these will always be mocked
-    @configurator = Configurator.new({:configurator_setup => nil, :configurator_builder => nil, :configurator_plugins => nil, :yaml_wrapper => nil, :system_wrapper => nil})
+    # this will always be mocked
     @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
+    @configurator = Configurator.new({
+      :configurator_setup => nil,
+      :configurator_builder => nil,
+      :configurator_plugins => nil,
+      :yaml_wrapper => nil,
+      :system_wrapper => nil,
+      :loginator => @loginator,
+      :reportinator => nil
+    })
     
     # these will always be used as is.
     @yaml_wrapper = YamlWrapper.new
