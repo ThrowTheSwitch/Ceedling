@@ -1697,7 +1697,7 @@ YAML.
 
 The next section details Ceedling’s project configuration options in 
 YAML. This section explains all your options for loading and modifying 
-project configuration from files to begin with.
+project configuration.
 
 ## Overview of Project Configuration Loading & Smooshing
 
@@ -1707,12 +1707,16 @@ this:
 
 1. Load the base project configuration from a YAML file.
 1. Merge the base configuration with zero or more Mixins from YAML files.
-1. Load zero or more plugins that alter or merge additional configuration.
-1. Merge in default values to ensure all necessary configuration to run
-   is present.
+1. Load zero or more plugins that provide default configuration values
+   or alter the base project configuration.
+1. Populate the configuration with default values to ensure all necessary 
+   configuration to run is present.
 
 Ceedling provides reasonably verbose logging at startup telling you which
 configuration files were used and in what order they were merged.
+
+For nitty-gritty details on plugin configuration behavior, see the
+_[Plugin Development Guide](PluginDevelopmentGuide.md)_
 
 ## Options for Loading Your Base Project Configuration
 
