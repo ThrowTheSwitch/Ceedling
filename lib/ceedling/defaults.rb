@@ -231,9 +231,9 @@ DEFAULT_RELEASE_LINKER_TOOL = {
     ].freeze
   }
 
-DEFAULT_BACKTRACE_TOOL = {
+DEFAULT_TEST_BACKTRACE_GDB_TOOL = {
   :executable => ENV['GDB'].nil? ? FilePathUtils.os_executable_ext('gdb').freeze : ENV['GDB'],
-  :name => 'default_backtrace_reporter'.freeze,
+  :name => 'default_test_backtrace_gdb'.freeze,
   # Must be optional because validation is contingent on backtrace configuration.
   # (Don't break a build if `gdb` is unavailable but backtrace does not require it.)
   :optional => true.freeze,
@@ -254,7 +254,7 @@ DEFAULT_TOOLS_TEST = {
     :test_linker   => DEFAULT_TEST_LINKER_TOOL,
     :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
     :test_fixture_simple_backtrace => DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL,
-    :backtrace_reporter => DEFAULT_BACKTRACE_TOOL,
+    :test_backtrace_gdb => DEFAULT_TEST_BACKTRACE_GDB_TOOL,
     }
   }
 
@@ -300,7 +300,7 @@ DEFAULT_TOOLS_RELEASE_DEPENDENCIES = {
 
 DEFAULT_RELEASE_TARGET_NAME = 'project'
 
-DEFAULT_CEEDLING_CONFIG = {
+DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :project => {
       # :build_root must be set by user
       :use_mocks => true,
@@ -323,6 +323,9 @@ DEFAULT_CEEDLING_CONFIG = {
        :use_assembly => false
      },
 
+    # Unlike other top-level entries, :environment is an array (of hashes) to preserve order
+    :environment => [],
+
     :paths => {
       :test => [],    # Must be populated by user
       :source => [],  # Should be populated by user but TEST_INCLUDE_PATH() could be used exclusively instead
@@ -340,9 +343,6 @@ DEFAULT_CEEDLING_CONFIG = {
       :support => [],
       :include => [],
     },
-
-    # unlike other top-level entries, environment's value is an array to preserve order
-    :environment => [],
 
     :defines => {
       :use_test_definition => false,
@@ -380,18 +380,15 @@ DEFAULT_CEEDLING_CONFIG = {
     },
 
     :unity => {
-      :vendor_path => CEEDLING_VENDOR,
       :defines => []
     },
 
     :cmock => {
-      :vendor_path => CEEDLING_VENDOR,
       :includes => [],
       :defines => []
     },
 
     :cexception => {
-      :vendor_path => CEEDLING_VENDOR,
       :defines => []
     },
 
@@ -402,11 +399,11 @@ DEFAULT_CEEDLING_CONFIG = {
       :file_suffix => '_runner',
     },
 
-    # all tools populated while building up config structure
+    # All tools populated while building up config / defaults structure
     :tools => {},
 
-    # empty argument lists for default tools
-    # (these can be overridden in project file to add arguments to tools without totally redefining tools)
+    # Empty argument lists for default tools
+    # Note: These can be overridden in project file to add arguments totally redefining tools
     :test_compiler  => { :arguments => [] },
     :test_assembler => { :arguments => [] },
     :test_linker    => { :arguments => [] },
@@ -414,6 +411,7 @@ DEFAULT_CEEDLING_CONFIG = {
       :arguments => [],
       :link_objects => [], # compiled object files to always be linked in (e.g. cmock.o if using mocks)
     },
+    :test_backtrace_gdb => { :arguments => [] },
     :test_includes_preprocessor  => { :arguments => [] },
     :test_file_preprocessor      => { :arguments => [] },
     :test_file_preprocessor_directives => { :arguments => [] },
@@ -421,7 +419,22 @@ DEFAULT_CEEDLING_CONFIG = {
     :release_compiler  => { :arguments => [] },
     :release_linker    => { :arguments => [] },
     :release_assembler => { :arguments => [] },
-    :release_dependencies_generator => { :arguments => [] },
+    :release_dependencies_generator => { :arguments => [] }
+  }.freeze
+
+
+CEEDLING_RUNTIME_CONFIG = {
+    :unity => {
+      :vendor_path => CEEDLING_VENDOR
+    },
+
+    :cmock => {
+      :vendor_path => CEEDLING_VENDOR
+    },
+
+    :cexception => {
+      :vendor_path => CEEDLING_VENDOR
+    },
 
     :plugins => {
       :load_paths => [],

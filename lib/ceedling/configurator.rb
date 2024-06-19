@@ -59,7 +59,8 @@ class Configurator
      :release_compiler,
      :release_assembler,
      :release_linker,
-     :release_dependencies_generator].each do |tool|
+     :release_dependencies_generator
+    ].each do |tool|
       config[:tools].delete(tool) if (not (config[:tools][tool].nil?))
     end
   end
@@ -69,8 +70,10 @@ class Configurator
   # We do this because early config validation failures may need access to verbosity,
   # but the accessors won't be available until after configuration is validated.
   def set_verbosity(config)
-    # PROJECT_VERBOSITY and PROJECT_DEBUG were set at command line processing 
-    # before Ceedling is even loaded.
+    # PROJECT_VERBOSITY and PROJECT_DEBUG set at command line processing before Ceedling is loaded
+
+    # Configurator will later try to create these accessors automatically but will silently 
+    # fail if they already exist.
 
     if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG) or (config[:project][:debug])
       eval("def project_debug() return true end", binding())
@@ -81,63 +84,99 @@ class Configurator
     if !!defined?(PROJECT_VERBOSITY)
       eval("def project_verbosity() return #{PROJECT_VERBOSITY} end", binding())
     end
-
-    # Configurator will try to create these accessors automatically but will silently 
-    # fail if they already exist.
   end
 
 
   # The default values defined in defaults.rb (eg. DEFAULT_TOOLS_TEST) are populated
   # into @param config
-  def populate_defaults(config)
-    new_config = DEFAULT_CEEDLING_CONFIG.deep_clone
-    new_config.deep_merge!(config)
-    config.replace(new_config)
+  def merge_tools_defaults(config, default_config)
+    default_config.deep_merge( DEFAULT_TOOLS_TEST.deep_clone() )
 
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST )
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_PREPROCESSORS ) if (config[:project][:use_test_preprocessor])
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_ASSEMBLER )     if (config[:test_build][:use_assembly])
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone() ) if (config[:project][:use_test_preprocessor])
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_ASSEMBLER.deep_clone() )     if (config[:test_build][:use_assembly])
 
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE )              if (config[:project][:release_build])
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_ASSEMBLER )    if (config[:project][:release_build] and config[:release_build][:use_assembly])
+    default_config.deep_merge( DEFAULT_TOOLS_RELEASE.deep_clone() )            if (config[:project][:release_build])
+    default_config.deep_merge( DEFAULT_TOOLS_RELEASE_ASSEMBLER.deep_clone() )  if (config[:project][:release_build] and config[:release_build][:use_assembly])
   end
 
 
-  def populate_unity_defaults(config)
-    unity = config[:unity] || {}
-
-    unity[:defines] = [] if (unity[:defines].nil?)
-  end
-
-
-  def populate_cmock_defaults(config)
+  def populate_cmock_defaults(config, default_config)
     # Cmock has its own internal defaults handling, but we need to set these specific values
     # so they're present for the build environment to access;
-    # Note: These need to end up in the hash given to initialize cmock for this to be successful
-    cmock = config[:cmock] || {}
+    # Note: these need to end up in the hash given to initialize cmock for this to be successful
+
+    # Populate defaults with CMock internal settings
+    default_cmock = default_config[:cmock] || {}
 
     # Yes, we're duplicating the defaults in CMock, but it's because:
     #  (A) We always need CMOCK_MOCK_PREFIX in Ceedling's environment
     #  (B) Test runner generator uses these same configuration values
-    cmock[:mock_prefix] = 'Mock' if (cmock[:mock_prefix].nil?)
-    cmock[:mock_suffix] = ''     if (cmock[:mock_suffix].nil?)
+    default_cmock[:mock_prefix] = 'Mock' if (default_cmock[:mock_prefix].nil?)
+    default_cmock[:mock_suffix] = ''     if (default_cmock[:mock_suffix].nil?)
 
-    # just because strict ordering is the way to go
-    cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
+    # Just because strict ordering is the way to go
+    default_cmock[:enforce_strict_ordering] = true                                                  if (default_cmock[:enforce_strict_ordering].nil?)
 
-    cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
+    default_cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (default_cmock[:mock_path].nil?)
 
-    # Use dynamically defined accessor
-    cmock[:verbosity] = project_verbosity()                                                 if (cmock[:verbosity].nil?)
+    default_cmock[:verbosity] = project_verbosity()                                                 if (default_cmock[:verbosity].nil?)
+  end
 
-    cmock[:plugins] = []                             if (cmock[:plugins].nil?)
-    cmock[:plugins].map! { |plugin| plugin.to_sym }
+
+  def prepare_plugins_load_paths(plugins_load_path, config)
+    # Plugins must be loaded before generic path evaluation & magic that happen later.
+    # So, perform path magic here as discrete step.
+    config[:plugins][:load_paths].each do |path|
+      path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      FilePathUtils::standardize( path )
+    end
+
+    # Add Ceedling's plugins path as load path so built-in plugins can be found
+    config[:plugins][:load_paths] << plugins_load_path
+    config[:plugins][:load_paths].uniq!
+
+    return @configurator_plugins.process_aux_load_paths( config )
+  end
+
+
+  def merge_plugins_defaults(paths_hash, config, default_config)  
+    # Config YAML defaults plugins
+    plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash )
+    
+    # Config Ruby-based hash defaults plugins
+    plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
+
+    # Load base configuration values (defaults) from YAML
+    plugin_yml_defaults.each do |defaults|
+      default_config.deep_merge( @yaml_wrapper.load( defaults ) )
+    end
+
+    # Load base configuration values (defaults) as hash from Ruby
+    plugin_hash_defaults.each do |defaults|
+      default_config.deep_merge( defaults )
+    end
+  end
+
+
+  def merge_ceedling_runtime_config(config, runtime_config)
+    # Merge Ceedling's internal runtime configuration settings
+    config.deep_merge( runtime_config )
+  end
+
+
+  def populate_cmock_config(config)
+    # Populate config with CMock config
+    cmock = config[:cmock] || {}
+
+    cmock[:plugins] = [] if (cmock[:plugins].nil?)
+    cmock[:plugins].map! { |plugin| plugin.to_sym() }
     cmock[:plugins].uniq!
 
-    cmock[:unity_helper] = false                     if (cmock[:unity_helper].nil?)
+    cmock[:unity_helper] = false if (cmock[:unity_helper].nil?)
 
     if (cmock[:unity_helper])
       cmock[:unity_helper] = [cmock[:unity_helper]] if cmock[:unity_helper].is_a? String
+      cmock[:includes] = [] if (cmock[:includes].nil?)
       cmock[:includes] += cmock[:unity_helper].map{|helper| File.basename(helper) }
       cmock[:includes].uniq!
     end
@@ -146,11 +185,11 @@ class Configurator
   end
 
 
-  def configure_test_runner_generation(config)
+  def populate_test_runner_generation_config(config)
     use_backtrace = config[:project][:use_backtrace]
 
-    # TODO: Potentially update once :gdb and :simple are disentangled
-    if (use_backtrace == :gdb) or (use_backtrace == :simple)
+    # Force command line argument option for any backtrace option
+    if use_backtrace != :none
       config[:test_runner][:cmdline_args] = true
     end
 
@@ -186,7 +225,7 @@ class Configurator
   #    - Handle inline Ruby string substitution
   #    - Handle needed defaults
   #  - Configure test runner from backtrace configuration
-  def tools_setup(config)
+  def populate_tools_config(config)
     config[:tools].each_key do |name|
       tool = config[:tools][name]
 
@@ -211,7 +250,7 @@ class Configurator
   end
 
 
-  def tools_supplement_arguments(config)
+  def populate_tools_supplemental_arguments(config)
     tools_name_prefix = 'tools_'
     config[:tools].each_key do |name|
       tool = @project_config_hash[(tools_name_prefix + name.to_s).to_sym]
@@ -223,50 +262,21 @@ class Configurator
       if (not config[top_level_tool].nil?)
          # Adding and flattening is not a good idea -- might over-flatten if 
          # there's array nesting in tool args.
-         tool[:arguments].concat config[top_level_tool][:arguments]
+         tool[:arguments].concat( config[top_level_tool][:arguments] )
       end
     end
   end
 
 
-  def find_and_merge_plugins(plugins_load_path, config)
-    # Plugins must be loaded before generic path evaluation & magic that happen later.
-    # So, perform path magic here as discrete step.
-    config[:plugins][:load_paths].each do |path|
-      path.replace( @system_wrapper.module_eval(path) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
-      FilePathUtils::standardize(path)
-    end
-
-    # Add Ceedling's plugins path as load path so built-in plugins can be found
-    config[:plugins][:load_paths] << plugins_load_path
-    config[:plugins][:load_paths].uniq!
-
-    paths_hash = @configurator_plugins.process_aux_load_paths(config)
-
+  def merge_plugins_config(paths_hash, plugins_load_path, config)
     # Rake-based plugins
     @rake_plugins = @configurator_plugins.find_rake_plugins( config, paths_hash )
 
-    # Ruby `PLugin` subclass programmatic plugins
+    # Ruby `Plugin` subclass programmatic plugins
     @programmatic_plugins = @configurator_plugins.find_programmatic_plugins( config, paths_hash )
     
-    # Config YAML defaults plugins
-    plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash )
-    
-    # Config Ruby-based hash defaults plugins
-    plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
-
     # Config plugins
-    config_plugins  = @configurator_plugins.find_config_plugins( config, paths_hash )
-
-    # Load base configuration values (defaults) from YAML
-    plugin_yml_defaults.each do |defaults|
-      @configurator_builder.populate_defaults( config, @yaml_wrapper.load(defaults) )
-    end
-
-    # Load base configuration values (defaults) as hash from Ruby
-    plugin_hash_defaults.each do |defaults|
-      @configurator_builder.populate_defaults( config, defaults )
-    end
+    config_plugins = @configurator_plugins.find_config_plugins( config, paths_hash )
 
     # Merge plugin configuration values (like Ceedling project file)
     config_plugins.each do |plugin|
@@ -274,9 +284,9 @@ class Configurator
 
       # Special handling for plugin paths
       if (plugin_config.include?( :paths ))
-        plugin_config[:paths].update(plugin_config[:paths]) do |k,v| 
-          plugin_path = plugin.match(/(.*)[\/]config[\/]\w+\.yml/)[1]
-          v.map {|vv| File.expand_path(vv.gsub!(/\$PLUGIN_PATH/,plugin_path)) }
+        plugin_config[:paths].update( plugin_config[:paths] ) do |k,v| 
+          plugin_path = plugin.match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
+          v.map {|vv| File.expand_path( vv.gsub!( /\$PLUGIN_PATH/, plugin_path) ) }
         end
       end
 
@@ -292,8 +302,10 @@ class Configurator
 
 
   # Process environment variables set in configuration file
-  # (Each entry beneath :environment is another hash)
+  # (Each entry within the :environment array is a hash)
   def eval_environment_variables(config)
+    return if config[:environment].nil?
+
     config[:environment].each do |hash|
       key   = hash.keys[0] # Get first (should be only) environment variable entry
       value = hash[key]    # Get associated value
@@ -406,11 +418,16 @@ class Configurator
   end
 
 
-  def validate_final(config)
+  def validate_final(config, app_cfg)
     # Collect all infractions, everybody on probation until final adjudication
     blotter = true
     blotter &= @configurator_setup.validate_paths( config )
     blotter &= @configurator_setup.validate_tools( config )
+    blotter &= @configurator_setup.validate_test_runner_generation(
+                 config,
+                 app_cfg[:include_test_case],
+                 app_cfg[:exclude_test_case]
+               )
     blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
     blotter &= @configurator_setup.validate_plugins( config )

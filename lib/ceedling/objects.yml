@@ -41,8 +41,6 @@ file_path_collection_utils:
     - file_wrapper
 
 test_runner_manager:
-  compose:
-     - configurator
 
 cacheinator:
   compose:

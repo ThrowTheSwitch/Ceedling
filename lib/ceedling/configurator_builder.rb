@@ -85,11 +85,18 @@ class ConfiguratorBuilder
   end
 
 
+  # If config lacks an entry that defaults posseses, add a config entry with the default value
   def populate_defaults(config, defaults)
     defaults.keys.sort.each do |section|
-      defaults[section].keys.sort.each do |entry|
-        config[section] = {} if config[section].nil?
-        config[section][entry] = defaults[section][entry].deep_clone if (config[section][entry].nil?)
+      case defaults[section]
+      when Hash
+        defaults[section].keys.sort.each do |entry|
+          config[section] = {} if config[section].nil?
+          config[section][entry] = defaults[section][entry].deep_clone if (config[section][entry].nil?)
+        end
+
+      when Array
+        config[section] = defaults[section] 
       end
     end
   end
