@@ -371,7 +371,7 @@ class Configurator
       # Special handling for plugin paths
       if (_config.include?( :paths ))
         _config[:paths].update( _config[:paths] ) do |k,v| 
-          plugin_path = plugin.match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
+          plugin_path = hash[:path].match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
           v.map {|vv| File.expand_path( vv.gsub!( /\$PLUGIN_PATH/, plugin_path) ) }
         end
       end
