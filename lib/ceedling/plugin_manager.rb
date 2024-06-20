@@ -22,6 +22,10 @@ class PluginManager
     plugins.each do |hash|
       # Protect against instantiating object multiple times due to processing config multiple times (option files, etc)
       next if (@plugin_manager_helper.include?( @plugin_objects, hash[:plugin] ) )
+
+      msg = @reportinator.generate_progress( "Instantiating plugin class #{camelize( hash[:plugin] )}" )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+
       begin
         @system_wrapper.require_file( "#{hash[:plugin]}.rb" )
         object = @plugin_manager_helper.instantiate_plugin( 

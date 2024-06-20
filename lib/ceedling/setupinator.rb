@@ -66,10 +66,10 @@ class Setupinator
     @configurator.merge_ceedling_runtime_config( config_hash, CEEDLING_RUNTIME_CONFIG.deep_clone )
 
     ##
-    ## 2. Handle core user configuration
+    ## 2. Handle basic configuration
     ##
 
-    log_step( 'Core Project Configuration Handling' )
+    log_step( 'Project Configuration Handling' )
 
     # Evaluate environment vars before plugin configurations that might reference with inline Ruby string expansion
     @configurator.eval_environment_variables( config_hash )
@@ -80,10 +80,19 @@ class Setupinator
     # Populate CMock configuration with values to tie vendor tool configurations together
     @configurator.populate_cmock_config( config_hash )
 
-    @configurator.merge_plugins_config( plugins_paths_hash, app_cfg[:ceedling_plugins_path], config_hash )
+    ##
+    ## 3. Plugin Handling
+    ##
+
+    log_step( 'Plugin Handling' )
+
+    # Plugin handling
+    @configurator.discover_plugins( plugins_paths_hash, config_hash )
+    @configurator.populate_plugins_config( plugins_paths_hash, config_hash )
+    @configurator.merge_config_plugins( config_hash )
 
     ##
-    ## 3. Collect and apply defaults to user configuration
+    ## 4. Collect and apply defaults to user configuration
     ##
 
     log_step( 'Assembling Default Settings' )
@@ -98,7 +107,7 @@ class Setupinator
     @configurator.populate_defaults( config_hash, defaults_hash )
 
     ##
-    ## 4. Fill out / modify remaining configuration from user configuration + defaults
+    ## 5. Fill out / modify remaining configuration from user configuration + defaults
     ##
 
     log_step( 'Completing Project Configuration' )
@@ -124,7 +133,7 @@ class Setupinator
     @test_runner_manager.configure_runtime_options( app_cfg[:include_test_case], app_cfg[:exclude_test_case] )
 
     ##
-    ## 5. Validate configuration
+    ## 6. Validate configuration
     ##
 
     log_step( 'Validating final project configuration', heading:false )
@@ -132,7 +141,7 @@ class Setupinator
     @configurator.validate_final( config_hash, app_cfg )
 
     ##
-    ## 6. Flatten configuration + process it into globals and accessors
+    ## 7. Flatten configuration + process it into globals and accessors
     ##
 
     # Skip logging this step as the end user doesn't care about this internal preparation
@@ -141,11 +150,11 @@ class Setupinator
     @configurator.build( app_cfg[:ceedling_lib_path], config_hash, :environment )
 
     ##
-    ## 7. Final plugins handling
+    ## 8. Final plugins handling
     ##
 
     # Detailed logging already happend for plugin processing
-    log_step( 'Loading plugins', heading:false )
+    log_step( 'Loading Plugins' )
 
     @configurator.insert_rake_plugins( @configurator.rake_plugins )
     

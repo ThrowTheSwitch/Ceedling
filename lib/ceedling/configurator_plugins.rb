@@ -78,13 +78,12 @@ class ConfiguratorPlugins
       if path = plugin_paths[(plugin + '_path').to_sym]
         rake_plugin_path = File.join(path, "#{plugin}.rake")
         if @file_wrapper.exist?( rake_plugin_path )
-          plugins_with_path << rake_plugin_path
-          @rake_plugins << plugin
+          @rake_plugins << {:plugin => plugin, :path => rake_plugin_path}
         end
       end
     end
 
-    return plugins_with_path
+    return @rake_plugins
   end
 
 
@@ -116,13 +115,12 @@ class ConfiguratorPlugins
         config_plugin_path = File.join(path, "config", "#{plugin}.yml")
 
         if @file_wrapper.exist?( config_plugin_path )
-          @config_plugins << plugin
-          plugins_with_path << config_plugin_path
+          @config_plugins << {:plugin => plugin, :path => config_plugin_path}
         end
       end
     end
 
-    return plugins_with_path
+    return @config_plugins
   end
 
 

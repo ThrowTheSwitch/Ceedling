@@ -320,14 +320,14 @@ class Configurator
   end
 
 
-  def merge_plugins_config(paths_hash, plugins_load_path, config)
-    msg = @reportinator.generate_progress( 'Discovering plugins' )
+  def discover_plugins(paths_hash, config)
+    msg = @reportinator.generate_progress( 'Discovering all plugins' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     # Rake-based plugins
     @rake_plugins = @configurator_plugins.find_rake_plugins( config, paths_hash )
     if !@configurator_plugins.rake_plugins.empty?
-      msg = " > Rake plugins: " + @configurator_plugins.rake_plugins.join( ', ' )
+      msg = " > Rake plugins: " + @configurator_plugins.rake_plugins.map{|p| p[:plugin]}.join( ', ' )
       @loginator.log( msg, Verbosity::DEBUG )
     end
 
@@ -341,35 +341,43 @@ class Configurator
     # Config plugins
     config_plugins = @configurator_plugins.find_config_plugins( config, paths_hash )
     if !@configurator_plugins.config_plugins.empty?
-      msg = " > Config plugins: " + @configurator_plugins.config_plugins.join( ', ' )
+      msg = " > Config plugins: " + @configurator_plugins.config_plugins.map{|p| p[:plugin]}.join( ', ' )
       @loginator.log( msg, Verbosity::DEBUG )
     end
 
-    if !config_plugins.empty?
-      msg = @reportinator.generate_progress( 'Merging plugin configurations' )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
-    end
+    return config_plugins
+  end
 
-    # Merge plugin configuration values (like Ceedling project file)
-    config_plugins.each do |plugin|
-      plugin_config = @yaml_wrapper.load( plugin )
 
-      # Special handling for plugin paths
-      if (plugin_config.include?( :paths ))
-        plugin_config[:paths].update( plugin_config[:paths] ) do |k,v| 
-          plugin_path = plugin.match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
-          v.map {|vv| File.expand_path( vv.gsub!( /\$PLUGIN_PATH/, plugin_path) ) }
-        end
-      end
-
-      config.deep_merge( plugin_config )
-    end
-
+  def populate_plugins_config(paths_hash, config)
     # Set special plugin setting for results printing if unset
     config[:plugins][:display_raw_test_results] = true if (config[:plugins][:display_raw_test_results].nil?)
 
     # Add corresponding path to each plugin's configuration
     paths_hash.each_pair { |name, path| config[:plugins][name] = path }
+  end
+
+
+  def merge_config_plugins(config)
+    return if @configurator_plugins.config_plugins.empty?
+
+    # Merge plugin configuration values (like Ceedling project file)
+    @configurator_plugins.config_plugins.each do |hash|
+      _config = @yaml_wrapper.load( hash[:path] )
+
+      msg = @reportinator.generate_progress( "Merging configuration from plugin #{hash[:plugin]}" )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+      # Special handling for plugin paths
+      if (_config.include?( :paths ))
+        _config[:paths].update( _config[:paths] ) do |k,v| 
+          plugin_path = plugin.match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
+          v.map {|vv| File.expand_path( vv.gsub!( /\$PLUGIN_PATH/, plugin_path) ) }
+        end
+      end
+
+      config.deep_merge( _config )
+    end
   end
 
 
@@ -591,8 +599,11 @@ class Configurator
 
 
   def insert_rake_plugins(plugins)
-    plugins.each do |plugin|
-      @project_config_hash[:project_rakefile_component_files] << plugin
+    plugins.each do |hash|
+      msg = @reportinator.generate_progress( "Adding plugin #{hash[:plugin]} to Rake load list" )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+      @project_config_hash[:project_rakefile_component_files] << hash[:path]
     end
   end
 
