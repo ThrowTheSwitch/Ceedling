@@ -1109,6 +1109,17 @@ holds all that stuff if you want).
 Ceedling attempts to bring more joy to your console logging. This may include
 fancy Unicode characters, emoji, or color.
 
+Example:
+```
+-----------------------
+❌ OVERALL TEST SUMMARY
+-----------------------
+TESTED:  6
+PASSED:  5
+FAILED:  1
+IGNORED: 0
+```
+
 By default, Ceedling makes an educated guess as to which platforms can best
 support this. Some platforms (we’re looking at you, Windows) do not typically
 have default font support in their terminals for these features. So, by default
