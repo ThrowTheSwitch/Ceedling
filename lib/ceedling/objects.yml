@@ -41,8 +41,6 @@ file_path_collection_utils:
     - file_wrapper
 
 test_runner_manager:
-  compose:
-     - configurator
 
 cacheinator:
   compose:
@@ -85,6 +83,8 @@ configurator:
     - configurator_builder
     - yaml_wrapper
     - system_wrapper
+    - loginator
+    - reportinator
 
 configurator_setup:
   compose:

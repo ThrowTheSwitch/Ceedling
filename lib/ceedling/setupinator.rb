@@ -8,10 +8,8 @@
 class Setupinator
 
   attr_reader :config_hash
-  attr_writer :ceedling
 
   def setup
-    @ceedling = {}
     @config_hash = {}
   end
 
@@ -24,56 +22,155 @@ class Setupinator
   end
 
 
+  # Injector method for setting Ceedling application object hash
+  def ceedling=(value)
+    # Capture application objects hash as instance variable
+    @ceedling = value
+
+    # Get our dependencies from object hash rather than DIY constructor
+    # This is a shortcut / validates aspects of our setup
+    @configurator         = value[:configurator]
+    @loginator            = value[:loginator]
+    @reportinator         = value[:reportinator]
+    @plugin_manager       = value[:plugin_manager]
+    @plugin_reportinator  = value[:plugin_reportinator]
+    @test_runner_manager  = value[:test_runner_manager]
+  end
+
+
+  # Load up all the constants and accessors our rake files, objects, & external scripts will need.
   def do_setup( app_cfg )
     @config_hash = app_cfg[:project_config]
-    log_filepath = app_cfg[:log_filepath]
 
-    @ceedling[:configurator].include_test_case = app_cfg[:include_test_case]
-    @ceedling[:configurator].exclude_test_case = app_cfg[:exclude_test_case]
+    ##
+    ## 1. Miscellaneous handling and essential configuration prep
+    ##
 
-    # Load up all the constants and accessors our rake files, objects, & external scripts will need.
-    # Note: Configurator modifies the cmock section of the hash with a couple defaults to tie 
-    #       projects together -- the modified hash is used to build the cmock object.
-    @ceedling[:configurator].set_verbosity( config_hash )
-    @ceedling[:configurator].validate_essential( config_hash )
-    @ceedling[:configurator].populate_defaults( config_hash )
-    @ceedling[:configurator].populate_unity_defaults( config_hash )
-    @ceedling[:configurator].populate_cmock_defaults( config_hash )
-    @ceedling[:configurator].configure_test_runner_generation( config_hash )
-    # Evaluate environment vars before sections that might reference them with inline Ruby string expansion
-    @ceedling[:configurator].eval_environment_variables( config_hash )
-    @ceedling[:configurator].eval_paths( config_hash )
-    @ceedling[:configurator].eval_flags( config_hash )
-    @ceedling[:configurator].eval_defines( config_hash )
-    @ceedling[:configurator].standardize_paths( config_hash )
-    @ceedling[:configurator].find_and_merge_plugins( app_cfg[:ceedling_plugins_path], config_hash )
-    @ceedling[:configurator].tools_setup( config_hash )
-    @ceedling[:configurator].validate_final( config_hash )
+    # Set special purpose test case filters (from command line)
+    @configurator.include_test_case = app_cfg[:include_test_case]
+    @configurator.exclude_test_case = app_cfg[:exclude_test_case]
+
+    # Verbosity handling
+    @configurator.set_verbosity( config_hash )
+
+    # Logging configuration
+    @loginator.set_logfile( form_log_filepath( app_cfg[:log_filepath] ) )
+    @configurator.project_logging = @loginator.project_logging
+
+    log_step( 'Validating configuration contains minimum required sections', heading:false )
+
+    # Complain early about anything essential that's missing
+    @configurator.validate_essential( config_hash )
+
+    # Merge any needed runtime settings into user configuration
+    @configurator.merge_ceedling_runtime_config( config_hash, CEEDLING_RUNTIME_CONFIG.deep_clone )
+
+    ##
+    ## 2. Handle basic configuration
+    ##
+
+    log_step( 'Project Configuration Handling' )
+
+    # Evaluate environment vars before plugin configurations that might reference with inline Ruby string expansion
+    @configurator.eval_environment_variables( config_hash )
+
+    # Standardize paths and add to Ruby load paths
+    plugins_paths_hash = @configurator.prepare_plugins_load_paths( app_cfg[:ceedling_plugins_path], config_hash )
+
+    # Populate CMock configuration with values to tie vendor tool configurations together
+    @configurator.populate_cmock_config( config_hash )
+
+    ##
+    ## 3. Plugin Handling
+    ##
+
+    log_step( 'Plugin Handling' )
+
+    # Plugin handling
+    @configurator.discover_plugins( plugins_paths_hash, config_hash )
+    @configurator.populate_plugins_config( plugins_paths_hash, config_hash )
+    @configurator.merge_config_plugins( config_hash )
+
+    ##
+    ## 4. Collect and apply defaults to user configuration
+    ##
+
+    log_step( 'Assembling Default Settings' )
+
+    # Assemble defaults
+    defaults_hash = DEFAULT_CEEDLING_PROJECT_CONFIG.deep_clone()
+    @configurator.merge_tools_defaults( config_hash, defaults_hash )
+    @configurator.populate_cmock_defaults( config_hash, defaults_hash )
+    @configurator.merge_plugins_defaults( plugins_paths_hash, config_hash, defaults_hash )
+
+    # Set any essential missing or plugin values in configuration with assembled default values
+    @configurator.populate_defaults( config_hash, defaults_hash )
+
+    ##
+    ## 5. Fill out / modify remaining configuration from user configuration + defaults
+    ##
+
+    log_step( 'Completing Project Configuration' )
+
+    # Configure test runner generation
+    @configurator.populate_test_runner_generation_config( config_hash )
+
+    # Evaluate environment vars again before subsequent configurations that might reference with inline Ruby string expansion
+    @configurator.eval_environment_variables( config_hash )
+
+    # Standardize values and expand inline Ruby string substitutions
+    @configurator.eval_paths( config_hash )
+    @configurator.eval_flags( config_hash )
+    @configurator.eval_defines( config_hash )
+    @configurator.standardize_paths( config_hash )
+
+    # Fill out any missing tool config value / supplement arguments
+    @configurator.populate_tools_config( config_hash )
+    @configurator.populate_tools_supplemental_arguments( config_hash )
+
+    # Configure test runner build & runtime options
+    @test_runner_manager.configure_build_options( config_hash )
+    @test_runner_manager.configure_runtime_options( app_cfg[:include_test_case], app_cfg[:exclude_test_case] )
+
+    ##
+    ## 6. Validate configuration
+    ##
+
+    log_step( 'Validating final project configuration', heading:false )
+
+    @configurator.validate_final( config_hash, app_cfg )
+
+    ##
+    ## 7. Flatten configuration + process it into globals and accessors
+    ##
+
+    # Skip logging this step as the end user doesn't care about this internal preparation
+
     # Partially flatten config + build Configurator accessors and globals
-    @ceedling[:configurator].build( app_cfg[:ceedling_lib_path], config_hash, :environment )
+    @configurator.build( app_cfg[:ceedling_lib_path], config_hash, :environment )
 
-    @ceedling[:configurator].insert_rake_plugins( @ceedling[:configurator].rake_plugins )
-    @ceedling[:configurator].tools_supplement_arguments( config_hash )
+    ##
+    ## 8. Final plugins handling
+    ##
+
+    # Detailed logging already happend for plugin processing
+    log_step( 'Loading Plugins' )
+
+    @configurator.insert_rake_plugins( @configurator.rake_plugins )
     
     # Merge in any environment variables that plugins specify after the main build
-    @ceedling[:plugin_manager].load_programmatic_plugins( @ceedling[:configurator].programmatic_plugins, @ceedling ) do |env|
-      @ceedling[:configurator].eval_environment_variables( env )
-      @ceedling[:configurator].build_supplement( config_hash, env )
+    @plugin_manager.load_programmatic_plugins( @configurator.programmatic_plugins, @ceedling ) do |env|
+      # Evaluate environment vars that plugins may have added
+      @configurator.eval_environment_variables( env )
+      @configurator.build_supplement( config_hash, env )
     end
     
     # Inject dependencies for plugin needs
-    @ceedling[:plugin_reportinator].set_system_objects( @ceedling )
-
-    # Process options for additional test runner #defines and test runner command line arguments
-    @ceedling[:test_runner_manager].validate_and_configure_options()
-
-    # Logging set up
-    @ceedling[:loginator].set_logfile( form_log_filepath( log_filepath ) )
-    @ceedling[:configurator].project_logging = @ceedling[:loginator].project_logging
+    @plugin_reportinator.set_system_objects( @ceedling )
   end
 
   def reset_defaults(config_hash)
-    @ceedling[:configurator].reset_defaults( config_hash )
+    @configurator.reset_defaults( config_hash )
   end
 
 ### Private
@@ -86,11 +183,23 @@ private
 
     # If there's no directory path, put named log file in default location
     if File.dirname( log_filepath ).empty?()
-      return File.join( @ceedling[:configurator].project_log_path, log_filepath )
+      return File.join( @configurator.project_log_path, log_filepath )
     end
 
     # Otherwise, log filepath includes a directory (that's already been created)
     return log_filepath
   end
+
+  # Neaten up a build step with progress message and some scope encapsulation
+  def log_step(msg, heading:true)
+    if heading
+      msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+    else # Progress message
+      msg = "\n" + @reportinator.generate_progress( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+    end
+
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+  end
+
 
 end

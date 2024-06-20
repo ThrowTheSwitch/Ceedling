@@ -111,7 +111,7 @@ programmatic `Plugin` subclasses (Ceedling plugins options #2).
    that Ceedling incorporates into its configuration defaults during startup. 
    This provides the greatest flexibility in creating configuration values.
 1. **YAML configurations.** The data of a simple YAML file is incorporated into
-   Ceedling's configuration much like Ceedling's actual configuration file.
+   Ceedling's configuration much like your project configuration file.
 
 ## Example configuration plugin layout
 
@@ -141,21 +141,39 @@ project/
 
 ## Ceedling configuration build & use
 
-Configuration is developed at startup in this order:
+Configuration is developed at startup by assembling defaults, collecting 
+user-configured settings, and then populating any missing values with defaults.
 
-1. Ceedling loads its own defaults
-1. Any plugin defaults are inserted, if they do not already exist
-1. Any plugin configuration is merged
-1. Project file configuration is merged
+Defaults:
 
-Merging means that any existing configuration is replaced. If no such 
-key/value pairs already exist, they are inserted into the configuration.
+1. Ceedling loads its own defaults separately from your project configuration
+1. Supporting framework defaults such as for CMock are populated into (1)
+1. Any plugin defaults are merged with (2).
 
-A plugin may further implement its own code to use custom configuration added to
-the Ceedling project file. In such cases, it's typically wise to make use of a
-plugin's option for defining default values. Configuration handling code is
-greatly simplified if strucures and values are guaranteed to exist in some
-form.
+Final project configuration:
+
+1. Your project file is loaded and any mixins merged
+1. Supporting framework settings that depend on project configuration are populated
+1. Plugin configurations are merged with the result of (1) and (2)
+1. Defaults are populated into your project configuration
+1. Path standardization, string replacement, and related occur throughout the final 
+   configuration
+
+Merging means that existing simple configuration valuees are replaced or, in the 
+case of containers such as lists and hashes, values are added to. If no such 
+key/value pairs already exist, they are simply inserted into the configuration. 
+
+Populating means inserting a configuration value if none already exists. As an 
+example, if Ceedling finds no compiler defined for test builds in your project
+configuration, it populates your configuration with its own internal tool definition.
+
+A plugin may implement its own code to use extract custom configuration from
+the Ceedling project file. See the built-in plugins for examples. For instance, the
+Beep plugin makes use of a top-level `:beep` section in project configuration. In 
+such cases, it's typically wise to make use of a plugin's option for defining 
+default values. Configuration handling code is greatly simplified if values are 
+guaranteed to exist in some form. This elimiates a great deal of presence checking
+and related code.
 
 ## Configuration Plugin Flavors
 

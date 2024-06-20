@@ -164,12 +164,28 @@ class ConfiguratorSetup
     if config[:project][:use_backtrace] == :gdb
       valid &= @configurator_validator.validate_tool(
         config:config,
-        key: :backtrace_reporter,
+        key: :test_backtrace_gdb,
         respect_optional: false
       )
     end
 
     return valid
+  end
+
+  def validate_test_runner_generation(config, include_test_case, exclude_test_case)
+    cmdline_args = config[:test_runner][:cmdline_args]
+
+    # Test case filters in use
+    test_case_filters = !include_test_case.empty? || !exclude_test_case.empty?
+
+    # Test case filters are in use but test runner command line arguments are not enabled
+    if (test_case_filters and !cmdline_args)
+      msg = 'Test case filters cannot be used -- enable :test_runner ↳ :cmdline_args in your project configuration'
+      @loginator.log( msg, Verbosity::ERRORS )
+      return false
+    end
+
+    return true
   end
 
   def validate_backtrace(config)
@@ -185,7 +201,7 @@ class ConfiguratorSetup
     when :gdb
       # Do nothing
     else
-      @loginator.log( ":project ↳ :use_backtrace is '#{use_backtrace}' but must be :none, :simple, or :gdb", Verbosity::ERRORS )      
+      @loginator.log( ":project ↳ :use_backtrace is '#{use_backtrace}' but must be :none, :simple, or :gdb", Verbosity::ERRORS )
       valid = false
     end
 

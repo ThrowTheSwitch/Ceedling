@@ -16,12 +16,12 @@ class Configurator
   attr_reader :project_config_hash, :programmatic_plugins, :rake_plugins
   attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case
 
-  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper) do
+  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper, :loginator, :reportinator) do
     @project_logging = false
     @sanity_checks   = TestResultsSanityChecks::NORMAL
   end
 
-  def setup
+  def setup()
     # Cmock config reference to provide to CMock for mock generation
     @cmock_config = {} # Default empty hash, replaced by reference below
 
@@ -59,7 +59,8 @@ class Configurator
      :release_compiler,
      :release_assembler,
      :release_linker,
-     :release_dependencies_generator].each do |tool|
+     :release_dependencies_generator
+    ].each do |tool|
       config[:tools].delete(tool) if (not (config[:tools][tool].nil?))
     end
   end
@@ -69,8 +70,10 @@ class Configurator
   # We do this because early config validation failures may need access to verbosity,
   # but the accessors won't be available until after configuration is validated.
   def set_verbosity(config)
-    # PROJECT_VERBOSITY and PROJECT_DEBUG were set at command line processing 
-    # before Ceedling is even loaded.
+    # PROJECT_VERBOSITY and PROJECT_DEBUG set at command line processing before Ceedling is loaded
+
+    # Configurator will later try to create these accessors automatically but will silently 
+    # fail if they already exist.
 
     if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG) or (config[:project][:debug])
       eval("def project_debug() return true end", binding())
@@ -81,76 +84,152 @@ class Configurator
     if !!defined?(PROJECT_VERBOSITY)
       eval("def project_verbosity() return #{PROJECT_VERBOSITY} end", binding())
     end
-
-    # Configurator will try to create these accessors automatically but will silently 
-    # fail if they already exist.
   end
 
 
   # The default values defined in defaults.rb (eg. DEFAULT_TOOLS_TEST) are populated
   # into @param config
-  def populate_defaults(config)
-    new_config = DEFAULT_CEEDLING_CONFIG.deep_clone
-    new_config.deep_merge!(config)
-    config.replace(new_config)
+  def merge_tools_defaults(config, default_config)
+    msg = @reportinator.generate_progress( 'Collecting default tool configurations' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST )
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_PREPROCESSORS ) if (config[:project][:use_test_preprocessor])
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_TEST_ASSEMBLER )     if (config[:test_build][:use_assembly])
+    default_config.deep_merge( DEFAULT_TOOLS_TEST.deep_clone() )
 
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE )              if (config[:project][:release_build])
-    @configurator_builder.populate_defaults( config, DEFAULT_TOOLS_RELEASE_ASSEMBLER )    if (config[:project][:release_build] and config[:release_build][:use_assembly])
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone() ) if (config[:project][:use_test_preprocessor])
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_ASSEMBLER.deep_clone() )     if (config[:test_build][:use_assembly])
+
+    default_config.deep_merge( DEFAULT_TOOLS_RELEASE.deep_clone() )            if (config[:project][:release_build])
+    default_config.deep_merge( DEFAULT_TOOLS_RELEASE_ASSEMBLER.deep_clone() )  if (config[:project][:release_build] and config[:release_build][:use_assembly])
   end
 
 
-  def populate_unity_defaults(config)
-    unity = config[:unity] || {}
-
-    unity[:defines] = [] if (unity[:defines].nil?)
-  end
-
-
-  def populate_cmock_defaults(config)
+  def populate_cmock_defaults(config, default_config)
     # Cmock has its own internal defaults handling, but we need to set these specific values
     # so they're present for the build environment to access;
-    # Note: These need to end up in the hash given to initialize cmock for this to be successful
-    cmock = config[:cmock] || {}
+    # Note: these need to end up in the hash given to initialize cmock for this to be successful
+
+    return if !config[:project][:use_mocks]
+
+    msg = @reportinator.generate_progress( 'Collecting CMock defaults' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+    # Populate defaults with CMock internal settings
+    default_cmock = default_config[:cmock] || {}
 
     # Yes, we're duplicating the defaults in CMock, but it's because:
     #  (A) We always need CMOCK_MOCK_PREFIX in Ceedling's environment
     #  (B) Test runner generator uses these same configuration values
-    cmock[:mock_prefix] = 'Mock' if (cmock[:mock_prefix].nil?)
-    cmock[:mock_suffix] = ''     if (cmock[:mock_suffix].nil?)
+    default_cmock[:mock_prefix] = 'Mock' if (default_cmock[:mock_prefix].nil?)
+    default_cmock[:mock_suffix] = ''     if (default_cmock[:mock_suffix].nil?)
 
-    # just because strict ordering is the way to go
-    cmock[:enforce_strict_ordering] = true                                                  if (cmock[:enforce_strict_ordering].nil?)
+    # Just because strict ordering is the way to go
+    default_cmock[:enforce_strict_ordering] = true                                                  if (default_cmock[:enforce_strict_ordering].nil?)
 
-    cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (cmock[:mock_path].nil?)
+    default_cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (default_cmock[:mock_path].nil?)
 
-    # Use dynamically defined accessor
-    cmock[:verbosity] = project_verbosity()                                                 if (cmock[:verbosity].nil?)
+    default_cmock[:verbosity] = project_verbosity()                                                 if (default_cmock[:verbosity].nil?)
+  end
 
-    cmock[:plugins] = []                             if (cmock[:plugins].nil?)
-    cmock[:plugins].map! { |plugin| plugin.to_sym }
+
+  def prepare_plugins_load_paths(plugins_load_path, config)
+    # Plugins must be loaded before generic path evaluation & magic that happen later.
+    # So, perform path magic here as discrete step.
+    config[:plugins][:load_paths].each do |path|
+      path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      FilePathUtils::standardize( path )
+    end
+
+    # Add Ceedling's plugins path as load path so built-in plugins can be found
+    config[:plugins][:load_paths] << plugins_load_path
+    config[:plugins][:load_paths].uniq!
+
+    return @configurator_plugins.process_aux_load_paths( config )
+  end
+
+
+  def merge_plugins_defaults(paths_hash, config, default_config)
+    # Config YAML defaults plugins
+    plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash )
+    
+    # Config Ruby-based hash defaults plugins
+    plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
+
+    if (!plugin_yml_defaults.empty? or !plugin_hash_defaults.empty?)
+      msg = @reportinator.generate_progress( 'Collecting plugin defaults' )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+    end
+
+    if !@configurator_plugins.plugin_yml_defaults.empty?
+      msg = " > Plugin YAML defaults: " + @configurator_plugins.plugin_yml_defaults.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
+    end
+
+    # Load base configuration values (defaults) from YAML
+    plugin_yml_defaults.each do |defaults|
+      default_config.deep_merge( @yaml_wrapper.load( defaults ) )
+    end
+
+    if !@configurator_plugins.plugin_hash_defaults.empty?
+      msg = " > Plugin Ruby hash defaults: " + @configurator_plugins.plugin_hash_defaults.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
+    end
+
+    # Load base configuration values (defaults) as hash from Ruby
+    plugin_hash_defaults.each do |defaults|
+      default_config.deep_merge( defaults )
+    end
+  end
+
+
+  def merge_ceedling_runtime_config(config, runtime_config)
+    # Merge Ceedling's internal runtime configuration settings
+    config.deep_merge( runtime_config )
+  end
+
+
+  def populate_cmock_config(config)
+    # Populate config with CMock config
+    cmock = config[:cmock] || {}
+    @cmock_config = cmock
+
+    return if !config[:project][:use_mocks]
+
+    msg = @reportinator.generate_progress( 'Processing CMock configuration' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+    cmock[:plugins] = [] if (cmock[:plugins].nil?)
+    cmock[:plugins].map! { |plugin| plugin.to_sym() }
     cmock[:plugins].uniq!
 
-    cmock[:unity_helper] = false                     if (cmock[:unity_helper].nil?)
+    cmock[:unity_helper] = false if (cmock[:unity_helper].nil?)
 
     if (cmock[:unity_helper])
       cmock[:unity_helper] = [cmock[:unity_helper]] if cmock[:unity_helper].is_a? String
+      cmock[:includes] = [] if (cmock[:includes].nil?)
       cmock[:includes] += cmock[:unity_helper].map{|helper| File.basename(helper) }
       cmock[:includes].uniq!
     end
 
-    @cmock_config = cmock
+    @loginator.log( "CMock configuration: #{cmock}", Verbosity::DEBUG )
   end
 
 
-  def configure_test_runner_generation(config)
+  def populate_defaults( config_hash, defaults_hash )
+    msg = @reportinator.generate_progress( 'Populating project configuration with collected default values' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )    
+
+    @configurator_builder.populate_defaults( config_hash, defaults_hash )
+  end
+
+
+  def populate_test_runner_generation_config(config)
+    msg = @reportinator.generate_progress( 'Populating test runner generation settings' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )    
+
     use_backtrace = config[:project][:use_backtrace]
 
-    # TODO: Potentially update once :gdb and :simple are disentangled
-    if (use_backtrace == :gdb) or (use_backtrace == :simple)
+    # Force command line argument option for any backtrace option
+    if use_backtrace != :none
       config[:test_runner][:cmdline_args] = true
     end
 
@@ -186,7 +265,10 @@ class Configurator
   #    - Handle inline Ruby string substitution
   #    - Handle needed defaults
   #  - Configure test runner from backtrace configuration
-  def tools_setup(config)
+  def populate_tools_config(config)
+    msg = @reportinator.generate_progress( 'Populating tool definition settings and expanding any string replacements' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     config[:tools].each_key do |name|
       tool = config[:tools][name]
 
@@ -211,78 +293,63 @@ class Configurator
   end
 
 
-  def tools_supplement_arguments(config)
-    tools_name_prefix = 'tools_'
-    config[:tools].each_key do |name|
-      tool = @project_config_hash[(tools_name_prefix + name.to_s).to_sym]
+  # Smoosh in extra arguments specified at top-level of config.
+  # This is useful for tweaking arguments for tools (where argument order does not matter).
+  # Arguments are squirted in at *end* of list.
+  def populate_tools_supplemental_arguments(config)
+    msg = @reportinator.generate_progress( 'Processing tool definition supplemental arguments' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-      # Smoosh in extra arguments specified at top-level of config
-      # (useful for plugins & default gcc tools if argument order does not matter).
-      # Arguments are squirted in at *end* of list.
-      top_level_tool = (tools_name_prefix + name.to_s).to_sym
-      if (not config[top_level_tool].nil?)
-         # Adding and flattening is not a good idea -- might over-flatten if 
-         # there's array nesting in tool args.
-         tool[:arguments].concat config[top_level_tool][:arguments]
+    prefix = 'tools_'
+    config[:tools].each do |key, tool|
+      name = key.to_s()
+
+      # Supplemental tool definition 
+      supplemental = config[(prefix + name).to_sym]
+
+      if (not supplemental.nil?)
+        args_to_add = supplemental[:arguments]
+
+        msg = " > #{name}: Arguments " + args_to_add.map{|arg| "\"#{arg}\""}.join( ', ' )
+        @loginator.log( msg, Verbosity::DEBUG )
+
+        # Adding and flattening is not a good idea -- might over-flatten if array nesting in tool args
+        tool[:arguments].concat( args_to_add )
       end
     end
   end
 
 
-  def find_and_merge_plugins(plugins_load_path, config)
-    # Plugins must be loaded before generic path evaluation & magic that happen later.
-    # So, perform path magic here as discrete step.
-    config[:plugins][:load_paths].each do |path|
-      path.replace( @system_wrapper.module_eval(path) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
-      FilePathUtils::standardize(path)
-    end
-
-    # Add Ceedling's plugins path as load path so built-in plugins can be found
-    config[:plugins][:load_paths] << plugins_load_path
-    config[:plugins][:load_paths].uniq!
-
-    paths_hash = @configurator_plugins.process_aux_load_paths(config)
+  def discover_plugins(paths_hash, config)
+    msg = @reportinator.generate_progress( 'Discovering all plugins' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     # Rake-based plugins
     @rake_plugins = @configurator_plugins.find_rake_plugins( config, paths_hash )
+    if !@configurator_plugins.rake_plugins.empty?
+      msg = " > Rake plugins: " + @configurator_plugins.rake_plugins.map{|p| p[:plugin]}.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
+    end
 
-    # Ruby `PLugin` subclass programmatic plugins
+    # Ruby `Plugin` subclass programmatic plugins
     @programmatic_plugins = @configurator_plugins.find_programmatic_plugins( config, paths_hash )
+    if !@configurator_plugins.programmatic_plugins.empty?
+      msg = " > Programmatic plugins: " + @configurator_plugins.programmatic_plugins.map{|p| p[:plugin]}.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
+    end
     
-    # Config YAML defaults plugins
-    plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash )
-    
-    # Config Ruby-based hash defaults plugins
-    plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
-
     # Config plugins
-    config_plugins  = @configurator_plugins.find_config_plugins( config, paths_hash )
-
-    # Load base configuration values (defaults) from YAML
-    plugin_yml_defaults.each do |defaults|
-      @configurator_builder.populate_defaults( config, @yaml_wrapper.load(defaults) )
+    config_plugins = @configurator_plugins.find_config_plugins( config, paths_hash )
+    if !@configurator_plugins.config_plugins.empty?
+      msg = " > Config plugins: " + @configurator_plugins.config_plugins.map{|p| p[:plugin]}.join( ', ' )
+      @loginator.log( msg, Verbosity::DEBUG )
     end
 
-    # Load base configuration values (defaults) as hash from Ruby
-    plugin_hash_defaults.each do |defaults|
-      @configurator_builder.populate_defaults( config, defaults )
-    end
+    return config_plugins
+  end
 
-    # Merge plugin configuration values (like Ceedling project file)
-    config_plugins.each do |plugin|
-      plugin_config = @yaml_wrapper.load( plugin )
 
-      # Special handling for plugin paths
-      if (plugin_config.include?( :paths ))
-        plugin_config[:paths].update(plugin_config[:paths]) do |k,v| 
-          plugin_path = plugin.match(/(.*)[\/]config[\/]\w+\.yml/)[1]
-          v.map {|vv| File.expand_path(vv.gsub!(/\$PLUGIN_PATH/,plugin_path)) }
-        end
-      end
-
-      config.deep_merge(plugin_config)
-    end
-
+  def populate_plugins_config(paths_hash, config)
     # Set special plugin setting for results printing if unset
     config[:plugins][:display_raw_test_results] = true if (config[:plugins][:display_raw_test_results].nil?)
 
@@ -291,9 +358,37 @@ class Configurator
   end
 
 
+  def merge_config_plugins(config)
+    return if @configurator_plugins.config_plugins.empty?
+
+    # Merge plugin configuration values (like Ceedling project file)
+    @configurator_plugins.config_plugins.each do |hash|
+      _config = @yaml_wrapper.load( hash[:path] )
+
+      msg = @reportinator.generate_progress( "Merging configuration from plugin #{hash[:plugin]}" )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+      # Special handling for plugin paths
+      if (_config.include?( :paths ))
+        _config[:paths].update( _config[:paths] ) do |k,v| 
+          plugin_path = plugin.match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
+          v.map {|vv| File.expand_path( vv.gsub!( /\$PLUGIN_PATH/, plugin_path) ) }
+        end
+      end
+
+      config.deep_merge( _config )
+    end
+  end
+
+
   # Process environment variables set in configuration file
-  # (Each entry beneath :environment is another hash)
+  # (Each entry within the :environment array is a hash)
   def eval_environment_variables(config)
+    return if config[:environment].nil?
+
+    msg = @reportinator.generate_progress( 'Processing environment variables' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     config[:environment].each do |hash|
       key   = hash.keys[0] # Get first (should be only) environment variable entry
       value = hash[key]    # Get associated value
@@ -327,9 +422,12 @@ class Configurator
   end
 
 
-  # Eval config path lists (convert strings to array of size 1) and handle any Ruby string replacement
+  # Eval config path lists (convert any strings to array of size 1) and handle any Ruby string replacement
   def eval_paths(config)
     # :plugins ↳ :load_paths already handled
+
+    msg = @reportinator.generate_progress( 'Processing path entries and expanding any string replacements' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     eval_path_entries( config[:project][:build_root] )
     eval_path_entries( config[:release_build][:artifacts] )
@@ -354,6 +452,9 @@ class Configurator
 
   # Handle any Ruby string replacement for :flags string arrays
   def eval_flags(config)
+    msg = @reportinator.generate_progress( 'Expanding any string replacements in :flags entries' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     # Descend down to array of command line flags strings regardless of depth in config block
     traverse_hash_eval_string_arrays( config[:flags] )
   end
@@ -361,12 +462,18 @@ class Configurator
 
   # Handle any Ruby string replacement for :defines string arrays
   def eval_defines(config)
+    msg = @reportinator.generate_progress( 'Expanding any string replacements in :defines entries' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     # Descend down to array of #define strings regardless of depth in config block
     traverse_hash_eval_string_arrays( config[:defines] )
   end
 
 
   def standardize_paths(config)
+    msg = @reportinator.generate_progress( 'Standardizing all paths' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
     # Individual paths that don't follow `_path` convention processed here
     paths = [
       config[:project][:build_root],
@@ -406,11 +513,16 @@ class Configurator
   end
 
 
-  def validate_final(config)
+  def validate_final(config, app_cfg)
     # Collect all infractions, everybody on probation until final adjudication
     blotter = true
     blotter &= @configurator_setup.validate_paths( config )
     blotter &= @configurator_setup.validate_tools( config )
+    blotter &= @configurator_setup.validate_test_runner_generation(
+                 config,
+                 app_cfg[:include_test_case],
+                 app_cfg[:exclude_test_case]
+               )
     blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
     blotter &= @configurator_setup.validate_plugins( config )
@@ -487,8 +599,11 @@ class Configurator
 
 
   def insert_rake_plugins(plugins)
-    plugins.each do |plugin|
-      @project_config_hash[:project_rakefile_component_files] << plugin
+    plugins.each do |hash|
+      msg = @reportinator.generate_progress( "Adding plugin #{hash[:plugin]} to Rake load list" )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+      @project_config_hash[:project_rakefile_component_files] << hash[:path]
     end
   end
 

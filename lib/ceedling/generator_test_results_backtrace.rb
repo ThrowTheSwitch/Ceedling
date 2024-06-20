@@ -88,7 +88,7 @@ class GeneratorTestResultsBacktrace
     test_cases.each do |test_case|
       # Build the test fixture to run with our test case of interest
       command = @tool_executor.build_command_line(
-        @configurator.tools_backtrace_reporter, [],
+        @configurator.tools_test_backtrace_gdb, [],
         gdb_script_filepath,
         executable,
         test_case[:test]
