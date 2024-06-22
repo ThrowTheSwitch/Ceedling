@@ -7,7 +7,7 @@ These breaking changes are complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-04-02
+# [1.0.0 pre-release] — 2024-06-19
 
 ## Explicit `:paths` ↳ `:include` entries in the project file
 
@@ -74,6 +74,12 @@ Each test is now treated as its own mini-project. Differentiating components of 
 ### Release builds
 
 Release build object files were previously segregated by their source. The release build output directory had subdirectories `c/` and `asm/`. These subdirectories are no longer in use.
+
+## Configuration defaults and configuration set up order
+
+Ceedling’s previous handling of defaults and configuration processing order certainly worked, but it was not as proper as it could be. To oversimplify, default values were applied in an ordering that caused complications for advanced plugins and advanced users. This has been rectified. Default settings are now processed after all user configurations and plugins.
+
+For some users and some custom plugins, the new ordering may cause unexpected results. The changes had no known impact on existing plugins and typical project configurations.
 
 ## Changes to global constants & accessors
 

@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-06-12
+# [1.0.0 pre-release] — 2024-06-19
 
 ## 🌟 Added
 
@@ -190,6 +190,10 @@ Options and support for loading a project configuration have expanded significan
 The environment variable option for pointing Ceedling to a project file other than _project.yml_ in your working directory has been renamed `CEEDLING_MAIN_PROJECT_FILE` ➡️ `CEEDLING_PROJECT_FILE`.
 
 Documentation on Mixins and the new options for loading a project configuration are thoroughly documented in _[CeedlingPacket](CeedlingPacket.md))_.
+
+### Configuration defaults and configuration set up order
+
+Ceedling’s previous handling of defaults and configuration processing order certainly worked, but it was not as proper as it could be. To oversimplify, default values were applied in an ordering that caused complications for advanced plugins and advanced users. This has been rectified. Default settings are now processed after all user configurations and plugins.
 
 ### Plugin system improvements
 

@@ -7,7 +7,7 @@ These release notes are complemented by two other documents:
 
 ---
 
-# 1.0.0 pre-release — June 12, 2024
+# 1.0.0 pre-release — June 19, 2024
 
 ## 🏴‍☠️ Avast, Breaking Changes, Ye Scallywags!
 
@@ -158,6 +158,10 @@ By default, a crashed test executable is automatically rerun for each test case 
 The `:simple` and `:gdb` options for this feature fully and correctly report each test case’s status for a crashed test executable. Crashed test cases are counted as failures. The `:none` option does not run each test case individually. Instead, in the case of crashed test executable, it marks each test case as a failure reporting that the entire test executable crashed.
 
 See _[CeedlingPacket](CeedlingPacket.md))_ for the new `:project` ↳ `:use_backtrace` feature to control how much detail is extracted from a crashed test executable to help you find the cause.
+
+#### Configuration defaults and configuration set up order
+
+Ceedling’s previous handling of defaults and configuration processing order certainly worked, but it was not as proper as it could be. To oversimplify, default values were applied in an ordering that caused complications for advanced plugins and advanced users. This has been rectified. Default settings are now processed after all user configurations and plugins.
 
 #### Documentation
 
