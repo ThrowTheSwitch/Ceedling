@@ -108,8 +108,6 @@ class Configurator
     # so they're present for the build environment to access;
     # Note: these need to end up in the hash given to initialize cmock for this to be successful
 
-    return if !config[:project][:use_mocks]
-
     msg = @reportinator.generate_progress( 'Collecting CMock defaults' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
@@ -197,7 +195,7 @@ class Configurator
     msg = @reportinator.generate_progress( 'Processing CMock configuration' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-    cmock[:plugins] = [] if (cmock[:plugins].nil?)
+    # Plugins housekeeping
     cmock[:plugins].map! { |plugin| plugin.to_sym() }
     cmock[:plugins].uniq!
 
@@ -241,7 +239,20 @@ class Configurator
     # Merge Unity options used by test runner generation
     config[:test_runner][:defines] += config[:unity][:defines]
 
+    @loginator.log( "Test runner configuration: #{config[:test_runner]}", Verbosity::DEBUG )
+
     @runner_config = config[:test_runner]
+  end
+
+
+  def populate_exceptions_config(config)
+    # Automagically set exception handling if CMock is configured for it
+    if config[:cmock][:plugins] && config[:cmock][:plugins].include?(:cexception)
+      msg = @reportinator.generate_progress( 'Enabling CException use based on CMock plugins settings' )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )    
+
+      config[:project][:use_exceptions] = true
+    end
   end
 
 

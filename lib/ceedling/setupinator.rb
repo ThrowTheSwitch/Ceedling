@@ -88,8 +88,8 @@ class Setupinator
 
     # Plugin handling
     @configurator.discover_plugins( plugins_paths_hash, config_hash )
-    @configurator.populate_plugins_config( plugins_paths_hash, config_hash )
     @configurator.merge_config_plugins( config_hash )
+    @configurator.populate_plugins_config( plugins_paths_hash, config_hash )
 
     ##
     ## 4. Collect and apply defaults to user configuration
@@ -114,6 +114,9 @@ class Setupinator
 
     # Configure test runner generation
     @configurator.populate_test_runner_generation_config( config_hash )
+
+    # Automagically enable use of exceptions based on CMock settings
+    @configurator.populate_exceptions_config( config_hash )
 
     # Evaluate environment vars again before subsequent configurations that might reference with inline Ruby string expansion
     @configurator.eval_environment_variables( config_hash )

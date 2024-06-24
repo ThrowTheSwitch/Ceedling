@@ -60,7 +60,7 @@ class ConfiguratorBuilder
 
     config.each_key do | parent |
 
-      # gracefully handle empty top-level entries
+      # Gracefully handle empty top-level entries
       next if (config[parent].nil?)
 
       case config[parent]
@@ -69,12 +69,14 @@ class ConfiguratorBuilder
           key = "#{parent.to_s.downcase}_#{hash.keys[0].to_s.downcase}".to_sym
           new_hash[key] = hash[hash.keys[0]]
         end
+
       when Hash
         config[parent].each_pair do | child, value |
           key = "#{parent.to_s.downcase}_#{child.to_s.downcase}".to_sym
           new_hash[key] = value
         end
-      # handle entries with no children, only values
+
+      # Handle entries with no children, only values
       else
         new_hash["#{parent.to_s.downcase}".to_sym] = config[parent]
       end
@@ -103,23 +105,8 @@ class ConfiguratorBuilder
 
 
   def cleanup(in_hash)
-    # ensure that include files inserted into test runners have file extensions & proper ones at that
+    # Ensure that include files inserted into test runners have file extensions & proper ones at that
     in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
-  end
-
-
-  def set_exception_handling(in_hash)
-    # If project defines exception handling, do not change the setting.
-    # But, if the project omits exception handling setting...
-    if not in_hash[:project_use_exceptions]
-      # Automagically set it if cmock is configured for it
-      if in_hash[:cmock_plugins] && in_hash[:cmock_plugins].include?(:cexception)
-        in_hash[:project_use_exceptions] = true
-      # Otherwise, disable exceptions for the project
-      else
-        in_hash[:project_use_exceptions] = false
-      end  
-    end
   end
 
 
@@ -161,7 +148,7 @@ class ConfiguratorBuilder
 
     out_hash[:project_build_paths] = []
 
-    # fetch already set mock path
+    # Fetch already set mock path
     out_hash[:project_build_paths] << in_hash[:cmock_mock_path] if (in_hash[:project_use_mocks])
 
     paths.each do |path|
@@ -169,9 +156,9 @@ class ConfiguratorBuilder
       build_path               = path[1]
       build_path_add_condition = path[2]
 
-      # insert path into build paths if associated with true condition
+      # Insert path into build paths if associated with true condition
       out_hash[:project_build_paths] << build_path if build_path_add_condition
-      # set path symbol name and path for each entry in paths array
+      # Set path symbol name and path for each entry in paths array
       out_hash[build_path_name] = build_path
     end
 

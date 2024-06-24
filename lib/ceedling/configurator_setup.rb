@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 # Add sort-ability to symbol so we can order keys array in hash for test-ability
 class Symbol
@@ -30,11 +31,10 @@ class ConfiguratorSetup
   end
 
   def build_project_config(ceedling_lib_path, flattened_config)
-    ### flesh out config
+    # Housekeeping
     @configurator_builder.cleanup( flattened_config )
-    @configurator_builder.set_exception_handling( flattened_config )
 
-    ### add to hash values we build up from configuration & file system contents
+    # Add to hash values we build up from configuration & file system contents
     flattened_config.merge!( @configurator_builder.set_build_paths( flattened_config ) )
     flattened_config.merge!( @configurator_builder.set_rakefile_components( ceedling_lib_path, flattened_config ) )
     flattened_config.merge!( @configurator_builder.set_release_target( flattened_config ) )
@@ -44,7 +44,17 @@ class ConfiguratorSetup
   end
 
   def build_directory_structure(flattened_config)
+    msg = "Build paths:"
     flattened_config[:project_build_paths].each do |path|
+      msg += "\n - #{(path.nil? or path.empty?) ? '<empty>' : path}"
+    end
+    @loginator.log( msg, Verbosity::DEBUG )
+
+    flattened_config[:project_build_paths].each do |path|
+      if path.nil? or path.empty?
+        raise CeedlingException.new( "Blank internal project build path subdirectory value" )
+      end
+
       @file_wrapper.mkdir( path )
     end
   end
