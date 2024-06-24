@@ -407,7 +407,7 @@ class TestInvoker
       # Debug backtrace
       @loginator.log("Backtrace ==>", Verbosity::DEBUG)
       if @verbosinator.should_output?(Verbosity::DEBUG)
-        @loginator.log(e.backtrace, Verbosity::DEBUG) # Formats properly when directly passed to puts()
+        @loginator.log(e.backtrace, Verbosity::DEBUG)
       end
     end
   end
