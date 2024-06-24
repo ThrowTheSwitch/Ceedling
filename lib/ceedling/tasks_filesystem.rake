@@ -27,7 +27,7 @@ CLOBBER.include(File.join(PROJECT_LOG_PATH, '**/*'))
 CLOBBER.exclude(File.join(TESTS_BASE_PATH), '**/.gitkeep')
 
 # because of cmock config, mock path can optionally exist apart from standard test build paths
-CLOBBER.include(File.join(CMOCK_MOCK_PATH, '*'))
+CLOBBER.include(File.join(CMOCK_MOCK_PATH, '*')) if PROJECT_USE_MOCKS
 
 REMOVE_FILE_PROC = Proc.new { |fn| rm_r fn rescue nil }
 
