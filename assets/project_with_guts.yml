@@ -149,7 +149,6 @@
   :when_no_prototypes:  :warn      # the options being :ignore, :warn, or :erro
 
   # File configuration
-  :mock_path:  './build/mocks'     # Subdirectory to store mocks when generated (default: mocks)
   :skeleton_path:  ''              # Subdirectory to store stubs when generated (default: '')
   :mock_prefix:  'mock_'           # Prefix to append to filenames for mocks
   :mock_suffix:  ''                # Suffix to append to filenames for mocks
