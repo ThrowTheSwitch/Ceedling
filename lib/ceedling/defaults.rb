@@ -303,7 +303,8 @@ DEFAULT_RELEASE_TARGET_NAME = 'project'
 DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :project => {
       # :build_root must be set by user
-      :use_mocks => true,
+      :use_mocks => false,
+      :use_exceptions => false,
       :compile_threads => 1,
       :test_threads => 1,
       :use_test_preprocessor => false,
@@ -385,7 +386,8 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
 
     :cmock => {
       :includes => [],
-      :defines => []
+      :defines => [],
+      :plugins => []
     },
 
     :cexception => {
