@@ -39,28 +39,33 @@ COMMAND_HOOKS_LIST = [
 class CommandHooks < Plugin
 
   def setup
+    # Get a copy of the project configuration
     project_config = @ceedling[:setupinator].config_hash
     
+    # Look up if the accompanying `:command_hooks` configuration block exists
     config_exists = @ceedling[:configurator_validator].exists?(
       project_config,
       COMMAND_HOOKS_SYM
     )
     
+    # Go boom if the required configuration block does not exist
     unless config_exists
       name = @ceedling[:reportinator].generate_config_walk([COMMAND_HOOKS_SYM])
-      error = "Missing configuration #{name}"
+      error = "Command Hooks plugin is enabled but is missing a required configuration block `#{name}`"
       raise CeedlingException.new(error)
     end
     
     @config = project_config[COMMAND_HOOKS_SYM]
     
-    validate_config(@config)
+    # Validate the command hook keys (look out for typos)
+    validate_config( @config )
     
+    # Validate the tools beneath the keys
     @config.each do |hook, tool|
       if tool.is_a?(Array)
-        tool.each_index {|index| validate_hook_tool(project_config, hook, index)}
+        tool.each_index {|index| validate_hook_tool( project_config, hook, index )}
       else
-        validate_hook_tool(project_config, hook)
+        validate_hook_tool( project_config, hook )
       end
     end
   end
@@ -87,6 +92,8 @@ class CommandHooks < Plugin
   def post_build;                          run_hook( :post_build                                        ); end
   def post_error;                          run_hook( :post_error                                        ); end
 
+  ### Private
+
   private
   
   ##
@@ -102,16 +109,16 @@ class CommandHooks < Plugin
       raise CeedlingException.new(error)
     end
     
-    unknown_hooks = config.keys - COMMAND_HOOKS_LIST
+    unrecognized_hooks = config.keys - COMMAND_HOOKS_LIST
     
-    unknown_hooks.each do |not_a_hook|
-      name = @ceedling[:reportinator].generate_config_walk([COMMAND_HOOKS_SYM, not_a_hook])
-      error = "Unrecognized option: #{name}"
-      @ceedling[:loginator].log(error, Verbosity::ERRORS)
+    unrecognized_hooks.each do |not_a_hook|
+      name = @ceedling[:reportinator].generate_config_walk( [COMMAND_HOOKS_SYM, not_a_hook] )
+      error = "Unrecognized command hook: #{name}"
+      @ceedling[:loginator].log( error, Verbosity::ERRORS )
     end
     
-    unless unknown_hooks.empty?
-      error = "Unrecognized hooks have been found in project configuration"
+    unless unrecognized_hooks.empty?
+      error = "Unrecognized hooks found in Command Hooks plugin configuration"
       raise CeedlingException.new(error)
     end
   end
@@ -125,25 +132,58 @@ class CommandHooks < Plugin
   #
   def validate_hook_tool(config, *keys)
     walk = [COMMAND_HOOKS_SYM, *keys]
-    name = @ceedling[:reportinator].generate_config_walk(walk)
-    hash = @ceedling[:config_walkinator].fetch_value(config, *walk)
+    name = @ceedling[:reportinator].generate_config_walk( walk )
+    hash = @ceedling[:config_walkinator].fetch_value( config, *walk )
     
-    tool_exists = @ceedling[:configurator_validator].exists?(config, *walk)
+    tool_exists = @ceedling[:configurator_validator].exists?( config, *walk )
     
     unless tool_exists
-      raise CeedlingException.new("Missing configuration #{name}")
+      raise CeedlingException.new( "Missing Command Hook plugin tool configuration #{name}" )
     end
     
     tool = hash[:value]
     
     unless tool.is_a?(Hash)
       error = "Expected configuration #{name} to be a Hash but found #{tool.class}"
-      raise CeedlingException.new(error)
+      raise CeedlingException.new( error )
     end
   
-    @ceedling[:tool_validator].validate(tool: tool, name: name, boom: true)
+    @ceedling[:tool_validator].validate( tool: tool, name: name, boom: true )
   end
   
+  ##
+  # Run a hook if its available.
+  #
+  # If __which_hook__ is an array, run each of them sequentially.
+  #
+  # :args:
+  #   - which_hook: Name of the hook to run
+  #   - name: Name of file
+  #
+  def run_hook(which_hook, name="")
+    if (@config[which_hook])
+      msg = "Running command hook #{which_hook}"
+      msg = @ceedling[:reportinator].generate_progress( msg )
+      @ceedling[:loginator].log( msg )
+      
+      # Single tool config
+      if (@config[which_hook].is_a? Hash)
+        run_hook_step( @config[which_hook], name )
+      
+      # Multiple tool configs
+      elsif (@config[which_hook].is_a? Array)
+        @config[which_hook].each do |hook|
+          run_hook_step(hook, name)
+        end
+      
+      # Tool config is bad
+      else
+        msg = "The tool config for Command Hook #{which_hook} was poorly formed and not run"
+        @ceedling[:loginator].log( msg, Verbosity::COMPLAIN )
+      end
+    end
+  end
+
   ##
   # Run a hook if its available.
   #
@@ -158,38 +198,8 @@ class CommandHooks < Plugin
     if (hook[:executable])
       # Handle argument replacemant ({$1}), and get commandline
       cmd = @ceedling[:tool_executor].build_command_line( hook, [], name )
-      shell_result = @ceedling[:tool_executor].exec(cmd)
+      shell_result = @ceedling[:tool_executor].exec( cmd )
     end
   end
 
-  ##
-  # Run a hook if its available.
-  #
-  # If __which_hook__ is an array, run each of them sequentially.
-  #
-  # :args:
-  #   - which_hook: Name of the hook to run
-  #   - name: Name of file
-  #
-  def run_hook(which_hook, name="")
-    if (@config[which_hook])
-      @ceedling[:loginator].log("Running command hook #{which_hook}...")
-      
-      # Single tool config
-      if (@config[which_hook].is_a? Hash)
-        run_hook_step( @config[which_hook], name )
-      
-      # Multiple took configs
-      elsif (@config[which_hook].is_a? Array)
-        @config[which_hook].each do |hook|
-          run_hook_step(hook, name)
-        end
-      
-      # Tool config is bad
-      else
-        msg = "Tool config for command hook #{which_hook} was poorly formed and not run"
-        @ceedling[:loginator].log( msg, Verbosity::COMPLAIN )
-      end
-    end
-  end
 end

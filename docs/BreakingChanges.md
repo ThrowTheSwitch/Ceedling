@@ -160,11 +160,13 @@ In addition, a previously undocumented feature for merging a second configuratio
 
 Thorough documentation on Mixins and the new options for loading a project configuration can be found in _[CeedlingPacket](CeedlingPacket.md))_.
 
-## `command_hooks` plugin tools configuration
+## Command Hooks plugin configuration change
 
-Previously, Command Hooks tools were defined under `:tools` section, now they must be defined under top-level `:command_hooks` section in project configuration.
+In previous versions of Ceedling, the Command Hooks plugin associated tools and hooks by a naming convention within the top-level `:tools` section of your project configuration. This required some semi-ugly tool names and could lead to a rather unwieldy `:tools` list. Further, this convention also limited a hook to an association with only a single tool.
 
-# Subprojects Plugin Replaced
+Hooks are now enabled within a top-level `:command_hooks` section in your project configuration. Each hook key in this configuration block can now support one or more tools organized beneath it. As such, each hook can execute one or more tools.
+
+## Subprojects plugin replaced
 
 The `subprojects` plugin has been completely replaced by the more-powerful `dependencies` plugin. To retain your previous functionality, you need to do a little reorganizing in your `project.yml` file. Obviously the `:subprojects` section is now called `:dependencies`. The collection of `:paths` is now `:deps`. We'll have a little more organizing to do once we're inside that section as well. Your `:source` is now organized in `:paths` ↳ `:source` and, since you're not fetching it form another project, the `:fetch` ↳ `:method` should be set to `:none`. The `:build_root` now becomes `:paths` ↳ `:build`. You'll also need to specify the name of the library produced under `:artifacts` ↳ `:static_libraries`.
 

@@ -240,7 +240,7 @@ The report format of the previously independent `xml_tests_report` plugin has be
 
 In some circumstances, JUnit report generation would yield an exception in its routines for reorganizing test results (Issues [#829](https://github.com/ThrowTheSwitch/Ceedling/issues/829) & [#833](https://github.com/ThrowTheSwitch/Ceedling/issues/833)). The true source of the nil test results entries has likely been fixed but protections have also been added in JUnit report generation as well.
 
-### Improvements and changes for `gcov` plugin
+### Improvements and changes for Gcov plugin
 
 1. Documentation has been significantly updated including a _Troubleshooting_ for common issues.
 1. Compilation with coverage now only occurs for the source files under test and no longer for all C files (i.e. coverage for unity.c, mocks, and test files that is meaningless noise has been eliminated).
@@ -256,11 +256,17 @@ See the [gcov plugin’s documentation](plugins/gcov/README.md).
 1. The plugin creates a compilation database that distinguishes the same code file compiled multiple times with different configurations as part of the new test suite build structure. It has been updated to work with other Ceedling changes.
 1. Documentation has been greatly revised.
 
-### Improvements for `beep` plugin
+### Improvements for Beep plugin
 
 1. Additional sound tools — `:tput`, `:beep`, and `:say` — have been added for more platform sound output options and fun.
 1. Documentation has been greatly revised.
 1. The plugin more properly uses looging and system shell calls.
+
+## Improvements for Command Hooks plugin
+
+In previous versions of Ceedling, the Command Hooks plugin associated tools and hooks by a naming convention within the top-level `:tools` section of your project configuration. This required some semi-ugly tool names and could lead to a rather unwieldy `:tools` list. Further, this convention also limited a hook to an association with only a single tool.
+
+Hooks are now enabled within a top-level `:command_hooks` section in your project configuration. Each hook key in this configuration block can now support one or more tools organized beneath it. As such, each hook can execute one or more tools.
 
 ## 👋 Removed
 

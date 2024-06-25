@@ -18,32 +18,51 @@ To use this plugin, it must be enabled:
 
 # Configuration
 
-To connect a utilties or scripts to build step hooks, Ceedling tools must be defined.
+## Overview
+
+To connect utilties or scripts to build step hooks, Ceedling tools must be defined.
 
 A Ceedling tool is just a YAML blob that gathers together a handful of settings and values that tell Ceedling how to build and execute a command line. Your tool can be a command line utility, a script, etc.
 
-Example Ceedling tools follow. Their tool entry names correspond to the build step hooks listed later in this document. That's how this plugin works. When enabled, it ensures any tools you define are executed by the corresponding build step hook that shares their name. The build step hook tool entry can be either a Ceedling tool or a list of them.
+Example Ceedling tools follow. When enabled, this plugin ensures any tools you define are executed by the corresponding build step hook they are organized beneath. The configurtion of enabled hooks and tools happens in a top-level `:command_hooks:` block within your project configuration. One or more tools can be attached to a build step hook.
 
-Each Ceedling tool requires an `:executable` string and an optional `:arguments` list. See _[CeedlingPacket][ceedling-packet]_ documentation for [`:tools`](https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#tools-configuring-command-line-tools-used-for-build-steps) entries to understand how to craft your argument list and other tool options.
+## Tool lists
 
-At present, this plugin only passes at most one runtime parameter for a given build step hook for use in a tool's argument list (from among the many processed by Ceedling's plugin framework). If available, this parameter can be referenced with a Ceedling tool argument expansion identifier `${1}`. That is, wherever you place `${1}` in your tool argument list, `${1}` will expand in the command line Ceedling constructs with the parameter this plugin provides for that build step hook. The list of build steps hooks below document any single parameters they provide at execution.
+A command hook can execute one or more tools.
+
+If only a single tool is needed, its hash keys and value can be organized as a YAML sub-hash beneath the hook key. Alternatively, a single tool can exist as the only entry in a YAML list.
+
+If multiple tools are needed, they must be organized as entries in a YAML list.
+
+See the commented examples below.
+
+## Tool definitions
+
+Each Ceedling tool requires an `:executable` string and an optional `:arguments` list. See _[CeedlingPacket][ceedling-packet]_ documentation for project configuration [`:tools`][tools-doc] entries to understand how to craft your argument list and other tool options.
+
+At present, this plugin passes at most one runtime parameter for use in a hook's tool argument list. If available, this parameter can be referenced with a Ceedling tool argument expansion identifier `${1}`. That is, wherever you place `${1}` in your tool argument list, `${1}` will expand in the command line Ceedling constructs with the parameter this plugin provides for that build step hook. The list of build steps hooks below document any single parameters they provide at execution.
+
+[tools-doc]: https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#tools-configuring-command-line-tools-used-for-build-steps
+
+## Command Hooks example configuration YAML
 
 ```yaml
 :command_hooks:
-  # Called every time a mock is generated
+  # Hook called every time a mock is generated
   # Who knows what my_script.py does -- sky is the limit
   :pre_mock_generate:
+    # This tool is organized as a sub-hash beneath the command hook key
     :executable: python
     :arguments:
       - my_script.py
       - --some-arg
       - ${1} # Replaced with the filepath of the header file that will be mocked
       
-  # Called after each linking operation
-  # Here, we are performing two task on the same build step hook, converting a
-  # binary executable to S-record format and then, zipping it along with some
-  # other files like linker's memory allocation/usage report and so on.
+  # Hook called for each linking operation
+  # Here, we are performing two tasks for the same build step hook, converting a
+  # binary executable to S-record format and, then, archiving with other artifacts.
   :post_link_execute:
+    # These tools are organized in a YAML list beneath the command hook key
     - :executable: objcopy.exe
       :arguments:
         - ${1} # Replaced with the filepath to the linker's binary artifact output
@@ -59,9 +78,9 @@ At present, this plugin only passes at most one runtime parameter for a given bu
 
 # Available Build Step Hooks
 
-Define any of the following entries within the `:command_hooks:` section of your Ceedling project file to automagically connect utilities or scripts to build process steps.
+Define any of the following entries within a top-level `:command_hooks:` section of your Ceedling project file to automagically connect utilities or scripts to build process steps.
 
-Some hooks are called for every file-related operation for which the hook is named. Other hooks are triggered by single build step for which the hook is named.
+Some hooks are called for every file-related operation for which the hook is named. Other hooks are triggered by the single build step for which the hook is named.
 
 As an example, consider a Ceedling project with ten test files and seventeen mocks. The command line `ceedling test:all` would trigger:
 
