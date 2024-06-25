@@ -1,60 +1,84 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'generate_test_runner' # Unity's test runner generator
 
 class GeneratorTestRunner
 
-  constructor :configurator, :file_path_utils, :file_wrapper
+  attr_accessor :test_cases
 
-  def find_test_cases(test_file)
+  #
+  # This class is not within any DIY context.
+  # It is instantiated on demand for each test file processed in a build.
+  #
 
-    #Pull in Unity's Test Runner Generator
-    require 'generate_test_runner.rb'
-    @test_runner_generator ||= UnityTestRunnerGenerator.new( @configurator.get_runner_config )
+  def initialize(config:, test_file_contents:, preprocessed_file_contents:nil)
+    @unity_runner_generator = UnityTestRunnerGenerator.new( config )
+    
+    # Reduced information set
+    @test_cases = []
 
-    if (@configurator.project_use_test_preprocessor)
+    # Full information set used for runner generation
+    @test_cases_internal = []
 
-      #redirect to use the preprocessor file if we're doing that sort of thing
-      pre_test_file = @file_path_utils.form_preprocessed_file_filepath(test_file)
+    parse_test_file( test_file_contents, preprocessed_file_contents )
+  end
 
-      #actually look for the tests using Unity's test runner generator
-      contents = @file_wrapper.read(pre_test_file)
-      tests_and_line_numbers = @test_runner_generator.find_tests(contents)
-      @test_runner_generator.find_setup_and_teardown(contents)
+  def generate(module_name:, runner_filepath:, mock_list:, test_file_includes:[], header_extension:)
+    # Actually build the test runner using Unity's test runner generator.
+    @unity_runner_generator.generate(
+      module_name,
+      runner_filepath,
+      @test_cases_internal,
+      mock_list.map{ |mock| mock + header_extension },
+      test_file_includes.map{|f| File.basename(f,'.*') + header_extension}
+    )
+  end
 
-      #look up the line numbers in the original file
-      source_lines = @file_wrapper.read(test_file).split("\n")
+  ### Private ###
+
+  private
+
+  def parse_test_file(test_file_contents, preprocessed_file_contents)
+    # If there's a preprocessed file, align test case line numbers with original file contents
+    if (!preprocessed_file_contents.nil?)
+      # Save the test case structure to be used in generation
+      @test_cases_internal = @unity_runner_generator.find_tests( preprocessed_file_contents )
+      
+      # Configure the runner generator around `setUp()` and `tearDown()`
+      @unity_runner_generator.find_setup_and_teardown( preprocessed_file_contents )
+
+      # Modify line numbers to match the original, non-preprocessed file
+      source_lines = test_file_contents.split("\n")
       source_index = 0;
-      tests_and_line_numbers.size.times do |i|
+      @test_cases_internal.size.times do |i|
         source_lines[source_index..-1].each_with_index do |line, index|
-          if (line =~ /#{tests_and_line_numbers[i][:test]}/)
+          if (line =~ /#{@test_cases_internal[i][:test]}/)
             source_index += index
-            tests_and_line_numbers[i][:line_number] = source_index + 1
+            @test_cases_internal[i][:line_number] = source_index + 1
             break
           end
         end
       end
+
+    # Just look for the test cases within the original test file
     else
-      #Just look for the tests using Unity's test runner generator
-      contents = @file_wrapper.read(test_file)
-      tests_and_line_numbers = @test_runner_generator.find_tests(contents)
-      @test_runner_generator.find_setup_and_teardown(contents)
+      # Save the test case structure to be used in generation
+      @test_cases_internal = @unity_runner_generator.find_tests( test_file_contents )
+
+      # Configure the runner generator around `setUp()` and `tearDown()`
+      @unity_runner_generator.find_setup_and_teardown( test_file_contents )
     end
 
-    return tests_and_line_numbers
+    # Unity's `find_tests()` produces an array of hashes with the following keys...
+    # { test:, args:, call:, params:, line_number: }
+
+    # For external use of test case names and line numbers, keep only those pieces of info
+    @test_cases = @test_cases_internal.map {|hash| hash.slice( :test, :line_number )}
   end
 
-  def generate(module_name, runner_filepath, test_cases, mock_list, test_file_includes=[])
-    require 'generate_test_runner.rb'
-
-    header_extension = @configurator.extension_header
-
-    #actually build the test runner using Unity's test runner generator
-    #(there is no need to use preprocessor here because we've already looked up test cases and are passing them in here)
-    @test_runner_generator ||= UnityTestRunnerGenerator.new( @configurator.get_runner_config )
-    @test_runner_generator.generate( module_name,
-                                     runner_filepath,
-                                     test_cases,
-                                     mock_list.map{
-                                       |f| @file_path_utils.form_folder_for_mock(f) + File.basename(f,'.*') + header_extension
-                                     },
-                                     test_file_includes.map{|f| File.basename(f,'.*')+header_extension})
-  end
 end
