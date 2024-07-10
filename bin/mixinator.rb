@@ -73,7 +73,8 @@ class Mixinator
   def assemble_mixins(config:, env:, cmdline:)
     assembly = []
 
-    # Build list of hashses to facilitate deduplication
+    # Build list of hashses in precedence order to facilitate deduplication
+    # Any duplicates at greater indexes are removed
     cmdline.each {|mixin| assembly << {'command line' => mixin}}
     assembly += env
     config.each {|mixin| assembly << {'project configuration' => mixin}}
@@ -87,8 +88,12 @@ class Mixinator
       @path_validator.filepath?( mixin ) ? File.expand_path( mixin ) : mixin
     end
 
-    # Return the compacted list (in merge order)
-    return assembly
+    # Return the compacted list in merge order
+    #  1. Config
+    #  2. Environment variable
+    #  3. Command line
+    # Later merges take precedence (e.g. command line mixins are last merge)
+    return assembly.reverse()
   end
 
   def merge(builtins:, config:, mixins:)
