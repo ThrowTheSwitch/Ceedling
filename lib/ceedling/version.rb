@@ -13,6 +13,9 @@
 
 module Ceedling
   module Version
+    GEM = "1.0.0"
+    CEEDLING = GEM
+
     # If this file is loaded, we know it is next to the vendor path to use for version lookups
     vendor_path = File.expand_path( File.join( File.dirname( __FILE__ ), '../../vendor' ) )
 
@@ -41,9 +44,6 @@ module Ceedling
       # Splat it to crete the final constant
       eval("#{name} = '#{a.join(".")}'")
     end
-
-    GEM = "0.32.0"
-    CEEDLING = GEM
 
     # If run as a script, end with printing Ceedling’s version to $stdout
     puts CEEDLING if (__FILE__ == $0)
