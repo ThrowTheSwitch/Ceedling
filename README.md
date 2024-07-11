@@ -1,8 +1,9 @@
 # Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-_May 8, 2024_ 🚚 **Ceedling 1.0** is a release candidate and will be
-shipping very soon. See the [Release Notes](#docs/ReleaseNotes.md) for an overview
-of a long list of improvements and fixes.
+_July 11, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
+shipping very soon. See the [Release Notes](docs/ReleaseNotes.md) for an overview
+of all that’s new since 0.31.0 plus links to the detailed Changelog and list of 
+Breaking Changes.
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -350,7 +351,7 @@ Fully packaged [Ceedling Docker images][docker-images] containing Ruby, Ceedling
 
 To run the _MadScienceLab_ container from your local terminal after [installing Docker][docker-install]:
 
-_Note: [Helper scripts are available][docker-image] to simplify your command line and access advanced features._
+_Note: [Helper scripts are available][docker-images] to simplify your command line and access advanced features._
 
 ```shell
  > docker run -it --rm -v $PWD/my/project:/home/dev/project throwtheswitch/madsciencelab:latest
@@ -364,7 +365,7 @@ To run Ceedling from within the _MadScienceLab_ container’s shell and project 
  > ceedling test:all
 ```
 
-See the [Docker image documentation][docker-image] for all the details on how to use these containers.
+See the [Docker image documentation][docker-images] for all the details on how to use these containers.
 
 [docker-overview]: https://www.ibm.com/topics/docker
 [docker-install]: https://www.docker.com/products/docker-desktop/
