@@ -40,7 +40,7 @@ class PreprocessinatorFileHandler
     guardname = '_' + filename.gsub(/\W/, '_').upcase + '_'
 
     forward_guards = [
-      "#ifndef #{guardname} // Ceedling-generated guard",
+      "#ifndef #{guardname} // Ceedling-generated include guard",
       "#define #{guardname}",
       ''
     ]
@@ -58,6 +58,12 @@ class PreprocessinatorFileHandler
     # ----------------------------------------------------    
     contents = contents.join("\n")
     contents.gsub!( /(\h*\n){3,}/, "\n\n" )
+
+    # Remove paths from expanded #include directives
+    # ----------------------------------------------------
+    #  - We rely on search paths at compilation rather than explicit #include paths
+    #  - Match (#include ")((path/)+)(file") and reassemble string using first and last matching groups
+    contents.gsub!( /(#include\s+")(([^\/]+\/)+)(.+")/, '\1\4' )
     
     @file_wrapper.write( preprocessed_filepath, contents )
 

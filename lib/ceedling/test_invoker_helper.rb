@@ -76,11 +76,14 @@ class TestInvokerHelper
   end
 
   def search_paths(filepath, subdir)
-    paths = @include_pathinator.lookup_test_directive_include_paths( filepath )
+    paths = []
+
+    # Start with mock path to ensure any CMock-reworked header files are encountered first
+    paths << File.join( @configurator.cmock_mock_path, subdir ) if @configurator.project_use_mocks
+    paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
     paths += @include_pathinator.collect_test_include_paths()
     paths += @configurator.collection_paths_support
     paths += @configurator.collection_paths_include
-    paths << File.join( @configurator.cmock_mock_path, subdir ) if @configurator.project_use_mocks
     paths += @configurator.collection_paths_libraries
     paths += @configurator.collection_paths_vendor
     paths += @configurator.collection_paths_test_toolchain_include
