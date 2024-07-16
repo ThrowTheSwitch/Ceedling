@@ -27,6 +27,7 @@ class GcovrReportinator
     # Convenient instance variable references
     @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
+    @tool_executor = @ceedling[:tool_executor]
   end
 
   # Generate the gcovr report(s) specified in the options.
@@ -299,12 +300,12 @@ class GcovrReportinator
 
   # Run gcovr with the given arguments
   def run(opts, args, boom)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], args)
+    command = @tool_executor.build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], args)
 
     shell_result = nil
 
     begin
-      shell_result = @ceedling[:tool_executor].exec( command )
+      shell_result = @tool_executor.exec( command )
     rescue ShellExecutionException => ex
       result = ex.shell_result
       @reportinator_helper.print_shell_result( result )
@@ -321,17 +322,19 @@ class GcovrReportinator
     version_number_major = 0
     version_number_minor = 0
 
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], "--version")
+    command = @tool_executor.build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], "--version")
 
     msg = @reportinator.generate_progress("Collecting gcovr version for conditional feature handling")
-    @loginator.log(msg, Verbosity::OBNOXIOUS)
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-    shell_result = @ceedling[:tool_executor].exec( command )
+    shell_result = @tool_executor.exec( command )
     version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)
 
     if !(version_number_match_data.nil?) && !(version_number_match_data[1].nil?) && !(version_number_match_data[2].nil?)
         version_number_major = version_number_match_data[1].to_i
         version_number_minor = version_number_match_data[2].to_i
+    else
+      raise CeedlingException.new( "Could not collect `gcovr` version from its command line" )
     end
 
     return version_number_major, version_number_minor

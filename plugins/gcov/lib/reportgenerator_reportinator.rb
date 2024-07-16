@@ -35,6 +35,7 @@ class ReportGeneratorReportinator
     # Convenient instance variable references
     @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
+    @tool_executor = @ceedling[:tool_executor]
   end
 
 
@@ -203,17 +204,17 @@ class ReportGeneratorReportinator
 
   # Run ReportGenerator with the given arguments.
   def run(args)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORTGENERATOR_REPORT, [], args)
+    command = @tool_executor.build_command_line(TOOLS_GCOV_REPORTGENERATOR_REPORT, [], args)
 
-    return @ceedling[:tool_executor].exec( command )
+    return @tool_executor.exec( command )
   end
 
 
   # Run gcov with the given arguments.
   def run_gcov(args)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, [], args)
+    command = @tool_executor.build_command_line(TOOLS_GCOV_REPORT, [], args)
 
-    return @ceedling[:tool_executor].exec( command )
+    return @tool_executor.exec( command )
   end
 
 end
