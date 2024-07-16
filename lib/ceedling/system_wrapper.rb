@@ -26,6 +26,10 @@ class SystemWrapper
     return Process.clock_gettime( Process::CLOCK_MONOTONIC, :float_second )
   end
 
+  def initialize()
+    @argv = ARGV.clone.freeze
+  end
+
   # class method so as to be mockable for tests
   def windows?
     return SystemWrapper.windows?
@@ -43,8 +47,8 @@ class SystemWrapper
     return ENV['PATH'].split(File::PATH_SEPARATOR)
   end
 
-  def cmdline_args
-    return ARGV
+  def get_cmdline
+    return @argv
   end
 
   def env_set(name, value)
