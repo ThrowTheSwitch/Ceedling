@@ -65,7 +65,7 @@ library builds & dependency management, and more.
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
-[FFF-plugin]: https://github.com/ElectronVector/fake_function_framework
+[FFF-plugin]: https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff
 [ceedling-plugins]: docs/CeedlingPacket.md#ceedling-plugins
 
 <br/>
@@ -313,7 +313,9 @@ Training and support contracts are available through **_[Ceedling Pro][ceedling-
 
 ## Ceedling docs
 
-**[Usage help][ceedling-packet]** (a.k.a. _Ceedling Packet_), **[release notes][release-notes]**, **[breaking changes][breaking-changes]**, **[changelog][changelog]**, a variety of guides, and much more exists in **[docs/](docs/)**.
+* **_[Ceedling Packet][ceedling-packet]_** is Ceedling’s user manual. It references and links to the documentation of the other projects, _Unity_, _CMock_, and _CException_, that it weaves together into a build.
+* **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a variety of guides and much more.
+* The **[Plugins section](https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#ceedling-plugins)** within _Ceedling Packet_ lists all plugins providing overviews and links to their documentation.
 
 ## Library and courses
 
@@ -341,35 +343,9 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 # 🚀 Getting Started
 
-👀 See the **_[Quick Start](docs/CeedlingPacket.md#quick-start)_** section in Ceedling’s core documentation, _Ceedling Packet_.
+👀 See the **_[Quick Start](docs/CeedlingPacket.md#quick-start)_** section in Ceedling’s user manual, _Ceedling Packet_.
 
 ## The basics
-
-### MadScienceLab Docker Image
-
-Fully packaged [Ceedling Docker images][docker-images] containing Ruby, Ceedling, the GCC toolchain, and more are also available. [Docker containers][docker-overview] provide self-contained, portable, well-managed alternative to local installation of tools like Ceedling.
-
-To run the _MadScienceLab_ container from your local terminal after [installing Docker][docker-install]:
-
-_Note: [Helper scripts are available][docker-images] to simplify your command line and access advanced features._
-
-```shell
- > docker run -it --rm -v $PWD/my/project:/home/dev/project throwtheswitch/madsciencelab:latest
-```
-
-When the container launches it will drop you into a Z-shell command line that has access to all the tools and utilities available within the container.
-
-To run Ceedling from within the _MadScienceLab_ container’s shell and project working directory:
-
-```shell
- > ceedling test:all
-```
-
-See the [Docker image documentation][docker-images] for all the details on how to use these containers.
-
-[docker-overview]: https://www.ibm.com/topics/docker
-[docker-install]: https://www.docker.com/products/docker-desktop/
-[docker-images]: https://hub.docker.com/r/throwtheswitch/madsciencelab
 
 ### Local installation
 
@@ -388,6 +364,55 @@ See the [Docker image documentation][docker-images] for all the details on how t
    ```shell
    > ceedling test:all release
    ```
+
+### MadScienceLab Docker Images
+
+As an alternative to local installation, fully packaged Docker images containing Ruby, Ceedling, the GCC toolchain, and more are also available. [Docker][docker-overview] is a virtualization technology that provides self-contained containers that are a portable, well-managed alternative to local installation of tools like Ceedling.
+
+Two Docker images containing Ceedling and supporting tools exist:
+
+1. **_[MadScienceLab][docker-image-base]_**. This image contains Ruby, Ceedling, CMock, Unity, CException, the GNU Compiler Collection (gcc), and a handful of essential C libraries and command line utilities.
+1. **_[MadScienceLab Plugins][docker-image-plugins]_**. This image contains all of the above plus the command line tools that Ceedling’s built-in plugins rely on.
+
+See the Docker Hub pages linked above for more documentation on these images and details on the platforms on which you can run these images.
+
+To run a _MadScienceLab_ container from your local terminal:
+
+1. [Install Docker][docker-install]
+1. Determine:
+   1. The local path of your Ceedling project
+   1. The variant and revision of the Docker image you’ll be using
+1. Run the container with:
+   1. The Docker `run` command and `-it --rm` command line options
+   1. A Docker volume mapping from the root of your project to the default project path inside the container
+
+Example:
+
+```shell
+ > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:<tag>
+```
+
+When the container launches it will drop you into a Z-shell command line that has access to all the tools and utilities available within the container.
+
+To run Ceedling from within the _MadScienceLab_ container’s shell and project working directory, just execute it as you would after installing it locally:
+
+```shell
+ dev | ~/project > ceedling help
+```
+
+```shell
+ dev | ~/project > ceedling new ...
+```
+
+```shell
+ dev | ~/project > ceedling test:all
+```
+
+[docker-overview]: https://www.ibm.com/topics/docker
+[docker-install]: https://www.docker.com/products/docker-desktop/
+
+[docker-image-base]: https://hub.docker.com/r/throwtheswitch/madsciencelab
+[docker-image-plugins]: https://hub.docker.com/r/throwtheswitch/madsciencelab-plugins
 
 ### Example super-duper simple Ceedling configuration file
 
@@ -533,7 +558,9 @@ You can enable this by adding `--gitsupport` to your `new` call.
 
 # 💻 Contributing to Ceedling Development
 
-## Alternate installation for development
+## Alternate installation options for Ceedling development
+
+### Alternate local installation for development
 
 After installing Ruby…
 
@@ -565,6 +592,30 @@ Gemfile.lock.
 ```shell
  > sudo gem install bundler -v <version in Gemfile.lock>
 ```
+
+### Alternate Docker image usage for development
+
+For nearly all development tasks, the _MadScienceLab_ Docker images contain 
+everything needed.
+
+When running an existing image as a development container, one merely needs 
+to map a volume from your local Ceedling code repository to Ceedling’s 
+installation location within the container. With that accomplished, 
+experimenting with project builds and running self-tests is simple.
+
+1. Start your target Docker container
+1. Look up the Ceedling gem’s installation path from within the container
+
+   ```shell
+   dev | ~/project > gem info ceedling
+   ```
+1. Exit the container
+1. Restart the container with the gem installation volume mapping and
+   any other command line options you need
+
+   ```shell
+   docker run -it --rm -v /my/local/ceedling/repo:<container gem path> -v /my/local/experiment/path:/home/dev/project throwtheswitch/madsciencelab:<tag>
+   ```
 
 ## Running Ceedling’s self-tests
 

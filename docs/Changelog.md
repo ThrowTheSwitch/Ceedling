@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-06-19
+# [1.0.0 pre-release] — 2024-07-16
 
 ## 🌟 Added
 
@@ -132,6 +132,12 @@ Much glorious filepath and pathfile handling now abounds:
 * Path handling edge cases have been properly resolved (`./foo/bar` is the same as `foo/bar` but was not always processed as such).
 * Matching globs were advertised in the documentation (erroneously, incidentally) but lacked full programmatic support.
 * Ceedling now tells you if your matching patterns don't work. Unfortunately, all Ceedling can determine is if a particular pattern yielded 0 results.
+
+### Ceedling’s `:use_test_preprocessor` and CMock’s `:treat_inlines` now work together properly
+
+This fix addresses the problem detailed in PR [#728](https://github.com/ThrowTheSwitch/Ceedling/pull/728) and related issues.
+
+CMock can optionally mock inline functions. This requires ingesting, modifying, and rewriting a source hearder file along with then mocking it. Sophisticated header files with complex macros can require that the source header file be preprocessed before CMock then processes it a second time. In previous versions of Ceedling the preprocessing steps and handoff to CMock were not working as intended. This has been fixed.
 
 ### Bug fixes for command line build tasks `files:header` and `files:support`
 
