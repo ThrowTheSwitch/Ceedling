@@ -82,23 +82,26 @@ class Gcov < Plugin
     # Do nothing unless a gcov: task was used
     return unless @ceedling[:task_invoker].invoked?(/^#{GCOV_TASK_ROOT}/)
 
-    results = {}
+    # Only present plugin-based test results if raw test results disabled by a reporting plugin
+    if !@ceedling[:configurator].plugins_display_raw_test_results
+      results = {}
 
-    # Assemble test results
-    @mutex.synchronize do
-      results = @ceedling[:plugin_reportinator].assemble_test_results( @result_list )
-    end
+      # Assemble test results
+      @mutex.synchronize do
+        results = @ceedling[:plugin_reportinator].assemble_test_results( @result_list )
+      end
 
-    hash = {
-      header: GCOV_ROOT_NAME.upcase,
-      results: results
-    }
+      hash = {
+        header: GCOV_ROOT_NAME.upcase,
+        results: results
+      }
 
-    # Print unit test suite results
-    @ceedling[:plugin_reportinator].run_test_results_report( hash ) do
-      message = ''
-      message = 'Unit test failures.' if results[:counts][:failed] > 0
-      message
+      # Print unit test suite results
+      @ceedling[:plugin_reportinator].run_test_results_report( hash ) do
+        message = ''
+        message = 'Unit test failures.' if results[:counts][:failed] > 0
+        message
+      end
     end
 
     # Print summary of coverage to console for each source file exercised by a test
@@ -110,6 +113,9 @@ class Gcov < Plugin
 
   # `Plugin` build step hook
   def summary
+    # Only present plugin-based test results if raw test results disabled by a reporting plugin
+    return if @ceedling[:configurator].plugins_display_raw_test_results
+
     # Build up the list of passing results from all tests
     result_list = @ceedling[:file_path_utils].form_pass_results_filelist(
       GCOV_RESULTS_PATH,

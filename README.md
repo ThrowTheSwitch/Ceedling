@@ -2,7 +2,7 @@
 
 _July 11, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
 shipping very soon. See the [Release Notes](docs/ReleaseNotes.md) for an overview
-of all that’s new since 0.31.0 plus links to the detailed Changelog and list of 
+of all that’s new since 0.31.1 plus links to the detailed Changelog and list of 
 Breaking Changes.
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
@@ -51,9 +51,11 @@ For simple project structures, Ceedling can build and test an entire project
 from just a few lines in its project configuration file.
 
 Because it handles all the nitty-gritty of rebuilds and becuase of Unity and
-CMock, Ceedling makes [Test-Driven Development][TDD] in C a breeze.
+CMock, Ceedling makes [Test-Driven Development][TDD] in C a breeze. It even 
+provides handy backtrace debugging options for finding the source of crashing
+code exercised by your unit tests.
 
-Ceedling is also extensible with a simple plugin mechanism. It comes with a
+Ceedling is extensible with a simple plugin mechanism. It comes with a
 number of [built-in plugins][ceedling-plugins] for code coverage, test suite
 report generation, Continuous Integration features, IDE integration, release
 library builds & dependency management, and more.
@@ -65,7 +67,7 @@ library builds & dependency management, and more.
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
-[FFF-plugin]: https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff
+[FFF-plugin]: plugins/fff
 [ceedling-plugins]: docs/CeedlingPacket.md#ceedling-plugins
 
 <br/>
@@ -292,9 +294,9 @@ FAILED TEST SUMMARY
   Test: test_Baking_PreheatOven_shouldFailIfSettingOvenTemperatureFails
   At line (7): "Function Time_SleepMs() called more times than expected."
 
---------------------
-OVERALL TEST SUMMARY
---------------------
+-----------------------
+❌ OVERALL TEST SUMMARY
+-----------------------
 TESTED:  6
 PASSED:  5
 FAILED:  1
@@ -313,9 +315,9 @@ Training and support contracts are available through **_[Ceedling Pro][ceedling-
 
 ## Ceedling docs
 
-* **_[Ceedling Packet][ceedling-packet]_** is Ceedling’s user manual. It references and links to the documentation of the other projects, _Unity_, _CMock_, and _CException_, that it weaves together into a build.
+* **_[Ceedling Packet][ceedling-packet]_** is Ceedling’s user manual. It also references and links to the documentation of the projects, _Unity_, _CMock_, and _CException_, that it weaves together into your test and release builds.
 * **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a variety of guides and much more.
-* The **[Plugins section](https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#ceedling-plugins)** within _Ceedling Packet_ lists all plugins providing overviews and links to their documentation.
+* The **[Plugins section](https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#ceedling-plugins)** within _Ceedling Packet_ lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
 
 ## Library and courses
 
@@ -356,9 +358,9 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
    ```
 1. Begin crafting your project:
    1. Create an empty Ceedling project.
-   ```shell
-   > ceedling new <name> [<destination path>]
-   ```
+      ```shell
+      > ceedling new <name> [<destination path>]
+      ```
    1. Or, add a Ceedling project file to the root of an existing code project.
 1. Run tasks like so:
    ```shell
@@ -595,8 +597,8 @@ Gemfile.lock.
 
 ### Alternate Docker image usage for development
 
-For nearly all development tasks, the _MadScienceLab_ Docker images contain 
-everything needed.
+As an alternative to local installation of Ceedling, nearly all development 
+tasks can be accomplished with the _MadScienceLab_ Docker images.
 
 When running an existing image as a development container, one merely needs 
 to map a volume from your local Ceedling code repository to Ceedling’s 
@@ -604,6 +606,10 @@ installation location within the container. With that accomplished,
 experimenting with project builds and running self-tests is simple.
 
 1. Start your target Docker container
+
+   ```shell
+   docker run -it --rm throwtheswitch/<image>:<tag>
+   ```
 1. Look up the Ceedling gem’s installation path from within the container
 
    ```shell
@@ -614,7 +620,7 @@ experimenting with project builds and running self-tests is simple.
    any other command line options you need
 
    ```shell
-   docker run -it --rm -v /my/local/ceedling/repo:<container gem path> -v /my/local/experiment/path:/home/dev/project throwtheswitch/madsciencelab:<tag>
+   docker run -it --rm -v /my/local/ceedling/repo:<container gem path> -v /my/local/experiment/path:/home/dev/project throwtheswitch/<image>:<tag>
    ```
 
 ## Running Ceedling’s self-tests
