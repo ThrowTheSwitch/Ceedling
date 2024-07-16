@@ -1,74 +1,66 @@
-require 'rubygems'
-require 'rake' # for ext()
-require 'fileutils'
-require 'ceedling/constants'
-
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
 # :flags:
-#   :release:
-#     :compile:
-#       :'test_.+'
-#         - -pedantic   # add '-pedantic' to every test file
-#       :*:          # add '-foo' to compilation of all files not main.c
-#         - -foo
-#       :main:       # add '-Wall' to compilation of main.c
-#         - -Wall
 #   :test:
+#     :compile:
+#       :*:                       # Add '-foo' to compilation of all files for all test executables
+#         - -foo
+#       :Model:                   # Add '-Wall' to compilation of any test executable with Model in its filename
+#         - -Wall
 #     :link:
-#       :test_main:  # add '--bar --baz' to linking of test_main.exe
+#       :tests/comm/TestUsart.c:  # Add '--bar --baz' to link step of TestUsart executable
 #         - --bar
 #         - --baz
+#   :release:
+#     - -std=c99
 
-def partition(hash, &predicate)
-  hash.partition(&predicate).map(&:to_h)
-end
+# :flags:
+#   :test:
+#     :compile:                   # Equivalent to [test][compile]['*'] -- i.e. same extra flags for all test executables
+#       - -foo
+#       - -Wall
+#     :link:                      # Equivalent to [test][link]['*'] -- i.e. same flags for all test executables
+#       - --bar
+#       - --baz
 
 class Flaginator
 
-  constructor :configurator
+  constructor :configurator, :loginator, :config_matchinator
 
-  def get_flag(hash, file_name)
-    file_key = file_name.to_sym
-   
-    # 1. try literals
-    literals, magic = partition(hash) { |k, v| k.to_s =~ /^\w+$/ }  
-    return literals[file_key] if literals.include?(file_key)
-    
-    any, regex = partition(magic) { |k, v| (k == :'*') || (k == :'.*')  } # glob or regex wild card
-    
-    # 2. try regexes
-    find_res = regex.find { |k, v| file_name =~ /^#{k}$/ }
-    return find_res[1] if find_res
-    
-    # 3. try anything
-    find_res = any.find { |k, v| file_name =~ /.*/ }
-    return find_res[1] if find_res
-      
-    # 4. well, we've tried
-    return []
+  def setup
+    @section = :flags
   end
-  
-  def flag_down( operation, context, file )
-    # create configurator accessor method
-    accessor = ('flags_' + context.to_s).to_sym
 
-    # create simple filename key from whatever filename provided
-    file_name = File.basename( file ).ext('')
-    file_key = File.basename( file ).ext('').to_sym
+  def flags_defined?(context:, operation:nil)
+    return @config_matchinator.config_include?(primary:@section, secondary:context, tertiary:operation)
+  end
 
-    # if no entry in configuration for flags for this context, bail out
-    return [] if not @configurator.respond_to?( accessor )
+  def flag_down(context:, operation:, filepath:nil)
+    flags = @config_matchinator.get_config(primary:@section, secondary:context, tertiary:operation)
 
-    # get flags sub hash associated with this context
-    flags = @configurator.send( accessor )
+    if flags == nil then return []
+    elsif flags.is_a?(Array) then return flags.flatten # Flatten to handle list-nested YAML aliases
+    elsif flags.is_a?(Hash)
+      @config_matchinator.validate_matchers(hash:flags, section:@section, context:context, operation:operation)
 
-    # if operation not represented in flags hash, bail out
-    return [] if not flags.include?( operation )
+      arg_hash = {
+        hash: flags,
+        filepath: filepath,
+        section: @section,
+        context: context,
+        operation: operation
+      }
 
-    # redefine flags to sub hash associated with the operation
-    flags = flags[operation]
+      return @config_matchinator.matches?(**arg_hash)
+    end
 
-    return get_flag(flags, file_name)
+    # Handle unexpected config element type
+    return []
   end
 
 end
