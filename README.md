@@ -99,6 +99,8 @@ While Ceedling can build your release artifact, its claim to fame is building an
 
 There’s a good chance you’re looking at Ceedling because of its test suite abilities. And, you’d probably like to see what that looks like, huh? Well, let’s cook you up some realistic examples of tested code and running Ceedling with that code.
 
+(A sample Ceedling project configuration file and links to documentation for it are a bit further down.)
+
 ## First, we start with servings of source code to be tested…
 
 ### Recipe.c
@@ -301,6 +303,24 @@ TESTED:  6
 PASSED:  5
 FAILED:  1
 IGNORED: 0
+```
+
+## Ceedling also supports various side dishes in your delicious test suite
+
+The Unity project supports parameterized test cases like this:
+
+```C
+TEST_RANGE([5, 100, 5])
+void test_should_handle_divisible_by_5_for_parameterized_test_range(int num) {
+  TEST_ASSERT_EQUAL(0, (num % 5));
+}
+```
+
+Ceedling can do all the magic to build and run this test code simply by enabling parameterized test cases in its project configuration. Keep reading for more on how to configure a Ceedling build.
+
+```yaml
+:unity:
+  :use_param_tests: TRUE
 ```
 
 <br/>
