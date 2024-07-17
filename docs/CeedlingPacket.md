@@ -220,11 +220,21 @@ Of course, many more advanced options allow you to configure
 your project with a variety of features to meet a variety of needs.
 Ceedling can work with practically any command line toolchain
 and directory structure – all by way of the configuration file.
-Further, because Ceedling piggybacks on Rake, you can add your
-own Rake tasks to accomplish project tasks outside of testing
-and release builds. A facility for plugins also allows you to
-extend Ceedling’s capabilities for needs such as custom code
-metrics reporting and coverage testing.
+
+See this [commented project file][example-config-file] 
+for a much more complete and sophisticated example of a project 
+configuration.
+
+See the later [configuration section][project-configuration] for 
+way more details on your project configuration options.
+
+A facility for [plugins](#ceedling-plugins) also allows you to 
+extend Ceedling’s capabilities for needs such as custom code metrics 
+reporting, build artifact packaging, and much more. A variety of 
+built-in plugins come with Ceedling.
+
+[example-config-file]: ../assets/project_as_gem.yml
+[project-configuration]: #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
 
 ## What’s with This Name?
 

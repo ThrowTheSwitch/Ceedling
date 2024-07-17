@@ -367,6 +367,8 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
    > ceedling test:all release
    ```
 
+[Ruby]: https://www.ruby-lang.org/
+
 ### MadScienceLab Docker Images
 
 As an alternative to local installation, fully packaged Docker images containing Ruby, Ceedling, the GCC toolchain, and more are also available. [Docker][docker-overview] is a virtualization technology that provides self-contained containers that are a portable, well-managed alternative to local installation of tools like Ceedling.
@@ -432,11 +434,14 @@ To run Ceedling from within the _MadScienceLab_ container’s shell and project 
     - inc/**
 ```
 
-See _[CeedlingPacket][ceedling-packet]_ for all the details of your configuration file.
+See this [commented project configuration file][example-config-file] for a much more complete and sophisticated example of a project configuration.
 
 Or, use Ceedling’s built-in `examples` & `example` commands to extract a sample project and reference its project file.
 
-[Ruby]: https://www.ruby-lang.org/
+See the [configuration section][ceedling-packet-config] in _Ceedling Packet_ for way more details on your project configuration options than we can provide here.
+
+[example-config-file]: assets/project_as_gem.yml
+[ceedling-packet-config]: docs/CeedlingPacket.md#the-almighty-ceedling-project-configuration-file-in-glorious-yaml
 
 ## Using Ceedling’s command line (and related)
 
@@ -622,6 +627,11 @@ experimenting with project builds and running self-tests is simple.
    ```shell
    docker run -it --rm -v /my/local/ceedling/repo:<container gem path> -v /my/local/experiment/path:/home/dev/project throwtheswitch/<image>:<tag>
    ```
+
+For development tasks, from the container shell you can:
+
+1. Run experiment projects you map into the container (e.g. at _/home/dev/project_).
+1. Run the self-test suite. Navigate to the gem installation path discovered in (2) above. From this location, follow the instructions in the section that immediately follows.
 
 ## Running Ceedling’s self-tests
 
