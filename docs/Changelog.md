@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-07-16
+# [1.0.0 pre-release] — 2024-07-17
 
 ## 🌟 Added
 
@@ -90,6 +90,10 @@ One powerful new feature is the ability to test the same source file built diffe
 Inline Ruby string expansion has been, well, expanded for use in `:flags` and `:defines` entries to complement existing such functionality in `:environment`, `:paths`, `:tools`, etc.
 
 The previously distributed documentation for inline Ruby string expansion has been collected into a single subsection within the project file documentation and improved.
+
+### `:unity` ↳ `:use_param_tests`
+
+Previous versions of Ceedling had limited support for enabling builds of Unity’s parameterized test cases. Multiple configuration settings were needed to enable test builds with these test case features. Now, setting this single configuration value in the `:unity` section of your Ceedling project configuration automatically assembles the correct compilation and test runner generation options.
 
 ### `report_tests_log_factory` plugin
 
