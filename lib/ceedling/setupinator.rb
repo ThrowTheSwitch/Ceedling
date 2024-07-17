@@ -77,6 +77,9 @@ class Setupinator
     # Standardize paths and add to Ruby load paths
     plugins_paths_hash = @configurator.prepare_plugins_load_paths( app_cfg[:ceedling_plugins_path], config_hash )
 
+    # Populate Unity configuration with values to tie vendor tool configurations together
+    @configurator.populate_unity_config( config_hash )
+
     # Populate CMock configuration with values to tie vendor tool configurations together
     @configurator.populate_cmock_config( config_hash )
 

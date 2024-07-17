@@ -185,6 +185,19 @@ class Configurator
   end
 
 
+  def populate_unity_config(config)
+    msg = @reportinator.generate_progress( 'Processing Unity configuration' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+    if config[:unity][:use_param_tests]
+      config[:unity][:defines] << 'UNITY_SUPPORT_TEST_CASES'
+      config[:unity][:defines] << 'UNITY_SUPPORT_VARIADIC_MACROS'
+    end
+
+    @loginator.log( "Unity configuration: #{config[:unity]}", Verbosity::DEBUG )
+  end
+
+
   def populate_cmock_config(config)
     # Populate config with CMock config
     cmock = config[:cmock] || {}
@@ -238,6 +251,7 @@ class Configurator
 
     # Merge Unity options used by test runner generation
     config[:test_runner][:defines] += config[:unity][:defines]
+    config[:test_runner][:use_param_tests] = config[:unity][:use_param_tests]
 
     @loginator.log( "Test runner configuration: #{config[:test_runner]}", Verbosity::DEBUG )
 
