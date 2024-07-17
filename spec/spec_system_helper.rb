@@ -420,6 +420,26 @@ module CeedlingTestCases
     end
   end
 
+  # Ceedling :use_test_preprocessor is disabled
+  def can_test_projects_unity_parameterized_test_cases_with_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
+        settings = { :project => { :use_test_preprocessor => false },
+                     :unity => { :use_param_tests => true }
+                   }
+        @c.merge_project_yml_for_test(settings)
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
   def can_test_projects_with_fail
     @c.with_context do
       Dir.chdir @proj_name do
