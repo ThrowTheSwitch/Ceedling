@@ -373,10 +373,10 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 As an alternative to local installation, fully packaged Docker images containing Ruby, Ceedling, the GCC toolchain, and more are also available. [Docker][docker-overview] is a virtualization technology that provides self-contained containers that are a portable, well-managed alternative to local installation of tools like Ceedling.
 
-Two Docker images containing Ceedling and supporting tools exist:
+Two Docker image variants containing Ceedling and supporting tools exist:
 
 1. **_[MadScienceLab][docker-image-base]_**. This image contains Ruby, Ceedling, CMock, Unity, CException, the GNU Compiler Collection (gcc), and a handful of essential C libraries and command line utilities.
-1. **_[MadScienceLab Plugins][docker-image-plugins]_**. This image contains all of the above plus the command line tools that Ceedling’s built-in plugins rely on.
+1. **_[MadScienceLab Plugins][docker-image-plugins]_**. This image contains all of the above plus the command line tools that Ceedling’s built-in plugins rely on. Naturally, it is “heavier” than option (1).
 
 See the Docker Hub pages linked above for more documentation on these images and details on the platforms on which you can run these images.
 
@@ -388,12 +388,12 @@ To run a _MadScienceLab_ container from your local terminal:
    1. The variant and revision of the Docker image you’ll be using
 1. Run the container with:
    1. The Docker `run` command and `-it --rm` command line options
-   1. A Docker volume mapping from the root of your project to the default project path inside the container
+   1. A Docker volume mapping from the root of your project to the default project path inside the container (_/home/dev/path_)
 
 Example:
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:<tag>
+ > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0
 ```
 
 When the container launches it will drop you into a Z-shell command line that has access to all the tools and utilities available within the container.

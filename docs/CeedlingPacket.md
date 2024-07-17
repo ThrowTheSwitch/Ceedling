@@ -17,11 +17,16 @@ shines at running unit test suites.
 
 ## Steps
 
+Below is a quick overview of how to get started from Ceedling installation 
+through running build tasks. Jump down just a teeny bit to see what the Ceedling 
+command line looks like and navigate to all the documentation for the steps 
+listed immediately below.
+
 1. Install Ceedling
 1. Create a project
-   1. Use Ceedling to generate an example project, or
-   1. Add a Ceedling project file to the root of an existing project, or
-   1. Create a project from scratch:
+   * Use Ceedling to generate an example project, or
+   * Add a Ceedling project file to the root of an existing project, or
+   * Create a project from scratch:
       1. Create a project directory
       1. Add source code and optionally test code however you'd like it organized
       1. Create a Ceedling project file in the root of your project directory
@@ -38,13 +43,25 @@ GCC for test builds (more on all this [here][packet-section-2]).
 
 [GCC]: https://gcc.gnu.org
 
-## Ceedling Tasks
+## Ceedling Command Line & Build Tasks
 
-Once you have Ceedling installed and a project file, Ceedling tasks go like this:
+Once you have Ceedling installed, you always have access to `ceedling help`.
 
+And, once you have Ceedling installed, you have options for project creation
+using Ceedling’s application commands:
+
+* `ceedling new <name> <destination>`
+* `ceedling examples` to list available example projects and 
+  `ceedling example <name> <destination>` to create a readymade sample 
+   project whose project file you can copy and modify.
+
+Once you have a Ceedling project file and a project directory structure for your
+code, Ceedling build tasks go like this:
+
+* `ceedling test:MyCodeModule`, or
 * `ceedling test:all`, or
-* `ceedling release`, or, if you fancy,
-* `ceedling --verbosity=obnoxious clobber test:all gcov:all release`
+* `ceedling release`, or, if you fancy and have the GCov plugin enabled,
+* `ceedling clobber test:all gcov:all release --log --verbosity=obnoxious`
 
 ## Quick Start Documentation
 
@@ -52,7 +69,7 @@ Once you have Ceedling installed and a project file, Ceedling tasks go like this
 * [Sample test code file + Example Ceedling projects][quick-start-2]
 * [Simple Ceedling project file][quick-start-3]
 * [Ceedling at the command line][quick-start-4]
-* [All your Ceedling project file options][quick-start-5]
+* [All your Ceedling project configuration file options][quick-start-5]
 
 [quick-start-1]: #ceedling-installation--set-up
 [quick-start-2]: #commented-sample-test-file
@@ -779,15 +796,28 @@ executables and tallying all the test results.
 
 **How Exactly Do I Get Started?**
 
-The simplest way to get started is to install Ceedling as a Ruby gem. Gems are
-simply prepackaged Ruby-based software. Other options exist, but they are most
-useful for developing Ceedling 
+You have two good options for installing and running Ceedling:
 
-## As a [Ruby gem](http://docs.rubygems.org/read/chapter/1):
+1. The Ceedling Ruby Gem
+1. Prepackaged _MadScienceLab_ Docker images
+
+The simplest way to get started with a local installation is to install 
+Ceedling as a Ruby gem. Gems are simply prepackaged Ruby-based software.
+Other options exist, but the Ceedling Gem is the best option for a local
+installation. However, you will also need a compiler toolchain (e.g. GNU
+Compiler Collection) plus any supporting tools used by any plugins you
+enabled.
+
+If you are familiar with the virtualization technology Docker, our premade
+Docker images will get you started with Ceedling and all the accompanying
+tools lickety split. Install Docker, pull down one of the _MadScienceLab_
+images and go.
+
+## Local Installation As a [Ruby Gem](http://docs.rubygems.org/read/chapter/1):
 
 1. [Download and install Ruby][ruby-install]. Ruby 3 is required.
 
-1. Use Ruby's command line gem package manager to install Ceedling:
+1. Use Ruby’s command line gem package manager to install Ceedling:
    `gem install ceedling`. Unity, CMock, and CException come along with 
    Ceedling at no extra charge.
 
@@ -802,40 +832,88 @@ useful for developing Ceedling
 Steps 1-2 are a one time affair for your local environment. When steps 1-2 
 are completed once, only step 3 is needed for each new project.
 
+## _MadScienceLab_ Docker Images
+
+As an alternative to local installation, fully packaged Docker images containing
+Ruby, Ceedling, the GCC toolchain, and more are also available. [Docker]
+[docker-overview] is a virtualization technology that provides self-contained
+containers that are a portable, well-managed alternative to local installation
+of tools like Ceedling.
+
+Two Docker image variants containing Ceedling and supporting tools exist:
+
+1. **_[MadScienceLab][docker-image-base]_**. This image contains Ruby, Ceedling,
+CMock, Unity, CException, the GNU Compiler Collection (gcc), and a handful of
+essential C libraries and command line utilities.
+1. **_[MadScienceLab Plugins][docker-image-plugins]_**. This image contains all 
+of the above plus the command line tools that Ceedling’s built-in plugins rely on.
+Naturally, it is “heavier” than option (1).
+
+See the Docker Hub pages linked above for more documentation on these images and
+details on the platforms on which you can run these images.
+
+To run a _MadScienceLab_ container from your local terminal:
+
+1. [Install Docker][docker-install]
+1. Determine:
+   1. The local path of your Ceedling project
+   1. The variant and revision of the Docker image you’ll be using
+1. Run the container with:
+   1. The Docker `run` command and `-it --rm` command line options
+   1. A Docker volume mapping from the root of your project to the default project
+      path inside the container (_/home/dev/path_)
+
+Example:
+
+```shell
+ > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0
+```
+
+When the container launches it will drop you into a Z-shell command line that
+has access to all the tools and utilities available within the container.
+
+To run Ceedling from within the _MadScienceLab_ container’s shell and project
+working directory, just execute it as you would after installing it locally.
+
+```shell dev | ~/project > ceedling help ```
+
+[docker-overview]: https://www.ibm.com/topics/docker
+[docker-install]: https://www.docker.com/products/docker-desktop/
+
+[docker-image-base]: https://hub.docker.com/r/throwtheswitch/madsciencelab
+[docker-image-plugins]: https://hub.docker.com/r/throwtheswitch/madsciencelab-plugins
+
 ## Getting Started after Ceedling is Installed
 
 1. Once Ceedling is installed, you'll want to start to integrate it with new
    and old projects alike. If you wanted to start to work on a new project
    named `foo`, Ceedling can create the skeleton of the project using `ceedling
-   new foo`. Likewise if you already have a project named `bar` and you want to
-   integrate Ceedling into it, you would run `ceedling new bar` and Ceedling
-   will create any files and directories it needs to run.
+   new foo <destination>`. Likewise if you already have a project named `bar` 
+   and you want to “inject” Ceedling into it, you would run `ceedling new bar 
+   <destination>`, and Ceedling will create any files and directories it needs.
 
 1. Now that you have Ceedling integrated with a project, you can start using it.
-   A good starting point to get use to Ceedling either in a new project or an
-   existing project is creating a new module to get use to Ceedling by issuing
-   the command `ceedling module:create[unicorn]`.
+   A good starting point is to enable the [plugin](#ceedling-plugins) 
+   `module_generator` in your project configuration file and create a source +
+   test code module to get accustomed to Ceedling by issuing the command 
+   `ceedling 'module:create[name]'`.
 
 ## Grab Bag of Ceedling Notes
 
-1. Certain advanced features of Ceedling rely on `gcc` and `cpp`
-   as preprocessing tools. In most Linux systems, these tools
-   are already available. For Windows environments, we recommend
-   the [MinGW project](http://www.mingw.org/) (Minimalist
-   GNU for Windows). This represents an optional, additional
-   setup / installation step to complement the list above. Upon
-   installing MinGW ensure your system path is updated or set
-   `:environment` ↳ `:path` in your project file (see
-   `:environment` section later in this document).
+1. Certain advanced features of Ceedling rely on `gcc` and `cpp` as
+   preprocessing tools. In most Linux systems, these tools are already available.
+   For Windows environments, we recommend the [MinGW project]
+   (http://www.mingw.org/) (Minimalist GNU for Windows). This represents an
+   optional, additional setup / installation step to complement the list above.
+   Upon installing MinGW ensure your system path is updated or set `:environment`
+   ↳ `:path` in your project file (see `:environment` section later in this
+   document).
 
-1. To better understand Rake conventions, Rake execution,
-   and Rakefiles, consult the [Rake tutorial, examples, and
-   user guide](http://rubyrake.org/).
-
-1. When using Ceedling in Windows environments, a test file name may
-   not include the sequences “patch” or “setup”. The Windows Installer
-   Detection Technology (part of UAC), requires administrator
-   privileges to execute file names with these strings.
+1. When using Ceedling in Windows environments, a test filename should not
+   include the sequences “patch” or “setup”. After a test build these test
+   filenames will become test executables. Windows Installer Detection Technology
+   (part of UAC) requires administrator privileges to execute filenames including
+   these strings.
 
 <br/>
 
@@ -2086,6 +2164,9 @@ Relating the above example to command line `--mixin` flag handling:
 <br/>
 
 # The Almighty Ceedling Project Configuration File (in Glorious YAML)
+
+See this [commented project file][example-config-file] for a nice 
+example of a complete project configuration.
 
 ## Some YAML Learnin’
 
