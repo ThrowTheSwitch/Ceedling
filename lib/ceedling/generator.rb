@@ -73,7 +73,7 @@ class Generator
     end
   end
 
-  def generate_test_runner(context:, mock_list:, test_filepath:, input_filepath:, runner_filepath:)
+  def generate_test_runner(context:, mock_list:, includes_list:, test_filepath:, input_filepath:, runner_filepath:)
     arg_hash = {
       :context => context,
       :test_file => test_filepath,
@@ -102,6 +102,7 @@ class Generator
         module_name: module_name,
         runner_filepath: runner_filepath,
         mock_list: mock_list,
+        test_file_includes: includes_list,
         header_extension: @configurator.extension_header
       )
     rescue

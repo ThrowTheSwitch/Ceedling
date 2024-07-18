@@ -28,7 +28,7 @@ class GeneratorTestRunner
     parse_test_file( test_file_contents, preprocessed_file_contents )
   end
 
-  def generate(module_name:, runner_filepath:, mock_list:, test_file_includes:[], header_extension:)
+  def generate(module_name:, runner_filepath:, mock_list:, test_file_includes:, header_extension:)
     # Actually build the test runner using Unity's test runner generator.
     @unity_runner_generator.generate(
       module_name,

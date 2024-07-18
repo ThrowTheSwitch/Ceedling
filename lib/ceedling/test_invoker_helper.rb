@@ -199,7 +199,7 @@ class TestInvokerHelper
     _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename(filepath).ext(EXTENSION_HEADER) }
 
     # Get all #include .h files from test file so we can find any source files by convention
-    includes = @test_context_extractor.lookup_header_includes_list(test_filepath)
+    includes = @test_context_extractor.lookup_full_header_includes_list(test_filepath)
     includes.each do |include|
       _basename = File.basename(include)
       next if _basename == UNITY_H_FILE                # Ignore Unity in this list

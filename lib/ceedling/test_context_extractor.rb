@@ -13,8 +13,9 @@ class TestContextExtractor
   constructor :configurator, :file_wrapper, :loginator
 
   def setup
-    @header_includes     = {}
-    @source_includes     = {}
+    @all_header_includes = {} # Full list of all headers a test #includes
+    @header_includes     = {} # List of all headers minus mocks & framework files
+    @source_includes     = {} 
     @source_extras       = {}
     @test_runner_details = {} # Test case lists & Unity runner generator instances
     @mocks               = {}
@@ -63,7 +64,12 @@ class TestContextExtractor
     return extract_includes( filepath, content )
   end
 
-  # Header includes of test file with file extension
+  # All header includes .h of test file
+  def lookup_full_header_includes_list(filepath)
+    return @all_header_includes[form_file_key( filepath )] || []
+  end
+
+  # Header includes .h (minus mocks & framework headers) in test file
   def lookup_header_includes_list(filepath)
     return @header_includes[form_file_key( filepath )] || []
   end
@@ -108,19 +114,27 @@ class TestContextExtractor
     mock_prefix = @configurator.cmock_mock_prefix
     file_key    = form_file_key( filepath )
     
-    mocks   = []
-    headers = []
-    sources = []
+    mocks       = []
+    all_headers = []
+    headers     = []
+    sources     = []
 
     includes.each do |include|
       # <*.h>
       if include =~ /#{Regexp.escape(@configurator.extension_header)}$/
         # Check if include is a mock with regex match that extracts only mock name (no .h)
         scan_results = include.scan(/(#{mock_prefix}.+)#{Regexp.escape(@configurator.extension_header)}/)
-        mocks << scan_results[0][0] if (scan_results.size > 0)
+        
+        if (scan_results.size > 0)
+          # Collect mock name
+          mocks << scan_results[0][0]
+        else
+          # If not a mock or framework file, collect tailored header filename
+          headers << include unless VENDORS_FILES.include?( include.ext('') )
+        end
 
         # Add to .h includes list
-        headers << include
+        all_headers << include
       # <*.c>
       elsif include =~ /#{Regexp.escape(@configurator.extension_source)}$/
         # Add to .c includes list
@@ -130,6 +144,7 @@ class TestContextExtractor
 
     @lock.synchronize do
       @mocks[file_key] = mocks
+      @all_header_includes[file_key] = all_headers
       @header_includes[file_key] = headers
       @source_includes[file_key] = sources
     end

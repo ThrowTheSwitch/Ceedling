@@ -281,6 +281,7 @@ class TestInvoker
           arg_hash = {
             context:         TEST_SYM,
             mock_list:       details[:mock_list],
+            includes_list:   @test_context_extractor.lookup_header_includes_list( details[:filepath] ),
             test_filepath:   details[:filepath],
             input_filepath:  details[:runner][:input_filepath],
             runner_filepath: details[:runner][:output_filepath]            
