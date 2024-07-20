@@ -28,7 +28,7 @@ Expectations you declare by creating and using mocks are all considered together
   @car.expects.drive(:reverse, 5.mph)
 
   # Execute the code (this code is usually, obviously, in your class under test)
-  @garage.open_door  
+  @garage.open_door
   @car.start :choke
   @car.drive :reverse, 5.mph
 
@@ -42,14 +42,14 @@ Expects <tt>@garage.open_door</tt>, <tt>@car.start(:choke)</tt> and <tt>@car.dri
 
 * Homepage: http://hardmock.rubyforge.org
 * GEM or TGZ or ZIP: http://rubyforge.org/frs/?group_id=2742
-* Rails plugin: script/plugin install 
+* Rails plugin: script/plugin install
 * SVN access: svn co svn://rubyforge.org/var/svn/hardmock/trunk
 * Developer SVN access: svn co svn://developername@rubyforge.org/var/svn/hardmock/trunk
 
 == Setup for Test::Unit
 
   require 'hardmock'
-  require 'assert_error' # OPTIONAL: this adds the TestUnit extension 'assert_error' 
+  require 'assert_error' # OPTIONAL: this adds the TestUnit extension 'assert_error'
 
 NOTE: If installed as a Rails plugin, init.rb does this for you... nothing else is needed.
 
@@ -67,4 +67,4 @@ This puts the implicit conveniences into your spec context, like "create_mocks" 
 
 == Author
 * David Crosby crosby at http://atomicobject.com
-* (c) 2006,2007 Atomic Object LLC 
+* (c) 2006,2007 Atomic Object LLC

@@ -45,7 +45,7 @@ class MockTest < Test::Unit::TestCase
     # Verify
     assert_nothing_raised Exception do
       mock._verify
-    end 
+    end
   end
 
   def test_expects_using_arguments_for_method_and_arguments
@@ -114,7 +114,7 @@ class MockTest < Test::Unit::TestCase
     err = assert_raise StandardError do
       mock.account_number = 1234
     end
-    assert_match(/kaboom/i, err.message) 
+    assert_match(/kaboom/i, err.message)
     mock._verify
   end
 
@@ -141,25 +141,25 @@ class MockTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       mock.uh_oh
     end
-    assert_match(/surprise/i, err.message) 
-    assert_match(/uh_oh/i, err.message) 
-    
+    assert_match(/surprise/i, err.message)
+    assert_match(/uh_oh/i, err.message)
+
     err = assert_raise ExpectationError do
-      mock.whoa :horse  
+      mock.whoa :horse
     end
-    assert_match(/surprise/i, err.message) 
-    assert_match(/order\.whoa\(:horse\)/i, err.message) 
+    assert_match(/surprise/i, err.message)
+    assert_match(/order\.whoa\(:horse\)/i, err.message)
   end
 
   def test_wrong_call
     mock = Mock.new('order')
     mock.expects.pig 'arse'
     err = assert_raise ExpectationError do
-      mock.whoa :horse  
+      mock.whoa :horse
     end
-    assert_match(/wrong method/i, err.message) 
-    assert_match(/order\.whoa\(:horse\)/i, err.message) 
-    assert_match(/order\.pig\("arse"\)/i, err.message) 
+    assert_match(/wrong method/i, err.message)
+    assert_match(/order\.whoa\(:horse\)/i, err.message)
+    assert_match(/order\.pig\("arse"\)/i, err.message)
   end
 
   def test_wrong_arguments
@@ -167,11 +167,11 @@ class MockTest < Test::Unit::TestCase
     mock.expects.go_fast(:a, 1, 'three')
 
     err = assert_raise ExpectationError do
-      mock.go_fast :a, 1, 'not right'  
+      mock.go_fast :a, 1, 'not right'
     end
-    assert_match(/wrong argument/i, err.message) 
-    assert_match(/order\.go_fast\(:a, 1, "three"\)/i, err.message) 
-    assert_match(/order\.go_fast\(:a, 1, "not right"\)/i, err.message) 
+    assert_match(/wrong argument/i, err.message)
+    assert_match(/order\.go_fast\(:a, 1, "three"\)/i, err.message)
+    assert_match(/order\.go_fast\(:a, 1, "not right"\)/i, err.message)
   end
 
   def test_expects_and_return
@@ -195,25 +195,25 @@ class MockTest < Test::Unit::TestCase
     err = assert_raise StandardError do
       mock.delivery_date
     end
-    assert_match(/bloof/i, err.message) 
+    assert_match(/bloof/i, err.message)
 
     mock._verify
-    
-    # Try convenience argument String 
+
+    # Try convenience argument String
     mock.expects.pow.raises "hell"
     err = assert_raise RuntimeError do
       mock.pow
     end
-    assert_match(/hell/i, err.message) 
+    assert_match(/hell/i, err.message)
 
     mock._verify
 
     # Try convenience argument nothing
-    mock.expects.pow.raises 
+    mock.expects.pow.raises
     err = assert_raise RuntimeError do
       mock.pow
     end
-    assert_match(/an error/i, err.message) 
+    assert_match(/an error/i, err.message)
 
     mock._verify
   end

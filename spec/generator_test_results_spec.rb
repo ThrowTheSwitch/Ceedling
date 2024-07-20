@@ -73,7 +73,7 @@ describe GeneratorTestResults do
       :loginator => @loginator,
       :reportinator => nil
     })
-    
+
     # these will always be used as is.
     @yaml_wrapper = YamlWrapper.new
     @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :loginator => @loginator})
@@ -92,16 +92,16 @@ describe GeneratorTestResults do
       File.delete(TEST_OUT_FILE)
     end
   end
-  
+
   describe '#process_and_write_results' do
     it 'raises on an empty input' do
-      expect{ 
+      expect{
         @generate_test_results.process_and_write_results('test_example.out', {:output => ''}, TEST_OUT_FILE, 'some/place/test_example.c')
       }.to raise_error( /Could not parse/i )
     end
 
     it 'raises on mangled test output' do
-      expect{ 
+      expect{
         @generate_test_results.process_and_write_results('test_example.out', {:output => MANGLED_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
       }.to raise_error( /Could not parse/i )
     end

@@ -11,4 +11,4 @@
 int supervisor_delegate(int* worker_loads, int num_workers);
 int supervisor_progress(int* worker_loads, int num_workers);
 
-#endif 
+#endif

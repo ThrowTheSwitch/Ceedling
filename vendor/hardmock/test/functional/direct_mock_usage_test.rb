@@ -49,7 +49,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       @bird.shoot
     end
-    assert_match(/wrong method/i, err.message) 
+    assert_match(/wrong method/i, err.message)
   end
 
   it "raises ExpectationError on bad arguments" do
@@ -58,9 +58,9 @@ class DirectMockUsageTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       @bird.flap_flap(:rip)
     end
-    assert_match(/wrong arguments/i, err.message) 
+    assert_match(/wrong arguments/i, err.message)
   end
-  
+
   it "raises VerifyError when not all expected methods are called" do
     @bird.expects.flap_flap
     @bird.expects.bang
@@ -83,10 +83,10 @@ class DirectMockUsageTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       @bird.plop
     end
-    assert_match(/wrong method/i, err.message) 
+    assert_match(/wrong method/i, err.message)
   end
 
-  it "returns the configured value" do 
+  it "returns the configured value" do
     @bird.expects.plop.returns(':P')
     assert_equal ':P', @bird.plop
     @bird._verify
@@ -117,7 +117,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
     err = assert_raise RuntimeError do
       @bird.plop
     end
-    assert_match(/shaq/i, err.message) 
+    assert_match(/shaq/i, err.message)
     @bird._verify
   end
 
@@ -126,7 +126,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
     err = assert_raise RuntimeError do
       @bird.plop
     end
-    assert_match(/error/i, err.message) 
+    assert_match(/error/i, err.message)
     @bird._verify
   end
 
@@ -154,7 +154,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
     end
     assert_match(/wrong arguments/i, err.message)
     @bird._verify
-    
+
     @bird.expects.plop
     err = assert_raise ExpectationError do
       # less
@@ -186,16 +186,16 @@ class DirectMockUsageTest < Test::Unit::TestCase
     err = assert_raise RuntimeError do
       @bird.plop
     end
-    assert_match(/ball/i, err.message) 
+    assert_match(/ball/i, err.message)
     @bird._verify
   end
 
   it "passes mock-call arguments to the expectation block" do
     ball = nil
     mitt = nil
-    @bird.expects.plop {|arg1,arg2| 
-      ball = arg1  
-      mitt = arg2  
+    @bird.expects.plop {|arg1,arg2|
+      ball = arg1
+      mitt = arg2
     }
     assert_nil ball
     assert_nil mitt
@@ -208,9 +208,9 @@ class DirectMockUsageTest < Test::Unit::TestCase
   it "validates arguments if specified in addition to a block" do
     ball = nil
     mitt = nil
-    @bird.expects.plop(:ball,:mitt) {|arg1,arg2| 
-      ball = arg1  
-      mitt = arg2  
+    @bird.expects.plop(:ball,:mitt) {|arg1,arg2|
+      ball = arg1
+      mitt = arg2
     }
     assert_nil ball
     assert_nil mitt
@@ -221,32 +221,32 @@ class DirectMockUsageTest < Test::Unit::TestCase
 
     ball = nil
     mitt = nil
-    @bird.expects.plop(:bad,:stupid) {|arg1,arg2| 
-      ball = arg1  
-      mitt = arg2  
+    @bird.expects.plop(:bad,:stupid) {|arg1,arg2|
+      ball = arg1
+      mitt = arg2
     }
     assert_nil ball
     assert_nil mitt
     err = assert_raise ExpectationError do
       @bird.plop(:ball,:mitt)
     end
-    assert_match(/wrong arguments/i, err.message) 
+    assert_match(/wrong arguments/i, err.message)
     assert_nil ball
     assert_nil mitt
     @bird._verify
 
     ball = nil
     mitt = nil
-    @bird.expects.plop(:ball,:mitt) {|arg1,arg2| 
-      ball = arg1  
-      mitt = arg2  
+    @bird.expects.plop(:ball,:mitt) {|arg1,arg2|
+      ball = arg1
+      mitt = arg2
     }
     assert_nil ball
     assert_nil mitt
     err = assert_raise ExpectationError do
       @bird.plop(:ball)
     end
-    assert_match(/wrong arguments/i, err.message) 
+    assert_match(/wrong arguments/i, err.message)
     assert_nil ball
     assert_nil mitt
     @bird._verify
@@ -257,12 +257,12 @@ class DirectMockUsageTest < Test::Unit::TestCase
     got_arg = nil
 
     # Eg, bird expects someone to subscribe to :tweet using the 'when' method
-    @bird.expects.when(:tweet) { |arg1, block| 
+    @bird.expects.when(:tweet) { |arg1, block|
       got_arg = arg1
       block.call
     }
 
-    @bird.when(:tweet) do 
+    @bird.when(:tweet) do
       runtime_block_called = true
     end
 
@@ -274,7 +274,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       @bird.when(:honk) { }
     end
-    assert_match(/wrong arguments/i, err.message) 
+    assert_match(/wrong arguments/i, err.message)
 
     @bird._verify
   end
@@ -282,7 +282,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
   it "passes the runtime block to the expectation block as sole argument if no other args come into play" do
     runtime_block_called = false
     @bird.expects.subscribe { |block| block.call }
-    @bird.subscribe do 
+    @bird.subscribe do
       runtime_block_called = true
     end
     assert runtime_block_called, "The runtime block should have been invoked by the user block"
@@ -290,7 +290,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
 
   it "provides nil as final argument if expectation block seems to want a block" do
     invoked = false
-    @bird.expects.kablam(:scatter) { |shot,block| 
+    @bird.expects.kablam(:scatter) { |shot,block|
       assert_equal :scatter, shot, "Wrong shot"
       assert_nil block, "The expectation block should get a nil block when user neglects to pass one"
       invoked = true
@@ -307,7 +307,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
       got = shot
     }.returns(:death)
 
-    val = @bird.kablam :scatter 
+    val = @bird.kablam :scatter
     assert_equal :death, val, "Wrong return value"
     assert_equal :scatter, got, "Wrong argument"
     @bird._verify
@@ -320,9 +320,9 @@ class DirectMockUsageTest < Test::Unit::TestCase
     end.raises "hell"
 
     err = assert_raise RuntimeError do
-      @bird.kablam :scatter 
+      @bird.kablam :scatter
     end
-    assert_match(/hell/i, err.message) 
+    assert_match(/hell/i, err.message)
 
     @bird._verify
   end
@@ -335,7 +335,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
     assert_not_nil expectation, "Expectation nil"
     assert_nil expectation.block_value, "Block value should start out nil"
 
-    ret_val = @bird.kablam :slug 
+    ret_val = @bird.kablam :slug
 
     assert_equal "The shot was slug", expectation.block_value
     assert_equal "The shot was slug", ret_val, "Block value should also be used for return"
@@ -344,11 +344,11 @@ class DirectMockUsageTest < Test::Unit::TestCase
   end
 
 
-  it "uses the value of the expectation block as the default return value" do 
+  it "uses the value of the expectation block as the default return value" do
     @bird.expects.kablam(:scatter) { |shot|
       "The shot was #{shot}"
     }
-    val = @bird.kablam :scatter 
+    val = @bird.kablam :scatter
     assert_equal "The shot was scatter", val, "Wrong return value"
     @bird._verify
   end
@@ -361,7 +361,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
     assert_not_nil expectation, "Expectation nil"
     assert_nil expectation.block_value, "Block value should start out nil"
 
-    ret_val = @bird.kablam :slug 
+    ret_val = @bird.kablam :slug
 
     assert_equal "The shot was slug", expectation.block_value
     assert_equal :hosed, ret_val, "Block value should also be used for return"
@@ -378,7 +378,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
     assert_nil expectation.block_value, "Block value should start out nil"
 
     err = assert_raise RuntimeError do
-     @bird.kablam :slug 
+     @bird.kablam :slug
     end
     assert_match(/aiee!/i, err.message)
     assert_equal "The shot was slug", expectation.block_value
@@ -398,7 +398,7 @@ class DirectMockUsageTest < Test::Unit::TestCase
     err = assert_raise RuntimeError do
       @bird.size = "large"
     end
-    assert_match(/boom/i, err.message) 
+    assert_match(/boom/i, err.message)
   end
 
 end

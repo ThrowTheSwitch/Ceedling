@@ -140,5 +140,3 @@ TEST_F(UITests, when_string_longer_than_26_then_truncated_string_output)
 	// then
 	ASSERT_EQ(strncmp(expected, DISPLAY_output_fake.arg0_val, 37), 0);
 }
-
-

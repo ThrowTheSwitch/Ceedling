@@ -40,11 +40,11 @@ class DIYTest < Test::Unit::TestCase
     presenter = @diy.get_object('dog_presenter')
     assert_not_nil presenter, 'nil dog_presenter'
 
-    model = @diy.get_object('dog_model') 
+    model = @diy.get_object('dog_model')
     assert_not_nil model, 'nil dog_model'
     assert_same presenter.model, model, "Different model came from context than found in presenter"
 
-    view = @diy.get_object('dog_view') 
+    view = @diy.get_object('dog_view')
     assert_not_nil view, 'nil dog_view'
     assert_same presenter.view, view, "Different view came from context than found in presenter"
 
@@ -82,7 +82,7 @@ class DIYTest < Test::Unit::TestCase
     @diy.build_everything
     assert_not_nil @diy['foo/bar/qux'], "Should have got my qux (which is hiding in a couple modules)"
   end
-    
+
   def test_keys
     load_context "dog/simple.yml"
     assert_equal %w|dog_model dog_presenter dog_view file_resolver other_thing|, @diy.keys.sort
@@ -195,7 +195,7 @@ class DIYTest < Test::Unit::TestCase
     err = assert_raise DIY::ConstructionError  do
       @diy.get_object 'dog_presenter'
     end
-    assert_match(/dog_presenter/, err.message)  
+    assert_match(/dog_presenter/, err.message)
   end
 
   def test_context_with_extra_inputs
@@ -291,7 +291,7 @@ class DIYTest < Test::Unit::TestCase
     $goat_test_output_file = ofile
 
     # Reusable setup for this test
-    prep_output = proc do 
+    prep_output = proc do
     remove ofile if File.exist?(ofile)
   end
 
@@ -408,7 +408,7 @@ class DIYTest < Test::Unit::TestCase
 	def test_should_be_able_to_turn_off_auto_require_for_all_objects
 	  DIY::Context.auto_require = false
 	  load_context 'horse/objects.yml'
-	  
+
 	  exception = assert_raise(DIY::ConstructionError) { @diy['holder_thing'] }
 	  assert_match(/uninitialized constant/, exception.message)
   end
@@ -471,7 +471,7 @@ class DIYTest < Test::Unit::TestCase
       tick3 = cat.tick
       assert_not_nil  tick3, "Couldn't get tick from cat"
       assert tick1.object_id != tick3.object_id, "tick from cat matched an earlier tick; should not be so"
-      
+
       assert_same yard, cat.yard, "Cat's yard should be same as other yard"
       assert_not_nil cat.thread_spinner, "No thread spinner in cat?"
 
@@ -479,7 +479,7 @@ class DIYTest < Test::Unit::TestCase
       assert thread_spinner1.object_id != cat.thread_spinner.object_id, "cat's thread spinner matched the other spinner; should not be so"
     end
   end
-  
+
   def test_should_provide_syntax_for_using_namespace
     # This test exercises single and triple-level namespaces for nested
     # modules, and their interaction with other namespaced-objects.
@@ -500,7 +500,7 @@ class DIYTest < Test::Unit::TestCase
     assert_same sky, bird.sky, "Bird has wrong Sky"
     assert_same bird, lizard.bird, "Lizard has wrong Bird"
   end
-  
+
   def test_should_combine_a_given_class_name_with_the_namespace
     load_context "namespace/class_name_combine.yml"
     assert_not_nil @diy['garfield'], "No garfield"
@@ -545,63 +545,63 @@ class DIYTest < Test::Unit::TestCase
     load_context "functions/objects.yml"
     @diy.build_everything
     build_thing = @diy['build_thing']
-    
+
     assert_not_nil build_thing, "should not be nil"
     assert_kind_of(Method, build_thing)
     assert_equal(build_thing, @diy['build_thing'])
   end
-  
+
   def test_bounded_method_can_be_used
     load_context "functions/objects.yml"
     @diy.build_everything
     build_thing = @diy['build_thing']
-    
+
     thing = build_thing["the name", "flying"]
-    
+
     assert_equal("the name", thing.name)
     assert_equal("flying", thing.ability)
   end
-  
+
   def test_building_bounded_method_uses_object_in_diy_context_correctly
     load_context "functions/objects.yml"
     @diy.build_everything
     assert_equal(@diy['build_thing'], @diy['thing_builder'].method(:build))
-    
+
     load_context "functions/nonsingleton_objects.yml"
     @diy.build_everything
     assert_not_equal(@diy['build_thing'], @diy['thing_builder'].method(:build))
   end
-  
+
   def test_composing_bounded_methods_into_other_objects
     load_context "functions/objects.yml"
     @diy.build_everything
     assert_equal(@diy['build_thing'], @diy['things_builder'].build_thing)
   end
-  
+
   def test_raises_construction_error_if_invalid_method_specified
     load_context "functions/invalid_method.yml"
     assert_raises DIY::ConstructionError do
       @diy.build_everything
     end
   end
-  
+
   def test_can_optionally_attach_method_to_other_objects_in_context
     load_context "functions/objects.yml"
     @diy.build_everything
-    
+
     thing = @diy['attached_things_builder'].build_thing("the name", "flying")
     assert_kind_of(Thing, thing)
     assert_equal("the name", thing.name)
-    assert_equal("flying", thing.ability)    
-    
+    assert_equal("flying", thing.ability)
+
     ["attached_things_builder", "things_builder"].each do |key|
       thing = @diy[key].build_default_thing
       assert_kind_of(Thing, thing)
       assert_equal("Thing", thing.name)
-      assert_equal("nothing", thing.ability)    
+      assert_equal("nothing", thing.ability)
     end
   end
-  
+
   #
   # HELPERS
   #

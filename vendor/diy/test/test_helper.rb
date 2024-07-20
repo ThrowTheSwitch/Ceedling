@@ -28,8 +28,8 @@ class Test::Unit::TestCase
 	end
 	alias :implement_me :not_done
 
-	def poll(time_limit) 
-		(time_limit * 10).to_i.times do 
+	def poll(time_limit)
+		(time_limit * 10).to_i.times do
 			return true if yield
 			sleep 0.1
 		end
@@ -37,7 +37,7 @@ class Test::Unit::TestCase
 	end
 
 	def self.method_added(msym)
-		# Prevent duplicate test methods 
+		# Prevent duplicate test methods
 		if msym.to_s =~ /^test_/
 			@_tracked_tests ||= {}
 			raise "Duplicate test #{msym}" if @_tracked_tests[msym]

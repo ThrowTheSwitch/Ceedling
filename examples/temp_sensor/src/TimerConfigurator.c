@@ -55,4 +55,3 @@ void Timer_Start(void)
 {
   AT91C_BASE_TC0->TC_CCR = AT91C_TC_SWTRG;
 }
-

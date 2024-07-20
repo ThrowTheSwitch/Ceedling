@@ -24,7 +24,7 @@ class Plugin
   end
 
   def setup; end
-  
+
   def summary; end
 
 end

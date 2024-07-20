@@ -18,7 +18,7 @@ class GeneratorTestRunner
 
   def initialize(config:, test_file_contents:, preprocessed_file_contents:nil)
     @unity_runner_generator = UnityTestRunnerGenerator.new( config )
-    
+
     # Reduced information set
     @test_cases = []
 
@@ -48,7 +48,7 @@ class GeneratorTestRunner
     if (!preprocessed_file_contents.nil?)
       # Save the test case structure to be used in generation
       @test_cases_internal = @unity_runner_generator.find_tests( preprocessed_file_contents )
-      
+
       # Configure the runner generator around `setUp()` and `tearDown()`
       @unity_runner_generator.find_setup_and_teardown( preprocessed_file_contents )
 

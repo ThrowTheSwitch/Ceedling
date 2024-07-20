@@ -18,4 +18,3 @@ class Kitten
     "meow"
   end
 end
-

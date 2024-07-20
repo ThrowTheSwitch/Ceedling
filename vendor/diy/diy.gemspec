@@ -128,4 +128,3 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<constructor>, [">= 1.0.0"])
   end
 end
-

@@ -115,4 +115,4 @@ void test_boss_can_MicroManageLikeABoss(void)
     }
 }
 
-#endif 
+#endif

@@ -19,7 +19,7 @@ class TaskInvoker
     # Alias for brevity
     @batchinator = @build_batchinator
   end
-  
+
   def add_test_task_regex(regex)
     @test_regexs << regex
   end
@@ -27,26 +27,26 @@ class TaskInvoker
   def add_release_task_regex(regex)
     @release_regexs << regex
   end
-  
+
   def test_invoked?
     invoked = false
-    
+
     @test_regexs.each do |regex|
       invoked = true if (@rake_utils.task_invoked?(regex))
       break if invoked
     end
-    
+
     return invoked
   end
-  
+
   def release_invoked?
     invoked = false
-    
+
     @release_regexs.each do |regex|
       invoked = true if (@rake_utils.task_invoked?(regex))
       break if invoked
     end
-    
+
     return invoked
   end
 
@@ -66,5 +66,5 @@ class TaskInvoker
       @rake_wrapper[object].invoke
     end
   end
-  
+
 end

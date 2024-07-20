@@ -25,7 +25,7 @@ float TemperatureCalculator_Calculate(uint16 millivolts)
   const double coefficient_B = -0.1382009;
   double sensor_voltage = ((double)millivolts / 1000);
   double resistance;
-  
+
   if (millivolts == 0)
   {
     return -INFINITY;

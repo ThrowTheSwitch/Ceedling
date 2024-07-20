@@ -17,11 +17,11 @@
 
 * Added 'using_namespace' directive for assuming a module for a group of object defs
 * Added 'use_class_directly' option for configuring an ObjectDef.  Instead of instantiating an instance
-  of the specified class, the class itself is referenced.  (Good for injecting ActiveRecord classes into 
+  of the specified class, the class itself is referenced.  (Good for injecting ActiveRecord classes into
   other components in the guise of factories.
 * Added DIY::Context.auto_require boolean setting. When false, the library of a
   class is not autoloaded ahead of object construction. Is true by default.
-* 'auto_require' can, if neccessary, be set in the YAML config for an individual object. 
+* 'auto_require' can, if neccessary, be set in the YAML config for an individual object.
 
 == 1.0.0 / 2007-11-19
 

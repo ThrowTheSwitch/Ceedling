@@ -20,7 +20,7 @@ class ExpectationTest < Test::Unit::TestCase
   #
   # HELPERS
   #
-   
+
   class TheMock
     def _name; 'the_mock'; end
   end
@@ -33,10 +33,10 @@ class ExpectationTest < Test::Unit::TestCase
   #
 
   def test_to_s
-    ex = Expectation.new( :mock => @mock, :method => 'a_func', :arguments => [1, "two", :three, { :four => 4 }] )  
+    ex = Expectation.new( :mock => @mock, :method => 'a_func', :arguments => [1, "two", :three, { :four => 4 }] )
     assert_equal %|the_mock.a_func(1, "two", :three, {:four=>4})|, ex.to_s
   end
-   
+
   def test_apply_method_call
     se = Expectation.new(:mock => @mock, :method => 'some_func',
       :arguments => [1,'two',:three] )
@@ -44,35 +44,35 @@ class ExpectationTest < Test::Unit::TestCase
     # Try it good:
     assert_nothing_raised ExpectationError do
       se.apply_method_call( @mock, 'some_func', [1,'two',:three], nil )
-    end 
+    end
 
     # Bad func name:
     err = assert_raise ExpectationError do
       se.apply_method_call( @mock, 'wrong_func', [1,'two',:three], nil )
     end
-    assert_match(/wrong method/i, err.message) 
-    assert_match(/wrong_func/i, err.message) 
-    assert_match(/[1, "two", :three]/i, err.message) 
-    assert_match(/some_func/i, err.message) 
-    assert_match(/the_mock/i, err.message) 
+    assert_match(/wrong method/i, err.message)
+    assert_match(/wrong_func/i, err.message)
+    assert_match(/[1, "two", :three]/i, err.message)
+    assert_match(/some_func/i, err.message)
+    assert_match(/the_mock/i, err.message)
 
     # Wrong mock
     err = assert_raise ExpectationError do
       se.apply_method_call( OtherMock.new, 'some_func', [1,'two',:three], nil )
     end
-    assert_match(/[1, "two", :three]/i, err.message) 
-    assert_match(/some_func/i, err.message) 
-    assert_match(/the_mock/i, err.message) 
-    assert_match(/other_mock/i, err.message) 
-    
+    assert_match(/[1, "two", :three]/i, err.message)
+    assert_match(/some_func/i, err.message)
+    assert_match(/the_mock/i, err.message)
+    assert_match(/other_mock/i, err.message)
+
     # Wrong args
     err = assert_raise ExpectationError do
       se.apply_method_call( @mock, 'some_func', [1,'two',:four], nil)
     end
-    assert_match(/[1, "two", :three]/i, err.message) 
-    assert_match(/[1, "two", :four]/i, err.message) 
-    assert_match(/wrong arguments/i, err.message) 
-    assert_match(/some_func/i, err.message) 
+    assert_match(/[1, "two", :three]/i, err.message)
+    assert_match(/[1, "two", :four]/i, err.message)
+    assert_match(/wrong arguments/i, err.message)
+    assert_match(/some_func/i, err.message)
   end
 
   def test_apply_method_call_should_call_proc_when_given
@@ -86,7 +86,7 @@ class ExpectationTest < Test::Unit::TestCase
     assert_nil thinger
     assert_nothing_raised ExpectationError do
       se.apply_method_call(@mock, 'some_func', [], nil)
-    end 
+    end
     assert_equal :shaq, thinger, 'wheres shaq??'
   end
 
@@ -94,9 +94,9 @@ class ExpectationTest < Test::Unit::TestCase
 
     passed_block = nil
     exp_block_called = false
-    exp_block = Proc.new { |blk| 
+    exp_block = Proc.new { |blk|
       exp_block_called = true
-      passed_block = blk 
+      passed_block = blk
     }
 
     se = Expectation.new(:mock => @mock, :method => 'some_func', :block => exp_block,
@@ -125,8 +125,8 @@ class ExpectationTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       se.apply_method_call( @mock, 'some_func', [], runtime_block)
     end
-    assert_match(/unexpected block/i, err.message) 
-    assert_match(/the_mock.some_func()/i, err.message) 
+    assert_match(/unexpected block/i, err.message)
+    assert_match(/the_mock.some_func()/i, err.message)
   end
 
   def test_returns
@@ -143,7 +143,7 @@ class ExpectationTest < Test::Unit::TestCase
     se = Expectation.new(:mock => @mock, :method => 'do_it', :arguments => [], :block => the_proc)
 
     assert_nil se.block_value, "Block value starts out nil"
-    
+
     se.apply_method_call(@mock, 'do_it', [], nil)
 
     assert_equal "in the block", se.block_value, "Block value not captured"
@@ -191,8 +191,8 @@ class ExpectationTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       se.trigger
     end
-    assert_match(/do_it/i, err.message) 
-    assert_match(/block value/i, err.message) 
+    assert_match(/do_it/i, err.message)
+    assert_match(/block value/i, err.message)
   end
 
   def test_trigger_non_proc_block_value
@@ -205,9 +205,9 @@ class ExpectationTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       se.trigger
     end
-    assert_match(/do_it/i, err.message) 
-    assert_match(/trigger/i, err.message) 
-    assert_match(/woops/i, err.message) 
+    assert_match(/do_it/i, err.message)
+    assert_match(/trigger/i, err.message)
+    assert_match(/woops/i, err.message)
   end
 
 
@@ -233,7 +233,7 @@ class ExpectationTest < Test::Unit::TestCase
     se.yields :bean1, :bean2
 
     things = []
-    a_block = lambda { |thinger| things << thinger } 
+    a_block = lambda { |thinger| things << thinger }
 
     se.apply_method_call(@mock,'each_bean',[:side_slot],a_block)
     assert_equal [:bean1,:bean2], things, "Wrong things"
@@ -259,19 +259,19 @@ class ExpectationTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       se.apply_method_call(@mock,'each_bean',[:side_slot],a_block)
     end
-    assert_match(/wont_fit/i, err.message) 
-    assert_match(/arity -1/i, err.message) 
+    assert_match(/wont_fit/i, err.message)
+    assert_match(/arity -1/i, err.message)
     assert_equal [], things, "Wrong things"
   end
 
   def test_yields_with_returns
     se = Expectation.new(:mock => @mock, :method => 'each_bean', :arguments => [:side_slot] ,
       :returns => 'the results')
-    
+
     exp = se.yields :bean1, :bean2
     assert_same se, exp, "'yields' needs to return a reference to the expectation"
     things = []
-    a_block = lambda { |thinger| things << thinger } 
+    a_block = lambda { |thinger| things << thinger }
     returned = se.apply_method_call(@mock,'each_bean',[:side_slot],a_block)
     assert_equal [:bean1,:bean2], things, "Wrong things"
     assert_equal 'the results', returned, "Wrong return value"
@@ -280,32 +280,32 @@ class ExpectationTest < Test::Unit::TestCase
   def test_yields_with_raises
     se = Expectation.new(:mock => @mock, :method => 'each_bean', :arguments => [:side_slot],
       :raises => RuntimeError.new("kerboom"))
-    
+
     exp = se.yields :bean1, :bean2
     assert_same se, exp, "'yields' needs to return a reference to the expectation"
     things = []
-    a_block = lambda { |thinger| things << thinger } 
+    a_block = lambda { |thinger| things << thinger }
     err = assert_raise RuntimeError do
       se.apply_method_call(@mock,'each_bean',[:side_slot],a_block)
     end
-    assert_match(/kerboom/i, err.message) 
+    assert_match(/kerboom/i, err.message)
     assert_equal [:bean1,:bean2], things, "Wrong things"
   end
 
   def test_yields_and_inner_block_explodes
     se = Expectation.new(:mock => @mock, :method => 'each_bean', :arguments => [:side_slot])
-    
+
     exp = se.yields :bean1, :bean2
     assert_same se, exp, "'yields' needs to return a reference to the expectation"
     things = []
-    a_block = lambda { |thinger| 
-      things << thinger 
+    a_block = lambda { |thinger|
+      things << thinger
       raise "nasty"
-    } 
+    }
     err = assert_raise RuntimeError do
       se.apply_method_call(@mock,'each_bean',[:side_slot],a_block)
     end
-    assert_match(/nasty/i, err.message) 
+    assert_match(/nasty/i, err.message)
     assert_equal [:bean1], things, "Wrong things"
   end
 
@@ -314,7 +314,7 @@ class ExpectationTest < Test::Unit::TestCase
     se.yields ['a','b'], ['c','d']
 
     things = []
-    a_block = lambda { |thinger| things << thinger } 
+    a_block = lambda { |thinger| things << thinger }
 
     se.apply_method_call(@mock,'each_bean',[:side_slot],a_block)
     assert_equal [ ['a','b'], ['c','d'] ], things, "Wrong things"
@@ -325,13 +325,13 @@ class ExpectationTest < Test::Unit::TestCase
     se.yields ['a','b','c'], ['d','e','f']
 
     things = []
-    a_block = lambda { |left,mid,right| 
+    a_block = lambda { |left,mid,right|
       things << { :left => left, :mid => mid, :right => right }
-    } 
+    }
 
     se.apply_method_call(@mock,'each_bean',[:side_slot],a_block)
-    assert_equal [ 
-      {:left => 'a', :mid => 'b', :right => 'c' }, 
+    assert_equal [
+      {:left => 'a', :mid => 'b', :right => 'c' },
       {:left => 'd', :mid => 'e', :right => 'f' },
       ], things, "Wrong things"
   end
@@ -341,16 +341,16 @@ class ExpectationTest < Test::Unit::TestCase
     se.yields ['a','b','c'], ['d','e','f']
 
     things = []
-    a_block = lambda { |left,mid| 
+    a_block = lambda { |left,mid|
       things << { :left => left, :mid => mid }
-    } 
+    }
 
     err = assert_raise ExpectationError do
       se.apply_method_call(@mock,'each_bean',[:side_slot],a_block)
     end
-    assert_match(/arity/i, err.message) 
-    assert_match(/the_mock.each_bean/i, err.message) 
-    assert_match(/"a", "b", "c"/i, err.message) 
+    assert_match(/arity/i, err.message)
+    assert_match(/the_mock.each_bean/i, err.message)
+    assert_match(/"a", "b", "c"/i, err.message)
     assert_equal [], things, "Wrong things"
   end
 
@@ -362,17 +362,17 @@ class ExpectationTest < Test::Unit::TestCase
       se.apply_method_call(@mock,'do_later',[],lambda { |doesnt,match| raise "Surprise!" } )
     end
   end
-  
+
   def test_that_arguments_can_be_added_to_expectation
     expectation = Expectation.new(:mock => @mock, :method => "each_bean")
     assert_same expectation, expectation.with("jello", "for", "cosby"), "should have returned the same expectation"
-    
+
     err = assert_raise ExpectationError do
       expectation.apply_method_call(@mock, 'each_bean', [], nil)
     end
     assert_match(/wrong arguments/i, err.message)
-    
-    assert_nothing_raised(ExpectationError) do  
+
+    assert_nothing_raised(ExpectationError) do
       expectation.apply_method_call(@mock, 'each_bean', ["jello", "for", "cosby"], nil)
     end
   end

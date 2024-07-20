@@ -14,7 +14,7 @@ class StubbingTest < Test::Unit::TestCase
 
   #
   # TESTS
-  # 
+  #
 
   it "stubs a class method (and un-stubs after reset_stubs)" do
     assert_equal "stones and gravel", Concrete.pour
@@ -142,7 +142,7 @@ class StubbingTest < Test::Unit::TestCase
   #
 
   it "mocks specific methods on existing classes, and returns the class method to normal after verification" do
-    
+
     assert_equal "stones and gravel", Concrete.pour, "Concrete.pour is already messed up"
 
     Concrete.expects!(:pour).returns("ALIGATORS")
@@ -151,9 +151,9 @@ class StubbingTest < Test::Unit::TestCase
     verify_mocks
     assert_equal "stones and gravel", Concrete.pour, "Concrete.pour not restored"
   end
-   
+
   it "flunks if expected class method is not invoked" do
-    
+
     Concrete.expects!(:pour).returns("ALIGATORS")
     assert_error(Hardmock::VerifyError, /Concrete.pour/, /unmet expectations/i) do
       verify_mocks
@@ -162,7 +162,7 @@ class StubbingTest < Test::Unit::TestCase
   end
 
   it "supports all normal mock functionality for class methods" do
-    
+
     Concrete.expects!(:pour, "two tons").returns("mice")
     Concrete.expects!(:pour, "three tons").returns("cats")
     Concrete.expects!(:pour, "four tons").raises("Can't do it")
@@ -172,7 +172,7 @@ class StubbingTest < Test::Unit::TestCase
 
     assert_equal "mice", Concrete.pour("two tons")
     assert_equal "cats", Concrete.pour("three tons")
-    assert_error(RuntimeError, /Can't do it/) do 
+    assert_error(RuntimeError, /Can't do it/) do
       Concrete.pour("four tons")
     end
     assert_equal "==first+second==", Concrete.pour("first","second")
@@ -181,7 +181,7 @@ class StubbingTest < Test::Unit::TestCase
 
   it "enforces inter-mock ordering when mocking class methods" do
     create_mocks :truck, :foreman
-    
+
     @truck.expects.backup
     Concrete.expects!(:pour, "something")
     @foreman.expects.shout
@@ -202,7 +202,7 @@ class StubbingTest < Test::Unit::TestCase
   end
 
   it "mocks specific methods on existing instances, then restore them after verify" do
-    
+
     slab = Concrete.new
     assert_equal "bonk", slab.hit
 
@@ -214,7 +214,7 @@ class StubbingTest < Test::Unit::TestCase
   end
 
   it "flunks if expected instance method is not invoked" do
-    
+
     slab = Concrete.new
     slab.expects!(:hit)
 
@@ -225,7 +225,7 @@ class StubbingTest < Test::Unit::TestCase
   end
 
   it "supports all normal mock functionality for instance methods" do
-    
+
     slab = Concrete.new
 
     slab.expects!(:hit, "soft").returns("hey")
@@ -237,11 +237,11 @@ class StubbingTest < Test::Unit::TestCase
 
     assert_equal "hey", slab.hit("soft")
     assert_equal "OOF", slab.hit("hard")
-    assert_error(RuntimeError, /stoppit/) do 
+    assert_error(RuntimeError, /stoppit/) do
       slab.hit
     end
     assert_equal "==first+second==", slab.hit("first","second")
-    
+
   end
 
   it "enforces inter-mock ordering when mocking instance methods" do
@@ -303,20 +303,20 @@ class StubbingTest < Test::Unit::TestCase
     verify_mocks
     reset_stubs
   end
-  
+
   it "can stub the new method and return values" do
     Concrete.stubs!(:new).returns("this value")
     assert_equal "this value", Concrete.new, "did not properly stub new class method"
     reset_stubs
   end
-  
+
   it "can mock the new method and return values" do
     Concrete.expects!(:new).with("foo").returns("hello")
     Concrete.expects!(:new).with("bar").returns("world")
-    
+
     assert_equal "hello", Concrete.new("foo"), "did not properly mock out new class method"
     assert_equal "world", Concrete.new("bar"), "did not properly mock out new class method"
-    
+
     verify_mocks
     reset_stubs
   end
@@ -484,4 +484,3 @@ class StubbingTest < Test::Unit::TestCase
   end
 
 end
-

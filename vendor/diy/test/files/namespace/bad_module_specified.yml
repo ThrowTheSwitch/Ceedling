@@ -13,4 +13,3 @@ using_namespace FuzzyCreature:
 
   bird:
     compose: sky
-

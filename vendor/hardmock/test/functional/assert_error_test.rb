@@ -23,8 +23,8 @@ class AssertErrorTest < Test::Unit::TestCase
         raise RuntimeError.new("Too funky")
       end
     end
-    assert_match(/not good/i, err.message) 
-    assert_match(/too funky/i, err.message) 
+    assert_match(/not good/i, err.message)
+    assert_match(/too funky/i, err.message)
   end
 
   it "flunks if the error type is wrong" do
@@ -33,11 +33,11 @@ class AssertErrorTest < Test::Unit::TestCase
         raise RuntimeError.new("Too funky")
       end
     end
-    assert_match(/StandardError/i, err.message) 
-    assert_match(/RuntimeError/i, err.message) 
+    assert_match(/StandardError/i, err.message)
+    assert_match(/RuntimeError/i, err.message)
   end
 
-  it "can match error message text using a series of Regexps" do 
+  it "can match error message text using a series of Regexps" do
     assert_error StandardError, /too/i, /funky/i do
       raise StandardError.new("Too funky")
     end
@@ -49,11 +49,11 @@ class AssertErrorTest < Test::Unit::TestCase
         raise StandardError.new("Too funky")
       end
     end
-    assert_match(/way/i, err.message) 
+    assert_match(/way/i, err.message)
   end
 
   it "can operate without any message specification" do
-    assert_error StandardError do 
+    assert_error StandardError do
       raise StandardError.new("ooof")
     end
   end

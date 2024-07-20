@@ -23,12 +23,12 @@ module Hardmock
       if block_given?
         raise ExpectationError.new("Don't pass blocks when using 'trap' (setting exepectations for '#{mname}')")
       end
-      
+
       the_block = lambda { |target_block| target_block }
       expectation = @expectation_builder.build_expectation(
-        :mock => @mock, 
-        :method => mname, 
-        :arguments => args, 
+        :mock => @mock,
+        :method => mname,
+        :arguments => args,
         :suppress_arguments_to_block => true,
         :block => the_block)
 

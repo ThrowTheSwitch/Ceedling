@@ -12,7 +12,7 @@ class HtmlTestsReporter < TestsReporter
   def setup()
     super( default_filename: 'tests_report.html' )
   end
-  
+
   # HTML header
   def header(results:, stream:)
     stream.puts "<!DOCTYPE html>"

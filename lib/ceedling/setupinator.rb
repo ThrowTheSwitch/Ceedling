@@ -163,14 +163,14 @@ class Setupinator
     log_step( 'Loading Plugins' )
 
     @configurator.insert_rake_plugins( @configurator.rake_plugins )
-    
+
     # Merge in any environment variables that plugins specify after the main build
     @plugin_manager.load_programmatic_plugins( @configurator.programmatic_plugins, @ceedling ) do |env|
       # Evaluate environment vars that plugins may have added
       @configurator.eval_environment_variables( env )
       @configurator.build_supplement( config_hash, env )
     end
-    
+
     # Inject dependencies for plugin needs
     @plugin_reportinator.set_system_objects( @ceedling )
   end

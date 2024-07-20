@@ -13,7 +13,7 @@ require 'ceedling/exceptions'
 
 
 class FilePathCollectionUtils
-  
+
   constructor :file_wrapper
 
   def setup()
@@ -26,11 +26,11 @@ class FilePathCollectionUtils
   def collect_paths(paths)
     plus  = Set.new # All real, expanded directory paths to add
     minus = Set.new # All real, expanded paths to exclude
-    
+
     # Iterate each path possibly decorated with aggregation modifiers and/or containing glob characters
     paths.each do |path|
       dirs = [] # Working list for evaluated directory paths
-    
+
       # Get path stripped of any +:/-: aggregation modifier
       _path = FilePathUtils.no_aggregation_decorators( path )
 
@@ -46,12 +46,12 @@ class FilePathCollectionUtils
         # Previous validation has already made warnings about filepaths in the list
         dirs << entry if @file_wrapper.directory?(entry)
       end
-      
+
       # For recursive directory glob at end of a path, collect parent directories too.
       # Ceedling's recursive glob convention includes parent directories (unlike Ruby's glob).
       if path.end_with?('/**') or path.end_with?('/*')
         parents = []
-        
+
         dirs.each {|dir| parents << File.join(dir, '..')}
 
         # Handle edge case of subdirectory glob but no subdirectories and therefore no parents
@@ -95,7 +95,7 @@ class FilePathCollectionUtils
   def revise_filelist(list, revisions)
     plus  = Set.new # All real, expanded directory paths to add
     minus = Set.new # All real, expanded paths to exclude
-    
+
     # Build base plus set for revised path
     list.each do |path|
       # Start with expanding all list entries to absolute paths
@@ -105,7 +105,7 @@ class FilePathCollectionUtils
     revisions.each do |revision|
       # Include or exclude revisions in file list
       path = FilePathUtils.no_aggregation_decorators( revision )
-      
+
       # Working list of revisions
       filepaths = []
 

@@ -70,7 +70,7 @@ class CeedlingAppConfig
     rescue
       # Do nothing; allow value already set to stand as default
     end
-  end 
+  end
 
   def set_project_config(config)
     @app_cfg[:project_config] = config

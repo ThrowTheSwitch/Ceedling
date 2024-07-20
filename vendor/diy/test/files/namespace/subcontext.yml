@@ -19,7 +19,7 @@ using_namespace Animal:
 +aviary:
   using_namespace Animal:
     bird:
-      compose: sky    
+      compose: sky
 
   using_namespace Animal Reptile:
     lizard:
@@ -27,4 +27,3 @@ using_namespace Animal:
 
 using_namespace Animal::Reptile::Hardshell:
   turtle:
-

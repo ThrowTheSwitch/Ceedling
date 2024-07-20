@@ -16,4 +16,3 @@ void AssertEqualEXAMPLE_STRUCT_T(const EXAMPLE_STRUCT_T expected, const EXAMPLE_
   UNITY_TEST_ASSERT_EQUAL_INT(expected.y, actual.y, line, "EXAMPLE_STRUCT_T.y check failed");
 }
 #endif
-

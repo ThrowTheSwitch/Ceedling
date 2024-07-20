@@ -143,7 +143,7 @@ class ConfiguratorSetup
 
     if config[:cmock][:unity_helper]
       config[:cmock][:unity_helper].each do |path|
-        valid &= @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper ) 
+        valid &= @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper )
       end
     end
 
@@ -232,11 +232,11 @@ class ConfiguratorSetup
       end
     when Symbol
       if compile_threads != :auto
-        @loginator.log( ":project ↳ :compile_threads is neither an integer nor :auto", Verbosity::ERRORS ) 
+        @loginator.log( ":project ↳ :compile_threads is neither an integer nor :auto", Verbosity::ERRORS )
         valid = false
       end
     else
-      @loginator.log( ":project ↳ :compile_threads is neither an integer nor :auto", Verbosity::ERRORS ) 
+      @loginator.log( ":project ↳ :compile_threads is neither an integer nor :auto", Verbosity::ERRORS )
       valid = false
     end
 
@@ -248,11 +248,11 @@ class ConfiguratorSetup
       end
     when Symbol
       if test_threads != :auto
-        @loginator.log( ":project ↳ :test_threads is neither an integer nor :auto", Verbosity::ERRORS ) 
+        @loginator.log( ":project ↳ :test_threads is neither an integer nor :auto", Verbosity::ERRORS )
         valid = false
       end
     else
-      @loginator.log( ":project ↳ :test_threads is neither an integer nor :auto", Verbosity::ERRORS ) 
+      @loginator.log( ":project ↳ :test_threads is neither an integer nor :auto", Verbosity::ERRORS )
       valid = false
     end
 

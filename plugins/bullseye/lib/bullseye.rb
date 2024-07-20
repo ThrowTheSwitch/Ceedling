@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
@@ -48,7 +49,7 @@ class Bullseye < Plugin
     @ceedling[:plugin_manager].pre_compile_execute(arg_hash)
 
     @ceedling[:loginator].log("Compiling #{File.basename(source)} with coverage...")
-    compile_command  = 
+    compile_command  =
       @ceedling[:tool_executor].build_command_line(
         TOOLS_BULLSEYE_COMPILER,
         @ceedling[:flaginator].flag_down( OPERATION_COMPILE_SYM, BULLSEYE_SYM, source ),
@@ -58,14 +59,14 @@ class Bullseye < Plugin
     coverage_command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_INSTRUMENTATION, [], compile_command[:line] )
 
     shell_result     = @ceedling[:tool_executor].exec( coverage_command[:line], coverage_command[:options] )
-    
+
     arg_hash[:shell_result] = shell_result
     @ceedling[:plugin_manager].post_compile_execute(arg_hash)
   end
 
   def post_test_fixture_execute(arg_hash)
     result_file = arg_hash[:result_file]
-  
+
     if ((result_file =~ /#{BULLSEYE_RESULTS_PATH}/) and (not @result_list.include?(result_file)))
       @result_list << arg_hash[:result_file]
     end
@@ -80,13 +81,13 @@ class Bullseye < Plugin
       :header => BULLSEYE_ROOT_NAME.upcase,
       :results => results
     }
-    
+
     @ceedling[:plugin_reportinator].run_test_results_report(hash) do
       message = ''
       message = 'Unit test failures.' if (results[:counts][:failed] > 0)
       message
     end
-    
+
     # coverage results
     return if (verify_coverage_file() == false)
     if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
@@ -110,13 +111,13 @@ class Bullseye < Plugin
     }
 
     @ceedling[:plugin_reportinator].run_test_results_report(hash)
-    
+
     # coverage results
     command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC)
     shell_result = @ceedling[:tool_executor].exec( command )
     report_coverage_results_all(shell_result[:output])
   end
-  
+
   def enableBullseye(enable)
     if BULLSEYE_AUTO_LICENSE
       if (enable)
@@ -127,14 +128,14 @@ class Bullseye < Plugin
         @ceedling[:loginator].log("Reverting Bullseye to previous state")
       end
 
-      args.each do |arg| 
+      args.each do |arg|
         command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BUILD_ENABLE_DISABLE, [], arg)
         shell_result = @ceedling[:tool_executor].exec( command )
       end
 
     end
   end
-  
+
   private ###################################
 
   def report_coverage_results_all(coverage)
@@ -149,7 +150,7 @@ class Bullseye < Plugin
     if (coverage =~ /^Total.*?=\s+([0-9]+)\%/)
       results[:coverage][:functions] = $1.to_i
     end
-    
+
     if (coverage =~ /^Total.*=\s+([0-9]+)\%\s*$/)
       results[:coverage][:branches] = $1.to_i
     end
@@ -187,10 +188,10 @@ class Bullseye < Plugin
       banner = @ceedling[:plugin_reportinator].generate_banner( "#{BULLSEYE_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
       @ceedling[:loginator].log "\n" + banner + "\nNo coverage file.\n\n"
     end
-    
+
     return exist
   end
-  
+
 end
 
 
@@ -198,7 +199,7 @@ end
 END {
   # cache our input configurations to use in comparison upon next execution
   if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
-    @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash ) 
+    @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash )
     @ceedling[BULLSEYE_SYM].enableBullseye(false)
   end
 }

@@ -9,7 +9,7 @@
 =begin rdoc
 = Usage
 Behaviors provides a single method: should.
-  
+
 Instead of naming test methods like:
 
  def test_something
@@ -27,7 +27,7 @@ You may omit the body of a <tt>should</tt> method to describe unimplemented beha
 When you run your unit tests, empty <tt>should</tt> methods will appear as an 'UNIMPLEMENTED CASE' along with the described behavior.
 This is useful for sketching out planned behavior quickly.
 
-Simply <tt>extend Behaviors</tt> in your <tt>TestCase</tt> to start using behaviors. 
+Simply <tt>extend Behaviors</tt> in your <tt>TestCase</tt> to start using behaviors.
 
   require 'test/unit'
   require 'behaviors'
@@ -43,12 +43,12 @@ Test methods typically focus on the name of the method under test instead of its
 Creating test methods with <tt>should</tt> statements focuses on the behavior of an object.
 This helps you to think about the role of the object under test.
 
-Using a behavior-driven approach prevents the danger in assuming a one-to-one mapping of method names to 
+Using a behavior-driven approach prevents the danger in assuming a one-to-one mapping of method names to
 test method names.
 As always, you get the most value by writing the tests first.
 
 For a more complete BDD framework, try RSpec http://rspec.rubyforge.org/
-  
+
 = Rake tasks
 
 You can define a <tt>Behaviors::ReportTask</tt> in your <tt>Rakefile</tt> to generate rake tasks that

@@ -14,7 +14,7 @@ class HardmockTest < Test::Unit::TestCase
 
   #
   # TESTS
-  # 
+  #
 
   it "conveniently creates mocks using create_mock and create_mocks" do
 
@@ -28,7 +28,7 @@ class HardmockTest < Test::Unit::TestCase
 
     h2 = create_mocks :cat, 'dog' # symbol/string indifference at this level
     assert_equal [:cat,:dog].to_set, h2.keys.to_set, "Wrong keyset for second hash"
-    assert_equal [:cat,:dog,:donkey].to_set, @all_mocks.keys.to_set, "@all_mocks wrong"   
+    assert_equal [:cat,:dog,:donkey].to_set, @all_mocks.keys.to_set, "@all_mocks wrong"
 
     assert_mock_exists :cat
     assert_same @cat, h2[:cat]
@@ -38,7 +38,7 @@ class HardmockTest < Test::Unit::TestCase
     assert_mock_exists :donkey
   end
 
-  it "provides literal 'expects' syntax" do 
+  it "provides literal 'expects' syntax" do
     assert_nil @order, "Should be no @order yet"
     create_mock :order
     assert_not_nil @order, "@order should be built"
@@ -92,9 +92,9 @@ class HardmockTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       o.save!
     end
-    assert_match(/wrong object/i, err.message) 
-    assert_match(/order.save!/i, err.message) 
-    assert_match(/customer.account_number/i, err.message) 
+    assert_match(/wrong object/i, err.message)
+    assert_match(/order.save!/i, err.message)
+    assert_match(/customer.account_number/i, err.message)
 
     assert_error VerifyError, /unmet expectations/i do
       verify_mocks
@@ -119,7 +119,7 @@ class HardmockTest < Test::Unit::TestCase
 
     data_change = @model.expects.when(:data_changes) { |evt,block| block }
     user_edit = @view.expects.when(:user_edited) { |evt,block| block }
-    
+
     UserPresenter.new mox
 
     # Expect user name transfer from model to view
@@ -134,7 +134,7 @@ class HardmockTest < Test::Unit::TestCase
     # Trigger edit event in view
     user_edit.block_value.call
 
-    verify_mocks 
+    verify_mocks
   end
 
   it "continues to function after verify, if verification error is controlled" do
@@ -160,9 +160,9 @@ class HardmockTest < Test::Unit::TestCase
     assert_nothing_raised VerifyError do
       verify_mocks(false)
     end
-    
+
     @model.expects.never_gonna_happen
-    
+
     assert_error VerifyError, /unmet expectations/i, /never_gonna_happen/i do
       verify_mocks
     end
@@ -184,23 +184,23 @@ class HardmockTest < Test::Unit::TestCase
 
     data_change = @model.expects.when(:data_changes) { |evt,block| block }
     user_edit = @view.expects.when(:user_edited) { |evt,block| block }
-    
+
     UserPresenterBroken.new mox
 
     err = assert_raise VerifyError do
       verify_mocks
     end
-    assert_match(/unmet expectations/i, err.message) 
-    assert_match(/view.when\(:user_edited\)/i, err.message) 
+    assert_match(/unmet expectations/i, err.message)
+    assert_match(/view.when\(:user_edited\)/i, err.message)
 
   end
 
   it "provides convenient event-subscription trap syntax for MVP testing" do
     mox = create_mocks :model, :view
 
-    data_change = @model.trap.when(:data_changes) 
-    user_edit = @view.trap.when(:user_edited) 
-    
+    data_change = @model.trap.when(:data_changes)
+    user_edit = @view.trap.when(:user_edited)
+
     UserPresenter.new mox
 
     # Expect user name transfer from model to view
@@ -215,7 +215,7 @@ class HardmockTest < Test::Unit::TestCase
     # Trigger edit event in view
     user_edit.trigger
 
-    verify_mocks 
+    verify_mocks
   end
 
   it "raises if you try to pass an expectation block to 'trap'" do
@@ -241,9 +241,9 @@ class HardmockTest < Test::Unit::TestCase
 
   it "lets you write clear iteration-oriented expectations" do
     grinder = Grinder.new create_mocks(:blade, :chute, :bucket)
-    
+
     # Style 1: assertions on method args is done explicitly in block
-    @chute.expects.each_bean { |slot,block| 
+    @chute.expects.each_bean { |slot,block|
       assert_equal :side_slot, slot, "Wrong slot"
       block.call :bean1
       block.call :bean2
@@ -261,7 +261,7 @@ class HardmockTest < Test::Unit::TestCase
     verify_mocks
 
     # Style 2: assertions on method arguments done implicitly in the expectation code
-    @chute.expects.each_bean(:main_slot) { |slot,block| 
+    @chute.expects.each_bean(:main_slot) { |slot,block|
       block.call :bean3
     }
     @blade.expects.chop(:bean3).returns(:grounds3)
@@ -272,7 +272,7 @@ class HardmockTest < Test::Unit::TestCase
 
   it "further supports iteration testing using 'yield'" do
     grinder = Grinder.new create_mocks(:blade, :chute, :bucket)
-    
+
     @chute.expects.each_bean(:side_slot).yields :bean1, :bean2
 
     @blade.expects.chop(:bean1).returns(:grounds1)
@@ -313,9 +313,9 @@ class HardmockTest < Test::Unit::TestCase
     verify_mocks
   end
 
-  it "makes it easy to simulate error in mutex-style locking scenarios" do 
+  it "makes it easy to simulate error in mutex-style locking scenarios" do
     hurt = HurtLocker.new create_mocks(:locker, :store)
-    err = StandardError.new('fmshooop')  
+    err = StandardError.new('fmshooop')
     @locker.expects.with_lock(:main).yields
     @store.expects.eat("some info").raises(err)
 
@@ -324,7 +324,7 @@ class HardmockTest < Test::Unit::TestCase
     assert_same err, hurt.caught, "Expected that error to be handled internally"
     verify_mocks
   end
-	
+
   it "actually returns 'false' instead of nil when mocking boolean return values" do
 		create_mock :car
 		@car.expects.ignition_on?.returns(true)
@@ -346,31 +346,31 @@ class HardmockTest < Test::Unit::TestCase
     create_mock :foo
     @foo.expect.boomboom
     @foo.boomboom
-    verify_mocks 
+    verify_mocks
   end
 
   it "provides 'should_receive' as an alias for 'expects'" do
     create_mock :foo
     @foo.should_receive.boomboom
     @foo.boomboom
-    verify_mocks 
+    verify_mocks
   end
 
   it "provides 'and_return' as an alias for 'returns'" do
     create_mock :foo
     @foo.expects(:boomboom).and_return :brick
     assert_equal :brick, @foo.boomboom
-    verify_mocks 
+    verify_mocks
   end
 
-  it "does not interfere with a core subset of Object methods" do 
+  it "does not interfere with a core subset of Object methods" do
     create_mock :foo
     @foo.method(:inspect)
     @foo.inspect
     @foo.to_s
     @foo.instance_variables
     @foo.instance_eval("")
-    verify_mocks 
+    verify_mocks
   end
 
   it "can raise errors from within an expectation block" do
@@ -379,7 +379,7 @@ class HardmockTest < Test::Unit::TestCase
       assert_equal "mix", arg
       raise 'HAIRBALL'
     end
-    assert_error RuntimeError, 'HAIRBALL' do 
+    assert_error RuntimeError, 'HAIRBALL' do
       @cat.meow("mix")
     end
   end
@@ -389,7 +389,7 @@ class HardmockTest < Test::Unit::TestCase
     @cat.expects.meow do |arg|
       assert_equal "mix", arg
     end.raises('HAIRBALL')
-    assert_error RuntimeError, 'HAIRBALL' do 
+    assert_error RuntimeError, 'HAIRBALL' do
       @cat.meow("mix")
     end
   end
@@ -439,4 +439,3 @@ class HardmockTest < Test::Unit::TestCase
     assert_same @main_mock_control, mo._control, "Mock '#{name}' doesn't share the main mock control"
   end
 end
-

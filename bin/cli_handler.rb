@@ -103,7 +103,7 @@ class CliHandler
     # Copy / set up project file
     @helper.create_project_file( dest, options[:local] ) if options[:configs]
 
-    # Copy Git Ignore file 
+    # Copy Git Ignore file
     if options[:gitsupport]
       @actions._copy_file(
         File.join( 'assets', 'default_gitignore' ),
@@ -112,7 +112,7 @@ class CliHandler
       )
       @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
-    
+
     @loginator.log() # Blank line
     @loginator.log( "New project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
@@ -196,7 +196,7 @@ class CliHandler
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
-    @helper.load_ceedling( 
+    @helper.load_ceedling(
       config: config,
       rakefile_path: path,
       default_tasks: default_tasks
@@ -225,7 +225,7 @@ class CliHandler
 
         _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
-        config = @helper.load_ceedling( 
+        config = @helper.load_ceedling(
           config: config,
           rakefile_path: path,
           default_tasks: default_tasks
@@ -237,7 +237,7 @@ class CliHandler
       @helper.dump_yaml( config, filepath, sections )
 
       @loginator.log() # Blank line
-      @loginator.log( "Dumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
+      @loginator.log( "Dumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )
     end
   end
 
@@ -369,7 +369,7 @@ class CliHandler
   private
 
   def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[], silent:false)
-    _, config = 
+    _, config =
       @configinator.loadinate(
         builtin_mixins:BUILTIN_MIXINS,
         filepath: filepath,

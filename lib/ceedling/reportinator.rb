@@ -11,7 +11,7 @@ require 'unicode/display_width'
 # Pretifies reports
 class Reportinator
 
-  # Generate human readable string of days, hours, minutes, seconds (and 
+  # Generate human readable string of days, hours, minutes, seconds (and
   # milliseconds) from a start count of seconds and end count of seconds.
   def self.generate_duration(start_time_s:, end_time_s:)
     return '' if start_time_s.nil? or end_time_s.nil?
@@ -81,8 +81,8 @@ class Reportinator
   # ==== Examples
   #
   #    rp = Reportinator.new
-  #    rp.generate_banner("Hello world!") => "------------\nHello world!\n------------\n" 
-  #    rp.generate_banner("Hello world!", 3) => "---\nHello world!\n---\n" 
+  #    rp.generate_banner("Hello world!") => "------------\nHello world!\n------------\n"
+  #    rp.generate_banner("Hello world!", 3) => "---\nHello world!\n---\n"
   #
   #
   def generate_banner(message, width=nil)

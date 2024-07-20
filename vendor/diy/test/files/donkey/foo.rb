@@ -13,4 +13,3 @@ module DiyTesting
 		end
 	end
 end
-

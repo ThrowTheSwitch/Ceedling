@@ -55,4 +55,3 @@ TEST(Driver, When_reading_data_Then_reads_from_DRIVER_INPUT_REGISTER)
     ASSERT_EQ(0x55u, returnedValue);
     ASSERT_EQ(readRegister, DRIVER_INPUT_REGISTER);
 }
-

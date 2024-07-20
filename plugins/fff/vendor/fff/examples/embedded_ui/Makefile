@@ -14,7 +14,7 @@ GTEST_OBJS = $(BUILD_DIR)/gtest-all.o $(BUILD_DIR)/gtest-main.o
 C_OBJFILES = $(BUILD_DIR)/UI_test_ansic.o $(BUILD_DIR)/UI.o
 TEMPLATE_OBJFILES = $(BUILD_DIR)/test_suite_template.o
 CPP_OBJFILES = $(BUILD_DIR)/UI_test_cpp.o $(BUILD_DIR)/UI.o $(GTEST_OBJS)
-CPP_LIBS = -lpthread 
+CPP_LIBS = -lpthread
 
 
 all: $(C_PROGNAME) $(CPP_PROGNAME) $(TEMPLATE_PROGNAME)
@@ -43,7 +43,7 @@ $(BUILD_DIR)/%.o: %.c
 $(BUILD_DIR)/%.o: %.cpp
 	@echo "Compiling "$@
 	@echo "    CPP       "$<
-	$(CPP) -DGTEST_USE_OWN_TR1_TUPLE=1 -I../.. -o $@ $< 
+	$(CPP) -DGTEST_USE_OWN_TR1_TUPLE=1 -I../.. -o $@ $<
 
 $(TEMPLATE_PROGNAME): $(TEMPLATE_OBJFILES)
 	@echo "Linking "$@

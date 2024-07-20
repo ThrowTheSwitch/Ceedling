@@ -6,4 +6,3 @@ incorporated into trunk:
 
 * auto_require
 * use_class_directly
-

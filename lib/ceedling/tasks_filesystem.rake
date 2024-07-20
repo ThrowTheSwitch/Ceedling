@@ -62,7 +62,7 @@ namespace :paths do
   standard_paths = ['test', 'source', 'include', 'support']
 
   paths = @ceedling[:setupinator].config_hash[:paths].keys.map{|n| n.to_s.downcase}
-  
+
   paths.each do |name|
     desc "List all collected #{name} paths." if standard_paths.include?(name)
     task(name.to_sym) do
@@ -95,5 +95,3 @@ namespace :files do
   end
 
 end
-
-

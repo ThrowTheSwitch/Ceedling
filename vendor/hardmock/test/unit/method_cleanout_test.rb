@@ -14,13 +14,13 @@ class MethodCleanoutTest < Test::Unit::TestCase
     OriginalMethods = instance_methods
     include Hardmock::MethodCleanout
   end
-  
+
   def setup
     @victim = Victim.new
   end
 
   def test_should_remove_most_methods_from_a_class
-    expect_removed = Victim::OriginalMethods.reject { |m| 
+    expect_removed = Victim::OriginalMethods.reject { |m|
       Hardmock::MethodCleanout::SACRED_METHODS.include?(m)
     }
     expect_removed.each do |m|

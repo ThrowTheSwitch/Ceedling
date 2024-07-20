@@ -22,7 +22,7 @@ require 'ceedling/constants' # From Ceedling application
 ## Ceedling's command line is processed with these mechanisms:
 ##  1. Special / edge case hacking of ARGV directly.
 ##  2. Thor for all application commands and flags.
-##  3. Handing off to Rake from either (1) or (2) for task listing or running 
+##  3. Handing off to Rake from either (1) or (2) for task listing or running
 ##     build tasks.
 ##
 ## EDGE CASE HACKING
@@ -30,8 +30,8 @@ require 'ceedling/constants' # From Ceedling application
 ## Special / edge cases:
 ##  1. Silent backwards compatibility support for Rake's `-T`.
 ##  2. Thor does not recognize "naked" Rake build tasks as application commands
-##     (`ceedling test:all` instead of `ceedling build test:all`). So, we catch 
-##     this exception and then provide the command line back to Thor as a `build` 
+##     (`ceedling test:all` instead of `ceedling build test:all`). So, we catch
+##     this exception and then provide the command line back to Thor as a `build`
 ##     command line. This also allows us to ensure Thor processes `build` option
 ##     flags following naked build tasks that would otherwise be ignored if
 ##     we simply passed a failing command line to Rake.
@@ -45,12 +45,12 @@ require 'ceedling/constants' # From Ceedling application
 ##    command. The build command takes flags and tasks. Tasks are handed off to
 ##    Rake to process. If no `build` keyword is present and `build` flags come
 ##    after tasks, Thor sees the command line as unhandled commands.
-##  * The PermissiveCLI code handles unrecognized command exception so as to 
+##  * The PermissiveCLI code handles unrecognized command exception so as to
 ##    eat the Thor complaint and re-throw the exception for edge case handling.
 ##
 ## NOTES
 ## -----
-##  * Ultimately, any unrecognized command or task is processed by Rake, and 
+##  * Ultimately, any unrecognized command or task is processed by Rake, and
 ##    Rake makes the complaint.
 ##
 
@@ -69,12 +69,12 @@ require 'ceedling/constants' # From Ceedling application
 ## brittle code -- relying on globals, etc.
 ##
 ## Because of this, care has been taken that this class contains as little
-## logic as possible and is the funnel for any and all necessary global 
+## logic as possible and is the funnel for any and all necessary global
 ## references and other little oddball needs.
 ##
 
 
-# Special handling to prevent Thor from barfing on unrecognized CLI arguments 
+# Special handling to prevent Thor from barfing on unrecognized CLI arguments
 # (i.e. Rake tasks)
 module PermissiveCLI
   def self.extended(base)
@@ -124,15 +124,15 @@ module CeedlingTasks
 
   DOC_MIXIN_FLAG = "Merges the configuration mixin by name or filepath."
 
-  LONGDOC_LOCAL_FLAG = "`--local` copies Ceedling and its dependencies to a vendor/ 
-    subdirectory in the root of the project. It also installs a 
-    platform-appropriate executable script `ceedling` at the root of the 
+  LONGDOC_LOCAL_FLAG = "`--local` copies Ceedling and its dependencies to a vendor/
+    subdirectory in the root of the project. It also installs a
+    platform-appropriate executable script `ceedling` at the root of the
     project."
 
-  LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This 
-    flag may be repeated for multiple mixins. A simple mixin name initiates a 
-    lookup from within mixin load paths in your project file and among built-in 
-    mixins. A filepath and/or filename (with extension) will instead merge the 
+  LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This
+    flag may be repeated for multiple mixins. A simple mixin name initiates a
+    lookup from within mixin load paths in your project file and among built-in
+    mixins. A filepath and/or filename (with extension) will instead merge the
     specified YAML file. See documentation for complete details.
     \x5> --mixin my_compiler --mixin my/path/mixin.yml"
 
@@ -167,14 +167,14 @@ module CeedlingTasks
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
-      `ceedling help` provides summary help for all available application commands 
+      `ceedling help` provides summary help for all available application commands
       and build tasks.
 
       COMMAND is optional and will produce detailed help for a specific application command --
       not a build or plugin task, however.
 
-      `ceedling help` also lists the available build operations from loading your 
-      project configuration. Optionally, a project filepath and/or mixins may be 
+      `ceedling help` also lists the available build operations from loading your
+      project configuration. Optionally, a project filepath and/or mixins may be
       provided to load a different project configuration than the default.
 
       Notes on Optional Flags:
@@ -216,7 +216,7 @@ module CeedlingTasks
 
       • #{LONGDOC_LOCAL_FLAG}
 
-      • `--force` completely destroys anything found in the target path for the 
+      • `--force` completely destroys anything found in the target path for the
       new project.
       LONGDESC
     ) )
@@ -240,8 +240,8 @@ module CeedlingTasks
 
       PATH is required and should be the root of the project to upgrade.
 
-      This command only meaningfully operates on projects wth a local vendored copy 
-      of Ceedling (in <project>/vendor/) and optional documentation (in 
+      This command only meaningfully operates on projects wth a local vendored copy
+      of Ceedling (in <project>/vendor/) and optional documentation (in
       <project>/docs/).
 
       Running this command replaces vendored Ceedling with the version running
@@ -252,7 +252,7 @@ module CeedlingTasks
 
       Notes on Optional Flags:
 
-      • `--project` specifies a filename (optionally with leading path) for the 
+      • `--project` specifies a filename (optionally with leading path) for the
       project configuration file used in the project existence check. Otherwise,
       the default ./#{DEFAULT_PROJECT_FILENAME} at the root of the project is
       checked.
@@ -290,14 +290,14 @@ module CeedlingTasks
       \x5    > ceedling build test:all
 
       TASKS are zero or more build operations created from your project configuration.
-      If no tasks are provided, built-in default tasks or your :project ↳ 
+      If no tasks are provided, built-in default tasks or your :project ↳
       :default_tasks will be executed.
 
       Notes on Optional Flags:
 
       • #{LONGDOC_MIXIN_FLAG}
 
-      • `--test-case` and its inverse `--exclude-test-case` set test case name 
+      • `--test-case` and its inverse `--exclude-test-case` set test case name
       matchers to run only a subset of the unit test suite. See docs for full details.
       LONGDESC
     ) )
@@ -325,8 +325,8 @@ module CeedlingTasks
 
       FILEPATH is a required path to a destination YAML file. A nonexistent path will be created.
 
-      SECTIONS is an optional config “path” that extracts a portion of a configuration. The 
-      top-level YAML container will be the path’s last element. 
+      SECTIONS is an optional config “path” that extracts a portion of a configuration. The
+      top-level YAML container will be the path’s last element.
       The following example will produce config.yml containing ':test_compiler: {...}'.
       \x5> ceedling dumpconfig my/path/config.yml tools test_compiler
 
@@ -334,8 +334,8 @@ module CeedlingTasks
 
       • #{LONGDOC_MIXIN_FLAG}
 
-      • `--app` loads various settings, merges defaults, loads plugin config changes, and validates 
-      the configuration. Disabling it dumps project config after any mixins but before any 
+      • `--app` loads various settings, merges defaults, loads plugin config changes, and validates
+      the configuration. Disabling it dumps project config after any mixins but before any
       application manipulations.
       LONGDESC
     ) )
@@ -384,7 +384,7 @@ module CeedlingTasks
       <<-LONGDESC
       `ceedling examples` lists the names of the example projects that come packaged with Ceedling.
 
-      The output of this list is most useful when used by the `ceedling example` (no ‘s’) command 
+      The output of this list is most useful when used by the `ceedling example` (no ‘s’) command
       to extract an example project to your filesystem.
       LONGDESC
     ) )
@@ -404,14 +404,14 @@ module CeedlingTasks
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
-      `ceedling example` extracts the named example project from within Ceedling to 
+      `ceedling example` extracts the named example project from within Ceedling to
       your filesystem.
 
       NAME is required to specify the example to extract. A list of example projects
-      is available with the `examples` command. NAME will be the containing directory 
+      is available with the `examples` command. NAME will be the containing directory
       for the extracted project.
 
-      DEST is an optional containing directory path (ex: <DEST>/<name>). The default 
+      DEST is an optional containing directory path (ex: <DEST>/<name>). The default
       is your working directory. A nonexistent path will be created.
 
       Notes on Optional Flags:

@@ -57,7 +57,7 @@ begin
   #  4. Perform object construction + dependency injection from bin/objects.yml
   #  5. Remove all paths added to $LOAD_PATH
   #     (Main application will restore certain paths -- possibly updated by :which_ceedling)
-  $LOAD_PATH.unshift( 
+  $LOAD_PATH.unshift(
     CEEDLING_APPCFG[:ceedling_lib_path],
     diy_vendor_path
   )
@@ -87,7 +87,7 @@ begin
   #  2. `objects` hash filled with DIY output
   #  3. CEEDLING_HANDOFF_OBJECTS global is set
   require 'cli'
-  
+
   # Remove all load paths we've relied on (main application will set up load paths again)
   $LOAD_PATH.delete( ceedling_bin_path )
   $LOAD_PATH.delete( CEEDLING_APPCFG[:ceedling_lib_path] )
@@ -118,7 +118,7 @@ begin
     when '--version', '-v'
       # Call Ceedling's version handler directly
       objects[:cli_handler].version()
-    end      
+    end
 
   # Run command line args through Thor (including "naked" Rake tasks)
   else
@@ -137,7 +137,7 @@ rescue Thor::UndefinedCommandError
   # our Thor configuration doesn't see those flags.
   # We catch the exception of unrecognized Thor commands here (i.e. any "naked" Rake tasks),
   # and try again by forcing the Thor `build` command at the beginning of the command line.
-  # This way, our Thor handling will process option flags and properly pass the Rake tasks 
+  # This way, our Thor handling will process option flags and properly pass the Rake tasks
   # along as well.
 
   # Necessary nested exception handling
@@ -158,4 +158,3 @@ rescue StandardError => ex
   boom_handler( objects[:loginator], ex )
   exit(1)
 end
-

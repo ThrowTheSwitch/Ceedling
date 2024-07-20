@@ -187,7 +187,7 @@ class GeneratorTestResultsBacktrace
 
     # Find line preceding last `<test_case> () at <filename>`, [2];
     # it is the offending line of code.
-    # We don't need the rest of the call trace -- it's just from the runner 
+    # We don't need the rest of the call trace -- it's just from the runner
     # up to the crashed test case.
     lines.each_with_index do |line, index|
       if line =~ /#{test_case}.+at.+#{filename}/

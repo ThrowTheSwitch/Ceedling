@@ -14,7 +14,7 @@ namespace :doc do
   desc "Generate RDoc documentation"
   Rake::RDocTask.new { |rdoc|
     rdoc.rdoc_dir = 'doc'
-    rdoc.title    = "Hardmock: Strict expectation-based mock object library " 
+    rdoc.title    = "Hardmock: Strict expectation-based mock object library "
     add_rdoc_options(rdoc.options)
     rdoc.rdoc_files.include('lib/**/*.rb', 'README','CHANGES','LICENSE')
   }
@@ -24,4 +24,3 @@ namespace :doc do
   end
 
 end
-

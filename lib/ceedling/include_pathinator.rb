@@ -13,7 +13,7 @@ class IncludePathinator
   constructor :configurator, :test_context_extractor, :loginator, :file_wrapper
 
   def setup
-    # TODO: When Ceedling's base project path handling is resolved, update this value to automatically 
+    # TODO: When Ceedling's base project path handling is resolved, update this value to automatically
     #       modify TEST_INCLUDE_PATH() locations relative to the working directory or project file location
     # @base_path = '.'
 

@@ -12,14 +12,14 @@ class ReportTestsTeamcityStdout < Plugin
 
   # `Plugin` setup()
   def setup
-    # TEAMCITY_BUILD defaults to true but can be overridden in a user 
+    # TEAMCITY_BUILD defaults to true but can be overridden in a user
     # project file to stop CI messages locally.
     @output_enabled = TEAMCITY_BUILD
 
     # Provide thread-safety for multi-threaded builds
     @mutex = Mutex.new
 
-    # A counter incremented for each Ceedling test executable allowing 
+    # A counter incremented for each Ceedling test executable allowing
     # concurrent executables to differentiate their service messages.
     @flowid_count = 0
 
@@ -106,8 +106,8 @@ class ReportTestsTeamcityStdout < Plugin
 
         # Create Java-like name per TeamCity convention `package_or_namespace.ClassName.TestName`
         #  ==> `context.TestFilepath.TestCaseName`
-        _message = 
-          "testFailed name='#{context}.#{filepath}.#{_test}' " + 
+        _message =
+          "testFailed name='#{context}.#{filepath}.#{_test}' " +
           "message='#{escape(_message)}' " +
           "details='File: #{failure[:source][:file]} Line: #{test[:line]}'"
 

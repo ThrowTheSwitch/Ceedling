@@ -33,7 +33,7 @@ class Projectinator
     elsif env[PROJECT_FILEPATH_ENV_VAR]
       filepath = env[PROJECT_FILEPATH_ENV_VAR]
       @path_validator.standardize_paths( filepath )
-      config = load_filepath( 
+      config = load_filepath(
         filepath,
         "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`",
         silent
@@ -59,7 +59,7 @@ class Projectinator
 
   # Determine if project configuration is available.
   #  - Simplest, default case simply tries to load default project file location.
-  #  - Otherwise, attempts to load a filepath, the default environment variable, 
+  #  - Otherwise, attempts to load a filepath, the default environment variable,
   #    or both can be specified.
   def config_available?(filepath:nil, env:{}, silent:true)
     available = true

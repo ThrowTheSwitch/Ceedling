@@ -76,4 +76,3 @@ bool TaskScheduler_DoAdc(void)
 
   return doIt;
 }
-

@@ -12,7 +12,7 @@ require 'test/unit/assertions'
 
 module Test #:nodoc:#
   module Unit #:nodoc:#
-    
+
     # == TestCase Modifications
     #
     # Monkey-patch to provide a formal mechanism for appending actions to be executed after teardown.
@@ -29,15 +29,15 @@ module Test #:nodoc:#
     # to the test instance that has just been torn down.
     #
     # Example:
-    # 
+    #
     #   Test::Unit::TestCase.after_teardown do |test|
     #     test.verify_mocks
     #   end
-    #   
+    #
     # == Justification
     #
-    # There are a number of tools and libraries that play fast-n-loose with setup and teardown by 
-    # wrapping them, and by overriding method_added as a means of upholding special setup/teardown 
+    # There are a number of tools and libraries that play fast-n-loose with setup and teardown by
+    # wrapping them, and by overriding method_added as a means of upholding special setup/teardown
     # behavior, usually by re-wrapping newly defined user-level setup/teardown methods.
     # mocha and active_record/fixtures (and previously, hardmock) will fight for this
     # territory with often unpredictable results.
@@ -47,13 +47,13 @@ module Test #:nodoc:#
     class TestCase
 
       class << self
-        
-        # Define an action to be run after teardown. Subsequent calls result in 
+
+        # Define an action to be run after teardown. Subsequent calls result in
         # multiple actions.  The block will be given a reference to the test
         # being executed.
         #
         # Example:
-        # 
+        #
         #   Test::Unit::TestCase.after_teardown do |test|
         #     test.verify_mocks
         #   end
@@ -67,12 +67,12 @@ module Test #:nodoc:#
           @@post_teardown_actions ||= []
         end
 
-        # Define an action to be run before setup. Subsequent calls result in 
-        # multiple actions, EACH BEING PREPENDED TO THE PREVIOUS.  
+        # Define an action to be run before setup. Subsequent calls result in
+        # multiple actions, EACH BEING PREPENDED TO THE PREVIOUS.
         # The block will be given a reference to the test being executed.
         #
         # Example:
-        # 
+        #
         #   Test::Unit::TestCase.before_setup do |test|
         #     test.prepare_hardmock_control
         #   end
@@ -134,7 +134,7 @@ module Test #:nodoc:#
           end
         end
       end
-      
+
       # Run through the before_setup actions.
       # Failures or errors cause execution to stop.
       def execute_pre_setup_actions(test_instance)
@@ -165,7 +165,7 @@ module Test #:nodoc:#
       # constant won't be defined.  This methods defends against that and returns
       # an empty list instead.
       def passthrough_exception_types
-        begin 
+        begin
           return PASSTHROUGH_EXCEPTIONS
         rescue NameError
           # older versions of test/unit do not have PASSTHROUGH_EXCEPTIONS constant

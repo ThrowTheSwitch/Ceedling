@@ -6,7 +6,7 @@
 # =========================================================================
 
 class ConfigWalkinator
-  
+
   def fetch_value(hash, *keys)
     value = nil
     depth = 0
@@ -22,8 +22,8 @@ class ConfigWalkinator
         break
       end
     } if !hash.nil?
-    
+
     return {:value => value, :depth => depth}
   end
-  
+
 end

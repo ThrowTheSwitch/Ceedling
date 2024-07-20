@@ -12,7 +12,7 @@ require 'ceedling/file_path_utils'  # For glob handling class methods
 
 
 class ToolValidator
-  
+
   constructor :file_wrapper, :loginator, :system_wrapper, :reportinator
 
   def validate(tool:, name:nil, extension:EXTENSION_EXECUTABLE, respect_optional:false, boom:false)
@@ -44,7 +44,7 @@ class ToolValidator
       error = "#{name} is missing :executable in its configuration."
       if !boom
         @loginator.log( error, Verbosity::ERRORS )
-        return false 
+        return false
       end
 
       raise CeedlingException.new(error)
@@ -69,7 +69,7 @@ class ToolValidator
     end
 
     # If no path included, verify file exists in system search paths
-    if (not executable.include?('/'))      
+    if (not executable.include?('/'))
 
       # Iterate over search paths
       @system_wrapper.search_paths.each do |path|
@@ -90,7 +90,7 @@ class ToolValidator
 
       # Construct end of error message
       error = "does not exist in system search paths" if not exists
-      
+
     # If there is a path included, check that explicit filepath exists
     else
       if @file_wrapper.exist?( executable )
@@ -98,7 +98,7 @@ class ToolValidator
       else
         # Construct end of error message
         error = "does not exist on disk" if not exists
-      end      
+      end
     end
 
     if !exists
@@ -117,7 +117,7 @@ class ToolValidator
 
     return exists
   end
-  
+
   def validate_stderr_redirect(tool:, name:, boom:)
     error = ''
     redirect = tool[:stderr_redirect]
@@ -137,12 +137,12 @@ class ToolValidator
         # Otherwise log error
         @loginator.log( error, Verbosity::ERRORS )
         return false
-      end    
+      end
     elsif redirect.class != String
       raise CeedlingException.new( "#{name} ↳ :stderr_redirect is neither a recognized value nor custom string" )
     end
 
     return true
   end
-  
+
 end

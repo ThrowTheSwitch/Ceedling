@@ -21,7 +21,7 @@ class JsonTestsReporter < TestsReporter
       "IgnoredTests" => write_tests( results[:ignores] ),
       "Summary"      => write_statistics( results[:counts] )
     }
-    
+
     stream << JSON.pretty_generate(hash)
   end
 
@@ -50,7 +50,7 @@ class JsonTestsReporter < TestsReporter
     successes = []
     results.each do |result|
       result[:collection].each do |item|
-        successes << { 
+        successes << {
           "file" => result[:source][:file],
           "test" => item[:test]
         }

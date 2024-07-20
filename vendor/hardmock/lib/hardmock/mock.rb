@@ -11,7 +11,7 @@ module Hardmock
   # Mock is used to set expectations in your test.  Most of the time you'll use
   # <tt>#expects</tt> to create expectations.
   #
-  # Aside from the scant few control methods (like +expects+, +trap+ and +_verify+) 
+  # Aside from the scant few control methods (like +expects+, +trap+ and +_verify+)
   # all calls made on a Mock instance will be immediately applied to the internal
   # expectation mechanism.
   #
@@ -43,7 +43,7 @@ module Hardmock
     #
     # == Simple Examples
     # Expect the +customer+ to be queried for +account+, and return <tt>"The
-    # Account"</tt>: 
+    # Account"</tt>:
     #   @customer.expects.account.returns "The Account"
     #
     # Expect the +withdraw+ method to be called, and raise an exception when it
@@ -52,7 +52,7 @@ module Hardmock
     #
     # Expect +customer+ to have its +user_name+ set
     #   @customer.expects.user_name = 'Big Boss'
-    #   
+    #
     # Expect +customer+ to have its +user_name+ set, and raise a RuntimeException when
     # that happens:
     #   @customer.expects('user_name=', "Big Boss").raises "lost connection"
@@ -73,7 +73,7 @@ module Hardmock
     #   end
     # In this example, when <tt>page_scraper.handle_content</tt> is called, its
     # three arguments are passed to the <i>expectation block</i> and evaluated
-    # using the above assertions.  The last value in the block will be used 
+    # using the above assertions.  The last value in the block will be used
     # as the return value for +handle_content+
     #
     # You may specify arguments to the expected method call, just like any normal
@@ -82,7 +82,7 @@ module Hardmock
     # expected values but still need to do something programmatic.
     #
     # If the method being invoked on the mock accepts a block, that block will be
-    # passed to your expectation block as the last (or only) argument.  Eg, the 
+    # passed to your expectation block as the last (or only) argument.  Eg, the
     # convenience method +yields+ can be replaced with the more explicit:
     #   @cruncher.expects.evaluate do |block|
     #     block.call "some data"
@@ -95,9 +95,9 @@ module Hardmock
     #     block.call "some data"
     #     "some results"
     #   end.returns("the actual value")
-    # 
+    #
     # <b>Additionally</b>, the resulting value of the expectation block is stored
-    # in the +block_value+ field on the expectation.  If you've saved a reference 
+    # in the +block_value+ field on the expectation.  If you've saved a reference
     # to your expectation, you may retrieve the block value once the expectation
     # has been met.
     #
@@ -110,7 +110,7 @@ module Hardmock
     #     puts input  # => 'some data'
     #   end
     #   # result is 'the actual value'
-    #   
+    #
     #   evaluation_event.block_value # => 'some results'
     #
     def expects(*args, &block)
@@ -130,12 +130,12 @@ module Hardmock
     #
     # Like +expects+, the +trap+ mechanism can be followed by +raises+ or +returns+.
     #
-    # _Unlike_ +expects+, you may not use an expectation block with +trap+.  If 
+    # _Unlike_ +expects+, you may not use an expectation block with +trap+.  If
     # the expected method takes arguments in addition to the block, they must
     # be specified in the arguments to the +trap+ call itself.
     #
     # == Example
-    # 
+    #
     #   create_mocks :address_book, :editor_form
     #
     #   # Expect a subscription on the :person_added event for @address_book:
@@ -146,7 +146,7 @@ module Hardmock
     #     @editor_form.name = person_name
     #   end
     #
-    #   # At this point, the expectation for 'subscribe' is met and the 
+    #   # At this point, the expectation for 'subscribe' is met and the
     #   # block has been captured.  But we're not done:
     #   @editor_form.expects.name = "David"
     #

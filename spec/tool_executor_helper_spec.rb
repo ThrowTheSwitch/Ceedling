@@ -21,7 +21,7 @@ describe ToolExecutorHelper do
     @sys_utils = SystemUtils.new({:system_wrapper => @sys_wrapper})
     @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
     @verbosinator = Verbosinator.new()
-    
+
     @tool_exe_helper = described_class.new(
       {
         :loginator => @loginator,
@@ -31,7 +31,7 @@ describe ToolExecutorHelper do
       }
     )
   end
-  
+
 
   describe '#osify_path_separators' do
     it 'returns path if system is not windows' do
@@ -84,7 +84,7 @@ describe ToolExecutorHelper do
         expect(@sys_wrapper).to receive(:windows?).and_return(false)
         expect(@sys_utils).to receive(:tcsh_shell?).and_return(false)
         expect(@tool_exe_helper.stderr_redirect_cmdline_append(@tool_config)).to eq('2>&1')
-      end     
+      end
     end
   end
 

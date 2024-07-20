@@ -20,7 +20,7 @@ class ReportGeneratorReportinator
     @reportinator_helper = ReportinatorHelper.new(system_objects)
 
     # Validate the `reportgenerator` tool since it's used to generate reports
-    @ceedling[:tool_validator].validate( 
+    @ceedling[:tool_validator].validate(
       tool: TOOLS_GCOV_REPORTGENERATOR_REPORT,
       boom: true
     )
@@ -102,7 +102,7 @@ class ReportGeneratorReportinator
           # Cleanup .gcov files.
           for gcov_file in Dir.glob("*.gcov")
             File.delete(gcov_file)
-          end          
+          end
         end
       else
         @loginator.log( "No matching .gcno coverage files found", Verbosity::COMPLAIN )

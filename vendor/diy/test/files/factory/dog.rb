@@ -11,4 +11,3 @@ class Dog
     "woof"
   end
 end
-

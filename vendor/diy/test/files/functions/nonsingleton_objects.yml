@@ -8,7 +8,7 @@
 
 thing_builder:
   singleton: false
-  
+
 method build_thing:
     object: thing_builder
     method: build

@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
@@ -41,25 +42,25 @@ class CommandHooks < Plugin
   def setup
     # Get a copy of the project configuration
     project_config = @ceedling[:setupinator].config_hash
-    
+
     # Look up if the accompanying `:command_hooks` configuration block exists
     config_exists = @ceedling[:configurator_validator].exists?(
       project_config,
       COMMAND_HOOKS_SYM
     )
-    
+
     # Go boom if the required configuration block does not exist
     unless config_exists
       name = @ceedling[:reportinator].generate_config_walk([COMMAND_HOOKS_SYM])
       error = "Command Hooks plugin is enabled but is missing a required configuration block `#{name}`"
       raise CeedlingException.new(error)
     end
-    
+
     @config = project_config[COMMAND_HOOKS_SYM]
-    
+
     # Validate the command hook keys (look out for typos)
     validate_config( @config )
-    
+
     # Validate the tools beneath the keys
     @config.each do |hook, tool|
       if tool.is_a?(Array)
@@ -95,7 +96,7 @@ class CommandHooks < Plugin
   ### Private
 
   private
-  
+
   ##
   # Validate plugin configuration.
   #
@@ -108,21 +109,21 @@ class CommandHooks < Plugin
       error = "Expected configuration #{name} to be a Hash but found #{config.class}"
       raise CeedlingException.new(error)
     end
-    
+
     unrecognized_hooks = config.keys - COMMAND_HOOKS_LIST
-    
+
     unrecognized_hooks.each do |not_a_hook|
       name = @ceedling[:reportinator].generate_config_walk( [COMMAND_HOOKS_SYM, not_a_hook] )
       error = "Unrecognized command hook: #{name}"
       @ceedling[:loginator].log( error, Verbosity::ERRORS )
     end
-    
+
     unless unrecognized_hooks.empty?
       error = "Unrecognized hooks found in Command Hooks plugin configuration"
       raise CeedlingException.new(error)
     end
   end
-  
+
   ##
   # Validate given hook tool.
   #
@@ -134,23 +135,23 @@ class CommandHooks < Plugin
     walk = [COMMAND_HOOKS_SYM, *keys]
     name = @ceedling[:reportinator].generate_config_walk( walk )
     hash = @ceedling[:config_walkinator].fetch_value( config, *walk )
-    
+
     tool_exists = @ceedling[:configurator_validator].exists?( config, *walk )
-    
+
     unless tool_exists
       raise CeedlingException.new( "Missing Command Hook plugin tool configuration #{name}" )
     end
-    
+
     tool = hash[:value]
-    
+
     unless tool.is_a?(Hash)
       error = "Expected configuration #{name} to be a Hash but found #{tool.class}"
       raise CeedlingException.new( error )
     end
-  
+
     @ceedling[:tool_validator].validate( tool: tool, name: name, boom: true )
   end
-  
+
   ##
   # Run a hook if its available.
   #
@@ -165,17 +166,17 @@ class CommandHooks < Plugin
       msg = "Running command hook #{which_hook}"
       msg = @ceedling[:reportinator].generate_progress( msg )
       @ceedling[:loginator].log( msg )
-      
+
       # Single tool config
       if (@config[which_hook].is_a? Hash)
         run_hook_step( @config[which_hook], name )
-      
+
       # Multiple tool configs
       elsif (@config[which_hook].is_a? Array)
         @config[which_hook].each do |hook|
           run_hook_step(hook, name)
         end
-      
+
       # Tool config is bad
       else
         msg = "The tool config for Command Hook #{which_hook} was poorly formed and not run"

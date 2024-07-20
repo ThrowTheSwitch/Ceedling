@@ -41,7 +41,7 @@ class Generator
       :test => test,
       :context => context,
       :output_path => output_path }
-    
+
     @plugin_manager.pre_mock_generate( arg_hash )
 
     begin
@@ -55,7 +55,7 @@ class Generator
 
       # Get default config created by Ceedling and customize it
       config = @generator_mocks.build_configuration( output_path )
-  
+
       # Generate mock
       msg = @reportinator.generate_module_progress(
         operation: "Generating mock for",
@@ -88,7 +88,7 @@ class Generator
     msg = @reportinator.generate_progress("Generating runner for #{module_name}")
     @loginator.log( msg )
 
-    unity_test_runner_generator = 
+    unity_test_runner_generator =
       @test_context_extractor.lookup_test_runner_generator( test_filepath )
 
     if unity_test_runner_generator.nil?
@@ -214,7 +214,7 @@ class Generator
     @loginator.log( msg )
 
     command =
-      @tool_executor.build_command_line( 
+      @tool_executor.build_command_line(
         arg_hash[:tool],
         arg_hash[:flags],
         arg_hash[:source],
@@ -295,10 +295,10 @@ class Generator
     # Unity's exit code is equivalent to the number of failed tests.
     # We tell @tool_executor not to fail out if there are failures
     # so that we can run all tests and collect all results.
-    command = 
+    command =
       @tool_executor.build_command_line(
         arg_hash[:tool],
-        # Apply additional test case filters 
+        # Apply additional test case filters
         @test_runner_manager.collect_cmdline_args(),
         arg_hash[:executable]
       )
@@ -322,12 +322,12 @@ class Generator
       case @configurator.project_config_hash[:project_use_backtrace]
       # If we have the options and tools to learn more, dig into the details
       when :gdb
-        shell_result = 
+        shell_result =
           @backtrace.do_gdb( filename, executable, shell_result, test_cases )
 
       # Simple test-case-by-test-case exercise
       when :simple
-        shell_result = 
+        shell_result =
           @backtrace.do_simple( filename, executable, shell_result, test_cases )
 
       else # :none
@@ -340,7 +340,7 @@ class Generator
       end
     end
 
-    processed = @generator_test_results.process_and_write_results( 
+    processed = @generator_test_results.process_and_write_results(
       executable,
       shell_result,
       arg_hash[:result_file],

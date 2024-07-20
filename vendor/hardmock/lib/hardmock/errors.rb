@@ -11,11 +11,11 @@ module Hardmock
   # * Unexpected method is called on a mock object
   # * Bad arguments passed to an expected call
   class ExpectationError < StandardError #:nodoc:#
-  end 
+  end
 
   # Raised for methods that should no longer be called.  Hopefully, the exception message contains helpful alternatives.
   class DeprecationError < StandardError #:nodoc:#
-  end 
+  end
 
   # Raised when stubbing fails
   class StubbingError < StandardError #:nodoc:#

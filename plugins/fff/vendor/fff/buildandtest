@@ -5,7 +5,7 @@ cat LICENSE > fff.h
 ruby fakegen.rb >> fff.h
 make clean
 make all
-build/fff_test_c 
+build/fff_test_c
 build/fff_test_cpp --gtest_output=xml:build/test_results.xml
 build/ui_test_ansic
 build/ui_test_cpp --gtest_output=xml:build/example_results.xml

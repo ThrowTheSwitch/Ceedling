@@ -8,16 +8,16 @@
 require 'ceedling/plugin'
 
 class ReportTestsLogFactory < Plugin
-  
+
   # `Plugin` setup()
   def setup
     # Hash: Context => Array of test executable results files
     @results = {}
-    
+
     # Get our test suite reports' configuration
     config = @ceedling[:setupinator].config_hash
     @config = config[:report_tests_log_factory]
-    
+
     # Get list of enabled reports
     reports = @config[:reports]
 
@@ -94,7 +94,7 @@ class ReportTestsLogFactory < Plugin
   def load_reporters(reports, config)
     reporters = []
 
-    # For each report name string in configuration, dynamically load the corresponding 
+    # For each report name string in configuration, dynamically load the corresponding
     # Reporter subclass by convention
 
     # The steps below limit the set up complexity that would otherwise be
@@ -117,8 +117,8 @@ class ReportTestsLogFactory < Plugin
       reporter = eval( "#{_reporter}.new(handle: :#{report})" )
 
       # Inject configuration
-      reporter.config = config[report.to_sym] 
-      
+      reporter.config = config[report.to_sym]
+
       # Inject utilty object
       reporter.config_walkinator = @ceedling[:config_walkinator]
 

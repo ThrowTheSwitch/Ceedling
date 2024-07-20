@@ -17,7 +17,7 @@ which focuses on declarative composition of objects through constructor injectio
 
 Author a YAML file that describes your objects and how they fit together.
 This means you're building a Hash whose keys are the object names, and whose
-values are Hashes that define the object. 
+values are Hashes that define the object.
 
 The following context defines an automobile engine:
 
@@ -34,14 +34,14 @@ context.yml:
 In your code, use DIY to load the YAML, then access its parts:
 
   context = DIY::Context.from_file('context.yml')
-  context[:engine]  => <Engine:0x81eb0> 
+  context[:engine]  => <Engine:0x81eb0>
 
 This approach assumes:
 
 * You've got classes for Engine, Throttle, Block, Cable and Pedal
 * They're defined in engine.rb, throttle.rb, etc
 * The library files are in your load-path
-* Engine and Throttle both have a constructor that accepts a Hash.  The Hash 
+* Engine and Throttle both have a constructor that accepts a Hash.  The Hash
   will contain keys 'throttle', 'block' (for Engine) and 'cable, 'pedal' (for Throttle)
   and the values will be references to their respective objects.
 * Block, Cable and Pedal all have default constructors that accept no arguments
@@ -140,7 +140,7 @@ to use its factory methods).  Enter the "use_class_directly" flag:
     class: CustomerOrder
     use_class_directly: true
 
-This can be handy in Rails when you'd like to use some of class methods on an ActiveRecord subclass, but 
+This can be handy in Rails when you'd like to use some of class methods on an ActiveRecord subclass, but
 you'd like to avoid direct ActiveRecord class usage in your code.  In this case, the customer_order_finder
 is actually the CustomerOrder class, and so, it has methods like "find" and "destroy_all".
 

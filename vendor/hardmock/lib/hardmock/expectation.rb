@@ -56,7 +56,7 @@ module Hardmock
       @block_value = expectation_block.call(*relayed_args) if expectation_block
 
       raise @options[:raises] unless @options[:raises].nil?
-			
+
 			return_value = @options[:returns]
 			if return_value.nil?
 				return @block_value
@@ -73,15 +73,15 @@ module Hardmock
       self
     end
     alias_method :and_return, :returns
-    
+
     # Set the arguments for an expected method call.
     # Eg,
     #   @cash_machine.expects.deposit.with(20, "dollars").returns(:balance => "20")
     def with(*args)
       @options[:arguments] = args
-      self      
+      self
     end
-    
+
     # Rig an expected method to raise an exception when the mock is invoked.
     #
     # Eg,
@@ -118,8 +118,8 @@ module Hardmock
     # The block can be invoked like this:
     #
     #   light_event.trigger :red
-    # 
-    # See Mock#trap and Mock#expects for information on using expectation objects 
+    #
+    # See Mock#trap and Mock#expects for information on using expectation objects
     # after they are set.
     #
     def trigger(*block_arguments)
@@ -132,14 +132,14 @@ module Hardmock
       block_value.call *block_arguments
     end
 
-    # Used when an expected method accepts a block at runtime.  
+    # Used when an expected method accepts a block at runtime.
     # When the expected method is invoked, the block passed to
     # that method will be invoked as well.
     #
     # NOTE: ExpectationError will be thrown upon running the expected method
     # if the arguments you set up in +yields+ do not properly match up with
     # the actual block that ends up getting passed.
-    # 
+    #
     # == Examples
     # <b>Single invocation</b>: The block passed to +lock_down+ gets invoked
     # once with no arguments:
@@ -147,23 +147,23 @@ module Hardmock
     #   @safe_zone.expects.lock_down.yields
     #
     #   # (works on code that looks like:)
-    #   @safe_zone.lock_down do 
+    #   @safe_zone.lock_down do
     #     # ... this block invoked once
     #   end
-    # 
+    #
     # <b>Multi-parameter blocks:</b> The block passed to +each_item+ gets
     # invoked twice, with <tt>:item1</tt> the first time, and with
     # <tt>:item2</tt> the second time:
-    # 
+    #
     #   @fruit_basket.expects.each_with_index.yields [:apple,1], [:orange,2]
     #
     #   # (works on code that looks like:)
     #   @fruit_basket.each_with_index do |fruit,index|
-    #     # ... this block invoked with fruit=:apple, index=1, 
+    #     # ... this block invoked with fruit=:apple, index=1,
     #     # ... and then with fruit=:orange, index=2
     #   end
     #
-    # <b>Arrays can be passed as arguments too</b>... if the block 
+    # <b>Arrays can be passed as arguments too</b>... if the block
     # takes a single argument and you want to pass a series of arrays into it,
     # that will work as well:
     #
@@ -176,7 +176,7 @@ module Hardmock
     #   end
     #
     # <b>Return value</b>: You can set the return value for the method that
-    # accepts the block like so: 
+    # accepts the block like so:
     #
     #   @cruncher.expects.do_things.yields(:bean1,:bean2).returns("The Results")
     #
@@ -201,7 +201,7 @@ module Hardmock
         # Yield one or more specific items
         @options[:block] = lambda do |block|
           items.each do |item|
-            if item.kind_of?(Array) 
+            if item.kind_of?(Array)
               if block.arity == item.size
                 # Unfold the array into the block's arguments:
                 block.call *item
@@ -229,7 +229,7 @@ module Hardmock
       format_method_call_string(@options[:mock],@options[:method],@options[:arguments])
     end
 
-    private 
+    private
     def anger(msg, mock,mname,args)
       ExpectationError.new("#{msg}: expected call <#{to_s}> but was <#{format_method_call_string(mock,mname,args)}>")
     end

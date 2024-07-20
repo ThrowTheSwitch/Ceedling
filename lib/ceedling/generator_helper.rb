@@ -50,10 +50,10 @@ class GeneratorHelper
 
       log = true
     end
-    
+
     if (log)
       if (shell_result[:exit_code] != nil)
-        notice += "> And terminated with exit code: [#{shell_result[:exit_code]}] (failed test case count).\n" 
+        notice += "> And terminated with exit code: [#{shell_result[:exit_code]}] (failed test case count).\n"
       end
 
       notice += "> Causes can include a bad memory access, stack overflow, heap error, or bad branch in source or test code.\n"
@@ -63,5 +63,5 @@ class GeneratorHelper
       @loginator.log( '', Verbosity::OBNOXIOUS )
     end
   end
-  
+
 end

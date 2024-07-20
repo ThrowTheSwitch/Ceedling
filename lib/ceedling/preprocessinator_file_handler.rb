@@ -20,7 +20,7 @@ class PreprocessinatorFileHandler
       defines,
       include_paths
     )
-    
+
     shell_result = @tool_executor.exec( command )
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
@@ -55,7 +55,7 @@ class PreprocessinatorFileHandler
     contents = [comment, ''] + contents
 
     # Write file, collapsing any repeated blank lines
-    # ----------------------------------------------------    
+    # ----------------------------------------------------
     contents = contents.join("\n")
     contents.gsub!( /(\h*\n){3,}/, "\n\n" )
 
@@ -64,7 +64,7 @@ class PreprocessinatorFileHandler
     #  - We rely on search paths at compilation rather than explicit #include paths
     #  - Match (#include ")((path/)+)(file") and reassemble string using first and last matching groups
     contents.gsub!( /(#include\s+")(([^\/]+\/)+)(.+")/, '\1\4' )
-    
+
     @file_wrapper.write( preprocessed_filepath, contents )
 
     return shell_result
@@ -79,7 +79,7 @@ class PreprocessinatorFileHandler
       defines,
       include_paths
     )
-    
+
     shell_result = @tool_executor.exec( command )
 
     contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
@@ -97,7 +97,7 @@ class PreprocessinatorFileHandler
     contents = [comment, ''] + contents
 
     # Write file, doing some prettyifying along the way
-    # ----------------------------------------------------    
+    # ----------------------------------------------------
     contents = contents.join("\n")
     contents.gsub!( /^\s*;/, '' )           # Drop blank lines with semicolons left over from macro expansion + trailing semicolon
     contents.gsub!( /\)\s+\{/, ")\n{" )     # Collapse any unnecessary white space between closing argument paren and opening function bracket

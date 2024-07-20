@@ -19,14 +19,14 @@ require 'hardmock/stubbing'
 
 module Hardmock
 
-  # Create one or more new Mock instances in your test suite. 
+  # Create one or more new Mock instances in your test suite.
   # Once created, the Mocks are accessible as instance variables in your test.
   # Newly built Mocks are added to the full set of Mocks for this test, which will
   # be verified when you call verify_mocks.
   #
   #   create_mocks :donkey, :cat # Your test now has @donkey and @cat
   #   create_mock  :dog          # Test now has @donkey, @cat and @dog
-  #   
+  #
   # The first call returned a hash { :donkey => @donkey, :cat => @cat }
   # and the second call returned { :dog => @dog }
   #
@@ -75,7 +75,7 @@ module Hardmock
     $main_mock_control = nil
     reset_stubs
   end
-  
+
   alias :verify_hardmocks :verify_mocks
 
   # Purge the main MockControl of all expectations, restore all concrete stubbed/mocked methods

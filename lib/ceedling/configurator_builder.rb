@@ -98,7 +98,7 @@ class ConfiguratorBuilder
         end
 
       when Array
-        config[section] = defaults[section] 
+        config[section] = defaults[section]
       end
     end
   end
@@ -480,7 +480,7 @@ class ConfiguratorBuilder
     # No build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
     objects.map! { |object| object.ext(in_hash[:extension_object]) }
 
-    return { 
+    return {
       :collection_all_support => sources,
       :collection_test_fixture_extra_link_objects => objects
     }

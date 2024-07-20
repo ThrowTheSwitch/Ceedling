@@ -15,7 +15,7 @@ class Verbosity
   DEBUG       = 5   # Special extra verbose output for hardcore debugging
 end
 
-VERBOSITY_OPTIONS = { 
+VERBOSITY_OPTIONS = {
   :silent    => Verbosity::SILENT,
   :errors    => Verbosity::ERRORS,
   :warnings  => Verbosity::COMPLAIN,
@@ -75,7 +75,7 @@ GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support']
 EXTENSION_WIN_EXE     = '.exe'
 EXTENSION_NONWIN_EXE  = '.out'
 # Vendor frameworks, generated mocks, generated runners are always .c files
-EXTENSION_CORE_SOURCE = '.c' 
+EXTENSION_CORE_SOURCE = '.c'
 
 PREPROCESS_SYM = :preprocess
 
@@ -150,7 +150,3 @@ UNITY_TEST_RESULTS_TEMPLATE = <<~UNITY_TEST_RESULTS
   %{total} Tests %{failed} Failures %{ignored} Ignored
   %{result}
 UNITY_TEST_RESULTS
-
-
-
-

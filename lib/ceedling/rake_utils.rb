@@ -6,7 +6,7 @@
 # =========================================================================
 
 class RakeUtils
-  
+
   constructor :rake_wrapper
 
   def task_invoked?(task_regex)

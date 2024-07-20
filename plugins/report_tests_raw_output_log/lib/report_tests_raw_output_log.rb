@@ -29,7 +29,7 @@ class ReportTestsRawOutputLog < Plugin
 
     # Bail out early
     return if output.empty?
-    
+
     # After test fixture execution, parse output, store any raw console statements
     @mutex.synchronize do
       process_output(

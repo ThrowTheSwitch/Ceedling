@@ -14,14 +14,14 @@ class ReportTestsPrettyStdout < Plugin
   def setup
     @result_list = []
     @mutex = Mutex.new
-    
+
     # Fetch the test results template for this plugin
     template = @ceedling[:file_wrapper].read( File.join( @plugin_root_path, 'assets/template.erb' ) )
 
     # Set the report template
     @ceedling[:plugin_reportinator].register_test_results_template( template )
   end
-  
+
   # `Plugin` build step hook -- collect result file paths after each test fixture execution
   def post_test_fixture_execute(arg_hash)
     # Thread-safe manipulation since test fixtures can be run in child processes
@@ -30,7 +30,7 @@ class ReportTestsPrettyStdout < Plugin
       @result_list << arg_hash[:result_file]
     end
   end
-  
+
   # `Plugin` build step hook -- render a report immediately upon build completion (that invoked tests)
   def post_build()
     # Ensure a test task was invoked as part of the build

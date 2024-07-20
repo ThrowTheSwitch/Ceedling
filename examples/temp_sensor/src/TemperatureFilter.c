@@ -39,7 +39,7 @@ void TemperatureFilter_ProcessInput(float temperature)
       initialized = FALSE;
       temperature = -INFINITY;
     }
-    
+
     temperatureInCelcius = (temperatureInCelcius * 0.75f) + (temperature * 0.25);
   }
 }

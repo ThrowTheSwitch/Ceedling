@@ -72,13 +72,13 @@ class Configurator
   def set_verbosity(config)
     # PROJECT_VERBOSITY and PROJECT_DEBUG set at command line processing before Ceedling is loaded
 
-    # Configurator will later try to create these accessors automatically but will silently 
+    # Configurator will later try to create these accessors automatically but will silently
     # fail if they already exist.
 
     if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG) or (config[:project][:debug])
       eval("def project_debug() return true end", binding())
     else
-      eval("def project_debug() return false end", binding())      
+      eval("def project_debug() return false end", binding())
     end
 
     if !!defined?(PROJECT_VERBOSITY)
@@ -148,7 +148,7 @@ class Configurator
   def merge_plugins_defaults(paths_hash, config, default_config)
     # Config YAML defaults plugins
     plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash )
-    
+
     # Config Ruby-based hash defaults plugins
     plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
 
@@ -227,7 +227,7 @@ class Configurator
 
   def populate_defaults( config_hash, defaults_hash )
     msg = @reportinator.generate_progress( 'Populating project configuration with collected default values' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )    
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     @configurator_builder.populate_defaults( config_hash, defaults_hash )
   end
@@ -235,7 +235,7 @@ class Configurator
 
   def populate_test_runner_generation_config(config)
     msg = @reportinator.generate_progress( 'Populating test runner generation settings' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )    
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     use_backtrace = config[:project][:use_backtrace]
 
@@ -263,7 +263,7 @@ class Configurator
     # Automagically set exception handling if CMock is configured for it
     if config[:cmock][:plugins] && config[:cmock][:plugins].include?(:cexception)
       msg = @reportinator.generate_progress( 'Enabling CException use based on CMock plugins settings' )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )    
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
 
       config[:project][:use_exceptions] = true
     end
@@ -329,7 +329,7 @@ class Configurator
     config[:tools].each do |key, tool|
       name = key.to_s()
 
-      # Supplemental tool definition 
+      # Supplemental tool definition
       supplemental = config[(prefix + name).to_sym]
 
       if (not supplemental.nil?)
@@ -362,7 +362,7 @@ class Configurator
       msg = " > Programmatic plugins: " + @configurator_plugins.programmatic_plugins.map{|p| p[:plugin]}.join( ', ' )
       @loginator.log( msg, Verbosity::DEBUG )
     end
-    
+
     # Config plugins
     config_plugins = @configurator_plugins.find_config_plugins( config, paths_hash )
     if !@configurator_plugins.config_plugins.empty?
@@ -395,7 +395,7 @@ class Configurator
 
       # Special handling for plugin paths
       if (_config.include?( :paths ))
-        _config[:paths].update( _config[:paths] ) do |k,v| 
+        _config[:paths].update( _config[:paths] ) do |k,v|
           plugin_path = hash[:path].match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
           v.map {|vv| File.expand_path( vv.gsub!( /\$PLUGIN_PATH/, plugin_path) ) }
         end
@@ -649,7 +649,7 @@ class Configurator
         paths << container[key] if (key.to_s =~ /_path(s)?$/)
       end
     end
-    
+
     return paths.flatten()
   end
 
@@ -691,4 +691,3 @@ class Configurator
   end
 
 end
-

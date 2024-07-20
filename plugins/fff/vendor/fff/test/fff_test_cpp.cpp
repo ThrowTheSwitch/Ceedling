@@ -50,4 +50,3 @@ TEST_F(FFFTestSuite, default_constants_can_be_overridden)
     ASSERT_EQ(OVERRIDE_CALL_HIST_LEN, sizeCallHistory);
     ASSERT_EQ(OVERRIDE_ARG_HIST_LEN, voidfunc2_fake.arg_history_len);
 }
-

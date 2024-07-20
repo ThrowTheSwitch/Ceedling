@@ -105,4 +105,3 @@ class BuildBatchinator
   end
 
 end
-

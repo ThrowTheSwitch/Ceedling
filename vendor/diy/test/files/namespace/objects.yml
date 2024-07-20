@@ -16,7 +16,7 @@ using_namespace Animal:
     compose: road
 
   bird:
-    compose: sky    
+    compose: sky
 
 using_namespace Animal Reptile:
 
@@ -26,4 +26,3 @@ using_namespace Animal Reptile:
 using_namespace Animal::Reptile::Hardshell:
 
   turtle:
-
