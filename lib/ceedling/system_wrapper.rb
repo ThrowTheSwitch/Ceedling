@@ -87,7 +87,7 @@ class SystemWrapper
 
     return {
       # Combine stdout & stderr streams for complete output
-      :output    => (stdout + stderr).freeze,
+      :output    => (stdout + stderr).to_s.freeze,
       
       # Individual streams for detailed logging
       :stdout    => stdout.freeze,
