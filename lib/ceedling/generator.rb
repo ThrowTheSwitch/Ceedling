@@ -66,8 +66,9 @@ class Generator
 
       cmock = @generator_mocks.manufacture( config )
       cmock.setup_mocks( arg_hash[:header_file] )
-    rescue
-      raise
+    rescue StandardError => ex
+      # Re-raise execption but decorate it with CMock to better identify it
+      raise( ex, "CMock >> #{ex.message}", ex.backtrace )
     ensure
       @plugin_manager.post_mock_generate( arg_hash )
     end
@@ -105,8 +106,9 @@ class Generator
         test_file_includes: includes_list,
         header_extension: @configurator.extension_header
       )
-    rescue
-      raise
+    rescue StandardError => ex
+      # Re-raise execption but decorate it to better identify it in Ceedling output
+      raise( ex, "Unity Runner Generator >> #{ex.message}", ex.backtrace )
     ensure
       @plugin_manager.post_runner_generate(arg_hash)
     end
