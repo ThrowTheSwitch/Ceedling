@@ -118,6 +118,11 @@ class Setupinator
     # Configure test runner generation
     @configurator.populate_test_runner_generation_config( config_hash )
 
+    @loginator.log( "Unity configuration >> #{config_hash[:unity]}", Verbosity::DEBUG )
+    @loginator.log( "CMock configuration >> #{config_hash[:cmock]}", Verbosity::DEBUG )
+    @loginator.log( "Test Runner configuration >> #{config_hash[:test_runner]}", Verbosity::DEBUG )
+    @loginator.log( "CException configuration >> #{config_hash[:cexception]}", Verbosity::DEBUG )
+
     # Automagically enable use of exceptions based on CMock settings
     @configurator.populate_exceptions_config( config_hash )
 
