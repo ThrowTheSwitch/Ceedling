@@ -37,8 +37,10 @@ Using what we are calling build directive macros, you can now provide Ceedling c
 
 See the [documentation](CeedlingPacket.md) discussion on include paths, Ceedling conventions, and these macros to understand all the details.
 
-_Note:_ Ceedling is not yet capable of preserving build directive macros through preprocessing of test files. If, for example, you wrap these macros in
-        conditional compilation preprocessing statements, they will not work as you expect.
+_Notes:_
+
+* Ceedling is not yet capable of preserving build directive macros through preprocessing of test files. If, for example, you wrap these macros in conditional compilation preprocessing statements, they will not work as you expect.
+* However, preprocessing of mockable header files can now be enabled separately (see `:project` ↳ `:use_test_preprocessor`).
 
 #### `TEST_INCLUDE_PATH(...)` 
 
@@ -329,15 +331,15 @@ In future revisions of Ceedling, smart rebuilds will be brought back (without re
 
 Note that release builds do retain a fair amount of smart rebuild capabilities. Release builds continue to rely on Rake (for now).
 
-### Preprocessor support for Unity’s parameterized test case macros `TEST_CASE()` and `TEST_RANGE()`
+### Temporarily removed preprocessor support for Unity’s parameterized test case macros `TEST_CASE()` and `TEST_RANGE()`
 
 Unity’s `TEST_CASE()` and `TEST_RANGE()` continue to work but only when `:project` ↳ `:use_test_preprocessor` is not enabled for test files. The previous project configuration option `:use_preprocessor_directives` that preserved these and other directive macros when preprocessing is enabled is no longer recognized.
 
-`TEST_CASE()` and `TEST_RANGE()` are macros that disappear when the preprocessor digests a test file. After preprocessing, they no longer exist in the test file that is compiled.
+`TEST_CASE()` and `TEST_RANGE()` are macros that disappear when the GNU preprocessor digests a test file. After preprocessing, these macros no longer exist in the test file that is compiled. They and some other macros are largely used as markers for advanced abilities discovered by parsing a test file rather than compiling it.
 
-In future revisions of Ceedling, support for `TEST_CASE()` and `TEST_RANGE()` when preprocessing is enabled will be brought back (very likely without a dedicated configuration option — hopefully, we’ll get it to just work).
+In future revisions of Ceedling, support for `TEST_CASE()` and `TEST_RANGE()` when test file preprocessing is enabled will be brought back (very likely without a dedicated configuration option — hopefully, we’ll get it to just work).
 
-Note: `:project` ↳ `:use_test_preprocessor` is no longer a binary setting (true/false). Mockable header file preprocessing can be enabled with `:mocks` while test files are left as is.
+Note: `:project` ↳ `:use_test_preprocessor` is no longer a binary setting (`true`/`false`). Mockable header file preprocessing can now be enabled with a `:mocks` setting while test files are left untouched by preprocessing. This should support the majority of advanced use cases for preprocessing.
 
 ### Removed background task execution
 
