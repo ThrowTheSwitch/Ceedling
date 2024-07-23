@@ -28,40 +28,6 @@ class FileFinder
   end
 
 
-  def find_source_from_test(test, complain)
-    test_prefix  = @configurator.project_test_file_prefix
-    source_paths = @configurator.collection_all_source
-
-    source = File.basename(test).sub(/#{test_prefix}/, '')
-
-    # we don't blow up if a test file has no corresponding source file
-    return @file_finder_helper.find_file_in_collection(source, source_paths, complain, test)
-  end
-
-
-  def find_test_from_runner_path(runner_path)
-    extension_source = @configurator.extension_source
-
-    test_file = File.basename(runner_path).sub(/#{@configurator.test_runner_file_suffix}#{'\\'+extension_source}/, extension_source)
-
-    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error, runner_path)
-
-    return found_path
-  end
-
-
-  def find_test_input_for_runner_file(runner_path)
-    found_path   = find_test_from_runner_path(runner_path)
-    runner_input = found_path
-
-    if (@configurator.project_use_test_preprocessor)
-      runner_input = @cacheinator.diff_cached_test_file( @file_path_utils.form_preprocessed_file_filepath( found_path ) )
-    end
-
-    return runner_input
-  end
-
-
   def find_test_from_file_path(filepath)
     test_file = File.basename(filepath).ext(@configurator.extension_source)
 
