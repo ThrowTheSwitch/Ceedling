@@ -198,20 +198,32 @@ class ConfiguratorSetup
     return true
   end
 
+  def validate_test_preprocessor(config)
+    valid = true
+
+    options = [:none, :all, :tests, :mocks]
+
+    use_test_preprocessor = config[:project][:use_test_preprocessor]
+
+    if !options.include?( use_test_preprocessor )
+      msg = ":project ↳ :use_test_preprocessor is :'#{use_test_preprocessor}' but must be one of #{options.map{|o| ':' + o.to_s()}.join(', ')}"
+      @loginator.log( msg, Verbosity::ERRORS )
+      valid = false
+    end
+
+    return valid
+  end
+
   def validate_backtrace(config)
     valid = true
 
+    options = [:none, :simple, :gdb]
+
     use_backtrace = config[:project][:use_backtrace]
 
-    case use_backtrace
-    when :none
-      # Do nothing
-    when :simple
-      # Do nothing
-    when :gdb
-      # Do nothing
-    else
-      @loginator.log( ":project ↳ :use_backtrace is '#{use_backtrace}' but must be :none, :simple, or :gdb", Verbosity::ERRORS )
+    if !options.include?( use_backtrace )
+      msg = ":project ↳ :use_backtrace is :'#{use_backtrace}' but must be one of #{options.map{|o| ':' + o.to_s()}.join(', ')}"
+      @loginator.log( msg, Verbosity::ERRORS )
       valid = false
     end
 

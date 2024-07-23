@@ -1384,28 +1384,31 @@ In other words, a test function signature should look like this:
 Ceedling and CMock are advanced tools that both perform fairly sophisticated
 parsing.
 
-However, neither of these tools fully understand the entire C language,
+However, neither of these tools fully understands the entire C language,
 especially C's preprocessing statements.
 
-If your test files rely on macros and `#ifdef` conditionals, there's a good
+If your test files rely on macros and `#ifdef` conditionals, there’s a good
 chance that Ceedling will break on trying to process your test files, or,
-alternatively, your test suite will not execute as expected.
+alternatively, your test suite will build but not execute as expected.
 
 Similarly, generating mocks of header files with macros and `#ifdef`
-conditionals can get weird.
+conditionals can get weird. It’s often in sophisticated projects with complex 
+header files that mocking is most desired in the first place.
 
 Ceedling includes an optional ability to preprocess test files and header files
 before executing any operations on them. See the `:project` ↳
-`:use_test_preprocessor`). That is, Ceedling will expand preprocessor
-statements in test files before generating test runners from them and will
-expand preprocessor statements in header files before generating mocks from
-them.
+`:use_test_preprocessor` project configuration setting.
 
-This ability uses `gcc`'s preprocessing mode and the `cpp` preprocessor tool to
+When preprocessing is enabled for test files, Ceedling will expand preprocessor 
+statements in test files before generating test runners from them. When 
+preprocessing is enabled for mocking, Ceedling will expand preprocessor 
+statements in header files before generating mocks from them.
+
+This ability uses `gcc`’s preprocessing mode and the `cpp` preprocessor tool to
 strip down / expand test files and headers to their applicable content which
-can then be processed by Ceedling and CMock. They must be in your search path
-if Ceedling’s preprocessing is enabled. Further, Ceedling’s features are
-directly tied to these tools' abilities and options. They should not be
+can then be processed by Ceedling and CMock. These tools must be in your search 
+path if Ceedling’s preprocessing is enabled. Further, Ceedling’s features are
+directly tied to these tools' abilities and options. These tools should not be
 redefined for other toolchains.
 
 ### Execution time (duration) reporting in Ceedling operations & test suites
@@ -1958,7 +1961,7 @@ the examples).
 
 ```yaml
 :project:
-  :use_test_preprocessor: TRUE
+  :use_test_preprocessor: :all
   :test_file_prefix: Test
 ```
 
@@ -1983,7 +1986,7 @@ rules (noted after the examples).
 
 ```yaml
 :project:
-  :use_test_preprocessor: FALSE
+  :use_test_preprocessor: :none
 
 :plugins:
   :enabled:
@@ -1997,7 +2000,7 @@ Behold the project configuration following mixin merges:
 ```yaml
 :project:
   :build_root: build/           # From base.yml
-  :use_test_preprocessor: TRUE  # Value in support/mixins/cmdline.yml overwrote value from support/mixins/enabled.yml
+  :use_test_preprocessor: :all  # Value in support/mixins/cmdline.yml overwrote value from support/mixins/enabled.yml
   :test_file_prefix: Test       # Added to :project from support/mixins/cmdline.yml
 
 :plugins:
@@ -2388,18 +2391,22 @@ migrated to the `:test_build` and `:release_build` sections.
 * `:use_test_preprocessor`
 
   This option allows Ceedling to work with test files that contain
-  conditional compilation statements (e.g. `#ifdef`) and header files you
-  wish to mock that contain conditional preprocessor statements and/or
-  macros.
+  conditional compilation statements (e.g. `#ifdef`) as well as mockable header 
+  files containing conditional preprocessor directives and/or macros.
 
   See the [documentation on test preprocessing][test-preprocessing] for more.
 
-  With this option enabled, the `gcc` & `cpp` tools must exist in an
+  With any preprocessing enabled, the `gcc` & `cpp` tools must exist in an
   accessible system search path.
+
+   * `:none` disables preprocessing.
+   * `:all` enables preprpocessing for all mockable header files and test C files.
+   * `:mocks` enables only preprocessing of header files that are to be mocked.
+   * `:tests` enables only preprocessing of your test files.
 
   [test-preprocessing]: #preprocessing-behavior-for-tests
 
-  **Default**: FALSE
+  **Default**: `:none`
 
 * `:test_file_prefix`
 
@@ -2616,7 +2623,7 @@ migrated to the `:test_build` and `:release_build` sections.
 :project:
   :build_root: project_awesome/build
   :use_exceptions: FALSE
-  :use_test_preprocessor: TRUE
+  :use_test_preprocessor: :all
   :options_paths:
     - project/options
     - external/shared/options
@@ -3916,15 +3923,13 @@ Please see the discussion in `:defines` for a complete example.
 
 ## `:cmock` Configure CMock’s code generation & compilation
 
-Ceedling sets values for a subset of CMock settings. All CMock
-options are available to be set, but only those options set by
-Ceedling in an automated fashion are documented below. See CMock
-documentation.
+Ceedling sets values for a subset of CMock settings. All CMock options are
+available to be set, but only those options set by Ceedling in an automated
+fashion are documented below. See CMock documentation.
 
-Ceedling sets values for a subset of CMock settings. All CMock 
-options are available to be set, but only those options set by 
-Ceedling in an automated fashion are documented below. 
-See [CMock] documentation.
+Ceedling sets values for a subset of CMock settings. All CMock options are
+available to be set, but only those options set by Ceedling in an automated
+fashion are documented below. See [CMock] documentation.
 
 * `:enforce_strict_ordering`:
 
@@ -3944,7 +3949,7 @@ See [CMock] documentation.
 
 * `:defines`:
 
-  Adds list of symbols used to configure CMock's C code features in its source and header 
+  Adds list of symbols used to configure CMock’s C code features in its source and header 
   files at compile time.
   
   See [Using Unity, CMock & CException](#using-unity-cmock--cexception) for much more on
@@ -3953,43 +3958,51 @@ See [CMock] documentation.
   To manage overall command line length, these symbols are only added to compilation when
   a CMock C source file is compiled.
   
-  No symbols must be set unless CMock's defaults are inappropriate for your environment 
+  No symbols must be set unless CMock’s defaults are inappropriate for your environment 
   and needs.
   
   **Default**: `[]` (empty)
 
 * `:plugins`:
 
-  To add to the list Ceedling provides CMock, simply add `:cmock` ↳ `:plugins` 
-  to your configuration and specify your desired additional plugins.
+  To enable CMock’s optional and advanced features available via CMock plugin, simply add 
+  `:cmock` ↳ `:plugins` to your configuration and specify your desired additional CMock 
+  plugins as a list.
 
   See [CMock's documentation][cmock-docs] to understand plugin options.
 
   [cmock-docs]: https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMock_Summary.md
 
-* `:includes`:
+  **Default**: `[]` (empty)
+
+* `:unity_helper`:
+  
+  A Unity helper is a specific header file containing 
 
   If `:cmock` ↳ `:unity_helper` set, prepopulated with unity_helper file
   name (no path).
 
-  The `:cmock` ↳ `:includes` list works identically to the plugins list
-  above with regard to adding additional files to be inserted within
-  mocks as #include statements.
+* `:includes`:
+
+  In certain advanced testing scenarios, you may need to inject additional header files 
+  into generated mocks. The filenames in this list will be transformed in `#include` 
+  directives within every generated mock.
+
+  **Default**: `[]` (empty)
 
 ### Notes on Ceedling’s nudges for CMock strict ordering
 
-The last four settings above are directly tied to other Ceedling
-settings; hence, why they are listed and explained here.
+The preceding settings are tied to other Ceedling settings; hence, why they are 
+documented here.
 
-The first setting above, `:enforce_strict_ordering`, defaults
-to `FALSE` within CMock. However, it is set to `TRUE` by default 
-in Ceedling as our way of encouraging you to use strict ordering.
+The first setting above, `:enforce_strict_ordering`, defaults to `FALSE` within
+CMock. However, it is set to `TRUE` by default in Ceedling as our way of
+encouraging you to use strict ordering.
 
-Strict ordering is teeny bit more expensive in terms of code 
-generated, test execution time, and complication in deciphering 
-test failures. However, it's good practice. And, of course, you 
-can always disable it by overriding the value in the Ceedling 
-project configuration file.
+Strict ordering is teeny bit more expensive in terms of code generated, test
+execution time, and complication in deciphering test failures. However, it’s
+good practice. And, of course, you can always disable it by overriding the
+value in the Ceedling project configuration file.
 
 ## `:unity` Configure Unity’s features
 
@@ -4004,8 +4017,8 @@ project configuration file.
   To manage overall command line length, these symbols are only added to compilation when
   a Unity C source file is compiled.
   
-  No symbols must be set unless Unity's defaults are inappropriate for your environment 
-  and needs.
+  **_Note_**: No symbols must be set unless Unity's defaults are inappropriate for your 
+  environment and needs.
   
   **Default**: `[]` (empty)
 

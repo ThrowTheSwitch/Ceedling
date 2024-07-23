@@ -7,7 +7,7 @@ These breaking changes are complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-06-19
+# [1.0.0 pre-release] — 2024-07-22
 
 ## Explicit `:paths` ↳ `:include` entries in the project file
 
@@ -44,6 +44,23 @@ In brief:
 1. Within the `:flags` ↳ `:test` context, all matching of file names is now limited to *_test files_*. For any test file name that matches, the specified flags are added to the named build step for _all files that comprise that test executable_. Previously, matching was against individual files (source, test, whatever), and flags were applied to only operations on that single file. Now, all files part of a test executable build get the same treatment as a mini-project.
 
 Flags specified for release builds are applied to all files in the release build.
+
+## New `:project` ↳ `:use_test_preprocessor` configuration settings
+
+Ceedling’s preprocessing features have been greatly improved. Preprocessing is now no longer all-or-nothing with a simple boolean value.
+
+In place of `true` or `false`, `:use_test_preprocessing` now accepts:
+
+* `:none` disables preprocessing (equivalent to previous `false` setting).
+* `:all` enables preprpocessing for all mockable header files and test C files (equivalent to previous `true` setting).
+* `:mocks` enables only preprocessing of header files that are to be mocked.
+* `:tests` enables only preprocessing of your test files.
+
+## Preprocessing is temporarily unable to handle Unity’s parameterized test case macros `TEST_CASE()` and `TEST_RANGE()`
+
+Ceedling’s preprocessing abilities have been nearly entirely rewritten. In the process of doing so Ceedling has temporarily lost the ability to preprocess a test file but preserve certain directive macros including Unity’s parameterized test case macros.
+
+Note that it is now possible to enable preprocessing for mockable header files apart from test files.
 
 ## `TEST_FILE()` ➡️ `TEST_SOURCE_FILE()`
 

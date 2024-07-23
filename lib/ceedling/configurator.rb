@@ -95,7 +95,7 @@ class Configurator
 
     default_config.deep_merge( DEFAULT_TOOLS_TEST.deep_clone() )
 
-    default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone() ) if (config[:project][:use_test_preprocessor])
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone() ) if (config[:project][:use_test_preprocessor] != :none)
     default_config.deep_merge( DEFAULT_TOOLS_TEST_ASSEMBLER.deep_clone() )     if (config[:test_build][:use_assembly])
 
     default_config.deep_merge( DEFAULT_TOOLS_RELEASE.deep_clone() )            if (config[:project][:release_build])
@@ -548,6 +548,7 @@ class Configurator
                  app_cfg[:include_test_case],
                  app_cfg[:exclude_test_case]
                )
+    blotter &= @configurator_setup.validate_test_preprocessor( config )
     blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
     blotter &= @configurator_setup.validate_plugins( config )
