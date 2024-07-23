@@ -20,7 +20,7 @@ describe SystemUtils do
 
     @echo_test_cmd = {:command=>'echo $version'}
   end
- 
+
   describe '#setup' do
     it 'sets tcsh_shell to nil' do
       expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to eq(nil)
@@ -28,11 +28,11 @@ describe SystemUtils do
 
     it 'sets tcsh_shell to nil after being set' do
       expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to eq(nil)
-     
+
 
       allow(@loginator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
       @sys_utils.tcsh_shell?
-      
+
       @sys_utils.setup
       expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to eq(nil)
     end

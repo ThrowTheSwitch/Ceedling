@@ -95,7 +95,7 @@ class ToolExecutorHelper
     if !shell_result[:exit_code].nil?
       output += "> And terminated with exit code: [#{shell_result[:exit_code]}]\n"
     else
-      output += "> And exited prematurely\n"      
+      output += "> And exited prematurely\n"
     end
 
     @loginator.log( '', Verbosity::OBNOXIOUS )

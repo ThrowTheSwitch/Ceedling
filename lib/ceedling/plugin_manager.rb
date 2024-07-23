@@ -28,7 +28,7 @@ class PluginManager
 
       begin
         @system_wrapper.require_file( "#{hash[:plugin]}.rb" )
-        object = @plugin_manager_helper.instantiate_plugin( 
+        object = @plugin_manager_helper.instantiate_plugin(
           camelize( hash[:plugin] ),
           system_objects,
           hash[:plugin],

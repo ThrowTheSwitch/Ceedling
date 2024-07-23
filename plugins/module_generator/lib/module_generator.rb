@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
@@ -20,7 +21,7 @@ class ModuleGenerator < Plugin
     @project_config = @ceedling[:configurator].project_config_hash
 
     # load the generate module script form Unity's collection of scripts.
-    require "generate_module.rb" 
+    require "generate_module.rb"
 
     # if asked to destroy, do so. otherwise create (because isn't creating something always better?)
     if ((!optz.nil?) && (optz[:destroy]))

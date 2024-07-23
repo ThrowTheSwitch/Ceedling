@@ -10,13 +10,13 @@ require 'ceedling/constants'
 require 'json'
 
 class CompileCommandsJsonDb < Plugin
-  
+
   # `Plugin` setup()
   def setup
     @fullpath = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, "compile_commands.json")
-    
+
     @database = []
-    
+
     if (File.exist?(@fullpath) && File.size(@fullpath) > 0)
       @database = JSON.parse( File.read(@fullpath) )
     end

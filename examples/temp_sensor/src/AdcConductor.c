@@ -46,4 +46,3 @@ bool AdcConductor_YetAnotherTest(void)
 
     return AdModel_DoNothingExceptTestPointers(&example);
 }
-

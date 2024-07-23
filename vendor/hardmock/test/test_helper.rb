@@ -21,8 +21,8 @@ require 'ostruct'
 class Test::Unit::TestCase
   include FileUtils
 
-  def poll(time_limit) 
-    (time_limit * 10).to_i.times do 
+  def poll(time_limit)
+    (time_limit * 10).to_i.times do
       return true if yield
       sleep 0.1
     end

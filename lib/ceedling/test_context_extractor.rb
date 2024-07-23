@@ -15,7 +15,7 @@ class TestContextExtractor
   def setup
     @all_header_includes = {} # Full list of all headers a test #includes
     @header_includes     = {} # List of all headers minus mocks & framework files
-    @source_includes     = {} 
+    @source_includes     = {}
     @source_extras       = {}
     @test_runner_details = {} # Test case lists & Unity runner generator instances
     @mocks               = {}
@@ -113,7 +113,7 @@ class TestContextExtractor
   def ingest_includes(filepath, includes)
     mock_prefix = @configurator.cmock_mock_prefix
     file_key    = form_file_key( filepath )
-    
+
     mocks       = []
     all_headers = []
     headers     = []
@@ -124,7 +124,7 @@ class TestContextExtractor
       if include =~ /#{Regexp.escape(@configurator.extension_header)}$/
         # Check if include is a mock with regex match that extracts only mock name (no .h)
         scan_results = include.scan(/(#{mock_prefix}.+)#{Regexp.escape(@configurator.extension_header)}/)
-        
+
         if (scan_results.size > 0)
           # Collect mock name
           mocks << scan_results[0][0]
@@ -169,7 +169,7 @@ class TestContextExtractor
   end
 
   # Scan for & store includes (.h & .c) and mocks
-  # Note: This method is private unlike other `collect_ ()` methods. It is only 
+  # Note: This method is private unlike other `collect_ ()` methods. It is only
   #       called by way of `collect_context()`.
   def collect_includes(filepath, content)
     includes = _extract_includes( filepath, content )

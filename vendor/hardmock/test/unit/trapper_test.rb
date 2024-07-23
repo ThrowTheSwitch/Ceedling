@@ -23,7 +23,7 @@ class TrapperTest < Test::Unit::TestCase
   #
   # HELPERS
   #
-   
+
   class MyControl
     attr_reader :added
     def add_expectation(expectation)
@@ -59,7 +59,7 @@ class TrapperTest < Test::Unit::TestCase
     assert_equal "dummy expectation", output, "Expectation should have been returned"
 
     # Examine the block.  It should take one argument and simply return
-    # that argument.  because of the 'suppress arguments to block' 
+    # that argument.  because of the 'suppress arguments to block'
     # setting, the argument can only end up being a block, in practice.
     trapper_block = @builder.options[:block]
     assert_equal "the argument", trapper_block.call("the argument"),

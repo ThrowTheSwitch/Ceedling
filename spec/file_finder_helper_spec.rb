@@ -22,8 +22,8 @@ describe FileFinderHelper do
 
     @ff_helper = described_class.new({:loginator => @loginator})
   end
-  
-  
+
+
   describe '#find_file_in_collection' do
     it 'returns the full path of the matching file' do
       expect(@ff_helper.find_file_in_collection('a.c', FILE_LIST, :ignore)).to eq(FILE_LIST[0])

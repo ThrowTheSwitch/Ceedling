@@ -21,8 +21,8 @@ Gem::Specification.new do |s|
   s.description = <<-DESC
 Ceedling is a build automation tool that helps you create and run C unit test suites.
 
-Ceedling provides two core functions: 
-  [1] It packages up several tools including the C unit test framework Unity, the mock generation tool CMock, and other features. 
+Ceedling provides two core functions:
+  [1] It packages up several tools including the C unit test framework Unity, the mock generation tool CMock, and other features.
   [2] It simplifies tool configuration for embedded or native C toolchains and automates the running and reporting of tests.
 
 Ceedling projects are created with a YAML configuration file. A variety of conventions within the tool simplify generating mocks from C files and assembling suites of unit test functions.
@@ -36,9 +36,9 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
     "mailing_list_uri"  => "https://groups.google.com/forum/#!categories/throwtheswitch/ceedling",
     "source_code_uri"   => "https://github.com/ThrowTheSwitch/Ceedling"
   }
-  
+
   s.required_ruby_version = ">= 3.0.0"
-  
+
   s.add_dependency "thor", ">= 0.14"
   s.add_dependency "rake", ">= 12", "< 14"
   s.add_dependency "deep_merge", "~> 1.2"

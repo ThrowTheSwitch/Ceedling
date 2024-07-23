@@ -121,7 +121,7 @@ class Dependencies < Plugin
   end
 
   def get_include_directories_for_dependency(deplib)
-    paths = (deplib[:artifacts][:includes] || []).map do |path| 
+    paths = (deplib[:artifacts][:includes] || []).map do |path|
       if (path =~ /.*\.h$/)
         path.split(/[\/\\]/)[0..-2]
       elsif (path =~ /(?:^\+:)|(?:^-:)|(?:\*\*)/)
@@ -130,7 +130,7 @@ class Dependencies < Plugin
         path
       end
     end
-    return paths.map{|path| File.join(get_artifact_path(deplib), path) }.uniq 
+    return paths.map{|path| File.join(get_artifact_path(deplib), path) }.uniq
   end
 
   def get_include_files_for_dependency(deplib)
@@ -166,7 +166,7 @@ class Dependencies < Plugin
     # we do so for possible argument expansion/substitution and, more importantly, logging output.
 
     # Construct a tool configuration
-    tool_config = { 
+    tool_config = {
       # Use tool name if provided, otherwise, grab something from the command line
       :name => name.nil? ? cmdline_items[0] : name,
 
@@ -256,7 +256,7 @@ class Dependencies < Plugin
           blob[:fetch][:source]
         )
       end
-    
+
     when :svn
       revision = blob[:fetch][:revision] || ''
       revision = '--revision ' + revision unless revision.empty?
@@ -268,7 +268,7 @@ class Dependencies < Plugin
         revision,
         blob[:fetch][:source]
       )
-    
+
     when :custom
       blob[:fetch][:executable].each.with_index(1) do |cmdline, index|
         steps << generate_command_line( cmdline, "Dependencies custom command \##{index}" )
@@ -382,8 +382,8 @@ class Dependencies < Plugin
     case step
     when :build_lib # We are going to use our defined deps tools to build this library
       build_lib(blob)
-    else 
-      raise CeedlingException.new( "No such build action as #{step.inspect} for dependency #{blob[:name]}" ) 
+    else
+      raise CeedlingException.new( "No such build action as #{step.inspect} for dependency #{blob[:name]}" )
     end
   end
 
@@ -407,10 +407,10 @@ class Dependencies < Plugin
     raise CeedlingException.new( "No library artifacts specified for dependency #{name}" ) if libs.empty?
     lib = libs[0]
 
-    # Find all the source, header, and assembly files 
+    # Find all the source, header, and assembly files
     src = Dir["./**/*#{EXTENSION_SOURCE}"]
     hdr = Dir["./**/*#{EXTENSION_HEADER}"].map{|f| File.dirname(f) }.uniq
-    if (EXTENSION_ASSEMBLY && !EXTENSION_ASSEMBLY.empty?)  
+    if (EXTENSION_ASSEMBLY && !EXTENSION_ASSEMBLY.empty?)
       asm = Dir["./**/*#{EXTENSION_ASSEMBLY}"]
     end
 
@@ -437,7 +437,7 @@ class Dependencies < Plugin
         list:         @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename(src_file,EXTENSION_OBJECT) )
       )
       obj << object_file
-    end 
+    end
 
     # Build all the assembly files
     asm.each do |src_file|
@@ -474,17 +474,17 @@ class Dependencies < Plugin
     end
   end
 
-  def find_my_paths( c_file, blob, file_type = :c )  
+  def find_my_paths( c_file, blob, file_type = :c )
     return ((blob[:source] || []) + (blob[:include] || [])).compact.uniq
-  end  
+  end
 
-  def find_my_defines( c_file, blob, file_type = :c )  
-    return (blob[:defines] || []).compact.uniq 
-  end  
+  def find_my_defines( c_file, blob, file_type = :c )
+    return (blob[:defines] || []).compact.uniq
+  end
 
-  def replace_constant(constant, new_value)  
-    Object.send(:remove_const, constant.to_sym) if (Object.const_defined? constant)  
-    Object.const_set(constant, new_value)  
+  def replace_constant(constant, new_value)
+    Object.send(:remove_const, constant.to_sym) if (Object.const_defined? constant)
+    Object.const_set(constant, new_value)
   end
 
   ### Private ###

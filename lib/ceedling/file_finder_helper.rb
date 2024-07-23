@@ -12,14 +12,14 @@ require 'ceedling/exceptions'
 class FileFinderHelper
 
   constructor :loginator
-  
-  
+
+
   def find_file_in_collection(filename, file_list, complain, original_filepath="")
     # search our collection for the specified base filename
     matches = file_list.find_all {|v| File.basename(v) == filename }
-    
-    case matches.length 
-      when 0 
+
+    case matches.length
+      when 0
         matches = file_list.find_all {|v| v =~ /(?:\\|\/|^)#{filename}$/i}
         if (matches.length > 0)
           blow_up(filename, "However, a filename having different capitalization was found: '#{matches[0]}'.")
@@ -39,8 +39,8 @@ class FileFinderHelper
           num = reverse_original_pieces.zip(reverse_match_pieces).inject(0){|s,v| v[0] == v[1] ? s+3 : s}
           num = reverse_original_pieces.inject(num){|s,v| reverse_match_pieces.include?(v) ? s+1 : s}
           if num > best_match_value
-            best_match_index = i 
-            best_match_value = num 
+            best_match_index = i
+            best_match_value = num
           end
         end
         return matches[best_match_index]
@@ -60,12 +60,12 @@ class FileFinderHelper
     reverse_original_pieces = pathname.split(/(?:\\|\/)/).reverse
     path_list.each_with_index do |p,i|
       reverse_match_pieces = p.split(/(?:\\|\/)/).reverse
-      # 
+      #
       num = reverse_original_pieces.zip(reverse_match_pieces).inject(0){|s,v| v[0] == v[1] ? s+3 : s}
       num = reverse_original_pieces.inject(num){|s,v| reverse_match_pieces.include?(v) ? s+1 : s}
       if num > best_match_value
-        best_match_index = i 
-        best_match_value = num 
+        best_match_index = i
+        best_match_value = num
       end
     end
     return path_list[best_match_index]
@@ -73,7 +73,7 @@ class FileFinderHelper
 
   def handle_missing_file(filename, complain)
     case (complain)
-      when :error then blow_up(filename) 
+      when :error then blow_up(filename)
       when :warn
         gripe(filename)
         return nil
@@ -91,12 +91,10 @@ class FileFinderHelper
     error = ["Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
     raise CeedlingException.new( error )
   end
-    
+
   def gripe(filename, extra_message="")
     warning = ["Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
     @loginator.log( warning + extra_message, Verbosity::COMPLAIN )
   end
 
 end
-
-

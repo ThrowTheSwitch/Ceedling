@@ -22,7 +22,7 @@
   :default_tasks:
     - test:all
 
-  # performance options. If your tools start giving mysterious errors, consider 
+  # performance options. If your tools start giving mysterious errors, consider
   # dropping this to 1 to force single-tasking
   :test_threads: 8
   :compile_threads: 8
@@ -41,8 +41,8 @@
   :artifacts: []
 
 # Plugins are optional Ceedling features which can be enabled. Ceedling supports
-# a variety of plugins which may effect the way things are compiled, reported, 
-# or may provide new command options. Refer to the readme in each plugin for 
+# a variety of plugins which may effect the way things are compiled, reported,
+# or may provide new command options. Refer to the readme in each plugin for
 # details on how to use it.
 :plugins:
   :load_paths: []
@@ -88,7 +88,7 @@
     - s/**
     - sub/s
   :include:
-    - i/** 
+    - i/**
     - sub/i
   :libraries: []
 
@@ -109,8 +109,8 @@
     - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
   :release: []
 
-  # Enable to inject name of a test as a unique compilation symbol into its respective executable build. 
-  :use_test_definition: FALSE 
+  # Enable to inject name of a test as a unique compilation symbol into its respective executable build.
+  :use_test_definition: FALSE
 
 # Configure additional command line flags provided to tools used in each build step
 # :flags:
@@ -140,7 +140,7 @@
     int8:     INT8
     bool:     UINT8
 
-# Configuration options specific to Unity. 
+# Configuration options specific to Unity.
 :unity:
   :defines:
     - UNITY_EXCLUDE_FLOAT
@@ -164,12 +164,12 @@
 :module_generator:
   :project_root: ./
   :naming: :snake #options: :bumpy, :camel, :caps, or :snake
-  :boilerplates: 
+  :boilerplates:
     :src: "/* MAY THE SOURCE BE WITH YOU */"
     :inc: |
       /* ==================================
       |  It's important to make everyone
-      |  feel included, particularly in 
+      |  feel included, particularly in
       |  when making important decisions.
       ===================================*/
     :tst: "// Don't Test Me, Sir."

@@ -26,14 +26,14 @@ DEFAULT_BEEP_TPUT_TOOL = {
     ].freeze
   }
 
-# Old but widely available `beep` tone generator package for Unix-derived platforms (not macOS) 
+# Old but widely available `beep` tone generator package for Unix-derived platforms (not macOS)
 DEFAULT_BEEP_BEEP_TOOL = {
   :executable => 'beep'.freeze,                     # `beep` command line application
   :optional => true.freeze,
   :name => 'default_beep_beep'.freeze,
   :arguments => [].freeze                           # Default beep (no arguments)
   }
-  
+
 # Widely available tone generator package for Unix-derived platforms (not macOS)
 DEFAULT_BEEP_SPEAKER_TEST_TOOL = {
   :executable => 'speaker-test'.freeze,             # `speaker-test` command line application

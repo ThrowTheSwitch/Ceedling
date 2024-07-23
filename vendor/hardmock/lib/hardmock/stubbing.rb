@@ -20,7 +20,7 @@ class Object #:nodoc:#
       self
     end
   end
-	
+
 	def hm_meta_eval(&blk) #:nodoc:#
     hm_metaclass.instance_eval(&blk)
   end
@@ -57,7 +57,7 @@ module Hardmock
   #   rogue.expects!(:rawhide_tanning_solvents).returns("giant snapping turtles")
   #
   module Stubbing
-    # Exists only for documentation 
+    # Exists only for documentation
   end
 
   class ReplacedMethod #:nodoc:#
@@ -97,7 +97,7 @@ module Hardmock
 
       unless _is_mock? or already_stubbed
         if methods.include?(method_name.to_s)
-          hm_meta_eval do 
+          hm_meta_eval do
             alias_method "_hardmock_original_#{method_name}".to_sym, method_name.to_sym
           end
         end
@@ -125,13 +125,13 @@ module Hardmock
 
         # Preserver original implementation of the method by aliasing it away
         if methods.include?(method_name)
-          hm_meta_eval do 
+          hm_meta_eval do
             alias_method "_hardmock_original_#{method_name}".to_sym, method_name.to_sym
           end
         end
 
         # Re-define the method to utilize our patron mock instance.
-        # (This global-temp-var thing is hokey but I was having difficulty generating 
+        # (This global-temp-var thing is hokey but I was having difficulty generating
         # code for the meta class.)
         begin
           $method_text_temp = %{
@@ -149,7 +149,7 @@ module Hardmock
 
       return @_my_mock.expects(method_name, *args, &block)
     end
-      
+
     def _is_mock?
       self.kind_of?(Mock)
     end
@@ -167,16 +167,16 @@ module Hardmock
   class ::NilClass
     # Use this only if you really mean it
     alias_method :intentionally_stubs!, :stubs!
-    
+
     # Use this only if you really mean it
     alias_method :intentionally_expects!, :expects!
 
-    # Overridden to protect against accidental nil reference self delusion 
+    # Overridden to protect against accidental nil reference self delusion
     def stubs!(mname)
       raise StubbingError, "Cannot stub #{mname} method on nil.  (If you really mean to, try 'intentionally_stubs!')"
     end
 
-    # Overridden to protect against accidental nil reference self delusion 
+    # Overridden to protect against accidental nil reference self delusion
     def expects!(mname, *args)
       raise StubbingError, "Cannot mock #{mname} method on nil.  (If you really mean to, try 'intentionally_expects!')"
     end
@@ -204,7 +204,7 @@ module Hardmock
           backed_up = "_hardmock_original_#{replaced.method_name}"
           if replaced.target.methods.include?(backed_up)
             replaced.target.hm_meta_eval do
-              alias_method replaced.method_name.to_sym, backed_up.to_sym 
+              alias_method replaced.method_name.to_sym, backed_up.to_sym
             end
           end
           replaced.target._clear_mock
@@ -215,4 +215,3 @@ module Hardmock
   end
 
 end
-

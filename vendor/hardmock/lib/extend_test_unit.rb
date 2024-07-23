@@ -8,7 +8,7 @@
 
 
 require 'test/unit/testcase'
-class Test::Unit::TestCase 
+class Test::Unit::TestCase
   include Hardmock
 end
 

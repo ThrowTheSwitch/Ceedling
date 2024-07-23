@@ -112,7 +112,7 @@ class CliHelper
 
     # Update variable to full application start path
     ceedling_path = app_cfg[:ceedling_rakefile_filepath]
-    
+
     @loginator.log( " > Launching Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
 
     return :path, ceedling_path
@@ -254,7 +254,7 @@ class CliHelper
     if !sections.empty?
       # Symbolify section names
       _sections = sections.map {|section| section.to_sym}
-      
+
       # Try to extract subconfig from section path
       walked = @config_walkinator.fetch_value( config, *_sections )
 
@@ -362,7 +362,7 @@ class CliHelper
 
     # Copy folders from current Ceedling into project
     %w{plugins lib bin}.each do |folder|
-      @actions._directory( 
+      @actions._directory(
         folder,
         File.join( vendor_path, folder ),
         :force => true
@@ -375,12 +375,12 @@ class CliHelper
     # Assembly necessary subcomponent dirs
     components = [
       'vendor/c_exception/lib/',
-      'vendor/cmock/config/',   
-      'vendor/cmock/lib/',      
-      'vendor/cmock/src/',      
-      'vendor/diy/lib/',         
-      'vendor/unity/auto/',     
-      'vendor/unity/src/',      
+      'vendor/cmock/config/',
+      'vendor/cmock/lib/',
+      'vendor/cmock/src/',
+      'vendor/diy/lib/',
+      'vendor/unity/auto/',
+      'vendor/unity/src/',
     ]
 
     # Copy necessary subcomponent dirs into project
@@ -402,11 +402,11 @@ class CliHelper
       # Look up licenses using a Glob as capitalization can be inconsistent
       glob = File.join( ceedling_root, src, 'license.txt' )
       listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
-      
+
       # Safety check on nil references since we explicitly reference first element
       next if listing.empty?
-      
-      # Add license copying to hash      
+
+      # Add license copying to hash
       license = listing.first
       filepath = File.join( vendor_path, src, File.basename( license ) )
       license_files[ filepath ] = license

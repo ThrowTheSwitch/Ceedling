@@ -3,5 +3,5 @@
 /build/
 
 # But reserve the artifacts/ subdirectory for revision control.
-# Ceedling's notion of artifacts includes reports or release binaries you *may* want to revision. 
+# Ceedling's notion of artifacts includes reports or release binaries you *may* want to revision.
 !/build/artifacts/

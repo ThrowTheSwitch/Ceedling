@@ -8,7 +8,7 @@
 #include "Types.h"
 #include "AdcTemperatureSensor.h"
 
-static inline uint32 ConvertAdcCountsToPicovolts(uint32 counts); 
+static inline uint32 ConvertAdcCountsToPicovolts(uint32 counts);
 static inline uint16 ConvertPicovoltsToMillivolts(uint32 picovolts);
 
 //
@@ -48,11 +48,10 @@ static inline uint16 ConvertPicovoltsToMillivolts(uint32 picovolts)
 {
   const uint32 halfMillivoltInPicovolts = 500000;
   const uint32 picovoltsPerMillivolt = 1000000;
-    
+
   // Add 0.5 mV to result so that truncation yields properly rounded result
   picovolts += halfMillivoltInPicovolts;
 
   // Divide appropriately to convert to millivolts
   return (uint16)(picovolts / picovoltsPerMillivolt);
 }
-

@@ -14,4 +14,3 @@ void Model_Init(void)
   TaskScheduler_Init();
   TemperatureFilter_Init();
 }
-

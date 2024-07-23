@@ -40,7 +40,7 @@ class Preprocessinator
         filename: File.basename(filepath)
         )
       @loginator.log( msg, Verbosity::NORMAL )
-      
+
       # Note: It's possible empty YAML content returns nil
       includes = @yaml_wrapper.load( includes_list_filepath )
 
@@ -77,7 +77,7 @@ class Preprocessinator
 
       @loginator.log( msg, Verbosity::DEBUG )
       @loginator.log( '', Verbosity::DEBUG )
-      
+
       @includes_handler.write_includes_list( includes_list_filepath, includes )
     end
 
@@ -94,7 +94,7 @@ class Preprocessinator
       test:                     test,
       flags:                    flags,
       include_paths:            include_paths,
-      defines:                  defines      
+      defines:                  defines
     }
 
     # Trigger pre_mock_preprocessing plugin hook
@@ -105,10 +105,10 @@ class Preprocessinator
       test:           test,
       flags:          flags,
       include_paths:  include_paths,
-      defines:        defines      
+      defines:        defines
     }
 
-    # Extract shallow includes & print status message    
+    # Extract shallow includes & print status message
     includes = preprocess_file_common( **arg_hash )
 
     arg_hash = {
@@ -117,7 +117,7 @@ class Preprocessinator
       includes:              includes,
       flags:                 flags,
       include_paths:         include_paths,
-      defines:               defines      
+      defines:               defines
     }
 
     # Run file through preprocessor & further process result
@@ -139,7 +139,7 @@ class Preprocessinator
       test:                   test,
       flags:                  flags,
       include_paths:          include_paths,
-      defines:                defines      
+      defines:                defines
     }
 
     # Trigger pre_test_preprocess plugin hook
@@ -150,7 +150,7 @@ class Preprocessinator
       test:          test,
       flags:         flags,
       include_paths: include_paths,
-      defines:       defines      
+      defines:       defines
     }
 
     # Extract shallow includes & print status message
@@ -162,7 +162,7 @@ class Preprocessinator
       includes:              includes,
       flags:                 flags,
       include_paths:         include_paths,
-      defines:               defines      
+      defines:               defines
     }
 
     # Run file through preprocessor & further process result
@@ -192,7 +192,7 @@ class Preprocessinator
       test:          test,
       flags:         flags,
       include_paths: include_paths,
-      defines:       defines) 
+      defines:       defines)
 
     return includes
   end

@@ -90,12 +90,12 @@ class FileFinder
     # Above we can confidently rely on the complain parameter passed to file_finder_helper because
     # we know the specific type of file being searched for.
     #
-    # Below we ignore file misses because of lgoical complexities of searching for potentially either 
+    # Below we ignore file misses because of lgoical complexities of searching for potentially either
     # assmebly or C files, including C files that may not exist (counterparts to header files by convention).
     # We save the existence handling until the end.
     #
 
-    # Assembly files for release build 
+    # Assembly files for release build
     if release and @configurator.release_build_use_assembly
       _source_file = File.basename(filepath).ext(@configurator.extension_assembly)
       found_file =
@@ -105,7 +105,7 @@ class FileFinder
           :ignore,
           filepath)
 
-    # Assembly files for test build 
+    # Assembly files for test build
     elsif (!release) and @configurator.test_build_use_assembly
       _source_file = File.basename(filepath).ext(@configurator.extension_assembly)
       found_file =
@@ -129,7 +129,7 @@ class FileFinder
           @configurator.collection_release_build_input,
           :ignore,
           filepath)
-        
+
     # Test build C files
     else
       _source_file = File.basename(filepath).ext(@configurator.extension_source)
@@ -165,4 +165,3 @@ class FileFinder
     return @file_finder_helper.find_file_in_collection(filepath, file_list, complain, filepath)
   end
 end
-

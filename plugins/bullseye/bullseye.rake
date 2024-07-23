@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org

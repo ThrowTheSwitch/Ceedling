@@ -55,4 +55,4 @@ void test_supervisor_can_TrackProgressProperlyAcrossAllWorkers(void)
     TEST_ASSERT_EQUAL(0,  supervisor_progress(loads5, 2));
 }
 
-#endif 
+#endif

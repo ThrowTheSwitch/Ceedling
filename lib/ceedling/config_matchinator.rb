@@ -112,7 +112,7 @@ class ConfigMatchinator
 
     # Iterate through every hash touple [matcher key, values array]
     # In prioritized order match test filepath against each matcher key.
-    # This order matches on special patterns first to ensure no funny business with simple substring matching 
+    # This order matches on special patterns first to ensure no funny business with simple substring matching
     #  1. All files wildcard ('*')
     #  2. Regex (/.../)
     #  3. Wildcard filepath matching (e.g. 'name*')
@@ -146,7 +146,7 @@ class ConfigMatchinator
       #    Note: (3) will do this if the matcher key lacks a '*', but this is a just-in-case backup
       elsif (filepath.include?(_matcher))
         matched = true
-      end        
+      end
 
       if matched
         _values += values

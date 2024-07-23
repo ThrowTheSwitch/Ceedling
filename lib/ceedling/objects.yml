@@ -245,7 +245,7 @@ dependinator:
   compose:
     - configurator
     - test_context_extractor
-    - file_path_utils 
+    - file_path_utils
     - rake_wrapper
     - file_wrapper
 

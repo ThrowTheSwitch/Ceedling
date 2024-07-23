@@ -29,5 +29,3 @@ support_dir = File.join(File.dirname(__FILE__), 'support')
 require 'ceedling/preprocessinator_extractor'
 require 'ceedling/configurator_builder'
 require 'ceedling/configurator'
-
-

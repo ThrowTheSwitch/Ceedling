@@ -56,7 +56,7 @@ class ConfiguratorPlugins
           plugin_paths[(plugin + '_path').to_sym] = path
 
           # Add paths to Ruby load paths that contain *.rb files
-          @system_wrapper.add_load_path( File.join( path, 'config') ) if is_config_plugin   
+          @system_wrapper.add_load_path( File.join( path, 'config') ) if is_config_plugin
           @system_wrapper.add_load_path( File.join( path, 'lib') )    if is_programmatic_plugin
 
           # We found load_path/ + <plugin>/ path that exists, skip ahead

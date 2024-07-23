@@ -228,7 +228,7 @@ class Loginator
       when 2 then '<IO:$stderr>'
       else stream.inspect
     end
-    
+
     return name
   end
 

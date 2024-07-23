@@ -15,7 +15,7 @@ class ShellExecutionException < CeedlingException
   attr_reader :shell_result
   def initialize(shell_result:, name:)
     @shell_result = shell_result
-    
+
     message = name + " terminated with exit code [#{shell_result[:exit_code]}]"
 
     if !shell_result[:output].empty?

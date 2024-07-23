@@ -13,7 +13,7 @@ class CppunitTestsReporter < TestsReporter
     super( default_filename: 'cppunit_tests_report.xml' )
     @test_counter = 0
   end
-  
+
   # CppUnit XML header
   def header(results:, stream:)
     stream.puts( '<?xml version="1.0" encoding="utf-8" ?>' )

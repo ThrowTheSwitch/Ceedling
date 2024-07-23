@@ -19,9 +19,9 @@ class TestsReporter
   def initialize(handle:)
     @handle = handle
 
-    # Safe default filename in case user's custom subclass forgets to call 
+    # Safe default filename in case user's custom subclass forgets to call
     # setup() with a default filename.
-    # If the report is named 'foo_bar' in project configuration, the 
+    # If the report is named 'foo_bar' in project configuration, the
     # fallback filename is 'foo_bar.report'
     @filename = "#{handle}.report"
   end

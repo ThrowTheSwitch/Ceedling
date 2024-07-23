@@ -29,7 +29,7 @@ void testInitShouldCallInitOfAllConductorsAndTheModel(void)
   AdcConductor_Init_Expect();
   TimerConductor_Init_Expect();
   Interrupt_Enable_Expect();
-  
+
   Executor_Init();
 }
 

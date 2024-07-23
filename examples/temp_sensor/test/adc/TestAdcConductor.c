@@ -125,4 +125,3 @@ void test_AdcConductor_YetAnotherTest_Should_VerifyThatPointersToStructsAreTesta
 //
 //    TEST_ASSERT_FALSE(AdcConductor_YetAnotherTest());
 //}
-

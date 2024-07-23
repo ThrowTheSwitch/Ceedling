@@ -26,7 +26,7 @@ describe GeneratorTestResultsSanityChecker do
     })
 
     @sanity_checker = described_class.new({:configurator => @configurator, :loginator => @loginator})
-  
+
     @results = {}
     @results[:ignores] = ['', '', '']
     @results[:failures] = ['', '', '']
@@ -34,8 +34,8 @@ describe GeneratorTestResultsSanityChecker do
     @results[:source] = {:file => "test_file.c"}
     @results[:counts] = {:ignored => @results[:ignores].size, :failed => @results[:failures].size, :total => 9}
   end
-  
-  
+
+
   describe '#verify' do
     it 'returns immediately if sanity_checker set to NONE' do
       @configurator.sanity_checks = TestResultsSanityChecks::NONE

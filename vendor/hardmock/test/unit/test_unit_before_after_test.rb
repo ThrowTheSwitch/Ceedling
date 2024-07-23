@@ -6,7 +6,7 @@
 # =========================================================================
 
 
-require File.expand_path(File.dirname(__FILE__) + "/../test_helper") 
+require File.expand_path(File.dirname(__FILE__) + "/../test_helper")
 
 class TestUnitBeforeAfter < Test::Unit::TestCase
 
@@ -144,7 +144,7 @@ class TestUnitBeforeAfter < Test::Unit::TestCase
   should "not interfere with passthrough exception types" do
     if is_modern_test_unit?
       write_and_run_test :raise_nasty_in_test => true
-      see_in_no_particular_order "Loaded suite", 
+      see_in_no_particular_order "Loaded suite",
         "THE TEARDOWN",
         "_test_file_temp.rb:16:in `test_something': NASTY ERROR (NoMemoryError)"
       see_no_results
@@ -168,7 +168,7 @@ class TestUnitBeforeAfter < Test::Unit::TestCase
     see_results :tests => 1, :assertions => 0, :failures => 0, :errors => 0
   end
 
-  should "stop executing the test on the first failure withing a before_setup action" do 
+  should "stop executing the test on the first failure withing a before_setup action" do
     write_and_run_test :use_before_setup => true, :flunk_in_before_setup => true
     see_in_order "Loaded suite",
       "3rd before_setup",
@@ -230,7 +230,7 @@ class TestUnitBeforeAfter < Test::Unit::TestCase
 
   def test_filename
     "_test_file_temp.rb"
-  end 
+  end
 
   def remove_test
     rm_f test_filename
@@ -248,7 +248,7 @@ class TestUnitBeforeAfter < Test::Unit::TestCase
 
   def write(fname, code)
     File.open(fname,"w") do |f|
-      f.print code     
+      f.print code
     end
   end
 
@@ -325,13 +325,13 @@ class TestUnitBeforeAfter < Test::Unit::TestCase
         add_on_two = %{; raise "Error in 2nd before_setup"}
       end
       before_setups =<<-BSTS
-        Test::Unit::TestCase.before_setup do |test| 
+        Test::Unit::TestCase.before_setup do |test|
           puts "1st before_setup"
         end
-        Test::Unit::TestCase.before_setup do |test| 
+        Test::Unit::TestCase.before_setup do |test|
           puts "2nd before_setup" #{add_on_two}
         end
-        Test::Unit::TestCase.before_setup do |test| 
+        Test::Unit::TestCase.before_setup do |test|
           puts "3rd before_setup"
         end
 
@@ -360,10 +360,10 @@ class TestUnitBeforeAfter < Test::Unit::TestCase
         add_on_two = %{; raise "Error in second after_teardown"}
       end
       after_teardowns =<<-ATDS
-        Test::Unit::TestCase.after_teardown do |test| 
+        Test::Unit::TestCase.after_teardown do |test|
           puts "1st after_teardown" #{add_on_one}
         end
-        Test::Unit::TestCase.after_teardown do |test| 
+        Test::Unit::TestCase.after_teardown do |test|
           puts "2nd after_teardown" #{add_on_two}
         end
       ATDS
@@ -396,7 +396,7 @@ class TestUnitBeforeAfter < Test::Unit::TestCase
     #{requires_for_ext}
 
     #{before_setups} #{after_teardowns}
-    
+
     class MyExampleTest < Test::Unit::TestCase
       #{setup_code}
       #{teardown_code}

@@ -9,7 +9,7 @@ BEGIN {
   require 'io/nonblock'
 
   # If possible, capture standard data streams non-blocking mode at startup (to be restored at shutdown).
-  # A sophisticated build setup (e.g. CI) may have intended this change on either side of Ceedling, 
+  # A sophisticated build setup (e.g. CI) may have intended this change on either side of Ceedling,
   # but it will cause trouble for Ceedling itself.
 
   if STDOUT.respond_to?(:nonblock?) # Non-blocking mode query not implemented on all platforms

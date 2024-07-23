@@ -9,23 +9,23 @@
 :dependencies:
   :deps: []
 
-:tools:  
-  :deps_compiler:  
+:tools:
+  :deps_compiler:
     :executable: gcc
     :name: 'Dependencies compiler'
-    :arguments:  
-      - -g  
-      - -I"$": COLLECTION_PATHS_DEPS  
-      - -D$: COLLECTION_DEFINES_DEPS  
-      - -c "${1}"  
-      - -o "${2}"  
+    :arguments:
+      - -g
+      - -I"$": COLLECTION_PATHS_DEPS
+      - -D$: COLLECTION_DEFINES_DEPS
+      - -c "${1}"
+      - -o "${2}"
 
   :deps_linker:
-    :executable: ar  
+    :executable: ar
     :name: 'Dependencies archiver'
-    :arguments:  
-      - rcs  
-      - ${2}  
+    :arguments:
+      - rcs
+      - ${2}
       - ${1}
 
   :deps_zip:

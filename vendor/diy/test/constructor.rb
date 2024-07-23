@@ -16,7 +16,7 @@ class Class #:nodoc:#
       call_block = 'self.instance_eval(&self.class.constructor_block)'
     end
     # Look for embedded options in the listing:
-    opts = attrs.find { |a| a.kind_of?(Hash) and attrs.delete(a) } 
+    opts = attrs.find { |a| a.kind_of?(Hash) and attrs.delete(a) }
     do_acc = opts.nil? ? false : opts[:accessors] == true
     require_args = opts.nil? ? true : opts[:strict] != false
     super_args = opts.nil? ? nil : opts[:super]
@@ -31,7 +31,7 @@ class Class #:nodoc:#
     assigns = ''
     attrs.each do |k|
       assigns += "@#{k.to_s} = args[:#{k.to_s}]\n"
-    end 
+    end
 
     # If accessors option is on, declare accessors for the attributes:
     if do_acc
@@ -57,10 +57,10 @@ class Class #:nodoc:#
     # Otherwise, insert lax code into the initializer.
     validation_code = "return if args.nil?"
     if require_args
-      self.class_eval do 
+      self.class_eval do
         def _validate_constructor_args(args)
           # First, make sure we've got args of some kind
-          unless args and args.keys and args.keys.size > 0 
+          unless args and args.keys and args.keys.size > 0
             raise ConstructorArgumentError.new(self.class.constructor_keys)
           end
           # Scan for missing keys in the argument hash

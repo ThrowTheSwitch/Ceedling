@@ -46,7 +46,7 @@ begin
   #  3. Remove full path from $LOAD_PATH
   $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_path] )
   objects_filepath = File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'objects.yml' )
-  
+
   # Create object hash and dependency injection context
   @ceedling = {} # Empty hash to be redefined if all goes well
   @ceedling = DIY::Context.from_yaml( File.read( objects_filepath ) )

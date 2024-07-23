@@ -39,7 +39,7 @@ class FilePathUtils
     return executable
   end
 
-  # Extract path from between optional aggregation modifiers 
+  # Extract path from between optional aggregation modifiers
   # and up to last path separator before glob specifiers.
   # Examples:
   #  - '+:foo/bar/baz/'       => 'foo/bar/baz'
@@ -62,7 +62,7 @@ class FilePathUtils
     # Extract up to first glob specifier
     path = path[0..(find_index-1)]
 
-    # Keep everything from start of path string up to and 
+    # Keep everything from start of path string up to and
     # including final path separator before glob character
     find_index = path.rindex('/')
     return path[0..(find_index-1)] if (not find_index.nil?)

@@ -27,5 +27,3 @@ public:
 };
 
 #include "test_cases.include"
-
-

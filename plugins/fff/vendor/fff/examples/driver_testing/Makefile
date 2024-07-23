@@ -15,7 +15,7 @@ C_OBJFILES = $(BUILD_DIR)/driver.o
 TEMPLATE_OBJFILES = $(BUILD_DIR)/test_suite_template.o
 FFF_OBJFILES = $(BUILD_DIR)/driver.test.fff.o $(GTEST_OBJS)
 NOFFF_OBJFILES = $(BUILD_DIR)/driver.test.o $(GTEST_OBJS)
-CPP_LIBS = -lpthread 
+CPP_LIBS = -lpthread
 
 
 all: $(CPP_PROGNAME_NOFFF) $(CPP_PROGNAME_FFF) $(TEMPLATE_PROGNAME)

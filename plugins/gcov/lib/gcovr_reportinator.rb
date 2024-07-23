@@ -58,14 +58,14 @@ class GcovrReportinator
 
       args += (_args = args_builder_sonarqube(opts, false))
       reports << "SonarQube" if not _args.empty?
-      
+
       args += (_args = args_builder_json(opts, true))
       reports << "JSON" if not _args.empty?
-      
+
       # As of gcovr version 4.2, the --html argument must appear last.
       args += (_args = args_builder_html(opts, false))
       reports << "HTML" if not _args.empty?
-      
+
       reports.each do |report|
         msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
         @loginator.log( msg )
@@ -155,7 +155,7 @@ class GcovrReportinator
       next if gcovr_opts[opt].nil?
 
       value = gcovr_opts[opt]
-      
+
       # Value sanity checks for :fail_under_* settings
       if opt.to_s =~ /fail_/
         if not value.is_a? Integer
@@ -164,7 +164,7 @@ class GcovrReportinator
           raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} => '#{value}' must be an integer percentage 0 – 100")
         end
       end
-      
+
       # If the YAML key has a value, trasnform key into command line argument with value and concatenate
       args += "--#{opt.to_s.gsub('_','-')} #{value} " unless value.nil?
     end

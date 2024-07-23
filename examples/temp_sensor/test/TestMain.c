@@ -26,6 +26,6 @@ void testMainShouldCallExecutorInitAndContinueToCallExecutorRunUntilHalted(void)
   Executor_Run_ExpectAndReturn(TRUE);
   Executor_Run_ExpectAndReturn(TRUE);
   Executor_Run_ExpectAndReturn(FALSE);
-  
+
   AppMain();
 }

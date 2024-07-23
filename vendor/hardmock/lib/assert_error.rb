@@ -10,7 +10,7 @@ require 'test/unit/assertions'
 
 module Test::Unit #:nodoc:#
   module Assertions #:nodoc:#
-    # A better 'assert_raise'.  +patterns+ can be one or more Regexps, or a literal String that 
+    # A better 'assert_raise'.  +patterns+ can be one or more Regexps, or a literal String that
     # must match the entire error message.
     def assert_error(err_type,*patterns,&block)
       assert_not_nil block, "assert_error requires a block"
@@ -21,7 +21,7 @@ module Test::Unit #:nodoc:#
       patterns.each do |pattern|
         case pattern
         when Regexp
-          assert_match(pattern, err.message) 
+          assert_match(pattern, err.message)
         else
           assert_equal pattern, err.message
         end

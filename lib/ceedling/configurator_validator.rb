@@ -12,7 +12,7 @@ require 'ceedling/file_path_utils'  # for glob handling class methods
 
 
 class ConfiguratorValidator
-  
+
   constructor :config_walkinator, :file_wrapper, :loginator, :system_wrapper, :reportinator, :tool_validator
 
   # Walk into config hash verify existence of data at key depth
@@ -22,9 +22,9 @@ class ConfiguratorValidator
 
     if (not exist)
       walk = @reportinator.generate_config_walk( keys )
-      @loginator.log( "Required config file entry #{walk} does not exist.", Verbosity::ERRORS )    
+      @loginator.log( "Required config file entry #{walk} does not exist.", Verbosity::ERRORS )
     end
-    
+
     return exist
   end
 
@@ -37,7 +37,7 @@ class ConfiguratorValidator
 
     # Return early if we couldn't walk into hash and find a value
     return false if (list.nil?)
-    
+
     list.each do |path|
       # Trim add/subtract notation & glob specifiers
       _path = FilePathUtils::no_decorators( path )
@@ -47,11 +47,11 @@ class ConfiguratorValidator
       # If (partial) path does not exist, complain
       if (not @file_wrapper.exist?( _path ))
         walk = @reportinator.generate_config_walk( keys, hash[:depth] )
-        @loginator.log( "Config path #{walk} => '#{_path}' does not exist in the filesystem.", Verbosity::ERRORS ) 
+        @loginator.log( "Config path #{walk} => '#{_path}' does not exist in the filesystem.", Verbosity::ERRORS )
         exist = false
-      end 
+      end
     end
-    
+
     return exist
   end
 
@@ -67,7 +67,7 @@ class ConfiguratorValidator
 
     # Return early if we couldn't walk into hash and find a value
     return false if (list.nil?)
-    
+
     list.each do |path|
       dirs = [] # Working list
 
@@ -90,7 +90,7 @@ class ConfiguratorValidator
         # For each result, add it to the working list *if* it's a directory
         dirs << entry if @file_wrapper.directory?(entry)
       end
-      
+
       # Handle edge case of subdirectories glob but not subdirectories
       # (Containing parent directory will still exist)
       next if dirs.empty? and _path =~ /\/\*{1,2}$/
@@ -103,7 +103,7 @@ class ConfiguratorValidator
         valid = false
       end
     end
-    
+
     return valid
   end
 
@@ -119,7 +119,7 @@ class ConfiguratorValidator
 
     # Return early if we couldn't walk into hash and find a value
     return false if (list.nil?)
-    
+
     list.each do |path|
       # Trim add/subtract notation
       _path = FilePathUtils::no_aggregation_decorators( path )
@@ -130,18 +130,18 @@ class ConfiguratorValidator
         @loginator.log( warning, Verbosity::COMPLAIN )
 
         next # Skip to next path
-      end      
+      end
 
       filelist = @file_wrapper.instantiate_file_list(_path)
 
       # If file list is empty, complain
       if (filelist.size == 0)
         error = "#{walk} => '#{_path}' yielded no files -- matching glob is malformed or files do not exist"
-        @loginator.log( error, Verbosity::ERRORS ) 
+        @loginator.log( error, Verbosity::ERRORS )
         valid = false
-      end 
+      end
     end
-    
+
     return valid
   end
 
@@ -149,16 +149,16 @@ class ConfiguratorValidator
   # Simple path verification
   def validate_filepath_simple(path, *keys)
     validate_path = path
-    
+
     if (not @file_wrapper.exist?(validate_path))
       walk = @reportinator.generate_config_walk( keys, keys.size )
-      @loginator.log("Config path '#{validate_path}' associated with #{walk} does not exist in the filesystem.", Verbosity::ERRORS ) 
+      @loginator.log("Config path '#{validate_path}' associated with #{walk} does not exist in the filesystem.", Verbosity::ERRORS )
       return false
-    end 
-    
+    end
+
     return true
   end
-   
+
   def validate_tool(config:, key:, respect_optional:true)
     # Get tool
     walk = [:tools, key]
@@ -170,7 +170,7 @@ class ConfiguratorValidator
       extension: config[:extension][:executable],
       respect_optional: respect_optional
     }
-  
+
     return @tool_validator.validate( **arg_hash )
   end
 

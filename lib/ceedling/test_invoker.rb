@@ -167,7 +167,7 @@ class TestInvoker
       @batchinator.build_step("Determining Files to be Generated", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
           runner_filepath = @file_path_utils.form_runner_filepath_from_test( details[:filepath] )
-          
+
           mocks = {}
           mocks_list = @configurator.project_use_mocks ? @context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
           mocks_list.each do |name|
@@ -225,7 +225,7 @@ class TestInvoker
 
       # Generate mocks for all tests
       @batchinator.build_step("Mocking") {
-        @batchinator.exec(workload: :compile, things: mocks) do |mock| 
+        @batchinator.exec(workload: :compile, things: mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
 
@@ -268,7 +268,7 @@ class TestInvoker
           operation: 'Parsing test case names',
           module_name: details[:name],
           filename: File.basename( details[:filepath] )
-        ) 
+        )
         @loginator.log( msg )
 
         @context_extractor.collect_test_runner_details( details[:filepath], details[:runner][:input_filepath] )
@@ -284,7 +284,7 @@ class TestInvoker
             includes_list:   @test_context_extractor.lookup_header_includes_list( details[:filepath] ),
             test_filepath:   details[:filepath],
             input_filepath:  details[:runner][:input_filepath],
-            runner_filepath: details[:runner][:output_filepath]            
+            runner_filepath: details[:runner][:output_filepath]
           }
 
           @generator.generate_test_runner(**arg_hash)
@@ -299,14 +299,14 @@ class TestInvoker
           test_core          = test_sources + details[:mock_list]
 
           # When we have a mock and an include for the same file, the mock wins
-          test_core.delete_if do |v| 
+          test_core.delete_if do |v|
             mock_of_this_file = "#{@configurator.cmock_mock_prefix}#{File.basename(v,'.*')}"
             details[:mock_list].include?(mock_of_this_file)
           end
-          
+
           # CMock + Unity + CException
           test_frameworks    = @helper.collect_test_framework_sources
-          
+
           # Extra suport source files (e.g. microcontroller startup code needed by simulator)
           test_support       = @configurator.collection_all_support
 
@@ -325,11 +325,11 @@ class TestInvoker
           test_fail          = @file_path_utils.form_fail_results_filepath( details[:paths][:results], details[:filepath] )
 
           # Identify all the objects shall not be linked and then remove them from objects list.
-          test_no_link_objects = 
+          test_no_link_objects =
             @file_path_utils.form_test_build_objects_filelist(
               details[:paths][:build],
               @helper.fetch_shallow_source_includes( details[:filepath] ))
-          
+
           test_objects = test_objects.uniq - test_no_link_objects
 
           @lock.synchronize do
@@ -367,7 +367,7 @@ class TestInvoker
             flags:      details[:link_flags],
             lib_args:   lib_args,
             lib_paths:  lib_paths,
-            options:    options            
+            options:    options
           }
 
           @test_invoker_helper.generate_executable_now(**arg_hash)
@@ -384,13 +384,13 @@ class TestInvoker
               test_filepath:  details[:filepath],
               executable:     details[:executable],
               result:         details[:results_pass],
-              options:        options              
+              options:        options
             }
 
             @test_invoker_helper.run_fixture_now(**arg_hash)
 
           # Handle exceptions so we can ensure post_test() is called.
-          # A lone `ensure` includes an implicit rescuing of StandardError 
+          # A lone `ensure` includes an implicit rescuing of StandardError
           # with the exception continuing up the call trace.
           ensure
             @plugin_manager.post_test( details[:filepath] )

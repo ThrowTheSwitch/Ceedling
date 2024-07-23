@@ -17,6 +17,5 @@ $(BUILD_DIR)/%.o: %.cc
 all: $(CPP_OBJS)
 
 clean:
-	-$(RM) $(CPP_OBJS) 
+	-$(RM) $(CPP_OBJS)
 	-@echo ' '
-

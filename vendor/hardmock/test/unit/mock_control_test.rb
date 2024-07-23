@@ -28,7 +28,7 @@ class MockControlTest < Test::Unit::TestCase
   # HELPERS
   #
 
-  class MyExp  
+  class MyExp
     attr_reader :mock, :mname, :args, :block
     def apply_method_call(mock, mname, args, block)
       @mock = mock
@@ -57,7 +57,7 @@ class MockControlTest < Test::Unit::TestCase
 
     @control.apply_method_call @unmock, 'some_func', [ 'the', :args ], nil
     assert @control.happy?
-    
+
     assert_same @unmock, e1.mock, "Wrong mock"
     assert_equal 'some_func', e1.mname, "Wrong method"
     assert_equal [ 'the', :args ], e1.args, "Wrong args"
@@ -74,7 +74,7 @@ class MockControlTest < Test::Unit::TestCase
     runtime_block = Proc.new { "hello" }
     @control.apply_method_call @unmock, 'some_func', [ 'the', :args ], runtime_block
     assert @control.happy?
-    
+
     assert_same @unmock, e1.mock, "Wrong mock"
     assert_equal 'some_func', e1.mname, "Wrong method"
     assert_equal [ 'the', :args ], e1.args, "Wrong args"
@@ -91,11 +91,11 @@ class MockControlTest < Test::Unit::TestCase
     err = assert_raise VerifyError do
       @control.verify
     end
-    assert_match(/unmet expectations/i, err.message) 
+    assert_match(/unmet expectations/i, err.message)
 
     @control.apply_method_call @unmock, 'some_func', [ 'the', :args ], nil
     assert @control.happy?
-    
+
     assert_same @unmock, e1.mock, "Wrong mock"
     assert_equal 'some_func', e1.mname, "Wrong method"
     assert_equal [ 'the', :args ], e1.args, "Wrong args"
@@ -111,7 +111,7 @@ class MockControlTest < Test::Unit::TestCase
     err = assert_raise RuntimeError do
       @control.apply_method_call @unmock, 'a func', [:arg], nil
     end
-    assert_match(/BOOM/i, err.message) 
+    assert_match(/BOOM/i, err.message)
 
     assert_same @unmock, be1.mock
     assert_equal 'a func', be1.mname
@@ -127,7 +127,7 @@ class MockControlTest < Test::Unit::TestCase
     err = assert_raise VerifyError do
       @control.verify
     end
-    assert_match(/unmet expectations/i, err.message) 
+    assert_match(/unmet expectations/i, err.message)
 
     assert !@control.happy?, "Still have unmet expectation"
     assert @control.disappointed?, "We should be disappointed following that failure"
@@ -149,7 +149,7 @@ class MockControlTest < Test::Unit::TestCase
     err = assert_raise ExpectationError do
       @control.apply_method_call @unmock, "something", [], nil
     end
-    assert_match(/surprise/i, err.message) 
+    assert_match(/surprise/i, err.message)
 
     assert @control.happy?, "Happiness is an empty list of expectations"
     assert @control.disappointed?, "We should be disappointed following that failure"
@@ -167,7 +167,7 @@ class MockControlTest < Test::Unit::TestCase
     err = assert_raise RuntimeError do
       @control.apply_method_call @unmock, 'a func', [:arg], nil
     end
-    assert_match(/BOOM/i, err.message) 
+    assert_match(/BOOM/i, err.message)
     assert @control.disappointed?, "Should be disappointed"
 
     assert_same @unmock, be1.mock

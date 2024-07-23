@@ -18,14 +18,14 @@ class PreprocessinatorIncludesHandler
   ## #include extraction is hard to do. In simple cases a regex approach suffices, but nested header files,
   ## clever macros, and conditional preprocessing statements easily introduce high complexity.
   ##
-  ## Unfortunately, there's no readily available cross-platform C parsing tool that provides a simple means 
-  ## to extract the #include statements directly embedded in a given file. Even the gcc preprocessor itself 
+  ## Unfortunately, there's no readily available cross-platform C parsing tool that provides a simple means
+  ## to extract the #include statements directly embedded in a given file. Even the gcc preprocessor itself
   ## only comes close to providing this information externally.
   ##
   ## APPROACH
   ## --------
   ## (Full details including fallback options are in the extensive code comments among the methods below.)
-  ## 
+  ##
   ## Sadly, we can't preprocess a file with full search paths and defines and ask for the #include statements
   ## embedded in a file. We get far more #includes than we want with no way to discern which are at the depth
   ## of the file being processed.
@@ -33,7 +33,7 @@ class PreprocessinatorIncludesHandler
   ## Instead, we try our best to use some educated guessing to get as close as possible to the desired list.
   ##
   ##   I. Try to extract shallow defines with no crawling out into other header files. This conservative approach
-  ##      gives us a reference point on possible directly included files. The results may be incomplete, though. 
+  ##      gives us a reference point on possible directly included files. The results may be incomplete, though.
   ##      They also may mistakenly list #includes that should not be in the list--because of #ifndef defaults or
   ##      because of system headers or #include <...> statements and differences among gcc implementations.
   ##
@@ -43,10 +43,10 @@ class PreprocessinatorIncludesHandler
   ## III. Find #includes common to (I) and (II). The results of (I) should limit the potentially lengthy
   ##      results of (II). The complete and accurate list of (II) should cut out any mistaken entries in (I).
   ##
-  ##  IV. I–III are not foolproof. A purely greedy approach or a purely conservative approach will cause symbol 
-  ##      conflicts, missing symbols, etc. The blended and balanced approach should come quite close to an 
-  ##      accurate list of shallow includes. Edge cases and gaps will cause trouble. Other Ceedling features 
-  ##      should provide the tools to intervene. 
+  ##  IV. I–III are not foolproof. A purely greedy approach or a purely conservative approach will cause symbol
+  ##      conflicts, missing symbols, etc. The blended and balanced approach should come quite close to an
+  ##      accurate list of shallow includes. Edge cases and gaps will cause trouble. Other Ceedling features
+  ##      should provide the tools to intervene.
   ##
 
   def extract_includes(filepath:, test:, flags:, include_paths:, defines:)
@@ -98,7 +98,7 @@ class PreprocessinatorIncludesHandler
 
   def extract_shallow_includes(test:, filepath:, flags:, defines:)
     # Shallow includes extraction, first attempt with preprocessor
-    success, shallow = 
+    success, shallow =
       extract_shallow_includes_preprocessor(
         test:     test,
         filepath: filepath,
@@ -131,7 +131,7 @@ class PreprocessinatorIncludesHandler
     ##    unnecessary compilation when extracting includes from a test file.
     ##  - Note: This approach can have gaps with complex macros / conditional statements.
     ##          Gaps can be minimized with proper defines in the project file.
-    ##          However, needed / complex macros located in other header files can still gum 
+    ##          However, needed / complex macros located in other header files can still gum
     ##          up the works.
     ##
     ## Format:
@@ -142,7 +142,7 @@ class PreprocessinatorIncludesHandler
     ##  - Many errors can occur but may not necessarily prevent usable results.
     ##  - A file with no includes will create the first line with self-referential .h file path.
     ##  - Make rule formation assumes any files not found in a search path will be generated.
-    ##    - Since we're not using search paths, the preprocessor largely assumes all #include 
+    ##    - Since we're not using search paths, the preprocessor largely assumes all #include
     ##      files are generated (and include no paths).
     ##    - The exception is #include files that exist in the same directory as the file
     ##      being processed.
@@ -155,7 +155,7 @@ class PreprocessinatorIncludesHandler
     ##    - A make rule may be present but not depedencies if the file has no #includes.
     ##  3. Extract includes from "phony" make rules that follow opening rule line.
     ##    - These may be .h or .c files.
-    ## 
+    ##
     ## Example output follows
     ## -----------------------------------------------------------------------------------------
     ## os.o: ../../src/app/task/os/os.h fstd_types.h FreeRTOS.h queue.h
@@ -172,12 +172,12 @@ class PreprocessinatorIncludesHandler
 
     # Matcher for the first line of the make rule output
     make_rule_matcher = /^\S+\.o:\s+.+$/  # <characters>.o: <characters>
-    
+
     # Matcher for the “phony“ make rule output lines for each #include dependency (.h, .c, etc.)
     # Capture file name before the colon
     include_matcher   = /^(\S+\.\S+):\s*$/ # <characters>.<extension>:
 
-    command = 
+    command =
       @tool_executor.build_command_line(
         @configurator.tools_test_shallow_includes_preprocessor,
         flags,
@@ -243,9 +243,9 @@ class PreprocessinatorIncludesHandler
     ##  - Because search paths and defines are provided, error-free execution is assumed.
     ##    If the preprocessor fails, issues exist that will cause full compilation to fail.
     ##  - Unfortuantely, because of ordering and nesting effects, a file directly #include'd may
-    ##    not be listed at depth 1 ('.'). Instead, it may end up listed at greater depth beneath 
+    ##    not be listed at depth 1 ('.'). Instead, it may end up listed at greater depth beneath
     ##    another #include'd file if both files reference it. That is, there is no way
-    ##    to give the preprocessor full context and ask for only the files directly 
+    ##    to give the preprocessor full context and ask for only the files directly
     ##    #include'd in the file being processed.
     ##  - The preprocessor outputs the -H #include listing to STDERR. ToolExecutor does this
     ##    by default in creating the shell result output.
@@ -254,11 +254,11 @@ class PreprocessinatorIncludesHandler
     ##
     ## Approach:
     ##  - Match on each listing line a filepath preceeded by its depth
-    ##  - One mode of using this preprocessor approach is as a fallback / double-check method 
+    ##  - One mode of using this preprocessor approach is as a fallback / double-check method
     ##    if the simpler, earler shallow preprocessing produces no #include results. When used
     ##    this way we match only #include'd files at depth 1 ('.'), hoping we extract an
     ##    appropriate, usable list of #includes.
-    ## 
+    ##
     ## Example output follows
     ## -----------------------------------------------------------------------------------------
     ## . build/vendor/unity/src/unity.h
@@ -273,7 +273,7 @@ class PreprocessinatorIncludesHandler
     ##   src/Testing.h MockTaskScheduler.h MockTemperatureFilter.h
     ##
 
-    command = 
+    command =
       @tool_executor.build_command_line(
         @configurator.tools_test_nested_includes_preprocessor,
         flags,
@@ -315,7 +315,7 @@ class PreprocessinatorIncludesHandler
 
     if @configurator.project_use_mocks
       # Use some greediness to ensure we get all possible mocks
-      lists.each { |list| mocks |= extract_mocks( list ) }      
+      lists.each { |list| mocks |= extract_mocks( list ) }
     end
 
     return mocks
@@ -337,9 +337,9 @@ class PreprocessinatorIncludesHandler
     return nested if shallow.empty?
 
     # Notes:
-    #  - We want to preserve filepaths whenever possible. Other areas of Ceedling use or discard the 
+    #  - We want to preserve filepaths whenever possible. Other areas of Ceedling use or discard the
     #    filepath as needed.
-    #  - We generally do not have filepaths in the shallow list--except when the #include is in the 
+    #  - We generally do not have filepaths in the shallow list--except when the #include is in the
     #    same directory as the file being processed
 
     # Approach

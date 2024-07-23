@@ -13,7 +13,7 @@
 
 #define WORK 20
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     int i;
     int work[WORK];

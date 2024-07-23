@@ -7,5 +7,5 @@
 
 
 class MethodExtractor
-  
+
 end

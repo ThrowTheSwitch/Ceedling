@@ -37,7 +37,7 @@ include Rake
       desc "Generate html report of behavioral definitions for the classes specified (use for=<regexp> to further limit files included in report)"
       task "#{@name}_html" do
         require 'erb'
-        txt =<<-EOS 
+        txt =<<-EOS
 <html>
 <head>
 <style>
@@ -48,7 +48,7 @@ div.title
   font: bold 14pt trebuchet ms;
 }
 
-div.specification 
+div.specification
 {
   font: bold 12pt trebuchet ms;
   border: solid 1px black;
@@ -79,7 +79,7 @@ ul.requirements li
 <div class="title">Specifications</div>
 <% specifications.each do |spec| %>
 <div class="specification">
-<%= spec.name %> should: 
+<%= spec.name %> should:
 <ul class="requirements">
 <% spec.requirements.each do |req| %>
 <li><%= req %></li>
@@ -103,11 +103,11 @@ ul.requirements li
     private
     def test_files
       test_list = FileList[@pattern]
-      if ENV['for'] 
+      if ENV['for']
         test_list = test_list.grep(/#{ENV['for']}/i)
       end
       test_list
-    end  
+    end
 
     def specifications
       test_files.map do |file|
@@ -116,7 +116,7 @@ ul.requirements li
         class_name = titleize(m[1]) if m[1]
         spec.name = class_name
         spec.requirements = []
-        File::readlines(file).each do |line| 
+        File::readlines(file).each do |line|
           if line =~ /^\s*should\s+\(?\s*["'](.*)["']/
             spec.requirements << $1
           end
@@ -152,7 +152,7 @@ ul.requirements li
     #++
     def titleize(word)
       humanize(underscore(word)).gsub(/\b([a-z])/) { $1.capitalize }
-    end    
+    end
 
     def underscore(camel_cased_word)    camel_cased_word.to_s.gsub(/::/, '/').
       gsub(/([A-Z]+)([A-Z][a-z])/,'\1_\2').gsub(/([a-z\d])([A-Z])/,'\1_\2').tr("-", "_").downcase

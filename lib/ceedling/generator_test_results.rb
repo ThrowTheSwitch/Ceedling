@@ -17,7 +17,7 @@ require 'ceedling/exceptions'
 ##
 ## - Output is line-oriented. Anything outside the recognized lines is assumed to be from `printf()`
 ##   or equivalent calls and collected for presentation as a collection of $stdout lines.
-## - Multiline output (i.e. failure messages) can be achieved by "encoding" newlines as literal 
+## - Multiline output (i.e. failure messages) can be achieved by "encoding" newlines as literal
 ##   "\n"s (slash-n). `extract_line_elements()` handles converting newline markers into real newlines.
 ## - :PASS has no trailing message unless Unity's test case execution duration feature is enabled.
 ##   If enabled, a numeric value with 'ms' as a units signifier trails, ":PASS 1.2 ms".
@@ -111,7 +111,7 @@ class GeneratorTestResults
       results[:counts][:ignored] = $3.to_i
       results[:counts][:passed] = (results[:counts][:total] - results[:counts][:failed] - results[:counts][:ignored])
     else
-      raise CeedlingException.new( "Could not parse output for `#{executable}`: \"#{unity_shell_result[:output]}\"" ) 
+      raise CeedlingException.new( "Could not parse output for `#{executable}`: \"#{unity_shell_result[:output]}\"" )
     end
 
     # Remove test statistics lines
@@ -123,17 +123,17 @@ class GeneratorTestResults
       case line.chomp
       when /(:IGNORE)/
         elements = extract_line_elements( executable, line, results[:source][:file] )
-        results[:ignores] << elements[0] 
+        results[:ignores] << elements[0]
         results[:stdout] << elements[1] if (!elements[1].nil?)
 
       when /(:PASS$)/
         elements = extract_line_elements( executable, line, results[:source][:file] )
-        results[:successes] << elements[0] 
+        results[:successes] << elements[0]
         results[:stdout] << elements[1] if (!elements[1].nil?)
 
       when /(:PASS \(.* ms\)$)/
         elements = extract_line_elements( executable, line, results[:source][:file] )
-        results[:successes] << elements[0] 
+        results[:successes] << elements[0]
         results[:stdout] << elements[1] if (!elements[1].nil?)
 
       when /(:FAIL)/
@@ -162,7 +162,7 @@ class GeneratorTestResults
   #
   # @return Array - list of the test_case hashses {:test, :line_number}
   def filter_test_cases(test_cases)
-    _test_cases = test_cases.clone 
+    _test_cases = test_cases.clone
 
     # Filter tests which contain test_case_name passed by `--test_case` argument
     if !@configurator.include_test_case.empty?
@@ -185,7 +185,7 @@ class GeneratorTestResults
       output << "#{source}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test executable crashed"
     end
 
-    shell_result[:output] = 
+    shell_result[:output] =
       regenerate_test_executable_stdout(
         total:   count,
         failed:  count,
@@ -211,8 +211,8 @@ class GeneratorTestResults
     return UNITY_TEST_RESULTS_TEMPLATE % values
   end
 
-  ### Private ### 
-  
+  ### Private ###
+
   private
 
   def get_results_structure
@@ -231,7 +231,7 @@ class GeneratorTestResults
     # Handle anything preceding filename in line as extra output to be collected
     stdout = nil
     stdout_regex = /(.+)#{Regexp.escape(filename)}:[0-9]+:(PASS|IGNORE|FAIL).+/i
-    unity_test_time = 0 
+    unity_test_time = 0
 
     if (line =~ stdout_regex)
       stdout = $1.clone
@@ -262,7 +262,7 @@ class GeneratorTestResults
     }
 
     return components, stdout if elements.size >= 3
-    
+
     # Fall through failure case
     raise CeedlingException.new( "Could not parse results output line \"line\" for `#{executable}`" )
   end

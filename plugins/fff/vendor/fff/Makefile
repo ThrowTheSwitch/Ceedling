@@ -4,7 +4,7 @@ all:
 	cd test; $(MAKE) all
 	cd examples; $(MAKE) all
 
-clean: 
+clean:
 	cd gtest; $(MAKE) clean
 	cd test; $(MAKE) clean
 	cd examples; $(MAKE) clean

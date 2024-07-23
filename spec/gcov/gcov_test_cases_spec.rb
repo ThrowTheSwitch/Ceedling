@@ -57,7 +57,7 @@ module GcovTestCases
       f.puts(project_file_contents)
     end
   end
-  
+
   def _add_gcov_option_in_project(project_file_path, option, value)
     project_file_contents = File.readlines(project_file_path)
     option_index = project_file_contents.index(":gcov:\n")
@@ -68,7 +68,7 @@ module GcovTestCases
     end
 
     project_file_contents.insert(option_index + 1, "  :#{option}: #{value}\n")
-  
+
     File.open(project_file_path, "w+") do |f|
       f.puts(project_file_contents)
     end
@@ -316,7 +316,7 @@ module GcovTestCases
                         "{\n" \
                         "  TEST_ASSERT_EQUAL_INT(0, difference_between_numbers(1,1));\n" \
                         "}\n"
-        
+
         updated_test_file = File.read('test/test_example_file_crash.c').split("\n")
         updated_test_file.insert(updated_test_file.length(), add_test_case)
         File.write('test/test_example_file_crash.c', updated_test_file.join("\n"), mode: 'w')

@@ -36,4 +36,3 @@ task :summary do
   puts "\nNOTE: Summaries may be out of date with project sources.\n\n"
 end
 end
-

@@ -40,6 +40,6 @@ int supervisor_progress(int* worker_loads, int num_workers)
 	{
 		total_hours += worker_loads[i];
 	}
-	
+
 	return total_hours;
 }

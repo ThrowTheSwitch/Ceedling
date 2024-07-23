@@ -21,9 +21,9 @@ module Hardmock
 
     def method_missing(mname, *args, &block)
       expectation = @expectation_builder.build_expectation(
-        :mock => @mock, 
-        :method => mname, 
-        :arguments => args, 
+        :mock => @mock,
+        :method => mname,
+        :arguments => args,
         :block => block)
 
       @mock_control.add_expectation expectation

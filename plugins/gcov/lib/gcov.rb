@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
@@ -13,7 +14,7 @@ require 'gcovr_reportinator'
 require 'reportgenerator_reportinator'
 
 class Gcov < Plugin
-  
+
   # `Plugin` setup()
   def setup
     @result_list = []
@@ -22,7 +23,7 @@ class Gcov < Plugin
 
     # Are any reports enabled?
     @reports_enabled = reports_enabled?( @project_config[:gcov_reports] )
-    
+
     # Was a gcov: task on the command line?
     @cli_gcov_task = @ceedling[:system_wrapper].get_cmdline().any?{|item| item.include?( GCOV_TASK_ROOT )}
 
@@ -36,7 +37,7 @@ class Gcov < Plugin
     end
 
     # Validate configuration and tools while building Reportinators
-    @reportinators = build_reportinators( 
+    @reportinators = build_reportinators(
       @project_config[:gcov_utilities],
       @reports_enabled,
       @cli_gcov_task
@@ -245,7 +246,7 @@ class Gcov < Plugin
           # Only extract the first four lines of the console report (to avoid spidering coverage reports through libs, etc.)
           report = results.lines.to_a[1..4].map { |line| filename + ' | ' + line }.join('')
           @loginator.log(report + "\n")
-        
+
         # Otherwise, found no coverage results
         else
           msg = "Found no coverage results for #{test}::#{File.basename(source)}"
@@ -285,4 +286,3 @@ class Gcov < Plugin
   end
 
 end
-

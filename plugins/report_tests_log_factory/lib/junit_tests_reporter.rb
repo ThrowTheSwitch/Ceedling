@@ -185,7 +185,7 @@ class JunitTestsReporter < TestsReporter
       else
         stream.puts( '      <failure message="%s" />' % test[:message] )
       end
-      
+
       stream.puts( '    </testcase>' )
 
     when :ignored

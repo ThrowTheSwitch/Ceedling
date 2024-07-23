@@ -13,4 +13,3 @@ void TimerModel_UpdateTime(uint32 systemTime)
 {
   TaskScheduler_Update(systemTime);
 }
-

@@ -15,7 +15,7 @@ class BehaviorsTasksTest < Test::Unit::TestCase
   def setup
     @here = File.expand_path(File.dirname(__FILE__))
     @base_cmd = RUBY_PLATFORM[/mswin/] ? 'rake.cmd ' : 'rake '
-  end 
+  end
 
   #
   # HELPERS

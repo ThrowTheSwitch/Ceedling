@@ -24,16 +24,16 @@ class AutoVerifyTest < Test::Unit::TestCase
   #
 
   it "auto-verifies all mocks in teardown" do
-    write_and_execute_test 
+    write_and_execute_test
   end
 
   it "auto-verifies even if user defines own teardown" do
-    @teardown_code =<<-EOM 
+    @teardown_code =<<-EOM
       def teardown
         # just in the way
       end
     EOM
-    write_and_execute_test 
+    write_and_execute_test
   end
 
   should "not obscure normal failures when verification fails" do
@@ -49,12 +49,12 @@ class AutoVerifyTest < Test::Unit::TestCase
   end
 
   should "not skip user-defined teardown when verification fails" do
-    @teardown_code =<<-EOM 
+    @teardown_code =<<-EOM
       def teardown
         puts "User teardown"
       end
     EOM
-    write_and_execute_test 
+    write_and_execute_test
     assert_output_contains(/User teardown/)
   end
 
@@ -66,7 +66,7 @@ class AutoVerifyTest < Test::Unit::TestCase
           @automobile.start
         end
     EOM
-    @teardown_code =<<-EOM 
+    @teardown_code =<<-EOM
       def teardown
         puts "User teardown"
       end
@@ -79,7 +79,7 @@ class AutoVerifyTest < Test::Unit::TestCase
   end
 
   should "auto-verify even if user teardown explodes" do
-    @teardown_code =<<-EOM 
+    @teardown_code =<<-EOM
       def teardown
         raise "self destruct"
       end
@@ -93,7 +93,7 @@ class AutoVerifyTest < Test::Unit::TestCase
     @full_code ||=<<-EOTEST
       require File.expand_path(File.dirname(__FILE__) + "/../test_helper")
       require 'hardmock'
-      class Test::Unit::TestCase 
+      class Test::Unit::TestCase
         def teardown
           puts "Test helper teardown"
         end
@@ -103,7 +103,7 @@ class AutoVerifyTest < Test::Unit::TestCase
           create_mock :automobile
           @automobile.expects.start
         end
-      end 
+      end
     EOTEST
     write_and_execute_test
     assert_output_contains(/Test helper teardown/)
@@ -147,7 +147,7 @@ class AutoVerifyTest < Test::Unit::TestCase
       end
     end
   end
-  
+
   def assert_output_doesnt_contain(*patterns)
     patterns.each do |pattern|
       assert @test_output !~ pattern, "Output shouldn't match #{pattern.inspect} but it does."
@@ -167,11 +167,11 @@ class AutoVerifyTest < Test::Unit::TestCase
       class DummyTest < Test::Unit::TestCase
         #{@teardown_code}
         #{@test_code}
-      end 
+      end
     EOTEST
     run_test @full_code
 
-    if @expect_unmet_expectations 
+    if @expect_unmet_expectations
       assert_output_contains(/unmet expectations/i, /automobile/, /start/)
     else
       assert_output_doesnt_contain(/unmet expectations/i, /automobile/, /start/)
@@ -182,5 +182,5 @@ class AutoVerifyTest < Test::Unit::TestCase
     @expect_errors ||= 1
     assert_results :tests => @expect_tests, :failures => @expect_failures, :errors => @expect_errors
   end
-  
+
 end

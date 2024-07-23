@@ -56,7 +56,7 @@ class TestInvokerHelper
 
       # Only C files in test build
       if not @configurator.test_build_use_assembly
-        valid_extension = false if @file_wrapper.extname(source) != @configurator.extension_source      
+        valid_extension = false if @file_wrapper.extname(source) != @configurator.extension_source
       # C and assembly files in test build
       else
         ext = @file_wrapper.extname(source)
@@ -87,7 +87,7 @@ class TestInvokerHelper
     paths += @configurator.collection_paths_libraries
     paths += @configurator.collection_paths_vendor
     paths += @configurator.collection_paths_test_toolchain_include
-    
+
     return paths.uniq
   end
 
@@ -122,7 +122,7 @@ class TestInvokerHelper
       _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
 
     # CMock search paths
-    elsif @configurator.project_use_mocks and 
+    elsif @configurator.project_use_mocks and
       (filepath == File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE))
       _search_paths += @configurator.collection_paths_support
       _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
@@ -130,7 +130,7 @@ class TestInvokerHelper
       _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
 
     # CException search paths
-    elsif @configurator.project_use_exceptions and 
+    elsif @configurator.project_use_exceptions and
       (filepath == File.join(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE))
       _search_paths += @configurator.collection_paths_support
       _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH
@@ -322,12 +322,12 @@ class TestInvokerHelper
 
   def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, options:)
     @generator.generate_test_results(
-      tool:          options[:test_fixture], 
+      tool:          options[:test_fixture],
       context:       context,
       test_name:     test_name,
       test_filepath: test_filepath,
-      executable:    executable, 
+      executable:    executable,
       result:        result)
   end
-  
+
 end

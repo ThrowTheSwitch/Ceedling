@@ -11,7 +11,7 @@ APP_ROOT = File.join(File.dirname(__FILE__), '..')
 
 ADDITIONAL_LOAD_PATHS = []
 ADDITIONAL_LOAD_PATHS.concat %w(
-  lib 
+  lib
 ).map { |dir| "#{APP_ROOT}/#{dir}" }.select { |dir| File.directory?(dir) }
 
 # Prepend to $LOAD_PATH

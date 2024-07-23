@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'rbconfig'    
+require 'rbconfig'
 require 'open3'
 
 class SystemWrapper
@@ -66,7 +66,7 @@ class SystemWrapper
 
   # If set, `boom` allows a non-zero exit code in results.
   # Otherwise, disabled `boom` forces a success exit code but collects errors.
-  def shell_capture3(command:, boom:false) 
+  def shell_capture3(command:, boom:false)
     # Beginning with later versions of Ruby2, simple exit codes were replaced
     # by the more capable and robust Process::Status.
     # Parts of Process::Status's behavior is similar to an integer exit code in
@@ -75,7 +75,7 @@ class SystemWrapper
 
     stdout, stderr = '' # Safe initialization defaults
     status = nil        # Safe initialization default
-    
+
     stdout, stderr, status = Open3.capture3( command )
 
     # If boom, then capture the actual exit code.
@@ -88,14 +88,14 @@ class SystemWrapper
     return {
       # Combine stdout & stderr streams for complete output
       :output    => (stdout + stderr).freeze,
-      
+
       # Individual streams for detailed logging
       :stdout    => stdout.freeze,
       :stderr    => stderr.freeze,
 
       # Relay full Process::Status
       :status    => status.freeze,
-      
+
       # Provide simple exit code accessor
       :exit_code => exit_code.freeze
     }

@@ -9,7 +9,7 @@
 module DIY #:nodoc:#
   class FactoryDef #:nodoc:
     attr_accessor :name, :target, :class_name, :library
-    
+
     def initialize(opts)
       @name, @target, @library, @auto_require =
         opts[:name], opts[:target], opts[:library], opts[:auto_require]
@@ -18,7 +18,7 @@ module DIY #:nodoc:#
 			@library ||= Infl.underscore(@class_name) if @auto_require
     end
   end
-  
+
 	class Context
     def construct_factory(key)
       factory_def = @defs[key]
@@ -41,4 +41,3 @@ module DIY #:nodoc:#
     end
   end
 end
-

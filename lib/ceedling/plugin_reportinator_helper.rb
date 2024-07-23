@@ -12,11 +12,11 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 
 class PluginReportinatorHelper
-  
+
   attr_writer :ceedling
-  
+
   constructor :configurator, :loginator, :yaml_wrapper, :file_wrapper
-  
+
   def fetch_results(results_path, options)
     # Create the results filepaths
     pass_path = results_path.ext( @configurator.extension_testpass )
@@ -54,7 +54,7 @@ class PluginReportinatorHelper
 
     # Return fail results
     return @yaml_wrapper.load(fail_path) if fail_exists
-    
+
     # Safety fall-through (flow control should never get here)
     return {}
   end
@@ -80,5 +80,5 @@ class PluginReportinatorHelper
     # Run the report template and log result with no log level heading
     @loginator.log( output.result(binding()), verbosity, LogLabels::NONE )
   end
-  
+
 end
