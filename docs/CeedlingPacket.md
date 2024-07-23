@@ -3937,12 +3937,6 @@ fashion are documented below. See [CMock] documentation.
 
   **Default**: TRUE
 
-* `:mock_path`:
-
-  Path for generated mocks
-
-  **Default**: <build path>/tests/mocks
-
 * `:verbosity`:
 
   If not set, defaults to Ceedling’s verbosity level
@@ -3967,7 +3961,7 @@ fashion are documented below. See [CMock] documentation.
 
   To enable CMock’s optional and advanced features available via CMock plugin, simply add 
   `:cmock` ↳ `:plugins` to your configuration and specify your desired additional CMock 
-  plugins as a list.
+  plugins as a simple list of the plugin names.
 
   See [CMock's documentation][cmock-docs] to understand plugin options.
 
@@ -3975,18 +3969,34 @@ fashion are documented below. See [CMock] documentation.
 
   **Default**: `[]` (empty)
 
-* `:unity_helper`:
+* `:unity_helper_path`:
   
-  A Unity helper is a specific header file containing 
+  A Unity helper is a simple header file used by convention to support your specialized
+  test case needs. For example, perhaps you want a Unity assertion macro for the 
+  contents of a struct used throughout your project. Write the macro you need in a Unity
+  helper header file and `#include` that header file in your test file.
 
-  If `:cmock` ↳ `:unity_helper` set, prepopulated with unity_helper file
-  name (no path).
+  When a Unity helper is provided to CMock, it takes on more significance, and more
+  magic happens. CMock parses Unity helper header files and uses macros of a certain
+  naming convention to extend CMock’s handling of mocked parameters.
+
+  See the [Unity] and [CMock] documentation for more details.
+
+  `:unity_helper_path` may be a single string or a list. Each value must be a relative
+  path from your Ceedling working directory to a Unity helper header file (these are 
+  typically organized within containing Ceedling `:paths` ↳ `:support` directories).
+
+  **Default**: `[]` (empty)
 
 * `:includes`:
 
   In certain advanced testing scenarios, you may need to inject additional header files 
-  into generated mocks. The filenames in this list will be transformed in `#include` 
-  directives within every generated mock.
+  into generated mocks. The filenames in this list will be transformed into `#include` 
+  directives created at the top of every generated mock.
+
+  If `:unity_helper_path` is in use (see preceding), the filenames at the end of any 
+  Unity helper file paths will be automatically injected into this list provided to 
+  CMock.
 
   **Default**: `[]` (empty)
 

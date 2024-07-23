@@ -176,9 +176,9 @@ class TestInvokerHelper
 
     # If we're (a) using mocks (b) a Unity helper is defined and (c) that unity helper includes a source file component,
     # then link in the unity_helper object file too.
-    if ( @configurator.project_use_mocks and @configurator.cmock_unity_helper )
-      @configurator.cmock_unity_helper.each do |helper|
-        if @file_wrapper.exist?(helper.ext(EXTENSION_SOURCE))
+    if @configurator.project_use_mocks
+      @configurator.cmock_unity_helper_path.each do |helper|
+        if @file_wrapper.exist?( helper.ext(EXTENSION_SOURCE) )
           sources << helper
         end
       end

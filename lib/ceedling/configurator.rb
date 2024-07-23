@@ -193,8 +193,6 @@ class Configurator
       config[:unity][:defines] << 'UNITY_SUPPORT_TEST_CASES'
       config[:unity][:defines] << 'UNITY_SUPPORT_VARIADIC_MACROS'
     end
-
-    @loginator.log( "Unity configuration: #{config[:unity]}", Verbosity::DEBUG )
   end
 
 
@@ -212,16 +210,17 @@ class Configurator
     cmock[:plugins].map! { |plugin| plugin.to_sym() }
     cmock[:plugins].uniq!
 
-    cmock[:unity_helper] = false if (cmock[:unity_helper].nil?)
+    # CMock Unity helper and includes safe defaults
+    cmock[:includes] = [] if (cmock[:includes].nil?)
+    cmock[:unity_helper_path] = [] if (cmock[:unity_helper_path].nil?)
+    cmock[:unity_helper_path] = [cmock[:unity_helper_path]] if cmock[:unity_helper_path].is_a?( String )
 
-    if (cmock[:unity_helper])
-      cmock[:unity_helper] = [cmock[:unity_helper]] if cmock[:unity_helper].is_a? String
-      cmock[:includes] = [] if (cmock[:includes].nil?)
-      cmock[:includes] += cmock[:unity_helper].map{|helper| File.basename(helper) }
-      cmock[:includes].uniq!
+    # CMock Unity helper handling
+    cmock[:unity_helper_path].each do |path|
+      cmock[:includes] << File.basename( path )
     end
 
-    @loginator.log( "CMock configuration: #{cmock}", Verbosity::DEBUG )
+    cmock[:includes].uniq!
   end
 
 
@@ -252,8 +251,6 @@ class Configurator
     # Merge Unity options used by test runner generation
     config[:test_runner][:defines] += config[:unity][:defines]
     config[:test_runner][:use_param_tests] = config[:unity][:use_param_tests]
-
-    @loginator.log( "Test runner configuration: #{config[:test_runner]}", Verbosity::DEBUG )
 
     @runner_config = config[:test_runner]
   end

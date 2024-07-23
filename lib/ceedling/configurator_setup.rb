@@ -141,10 +141,9 @@ class ConfiguratorSetup
   def validate_paths(config)
     valid = true
 
-    if config[:cmock][:unity_helper]
-      config[:cmock][:unity_helper].each do |path|
-        valid &= @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper ) 
-      end
+    # Ceedling ensures [:unity_helper_path] is an array
+    config[:cmock][:unity_helper_path].each do |path|
+      valid &= @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper_path ) 
     end
 
     config[:plugins][:load_paths].each do |path|
