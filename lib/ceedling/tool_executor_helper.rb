@@ -72,10 +72,10 @@ class ToolExecutorHelper
     # Detailed debug logging
     if @verbosinator.should_output?( Verbosity::DEBUG )
       output +=   "> With $stdout: "
-      output += shell_result[:stdout].strip().empty? ? "<empty>\n" : "\n#{shell_result[:stdout].strip()}\n"
+      output += shell_result[:stdout].empty? ? "<empty>\n" : "\n#{shell_result[:stdout].strip()}\n"
 
       output +=   "> With $stderr: "
-      output += shell_result[:stderr].strip().empty? ? "<empty>\n" : "\n#{shell_result[:stderr].strip()}\n"
+      output += shell_result[:stderr].empty? ? "<empty>\n" : "\n#{shell_result[:stderr].strip()}\n"
 
       output +=   "> And terminated with status: #{shell_result[:status]}\n"
 
@@ -89,7 +89,7 @@ class ToolExecutorHelper
     # Slightly less verbose obnoxious logging
     if !shell_result[:output].empty?
       output += "> Produced output: "
-      output += shell_result[:stdout].strip().empty? ? "<empty>\n" : "\n#{shell_result[:stdout].strip()}\n"
+      output += shell_result[:output].strip().empty? ? "<empty>\n" : "\n#{shell_result[:output].strip()}\n"
     end
 
     if !shell_result[:exit_code].nil?
