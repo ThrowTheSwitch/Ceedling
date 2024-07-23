@@ -41,16 +41,25 @@ class CommandHooks < Plugin
   def setup
     # Get a copy of the project configuration
     project_config = @ceedling[:setupinator].config_hash
+
+    # Convenience object references
+    @loginator = @ceedling[:loginator]
+    @reportinator = @ceedling[:reportinator]
+    @walkinator = @ceedling[:config_walkinator]
+    @tool_validator = @ceedling[:tool_validator]
+    @tool_executor = @ceedling[:tool_executor]
+    @verbosinator = @ceedling[:verbosinator]
+    @configurator_validator = @ceedling[:configurator_validator]
     
     # Look up if the accompanying `:command_hooks` configuration block exists
-    config_exists = @ceedling[:configurator_validator].exists?(
+    config_exists = @configurator_validator.exists?(
       project_config,
       COMMAND_HOOKS_SYM
     )
-    
+
     # Go boom if the required configuration block does not exist
     unless config_exists
-      name = @ceedling[:reportinator].generate_config_walk([COMMAND_HOOKS_SYM])
+      name = @reportinator.generate_config_walk([COMMAND_HOOKS_SYM])
       error = "Command Hooks plugin is enabled but is missing a required configuration block `#{name}`"
       raise CeedlingException.new(error)
     end
@@ -63,9 +72,9 @@ class CommandHooks < Plugin
     # Validate the tools beneath the keys
     @config.each do |hook, tool|
       if tool.is_a?(Array)
-        tool.each_index {|index| validate_hook_tool( project_config, hook, index )}
+        tool.each_index {|index| validate_hook( project_config, hook, index )}
       else
-        validate_hook_tool( project_config, hook )
+        validate_hook( project_config, hook )
       end
     end
   end
@@ -104,7 +113,7 @@ class CommandHooks < Plugin
   #
   def validate_config(config)
     unless config.is_a?(Hash)
-      name = @ceedling[:reportinator].generate_config_walk([COMMAND_HOOKS_SYM])
+      name = @reportinator.generate_config_walk([COMMAND_HOOKS_SYM])
       error = "Expected configuration #{name} to be a Hash but found #{config.class}"
       raise CeedlingException.new(error)
     end
@@ -112,9 +121,9 @@ class CommandHooks < Plugin
     unrecognized_hooks = config.keys - COMMAND_HOOKS_LIST
     
     unrecognized_hooks.each do |not_a_hook|
-      name = @ceedling[:reportinator].generate_config_walk( [COMMAND_HOOKS_SYM, not_a_hook] )
-      error = "Unrecognized command hook: #{name}"
-      @ceedling[:loginator].log( error, Verbosity::ERRORS )
+      name = @reportinator.generate_config_walk( [COMMAND_HOOKS_SYM, not_a_hook] )
+      error = "Unrecognized Command Hook: #{name}"
+      @loginator.log( error, Verbosity::ERRORS )
     end
     
     unless unrecognized_hooks.empty?
@@ -124,31 +133,35 @@ class CommandHooks < Plugin
   end
   
   ##
-  # Validate given hook tool.
+  # Validate given hook
   #
   # :args:
   #   - config: Project configuration hash
   #   - keys: Key and index of hook inside :command_hooks configuration
   #
-  def validate_hook_tool(config, *keys)
+  def validate_hook(config, *keys)
     walk = [COMMAND_HOOKS_SYM, *keys]
-    name = @ceedling[:reportinator].generate_config_walk( walk )
-    hash = @ceedling[:config_walkinator].fetch_value( config, *walk )
+    name = @reportinator.generate_config_walk( walk )
+    hash = @walkinator.fetch_value( config, *walk )
     
-    tool_exists = @ceedling[:configurator_validator].exists?( config, *walk )
+    tool_exists = @configurator_validator.exists?( config, *walk )
     
     unless tool_exists
-      raise CeedlingException.new( "Missing Command Hook plugin tool configuration #{name}" )
+      raise CeedlingException.new( "Missing Command Hook plugin configuration for #{name}" )
     end
     
-    tool = hash[:value]
+    entry = hash[:value]
     
-    unless tool.is_a?(Hash)
-      error = "Expected configuration #{name} to be a Hash but found #{tool.class}"
+    unless entry.is_a?(Hash)
+      error = "Expected configuration #{name} for Command Hooks plugin to be a Hash but found #{entry.class}"
       raise CeedlingException.new( error )
     end
-  
-    @ceedling[:tool_validator].validate( tool: tool, name: name, boom: true )
+
+    # Validate the Ceedling tool components of the hook entry config
+    @tool_validator.validate( tool: entry, name: name, boom: true )
+
+    # Default logging configuration
+    config[:logging] = false if config[:logging].nil?
   end
   
   ##
@@ -162,24 +175,24 @@ class CommandHooks < Plugin
   #
   def run_hook(which_hook, name="")
     if (@config[which_hook])
-      msg = "Running command hook #{which_hook}"
-      msg = @ceedling[:reportinator].generate_progress( msg )
-      @ceedling[:loginator].log( msg )
+      msg = "Running Command Hook :#{which_hook}"
+      msg = @reportinator.generate_progress( msg )
+      @loginator.log( msg )
       
       # Single tool config
       if (@config[which_hook].is_a? Hash)
-        run_hook_step( @config[which_hook], name )
+        run_hook_step( which_hook, @config[which_hook], name )
       
       # Multiple tool configs
       elsif (@config[which_hook].is_a? Array)
         @config[which_hook].each do |hook|
-          run_hook_step(hook, name)
+          run_hook_step( which_hook, hook, name )
         end
       
       # Tool config is bad
       else
         msg = "The tool config for Command Hook #{which_hook} was poorly formed and not run"
-        @ceedling[:loginator].log( msg, Verbosity::COMPLAIN )
+        @loginator.log( msg, Verbosity::COMPLAIN )
       end
     end
   end
@@ -194,11 +207,28 @@ class CommandHooks < Plugin
   # :return:
   #    shell_result.
   #
-  def run_hook_step(hook, name="")
+  def run_hook_step(which_hook, hook, name="")
     if (hook[:executable])
       # Handle argument replacemant ({$1}), and get commandline
       cmd = @ceedling[:tool_executor].build_command_line( hook, [], name )
       shell_result = @ceedling[:tool_executor].exec( cmd )
+
+      # If hook logging is enabled
+      if hook[:logging]
+        # Skip debug logging -- allow normal tool debug logging to do its thing
+        return if @verbosinator.should_output?( Verbosity::DEBUG )
+
+        output = shell_result[:output].strip
+
+        # Set empty output to empty string if we're in OBNOXIOUS logging mode
+        output = '<empty>' if output.empty? and @verbosinator.should_output?( Verbosity::OBNOXIOUS )
+
+        # Don't add to logging output if there's nothing to output
+        return if output.empty?
+
+        # NORMAL and OBNOXIOUS logging
+        @loginator.log( "Command Hook :#{which_hook} output >> #{output}" )
+      end
     end
   end
 

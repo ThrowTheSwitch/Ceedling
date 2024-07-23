@@ -44,6 +44,18 @@ At present, this plugin passes at most one runtime parameter for use in a hook's
 
 [tools-doc]: https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#tools-configuring-command-line-tools-used-for-build-steps
 
+## Hook logging
+
+In addition to the standard Ceedling tool definition elements, a hook configuration entry may optionally include a `:logging` setting.
+
+`:logging` may be set to `TRUE` or `FALSE`. An omitted setting is equivalent to `FALSE`.
+
+When logging is enabled and logging conditions are appropriate, any output from the hook tool will be logged to the console with a brief header identifying the hook.
+
+* Explicit command hook output logging only occurs at verbosity levels Normal and Obnoxious.
+* Debug logging naturally displays hook output as part of normal tool execution logging. It is not duplicated by hook logging.
+* At Normal verbosity, blank hook output is not logged at all; Obnoxious verbosity will display blank output as `<empty>`.
+
 ## Command Hooks example configuration YAML
 
 ```yaml
@@ -57,6 +69,7 @@ At present, this plugin passes at most one runtime parameter for use in a hook's
       - my_script.py
       - --some-arg
       - ${1} # Replaced with the filepath of the header file that will be mocked
+    :logging: TRUE # Log any tool output to console
       
   # Hook called for each linking operation
   # Here, we are performing two tasks for the same build step hook, converting a
