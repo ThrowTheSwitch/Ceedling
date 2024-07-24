@@ -187,7 +187,7 @@ describe ToolExecutorHelper do
         message =
           "> Shell executed command:\n" +
           "`test.exe --a_flag`\n" +
-          "> Produced output:\nsome output\n" +
+          "> Produced output: \nsome output\n" +
           "> And terminated with exit code: [0]\n"
 
         expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
@@ -204,7 +204,7 @@ describe ToolExecutorHelper do
         message =
           "> Shell executed command:\n" +
           "`utility.out args`\n" +
-          "> Produced output:\nsome more output\n" +
+          "> Produced output: \nsome more output\n" +
           "> And terminated with exit code: [37]\n"
 
         expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
