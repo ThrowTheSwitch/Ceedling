@@ -86,7 +86,7 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
 
-          if @configurator.project_use_test_preprocessor == :tests
+          if @configurator.project_use_test_preprocessor_tests
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros" )
             @loginator.log( msg )
 
@@ -161,7 +161,7 @@ class TestInvoker
 
           @helper.extract_include_directives( arg_hash )
         end
-      end if @configurator.project_use_test_preprocessor == :tests
+      end if @configurator.project_use_test_preprocessor_tests
 
       # Determine Runners & Mocks For All Tests
       @batchinator.build_step("Determining Files to be Generated", heading: false) do
@@ -176,7 +176,7 @@ class TestInvoker
             mocks[name.to_sym] = {
               :name => name,
               :source => source,
-              :input => ((@configurator.project_use_test_preprocessor == :mocks) ? preprocessed_input : source)
+              :input => (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
             }
           end
 
@@ -221,7 +221,7 @@ class TestInvoker
 
           @preprocessinator.preprocess_mockable_header_file(**arg_hash)
         end
-      } if @configurator.project_use_mocks and (@configurator.project_use_test_preprocessor == :mocks)
+      } if @configurator.project_use_mocks and @configurator.project_use_test_preprocessor_mocks
 
       # Generate mocks for all tests
       @batchinator.build_step("Mocking") {
@@ -258,7 +258,7 @@ class TestInvoker
           # Replace default input with preprocessed file
           @lock.synchronize { details[:runner][:input_filepath] = filepath }
         end
-      } if @configurator.project_use_test_preprocessor == :tests
+      } if @configurator.project_use_test_preprocessor_tests
 
       # Collect test case names
       @batchinator.build_step("Collecting Test Context") {
@@ -273,7 +273,7 @@ class TestInvoker
 
         @context_extractor.collect_test_runner_details( details[:filepath], details[:runner][:input_filepath] )
         end
-      } if @configurator.project_use_test_preprocessor == :tests
+      } if @configurator.project_use_test_preprocessor_tests
 
       # Build runners for all tests
       @batchinator.build_step("Test Runners") do
