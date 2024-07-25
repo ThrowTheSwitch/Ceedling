@@ -68,9 +68,9 @@ class CliHelper
 
     # Configuration file
     if which_ceedling.nil?
-      walked = @config_walkinator.fetch_value( config, :project, :which_ceedling )
-      if !walked[:value].nil?
-        which_ceedling = walked[:value].strip()
+      value, _ = @config_walkinator.fetch_value( :project, :which_ceedling, hash:config )
+      if !value.nil?
+        which_ceedling = value.strip()
         @loginator.log( " > Set which Ceedling from config :project ↳ :which_ceedling => #{which_ceedling}", Verbosity::OBNOXIOUS )
         which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
       end
@@ -139,13 +139,13 @@ class CliHelper
     #       raise an exception if --graceful-fail is set without test operations
 
     # Add test runner configuration setting necessary to use test case filters
-    walked = @config_walkinator.fetch_value( config, :test_runner )
-    if walked[:value].nil?
+    value, _ = @config_walkinator.fetch_value( :test_runner, hash:config )
+    if value.nil?
       # If no :test_runner section, create the whole thing
       config[:test_runner] = {:cmdline_args => true}
     else
       # If a :test_runner section, just set :cmdlne_args
-      walked[:value][:cmdline_args] = true
+      value[:cmdline_args] = true
     end
   end
 
@@ -162,8 +162,8 @@ class CliHelper
     return cmdline_graceful_fail if !cmdline_graceful_fail.nil?
 
     # If configuration contains :graceful_fail, use it
-    walked = @config_walkinator.fetch_value( config, :test_build, :graceful_fail )
-    return walked[:value] if !walked[:value].nil?
+    value, _ = @config_walkinator.fetch_value( :test_build, :graceful_fail, hash:config )
+    return value if value.nil?
 
     return false
   end
@@ -256,10 +256,10 @@ class CliHelper
       _sections = sections.map {|section| section.to_sym}
       
       # Try to extract subconfig from section path
-      walked = @config_walkinator.fetch_value( config, *_sections )
+      value, _ = @config_walkinator.fetch_value( *_sections, hash:config )
 
       # If we fail to find the section path, blow up
-      if walked[:value].nil?
+      if value.nil?
         # Reformat list of symbols to list of :<section>s
         _sections.map! {|section| ":#{section.to_s}"}
         msg = "Cound not find configuration section #{_sections.join(' ↳ ')}"
@@ -267,7 +267,7 @@ class CliHelper
       end
 
       # Update _config to subconfig with final sections path element as container
-      _config = { _sections.last => walked[:value] }
+      _config = { _sections.last => value }
     end
 
     File.open( filepath, 'w' ) {|out| YAML.dump( _config, out )}

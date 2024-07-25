@@ -7,23 +7,29 @@
 
 class ConfigWalkinator
   
-  def fetch_value(hash, *keys)
-    value = nil
+  def fetch_value(*keys, hash:, default:nil)
+    # Safe initial values
+    value = default
     depth = 0
 
-    # walk into hash & extract value at requested key sequence
+    # Set walk variable
+    walk = hash
+
+    # Walk into hash & extract value at requested key sequence
     keys.each { |symbol|
-      depth += 1
-      if (not hash[symbol].nil?)
-        hash  = hash[symbol]
-        value = hash
-      else
-        value = nil
+      # Validate that we can fetch something meaningful
+      if !walk.is_a?( Hash) or !symbol.is_a?( Symbol ) or walk[symbol].nil?
+        value = default
         break
       end
-    } if !hash.nil?
+
+      # Walk into the hash one more level and update value
+      depth += 1
+      walk  = walk[symbol]
+      value = walk
+    } if !walk.nil?
     
-    return {:value => value, :depth => depth}
+    return value, depth
   end
   
 end

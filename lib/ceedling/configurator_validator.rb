@@ -17,8 +17,8 @@ class ConfiguratorValidator
 
   # Walk into config hash verify existence of data at key depth
   def exists?(config, *keys)
-    hash  = @config_walkinator.fetch_value( config, *keys )
-    exist = !hash[:value].nil?
+    hash, _  = @config_walkinator.fetch_value( *keys, hash:config )
+    exist = !hash.nil?
 
     if (not exist)
       walk = @reportinator.generate_config_walk( keys )
@@ -32,8 +32,7 @@ class ConfiguratorValidator
   # Paths are either full simple paths or a simple portion of a path up to a glob.
   def validate_path_list(config, *keys)
     exist = true
-    hash = @config_walkinator.fetch_value( config, *keys )
-    list = hash[:value]
+    list, depth = @config_walkinator.fetch_value( *keys, hash:config )
 
     # Return early if we couldn't walk into hash and find a value
     return false if (list.nil?)
@@ -46,7 +45,7 @@ class ConfiguratorValidator
 
       # If (partial) path does not exist, complain
       if (not @file_wrapper.exist?( _path ))
-        walk = @reportinator.generate_config_walk( keys, hash[:depth] )
+        walk = @reportinator.generate_config_walk( keys, depth )
         @loginator.log( "Config path #{walk} => '#{_path}' does not exist in the filesystem.", Verbosity::ERRORS ) 
         exist = false
       end 
@@ -62,8 +61,7 @@ class ConfiguratorValidator
     keys = [:paths, key]
     walk = @reportinator.generate_config_walk( keys )
 
-    hash = @config_walkinator.fetch_value( config, *keys )
-    list = hash[:value]
+    list, _ = @config_walkinator.fetch_value( *keys, hash:config )
 
     # Return early if we couldn't walk into hash and find a value
     return false if (list.nil?)
@@ -114,8 +112,7 @@ class ConfiguratorValidator
     keys = [:files, key]
     walk = @reportinator.generate_config_walk( keys )
 
-    hash = @config_walkinator.fetch_value( config, *keys )
-    list = hash[:value]
+    list, _ = @config_walkinator.fetch_value( *keys, hash:config )
 
     # Return early if we couldn't walk into hash and find a value
     return false if (list.nil?)
@@ -162,10 +159,10 @@ class ConfiguratorValidator
   def validate_tool(config:, key:, respect_optional:true)
     # Get tool
     walk = [:tools, key]
-    hash = @config_walkinator.fetch_value( config, *walk )
+    tool, _ = @config_walkinator.fetch_value( *walk, hash:config )
 
     arg_hash = {
-      tool: hash[:value],
+      tool: tool,
       name: @reportinator.generate_config_walk( walk ),
       extension: config[:extension][:executable],
       respect_optional: respect_optional

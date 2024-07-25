@@ -56,16 +56,15 @@ class TestsReporter
   private
 
   def update_filename(default_filename)
-    filename = fetch_config_value(:filename)
-
-    # Otherwise, use default filename
-    return filename.nil? ? default_filename : filename
+    # Fetch configured filename if it exists, otherwise return default filename
+    filename, _ = @config_walkinator.fetch_value( *keys, hash:@config, default:default_filename )
+    return filename
   end
 
+  # Handy convenience method for subclasses
   def fetch_config_value(*keys)
-    result = @config_walkinator.fetch_value( @config, *keys )
-    return result[:value] if !result[:value].nil?
-    return nil
+    result, _ = @config_walkinator.fetch_value( *keys, hash:@config )
+    return result
   end
 
 end

@@ -16,10 +16,7 @@ class Configurator
   attr_reader :project_config_hash, :programmatic_plugins, :rake_plugins
   attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case
 
-  constructor(:configurator_setup, :configurator_builder, :configurator_plugins, :yaml_wrapper, :system_wrapper, :loginator, :reportinator) do
-    @project_logging = false
-    @sanity_checks   = TestResultsSanityChecks::NORMAL
-  end
+  constructor :configurator_setup, :configurator_builder, :configurator_plugins, :config_walkinator, :yaml_wrapper, :system_wrapper, :loginator, :reportinator
 
   def setup()
     # Cmock config reference to provide to CMock for mock generation
@@ -34,6 +31,9 @@ class Configurator
 
     @programmatic_plugins = []
     @rake_plugins   = []
+
+    @project_logging = false
+    @sanity_checks   = TestResultsSanityChecks::NORMAL
   end
 
   # Override to prevent exception handling from walking & stringifying the object variables.
@@ -87,45 +87,39 @@ class Configurator
   end
 
 
-  # The default values defined in defaults.rb (eg. DEFAULT_TOOLS_TEST) are populated
-  # into @param config
+  # The default tools (eg. DEFAULT_TOOLS_TEST) are merged into default config hash
   def merge_tools_defaults(config, default_config)
     msg = @reportinator.generate_progress( 'Collecting default tool configurations' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
+    # config[:project] is guaranteed to exist / validated to exist
+    # config[:test_build] and config[:release_build] are optional in a user project configuration
+    release_assembly, _ = @config_walkinator.fetch_value( :release_build, :use_assembly, hash:config, default:false )
+    test_assembly, _ = @config_walkinator.fetch_value( :test_build, :use_assembly, hash:config, default:false)
+
     default_config.deep_merge( DEFAULT_TOOLS_TEST.deep_clone() )
 
     default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone() ) if (config[:project][:use_test_preprocessor] != :none)
-    default_config.deep_merge( DEFAULT_TOOLS_TEST_ASSEMBLER.deep_clone() )     if (config[:test_build][:use_assembly])
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_ASSEMBLER.deep_clone() )     if test_assembly
 
     default_config.deep_merge( DEFAULT_TOOLS_RELEASE.deep_clone() )            if (config[:project][:release_build])
-    default_config.deep_merge( DEFAULT_TOOLS_RELEASE_ASSEMBLER.deep_clone() )  if (config[:project][:release_build] and config[:release_build][:use_assembly])
+    default_config.deep_merge( DEFAULT_TOOLS_RELEASE_ASSEMBLER.deep_clone() )  if (config[:project][:release_build] and release_assembly)
   end
 
 
   def populate_cmock_defaults(config, default_config)
     # Cmock has its own internal defaults handling, but we need to set these specific values
-    # so they're present for the build environment to access;
-    # Note: these need to end up in the hash given to initialize cmock for this to be successful
+    # so they're guaranteed values and present for the Ceedling environment to access
 
     msg = @reportinator.generate_progress( 'Collecting CMock defaults' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-    # Populate defaults with CMock internal settings
-    default_cmock = default_config[:cmock] || {}
+    # Begin populating defaults with CMock defaults as set by Ceedling
+    default_cmock = default_config[:cmock]
 
-    # Yes, we're duplicating the defaults in CMock, but it's because:
-    #  (A) We always need CMOCK_MOCK_PREFIX in Ceedling's environment
-    #  (B) Test runner generator uses these same configuration values
-    default_cmock[:mock_prefix] = 'Mock' if (default_cmock[:mock_prefix].nil?)
-    default_cmock[:mock_suffix] = ''     if (default_cmock[:mock_suffix].nil?)
-
-    # Just because strict ordering is the way to go
-    default_cmock[:enforce_strict_ordering] = true                                                  if (default_cmock[:enforce_strict_ordering].nil?)
-
-    default_cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')  if (default_cmock[:mock_path].nil?)
-
-    default_cmock[:verbosity] = project_verbosity()                                                 if (default_cmock[:verbosity].nil?)
+    # Fill in default settings programmatically
+    default_cmock[:mock_path] = File.join(config[:project][:build_root], TESTS_BASE_PATH, 'mocks')
+    default_cmock[:verbosity] = project_verbosity()
   end
 
 
@@ -210,9 +204,11 @@ class Configurator
     cmock[:plugins].map! { |plugin| plugin.to_sym() }
     cmock[:plugins].uniq!
 
-    # CMock Unity helper and includes safe defaults
+    # CMock includes safe defaults
     cmock[:includes] = [] if (cmock[:includes].nil?)
-    cmock[:unity_helper_path] = [] if (cmock[:unity_helper_path].nil?)
+
+    # Reformulate CMock helper path value as array of one element if it's a string in config
+    cmock[:unity_helper_path] = [] if cmock[:unity_helper_path].nil?
     cmock[:unity_helper_path] = [cmock[:unity_helper_path]] if cmock[:unity_helper_path].is_a?( String )
 
     # CMock Unity helper handling

@@ -68,6 +68,7 @@ describe GeneratorTestResults do
       :configurator_setup => nil,
       :configurator_builder => nil,
       :configurator_plugins => nil,
+      :config_walkinator => nil,
       :yaml_wrapper => nil,
       :system_wrapper => nil,
       :loginator => @loginator,

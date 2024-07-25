@@ -96,10 +96,10 @@ class Configinator
   def default_tasks(config:, default_tasks:)
     #  1. If :default_tasks set in config, use it
     #  2. Otherwise use the function argument (most likely a default set in the first moments of startup)
-    walked = @config_walkinator.fetch_value( config, :project, :default_tasks )
-    if walked[:value]
+    value, _ = @config_walkinator.fetch_value( :project, :default_tasks, hash:config )
+    if value
       # Update method parameter to config value
-      default_tasks = walked[:value].dup()
+      default_tasks = value.dup()
     else
       # Set key/value in config if it's not set
       config.deep_merge( {:project => {:default_tasks => default_tasks}} )

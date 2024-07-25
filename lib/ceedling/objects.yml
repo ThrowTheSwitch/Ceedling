@@ -81,6 +81,7 @@ configurator:
     - configurator_setup
     - configurator_plugins
     - configurator_builder
+    - config_walkinator
     - yaml_wrapper
     - system_wrapper
     - loginator

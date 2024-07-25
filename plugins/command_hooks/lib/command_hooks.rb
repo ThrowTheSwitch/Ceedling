@@ -142,16 +142,12 @@ class CommandHooks < Plugin
   def validate_hook(config, *keys)
     walk = [COMMAND_HOOKS_SYM, *keys]
     name = @reportinator.generate_config_walk( walk )
-    hash = @walkinator.fetch_value( config, *walk )
-    
-    tool_exists = @configurator_validator.exists?( config, *walk )
-    
-    unless tool_exists
+    entry, _ = @walkinator.fetch_value( *walk, hash:config )
+
+    if entry.nil?
       raise CeedlingException.new( "Missing Command Hook plugin configuration for #{name}" )
     end
-    
-    entry = hash[:value]
-    
+        
     unless entry.is_a?(Hash)
       error = "Expected configuration #{name} for Command Hooks plugin to be a Hash but found #{entry.class}"
       raise CeedlingException.new( error )
