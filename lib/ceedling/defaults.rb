@@ -388,7 +388,15 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :cmock => {
       :includes => [],
       :defines => [],
-      :plugins => []
+      :plugins => [],
+      :unity_helper_path => [],
+      # Yes, we're duplicating these defaults in CMock, but it's because:
+      #  (A) We always need CMOCK_MOCK_PREFIX in Ceedling's environment
+      #  (B) Test runner generator uses these same configuration values
+      :mock_prefix => 'Mock',
+      :mock_suffix => '',
+      # Just because strict ordering is the way to go
+      :enforce_strict_ordering => true
     },
 
     :cexception => {
