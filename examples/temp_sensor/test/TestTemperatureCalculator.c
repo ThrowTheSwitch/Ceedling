@@ -1,8 +1,15 @@
+/* =========================================================================
+    Ceedling - Test-Centered Build System for C
+    ThrowTheSwitch.org
+    Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+    SPDX-License-Identifier: MIT
+========================================================================= */
+
 #include "unity.h"
 #include "Types.h"
 #include <math.h>
 
-TEST_FILE("TemperatureCalculator.c")
+TEST_SOURCE_FILE("TemperatureCalculator.c")
 
 extern float TemperatureCalculator_Calculate(uint16_t val);
 
