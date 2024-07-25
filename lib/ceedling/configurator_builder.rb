@@ -228,6 +228,37 @@ class ConfiguratorBuilder
   end
 
 
+  def set_test_preprocessor_accessors(in_hash)
+    accessors = {}
+
+    # :project_use_test_preprocessor already validated
+    case in_hash[:project_use_test_preprocessor]
+    when :none
+      accessors = {
+        :project_use_test_preprocessor_tests => false,
+        :project_use_test_preprocessor_mocks => false
+      }    
+    when :all
+      accessors = {
+        :project_use_test_preprocessor_tests => true,
+        :project_use_test_preprocessor_mocks => true
+      }    
+    when :tests
+      accessors = {
+        :project_use_test_preprocessor_tests => true,
+        :project_use_test_preprocessor_mocks => false
+      }    
+    when :mocks
+      accessors = {
+        :project_use_test_preprocessor_tests => false,
+        :project_use_test_preprocessor_mocks => true
+      }    
+    end
+
+    return accessors
+  end
+
+
   def expand_all_path_globs(in_hash)
     out_hash = {}
     path_keys = []

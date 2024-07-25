@@ -39,6 +39,7 @@ class ConfiguratorSetup
     flattened_config.merge!( @configurator_builder.set_rakefile_components( ceedling_lib_path, flattened_config ) )
     flattened_config.merge!( @configurator_builder.set_release_target( flattened_config ) )
     flattened_config.merge!( @configurator_builder.set_build_thread_counts( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.set_test_preprocessor_accessors( flattened_config ) )
 
     return flattened_config
   end
