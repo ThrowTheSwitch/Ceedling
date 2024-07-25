@@ -95,11 +95,11 @@ Yes, work has begun on certified versions of the Ceedling suite of tools to be a
 
 # 🧑‍🍳 Sample Unit Testing Code
 
-While Ceedling can build your release artifact, its claim to fame is building and running tests suites.
+While Ceedling can build your release artifact, its claim to fame is building and running test suites.
 
 There’s a good chance you’re looking at Ceedling because of its test suite abilities. And, you’d probably like to see what that looks like, huh? Well, let’s cook you up some realistic examples of tested code and running Ceedling with that code.
 
-(A sample Ceedling project configuration file and links to documentation for it are a bit further down.)
+(A sample Ceedling project configuration file and links to documentation for it are a bit further down in _[🚀 Getting Started](#-getting-started)_.)
 
 ## First, we start with servings of source code to be tested…
 
