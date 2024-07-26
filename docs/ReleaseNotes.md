@@ -19,7 +19,7 @@ This Ceedling release is probably the most significant since the project was fir
 
 Ceedling now runs in Ruby 3. Builds can now run much faster than previous versions because of parallelized tasks. For test suites, header file search paths, code defines, and tool run flags are now customizable per test executable.
 
-### Special Thank-You's
+### Special Thank-You’s
 
 A **HUGE** Thanks to the ThrowTheSwitch.org community, for continuing to use, critique, and contribute to these tools. We're making the C world a better place and we appreciate all of you!
 
@@ -74,6 +74,85 @@ Christopher Cichiwskyj, Crt Mori, Horacio Mijail Antón Quiles, John Hutchinson,
 Kalle Møller, Peter Kempter, Luca Cavalli, Maksim Chichikalov, Marcelo Jo, Matt Chernosky, Niall Cooling, 
 Olivier C. Larocque, Patrick Little, Richard Eklycke, Serjche, Spencer Russell, Stavros Vagionitis, Steven Huang,
 Toby Mole, Tom Hotston, Yuanqing Liu, afacotti, ccarrizosa, diachini, Steven Willard
+
+### Project Configuration Cheatsheet for 1.0.0 Changes
+
+The following is not a complete project configuration. But, for those well familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling.
+
+To be clear, more has changed than what is referenced in this YAML blurb. Most notably:
+
+* Ceedling’s command line is more robust and conforms to common CLI conventions.
+* Various plugins have grown in functionality and changed in name and configuration convention.
+* Test executables now build as mini-projects able to be compiled and linked with their own set of `#define` symbols and tool flags.
+* Build directive macros are available that provide build customization abilities through their use in your test files.
+
+```yaml
+# Mixins are an all new feature that allow a user to merge alternate project configurations.
+# Mixins replace a variety of other features, namely the :import project file section and option: command line task.
+# A frequent need is a base project configuration in common with variants of projects for different flavors of the same codebase. Mixins let you do this.
+# Mixins have few limitations as compared to the features Mixins replace.
+# Mixins can be merged from within your project configuration file (shown here), from paths in environment variables, and from command line mixin path switches.
+# ---------------------------
+:mixins:
+  :enabled:           # :enabled list supports names and filepaths
+    - enabled         # Look for enabled.yml in load paths and merge if found
+  :load_paths:        # Load paths to look for configuration files
+    - support/mixins
+
+# Importing project configuration files with :import is superseded by the more capable Mixins (above).
+# ---------------------------
+# :import:
+#  - path/to/config.yml
+
+:project:
+  # Ceedling is now multi-threaded for speedy builds.
+  # The default is a single thread (setting of 1). :auto tells Ceedling to query your system and make an educated guess on a number of threads to use.
+  # Threading is broken into two categories to provide for controlling threading where build tooling and test executable tooling have different restrictions.
+  # ---------------------------
+  :compile_threads: :auto
+  :test_threads: :auto
+
+  # Ceedling's preprocessing abilities have been totally revamped to fix bugs, eliminate complexity, and improve results.
+  # Preprocessing can now be selectively applied to test files and to mocking using options :none, :mocks, :tests: or :all.
+  # ---------------------------
+  :use_test_preprocessor: :all
+
+  # The following configuration options have been deprecated.
+  # These are no longer needed as the underlying functionality has been reimplemented with no need to configure it.
+  # If these settings remain in your configuration file, they are harmless but do zilch for you.
+  # ---------------------------
+  # :use_deep_dependencies
+  # :generate_deep_dependencies
+  # :auto_link_deep_dependencies
+
+  # Backtrace is an all new feature in Ceedling.
+  # When enabled (default is :simple), backtrace figures out which test case in a crashed test executable is exercising the bug causing you grief. If the :gdb option is enabled (and the GNU debugger is installed), Ceedling will provide you the trace the line of code causing a test case to crash.
+  # ---------------------------
+  :use_backtrace: :simple
+
+# Ceedling executables are now built as self-contained mini-projects.
+# You can now define symbols for a release build and each test executable individually, all of them collectively, some of them, and any combination thereof.
+# Symbols defined for a test executable are applied during compilation for each file compiled as a part of that executable.
+# The :defines section supports several syntaxes to achieve this -- too much for here. See Ceedling Packet for details.
+# ---------------------------
+:defines:
+  ...
+
+# Ceedling executables are now built as self-contained mini-projects.
+# You can now define tool flags for a release build and each test executable individually, all of them collectively, some of them, and any combination thereof.
+# Flags can be specified for each build step and for each component of a build step.
+# The :flags section supports several syntaxes to achieve this -- too much for here. See Ceedling Packet for details.
+# ---------------------------
+:flags:
+  ...
+
+# Ceedling’s Unity configuration now properly supports test executable builds for Unity's parameterized test cases.
+# Previously a handful of settings were required throughout a project configuration to successfully use these abilities.
+# ---------------------------
+:unity:
+  :use_param_tests: TRUE
+
+```
 
 ### Big Deal Highlights 🏅
 

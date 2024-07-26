@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-07-22
+# [1.0.0 pre-release] — 2024-07-26
 
 ## 🌟 Added
 
@@ -297,7 +297,7 @@ Hooks are now enabled within a top-level `:command_hooks` section in your projec
 
 ## 👋 Removed
 
-### `verbosity` and `log` command line tasks
+### `verbosity` and `log` command line tasks have been replaced with command line switches
 
 These command line features were implemented using Rake. That is, they were Rake tasks, not command line switches, and they were subject to the peculiarities of Rake tasks. Specifically, order mattered — these tasks had to precede build tasks they were to affect — and `verbosity` required a non-standard parameter convention for numeric values.
 
@@ -314,11 +314,15 @@ The previous command line of `ceedling verbosity[4] test:all release` or `ceedli
 
 Note that in the above list Ceedling is actually executing as though `ceedling build <args>` were entered at the command line. It is entirely acceptable to use the full form. The above list is provided as its form is the simplest to enter and consistent with previous versions of Ceedling.
 
-### `options:` tasks
+### `options:` tasks have been removed
 
 Options files were a simple but limited way to merge configuration with your base configuration from the command line. This feature has been superseded by Ceedling Mixins.
 
-### Test suite smart rebuilds
+### `:import` project configuration section is no longer supported
+
+The `:import` project configuration section was a simple but limited way to merge configuration with your base configuration. This feature has been superseded by Ceedling Mixins.
+
+### Test suite smart rebuilds have been temporarily removed
 
 All “smart” rebuild features built around Rake no longer exist. That is, incremental test suite builds for only changed files are no longer possible. Any test build is a full rebuild of its components (the speed increase due to parallel build tasks more than makes up for this).
 
