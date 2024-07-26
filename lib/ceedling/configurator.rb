@@ -207,8 +207,9 @@ class Configurator
     # CMock includes safe defaults
     cmock[:includes] = [] if (cmock[:includes].nil?)
 
-    # Reformulate CMock helper path value as array of one element if it's a string in config
+    # Default to empty array if cmock[:unity_helper_path] not provided
     cmock[:unity_helper_path] = [] if cmock[:unity_helper_path].nil?
+    # Reformulate CMock helper path value as array of one element if it's a string in config
     cmock[:unity_helper_path] = [cmock[:unity_helper_path]] if cmock[:unity_helper_path].is_a?( String )
 
     # CMock Unity helper handling
