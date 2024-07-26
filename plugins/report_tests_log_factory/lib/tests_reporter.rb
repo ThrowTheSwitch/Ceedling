@@ -57,7 +57,7 @@ class TestsReporter
 
   def update_filename(default_filename)
     # Fetch configured filename if it exists, otherwise return default filename
-    filename, _ = @config_walkinator.fetch_value( *keys, hash:@config, default:default_filename )
+    filename, _ = @config_walkinator.fetch_value( :filename, hash:@config, default:default_filename )
     return filename
   end
 
