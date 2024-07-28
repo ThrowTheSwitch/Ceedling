@@ -35,10 +35,9 @@ task RELEASE_SYM => [:prepare] do
     # Debug backtrace
     @ceedling[:loginator].log( "Backtrace ==>", Verbosity::DEBUG )
     # Output to console the exception backtrace, formatted like Ruby does it
-    ceedling[:loginator].log( "#{ex.backtrace.first}: #{ex.message} (#{ex.class})", Verbosity::DEBUG )
-    ceedling[:loginator].log( ex.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"), Verbosity::DEBUG )
+    @ceedling[:loginator].log( "#{ex.backtrace.first}: #{ex.message} (#{ex.class})", Verbosity::DEBUG )
+    @ceedling[:loginator].log( ex.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"), Verbosity::DEBUG )
   ensure
     @ceedling[:plugin_manager].post_release  
   end
 end
-
