@@ -77,26 +77,26 @@ Toby Mole, Tom Hotston, Yuanqing Liu, afacotti, ccarrizosa, diachini, Steven Wil
 
 ### Project Configuration Cheatsheet for 1.0.0 Changes
 
-The following is not a complete project configuration. But, for those well familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling.
+The following is not a complete project configuration. But, for those already familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling through the lens of a project configuration.
 
 To be clear, more has changed than what is referenced in this YAML blurb. Most notably:
 
 * Ceedling’s command line is more robust and conforms to common CLI conventions.
 * Various plugins have grown in functionality and changed in name and configuration convention.
-* Test executables now build as mini-projects able to be compiled and linked with their own set of `#define` symbols and tool flags.
 * Build directive macros are available that provide build customization abilities through their use in your test files.
 
 ```yaml
-# Mixins are an all new feature that allow a user to merge alternate project configurations.
+# Mixins are an all new feature that allow you to easily merge alternate project configurations.
 # Mixins replace a variety of other features, namely the :import project file section and option: command line task.
-# A frequent need is a base project configuration in common with variants of projects for different flavors of the same codebase. Mixins let you do this.
+# A frequent need is a base project configuration complemented by variants of projects for different flavors of the same codebase. Mixins provide the features to support these kinds of needs.
 # Mixins have few limitations as compared to the features Mixins replace.
-# Mixins can be merged from within your project configuration file (shown here), from paths in environment variables, and from command line mixin path switches.
+# Mixins can be merged from within your project configuration file (shown here), from paths in environment variables, and from command line --mixin path switches.
 # ---------------------------
 :mixins:
-  :enabled:           # :enabled list supports names and filepaths
-    - enabled         # Look for enabled.yml in load paths and merge if found
-  :load_paths:        # Load paths to look for configuration files
+  :enabled:             # :enabled list supports names and filepaths
+    - enabled           # Look for enabled.yml in load paths and merge if found
+    - my/mixin/cfg.yml  # A full path to a configuration file to merge
+  :load_paths:          # Load paths to search for mixins specified by name only in :enabled
     - support/mixins
 
 # Importing project configuration files with :import is superseded by the more capable Mixins (above).
@@ -126,25 +126,55 @@ To be clear, more has changed than what is referenced in this YAML blurb. Most n
   # :auto_link_deep_dependencies
 
   # Backtrace is an all new feature in Ceedling.
-  # When enabled (default is :simple), backtrace figures out which test case in a crashed test executable is exercising the bug causing you grief. If the :gdb option is enabled (and the GNU debugger is installed), Ceedling will provide you the trace the line of code causing a test case to crash.
+  # When enabled (default is :simple), backtrace figures out which test case in a crashed test executable is exercising the bug causing you grief.
+  # If the :gdb option is enabled (and the GNU debugger is installed), Ceedling will provide you the trace to the line of code causing a test case to crash.
   # ---------------------------
   :use_backtrace: :simple
 
 # Ceedling executables are now built as self-contained mini-projects.
-# You can now define symbols for a release build and each test executable individually, all of them collectively, some of them, and any combination thereof.
-# Symbols defined for a test executable are applied during compilation for each file compiled as a part of that executable.
-# The :defines section supports several syntaxes to achieve this -- too much for here. See Ceedling Packet for details.
+# You can now define symbols for a release build and each test executable build.
+# Symbols defined for a test executable are applied during compilation for each component of the executable.
+# The :defines section supports several syntaxes. 
+#  - Sophisticated matchers are available for test executable builds (shown here).
+#  - Simple lists to apply flags to all files in a build step are supported for release builds (only option) and test builds. 
+# See Ceedling Packet for details.
 # ---------------------------
 :defines:
-  ...
+  :test:
+    :*:                 #  Wildcard: Add '-DA' for compilation of all files for all tests
+      - A               
+    :Model:             # Substring: Add '-DCHOO' for compilation of all files of any test with 'Model' in its name
+      - CHOO            
+    :/M(ain|odel)/:     #     Regex: Add '-DBLESS_YOU' for all files of any test with 'Main' or 'Model' in its name
+      - BLESS_YOU       
+    :Comms*Model:       #  Wildcard: Add '-DTHANKS' for all files of any test that have zero or more characters
+      - THANKS          #            between 'Comms' and 'Model'
+  :release:
+    - FEATURE_X=ON      # Add these two symbols to compilation of all release C files (:test supports this syntax too)
+    - PRODUCT_CONFIG_C
 
 # Ceedling executables are now built as self-contained mini-projects.
-# You can now define tool flags for a release build and each test executable individually, all of them collectively, some of them, and any combination thereof.
 # Flags can be specified for each build step and for each component of a build step.
-# The :flags section supports several syntaxes to achieve this -- too much for here. See Ceedling Packet for details.
+# The :flags section supports several syntaxes. 
+#  - Sophisticated matchers are available for test executable builds (shown here).
+#  - Simple lists to apply flags to all files in a build step are supported for release builds (only option) and test builds. 
+# See Ceedling Packet for details.
 # ---------------------------
 :flags:
-  ...
+  :test:
+    :compile:
+      :*:               #  Wildcard: Add '-foo' for all files for all tests
+        - -foo          
+      :Model:           # Substring: Add '-Wall' for all files of any test with 'Model' in its name
+        - -Wall 
+      :/M(ain|odel)/:   #     Regex: Add 🏴‍☠️ flag for all files of any test with 'Main' or 'Model' in its name
+        - -🏴‍☠️ 
+      :Comms*Model: 
+        - --freak       #  Wildcard: Add your `--freak` flag for all files of any test name with zero or more
+                        #            characters between 'Comms' and 'Model'
+  :release: 
+    :compile: 
+      - -std=c99        # Add `-std=c99` to compilation of all release build C files (:test supports this syntax too)
 
 # Ceedling’s Unity configuration now properly supports test executable builds for Unity's parameterized test cases.
 # Previously a handful of settings were required throughout a project configuration to successfully use these abilities.

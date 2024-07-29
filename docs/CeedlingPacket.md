@@ -1381,13 +1381,15 @@ In other words, a test function signature should look like this:
 
 ### Preprocessing behavior for tests
 
+# Preprocessing feature background and overview
+
 Ceedling and CMock are advanced tools that both perform fairly sophisticated
 parsing.
 
 However, neither of these tools fully understands the entire C language,
 especially C's preprocessing statements.
 
-If your test files rely on macros and `#ifdef` conditionals, there’s a good
+If your test files rely on macros and `#ifdef` conditionals, there’s a
 chance that Ceedling will break on trying to process your test files, or,
 alternatively, your test suite will build but not execute as expected.
 
@@ -1399,17 +1401,46 @@ Ceedling includes an optional ability to preprocess test files and header files
 before executing any operations on them. See the `:project` ↳
 `:use_test_preprocessor` project configuration setting.
 
-When preprocessing is enabled for test files, Ceedling will expand preprocessor 
-statements in test files before generating test runners from them. When 
-preprocessing is enabled for mocking, Ceedling will expand preprocessor 
-statements in header files before generating mocks from them.
+This Ceedling feature uses `gcc`’s preprocessing mode and the `cpp` preprocessor 
+tool to strip down / expand test files and headers to their applicable content 
+which can then be processed by Ceedling and CMock. These tools must be in your 
+search path if Ceedling’s preprocessing is enabled.
 
-This ability uses `gcc`’s preprocessing mode and the `cpp` preprocessor tool to
-strip down / expand test files and headers to their applicable content which
-can then be processed by Ceedling and CMock. These tools must be in your search 
-path if Ceedling’s preprocessing is enabled. Further, Ceedling’s features are
-directly tied to these tools' abilities and options. These tools should not be
-redefined for other toolchains.
+**Ceedling’s features are directly tied to the features and output of `gcc` and 
+`cpp`. The default Ceedling tool definitions for these should not be redefined 
+for other toolchains. It is highly unlikely to work for you.**
+
+#### Preprocessing of your test files
+
+When preprocessing is enabled for test files, Ceedling will expand preprocessor
+statements in test files before generating test runners from them.
+
+**_Note:_** Conditional directives _inside_ test case functions do not require 
+Ceedling’s preprocessing ability. Assuming your code is correct, the C 
+preprocessor within your toolchain will do the right thing.
+
+Test file preprocessing by Ceedling is applicable primarily when conditional
+preprocessor directives generate the `#include` statements for your test file
+and/or enclose full test case functions. Ceedling will not be able to properly
+discover your `#include` statements and test case functions unless they are
+plainly available in an expanded version of your test file. Ceedling’s
+preprocessing abilities provide that expansion.
+
+#### Preprocessing of mockable header files
+
+When preprocessing is enabled for mocking, Ceedling will expand preprocessor 
+statements in header files before generating mocks from them. CMock requires
+a clear look at function definitions and types in order to do its work.
+
+Header files with preprocessor directives and conditional macros can easily
+obscure details from CMock’s simplisitic C parser. Advanced C projects tend
+to rely on preprocessing directives and macros to accomplish everything from
+build variants to OS calls to register access to managing proprietary language
+extensions.
+
+Mocking is often most useful in complicated code bases. As such Ceedling’s 
+preprocessing abilities tend to be quite necessary to properly expand header
+files so CMock can parse them.
 
 ### Execution time (duration) reporting in Ceedling operations & test suites
 
@@ -2391,8 +2422,8 @@ migrated to the `:test_build` and `:release_build` sections.
 * `:use_test_preprocessor`
 
   This option allows Ceedling to work with test files that contain
-  conditional compilation statements (e.g. `#ifdef`) as well as mockable header 
-  files containing conditional preprocessor directives and/or macros.
+  tricky conditional compilation statements (e.g. `#ifdef`) as well as mockable 
+  header files containing conditional preprocessor directives and/or macros.
 
   See the [documentation on test preprocessing][test-preprocessing] for more.
 
