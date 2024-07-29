@@ -41,7 +41,7 @@ DEFAULT_TEST_ASSEMBLER_TOOL = {
   :arguments => [
     ENV['TEST_ASFLAGS'].nil? ? "" : ENV['TEST_ASFLAGS'].split,
     "-I\"${3}\"".freeze, # Search paths
-    # Anny defines (${4}) are not included since GNU assembler ignores them
+    # Any defines (${4}) are not included since GNU assembler ignores them
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     ].freeze
