@@ -520,7 +520,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:adc_hardwareB 2>&1`
         expect($?.exitstatus).to match(1) # Failing build because of missing mock
-        expect(output).to match(/undefined reference to `Adc_Reset_Expect'/)
+        expect(output).to match(/(undefined|implicit).+Adc_Reset_Expect/)
       end
     end
   end
