@@ -4230,6 +4230,12 @@ command line for `:tools` ↳ `:power_drill` would look like this:
 
 #### Ceedling’s default build step tool definitions
 
+**_Note:_** Ceedling’s tool definitions for its preprocessing and backtrace 
+features are not documented here. Ceedling’s use of tools for these features
+are tightly coupled to the options and output of those tools. Drop-in 
+replacements using other tools are not practically possible. Eventually, an
+improved plugin system will provide options for integrating alternative tools.
+
 * `:test_compiler`:
 
   Compiler for test & source-under-test code
@@ -4242,6 +4248,17 @@ command line for `:tools` ↳ `:power_drill` would look like this:
    - `${6}`: Command line #defines
 
   **Default**: `gcc`
+
+* `:test_assembler`:
+
+  Assembler for test assembly code
+
+   - `${1}`: input assembly source file
+   - `${2}`: output object file
+   - `${3}`: search paths
+   - `${4}`: #define symbols (accepted but ignored by GNU assembler)
+
+  **Default**: `as`
 
 * `:test_linker`:
 
@@ -4263,22 +4280,6 @@ command line for `:tools` ↳ `:power_drill` would look like this:
 
   **Default**: `${1}`
 
-* `:test_includes_preprocessor`:
-
-  Extractor of #include statements
-
-   - `${1}`: input source file
-
-  **Default**: `cpp`
-
-* `:test_file_preprocessor`:
-
-  Preprocessor of test files (macros, conditional compilation statements)
-   - `${1}`: input source file
-   - `${2}`: preprocessed output source file
-
-  **Default**: `gcc`
-
 * `:release_compiler`:
 
   Compiler for release source code
@@ -4296,6 +4297,8 @@ command line for `:tools` ↳ `:power_drill` would look like this:
 
    - `${1}`: input assembly source file
    - `${2}`: output object file
+   - `${3}`: search paths
+   - `${4}`: #define symbols (accepted but ignored by GNU assembler)
 
   **Default**: `as`
 
