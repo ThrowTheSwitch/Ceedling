@@ -440,6 +440,113 @@ module CeedlingTestCases
     end
   end
 
+  def can_test_projects_with_preprocessing_for_test_files_symbols_undefined
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareA.c"), 'test/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareA.c"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareA.h"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardware_configuratorA.h"), 'src/'
+        # Rely on undefined symbols in our C files
+        # 2 enabled intentionally failing test cases (no mocks generated)
+        settings = { :project => { :use_test_preprocessor => :tests },
+                   }
+        @c.merge_project_yml_for_test(settings)
+
+        output = `bundle exec ruby -S ceedling test:adc_hardwareA 2>&1`
+        expect($?.exitstatus).to match(1) # Intentional test failure in successful build
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+0/)
+        expect(output).to match(/FAILED:\s+2/)
+      end
+    end
+  end
+
+  def can_test_projects_with_preprocessing_for_test_files_symbols_defined
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareA.c"), 'test/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareA.c"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareA.h"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardware_configuratorA.h"), 'src/'
+        # 1 enabled passing test case with 1 mock used
+        settings = { :project => { :use_test_preprocessor => :tests },
+                     :defines => { :test => ['PREPROCESSING_TESTS'] }
+                   }
+        @c.merge_project_yml_for_test(settings)
+
+        output = `bundle exec ruby -S ceedling test:adc_hardwareA 2>&1`
+        expect($?.exitstatus).to match(0) # Successful build and tests
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+      end
+    end
+  end
+
+  def can_test_projects_with_preprocessing_for_mocks_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareB.c"), 'test/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareB.c"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareB.h"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardware_configuratorB.h"), 'src/'
+        # 1 test case with 1 mocked function
+        settings = { :project => { :use_test_preprocessor => :mocks },
+                     :defines => { :test => ['PREPROCESSING_MOCKS'] }
+                   }
+        @c.merge_project_yml_for_test(settings)
+
+        output = `bundle exec ruby -S ceedling test:adc_hardwareB 2>&1`
+        expect($?.exitstatus).to match(0) # Successful build and tests
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+      end
+    end
+  end
+
+  def can_test_projects_with_preprocessing_for_mocks_intentional_build_failure
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareB.c"), 'test/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareB.c"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareB.h"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardware_configuratorB.h"), 'src/'
+        # 1 test case with a missing mocked function
+        settings = { :project => { :use_test_preprocessor => :mocks }
+                   }
+        @c.merge_project_yml_for_test(settings)
+
+        output = `bundle exec ruby -S ceedling test:adc_hardwareB 2>&1`
+        expect($?.exitstatus).to match(1) # Failing build because of missing mock
+        expect(output).to match(/undefined reference to `Adc_Reset_Expect'/)
+      end
+    end
+  end
+
+  def can_test_projects_with_preprocessing_all
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareC.c"), 'test/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareC.c"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardwareC.h"), 'src/'
+        FileUtils.cp test_asset_path("tests_with_preprocessing/src/adc_hardware_configuratorC.h"), 'src/'
+        # 1 test case using 1 mock
+        settings = { :project => { :use_test_preprocessor => :all },
+                     :defines => { :test => ['PREPROCESSING_TESTS', 'PREPROCESSING_MOCKS'] }
+                   }
+        @c.merge_project_yml_for_test(settings)
+
+        output = `bundle exec ruby -S ceedling test:adc_hardwareC 2>&1`
+        expect($?.exitstatus).to match(0) # Successful build and tests
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+      end
+    end
+  end
+
   def can_test_projects_with_fail
     @c.with_context do
       Dir.chdir @proj_name do
