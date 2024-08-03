@@ -245,13 +245,19 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
 
-      # Generate the Version + Hash Name
-      - name: Version
+      # Generate the SHA string
+      - name: Git Commit Short SHA
+        id: git_commit_sha
+        shell: bash
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      # Generate the Version strings
+      - name: Version strings
         id: versions
         shell: bash
         run: |
           echo "short_ver=$(ruby ./lib/ceedling/version.rb)" >> $GITHUB_ENV
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "full_ver=$(ruby ./lib/ceedling/version.rb)-${{ env.sha_short }}" >> $GITHUB_ENV
 
       # Build Gem
