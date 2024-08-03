@@ -113,12 +113,12 @@ To be clear, more has changed than what is referenced in this YAML blurb. Most n
   :test_threads: :auto
 
   # Ceedling's preprocessing abilities have been totally revamped to fix bugs, eliminate complexity, and improve results.
-  # Preprocessing can now be selectively applied to test files and to mocking using options :none, :mocks, :tests: or :all.
+  # Preprocessing can now be selectively applied to test files and to mockable headers using options :none, :mocks, :tests, or :all.
   # ---------------------------
   :use_test_preprocessor: :all
 
   # The following configuration options have been deprecated.
-  # These are no longer needed as the underlying functionality has been reimplemented with no need to configure it.
+  # These are no longer available as the underlying functionality has been reimplemented with no need to configure it.
   # If these settings remain in your configuration file, they are harmless but do zilch for you.
   # ---------------------------
   # :use_deep_dependencies
@@ -149,6 +149,7 @@ To be clear, more has changed than what is referenced in this YAML blurb. Most n
       - BLESS_YOU       
     :Comms*Model:       #  Wildcard: Add '-DTHANKS' for all files of any test that have zero or more characters
       - THANKS          #            between 'Comms' and 'Model'
+
   :release:
     - FEATURE_X=ON      # Add these two symbols to compilation of all release C files (:test supports this syntax too)
     - PRODUCT_CONFIG_C
