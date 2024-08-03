@@ -269,7 +269,7 @@ jobs:
       - name: Git Commit SHA file
         shell: bash
         run: |
-          echo "${{ env.sha_short }}" > ./GIT_COMMIT_SHA
+          echo "${{ env.sha_short }}" > ${{ github.workspace }}/GIT_COMMIT_SHA
 
       # Create Unofficial Release
       - name: Create Pre-Release
