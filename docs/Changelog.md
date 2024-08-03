@@ -125,6 +125,21 @@ Ceedling logging now optionally includes emoji and nice Unicode characters. Ceed
 
 The application commands `ceedling new` and `ceedling upgrade` at the command line provide project creation and management functions. Optionally, these commands can vendor tools and libraries locally alongside your project. These vendoring options now include license files along with the source of the vendored tools and libraries.
 
+### Git Commit Short SHA in Ceedling version
+
+```
+🌱 Welcome to Ceedling!
+
+   Ceedling => #.#.#-<Short SHA>
+      CMock => #.#.#
+      Unity => #.#.#
+ CException => #.#.#
+```
+
+If the information is unavailable such as in local development, the SHA is omitted.
+
+This source for this string is intended to be generated and captured in the Gem at the time of an automated build in CI.
+
 ## 💪 Fixed
 
 ### `:paths` and `:files` handling bug fixes and clarification

@@ -13,21 +13,26 @@
 
 module Ceedling
   module Version
-    GEM = "1.0.0"
-    CEEDLING = GEM
+    GEM = '1.0.0'
+    CEEDLING_TAG = GEM
 
-    # If this file is loaded, we know it is next to the vendor path to use for version lookups
-    vendor_path = File.expand_path( File.join( File.dirname( __FILE__ ), '../../vendor' ) )
+    project_root = File.join( File.dirname( __FILE__ ), '../..' )
+
+    # If this file (version.rb) is loaded, we know it is next to the vendor path to use for version lookups
+    vendor_path = File.expand_path( File.join( project_root, 'vendor' ) )
+
+    # Set the constant for Git SHA if it exists as simple text file in the root of the codebase
+    commit_sha_filepath = File.join( project_root, 'GIT_COMMIT_SHA' )
+    CEEDLING_GIT_SHA = (File.exist?( commit_sha_filepath ) ? File.read( commit_sha_filepath ).strip() : nil)
 
     # Anonymous hash
-    {
-      'UNITY' => File.join( 'unity', 'src', 'unity.h' ),
-      'CMOCK' => File.join( 'cmock', 'src', 'cmock.h' ),
+    { 'UNITY'      => File.join( 'unity', 'src', 'unity.h' ),
+      'CMOCK'      => File.join( 'cmock', 'src', 'cmock.h' ),
       'CEXCEPTION' => File.join( 'c_exception', 'lib', 'CException.h' )
     }.each_pair do |name, path|
       filename = File.join( vendor_path, path )
 
-      # Actually look up the versions
+      # Actually look up the version number components
       a = [0,0,0]
 
       begin
@@ -42,10 +47,10 @@ module Ceedling
       end
 
       # Splat it to crete the final constant
-      eval("#{name} = '#{a.join(".")}'")
+      eval("#{name}_TAG = '#{a.join(".")}'")
     end
 
     # If run as a script, end with printing Ceedling’s version to $stdout
-    puts CEEDLING if (__FILE__ == $0)
+    puts CEEDLING_TAG if (__FILE__ == $0)
   end
 end

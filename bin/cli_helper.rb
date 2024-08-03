@@ -43,7 +43,7 @@ class CliHelper
     # Clone the project file and update internal version
     require 'ceedling/version'
     @actions._copy_file( source_filepath, project_filepath, :force => true)
-    @actions._gsub_file( project_filepath, /:ceedling_version:\s+'\?'/, ":ceedling_version: #{Ceedling::Version::CEEDLING}" )
+    @actions._gsub_file( project_filepath, /:ceedling_version:\s+'\?'/, ":ceedling_version: #{Ceedling::Version::CEEDLING_TAG}" )
   end
 
 

@@ -352,13 +352,16 @@ class CliHandler
 
   def version()
     require 'ceedling/version'
+    commit_sha = Ceedling::Version::CEEDLING_GIT_SHA
+    commit_sha = commit_sha.nil? ? '' : "-#{commit_sha}"
+
     version = <<~VERSION
     Welcome to Ceedling!
 
-       Ceedling => #{Ceedling::Version::CEEDLING}
-          CMock => #{Ceedling::Version::CMOCK}
-          Unity => #{Ceedling::Version::UNITY}
-     CException => #{Ceedling::Version::CEXCEPTION}
+       Ceedling => #{Ceedling::Version::CEEDLING_TAG}#{commit_sha}
+          CMock => #{Ceedling::Version::CMOCK_TAG}
+          Unity => #{Ceedling::Version::UNITY_TAG}
+     CException => #{Ceedling::Version::CEXCEPTION_TAG}
     VERSION
     @loginator.log( version, Verbosity::NORMAL, LogLabels::TITLE )
   end

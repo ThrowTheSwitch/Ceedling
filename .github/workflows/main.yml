@@ -231,6 +231,14 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Set outputs
+        id: vars
+        # Create ${{ steps.vars.outputs.sha_short }}
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Check outputs
+        run: echo ${{ steps.vars.outputs.sha_short }}
+
       # Set Up Ruby Tools
       - name: Set Up Ruby Tools
         uses: ruby/setup-ruby@v1
@@ -243,12 +251,19 @@ jobs:
         shell: bash
         run: |
           echo "short_ver=$(ruby ./lib/ceedling/version.rb)" >> $GITHUB_ENV
-          echo "full_ver=$(ruby ./lib/ceedling/version.rb)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "full_ver=$(ruby ./lib/ceedling/version.rb)-${{ env.sha_short }}" >> $GITHUB_ENV
 
       # Build Gem
       - name:  Build Gem
         run: |
           gem build ceedling.gemspec
+
+      # Create Git Commit SHA file in root of checkout
+      - name: Git Commit SHA file
+        shell: bash
+        run: |
+          echo "${{ env.sha_short }}" > ./GIT_COMMIT_SHA
 
       # Create Unofficial Release
       - name: Create Pre-Release

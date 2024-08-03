@@ -22,3 +22,4 @@ ceedling-*.gem
 .ruby-version
 /.idea
 /.vscode
+/GIT_COMMIT_SHA
