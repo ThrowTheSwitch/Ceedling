@@ -273,7 +273,7 @@ jobs:
           prerelease: true
           release_name: ${{ env.ceedling_build }}
           tag_name: ${{ env.ceedling_build }}
-          body: "Automatic pre-release for ${{ env.full_ver }}"
+          body: "Automatic pre-release for ${{ env.ceedling_build }}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
