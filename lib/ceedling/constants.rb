@@ -65,6 +65,8 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
+GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
+
 # Escaped newline literal (literally double-slash-n) for "encoding" multiline strings as single string
 NEWLINE_TOKEN = '\\n'
 

@@ -7,6 +7,7 @@
 
 require 'mixins' # Built-in Mixins
 require 'ceedling/constants' # From Ceedling application
+require 'versionator' # Outisde DIY context
 
 class CliHandler
 
@@ -65,7 +66,7 @@ class CliHandler
   end
 
 
-  def new_project(env, app_cfg, options, name, dest)
+  def new_project(env, app_cfg, ceedling_tag, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( dest )
@@ -101,7 +102,7 @@ class CliHandler
     @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
     # Copy / set up project file
-    @helper.create_project_file( dest, options[:local] ) if options[:configs]
+    @helper.create_project_file( dest, options[:local], ceedling_tag ) if options[:configs]
 
     # Copy Git Ignore file 
     if options[:gitsupport]
@@ -124,7 +125,7 @@ class CliHandler
     @path_validator.standardize_paths( path, options[:project] )
 
     # Check for existing project
-    if !@helper.project_exists?( path, :&, options[:project], 'vendor/ceedling/lib/ceedling/version.rb' )
+    if !@helper.project_exists?( path, :&, options[:project], 'vendor/ceedling/lib/version.rb' )
       msg = "Could not find an existing project at #{path}/."
       raise msg
     end
@@ -350,18 +351,17 @@ class CliHandler
   end
 
 
-  def version()
-    require 'ceedling/version'
-    commit_sha = Ceedling::Version::CEEDLING_GIT_SHA
-    commit_sha = commit_sha.nil? ? '' : "-#{commit_sha}"
+  def version(ceedling_root_path)
+    # We only need Versionator here
+    versionator = Versionator.new( ceedling_root_path )
 
     version = <<~VERSION
     Welcome to Ceedling!
 
-       Ceedling => #{Ceedling::Version::CEEDLING_TAG}#{commit_sha}
-          CMock => #{Ceedling::Version::CMOCK_TAG}
-          Unity => #{Ceedling::Version::UNITY_TAG}
-     CException => #{Ceedling::Version::CEXCEPTION_TAG}
+       Ceedling => #{versionator.ceedling_build}
+          CMock => #{versionator.cmock_tag}
+          Unity => #{versionator.unity_tag}
+     CException => #{versionator.cexception_tag}
     VERSION
     @loginator.log( version, Verbosity::NORMAL, LogLabels::TITLE )
   end

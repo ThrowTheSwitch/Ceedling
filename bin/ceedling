@@ -117,7 +117,7 @@ begin
 
     when '--version', '-v'
       # Call Ceedling's version handler directly
-      objects[:cli_handler].version()
+      objects[:cli_handler].version( CEEDLING_APPCFG[:ceedling_root_path] )
     end      
 
   # Run command line args through Thor (including "naked" Rake tasks)

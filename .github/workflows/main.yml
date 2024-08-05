@@ -237,20 +237,21 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
 
-      # Generate the SHA string
-      - name: Git Commit Short SHA
-        id: git_commit_sha
+      # Capture the SHA string
+      - name: Git commit short SHA as environment variable
         shell: bash
         run: |
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      # Generate the Version strings
-      - name: Version strings
-        id: versions
+      - name: Ceedling tag as environment variable
         shell: bash
         run: |
-          echo "short_ver=$(ruby ./lib/ceedling/version.rb)" >> $GITHUB_ENV
-          echo "full_ver=$(ruby ./lib/ceedling/version.rb)-${{ env.sha_short }}" >> $GITHUB_ENV
+          echo "ceedling_tag=$(ruby ./lib/version.rb)" >> $GITHUB_ENV
+
+      - name: Ceedling build string as environment variable
+        shell: bash
+        run: |
+          echo "ceedling_build=${{ env.ceedling_tag }}-${{ env.sha_short }}" >> $GITHUB_ENV
 
       # Create Git Commit SHA file in root of checkout
       - name: Git Commit SHA file
@@ -270,8 +271,8 @@ jobs:
         with:
           draft: false
           prerelease: true
-          release_name: ${{ env.full_ver }}
-          tag_name: ${{ env.full_ver }}
+          release_name: ${{ env.ceedling_build }}
+          tag_name: ${{ env.ceedling_build }}
           body: "Automatic pre-release for ${{ env.full_ver }}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -283,8 +284,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./ceedling-${{ env.short_ver }}.gem
-          asset_name: ceedling-${{ env.full_ver }}.gem
+          asset_path: ./ceedling-${{ env.ceedling_tag }}.gem
+          asset_name: ceedling-${{ env.ceedling_build }}.gem
           asset_content_type: test/x-gemfile
 
       # - name: Upload Pre-Release Gem

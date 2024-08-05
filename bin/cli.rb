@@ -221,13 +221,15 @@ module CeedlingTasks
       LONGDESC
     ) )
     def new(name, dest=nil)
+      require 'version' # lib/version.rb for TAG constant
+
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
       _dest = dest.dup() if !dest.nil?
 
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
-      @handler.new_project( ENV, @app_cfg, _options, name, _dest )
+      @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, name, _dest )
     end
 
 
@@ -436,7 +438,7 @@ module CeedlingTasks
     desc "version", "Display version details of app components (also `--version` or `-v`)"
     # No long_desc() needed
     def version()
-      @handler.version()
+      @handler.version( @app_cfg[:ceedling_root_path] )
     end
 
   end

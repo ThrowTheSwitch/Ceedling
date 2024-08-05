@@ -30,7 +30,7 @@ class CliHelper
   end
 
 
-  def create_project_file(dest, local)
+  def create_project_file(dest, local, ceedling_tag)
     project_filepath = File.join( dest, DEFAULT_PROJECT_FILENAME )
     source_filepath = ''
 
@@ -40,10 +40,15 @@ class CliHelper
       source_filepath = File.join( 'assets', 'project_as_gem.yml' )
     end
 
-    # Clone the project file and update internal version
-    require 'ceedling/version'
+    # Clone the project file
     @actions._copy_file( source_filepath, project_filepath, :force => true)
-    @actions._gsub_file( project_filepath, /:ceedling_version:\s+'\?'/, ":ceedling_version: #{Ceedling::Version::CEEDLING_TAG}" )
+    # Silently update internal version
+    @actions._gsub_file(
+      project_filepath,
+      /:ceedling_version:\s+'\?'/,
+      ":ceedling_version: #{ceedling_tag}",
+      :verbose => false
+    )
   end
 
 
@@ -415,6 +420,15 @@ class CliHelper
     # Copy license files into place
     license_files.each_pair do |dest, src|
       @actions._copy_file( src, dest, :force => true)
+    end
+
+    # Silently copy Git SHA file for version #.#.#-build lookups if it exists
+    if @file_wrapper.exist?( File.join( ceedling_root, GIT_COMMIT_SHA_FILENAME) )
+      @actions._copy_file(
+        GIT_COMMIT_SHA_FILENAME,
+        File.join( vendor_path, GIT_COMMIT_SHA_FILENAME ),
+        :force => true, :verbose => false
+      )
     end
 
     # Create executable helper scripts in project root

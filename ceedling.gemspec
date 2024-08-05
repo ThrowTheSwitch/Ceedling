@@ -7,7 +7,7 @@
 # =========================================================================
 
 $LOAD_PATH << File.expand_path(File.join(File.dirname(__FILE__), 'lib'))
-require "ceedling/version"
+require "version" # lib/version.rb
 require 'date'
 
 Gem::Specification.new do |s|
@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Mark VanderVoord", "Michael Karlesky", "Greg Williams"]
   s.email       = ["mark@vandervoord.net", "michael@karlesky.net", "barney.williams@gmail.com"]
-  s.homepage    = "http://throwtheswitch.org/ceedling"
+  s.homepage    = "https://throwtheswitch.org/ceedling"
   s.summary     = "Ceedling is a build automation tool for C unit tests and releases. It's a member of the ThrowTheSwitch.org family of tools. It's built upon Unity and CMock."
   s.description = <<-DESC
 Ceedling is a build automation tool that helps you create and run C unit test suites.
