@@ -264,14 +264,14 @@ class TestInvoker
       @batchinator.build_step("Collecting Test Context") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
 
-        msg = @reportinator.generate_module_progress(
-          operation: 'Parsing test case names',
-          module_name: details[:name],
-          filename: File.basename( details[:filepath] )
-        ) 
-        @loginator.log( msg )
+          msg = @reportinator.generate_module_progress(
+            operation: 'Parsing test case names',
+            module_name: details[:name],
+            filename: File.basename( details[:filepath] )
+          ) 
+          @loginator.log( msg )
 
-        @context_extractor.collect_test_runner_details( details[:filepath], details[:runner][:input_filepath] )
+          @context_extractor.collect_test_runner_details( details[:filepath], details[:runner][:input_filepath] )
         end
       } if @configurator.project_use_test_preprocessor_tests
 
