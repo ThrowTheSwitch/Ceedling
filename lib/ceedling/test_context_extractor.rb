@@ -66,48 +66,86 @@ class TestContextExtractor
 
   # All header includes .h of test file
   def lookup_full_header_includes_list(filepath)
-    return @all_header_includes[form_file_key( filepath )] || []
+    val = nil
+    @lock.synchronize do
+      val = @all_header_includes[form_file_key( filepath )] || []
+    end
+    return val
   end
 
   # Header includes .h (minus mocks & framework headers) in test file
   def lookup_header_includes_list(filepath)
-    return @header_includes[form_file_key( filepath )] || []
+    val = nil
+    @lock.synchronize do
+      val = @header_includes[form_file_key( filepath )] || []
+    end
+    return val
   end
 
   # Include paths of test file specified with TEST_INCLUDE_PATH()
   def lookup_include_paths_list(filepath)
-    return @include_paths[form_file_key( filepath )] || []
+    val = nil
+    @lock.synchronize do
+      val = @include_paths[form_file_key( filepath )] || []
+    end
+    return val
   end
 
   # Source header_includes within test file
   def lookup_source_includes_list(filepath)
-    return @source_includes[form_file_key( filepath )] || []
+    val = nil
+    @lock.synchronize do
+      val = @source_includes[form_file_key( filepath )] || []
+    end
+    return val
   end
 
   # Source extras via TEST_SOURCE_FILE() within test file
   def lookup_build_directive_sources_list(filepath)
-    return @source_extras[form_file_key( filepath )] || []
+    val = nil
+    @lock.synchronize do
+      val = @source_extras[form_file_key( filepath )] || []
+    end
+    return val
   end
 
   def lookup_test_cases(filepath)
-    return @test_runner_details[form_file_key( filepath )][:test_cases] || []
+    val = nil
+    @lock.synchronize do
+      val = @test_runner_details[form_file_key( filepath )][:test_cases] || []
+    end
+    return val
   end
 
   def lookup_test_runner_generator(filepath)
-    return @test_runner_details[form_file_key( filepath )][:generator]
+    val = nil
+    @lock.synchronize do
+      val = @test_runner_details[form_file_key( filepath )][:generator]
+    end
+    return val
   end
 
   # Mocks within test file with no file extension
   def lookup_raw_mock_list(filepath)
-    return @mocks[form_file_key( filepath )] || []
+    val = nil
+    @lock.synchronize do
+      val = @mocks[form_file_key( filepath )] || []
+    end
+    return val
   end
 
   def lookup_all_include_paths
-    return @all_include_paths.uniq
+    val = nil
+    @lock.synchronize do
+      val = @all_include_paths.uniq
+    end
+    return val
   end
 
   def inspect_include_paths
-    @include_paths.each { |test, paths| yield test, paths }
+    @lock.synchronize do
+      @include_paths.each { |test, paths| yield test, paths }
+    end
   end
 
   def ingest_includes(filepath, includes)
