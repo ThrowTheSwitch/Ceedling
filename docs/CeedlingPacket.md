@@ -1387,44 +1387,98 @@ Ceedling and CMock are advanced tools that both perform fairly sophisticated
 parsing.
 
 However, neither of these tools fully understands the entire C language,
-especially C's preprocessing statements.
+especially C’s preprocessing statements.
 
-If your test files rely on macros and `#ifdef` conditionals, there’s a
-chance that Ceedling will break on trying to process your test files, or,
-alternatively, your test suite will build but not execute as expected.
+If your test files rely on macros and `#ifdef` conditionals used in certain
+ways (see examples below), there’s a chance that Ceedling will break on trying
+to process your test files, or, alternatively, your test suite will build but 
+not execute as expected.
 
 Similarly, generating mocks of header files with macros and `#ifdef`
-conditionals can get weird. It’s often in sophisticated projects with complex 
-header files that mocking is most desired in the first place.
+conditionals around or in function signatures can get weird. Of course, it’s 
+often in sophisticated projects with complex header files that mocking is most 
+desired in the first place.
 
-Ceedling includes an optional ability to preprocess test files and header files
-before executing any operations on them. See the `:project` ↳
-`:use_test_preprocessor` project configuration setting.
+Ceedling includes an optional ability to preprocess test files and/or mockable
+header files before executing any parsing operations on them. See the 
+[`:project` ↳ `:use_test_preprocessor`][project-settings] project configuration setting.
 
 This Ceedling feature uses `gcc`’s preprocessing mode and the `cpp` preprocessor 
-tool to strip down / expand test files and headers to their applicable content 
-which can then be processed by Ceedling and CMock. These tools must be in your 
+tool to strip down / expand test files and headers to their raw code content 
+that can then be processed by Ceedling and CMock. These tools must be in your 
 search path if Ceedling’s preprocessing is enabled.
 
 **Ceedling’s features are directly tied to the features and output of `gcc` and 
 `cpp`. The default Ceedling tool definitions for these should not be redefined 
-for other toolchains. It is highly unlikely to work for you.**
+for other toolchains. It is highly unlikely to work for you. Future features will
+allow for a plugin-style ability to use your own tools in this highly specialized
+capacity.**
+
+[project-settings]: #project-global-project-settings
 
 #### Preprocessing of your test files
 
 When preprocessing is enabled for test files, Ceedling will expand preprocessor
 statements in test files before generating test runners from them.
 
-**_Note:_** Conditional directives _inside_ test case functions do not require 
-Ceedling’s preprocessing ability. Assuming your code is correct, the C 
-preprocessor within your toolchain will do the right thing.
+**_Note:_** Conditional directives _inside_ test case functions generally do 
+not require Ceedling’s test preprocessing ability. Assuming your code is correct,
+the C preprocessor within your toolchain will do the right thing for you
+in your test build.
 
 Test file preprocessing by Ceedling is applicable primarily when conditional
 preprocessor directives generate the `#include` statements for your test file
 and/or enclose full test case functions. Ceedling will not be able to properly
 discover your `#include` statements and test case functions unless they are
-plainly available in an expanded version of your test file. Ceedling’s
-preprocessing abilities provide that expansion.
+plainly available in an expanded, raw code version of your test file. 
+Ceedling’s preprocessing abilities provide that expansion.
+
+##### Examples of when test preprocessing **_is_** needed for test files
+
+Generally, test preprocessing is needed when:
+
+1. `#include` statements are obscured by macros
+1. `#include` statements are conditionally present due to `#ifdef` statements
+1. Test case function signatures are obscured by macros
+1. Test case function signatures are conditionaly present due to `#ifdef` statements
+
+```c
+// #include conventions are not recognized for anything except #include "..." statements
+INCLUDE_STATEMENT_MAGIC("header_file")
+
+// Test file scanning will always see this #include statement
+#ifdef BUILD_VARIANT_A
+#include "mock_FooBar.h"
+#endif
+
+// Test runner generation scanning will see the test case function signature and think this test case exists in every build variation
+#ifdef MY_SUITE_BUILD
+void test_some_test_case(void) {
+   TEST_ASSERT_EQUALS(...);
+}
+#endif
+
+// Test runner generation will not recognize this as a test case when scanning the file
+void TEST_CASE_MAGIC("foo_bar_case") {
+   TEST_ASSERT_EQUALS(...);
+}
+```
+
+##### Examples of when test preprocessing is **_not_** needed for test files
+
+```c
+// Code inside a test case is simply code that your toolchain will expand and build as you desire
+// You can manage your compile time symbols with the :defines section of your project configuration file
+void test_some_test_case(void) {
+#ifdef BUILD_VARIANT_A
+   TEST_ASSERT_EQUALS(...);
+#endif
+
+#ifdef BUILD_VARIANT_B
+   TEST_ASSERT_EQUALS(...);
+#endif
+}
+```
 
 #### Preprocessing of mockable header files
 
@@ -1433,14 +1487,57 @@ statements in header files before generating mocks from them. CMock requires
 a clear look at function definitions and types in order to do its work.
 
 Header files with preprocessor directives and conditional macros can easily
-obscure details from CMock’s simplisitic C parser. Advanced C projects tend
+obscure details from CMock’s limited C parser. Advanced C projects tend
 to rely on preprocessing directives and macros to accomplish everything from
 build variants to OS calls to register access to managing proprietary language
 extensions.
 
-Mocking is often most useful in complicated code bases. As such Ceedling’s 
+Mocking is often most useful in complicated codebases. As such Ceedling’s 
 preprocessing abilities tend to be quite necessary to properly expand header
 files so CMock can parse them.
+
+##### Examples of when test preprocessing **_is_** needed for mockable headers
+
+Generally, test preprocessing is needed when:
+
+1. Function signatures are obscured by macros
+1. Function signatures are conditionaly present due to `#ifdef` statements
+1. Macros expand to become function decorators, return types, or parameters 
+
+**_Important Notes:_**
+
+* Sometimes CMock’s parsing features can be configured to handle scenarios
+  that fall within (3) above. CMock can match and remove most text strings,
+  match and replace certain text strings, map custom types to mockable 
+  alternatives, and be extended with a Unity helper to handle complex and 
+  compound types. See [CMock]’s documentation for more.
+
+* Test preprocessing causes any macros or symbols in a mockable header to 
+  “disappear” in the generated mock. It’s quite common to have needed symbols
+  or macros in a header file that do not directly impact the function 
+  signatures to be mocked. This can break compilation of your test suite.
+
+  Possible solutions to this problem include:
+
+   1. Move symbols and macros in your header file that do not impact function 
+      signatures to another source header file that will not be filtered
+      by Ceedling’s header file preprocessing.
+   1. If (1) is not possible, you may duplicate the needed symbols and macros
+      in a header file that is only available in your test build search paths
+      and include it in your test file.
+
+```c
+// Header file scanning will see this function signature but mistakenly mock the name of the macro
+void FUNCTION_SIGNATURE_MAGIC(...);
+
+// Header file scanning will always see this function signature
+#ifdef BUILD_VARIANT_A
+unsigned int someFunction(void);
+#endif
+
+// Header file scanning will either fail for this function signature or extract erroneous type names
+INLINE_MAGIC RETURN_TYPE_MAGIC someFunction(PARAMETER_MAGIC);
+```
 
 ### Execution time (duration) reporting in Ceedling operations & test suites
 
@@ -2407,7 +2504,7 @@ migrated to the `:test_build` and `:release_build` sections.
       - test:all
       - release
   ```
-  **Default**: ['test:all']
+  **Default**: `['test:all']`
 
   [command-line]: #now-what-how-do-i-make-it-go-the-command-line
 
