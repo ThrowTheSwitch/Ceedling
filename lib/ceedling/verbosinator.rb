@@ -11,7 +11,12 @@ class Verbosinator
 
   def should_output?(level)
     # Rely on global constant created at early stages of command line processing
-    return (!defined?(PROJECT_VERBOSITY)) || (level <= PROJECT_VERBOSITY)
+
+    if !defined?(PROJECT_VERBOSITY)
+      return (level <= Verbosity::NORMAL)
+    end
+
+    return (level <= PROJECT_VERBOSITY)
   end
 
 end
