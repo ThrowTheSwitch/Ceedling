@@ -16,6 +16,7 @@ describe "Ceedling" do
   end
 
   after :all do
+    FileUtils.rm_rf( 'GIT_COMMIT_SHA' )
     @c.done!
   end
 
@@ -24,11 +25,14 @@ describe "Ceedling" do
 
   describe "deployed as a gem" do
     before do
+      FileUtils.rm_rf( 'GIT_COMMIT_SHA' )
       @c.with_context do
         `bundle exec ruby -S ceedling new #{@proj_name} 2>&1`
       end
     end
 
+    it { can_report_version_no_git_commit_sha }
+    it { can_report_version_with_git_commit_sha }
     it { can_create_projects }
     it { does_not_contain_a_vendor_directory }
     it { can_fetch_non_project_help }

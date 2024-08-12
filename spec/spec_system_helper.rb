@@ -172,6 +172,29 @@ class SystemContext
 end
 
 module CeedlingTestCases
+  def can_report_version_no_git_commit_sha
+    @c.with_context do
+      # Version without Git commit short SHA file in project
+      output = `bundle exec ruby -S ceedling version 2>&1`
+      expect($?.exitstatus).to match(0)
+      expect(output).to match(/Ceedling => \d\.\d\.\d\n/)
+    end
+  end
+
+  def can_report_version_with_git_commit_sha
+    # Version with Git commit short SHA file in root of project
+    # Creating the commit file before building + installing the gem simulates the CI process
+    File.open('GIT_COMMIT_SHA', 'w') do |f|
+      f << '---{-@'
+    end
+
+    @c.with_context do
+      output = `bundle exec ruby -S ceedling version 2>&1`
+      expect($?.exitstatus).to match(0)
+      expect(output).to match(/Ceedling => \d\.\d\.\d----{-@\n/)
+    end
+  end
+
   def can_create_projects
     @c.with_context do
       Dir.chdir @proj_name do
@@ -520,7 +543,7 @@ module CeedlingTestCases
 
         output = `bundle exec ruby -S ceedling test:adc_hardwareB 2>&1`
         expect($?.exitstatus).to match(1) # Failing build because of missing mock
-        expect(output).to match(/(undefined|implicit).+Adc_Reset/)
+        expect(output).to match(/(undeclared|undefined|implicit).+Adc_Reset/)
       end
     end
   end

@@ -16,6 +16,8 @@ describe "Ceedling" do
   end
 
   after :all do
+    # Ensure version commit file is cleaned up
+    FileUtils.rm_rf( 'GIT_COMMIT_SHA' )
     @c.done!
   end
 
@@ -24,11 +26,15 @@ describe "Ceedling" do
 
   describe "deployed in a project's `vendor` directory." do
     before do
+      # Ensure version commit file is cleaned up
+      FileUtils.rm_rf( 'GIT_COMMIT_SHA' )
       @c.with_context do
         `bundle exec ruby -S ceedling new --local --docs #{@proj_name} 2>&1`
       end
     end
 
+    it { can_report_version_no_git_commit_sha }
+    it { can_report_version_with_git_commit_sha }
     it { can_create_projects }
     it { contains_a_vendor_directory }
     it { contains_documentation }
