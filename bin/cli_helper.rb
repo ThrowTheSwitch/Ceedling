@@ -97,6 +97,7 @@ class CliHelper
 
     # If we're launching from the gem, return :gem and initial Rakefile path
     if which_ceedling == :gem
+      @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
       return which_ceedling, app_cfg[:ceedling_rakefile_filepath]
     end
 
@@ -118,7 +119,7 @@ class CliHelper
     # Update variable to full application start path
     ceedling_path = app_cfg[:ceedling_rakefile_filepath]
     
-    @loginator.log( " > Launching Ceedling from #{ceedling_path}/", Verbosity::OBNOXIOUS )
+    @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
 
     return :path, ceedling_path
   end
@@ -392,7 +393,11 @@ class CliHelper
     components.each do |path|
       _src = path
       _dest = File.join( vendor_path, path )
-      @actions._directory( _src, _dest, :force => true )
+      # Copy entire directory, filter out any junk files
+      @actions._directory(
+        _src, _dest,
+        :force => true
+      )
     end
 
     # Add licenses from Ceedling and supporting projects

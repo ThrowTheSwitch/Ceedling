@@ -96,7 +96,7 @@ module PermissiveCLI
     # Handle `help` for an argument that is not an application command such as `new` or `build`
     if _args[0].downcase() == 'help'
 
-      # Raise ftal StandardError to differentiate from UndefinedCommandError
+      # Raise fatal StandardError to differentiate from UndefinedCommandError
       msg = "Argument '#{_args[1]}' is not a recognized application command with detailed help. " +
             "It may be a build / plugin task without detailed help or simply a goof."
       raise( msg )
@@ -365,7 +365,7 @@ module CeedlingTasks
 
       Notes on Optional Flags:
 
-      * #{LONGDOC_MIXIN_FLAG}
+      • #{LONGDOC_MIXIN_FLAG}
       LONGDESC
     ) )
     def environment()
@@ -435,10 +435,33 @@ module CeedlingTasks
     end
 
 
-    desc "version", "Display version details of app components (also `--version` or `-v`)"
-    # No long_desc() needed
+    desc "version", "Display version details of Ceedling components"
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling version` displays the version details of Ceedling and its supporting
+      frameworks along with Ceedling’s installation and launch paths.
+
+      Ceedling contains launcher and application components. The launcher
+      handles set up, loading your project configuration, and processing your
+      command line. The application runs your build and plugin tasks. The
+      launcher hands off to the application. The two components are not
+      necessarily from the same installation or of the same version. Local
+      vendoring options, the WHICH_CEEDLING environment variable, and more can
+      cause the Ceedling launcher to load a Ceedling application that is run
+      from a different path than the launcher.
+
+      If the launcher and application are from different locations, the version
+      command lists both. If they are from the same location, only a single
+      Ceedling version is provided.
+
+      NOTES:
+      • `version` does not load your project file.
+      • The build frameworks Unity, CMock, and CException are always sourced from
+      the Ceedling application.
+      LONGDESC
+    ) )
     def version()
-      @handler.version( @app_cfg[:ceedling_root_path] )
+      @handler.version( ENV, @app_cfg )
     end
 
   end

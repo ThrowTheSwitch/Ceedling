@@ -107,7 +107,7 @@ begin
 
   # Command line filtering hacks
   #  - Backwards compatibility to silently preserve Rake `-T` CLI handling
-  #  - Add in common `--version` or `-v` version handling
+  #  - Add in common `--version` or `-v` version alias handling
   # Note: This `if` logic is necessary to ensure any other argument lists of size 1 end up with Thor
   if (ARGV.size() == 1) and (ARGV[0] == '-T' or ARGV[0] == '--version' or ARGV[0] == '-v')
     case ARGV[0]
@@ -117,7 +117,7 @@ begin
 
     when '--version', '-v'
       # Call Ceedling's version handler directly
-      objects[:cli_handler].version( CEEDLING_APPCFG[:ceedling_root_path] )
+      objects[:cli_handler].version( ENV, CEEDLING_APPCFG )
     end      
 
   # Run command line args through Thor (including "naked" Rake tasks)

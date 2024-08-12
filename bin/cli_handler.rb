@@ -197,6 +197,23 @@ class CliHandler
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
+    # Log Ceedling Application version information
+    _version = Versionator.new(
+      app_cfg[:ceedling_root_path],
+      app_cfg[:ceedling_vendor_path]
+    )
+
+    version = <<~VERSION
+    Application & Build Frameworks
+       Ceedling => #{_version.ceedling_build}
+          CMock => #{_version.cmock_tag}
+          Unity => #{_version.unity_tag}
+     CException => #{_version.cexception_tag}
+    VERSION
+
+    @loginator.log( '', Verbosity::OBNOXIOUS )
+    @loginator.log( version, Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT )
+
     @helper.load_ceedling( 
       config: config,
       rakefile_path: path,
@@ -351,18 +368,64 @@ class CliHandler
   end
 
 
-  def version(ceedling_root_path)
-    # We only need Versionator here
-    versionator = Versionator.new( ceedling_root_path )
+  def version(env, app_cfg)
+    # Versionator is not needed to persist. So, it's not built in the DIY collection.
 
-    version = <<~VERSION
-    Welcome to Ceedling!
+    @helper.set_verbosity() # Default to normal
 
-       Ceedling => #{versionator.ceedling_build}
-          CMock => #{versionator.cmock_tag}
-          Unity => #{versionator.unity_tag}
-     CException => #{versionator.cexception_tag}
-    VERSION
+    # Ceedling bootloader
+    launcher = Versionator.new( app_cfg[:ceedling_root_path] )
+
+    # This call updates Ceedling paths in app_cfg if which Ceedling has been modified
+    @helper.which_ceedling?( env:env, app_cfg:app_cfg )
+
+    # Ceedling application
+    application = Versionator.new(
+      app_cfg[:ceedling_root_path],
+      app_cfg[:ceedling_vendor_path]
+    )
+
+    # Blank Ceedling version block to be built out conditionally below
+    ceedling = nil
+
+    # A simple Ceedling version block because launcher and application are the same
+    if launcher.ceedling_install_path == application.ceedling_install_path
+      ceedling = <<~CEEDLING
+      Ceedling => #{application.ceedling_build}
+      ----------------------
+      #{application.ceedling_install_path}
+      CEEDLING
+
+    # Full Ceedling version block because launcher and application are not the same
+    else
+      ceedling = <<~CEEDLING
+      Ceedling Launcher => #{launcher.ceedling_build}
+      ----------------------
+      #{launcher.ceedling_install_path}
+
+      Ceedling App => #{application.ceedling_build}
+      ----------------------
+      #{application.ceedling_install_path}
+      CEEDLING
+    end
+
+    build_frameworks = <<~BUILD_FRAMEWORKS
+    Build Frameworks
+    ----------------------
+         CMock => #{application.cmock_tag}
+         Unity => #{application.unity_tag}
+    CException => #{application.cexception_tag}
+    BUILD_FRAMEWORKS
+
+    # Assemble version details
+    version = ceedling + "\n" + build_frameworks
+
+    # Add some indent
+    version = version.split( "\n" ).map {|line| '  ' + line}.join( "\n" )
+
+    # Add a header
+    version = "Welcome to Ceedling!\n\n" + version
+
     @loginator.log( version, Verbosity::NORMAL, LogLabels::TITLE )
   end
 
