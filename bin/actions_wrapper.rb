@@ -13,9 +13,17 @@ class ActionsWrapper
   include Thor::Base
   include Thor::Actions
 
+  JUNK_FILE_EXCLUDE_REGEX = 
+
   # Most important mixin method is Thor::Actions class method `source_root()` we call externally
 
   def _directory(src, *args)
+    # Insert exclusion of macOS and Windows preview junk files if an exclude pattern is not present
+    # Thor's use of args is an array of call arguments, some of which can be single key/value hash options
+    if !args.any? {|h| h.class != Hash ? false : !h[:exclude_pattern].nil?}
+      args << {:exclude_pattern => /(\.DS_Store)|(thumbs\.db)/}
+    end
+
     directory( src, *args )
   end
 
