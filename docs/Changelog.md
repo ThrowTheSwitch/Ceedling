@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-07-26
+# [1.0.0 pre-release] — 2024-08-12
 
 ## 🌟 Added
 
@@ -125,15 +125,22 @@ Ceedling logging now optionally includes emoji and nice Unicode characters. Ceed
 
 The application commands `ceedling new` and `ceedling upgrade` at the command line provide project creation and management functions. Optionally, these commands can vendor tools and libraries locally alongside your project. These vendoring options now include license files along with the source of the vendored tools and libraries.
 
-### Git Commit Short SHA in Ceedling version
+### Additional details in Ceedling version output
+
+`ceedling version` output now includes the Git Commit short SHA in Ceedling’s build identifier and Ceedling’s path of origin.
 
 ```
 🌱 Welcome to Ceedling!
 
-   Ceedling => #.#.#-<Short SHA>
-      CMock => #.#.#
-      Unity => #.#.#
- CException => #.#.#
+  Ceedling => #.#.#-<Short SHA>
+  ----------------------
+  <Ceedling path>
+
+  Build Frameworks
+  ----------------------
+       CMock => #.#.#
+       Unity => #.#.#
+  CException => #.#.#
 ```
 
 If the information is unavailable such as in local development, the SHA is omitted.

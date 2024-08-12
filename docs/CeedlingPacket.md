@@ -128,7 +128,13 @@ It's just all mixed together.
 1. **[Important Conventions & Behaviors][packet-section-8]**
 
    Much of what Ceedling accomplishes — particularly in testing — is by convention. 
-   Code and files structured in certain ways trigger sophisticated Ceedling features. 
+   Code and files structured and named in certain ways trigger sophisticated 
+   Ceedling build features.
+
+   This section covers essential high-level behaviors and features including how to 
+   work with search paths, directory structures & file extensions, release build 
+   binary artifacts, build time logging, and Ceedling’s abilities to preprocess 
+   certain code files before they are incorporated into a test build.
 
 1. **[Using Unity, CMock & CException][packet-section-9]**
 
@@ -1379,9 +1385,9 @@ A test case function signature must have these elements:
 In other words, a test function signature should look like this: 
 `void test<any_name_you_like>(void)`.
 
-### Preprocessing behavior for tests
+## Preprocessing behavior for tests
 
-# Preprocessing feature background and overview
+### Preprocessing feature background and overview
 
 Ceedling and CMock are advanced tools that both perform fairly sophisticated
 parsing.
@@ -1399,24 +1405,25 @@ conditionals around or in function signatures can get weird. Of course, it’s
 often in sophisticated projects with complex header files that mocking is most 
 desired in the first place.
 
-Ceedling includes an optional ability to preprocess test files and/or mockable
-header files before executing any parsing operations on them. See the 
-[`:project` ↳ `:use_test_preprocessor`][project-settings] project configuration setting.
+Ceedling includes an optional ability to preprocess test files, mockable header 
+files, or both before executing any parsing operations on them. See the 
+[`:project` ↳ `:use_test_preprocessor`][project-settings] project configuration
+setting.
 
 This Ceedling feature uses `gcc`’s preprocessing mode and the `cpp` preprocessor 
 tool to strip down / expand test files and headers to their raw code content 
 that can then be processed by Ceedling and CMock. These tools must be in your 
 search path if Ceedling’s preprocessing is enabled.
 
-**Ceedling’s features are directly tied to the features and output of `gcc` and 
-`cpp`. The default Ceedling tool definitions for these should not be redefined 
-for other toolchains. It is highly unlikely to work for you. Future features will
-allow for a plugin-style ability to use your own tools in this highly specialized
-capacity.**
+**Ceedling’s test preprocessing abilities are directly tied to the features and 
+output of `gcc` and `cpp`. The default Ceedling tool definitions for these should 
+not be redefined for other toolchains. It is highly unlikely to work for you. 
+Future Ceedling improvements will allow for a plugin-style ability to use your 
+own tools in this highly specialized capacity.**
 
 [project-settings]: #project-global-project-settings
 
-#### Preprocessing of your test files
+### Preprocessing of your test files
 
 When preprocessing is enabled for test files, Ceedling will expand preprocessor
 statements in test files before generating test runners from them.
@@ -1433,7 +1440,7 @@ discover your `#include` statements and test case functions unless they are
 plainly available in an expanded, raw code version of your test file. 
 Ceedling’s preprocessing abilities provide that expansion.
 
-##### Examples of when test preprocessing **_is_** needed for test files
+#### Examples of when test preprocessing **_is_** needed for test files
 
 Generally, test preprocessing is needed when:
 
@@ -1445,26 +1452,29 @@ Generally, test preprocessing is needed when:
 ```c
 // #include conventions are not recognized for anything except #include "..." statements
 INCLUDE_STATEMENT_MAGIC("header_file")
-
+```
+```c
 // Test file scanning will always see this #include statement
 #ifdef BUILD_VARIANT_A
 #include "mock_FooBar.h"
 #endif
-
+```
+```c
 // Test runner generation scanning will see the test case function signature and think this test case exists in every build variation
 #ifdef MY_SUITE_BUILD
 void test_some_test_case(void) {
    TEST_ASSERT_EQUALS(...);
 }
 #endif
-
+```
+```c
 // Test runner generation will not recognize this as a test case when scanning the file
 void TEST_CASE_MAGIC("foo_bar_case") {
    TEST_ASSERT_EQUALS(...);
 }
 ```
 
-##### Examples of when test preprocessing is **_not_** needed for test files
+#### Examples of when test preprocessing is **_not_** needed for test files
 
 ```c
 // Code inside a test case is simply code that your toolchain will expand and build as you desire
@@ -1480,7 +1490,7 @@ void test_some_test_case(void) {
 }
 ```
 
-#### Preprocessing of mockable header files
+### Preprocessing of mockable header files
 
 When preprocessing is enabled for mocking, Ceedling will expand preprocessor 
 statements in header files before generating mocks from them. CMock requires
@@ -1496,7 +1506,7 @@ Mocking is often most useful in complicated codebases. As such Ceedling’s
 preprocessing abilities tend to be quite necessary to properly expand header
 files so CMock can parse them.
 
-##### Examples of when test preprocessing **_is_** needed for mockable headers
+#### Examples of when test preprocessing **_is_** needed for mockable headers
 
 Generally, test preprocessing is needed when:
 
@@ -1529,19 +1539,23 @@ Generally, test preprocessing is needed when:
 ```c
 // Header file scanning will see this function signature but mistakenly mock the name of the macro
 void FUNCTION_SIGNATURE_MAGIC(...);
+```
 
+```c
 // Header file scanning will always see this function signature
 #ifdef BUILD_VARIANT_A
 unsigned int someFunction(void);
 #endif
+```
 
+```c
 // Header file scanning will either fail for this function signature or extract erroneous type names
 INLINE_MAGIC RETURN_TYPE_MAGIC someFunction(PARAMETER_MAGIC);
 ```
 
-### Execution time (duration) reporting in Ceedling operations & test suites
+## Execution time (duration) reporting in Ceedling operations & test suites
 
-#### Ceedling’s logged run times
+### Ceedling’s logged run times
 
 Ceedling logs two execution times for every project run.
 
@@ -1560,7 +1574,7 @@ you specify at the command line.
 🌱 Ceedling operations completed in 1.03 seconds
 ```
 
-#### Ceedling test suite and Unity test executable run durations
+### Ceedling test suite and Unity test executable run durations
 
 A test suite comprises one or more Unity test executables (see 
 [Anatomy of a Test Suite][anatomy-test-suite]). Ceedling times indvidual Unity 
@@ -1587,7 +1601,7 @@ a in a comparable single-threaded build.
 
 [anatomy-test-suite]: #anatomy-of-a-test-suite
 
-#### Unity test case run times
+### Unity test case run times
 
 Individual test case exection time tracking is specifically a [Unity] feature 
 (see its documentation for more details). If enabled and if your platform 
