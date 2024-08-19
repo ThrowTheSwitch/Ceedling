@@ -193,7 +193,7 @@ class CliHandler
     )
 
     # Enable setup / operations duration logging in Rake context
-    app_cfg.set_stopwatch( @helper.process_stopwatch( tasks:tasks, default_tasks:default_tasks ) )
+    app_cfg.set_build_tasks( @helper.build_or_plugin_task?( tasks:tasks, default_tasks:default_tasks ) )
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
@@ -393,7 +393,7 @@ class CliHandler
       ceedling = <<~CEEDLING
       Ceedling => #{application.ceedling_build}
       ----------------------
-      #{application.ceedling_install_path}
+      #{application.ceedling_install_path + '/'}
       CEEDLING
 
     # Full Ceedling version block because launcher and application are not the same
@@ -401,11 +401,11 @@ class CliHandler
       ceedling = <<~CEEDLING
       Ceedling Launcher => #{launcher.ceedling_build}
       ----------------------
-      #{launcher.ceedling_install_path}
+      #{launcher.ceedling_install_path + '/'}
 
       Ceedling App => #{application.ceedling_build}
       ----------------------
-      #{application.ceedling_install_path}
+      #{application.ceedling_install_path + '/'}
       CEEDLING
     end
 

@@ -65,7 +65,7 @@ begin
   @ceedling[:setupinator].do_setup( CEEDLING_APPCFG )
 
   setup_done = SystemWrapper.time_stopwatch_s()
-  log_runtime( 'set up', start_time, setup_done, CEEDLING_APPCFG[:stopwatch] )
+  log_runtime( 'set up', start_time, setup_done, CEEDLING_APPCFG.build_tasks? )
 
   # Configure high-level verbosity
   unless defined?(PROJECT_DEBUG) and PROJECT_DEBUG
@@ -90,7 +90,7 @@ begin
   start_time = SystemWrapper.time_stopwatch_s()
 
   # Tell all our plugins we're about to do something
-  @ceedling[:plugin_manager].pre_build
+  @ceedling[:plugin_manager].pre_build if CEEDLING_APPCFG.build_tasks?
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
@@ -100,10 +100,8 @@ rescue StandardError => ex
 end
 
 def test_failures_handler()
-  graceful_fail = CEEDLING_APPCFG[:tests_graceful_fail]
-
   # $stdout test reporting plugins store test failures
-  exit(1) if @ceedling[:plugin_manager].plugins_failed? && !graceful_fail
+  exit(1) if @ceedling[:plugin_manager].plugins_failed? && !CEEDLING_APPCFG.tests_graceful_fail?
 end
 
 # End block always executed following rake run
@@ -111,22 +109,20 @@ END {
   $stdout.flush unless $stdout.nil?
   $stderr.flush unless $stderr.nil?
 
-  # Cache our input configurations to use in comparison upon next execution
-  @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash )    if (@ceedling[:task_invoker].test_invoked?)
-  @ceedling[:cacheinator].cache_release_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].release_invoked?)
-
   # Only perform these final steps if we got here without runtime exceptions or errors
-  if (@ceedling[:application].build_succeeded?)
+  if @ceedling[:application].build_succeeded?
     # Tell all our plugins the build is done and process results
     begin
-      @ceedling[:plugin_manager].post_build
-      @ceedling[:plugin_manager].print_plugin_failures
+      if CEEDLING_APPCFG.build_tasks?
+        @ceedling[:plugin_manager].post_build
+        @ceedling[:plugin_manager].print_plugin_failures
+      end
       ops_done = SystemWrapper.time_stopwatch_s()
-      log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
+      log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )
       test_failures_handler() if (@ceedling[:task_invoker].test_invoked? || @ceedling[:task_invoker].invoked?(/^gcov:/))
     rescue => ex
       ops_done = SystemWrapper.time_stopwatch_s()
-      log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG[:stopwatch] )
+      log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )
       boom_handler( @ceedling[:loginator], ex )
       exit(1)
     end
@@ -136,7 +132,7 @@ END {
     msg = "Ceedling could not complete operations because of errors"
     @ceedling[:loginator].log( msg, Verbosity::ERRORS, LogLabels::TITLE )
     begin
-      @ceedling[:plugin_manager].post_error
+      @ceedling[:plugin_manager].post_error if CEEDLING_APPCFG.build_tasks?
     rescue => ex
       boom_handler( @ceedling[:loginator], ex)
     ensure

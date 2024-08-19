@@ -195,10 +195,15 @@ class CliHelper
   end
 
 
-  def process_stopwatch(tasks:, default_tasks:)
+  # TODO: This is a hack until Rake is fully removed and plugin/build tasks incorporate a purpose classification
+  def build_or_plugin_task?(tasks:, default_tasks:)
     _tasks = tasks.empty?() ? default_tasks.dup() : tasks.dup()
 
-    # Namespace-less (clobber, clean, etc.), files:, and paths: tasks should not have stopwatch logging
+    # These namespace-less tasks are definitely build tasks
+    return true if _tasks.include?('test')
+    return true if _tasks.include?('release')
+
+    # Namespace-less (clobber, clean, etc.), files:, and paths: tasks are not build / plugin tasks
     #  1. Filter out tasks lacking a namespace
     #  2. Look for any tasks other than paths: or files:
     _tasks.select! {|t| t.include?( ':') }
@@ -237,7 +242,7 @@ class CliHelper
                 end
 
     # If we already set verbosity, there's nothing more to do here
-    return if Object.const_defined?('PROJECT_VERBOSITY')
+    return verbosity if Object.const_defined?('PROJECT_VERBOSITY')
 
     # Create global constant PROJECT_VERBOSITY
     Object.module_eval("PROJECT_VERBOSITY = verbosity")
