@@ -129,12 +129,12 @@ It's just all mixed together.
 
    Much of what Ceedling accomplishes — particularly in testing — is by convention. 
    Code and files structured and named in certain ways trigger sophisticated 
-   Ceedling build features.
+   Ceedling build features. This section explains all such conventions.
 
-   This section covers essential high-level behaviors and features including how to 
-   work with search paths, directory structures & file extensions, release build 
-   binary artifacts, build time logging, and Ceedling’s abilities to preprocess 
-   certain code files before they are incorporated into a test build.
+   This section also covers essential high-level behaviors and features including 
+   how to work with search paths, directory structures & file extensions, release 
+   build binary artifacts, build time logging, and Ceedling’s abilities to 
+   preprocess certain code files before they are incorporated into a test build.
 
 1. **[Using Unity, CMock & CException][packet-section-9]**
 
@@ -1564,14 +1564,14 @@ files, build an internal representation of your project, etc. This duration does
 not capture the time necessary to load the Ruby runtime itself.
 
 ```
-🌱 Ceedling set up completed in 223 milliseconds
+Ceedling set up completed in 223 milliseconds
 ```
 
 Secondly, each Ceedling run also logs the time necessary to run all the tasks 
 you specify at the command line.
 
 ```
-🌱 Ceedling operations completed in 1.03 seconds
+Ceedling operations completed in 1.03 seconds
 ```
 
 ### Ceedling test suite and Unity test executable run durations
