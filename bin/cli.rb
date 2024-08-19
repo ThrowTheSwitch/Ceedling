@@ -439,7 +439,7 @@ module CeedlingTasks
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
       `ceedling version` displays the version details of Ceedling and its supporting
-      frameworks along with Ceedling’s installation and launch paths.
+      frameworks along with Ceedling’s installation paths.
 
       Ceedling contains launcher and application components. The launcher
       handles set up, loading your project configuration, and processing your
@@ -451,11 +451,13 @@ module CeedlingTasks
       from a different path than the launcher.
 
       If the launcher and application are from different locations, the version
-      command lists both. If they are from the same location, only a single
-      Ceedling version is provided.
+      output lists details for both. If they are from the same location, only a 
+      single Ceedling version is provided.
 
       NOTES:
+
       • `version` does not load your project file.
+
       • The build frameworks Unity, CMock, and CException are always sourced from
       the Ceedling application.
       LONGDESC
