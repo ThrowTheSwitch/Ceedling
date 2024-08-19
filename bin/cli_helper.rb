@@ -231,6 +231,9 @@ class CliHelper
 
   # Set global consts for verbosity and debug
   def set_verbosity(verbosity=nil)
+    # If we have already set verbosity, there's nothing to do here
+    return PROJECT_VERBOSITY if @system_wrapper.constants_include?('PROJECT_VERBOSITY')
+
     verbosity = if verbosity.nil?
                   Verbosity::NORMAL
                 elsif verbosity.to_i.to_s == verbosity
@@ -240,9 +243,6 @@ class CliHelper
                 else
                   raise "Unkown Verbosity '#{verbosity}' specified"
                 end
-
-    # If we already set verbosity, there's nothing more to do here
-    return verbosity if Object.const_defined?('PROJECT_VERBOSITY')
 
     # Create global constant PROJECT_VERBOSITY
     Object.module_eval("PROJECT_VERBOSITY = verbosity")
