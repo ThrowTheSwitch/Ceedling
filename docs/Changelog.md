@@ -334,7 +334,7 @@ The previous command line of `ceedling verbosity[4] test:all release` or `ceedli
 * `ceedling --verbosity=obnoxious test:all release`
 * `ceedling -v 4 test:all release`
 
-Note that in the above list Ceedling is actually executing as though `ceedling build <args>` were entered at the command line. It is entirely acceptable to use the full form. The above list is provided as its form is the simplest to enter and consistent with previous versions of Ceedling.
+Note: In the above list Ceedling is actually executing as though `ceedling build <args>` were entered at the command line. It is entirely acceptable to use the full form. The above list is provided as its form is the simplest to enter and consistent with the command line conventions of previous Ceedling versions.
 
 ### `options:` tasks have been removed
 
@@ -342,20 +342,20 @@ Options files were a simple but limited way to merge configuration with your bas
 
 ### `:import` project configuration section is no longer supported
 
-The `:import` project configuration section was a simple but limited way to merge configuration with your base configuration. This feature has been superseded by Ceedling Mixins.
+The `:import` project configuration section was a simple but limited way to merge configuration with your base configuration. This feature has been superseded by all new and more powerful Ceedling Mixins.
 
 ### Test suite smart rebuilds have been temporarily removed
 
-All “smart” rebuild features built around Rake no longer exist. That is, incremental test suite builds for only changed files are no longer possible. Any test build is a full rebuild of its components (the speed increase due to parallel build tasks more than makes up for this).
+All “smart” test suite rebuild features built around Rake no longer exist. That is, incremental test suite builds for only changed files are no longer possible. Any test build is a full rebuild of its components (the speed increase due to parallel build tasks more than makes up for this).
 
-These project configuration options related to smart builds are no longer recognized:
+These project configuration options related to smart builds are no longer recognized and likely will not return in this form:
   - `:use_deep_dependencies`
   - `:generate_deep_dependencies`
   - `:auto_link_deep_dependencies`
 
 In future revisions of Ceedling, smart rebuilds will be brought back (without relying on Rake) and without a list of possibly conflicting configuation options to control related features.
 
-Note that release builds do retain a fair amount of smart rebuild capabilities. Release builds continue to rely on Rake (for now).
+Note: Release builds do retain a fair amount of smart rebuild capabilities. Release builds continue to rely on Rake (for now).
 
 ### Temporarily removed preprocessor support for Unity’s parameterized test case macros `TEST_CASE()` and `TEST_RANGE()`
 

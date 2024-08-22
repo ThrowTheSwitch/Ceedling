@@ -2748,12 +2748,17 @@ migrated to the `:test_build` and `:release_build` sections.
      IGNORED: 0
      ```
 
-  **_Note:_** The default of `:simple` only works in an environment capable of
-  using command line arguments (passed to the test executable). If you are
-  targeting a simulator with your test executable binaries, `:simple` is
-  unlikely to work for you. In the simplest case, you may simply fall back to
-  `:none`. With some work and using Ceedling’s various features, much more 
-  sophisticated options are possible.
+  **_Notes:_**
+
+  1. The default of `:simple` only works in an environment capable of
+     using command line arguments (passed to the test executable). If you are
+     targeting a simulator with your test executable binaries, `:simple` is
+     unlikely to work for you. In the simplest case, you may simply fall back
+     to `:none`. With some work and using Ceedling’s various features, much 
+     more sophisticated options are possible.
+  1. The `:gdb` option currently only supports the native build platform. 
+     That is, the `:gdb` backtrace option cannot handle backtrace for 
+     cross-compiled code or any sort of simulator-based test fixture.
 
   **Default**: `:simple`
 
