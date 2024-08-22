@@ -234,9 +234,7 @@ DEFAULT_RELEASE_LINKER_TOOL = {
 DEFAULT_TEST_BACKTRACE_GDB_TOOL = {
   :executable => ENV['GDB'].nil? ? FilePathUtils.os_executable_ext('gdb').freeze : ENV['GDB'],
   :name => 'default_test_backtrace_gdb'.freeze,
-  # Must be optional because validation is contingent on backtrace configuration.
-  # (Don't break a build if `gdb` is unavailable but backtrace does not require it.)
-  :optional => true.freeze,
+  :optional => false.freeze,
   :arguments => [
     '-q'.freeze,
     '--batch'.freeze,
@@ -253,8 +251,13 @@ DEFAULT_TOOLS_TEST = {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
     :test_linker   => DEFAULT_TEST_LINKER_TOOL,
     :test_fixture  => DEFAULT_TEST_FIXTURE_TOOL,
-    :test_fixture_simple_backtrace => DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL,
-    :test_backtrace_gdb => DEFAULT_TEST_BACKTRACE_GDB_TOOL,
+    :test_fixture_simple_backtrace => DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL
+    }
+  }
+
+DEFAULT_TOOLS_TEST_GDB_BACKTRACE = {
+  :tools => {
+    :test_backtrace_gdb => DEFAULT_TEST_BACKTRACE_GDB_TOOL
     }
   }
 

@@ -171,14 +171,6 @@ class ConfiguratorSetup
       valid &= @configurator_validator.validate_tool( config:config, key:tool )
     end
 
-    if config[:project][:use_backtrace] == :gdb
-      valid &= @configurator_validator.validate_tool(
-        config:config,
-        key: :test_backtrace_gdb,
-        respect_optional: false
-      )
-    end
-
     return valid
   end
 

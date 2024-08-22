@@ -92,18 +92,43 @@ class Configurator
     msg = @reportinator.generate_progress( 'Collecting default tool configurations' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-    # config[:project] is guaranteed to exist / validated to exist
+    # config[:project] is guaranteed to exist / validated to exist but may not include elements referenced below
     # config[:test_build] and config[:release_build] are optional in a user project configuration
-    release_assembly, _ = @config_walkinator.fetch_value( :release_build, :use_assembly, hash:config, default:false )
-    test_assembly, _ = @config_walkinator.fetch_value( :test_build, :use_assembly, hash:config, default:false)
+
+
+    release_build, _      = @config_walkinator.fetch_value( :project, :release_build, 
+                              hash:config,
+                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:project][:release_build]
+                            )
+
+    test_preprocessing, _ = @config_walkinator.fetch_value( :project, :use_test_preprocessor,
+                              hash:config,
+                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:project][:use_test_preprocessor]
+                            )
+
+    backtrace, _          = @config_walkinator.fetch_value( :project, :use_backtrace,
+                              hash:config,
+                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:project][:use_backtrace]
+                            )
+
+    release_assembly, _   = @config_walkinator.fetch_value( :release_build, :use_assembly,
+                              hash:config,
+                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:release_build][:use_assembly]
+                            )
+
+    test_assembly, _      = @config_walkinator.fetch_value( :test_build, :use_assembly,
+                              hash:config,
+                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:test_build][:use_assembly]
+                            )
 
     default_config.deep_merge( DEFAULT_TOOLS_TEST.deep_clone() )
 
-    default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone() ) if (config[:project][:use_test_preprocessor] != :none)
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone() ) if (test_preprocessing != :none)
     default_config.deep_merge( DEFAULT_TOOLS_TEST_ASSEMBLER.deep_clone() )     if test_assembly
+    default_config.deep_merge( DEFAULT_TOOLS_TEST_GDB_BACKTRACE.deep_clone() ) if (backtrace == :gdb)
 
-    default_config.deep_merge( DEFAULT_TOOLS_RELEASE.deep_clone() )            if (config[:project][:release_build])
-    default_config.deep_merge( DEFAULT_TOOLS_RELEASE_ASSEMBLER.deep_clone() )  if (config[:project][:release_build] and release_assembly)
+    default_config.deep_merge( DEFAULT_TOOLS_RELEASE.deep_clone() )            if release_build
+    default_config.deep_merge( DEFAULT_TOOLS_RELEASE_ASSEMBLER.deep_clone() )  if (release_build and release_assembly)
   end
 
 
@@ -437,6 +462,7 @@ class Configurator
 
       # Set the environment variable for our session
       @system_wrapper.env_set( key.to_s.upcase, hash[key] )
+      @loginator.log( " - #{key.to_s.upcase}: \"#{hash[key]}\"", Verbosity::DEBUG )
     end
   end
 
