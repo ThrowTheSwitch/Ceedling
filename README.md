@@ -635,14 +635,16 @@ experimenting with project builds and running self-tests is simple.
    ```shell
    docker run -it --rm throwtheswitch/<image>:<tag>
    ```
-1. Look up the Ceedling gem’s installation path from within the container
+1. Look up the Ceedling gem’s root installation path from within the container
 
    ```shell
    dev | ~/project > gem info ceedling
    ```
+1. Look beneath the root installation path from (1) to find the specific path
+   for Ceedling (e.g. /var/lib/gems/3.1.0/gems/ceedling-1.0.0/)
 1. Exit the container
-1. Restart the container with the gem installation volume mapping and
-   any other command line options you need
+1. Restart the container with the Ceedling gem installation volume mapping 
+   from (2) and any other command line options you need
 
    ```shell
    docker run -it --rm -v /my/local/ceedling/repo:<container gem path> -v /my/local/experiment/path:/home/dev/project throwtheswitch/<image>:<tag>
