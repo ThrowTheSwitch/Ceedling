@@ -630,24 +630,24 @@ to map a volume from your local Ceedling code repository to Ceedling’s
 installation location within the container. With that accomplished, 
 experimenting with project builds and running self-tests is simple.
 
-1. Start your target Docker container
+1. Start your target Docker container from your host system terminal:
 
    ```shell
-   docker run -it --rm throwtheswitch/<image>:<tag>
+   > docker run -it --rm throwtheswitch/<image>:<tag>
    ```
-1. Look up and note Ceedling’s installation path (listed in `version` output)
+1. Look up and note Ceedling’s installation path (listed in `version` output) from within the container command line:
 
    ```shell
    dev | ~/project > ceedling version
 
 
    ```
-1. Exit the container
-1. Restart the container with the Ceedling installation volume mapping 
-   from (2) and any other command line options you need
+1. Exit the container.
+1. Restart the container from your host system with the Ceedling installation
+   volume mapping from (2) and any other command line options you need:
 
    ```shell
-   docker run -it --rm -v /my/local/ceedling/repo:<container installation path> -v /my/local/experiment/path:/home/dev/project throwtheswitch/<image>:<tag>
+   > docker run -it --rm -v /my/local/ceedling/repo:<container installation path> -v /my/local/experiment/path:/home/dev/project throwtheswitch/<image>:<tag>
    ```
 
 For development tasks, from the container shell you can:
