@@ -171,28 +171,32 @@ class Configurator
     # Config Ruby-based hash defaults plugins
     plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
 
-    if (!plugin_yml_defaults.empty? or !plugin_hash_defaults.empty?)
-      msg = @reportinator.generate_progress( 'Collecting plugin defaults' )
+
+    if !plugin_hash_defaults.empty?
+      msg = @reportinator.generate_progress( 'Collecting Plugin YAML defaults' )
       @loginator.log( msg, Verbosity::OBNOXIOUS )
     end
 
-    if !@configurator_plugins.plugin_yml_defaults.empty?
-      msg = " > Plugin YAML defaults: " + @configurator_plugins.plugin_yml_defaults.join( ', ' )
-      @loginator.log( msg, Verbosity::DEBUG )
-    end
-
     # Load base configuration values (defaults) from YAML
-    plugin_yml_defaults.each do |defaults|
-      default_config.deep_merge( @yaml_wrapper.load( defaults ) )
+    plugin_yml_defaults.each do |plugin, defaults|
+      _defaults = @yaml_wrapper.load( defaults )
+
+      msg = " - #{plugin} >> " + _defaults.to_s()
+      @loginator.log( msg, Verbosity::DEBUG )
+
+      default_config.deep_merge( _defaults )
     end
 
-    if !@configurator_plugins.plugin_hash_defaults.empty?
-      msg = " > Plugin Ruby hash defaults: " + @configurator_plugins.plugin_hash_defaults.join( ', ' )
-      @loginator.log( msg, Verbosity::DEBUG )
+    if !plugin_hash_defaults.empty?
+      msg = @reportinator.generate_progress( 'Collecting Plugin Ruby hash defaults' )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
     end
 
     # Load base configuration values (defaults) as hash from Ruby
-    plugin_hash_defaults.each do |defaults|
+    plugin_hash_defaults.each do |plugin, defaults|
+      msg = " - #{plugin} >> " + defaults.to_s()
+      @loginator.log( msg, Verbosity::DEBUG )
+
       default_config.deep_merge( defaults )
     end
   end
@@ -246,11 +250,11 @@ class Configurator
   end
 
 
-  def populate_defaults( config_hash, defaults_hash )
+  def populate_with_defaults( config_hash, defaults_hash )
     msg = @reportinator.generate_progress( 'Populating project configuration with collected default values' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )    
 
-    @configurator_builder.populate_defaults( config_hash, defaults_hash )
+    @configurator_builder.populate_with_defaults( config_hash, defaults_hash )
   end
 
 
@@ -375,7 +379,6 @@ class Configurator
       # Log the arguments and add to the tool config
       if !args_to_add.empty?
         msg += "   arguments: " + args_to_add.map{|arg| "\"#{arg}\""}.join( ', ' ) + "\n"
-        puts(tool[:arguments])
         tool[:arguments].concat( args_to_add )
       end
 
@@ -409,8 +412,6 @@ class Configurator
       msg = " > Config plugins: " + @configurator_plugins.config_plugins.map{|p| p[:plugin]}.join( ', ' )
       @loginator.log( msg, Verbosity::DEBUG )
     end
-
-    return config_plugins
   end
 
 
@@ -432,6 +433,7 @@ class Configurator
 
       msg = @reportinator.generate_progress( "Merging configuration from plugin #{hash[:plugin]}" )
       @loginator.log( msg, Verbosity::OBNOXIOUS )
+      @loginator.log( _config.to_s, Verbosity::DEBUG )
 
       # Special handling for plugin paths
       if (_config.include?( :paths ))

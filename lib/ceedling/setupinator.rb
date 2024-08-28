@@ -106,8 +106,8 @@ class Setupinator
     @configurator.populate_cmock_defaults( config_hash, defaults_hash )
     @configurator.merge_plugins_defaults( plugins_paths_hash, config_hash, defaults_hash )
 
-    # Set any essential missing or plugin values in configuration with assembled default values
-    @configurator.populate_defaults( config_hash, defaults_hash )
+    # Set any missing essential or plugin values in configuration with assembled default values
+    @configurator.populate_with_defaults( config_hash, defaults_hash )
 
     ##
     ## 5. Fill out / modify remaining configuration from user configuration + defaults
