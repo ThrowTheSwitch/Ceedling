@@ -287,136 +287,137 @@ DEFAULT_TOOLS_RELEASE_DEPENDENCIES = {
 DEFAULT_RELEASE_TARGET_NAME = 'project'
 
 DEFAULT_CEEDLING_PROJECT_CONFIG = {
-    :project => {
-      # :build_root must be set by user
-      :use_mocks => false,
-      :use_exceptions => false,
-      :compile_threads => 1,
-      :test_threads => 1,
-      :use_test_preprocessor => :none,
-      :test_file_prefix => 'test_',
-      :release_build => false,
-      :use_backtrace => :simple,
-      :debug => false
+  :project => {
+    # :build_root must be set by user
+    :use_mocks => false,
+    :use_exceptions => false,
+    :compile_threads => 1,
+    :test_threads => 1,
+    :use_test_preprocessor => :none,
+    :test_file_prefix => 'test_',
+    :release_build => false,
+    :use_backtrace => :simple,
+    :debug => false
     },
 
-    :release_build => {
-      # :output is set while building configuration -- allows smart default system-dependent file extension handling
-      :use_assembly => false,
-      :artifacts => []
+  :release_build => {
+    # :output is set while building configuration -- allows smart default system-dependent file extension handling
+    :use_assembly => false,
+    :artifacts => []
     },
 
-    :test_build => {
-       :use_assembly => false
-     },
-
-    # Unlike other top-level entries, :environment is an array (of hashes) to preserve order
-    :environment => [],
-
-    :paths => {
-      :test => [],    # Must be populated by user
-      :source => [],  # Should be populated by user but TEST_INCLUDE_PATH() could be used exclusively instead
-      :support => [],
-      :include => [], # Must be populated by user
-      :libraries => [],
-      :test_toolchain_include => [],
-      :release_toolchain_include => [],
+  :test_build => {
+    :use_assembly => false
     },
 
-    :files => {
-      :test => [],
-      :source => [],
-      :assembly => [],
-      :support => [],
-      :include => [],
+  # Unlike other top-level entries, :environment is an array (of hashes) to preserve order
+  :environment => [],
+
+  :paths => {
+    :test => [],    # Must be populated by user
+    :source => [],  # Should be populated by user but TEST_INCLUDE_PATH() could be used exclusively instead
+    :support => [],
+    :include => [], # Must be populated by user
+    :libraries => [],
+    :test_toolchain_include => [],
+    :release_toolchain_include => [],
     },
 
-    :defines => {
-      :use_test_definition => false,
-      :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
-      :preprocess => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
-      :release => []
+  :files => {
+    :test => [],
+    :source => [],
+    :assembly => [],
+    :support => [],
+    :include => [],
     },
 
-    :flags => {
-      # Test & release flags are validated for presence--empty flags causes an error
-      # :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
-      # :release => [] # A hash/sub-hashes in config file can include arrays for operations
+  :defines => {
+    :use_test_definition => false,
+    :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
+    :preprocess => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
+    :release => []
     },
 
-    :libraries => {
-      :flag => '-l${1}',
-      :path_flag => '-L ${1}',
-      :test => [],
-      :release => []
+  :flags => {
+    # Test & release flags are validated for presence--empty flags causes an error
+    # :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
+    # :release => [] # A hash/sub-hashes in config file can include arrays for operations
     },
 
-    :extension => {
-      :header => '.h',
-      :source => '.c',
-      :assembly => '.s',
-      :object => '.o',
-      :libraries => ['.a','.so'],
-      :executable => ( SystemWrapper.windows? ? EXTENSION_WIN_EXE : EXTENSION_NONWIN_EXE ),
-      :map => '.map',
-      :list => '.lst',
-      :testpass => '.pass',
-      :testfail => '.fail',
-      :dependencies => '.d',
-      :yaml => '.yml'
+  :libraries => {
+    :flag => '-l${1}',
+    :path_flag => '-L ${1}',
+    :test => [],
+    :release => []
     },
 
-    :unity => {
-      :defines => [],
-      :use_param_tests => false
+  :extension => {
+    :header => '.h',
+    :source => '.c',
+    :assembly => '.s',
+    :object => '.o',
+    :libraries => ['.a','.so'],
+    :executable => ( SystemWrapper.windows? ? EXTENSION_WIN_EXE : EXTENSION_NONWIN_EXE ),
+    :map => '.map',
+    :list => '.lst',
+    :testpass => '.pass',
+    :testfail => '.fail',
+    :dependencies => '.d',
+    :yaml => '.yml'
     },
 
-    :cmock => {
-      :includes => [],
-      :defines => [],
-      :plugins => [],
-      :unity_helper_path => [],
-      # Yes, we're duplicating these defaults in CMock, but it's because:
-      #  (A) We always need CMOCK_MOCK_PREFIX in Ceedling's environment
-      #  (B) Test runner generator uses these same configuration values
-      :mock_prefix => 'Mock',
-      :mock_suffix => '',
-      # Just because strict ordering is the way to go
-      :enforce_strict_ordering => true
+  :unity => {
+    :defines => [],
+    :use_param_tests => false
     },
 
-    :cexception => {
-      :defines => []
+  :cmock => {
+    :includes => [],
+    :defines => [],
+    :plugins => [],
+    :unity_helper_path => [],
+    # Yes, we're duplicating these defaults in CMock, but it's because:
+    #  (A) We always need CMOCK_MOCK_PREFIX in Ceedling's environment
+    #  (B) Test runner generator uses these same configuration values
+    :mock_prefix => 'Mock',
+    :mock_suffix => '',
+    # Just because strict ordering is the way to go
+    :enforce_strict_ordering => true
     },
 
-    :test_runner => {
-      :cmdline_args => false,
-      :includes => [],
-      :defines => [],
-      :file_suffix => '_runner',
+  :cexception => {
+    :defines => []
+   },
+
+  :test_runner => {
+    :cmdline_args => false,
+    :includes => [],
+    :defines => [],
+    :file_suffix => '_runner',
     },
 
-    # All tools populated while building up config / defaults structure
-    :tools => {},
+  # All tools populated while building up config / defaults structure
+  :tools => {},
+
   }.freeze
 
 
 CEEDLING_RUNTIME_CONFIG = {
-    :unity => {
-      :vendor_path => CEEDLING_VENDOR
+  :unity => {
+    :vendor_path => CEEDLING_VENDOR
     },
 
-    :cmock => {
-      :vendor_path => CEEDLING_VENDOR
+  :cmock => {
+    :vendor_path => CEEDLING_VENDOR
     },
 
-    :cexception => {
-      :vendor_path => CEEDLING_VENDOR
+  :cexception => {
+    :vendor_path => CEEDLING_VENDOR
     },
 
-    :plugins => {
-      :load_paths => [],
-      :enabled => CEEDLING_PLUGINS,
+  :plugins => {
+    :load_paths => [],
+    :enabled => CEEDLING_PLUGINS,
     }
   }.freeze
 
