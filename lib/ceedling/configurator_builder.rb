@@ -87,18 +87,17 @@ class ConfiguratorBuilder
   end
 
 
-  # If config lacks an entry that defaults posseses, add a config entry with the default value
-  def populate_defaults(config, defaults)
-    defaults.keys.sort.each do |section|
-      case defaults[section]
-      when Hash
-        defaults[section].keys.sort.each do |entry|
-          config[section] = {} if config[section].nil?
-          config[section][entry] = defaults[section][entry].deep_clone if (config[section][entry].nil?)
-        end
+  # If config lacks an entry present in defaults posseses, add the default entry
+  # Processes recursively
+  def populate_with_defaults(config, defaults)
+    defaults.each do |key, value|
+      # If config is missing the same key, copy in the default entry
+      if config[key].nil?
+        config[key] = value.is_a?(Hash) ? value.deep_clone : value
 
-      when Array
-        config[section] = defaults[section] 
+      # Continue recursively for hash entries
+      elsif config[key].is_a?(Hash) && value.is_a?(Hash)
+        populate_with_defaults(config[key], value)
       end
     end
   end
