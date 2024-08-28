@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-08-27
+# [1.0.0 pre-release] — 2024-08-28
 
 ## 🌟 Added
 
@@ -158,6 +158,12 @@ A shortcut for adding arguments to an existing tool defition already existed. Th
     - --flag1      # Add the following at the end of existing list of command line arguments
     - --flag2
 ```
+
+### Gcov plugin: Support for `gcovr`'s `--merge-mode-functions` for v6.0+
+
+Starting with `gcovr` v6.0 (now at v7.2), report generation can encounters a fatal error if multiple coverage results exist for the same function. This is a very possible scenario with Ceedling 1.0.0 now being able to build and run the same same test executable multiple ways.
+
+Support for this option, enacted based on `gcovr`’s reported version, has been added to the Gcov plugin with a reasonable default setting.
 
 ## 💪 Fixed
 
