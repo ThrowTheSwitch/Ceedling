@@ -135,9 +135,13 @@ class Setupinator
     @configurator.eval_defines( config_hash )
     @configurator.standardize_paths( config_hash )
 
-    # Fill out any missing tool config value / supplement arguments
+    # Fill out any missing tool config value
     @configurator.populate_tools_config( config_hash )
-    @configurator.populate_tools_supplemental_arguments( config_hash )
+
+    # From any tool definition shortcuts:
+    #  - Redefine executable if set
+    #  - Add arguments from tool definition shortcuts if set
+    @configurator.populate_tools_shortcuts( config_hash )
 
     # Configure test runner build & runtime options
     @test_runner_manager.configure_build_options( config_hash )

@@ -306,7 +306,6 @@ class Configurator
   # Process our tools
   #  - :tools entries
   #    - Insert missing names for
-  #    - Handle inline Ruby string substitution
   #    - Handle needed defaults
   #  - Configure test runner from backtrace configuration
   def populate_tools_config(config)
@@ -323,11 +322,6 @@ class Configurator
       # Populate name if not given
       tool[:name] = name.to_s if (tool[:name].nil?)
 
-      # Handle inline Ruby string substitution in executable
-      if (tool[:executable] =~ RUBY_STRING_REPLACEMENT_PATTERN)
-        tool[:executable].replace(@system_wrapper.module_eval(tool[:executable]))
-      end
-
       # Populate $stderr redirect option
       tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
 
@@ -337,29 +331,56 @@ class Configurator
   end
 
 
-  # Smoosh in extra arguments specified at top-level of config.
-  # This is useful for tweaking arguments for tools (where argument order does not matter).
-  # Arguments are squirted in at *end* of list.
-  def populate_tools_supplemental_arguments(config)
-    msg = @reportinator.generate_progress( 'Processing tool definition supplemental arguments' )
+  # Process any tool definition shortcuts
+  #  - Append extra arguments
+  #  - Redefine executable  
+  #
+  # :tools_<name>
+  #   :arguments: [...]
+  #   :executable: '...'
+  def populate_tools_shortcuts(config)
+    msg = @reportinator.generate_progress( 'Processing tool definition shortcuts' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     prefix = 'tools_'
-    config[:tools].each do |key, tool|
-      name = key.to_s()
+    config[:tools].each do |name, tool|
+      # Lookup shortcut tool definition (:tools_<name>)
+      shortcut = (prefix + name.to_s).to_sym
 
-      # Supplemental tool definition 
-      supplemental = config[(prefix + name).to_sym]
+      # Logging message to be built up
+      msg = ''
 
-      if (not supplemental.nil?)
-        args_to_add = supplemental[:arguments]
+      # Try to lookup the executable from user config
+      executable, _  = @config_walkinator.fetch_value(shortcut, :executable, 
+                         hash:config
+                       )
 
-        msg = " > #{name}: Arguments " + args_to_add.map{|arg| "\"#{arg}\""}.join( ', ' )
-        @loginator.log( msg, Verbosity::DEBUG )
+      # Try to lookup arguments from user config
+      args_to_add, _ = @config_walkinator.fetch_value(shortcut, :arguments, 
+                         hash:config,
+                         default: []
+                       )
 
-        # Adding and flattening is not a good idea -- might over-flatten if array nesting in tool args
+      # If either tool definition modification is happening, start building the logging message
+      if !args_to_add.empty? or !executable.nil?
+        msg += " > #{name}\n" 
+      end
+
+      # Log the executable and redefine the tool config
+      if !executable.nil?
+        msg += "   executable: \"#{executable}\"\n"
+        tool[:executable] = executable
+      end
+
+      # Log the arguments and add to the tool config
+      if !args_to_add.empty?
+        msg += "   arguments: " + args_to_add.map{|arg| "\"#{arg}\""}.join( ', ' ) + "\n"
+        puts(tool[:arguments])
         tool[:arguments].concat( args_to_add )
       end
+
+      # Log
+      @loginator.log( msg, Verbosity::DEBUG ) if !msg.empty?
     end
   end
 

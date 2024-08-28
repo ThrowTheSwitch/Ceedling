@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-08-12
+# [1.0.0 pre-release] — 2024-08-27
 
 ## 🌟 Added
 
@@ -145,7 +145,19 @@ The application commands `ceedling new` and `ceedling upgrade` at the command li
 
 If the information is unavailable such as in local development, the SHA is omitted.
 
-This source for this string is intended to be generated and captured in the Gem at the time of an automated build in CI.
+This source for this string is generated and captured in the Gem at the time of Ceedling’s automated build in CI.
+
+### Tool definition modification shortcuts expanded for `:executable`
+
+A shortcut for adding arguments to an existing tool defition already existed. The handling for this shortcut has been expanded to allow `:executable` to be redefined.
+
+```yaml
+:tools_test_compiler:
+  :executable: foo # Shell out for `foo` instead of `gcc`
+  :arguments:      # Existing functionality
+    - --flag1      # Add the following at the end of existing list of command line arguments
+    - --flag2
+```
 
 ## 💪 Fixed
 
@@ -317,6 +329,12 @@ In previous versions of Ceedling, the Command Hooks plugin associated tools and 
 
 Hooks are now enabled within a top-level `:command_hooks` section in your project configuration. Each hook key in this configuration block can now support one or more tools organized beneath it. As such, each hook can execute one or more tools.
 
+### Tool definition inline Ruby string expansion now happens at each execution
+
+Reaching back to the earliest days of Ceedling, tool definitions supported two slightly different string replacement options that executed at different points in a build’s lifetime. Yeah. It was maybe not great. This has been simplfied.
+
+Only support for `#{...}` Ruby string expansion in tool definitions remains. Any such expansions are now evaluated each time a tool is executed during a build.
+
 ## 👋 Removed
 
 ### `verbosity` and `log` command line tasks have been replaced with command line switches
@@ -396,3 +414,10 @@ The Gcov plugin’s `:abort_on_uncovered` option plus the related `:uncovered_ig
 ### Undocumented environment variable `CEEDLING_USER_PROJECT_FILE` support removed
 
 A previously undocumented feature for merging a second configuration via environment variable `CEEDLING_USER_PROJECT_FILE` has been removed. This feature has been superseded by the new Mixins functionality.
+
+### Tool definition inline Ruby evaluation replacement removed (inline Ruby string expansion remains)
+
+Reaching back to the earliest days of Ceedling, tool definitions supported two slightly different string replacement options that executed at different points in a build’s lifetime. Yeah. It was maybe not great.
+
+Support for `{...}` Ruby evaluation in tool definitions has been removed. Support for `#{...}` Ruby string expansion in tool definitions remains.
+

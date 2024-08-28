@@ -7,7 +7,7 @@ These breaking changes are complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-07-22
+# [1.0.0 pre-release] — 2024-08-27
 
 ## Explicit `:paths` ↳ `:include` entries in the project file
 
@@ -180,6 +180,14 @@ The environment variable option for pointing Ceedling to a project file other th
 In addition, a previously undocumented feature for merging a second configuration via environment variable `CEEDLING_USER_PROJECT_FILE` has been removed. This feature has been superseded by the new Mixins functionality.
 
 Thorough documentation on Mixins and the new options for loading a project configuration can be found in _[CeedlingPacket](CeedlingPacket.md))_.
+
+## Tool definition inline Ruby evaluation replacement removed (inline Ruby string expansion remains)
+
+Reaching back to the earliest days of Ceedling, tool definitions supported two slightly different string replacement options that executed at different points in a build’s lifetime. Yeah. It was maybe not great.
+
+Support for `{...}` Ruby evaluation in tool definitions has been removed.
+
+Support for `#{...}` Ruby string expansion in tool definitions remains and is now evaluated each time a tool is executed during a build.
 
 ## Command Hooks plugin configuration change
 

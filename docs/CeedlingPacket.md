@@ -261,11 +261,15 @@ built-in plugins come with Ceedling.
 
 ## What’s with This Name?
 
-Glad you asked. Ceedling is tailored for unit tested C projects
-and is built upon Rake (a Make replacement implemented in the Ruby 
-scripting language). So, we've got C, our Rake, and the fertile 
-soil of a build environment in which to grow and tend your project 
-and its unit tests. Ta da - _Ceedling_.
+Glad you asked. Ceedling is tailored for unit tested C projects and is built
+upon Rake, a Make replacement implemented in the Ruby scripting language.
+
+So, we've got C, our Rake, and the fertile soil of a build environment in which
+to grow and tend your project and its unit tests. Ta da — _Ceedling_.
+
+Incidentally, though Rake was the backbone of the earliest versions of
+Ceedling, it is now being phased out incrementally in successive releases
+of this tool. The name Ceedling is not going away, however!
 
 ## What Do You Mean “Tailored for unit tested C projects”?
 
@@ -2403,14 +2407,19 @@ for this. A few highlights from that reference page:
 Ceedling is able to execute inline Ruby string substitution code within the
 entries of certain project file configuration elements.
 
-This evaluation occurs when the project file is loaded and processed into a
-data structure for use by the Ceedling application.
+In some cases, this evaluation may occurs when elements of the project 
+configuration are loaded and processed into a data structure for use by the 
+Ceedling application (e.g. path handling). In other cases, this evaluation
+occurs each time a project configuration element is referenced (e.g. tools).
 
-_Note:_ One good option for validating and troubleshooting inline Ruby string 
-exapnsion is use of `ceedling dumpconfig` at the command line. This application
-command causes your project configuration to be processed and written to a 
-YAML file with any inline Ruby string expansions, well, expanded along with 
-defaults set, plugin actions applied, etc.
+_Notes:_
+* One good option for validating and troubleshooting inline Ruby string 
+  exapnsion is use of `ceedling dumpconfig` at the command line. This application
+  command causes your project configuration to be processed and written to a 
+  YAML file with any inline Ruby string expansions, well, expanded along with 
+  defaults set, plugin actions applied, etc.
+* A commonly needed expansion is that of referencing an environment variable.
+  Inline Ruby string expansion supports this. See the example below.
 
 #### Ruby string expansion syntax
 
@@ -4255,7 +4264,7 @@ A few items before we dive in:
 1. Sometimes Ceedling’s built-in tools are _nearly_ what you need but not 
    quite. If you only need to add some arguments to all uses of tool's command
    line, Ceedling offers a shortcut to do so. See the 
-   [final section of the `:tools`][tool-args-shortcut] documentation for 
+   [final section of the `:tools`][tool-definition-shortcuts] documentation for 
    details.
 1. If you need fine-grained control of the arguments Ceedling uses in the build
    steps for test executables, see the documentation for [`:flags`][flags].
@@ -4268,7 +4277,7 @@ A few items before we dive in:
    the shortcut in (1) might be the simplest option.
 
 [flags]: #flags-configure-preprocessing-compilation--linking-command-line-flags
-[tool-args-shortcut]: #ceedling-tool-arguments-addition-shortcut
+[tool-definition-shortcuts]: #ceedling-tool-modification-shortcuts
 
 ### Ceedling tools for test suite builds
 
@@ -4478,29 +4487,15 @@ require that some number of its arguments or even the executable itself change
 for each run. Consequently, every tool’s argument list and executable field
 possess two means for substitution at runtime.
 
-Ceedling provides two kinds of inline Ruby execution and a notation for 
-populating tool elements with dynamically gathered values within the build 
-environment.
+Ceedling provides inline Ruby string expansion and a notation for populating 
+tool elements with dynamically gathered values within the build environment.
 
-##### Tool element runtime substitution: Inline Ruby execution
+##### Tool element runtime substitution: Inline Ruby string expansion
 
-Specifically for tool configuration elements, Ceedling provides two types of
-inline Ruby execution.
-
-1. `"#{...}"`: This notation is that of the beloved 
-   [inline Ruby string expansion][inline-ruby-string-expansion] available in
-   a variety of configuration file sections. This string expansion occurs once
-   at startup.
-
-1. `{...}`: This notation causes inline Ruby execution similarly to the 
-   preceding except that the substitution occurs each time the tool is executed.
-
-   Why might you need this? Say you have a collection of paths on disk and some
-   of those paths include spaces. Further suppose that a single tool that must
-   use those paths requires those spaces to be escaped, but all other uses of
-   those paths requires the paths to remain unchanged. You could use this
-   Ceedling feature to insert Ruby code that iterates those paths and escapes
-   those spaces in the array as used by the tool of this example.
+`"#{...}"`: This notation is that of the beloved 
+[inline Ruby string expansion][inline-ruby-string-expansion] available in a 
+variety of configuration file sections. This string expansion occurs each 
+time a tool configuration is executed during a build.
 
 ##### Tool element runtime substitution: Notational substitution
 
@@ -4636,38 +4631,75 @@ Notes on test fixture tooling example:
 1. We’re using `$stderr` redirection to allow us to capture simulator error 
    messages to `$stdout` for display at the run's conclusion.
 
-### Ceedling tool arguments addition shortcut
+### Ceedling tool modification shortcuts
 
 Sometimes Ceedling’s default tool defininitions are _this close_ to being just
-what you need. But, darn, you need one extra argument on the command line, and
-you'd love to not override an entire tool definition to tweak it.
+what you need. But, darn, you need one extra argument on the command line, or
+you just need to hack the tool executable. You’d love to get away without 
+overriding an entire tool definition just in order to tweak it.
 
-We got you. Now, this little feature only allows you to add arguments to the
-end of a tool command line. Not the beginning. And, you can’t remove arguments
-with this hack.
+We got you.
 
-Further, this little feature is a blanket application across all uses of a 
-tool. If you need fine-grained control of command line flags in build steps per
-test executable, please see the [`:flags` configuration documentation][flags].
+#### Ceedling tool executable replacement
 
-To use this shortcut, simply add a configuration section to your project file 
-at the top-level, `:tools_<tool_to_modify>` ↳ `:arguments`. See the list of 
-tool names at the beginning of the `:tools` documentation to identify the named
-options. Plugins can also include their own tool definitions that can be 
-modified with this same hack.
+Sometimes you need to do some sneaky stuff. We get it. This feature lets you
+replace the executable of a tool definition — including an internal default —
+with your own.
 
-This example YAML:
+To use this shortcut, simply add a configuration section to your project file at
+the top-level, `:tools_<tool_to_modify>` ↳ `:executable`. Of course, you can
+combine this with the following modification option in a single block for the
+tool. Executable replacement can make use of 
+[inline Ruby string expansion][inline-ruby-string-expansion].
+
+See the list of tool names at the beginning of the `:tools` documentation to
+identify the named options. Plugins can also include their own tool definitions
+that can be modified with this same option.
+
+This example YAML...
+
+```yaml
+:tools_test_compiler:
+   :executable: foo
+```
+
+... will produce the following:
+
+```shell
+ > foo <Ceedling default command line>
+```
+
+#### Ceedling tool arguments addition shortcut
+
+Now, this little feature only allows you to add arguments to the end of a tool
+command line. Not the beginning. And, you can’t remove arguments with this
+option.
+
+Further, this little feature is a blanket application across all uses of a tool.
+If you need fine-grained control of command line flags in build steps per test
+executable, please see the [`:flags` configuration documentation][flags].
+
+To use this shortcut, simply add a configuration section to your project file at
+the top-level, `:tools_<tool_to_modify>` ↳ `:arguments`. Of course, you can
+combine this with the preceding modification option in a single block for the
+tool.
+
+See the list of tool names at the beginning of the `:tools` documentation to
+identify the named options. Plugins can also include their own tool definitions
+that can be modified with this same hack.
+
+This example YAML...
 
 ```yaml
 :tools_test_compiler:
    :arguments:
-      - --flag         # Add `--flag` to the end of all test C file compilation
+      - --flag # Add `--flag` to the end of all test C file compilation
 ```
 
-...will produce this command line:
+... will produce the following (for the default executable):
 
 ```shell
- > gcc <default command line> --flag
+ > gcc <Ceedling default command line> --flag
 ```
 
 ## `:plugins` Ceedling extensions

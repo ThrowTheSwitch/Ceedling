@@ -6,19 +6,17 @@
 # =========================================================================
 
 DEFAULT_GCOV_COMPILER_TOOL = {
-  :executable => ENV['GCOV_CC'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['GCOV_CC'],
+  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_gcov_compiler'.freeze,
   :optional => false.freeze,
   :arguments => [
     "-g".freeze,
     "-fprofile-arcs".freeze,
     "-ftest-coverage".freeze,
-    ENV['GCOV_CPPFLAGS'].nil? ? "" : ENV['GCOV_CPPFLAGS'].split,
     "-I\"${5}\"".freeze, # Per-test executable search paths
     "-D\"${6}\"".freeze, # Per-test executable defines
     "-DGCOV_COMPILER".freeze,
     "-DCODE_COVERAGE".freeze,
-    ENV['GCOV_CFLAGS'].nil? ? "" : ENV['GCOV_CFLAGS'].split,
     "-c \"${1}\"".freeze,
     "-o \"${2}\"".freeze,
     # gcc's list file output options are complex; no use of ${3} parameter in default config
@@ -28,20 +26,17 @@ DEFAULT_GCOV_COMPILER_TOOL = {
   }
 
 DEFAULT_GCOV_LINKER_TOOL = {
-  :executable => ENV['GCOV_CCLD'].nil? ? FilePathUtils.os_executable_ext('gcc').freeze : ENV['GCOV_CCLD'],
+  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_gcov_linker'.freeze,
   :optional => false.freeze,
   :arguments => [
     "-g".freeze,
     "-fprofile-arcs".freeze,
     "-ftest-coverage".freeze,
-    ENV['GCOV_CFLAGS'].nil? ? "" : ENV['GCOV_CFLAGS'].split,
-    ENV['GCOV_LDFLAGS'].nil? ? "" : ENV['GCOV_LDFLAGS'].split,
     "${1}".freeze,
     "${5}".freeze,
     "-o \"${2}\"".freeze,
     "${4}".freeze,
-    ENV['GCOV_LDLIBS'].nil? ? "" : ENV['GCOV_LDLIBS'].split
     ].freeze
   }
 
@@ -54,7 +49,7 @@ DEFAULT_GCOV_FIXTURE_TOOL = {
 
 # Produce summaries printed to console
 DEFAULT_GCOV_SUMMARY_TOOL = {
-  :executable => ENV['GCOV_SUMMARY'].nil? ? FilePathUtils.os_executable_ext('gcov').freeze : ENV['GCOV_SUMMARY'],
+  :executable => FilePathUtils.os_executable_ext('gcov').freeze,
   :name => 'default_gcov_summary'.freeze,
   :optional => true.freeze,
   :arguments => [
@@ -68,7 +63,7 @@ DEFAULT_GCOV_SUMMARY_TOOL = {
 
 # Produce .gcov files (used in conjunction with ReportGenerator)
 DEFAULT_GCOV_REPORT_TOOL = {
-  :executable => ENV['GCOV_REPORT'].nil? ? FilePathUtils.os_executable_ext('gcov').freeze : ENV['GCOV_REPORT'],
+  :executable => FilePathUtils.os_executable_ext('gcov').freeze,
   :name => 'default_gcov_report'.freeze,
   :optional => true.freeze,
   :arguments => [
@@ -83,7 +78,7 @@ DEFAULT_GCOV_REPORT_TOOL = {
 # Produce reports with `gcovr`
 DEFAULT_GCOV_GCOVR_REPORT_TOOL = {
   # No extension handling -- `gcovr` is generally an extensionless Python script
-  :executable => ENV['GCOVR'].nil? ? 'gcovr'.freeze : ENV['GCOVR'],
+  :executable => 'gcovr'.freeze,
   :name => 'default_gcov_gcovr_report'.freeze,
   :optional => true.freeze,
   :arguments => [
@@ -93,7 +88,7 @@ DEFAULT_GCOV_GCOVR_REPORT_TOOL = {
 
 # Produce reports with `reportgenerator`
 DEFAULT_GCOV_REPORTGENERATOR_REPORT_TOOL = {
-  :executable => ENV['REPORTGENERATOR'].nil? ? FilePathUtils.os_executable_ext('reportgenerator').freeze : ENV['REPORTGENERATOR'],
+  :executable => FilePathUtils.os_executable_ext('reportgenerator').freeze,
   :name => 'default_gcov_reportgenerator_report'.freeze,
   :optional => true.freeze,
   :arguments => [

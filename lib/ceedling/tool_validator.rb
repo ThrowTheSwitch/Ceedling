@@ -41,7 +41,7 @@ class ToolValidator
 
     # Handle a missing :executable
     if (executable.nil? or executable.empty?)
-      error = "#{name} is missing :executable in its configuration."
+      error = "Tool #{name} is missing :executable in its configuration."
       if !boom
         @loginator.log( error, Verbosity::ERRORS )
         return false 
@@ -53,9 +53,10 @@ class ToolValidator
     # If tool is optional and we're respecting that, don't bother to check if executable is legit
     return true if tool[:optional] and respect_optional
 
-    # Skip everything if we've got an argument replacement pattern in :executable
+    # Skip everything if we've got an argument replacement pattern or Ruby string replacement in :executable
     # (Allow executable to be validated by shell at run time)
     return true if (executable =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
+    return true if (executable =~ RUBY_STRING_REPLACEMENT_PATTERN)
 
     # Extract the executable (including optional filepath) apart from any additional arguments
     # Be mindful of legal quote enclosures (e.g. `"Code Cruncher" foo bar`)

@@ -69,33 +69,35 @@ class ToolExecutorHelper
     output =      "> Shell executed command:\n"
     output +=     "`#{command_str}`\n"
 
-    # Detailed debug logging
-    if @verbosinator.should_output?( Verbosity::DEBUG )
-      output +=   "> With $stdout: "
-      output += shell_result[:stdout].empty? ? "<empty>\n" : "\n#{shell_result[:stdout].strip()}\n"
+    if !shell_result.empty?
+      # Detailed debug logging
+      if @verbosinator.should_output?( Verbosity::DEBUG )
+        output +=   "> With $stdout: "
+        output += shell_result[:stdout].empty? ? "<empty>\n" : "\n#{shell_result[:stdout].strip()}\n"
 
-      output +=   "> With $stderr: "
-      output += shell_result[:stderr].empty? ? "<empty>\n" : "\n#{shell_result[:stderr].strip()}\n"
+        output +=   "> With $stderr: "
+        output += shell_result[:stderr].empty? ? "<empty>\n" : "\n#{shell_result[:stderr].strip()}\n"
 
-      output +=   "> And terminated with status: #{shell_result[:status]}\n"
+        output +=   "> And terminated with status: #{shell_result[:status]}\n"
 
-      @loginator.log( '', Verbosity::DEBUG )
-      @loginator.log( output, Verbosity::DEBUG )
-      @loginator.log( '', Verbosity::DEBUG )
+        @loginator.log( '', Verbosity::DEBUG )
+        @loginator.log( output, Verbosity::DEBUG )
+        @loginator.log( '', Verbosity::DEBUG )
 
-      return # Bail out
-    end
+        return # Bail out
+      end
 
-    # Slightly less verbose obnoxious logging
-    if !shell_result[:output].empty?
-      output += "> Produced output: "
-      output += shell_result[:output].strip().empty? ? "<empty>\n" : "\n#{shell_result[:output].strip()}\n"
-    end
+      # Slightly less verbose obnoxious logging
+      if !shell_result[:output].empty?
+        output += "> Produced output: "
+        output += shell_result[:output].strip().empty? ? "<empty>\n" : "\n#{shell_result[:output].strip()}\n"
+      end
 
-    if !shell_result[:exit_code].nil?
-      output += "> And terminated with exit code: [#{shell_result[:exit_code]}]\n"
-    else
-      output += "> And exited prematurely\n"      
+      if !shell_result[:exit_code].nil?
+        output += "> And terminated with exit code: [#{shell_result[:exit_code]}]\n"
+      else
+        output += "> And exited prematurely\n"      
+      end
     end
 
     @loginator.log( '', Verbosity::OBNOXIOUS )

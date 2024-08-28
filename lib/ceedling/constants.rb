@@ -133,7 +133,6 @@ OPERATION_LINK_SYM     = :link     unless defined?(OPERATION_LINK_SYM)
 # Match presence of any glob pattern characters
 GLOB_PATTERN = /[\*\?\{\}\[\]]/
 RUBY_STRING_REPLACEMENT_PATTERN = /#\{.+\}/
-RUBY_EVAL_REPLACEMENT_PATTERN   = /^\{(.+)\}$/
 TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN = /(\$\{(\d+)\})/
 TEST_STDOUT_STATISTICS_PATTERN  = /\n-+\s*(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
 
