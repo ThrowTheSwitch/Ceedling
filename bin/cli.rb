@@ -84,29 +84,31 @@ module PermissiveCLI
 
   # Redefine the Thor CLI entrypoint and exception handling
   def start(args, config={})
-    # Copy args as Thor changes them within the call chain of dispatch()
-    _args = args.clone()
+    begin
+      # Copy args as Thor changes them within the call chain of dispatch()
+      _args = args.clone()
 
-    # Call Thor's handlers as it does in start()
-    config[:shell] ||= Thor::Base.shell.new
-    dispatch(nil, args, nil, config)
+      # Call Thor's handlers as it does in start()
+      config[:shell] ||= Thor::Base.shell.new
+      dispatch(nil, args, nil, config)
 
-  # Handle undefined commands at top-level and for `help <command>`
-  rescue Thor::UndefinedCommandError => ex
-    # Handle `help` for an argument that is not an application command such as `new` or `build`
-    if _args[0].downcase() == 'help'
+    # Handle undefined commands at top-level and for `help <command>`
+    rescue Thor::UndefinedCommandError => ex
+      # Handle `help` for an argument that is not an application command such as `new` or `build`
+      if _args[0].downcase() == 'help'
 
-      # Raise fatal StandardError to differentiate from UndefinedCommandError
-      msg = "Argument '#{_args[1]}' is not a recognized application command with detailed help. " +
-            "It may be a build / plugin task without detailed help or simply a goof."
-      raise( msg )
+        # Raise fatal StandardError to differentiate from UndefinedCommandError
+        msg = "Argument '#{_args[1]}' is not a recognized application command with detailed help. " +
+              "It may be a build / plugin task without detailed help or simply a goof."
+        raise( msg )
 
-    # Otherwise, eat unhandled command errors
-    else
-      #  - No error message
-      #  - No `exit()`
-      #  - Re-raise to allow special, external CLI handling logic
-      raise ex
+      # Otherwise, eat unhandled command errors
+      else
+        #  - No error message
+        #  - No `exit()`
+        #  - Re-raise to allow special, external CLI handling logic
+        raise ex
+      end
     end
   end
 end
