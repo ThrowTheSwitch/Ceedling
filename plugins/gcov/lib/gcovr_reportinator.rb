@@ -33,7 +33,7 @@ class GcovrReportinator
   # Generate the gcovr report(s) specified in the options.
   def generate_reports(opts)
     # Get the gcovr version number.
-    gcovr_version_info = get_gcovr_version()
+    gcovr_version = get_gcovr_version()
 
     # Get gcovr options from project configuration options
     gcovr_opts = get_gcovr_opts(opts)
@@ -42,15 +42,15 @@ class GcovrReportinator
     exception_on_fail = !!gcovr_opts[:exception_on_fail]
 
     # Build the common gcovr arguments.
-    args_common = args_builder_common(gcovr_opts)
+    args_common = args_builder_common( gcovr_opts, gcovr_version )
 
     msg = @reportinator.generate_heading( "Running Gcovr Coverage Reports" )
     @loginator.log( msg )
 
-    if ((gcovr_version_info[0] == 4) && (gcovr_version_info[1] >= 2)) || (gcovr_version_info[0] > 4)
+    # gcovr version 4.2 and later supports generating multiple reports with a single call.
+    if min_version?( gcovr_version, 4, 2 )
       reports = []
 
-      # gcovr version 4.2 and later supports generating multiple reports with a single call.
       args = args_common
 
       args += (_args = args_builder_cobertura(opts, false))
@@ -83,10 +83,11 @@ class GcovrReportinator
       if !(args == args_common)
         run( gcovr_opts, args, exception_on_fail )
       end
+
+    # gcovr version 4.1 and earlier supports HTML and Cobertura XML reports.
+    # It does not support SonarQube and JSON reports.
+    # Reports must also be generated separately.
     else
-      # gcovr version 4.1 and earlier supports HTML and Cobertura XML reports.
-      # It does not support SonarQube and JSON reports.
-      # Reports must also be generated separately.
       args_cobertura = args_builder_cobertura(opts, true)
       args_html = args_builder_html(opts, true)
 
@@ -123,7 +124,7 @@ class GcovrReportinator
   GCOVR_SETTING_PREFIX = "gcov_gcovr"
 
   # Build the gcovr report generation common arguments.
-  def args_builder_common(gcovr_opts)
+  def args_builder_common(gcovr_opts, gcovr_version)
     args = ""
     args += "--root \"#{gcovr_opts[:report_root]}\" " unless gcovr_opts[:report_root].nil?
     args += "--config \"#{gcovr_opts[:config_file]}\" " unless gcovr_opts[:config_file].nil?
@@ -144,6 +145,11 @@ class GcovrReportinator
     args += "--keep " if gcovr_opts[:keep]
     args += "--delete " if gcovr_opts[:delete]
     args += "-j #{gcovr_opts[:threads]} " if !(gcovr_opts[:threads].nil?) && (gcovr_opts[:threads].is_a? Integer)
+
+    # Version check -- merge mode is only available and relevant as of gcovr 6.0
+    if min_version?( gcovr_version, 6, 0 )
+      args += "--merge-mode-functions \"#{gcovr_opts[:merge_mode_function]}\" " unless gcovr_opts[:merge_mode_function].nil?
+    end
 
     [:fail_under_line,
      :fail_under_branch,
@@ -216,11 +222,11 @@ class GcovrReportinator
 
   # Build the gcovr JSON report generation arguments.
   def args_builder_json(opts, use_output_option=false)
-    gcovr_opts = get_gcovr_opts(opts)
+    gcovr_opts = get_gcovr_opts( opts )
     args = ""
 
     # Determine if the gcovr JSON report is enabled. Defaults to disabled.
-    if report_enabled?(opts, ReportTypes::JSON)
+    if report_enabled?( opts, ReportTypes::JSON )
       # Determine the JSON report file name.
       artifacts_file_json = GCOV_GCOVR_ARTIFACTS_FILE_JSON
       if !(gcovr_opts[:json_artifact_filename].nil?)
@@ -317,10 +323,10 @@ class GcovrReportinator
 
 
   # Get the gcovr version number as components
-  # Return [major, minor]
+  # Return {:major, :minor}
   def get_gcovr_version()
-    version_number_major = 0
-    version_number_minor = 0
+    major = 0
+    minor = 0
 
     command = @tool_executor.build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], "--version")
 
@@ -331,13 +337,26 @@ class GcovrReportinator
     version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)
 
     if !(version_number_match_data.nil?) && !(version_number_match_data[1].nil?) && !(version_number_match_data[2].nil?)
-        version_number_major = version_number_match_data[1].to_i
-        version_number_minor = version_number_match_data[2].to_i
+        major = version_number_match_data[1].to_i
+        minor = version_number_match_data[2].to_i
     else
       raise CeedlingException.new( "Could not collect `gcovr` version from its command line" )
     end
 
-    return version_number_major, version_number_minor
+    return {:major => major, :minor => minor}
+  end
+
+
+  # Process version hash from `get_gcovr_version()`
+  def min_version?(version, major, minor)
+    # Meet minimum requirement if major version is greater than minimum major threshold
+    return true if version[:major] > major
+
+    # Meet minimum requirement only if greater than or equal to minor version for the same major version
+    return true if version[:major] == major and version[:minor] >= minor
+
+    # Version is less than major.minor
+    return false
   end
 
 

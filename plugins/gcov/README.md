@@ -721,6 +721,13 @@ root of your project, you may need set `:report_root` as well as
     # generates for exception handling. (gcovr --exclude-throw-branches).
     :exclude_throw_branches: <true|false>
 
+    # For Gcovr 6.0+, multiple instances of the same function in coverage results can
+    # cause a fatal error. Since Ceedling can test multiple build variations of the
+    # same source function, this is bad.
+    # Default value for Gcov plugin is 'merge-use-line-max'. See Gcovr docs for more.
+    # https://gcovr.com/en/stable/guide/merging.html
+    :merge_mode_function: <...>
+
     # Use existing gcov files for analysis. Default: False. (gcovr --use-gcov-files)
     :use_gcov_files: <true|false>
 
