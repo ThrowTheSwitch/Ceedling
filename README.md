@@ -1,6 +1,6 @@
 # Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 
-_July 11, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
+_August 27, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
 shipping very soon. See the [Release Notes](docs/ReleaseNotes.md) for an overview
 of all that’s new since 0.31.1 plus links to the detailed Changelog and list of 
 Breaking Changes.
