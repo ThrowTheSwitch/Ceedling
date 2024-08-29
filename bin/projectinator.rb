@@ -26,25 +26,28 @@ class Projectinator
   def load(filepath:nil, env:{}, silent:false)
     # Highest priority: command line argument
     if filepath
-      config = load_filepath( filepath, 'from command line argument', silent )
-      return File.expand_path( filepath ), config
+      _filepath = File.expand_path( filepath )
+      config = load_and_log( _filepath, 'from command line argument', silent )
+      return _filepath, config
 
     # Next priority: environment variable
     elsif env[PROJECT_FILEPATH_ENV_VAR]
       filepath = env[PROJECT_FILEPATH_ENV_VAR]
+      _filepath = File.expand_path( filepath )
       @path_validator.standardize_paths( filepath )
-      config = load_filepath( 
-        filepath,
+      config = load_and_log( 
+        _filepath,
         "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`",
         silent
       )
-      return File.expand_path( filepath ), config
+      return _filepath, config
 
     # Final option: default filepath
     elsif @file_wrapper.exist?( DEFAULT_PROJECT_FILEPATH )
       filepath = DEFAULT_PROJECT_FILEPATH
-      config = load_filepath( filepath, "at default location", silent )
-      return File.expand_path( filepath ), config
+      _filepath = File.expand_path( filepath )
+      config = load_and_log( _filepath, "from working directory", silent )
+      return _filepath, config
 
     # If no user provided filepath and the default filepath does not exist,
     # we have a big problem
@@ -205,7 +208,7 @@ class Projectinator
 
   private
 
-  def load_filepath(filepath, method, silent)
+  def load_and_log(filepath, method, silent)
     begin
       # Load the filepath we settled on as our project configuration
       config = @yaml_wrapper.load( filepath )
@@ -216,7 +219,10 @@ class Projectinator
 
       # Log what the heck we loaded
       if !silent
-        msg = "Loaded #{'(empty) ' if config.empty?}project configuration #{method} using #{filepath}"
+        msg  = "Loaded #{'(empty) ' if config.empty?}project configuration #{method}.\n"
+        msg += " > Using: #{filepath}\n"
+        msg += " > Working directory: #{Dir.pwd()}"
+
         @loginator.log( msg, Verbosity::NORMAL, LogLabels::CONSTRUCT )
       end
 
