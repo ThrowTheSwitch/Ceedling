@@ -26,15 +26,17 @@ class Projectinator
   def load(filepath:nil, env:{}, silent:false)
     # Highest priority: command line argument
     if filepath
+      @path_validator.standardize_paths( filepath )
       _filepath = File.expand_path( filepath )
       config = load_and_log( _filepath, 'from command line argument', silent )
       return _filepath, config
 
     # Next priority: environment variable
     elsif env[PROJECT_FILEPATH_ENV_VAR]
-      filepath = env[PROJECT_FILEPATH_ENV_VAR]
-      _filepath = File.expand_path( filepath )
+      # ENV lookup is frozen so dup() to operate on the string
+      filepath = env[PROJECT_FILEPATH_ENV_VAR].dup()
       @path_validator.standardize_paths( filepath )
+      _filepath = File.expand_path( filepath )
       config = load_and_log( 
         _filepath,
         "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`",
