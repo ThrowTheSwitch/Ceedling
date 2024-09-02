@@ -134,7 +134,7 @@ The application commands `ceedling new` and `ceedling upgrade` at the command li
 
   Ceedling => #.#.#-<Short SHA>
   ----------------------
-  <Ceedling path>
+  <Ceedling install path>
 
   Build Frameworks
   ----------------------
@@ -143,9 +143,7 @@ The application commands `ceedling new` and `ceedling upgrade` at the command li
   CException => #.#.#
 ```
 
-If the information is unavailable such as in local development, the SHA is omitted.
-
-This source for this string is generated and captured in the Gem at the time of Ceedling’s automated build in CI.
+If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling’s automated build in CI.
 
 ### Tool definition modification shortcuts expanded for `:executable`
 

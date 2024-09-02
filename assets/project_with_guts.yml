@@ -204,6 +204,13 @@
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.
 :environment: []
+# :environment:
+#   # List enforces order allowing later to reference earlier with inline Ruby substitution
+#   - :var1: value
+#   - :var2: another value
+#   - :path:            # Special PATH handling with platform-specific path separators
+#     - #{ENV['PATH']}  # Environment variables can use inline Ruby substitution
+#     - /another/path/to/include
 
 # LIBRARIES
 # These libraries are automatically injected into the build process. Those specified as
