@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-08-28
+# [1.0.0 pre-release] — 2024-09-02
 
 ## 🌟 Added
 
@@ -66,6 +66,10 @@ You may now:
 * Modify your configuration with Mixins loaded from your project file, environment variables, and/or from the command line.
 
 All the options for loading and modifying a project configuration are thoroughly documented in _[CeedlingPacket](CeedlingPacket.md))_.
+
+### Additional and improved configuration validation
+
+Ceedling’s validation of your configuration has been significantly expanded to cover more sections and with more helpful error messages.
 
 ### Broader crash detection in test suites and new backtrace abilities
 
