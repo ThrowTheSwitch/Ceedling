@@ -206,6 +206,93 @@ class ConfiguratorSetup
     return valid
   end
 
+
+  def validate_environment_vars(config)
+    environment = config[:environment]
+
+    return true if environment.nil?
+
+    # Ensure :environment is an array (of simple hashes--validated below)
+    if environment.class != Array
+      msg = ":environment must be a list of key / value pairs, not #{environment.class} (see docs for examples)"
+      @loginator.log( msg, Verbosity::ERRORS )
+      return false
+    end
+
+    valid = true
+    keys = []
+
+    # Ensure a hash for each entry
+    environment.each do |entry|
+      if entry.class != Hash
+        msg = ":environment entry #{entry} is not a key / value pair (see docs for examples)"
+        @loginator.log( msg, Verbosity::ERRORS )
+        valid = false
+      end
+    end
+
+    # Only end processing if an entry wasn't a hash
+    return valid if !valid
+
+    # Validate each hash entry
+    environment.each do |entry|
+      key_length = entry.keys.length()
+
+      # Ensure entry is a hash with just a single key / value pair
+      if key_length != 1
+        msg = ":environment entry #{entry} does not specify exactly one key (see docs for examples)"
+        @loginator.log( msg, Verbosity::ERRORS )
+        valid = false
+      end
+
+      key   = entry.keys[0] # Get first (should be only) environment variable entry
+      value = entry[key]    # Get associated value
+
+      # Remember key for later duplication check
+      keys << key
+
+      # Ensure entry key is a symbol
+      if key.class != Symbol
+        msg = ":environment entry '#{key}' is not a symbol (:#{key})"
+        @loginator.log( msg, Verbosity::ERRORS )
+        valid = false
+
+        # Skip validation of value if key is not a symbol
+        next
+      end
+
+      # Ensure entry value is a string or list
+      if not (value.class == String or value.class == Array)
+        msg = ":environment entry :#{key} is associated with #{value.class}, not a string or list (see docs for details)"
+        @loginator.log( msg, Verbosity::ERRORS )
+        valid = false
+      end
+
+      # If path is a list, ensure it's all strings
+      if value.class == Array
+        value.each do |item|
+          if item.class != String
+            msg = ":environment entry :#{key} contains a list element '#{item}' (#{item.class}) that is not a string"
+            @loginator.log( msg, Verbosity::ERRORS )
+            valid = false
+          end
+        end
+      end
+    end
+
+    # Find any duplicate keys
+    dups = keys.uniq.select { |k| keys.count( k ) > 1 }
+    
+    if !dups.empty?
+      msg = "Duplicate :environment entr#{dups.length() == 1 ? 'y' : 'ies'} #{dups.map{|d| ':' + d.to_s}.join( ', ' )} found"
+      @loginator.log( msg, Verbosity::ERRORS )
+      valid = false
+    end
+    
+    return valid
+  end
+
+
   def validate_backtrace(config)
     valid = true
 

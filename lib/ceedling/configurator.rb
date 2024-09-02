@@ -463,7 +463,7 @@ class Configurator
 
       # Special case handling for :path environment variable entry
       # File::PATH_SEPARATOR => ':' (Unix-ish) or ';' (Windows)
-      interstitial = ((key == :path) ? File::PATH_SEPARATOR : '')
+      interstitial = ((key == :path) ? File::PATH_SEPARATOR : ' ')
 
       # Create an array container for the value of this entry
       #  - If the value is an array, get it
@@ -480,7 +480,7 @@ class Configurator
 
       # Join any value items (become a flattened string)
       #  - With path separator if the key was :path
-      #  - With nothing otherwise
+      #  - With space otherwise
       hash[key] = items.join( interstitial )
 
       # Set the environment variable for our session
@@ -575,6 +575,9 @@ class Configurator
     blotter &= @configurator_setup.validate_required_sections( config )
     blotter &= @configurator_setup.validate_required_section_values( config )
 
+    # Other sections can reference environment variables that are evaluated early on
+    blotter &= @configurator_setup.validate_environment_vars( config )
+
     if !blotter
       raise CeedlingException.new("Ceedling configuration failed validation")
     end
@@ -591,6 +594,8 @@ class Configurator
                  app_cfg[:include_test_case],
                  app_cfg[:exclude_test_case]
                )
+    # blotter &= @configurator_setup.validate_flags( config )
+    # blotter &= @configurator_setup.validate_defines( config )
     blotter &= @configurator_setup.validate_test_preprocessor( config )
     blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
