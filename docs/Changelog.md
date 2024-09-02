@@ -423,9 +423,18 @@ The Gcov plugin’s `:abort_on_uncovered` option plus the related `:uncovered_ig
 
 A previously undocumented feature for merging a second configuration via environment variable `CEEDLING_USER_PROJECT_FILE` has been removed. This feature has been superseded by the new Mixins functionality.
 
-### Tool definition inline Ruby evaluation replacement removed (inline Ruby string expansion remains)
+### Tool definition inline Ruby _evaluation_ replacement removed (inline Ruby string _expansion_ remains)
 
 Reaching back to the earliest days of Ceedling, tool definitions supported two slightly different string replacement options that executed at different points in a build’s lifetime. Yeah. It was maybe not great.
 
 Support for `{...}` Ruby evaluation in tool definitions has been removed. Support for `#{...}` Ruby string expansion in tool definitions remains.
+
+### Tool definition defaults use of environment variables
+
+Ceedling’s internal default tool definitions no longer incorporate (undocumented) environment variable lookups.
+
+When Ceedling was very young and tool definitions were relatively simple, Ceedling’s defaults were configured to incorporate commonly used environment variables (e.g. `CC_FLAGS`). This made sense at the time. As Ceedling’s tool processing grew in sophistication, this convention no longer made sense for a variety of reasons. All such references have been removed.
+
+If you want to incorporate environment variables into your tool definitions, you may still do so. See the documentation for inline Ruby string exapnsion and the various options for defining or modifying a tool definition. In short, you may incorporate `"#{ENV['<VAR>']}"` strings into your tooling.
+  
 
