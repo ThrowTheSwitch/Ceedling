@@ -289,7 +289,7 @@ class CliHandler
     # Process environment created by configuration
     config[:environment].each do |env|
       env.each_key do |key|
-        name = key.to_s
+        name = key.to_s.upcase
         env_list << "#{name}: \"#{env[key]}\""
       end
     end
