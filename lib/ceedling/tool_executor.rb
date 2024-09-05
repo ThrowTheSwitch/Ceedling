@@ -110,10 +110,10 @@ class ToolExecutor
       argument = ''
 
       case(element)
-        # if we find a simple string then look for string replacement operators
+        # If we find a simple string then look for string replacement operators
         #  and expand with the parameters in this method's argument list
         when String then argument = expandify_element(tool_name, element, *args)
-        # if we find a hash, then we grab the key as a substitution string and expand the
+        # If we find a hash, then we grab the key as a substitution string and expand the
         #  hash's value(s) within that substitution string
         when Hash   then argument = dehashify_argument_elements(tool_name, element)
       end
@@ -186,13 +186,10 @@ class ToolExecutor
     expansion = ((expand.class == String) ? [expand] : expand)
 
     expansion.each do |item|
-      # code eval substitution
-      if (item =~ RUBY_EVAL_REPLACEMENT_PATTERN)
-        elements << eval($1)
-      # string eval substitution
-      elsif (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      # String eval substitution
+      if (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
         elements << @system_wrapper.module_eval(item)
-      # global constants
+      # Global constants
       elsif (@system_wrapper.constants_include?(item))
         const = Object.const_get(item)
         if (const.nil?)
