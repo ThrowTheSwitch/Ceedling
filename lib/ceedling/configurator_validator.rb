@@ -171,4 +171,33 @@ class ConfiguratorValidator
     return @tool_validator.validate( **arg_hash )
   end
 
+
+  def validate_matcher(matcher)
+    case matcher
+    
+    # Handle regex-based matcher
+    when /\/.+\//
+      # Ensure regex is well-formed by trying to compile it
+      begin
+        Regexp.compile( matcher[1..-2] )
+      rescue Exception => ex
+        # Re-raise with our own message formatting
+        raise "invalid regular expression:: #{ex.message}"
+      end
+    
+    # Handle wildcard / substring matchers
+    else
+      # Strip out allowed characters
+      invalid = matcher.gsub( /[a-z0-9 \/\.\-_\*]/i, '' )
+
+      # If there's any characters left, then we found invalid characters
+      if invalid.length() > 0
+        # Format invalid characters into a printable list with no duplicates
+        _invalid = invalid.chars.uniq.map{|c| "'#{c}'"}.join( ', ')
+
+        raise "invalid substring or wilcard characters #{_invalid}"
+      end
+    end
+  end
+
 end

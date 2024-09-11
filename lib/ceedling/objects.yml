@@ -93,6 +93,7 @@ configurator_setup:
     - configurator_validator
     - configurator_plugins
     - loginator
+    - reportinator
     - file_wrapper
 
 configurator_plugins:

@@ -575,7 +575,8 @@ class Configurator
     blotter &= @configurator_setup.validate_required_sections( config )
     blotter &= @configurator_setup.validate_required_section_values( config )
 
-    # Other sections can reference environment variables that are evaluated early on
+    # Configuration sections can reference environment variables that are evaluated early on.
+    # So, we validate :environment early as an essential section.
     blotter &= @configurator_setup.validate_environment_vars( config )
 
     if !blotter
@@ -594,8 +595,8 @@ class Configurator
                  app_cfg[:include_test_case],
                  app_cfg[:exclude_test_case]
                )
-    # blotter &= @configurator_setup.validate_flags( config )
-    # blotter &= @configurator_setup.validate_defines( config )
+    blotter &= @configurator_setup.validate_defines( config )
+    blotter &= @configurator_setup.validate_flags( config )
     blotter &= @configurator_setup.validate_test_preprocessor( config )
     blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
