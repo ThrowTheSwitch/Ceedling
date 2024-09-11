@@ -130,7 +130,7 @@
 :flags:
   :test:
     :compile:
-      'TemperatureCalculator': 
+      :TemperatureCalculator: 
         - '-DSUPPLY_VOLTAGE=3.0'
 
 # Configuration Options specific to CMock. See CMock docs for details
