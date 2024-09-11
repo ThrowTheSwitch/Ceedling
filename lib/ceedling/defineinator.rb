@@ -42,8 +42,6 @@ class Defineinator
     if defines == nil then return []
     elsif defines.is_a?(Array) then return defines.flatten # Flatten to handle list-nested YAML aliases
     elsif defines.is_a?(Hash)
-      @config_matchinator.validate_matchers(hash:defines, section:@topkey, context:subkey)
-
       arg_hash = {
         hash: defines,
         filepath: filepath,
