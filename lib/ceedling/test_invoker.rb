@@ -305,7 +305,7 @@ class TestInvoker
           end
           
           # CMock + Unity + CException
-          test_frameworks    = @helper.collect_test_framework_sources
+          test_frameworks    = @helper.collect_test_framework_sources( details[:mock_list] )
           
           # Extra suport source files (e.g. microcontroller startup code needed by simulator)
           test_support       = @configurator.collection_all_support
