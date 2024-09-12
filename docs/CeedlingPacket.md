@@ -3460,7 +3460,7 @@ General case:
     - ...
 ```
 
-Advanced matching for test build handling only:
+Advanced matching for **_test_** build handling only:
 ```yaml
 :defines:
   :test:
@@ -3561,7 +3561,7 @@ Ceedling treats each test executable as a mini project. As a reminder, each test
 together with all C sources and frameworks, becomes an individual test executable of
 the same name.
 
-_In the `:test` context only_, symbols may be defined for only those test executable 
+**_In the `:test` context only_**, symbols may be defined for only those test executable 
 builds that match file name criteria. Matchers match on test file names only, and the 
 specified symbols are added to the build step for all files that are components of 
 matched test executables.
@@ -3839,7 +3839,7 @@ General case:
       - ...
 ```
 
-Advanced matching for test build handling only:
+Advanced matching for **_test_** build handling only:
 ```yaml
 :flags:
   :test:
@@ -3864,9 +3864,9 @@ You specify the flags you want to add to a build step beneath `:<context>` ↳ `
 In many cases this is a simple YAML list of strings that will become flags in a tool's 
 command line.
 
-Specifically in the `:test` context you also have the option to create test file matchers 
-that apply flags to some subset of your test build. Note that file matchers and the simpler
-flags list format cannot be mixed for `:flags` ↳ `:test`.
+**_Specifically and only in the `:test` context_** you also have the option to create test 
+file matchers that apply flags to some subset of your test build. Note that file matchers 
+and the simpler flags list format cannot be mixed for `:flags` ↳ `:test`.
 
 * <h3><code>:flags</code> ↳ <code>:release</code> ↳ <code>:compile</code></h3>
 

@@ -198,7 +198,7 @@ class ConfiguratorSetup
 
     # Ensure config[:defines] is a hash
     if defines.class != Hash
-      msg = ":defines must contain key / value pairs, not #{defines.class.downcase} (see docs for examples)"
+      msg = ":defines must contain key / value pairs, not #{defines.class.to_s.downcase} (see docs for examples)"
       @loginator.log( msg, Verbosity::ERRORS )
       return false
     end
@@ -226,15 +226,21 @@ class ConfiguratorSetup
 
       # Non-test contexts
       if context != :test
-        if config.class != Array
-          msg = "#{walk} entry '#{config}' must be a list, not #{config.class.downcase} (see docs for examples)"
+        # Handle the (probably) common case of trying to use matchers for any context other than test
+        if config.class == Hash
+          msg = "#{walk} entry '#{config}' must be a list--matcher hashes only availalbe for the :test context (see docs for details)"
+          @loginator.log( msg, Verbosity::ERRORS )
+          valid = false
+        # Catchall for any oddball entries
+        elsif config.class != Array
+          msg = "#{walk} entry '#{config}' must be a list, not #{config.class.to_s.downcase} (see docs for examples)"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
         end
       # Test contexts
       else
         if config.class != Array and config.class != Hash
-          msg = "#{walk} entry '#{config}' must be a list or matcher, not #{config.class.downcase} (see docs for examples)"
+          msg = "#{walk} entry '#{config}' must be a list or matcher, not #{config.class.to_s.downcase} (see docs for examples)"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
         end
@@ -254,7 +260,7 @@ class ConfiguratorSetup
       config.each do |symbol|
         if symbol.class != String
           walk = @reportinator.generate_config_walk( [:defines, context] )
-          msg = "#{walk} list entry #{symbol} must be a string, not #{symbol.class.downcase} (see docs for examples)"
+          msg = "#{walk} list entry #{symbol} must be a string, not #{symbol.class.to_s.downcase} (see docs for examples)"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
         end
@@ -320,7 +326,7 @@ class ConfiguratorSetup
 
     # Ensure config[:flags] is a hash
     if flags.class != Hash
-      msg = ":flags must contain key / value pairs, not #{flags.class.downcase} (see docs for examples)"
+      msg = ":flags must contain key / value pairs, not #{flags.class.to_s.downcase} (see docs for examples)"
       @loginator.log( msg, Verbosity::ERRORS )
       # Immediately bail out
       return false
@@ -337,7 +343,7 @@ class ConfiguratorSetup
       if operations.class != Hash
         walk = @reportinator.generate_config_walk( [:flags, context] )
         example = @reportinator.generate_config_walk( [:flags, context, :compile] )
-        msg = "#{walk} context must contain :<operation> key / value pairs, not #{operations.class.downcase} (ex. #{example})"
+        msg = "#{walk} context must contain :<operation> key / value pairs, not #{operations.class.to_s.downcase} (ex. #{example})"
         @loginator.log( msg, Verbosity::ERRORS )
 
         # Immediately bail out
@@ -364,15 +370,21 @@ class ConfiguratorSetup
 
         # Non-test contexts
         if context != :test
-          if config.class != Array
-            msg = "#{walk} entry '#{config}' must be a list, not #{config.class.downcase} (see docs for examples)"
+          # Handle the (probably) common case of trying to use matchers for any context other than test
+          if config.class == Hash
+            msg = "#{walk} entry '#{config}' must be a list--matcher hashes only availalbe for the :test context (see docs for details)"
+            @loginator.log( msg, Verbosity::ERRORS )
+            valid = false
+          # Catchall for any oddball entries
+          elsif config.class != Array
+            msg = "#{walk} entry '#{config}' must be a list, not #{config.class.to_s.downcase} (see docs for examples)"
             @loginator.log( msg, Verbosity::ERRORS )
             valid = false
           end
         # Test contexts
         else
           if config.class != Array and config.class != Hash
-            msg = "#{walk} entry '#{config}' must be a list or matcher, not #{config.class.downcase} (see docs for examples)"
+            msg = "#{walk} entry '#{config}' must be a list or matcher, not #{config.class.to_s.downcase} (see docs for examples)"
             @loginator.log( msg, Verbosity::ERRORS )
             valid = false
           end
@@ -395,7 +407,7 @@ class ConfiguratorSetup
         flags.each do |flag|
           if flag.class != String
             walk = @reportinator.generate_config_walk( [:flags, context, operation] )
-            msg = "#{walk} simple list entry '#{flag}' must be a string, not #{flag.class.downcase} (see docs for examples)"
+            msg = "#{walk} simple list entry '#{flag}' must be a string, not #{flag.class.to_s.downcase} (see docs for examples)"
             @loginator.log( msg, Verbosity::ERRORS )
             valid = false
           end
@@ -494,7 +506,7 @@ class ConfiguratorSetup
 
     # Ensure config[:environment] is an array (of simple hashes--validated below)
     if environment.class != Array
-      msg = ":environment must contain a list of key / value pairs, not #{environment.class.downcase} (see docs for examples)"
+      msg = ":environment must contain a list of key / value pairs, not #{environment.class.to_s.downcase} (see docs for examples)"
       @loginator.log( msg, Verbosity::ERRORS )
       return false
     end
@@ -543,7 +555,7 @@ class ConfiguratorSetup
 
       # Ensure entry value is a string or list
       if not (value.class == String or value.class == Array)
-        msg = ":environment entry #{key} is associated with #{value.class.downcase}, not a string or list (see docs for details)"
+        msg = ":environment entry #{key} is associated with #{value.class.to_s.downcase}, not a string or list (see docs for details)"
         @loginator.log( msg, Verbosity::ERRORS )
         valid = false
       end
@@ -552,7 +564,7 @@ class ConfiguratorSetup
       if value.class == Array
         value.each do |item|
           if item.class != String
-            msg = ":environment entry #{key} contains a list element '#{item}' (#{item.class.downcase}) that is not a string"
+            msg = ":environment entry #{key} contains a list element '#{item}' (#{item.class.to_s.downcase}) that is not a string"
             @loginator.log( msg, Verbosity::ERRORS )
             valid = false
           end
