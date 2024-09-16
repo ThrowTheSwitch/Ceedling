@@ -39,7 +39,7 @@ See the [documentation](CeedlingPacket.md) discussion on include paths, Ceedling
 
 _Notes:_
 
-* Ceedling is not yet capable of preserving build directive macros through preprocessing of test files. If, for example, you wrap these macros in conditional compilation preprocessing statements, they will not work as you expect.
+* Ceedling is not yet capable of preserving build directive macros through preprocessing of test files. If, for example, you wrap these macros within conditional compilation C preprocessing statements (e.g. `#ifdef`), they will not work as you expect. Specifically, because these macros act as simple markers and are discovered by plain text parsing, Ceedling 1.0.0 will always discover them regardless of conditional compilation wrappers or Ceedling’s preprocessing configuration.
 * However, preprocessing of mockable header files can now be enabled separately (see `:project` ↳ `:use_test_preprocessor`).
 
 #### `TEST_INCLUDE_PATH(...)` 

@@ -978,7 +978,7 @@ Ceedling provides robust command line help for application commands.
 Execute `ceedling help` for a summary view of all application commands.
 Execute `ceedling help <command>` for detailed help.
 
-_Note:_ Because the built-in command line help is thorough, we will only 
+_NOTE:_ Because the built-in command line help is thorough, we will only 
 briefly list and explain the available application commands.
 
 * `ceedling [no arguments]`:
@@ -1148,7 +1148,7 @@ command (but the `build` keyword can be omitted — see above).
   pattern (case sensitive). Example: `ceedling "test:pattern[(I|i)nit]"` 
   will execute all tests named for initialization testing.
 
-  _Note:_ Quotes are likely necessary around the regex characters or 
+  _NOTE:_ Quotes are likely necessary around the regex characters or 
   entire task to distinguish characters from shell command line operators.
 
 * `ceedling test:path[*]`:
@@ -1405,7 +1405,7 @@ A test case function signature must have these elements:
 In other words, a test function signature should look like this: 
 `void test<any_name_you_like>(void)`.
 
-## Preprocessing behavior for tests
+## Ceedling preprocessing behavior for your tests
 
 ### Preprocessing feature background and overview
 
@@ -1425,15 +1425,20 @@ conditionals around or in function signatures can get weird. Of course, it’s
 often in sophisticated projects with complex header files that mocking is most 
 desired in the first place.
 
-Ceedling includes an optional ability to preprocess test files, mockable header 
-files, or both before executing any parsing operations on them. See the 
-[`:project` ↳ `:use_test_preprocessor`][project-settings] project configuration
-setting.
+Ceedling includes an optional ability to preprocess the following files before 
+then extracting test cases and functions to be mocked with text parsing.
+
+1. Your test files, or
+1. Mockable header files, or
+1. Both of the above 
+
+See the [`:project` ↳ `:use_test_preprocessor`][project-settings] project 
+configuration setting.
 
 This Ceedling feature uses `gcc`’s preprocessing mode and the `cpp` preprocessor 
 tool to strip down / expand test files and headers to their raw code content 
-that can then be processed by Ceedling and CMock. These tools must be in your 
-search path if Ceedling’s preprocessing is enabled.
+that can then be parsed as text by Ceedling and CMock. These tools must be in 
+your search path if Ceedling’s preprocessing is enabled.
 
 **Ceedling’s test preprocessing abilities are directly tied to the features and 
 output of `gcc` and `cpp`. The default Ceedling tool definitions for these should 
@@ -1443,30 +1448,87 @@ own tools in this highly specialized capacity.**
 
 [project-settings]: #project-global-project-settings
 
+### Ceedling preprocessing limitations and gotchas
+
+#### Preprocessing limitations cheatsheet
+
+Ceedling’s preprocessing abilities are generally quite useful — especially in 
+projects with multiple build configurations for different feature sets or 
+multiple targets, legacy code that cannot be refactored, and complex header 
+files provided by vendors.
+
+However, best applying Ceedling’s preprocessing abilities requires understanding 
+how the feature works, when to use it, and its limitations.
+
+At a high level, Ceedling’s preprocessing is applicable for cases where macros 
+or conditional compilation preprocessing statements (e.g. `#ifdef`):
+
+* Generate or hide/reveal your test files’ `#include` statements.
+* Generate or hide/reveal your test files’ test case function signatures 
+  (e.g. `void test_foo()`.
+* Generate or hide/reveal mockable header files’ `#include` statements.
+* Generate or hide/reveal header files’ mockable function signatures.
+
+**_NOTE:_ You do not necessarily need to enable Ceedling’s preprocessing only
+because you have preprocessing statements in your test files or mockable header 
+files. The feature is only truly needed if your project meets the conditions 
+above.**
+
+The sections that follow flesh out the details of the bulleted list above.
+
+#### Preprocessing gotchas
+
+**_NOTE:_ As of Ceedling 1.0.0, Ceedling’s preprocessing feature has a 
+limitation that affects Unity features triggered by the following macros:**
+
+* `TEST_CASE()`
+* `TEST_RANGE()`
+
+With Ceedling’s preprocessing enabled, Unity’s `TEST_CASE()` and `TEST_RANGE()`
+in your test files will effectively vanish before test compilation is able to 
+process them. That is, Ceedling’s preprocessing and these Unity features are 
+not presently compatible. (Note that it is possible to enable preprocessing for
+mockable header files apart from enabling it for test files.)
+
+**_NOTE:_ The following new build directive macros available in Ceedling 1.0.0
+are incompatible with enclosing conditional compilation C preprocessing 
+statements:**
+
+* `TEST_SOURCE_FILE()`
+* `TEST_INCLUDE_PATH()`
+
+Wrapping `TEST_SOURCE_FILE()` and `TEST_INCLUDE_PATH()` in conditional 
+compilation statements (e.g. `#ifdef`) will not behave as you expect. These 
+macros are used as markers for advanced abilities discovered by Ceedling parsing 
+a test file as plain text. Whether or not Ceedling preprocessing is enabled, 
+Ceedling will always discover these marker macros in the plain text of a test file.
+
 ### Preprocessing of your test files
 
 When preprocessing is enabled for test files, Ceedling will expand preprocessor
-statements in test files before generating test runners from them.
+statements in test files before extracting `#include` conventions and test case 
+signatures. That is, preprocessing output is used to generate test runners 
+and assemble the components of a test executable build.
 
-**_Note:_** Conditional directives _inside_ test case functions generally do 
+**_NOTE:_** Conditional directives _inside_ test case functions generally do 
 not require Ceedling’s test preprocessing ability. Assuming your code is correct,
 the C preprocessor within your toolchain will do the right thing for you
-in your test build.
+in your test build. Read on for more details and the other cases of interest.
 
 Test file preprocessing by Ceedling is applicable primarily when conditional
 preprocessor directives generate the `#include` statements for your test file
-and/or enclose full test case functions. Ceedling will not be able to properly
-discover your `#include` statements and test case functions unless they are
-plainly available in an expanded, raw code version of your test file. 
+and/or generate or enclose full test case functions. Ceedling will not be able 
+to properly discover your `#include` statements or test case functions unless 
+they are plainly available in an expanded, raw code version of your test file. 
 Ceedling’s preprocessing abilities provide that expansion.
 
-#### Examples of when test preprocessing **_is_** needed for test files
+#### Examples of when Ceedling preprocessing **_is_** needed for test files
 
-Generally, test preprocessing is needed when:
+Generally, Ceedling preprocessing is needed when:
 
-1. `#include` statements are obscured by macros
+1. `#include` statements are generated by macros
 1. `#include` statements are conditionally present due to `#ifdef` statements
-1. Test case function signatures are obscured by macros
+1. Test case function signatures are generated by macros
 1. Test case function signatures are conditionaly present due to `#ifdef` statements
 
 ```c
@@ -1526,12 +1588,13 @@ Mocking is often most useful in complicated codebases. As such Ceedling’s
 preprocessing abilities tend to be quite necessary to properly expand header
 files so CMock can parse them.
 
-#### Examples of when test preprocessing **_is_** needed for mockable headers
+#### Examples of when Ceedling preprocessing **_is_** needed for mockable headers
 
-Generally, test preprocessing is needed when:
+Generally, Ceedling preprocessing is needed when:
 
-1. Function signatures are obscured by macros
-1. Function signatures are conditionaly present due to `#ifdef` statements
+1. Function signatures are formed by macros
+1. Function signatures are conditionaly present due to surrounding `#ifdef` 
+   statements
 1. Macros expand to become function decorators, return types, or parameters 
 
 **_Important Notes:_**
@@ -1640,7 +1703,7 @@ compilation option is not set.
     - UNITY_INCLUDE_EXEC_TIME
 ```
 
-_Note:_ Most test cases are quite short, and most computers are quite fast. As
+_NOTE:_ Most test cases are quite short, and most computers are quite fast. As
  such, Unity test case execution time is often reported as 0 milliseconds as
  the CPU execution time for a test case typically remains in the microseconds
  range. Unity would require special rigging that is inconsistently available
@@ -2000,7 +2063,7 @@ configuration the YAML filepath provided.
 
 Example: `ceedling --project=my/path/build.yml test:all`
 
-_Note:_ Ceedling loads any relative paths within your configuration in
+_NOTE:_ Ceedling loads any relative paths within your configuration in
 relation to your working directory. This can cause a disconnect between
 configuration paths, working directory, and the path to your project 
 file.
@@ -2066,7 +2129,7 @@ configuration file.
 
 `ceedling --project=base.yml --mixin=support/mixins/cmdline.yml <tasks>`
 
-_Note:_ The `--mixin` flag supports more than filepaths and can be used 
+_NOTE:_ The `--mixin` flag supports more than filepaths and can be used 
 multiple times in the same command line for multiple mixins (see later 
 documentation section). 
 
@@ -2171,7 +2234,7 @@ Behold the project configuration following mixin merges:
     - compile_commands_json_db    # From env.yml
     - gcov                        # From support/mixins/enabled.yml
 
-# Note: Original :mixins section is filtered out of resulting config
+# NOTE: Original :mixins section is filtered out of resulting config
 ```
 
 ### Mixins deep merge rules
@@ -2511,14 +2574,14 @@ internally - thus leading to unexpected behavior without warning.
 
 ## `:project`: Global project settings
 
-**_Note:_** In future versions of Ceedling, test and release build 
+**_NOTE:_** In future versions of Ceedling, test and release build 
 settings presently organized beneath `:project` will be renamed and 
 migrated to the `:test_build` and `:release_build` sections.
 
 * `:build_root`
 
   Top level directory into which generated path structure and files are
-  placed. Note: this is one of the handful of configuration values that
+  placed. NOTE: this is one of the handful of configuration values that
   must be set. The specified path can be absolute or relative to your
   working directory.
 
@@ -2529,7 +2592,7 @@ migrated to the `:test_build` and `:release_build` sections.
   A list of default build / plugin tasks Ceedling should execute if 
   none are provided at the command line.
 
-  _Note:_ These are build & plugin tasks (e.g. `test:all` and `clobber`).
+  _NOTE:_ These are build & plugin tasks (e.g. `test:all` and `clobber`).
   These are not application commands (e.g. `dumpconfig`) or command 
   line flags (e.g. `--verbosity`). See the documentation 
   [on using the command line][command-line] to understand the distinction 
@@ -2820,7 +2883,7 @@ This section of a project configuration file is documented in the
 
 ## `:test_build` Configuring a test build
 
-**_Note:_** In future versions of Ceedling, test-related settings presently 
+**_NOTE:_** In future versions of Ceedling, test-related settings presently 
 organized beneath `:project` will be renamed and migrated to this section.
 
 * `:use_assembly`
@@ -2851,7 +2914,7 @@ organized beneath `:project` will be renamed and migrated to this section.
 
 ## `:release_build` Configuring a release build
 
-**_Note:_** In future versions of Ceedling, release build-related settings 
+**_NOTE:_** In future versions of Ceedling, release build-related settings 
 presently organized beneath `:project` will be renamed and migrated to 
 this section.
 
@@ -2938,7 +3001,7 @@ the various path-related documentation sections.
 
 * <h3><code>:paths</code> ↳ <code>:test</code></h3>
 
-  All C files containing unit test code. Note: this is one of the
+  All C files containing unit test code. NOTE: this is one of the
   handful of configuration values that must be set for a test suite.
 
   **Default**: `[]` (empty)
@@ -2947,7 +3010,7 @@ the various path-related documentation sections.
 
   All C files containing release code (code to be tested)
 
-  Note: this is one of the handful of configuration values that must 
+  NOTE: this is one of the handful of configuration values that must 
   be set for either a release build or test suite.
 
   **Default**: `[]` (empty)
@@ -3098,7 +3161,7 @@ See examples below.
 
 ### Example `:paths` YAML blurbs
 
-_Note:_ Ceedling standardizes paths for you. Internally, all paths use forward
+_NOTE:_ Ceedling standardizes paths for you. Internally, all paths use forward
  slash `/` path separators (including on Windows), and Ceedling cleans up
  trailing path separators to be consistent internally.
 
@@ -3354,7 +3417,7 @@ is allowed, and that key must be a `:`_<symbol>_.
   - :path:                                 # Concatenated with path separator (see special case above)
      - Tools/gizmo/bin                     # Prepend existing PATH with gizmo path
      - "#{ENV['PATH']}"                    # Pattern #{…} triggers ruby evaluation string expansion
-                                           # Note: value string must be quoted because of '#' to 
+                                           # NOTE: value string must be quoted because of '#' to 
                                            # prevent a YAML comment.
 ```
 
@@ -3499,7 +3562,7 @@ matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
   Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
   YAML key plus symbol list. Both are documented below.
   
-  _Note:_ Left unspecified, `:preprocess` symbols default to be identical to `:test` 
+  _NOTE:_ Left unspecified, `:preprocess` symbols default to be identical to `:test` 
   symbols. Override this behavior by adding `:defines` ↳ `:preprocess` symbols. If you want 
   no additional symbols for preprocessing regardless of `test` symbols, simply specify an 
   empty list `[]`.
@@ -3894,7 +3957,7 @@ and the simpler flags list format cannot be mixed for `:flags` ↳ `:test`.
   Flags may be represented in a simple YAML list or with a more sophisticated file matcher
   YAML key plus flag list. Both are documented below.
   
-  _Note:_ Left unspecified, `:preprocess` flags default to behaving identically to `:compile` 
+  _NOTE:_ Left unspecified, `:preprocess` flags default to behaving identically to `:compile` 
   flags. Override this behavior by adding `:test` ↳ `:preprocess` flags. If you want no 
   additional flags for preprocessing regardless of test compilation flags, simply specify 
   an empty list `[]`.
@@ -4375,7 +4438,7 @@ command line for `:tools` ↳ `:power_drill` would look like this:
 
 #### Ceedling’s default build step tool definitions
 
-**_Note:_** Ceedling’s tool definitions for its preprocessing and backtrace 
+**_NOTE:_** Ceedling’s tool definitions for its preprocessing and backtrace 
 features are not documented here. Ceedling’s use of tools for these features
 are tightly coupled to the options and output of those tools. Drop-in 
 replacements using other tools are not practically possible. Eventually, an
@@ -4463,7 +4526,7 @@ improved plugin system will provide options for integrating alternative tools.
 
 1. `:executable` - Command line executable (required).
 
-    Note: If an executable contains a space (e.g. `Code Cruncher`), and the 
+    NOTE: If an executable contains a space (e.g. `Code Cruncher`), and the 
     shell executing the command line generated from the tool definition needs 
     the name quoted, add escaped quotes in the YAML:
 
@@ -4808,7 +4871,7 @@ configuration. Ultimately, it then launches the main application code from
 The features and conventions controlling _which ceedling_ dictate which
 application code the `ceedling` command line handler launches.
 
-_Note:_ If you are a developer working on the code in Ceedling’s `bin/` 
+_NOTE:_ If you are a developer working on the code in Ceedling’s `bin/` 
 and want to run it while a gem is installed, you must take the additional 
 step of specifying the path to the `ceedling` launcher in your file system.
 
@@ -4837,7 +4900,7 @@ The following are evaluated in order:
    `ceedling` launcher is running. In the typical case this is the default 
    gem installation.
 
-_Note:_ Configuration entry (2) does not make sense in some scenarios.
+_NOTE:_ Configuration entry (2) does not make sense in some scenarios.
 When running `ceedling new`, `ceedling examples`, or `ceedling example` 
 there is no project file to read. Similarly, `ceedling upgrade` does not 
 load a project file; it merely works with the directory structure and 
@@ -4869,9 +4932,15 @@ By placing these macros in your test files, you may control aspects of an
 individual test executable's build from within the test file itself.
 
 These macros are actually defined in Unity, but they evaluate to empty 
-strings. That is, the macros do nothing. But, by placing them in your 
-test files they communicate instructions to Ceedling when scanned at 
-the beginning of a test build.
+strings. That is, the macros do nothing and only serve as text markers for 
+Ceedling to parse. But, by placing them in your test files they 
+communicate instructions to Ceedling when scanned at the beginning of a 
+test build.
+
+**_NOTE:_ `TEST_SOURCE_FILE()` and `TEST_INCLUDE_PATH()`, new in Ceedling 
+1.0.0 are incompatible with enclosing conditional compilation C 
+preprocessing statements. See the [Ceedling’s preprocessing documentation](#preprocessing-gotchas) 
+for more details.**
 
 ## `TEST_SOURCE_FILE()`
 
