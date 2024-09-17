@@ -2570,7 +2570,7 @@ The consequence of this is simple but important. A misspelled
 configuration section or value name is unlikely to cause Ceedling 
 any trouble. Ceedling will happily process that section
 or value and simply use the properly spelled default maintained
-internally - thus leading to unexpected behavior without warning.
+internally — thus leading to unexpected behavior without warning.
 
 ## `:project`: Global project settings
 
@@ -3511,6 +3511,8 @@ Unity, CMock, and CException conditional compilation statements, your toolchain'
 preprocessor, and/or your toolchain's compiler will complain appropriately if your 
 specified symbols are incorrect, incomplete, or incompatible.
 
+Ceedling _does_ validate your `:defines` block in your project configuration.
+
 ### `:defines` organization: Contexts and Matchers
 
 The basic layout of `:defines` involves the concept of contexts.
@@ -3518,30 +3520,33 @@ The basic layout of `:defines` involves the concept of contexts.
 General case:
 ```yaml
 :defines:
-  :<context>:
-    - <symbol>
+  :<context>:   # :test, :release, etc.
+    - <symbol>  # Simple list of symbols added to all compilation
     - ...
 ```
 
-Advanced matching for **_test_** build handling only:
+Advanced matching for **_test_** or **_preprocess_** build handling only:
 ```yaml
 :defines:
   :test:
-    :<matcher>
-      - <symbol>
+    :<matcher>   # Matches a subset of test executables
+      - <symbol> # List of symbols added to that subset's compilation
+      - ...
+  :preprocess:   # Only applicable if :project ↳ :use_test_preprocessor enabled
+    :<matcher>   # Matches a subset of test executables
+      - <symbol> # List of symbols added to that subset's compilation
       - ...
 ```
 
-A context is the build context you want to modify — `:test` or `:release`. Plugins
-can also hook into `:defines` with their own context.
+A context is the build context you want to modify — `:release`, `:preprocess`, or `:test`.
+Plugins can also hook into `:defines` with their own context.
 
 You specify the symbols you want to add to a build step beneath a `:<context>`. In many 
 cases this is a simple YAML list of strings that will become symbols defined in a 
 compiler's command line.
 
-Specifically in the `:test` context you also have the option to create test file matchers 
-that create symbol definitions for some subset of your test build. Note that file 
-matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
+Specifically in the `:test` and `:preprocess` contexts you also have the option to 
+create test file matchers that create symbol definitions for some subset of your build.
 
 * <h3><code>:defines</code> ↳ <code>:release</code></h3>
 
@@ -3550,34 +3555,40 @@ matchers and the simpler list format cannot be mixed for `:defines` ↳ `:test`.
   
   **Default**: `[]` (empty)
 
-* <h3><code>:defines</code> ↳ <code>:preprocess</code></h3>
-
-  This project configuration entry adds the specified items as symbols to any needed 
-  preprocessing of components in a test executable's build. (Preprocessing must be enabled, 
-  `:project` ↳ `:use_test_preprocessor`.)
-  
-  Preprocessing here refers to handling macros, conditional includes, etc. in header files 
-  that are mocked and in complex test files before runners are generated from them.
-  
-  Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
-  YAML key plus symbol list. Both are documented below.
-  
-  _NOTE:_ Left unspecified, `:preprocess` symbols default to be identical to `:test` 
-  symbols. Override this behavior by adding `:defines` ↳ `:preprocess` symbols. If you want 
-  no additional symbols for preprocessing regardless of `test` symbols, simply specify an 
-  empty list `[]`.
-  
-  **Default**: `[]` (empty)
-
 * <h3><code>:defines</code> ↳ <code>:test</code></h3>
 
   This project configuration entry adds the specified items as symbols to compilation of C 
-  components in a test executable's build.
+  components in a test executable’s build.
   
   Symbols may be represented in a simple YAML list or with a more sophisticated file matcher
   YAML key plus symbol list. Both are documented below.
+
+  Every C file that comprises a test executable build will be compiled with the symbols
+  configured that match the test filename itself.
   
   **Default**: `[]` (empty)
+
+* <h3><code>:defines</code> ↳ <code>:preprocess</code></h3>
+
+  This project configuration entry adds the specified items as symbols to any needed 
+  preprocessing of components in a test executable’s build. Preprocessing must be enabled 
+  for this matching to have any effect. (See `:project` ↳ `:use_test_preprocessor`.)
+  
+  Preprocessing here refers to handling macros, conditional includes, etc. in header files 
+  that are mocked and in complex test files before runners are generated from them.
+  (See more about the [Ceedling preprocessing](#ceedling-preprocessing-behavior-for-your-tests) 
+  feature.)
+  
+  Like the `:test` context, compilation symbols may be represented in a simple YAML list 
+  or with a more sophisticated file matcher YAML key plus symbol list. Both are documented 
+  below.
+  
+  _NOTE:_ Left unspecified, `:preprocess` symbols default to be identical to `:test` 
+  symbols. Override this behavior by adding `:defines` ↳ `:preprocess` symbols. If you want 
+  no additional symbols for preprocessing regardless of `test` symbols, specify an 
+  empty list `[]` in your `:preprocess` matcher.
+  
+  **Default**: Identical to `:test` context unless specified
 
 * <h3><code>:defines</code> ↳ <code>:&lt;plugin context&gt;</code></h3>
 
@@ -3607,16 +3618,17 @@ compile time.
 
 ```yaml
 :defines:
-  :test:
+  :test:     # All compilation of all C files for all test executables
     - FEATURE_X=ON
     - PRODUCT_CONFIG_C
-  :release:
+  :release:  # All compilation of all C files in a release artifact
     - FEATURE_X=ON
     - PRODUCT_CONFIG_C
 ```
 
 Given the YAML blurb above, the two symbols will be defined in the compilation command 
-lines for all C files in a test suite build or release build.
+lines for all C files in all test executables within a test suite build and for all C 
+files in a release build.
 
 ### Advanced `:defines` per-test matchers
 
@@ -3624,10 +3636,10 @@ Ceedling treats each test executable as a mini project. As a reminder, each test
 together with all C sources and frameworks, becomes an individual test executable of
 the same name.
 
-**_In the `:test` context only_**, symbols may be defined for only those test executable 
-builds that match file name criteria. Matchers match on test file names only, and the 
-specified symbols are added to the build step for all files that are components of 
-matched test executables.
+**_In the `:test` and `:preprocess` contexts only_**, symbols may be defined for only 
+those test executable builds that match filename criteria. Matchers match on test 
+filenames only, and the specified symbols are added to the build step for all files 
+that are components of matched test executables.
 
 In short, for instance, this means your compilation of _TestA_ can have different 
 symbols than compilation of _TestB_. Those symbols will be applied to every C file 
@@ -3640,9 +3652,9 @@ conditional compilations of the same source. See the example in the section belo
 Before detailing matcher capabilities and limits, here are examples to illustrate the
 basic ideas of test file name matching.
 
-This example builds on the previous simple symbol list example. The imagined scenario
+This first example builds on the previous simple symbol list example. The imagined scenario
 is that of unit testing the same single source C file with different product features 
-enabled.
+enabled. The per-test matchers shown here use test filename substring matchers.
 
 ```yaml
 # Imagine three test files all testing aspects of a single source file Comms.c with 
@@ -3650,17 +3662,17 @@ enabled.
 :defines:
   :test:
     # Tests for FeatureX configuration
-    :CommsFeatureX:      # Matches a C test file name including 'CommsFeatureX'
+    :CommsFeatureX:      # Matches a test executable name including 'CommsFeatureX'
       - FEATURE_X=ON
       - FEATURE_Z=OFF
       - PRODUCT_CONFIG_C
     # Tests for FeatureZ configuration
-    :CommsFeatureZ:      # Matches a C test file name including 'CommsFeatureZ'
+    :CommsFeatureZ:      # Matches a test executable name including 'CommsFeatureZ'
       - FEATURE_X=OFF
       - FEATURE_Z=ON
       - PRODUCT_CONFIG_C
     # Tests of base functionality
-    :CommsBase:          # Matches a C test file name including 'CommsBase'
+    :CommsBase:          # Matches a test executable name including 'CommsBase'
       - FEATURE_X=OFF
       - FEATURE_Z=OFF
       - PRODUCT_BASE
@@ -3671,14 +3683,14 @@ This example illustrates each of the test file name matcher types.
 ```yaml
 :defines:
   :test:
-    :*:                       #  Wildcard: Add '-DA' for compilation all files for all tests
-      - A                  
-    :Model:                   # Substring: Add '-DCHOO' for compilation of all files of any test with 'Model' in its name
+    :*:              #  Wildcard: Add '-DA' for compilation all files for all test executables
+      - A            
+    :Model:          # Substring: Add '-DCHOO' for compilation of all files of any test executable with 'Model' in its name
       - CHOO
-    :/M(ain|odel)/:           #     Regex: Add '-DBLESS_YOU' for all files of any test with 'Main' or 'Model' in its name
+    :/M(ain|odel)/:  #     Regex: Add '-DBLESS_YOU' for all files of any test executable with 'Main' or 'Model' in its name
       - BLESS_YOU
-    :Comms*Model:             #  Wildcard: Add '-DTHANKS' for all files of any test that have zero or more characters
-      - THANKS                #            between 'Comms' and 'Model'
+    :Comms*Model:    #  Wildcard: Add '-DTHANKS' for all files of any test executables that have zero or more characters
+      - THANKS       #            between 'Comms' and 'Model'
 ```
 
 #### Using `:defines` per-test matchers
@@ -3698,9 +3710,8 @@ Notes:
 * Wildcard matching is effectively a simplified form of regex. That is, multiple
   approaches to matching can match the same filename.
 
-Symbols by matcher are cumulative. This means the symbols from more than one
-matcher can be applied to compilation for the components of any one test
-executable.
+Symbols by matcher are cumulative. This means the symbols from multiple
+matchers can be applied to all compilation for any single test executable.
 
 Referencing the example above, here are the extra compilation symbols for a
 handful of test executables:
@@ -3710,15 +3721,25 @@ handful of test executables:
 * _test_Model_: `-DA -DCHOO -DBLESS_YOU`
 * _test_CommsSerialModel_: `-DA -DCHOO -DBLESS_YOU -DTHANKS`
 
-The simple `:defines` list format remains available for the `:test` context. The
-YAML blurb below is equivalent to the plain wildcard matcher above. Of course,
-this format is limited in that it applies symbols to the compilation of all C
-files for all test executables.
+The simple `:defines` list format remains available for the `:test` and `:preprocess` 
+contexts. Of course, this format is limited in that it applies symbols to the 
+compilation of all C files for all test executables.
+
+This simple list format for `:test` and `:preprocess` contexts…
 
 ```yaml
 :defines:
   :test:
-    - A   # Equivalent to wildcard '*' test file matching
+    - A
+```
+
+…is equivalent to this matcher version:
+
+```yaml
+:defines:
+  :test:
+    :*:
+      - A
 ```
 
 #### Distinguishing similar or identical filenames with `:defines` per-test matchers
@@ -3768,12 +3789,12 @@ same symbols across many test files, but no convenient name matching scheme work
 Advanced YAML features can help you copy the same symbols into multiple `:defines` 
 test file matchers.
 
-The following advanced example illustrates how to create a set of file matches for 
-test preprocessing that are identical to test compilation with one addition.
+The following advanced example illustrates how to create a set of compilation symbols 
+for test preprocessing that are identical to test compilation with one addition.
 
-In brief, this example uses YAML to copy all the `:test` file matchers into 
-`:preprocess` and add an additional symbol to the list for all test file
-wildcard matching.
+In brief, this example uses YAML features to copy the `:test` matcher configuration
+that matches all test executables into the `:preprocess` context and then add an 
+additional compilation symbol to the list.
 
 ```yaml
 :defines:
@@ -3880,12 +3901,12 @@ few levels of support.
 
 ## `:flags` Configure preprocessing, compilation & linking command line flags
 
-Ceedling’s internal, default tool configurations (see later `:tools` section) execute 
-compilation and linking of test and source files among other needs.
+Ceedling’s internal, default tool configurations execute compilation and linking of test 
+and source files among a variety of other tooling needs. (See later `:tools` section.)
 
-These default tool configurations are a one-size-fits-all approach. If you need to add to
-the command line flags for individual tests or a release build, the `:flags` section allows
-you to easily do so.
+These default tool configurations are a one-size-fits-all approach. If you need to add 
+flags to the command line for individual tests or a release build, the `:flags` section
+allows you to easily do so.
 
 Entries in `:flags` modify the command lines for tools used at build time.
 
@@ -3896,8 +3917,8 @@ The basic layout of `:flags` involves the concepts of contexts and operations.
 General case:
 ```yaml
 :flags:
-  :<context>:
-    :<operation>:
+  :<context>:      # :test or :release
+    :<operation>:  # :preprocess, :compile, :assemble, or :link
       - <flag>
       - ...
 ```
@@ -3906,9 +3927,9 @@ Advanced matching for **_test_** build handling only:
 ```yaml
 :flags:
   :test:
-    :<operation>:
-      :<matcher>
-        - <flag>
+    :<operation>:  # :preprocess, :compile, :assemble, or :link
+      :<matcher>:  # Matches a subset of test executables 
+        - <flag>   # List of flags added to that subset's build operation command line
         - ...
 ```
 
@@ -3918,8 +3939,8 @@ also hook into `:flags` with their own context.
 An operation is the build step you wish to modify — `:preprocess`, `:compile`, `:assemble`, 
 or `:link`.
 
-* The `:preprocess` operation is only available in the `:test` context.
-* The `:assemble` operation is only available within the `:test` or `:release` contexts if 
+* The `:preprocess` operation is only used from within the `:test` context.
+* The `:assemble` operation is only of use within the `:test` or `:release` contexts if 
   assembly support has been enabled in `:test_build` or `:release_build`, respectively, and
   assembly files are a part of the project.
 
@@ -3945,25 +3966,6 @@ and the simpler flags list format cannot be mixed for `:flags` ↳ `:test`.
   
   **Default**: `[]` (empty)
 
-* <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:preprocess</code></h3>
-
-  This project configuration entry adds the specified items as flags to any needed 
-  preprocessing of components in a test executable's build. (Preprocessing must be enabled, 
-  `:project` ↳ `:use_test_preprocessor`.)
-  
-  Preprocessing here refers to handling macros, conditional includes, etc. in header files 
-  that are mocked and in complex test files before runners are generated from them.
-  
-  Flags may be represented in a simple YAML list or with a more sophisticated file matcher
-  YAML key plus flag list. Both are documented below.
-  
-  _NOTE:_ Left unspecified, `:preprocess` flags default to behaving identically to `:compile` 
-  flags. Override this behavior by adding `:test` ↳ `:preprocess` flags. If you want no 
-  additional flags for preprocessing regardless of test compilation flags, simply specify 
-  an empty list `[]`.
-  
-  **Default**: `[]` (empty)
-
 * <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:compile</code></h3>
 
   This project configuration entry adds the specified items as flags to compilation of C 
@@ -3973,6 +3975,27 @@ and the simpler flags list format cannot be mixed for `:flags` ↳ `:test`.
   YAML key plus flag list. Both are documented below.
   
   **Default**: `[]` (empty)
+
+* <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:preprocess</code></h3>
+
+  This project configuration entry adds the specified items as flags to any needed 
+  preprocessing of components in a test executable’s build. Preprocessing must be enabled 
+  for this matching to have any effect. (See `:project` ↳ `:use_test_preprocessor`.)
+  
+  Preprocessing here refers to handling macros, conditional includes, etc. in header files 
+  that are mocked and in complex test files before runners are generated from them.
+  (See more about the [Ceedling preprocessing](#ceedling-preprocessing-behavior-for-your-tests) 
+  feature.)
+  
+  Flags may be represented in a simple YAML list or with a more sophisticated file matcher
+  YAML key plus flag list. Both are documented below.
+  
+  _NOTE:_ Left unspecified, `:preprocess` flags default to behaving identically to `:compile` 
+  flags. Override this behavior by adding `:test` ↳ `:preprocess` flags. If you want no 
+  additional flags for preprocessing regardless of test compilation flags, simply specify 
+  an empty list `[]`.
+  
+  **Default**: Same flags as specified for test compilation
 
 * <h3><code>:flags</code> ↳ <code>:test</code> ↳ <code>:link</code></h3>
 
@@ -4017,7 +4040,7 @@ the same name.
 
 _In the `:test` context only_, flags can be applied to build step operations — 
 preprocessing, compilation, and linking — for only those test executables that match
-file name criteria. Matchers match on test file names only, and the specified flags 
+file name criteria. Matchers match on test filenames only, and the specified flags 
 are added to the build step for all files that are components of matched test 
 executables.
 
@@ -4034,15 +4057,15 @@ basic ideas of test file name matching.
 :flags:
   :test:
     :compile:
-      :*:                       #  Wildcard: Add '-foo' for all files for all tests
-        - -foo                  
-      :Model:                   # Substring: Add '-Wall' for all files of any test with 'Model' in its name
+      :*:              #  Wildcard: Add '-foo' for all files compiled for all test executables
+        - -foo         
+      :Model:          # Substring: Add '-Wall' for all files compiled for any test executable with 'Model' in its filename
         - -Wall
-      :/M(ain|odel)/:           #     Regex: Add 🏴‍☠️ flag for all files of any test with 'Main' or 'Model' in its name
+      :/M(ain|odel)/:  #     Regex: Add 🏴‍☠️ flag for all files compiled for any test executable with 'Main' or 'Model' in its filename
         - -🏴‍☠️
       :Comms*Model:
-        - --freak               #  Wildcard: Add your `--freak` flag for all files of any test name with zero or more
-                                #            characters between 'Comms' and 'Model'
+        - --freak      #  Wildcard: Add your `--freak` flag for all files compiled for any test executable with zero or more
+                       #            characters between 'Comms' and 'Model'
     :link:
       :tests/comm/TestUsart.c:  # Substring: Add '--bar --baz' to the link step of the TestUsart executable
         - --bar
@@ -4066,8 +4089,8 @@ Notes:
 * Wildcard matching is effectively a simplified form of regex. That is, 
   multiple approaches to matching can match the same filename.
 
-Flags by matcher are cumulative. This means the flags from more than one matcher can be 
-applied to an operation on any one test executable.
+Flags by matcher are cumulative. This means the flags from multiple matchers can be 
+applied to all files processed by the named build operation for any single test executable.
 
 Referencing the example above, here are the extra compilation flags for a handful of 
 test executables:
@@ -4077,15 +4100,27 @@ test executables:
 * _test_Model_: `-foo -Wall -🏴‍☠️`
 * _test_CommsSerialModel_: `-foo -Wall -🏴‍☠️ --freak`
 
-The simple `:flags` list format remains available for the `:test` context. The YAML 
-blurb below is equivalent to the plain wildcard matcher above. Of course, this format is 
-limited in that it applies flags to all C files for all test executables.
+The simple `:flags` list format remains available for the `:test` context. Of course, 
+this format is limited in that it applies flags to all C files processed by the named
+build operation for all test executables.
+
+This simple list format for the `:test` context…
 
 ```yaml
 :flags:
   :test:
-    :compile:  # Equivalent to wildcard '*' test file matching
+    :compile:
       - -foo
+```
+
+…is equivalent to this matcher version:
+
+```yaml
+:flags:
+  :test:
+    :compile:
+      :*:
+        - -foo
 ```
 
 #### Distinguishing similar or identical filenames with `:flags` per-test matchers
