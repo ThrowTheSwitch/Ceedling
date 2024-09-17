@@ -146,7 +146,8 @@ class ConfigMatchinator
       end
     end
 
-    return _values.flatten # Flatten to handle YAML aliases
+    # Flatten to handle list-nested YAML aliasing (should have already been flattened during validation)
+    return _values.flatten
   end
 
   ### Private ###

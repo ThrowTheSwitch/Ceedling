@@ -104,7 +104,7 @@ class ToolExecutor
 
     # Iterate through each argument
 
-    # The yaml blob array needs to be flattened so that yaml substitution is handled
+    # The yaml blob array needs to be flattened so that yaml alias substitution is handled
     # correctly as it creates a nested array when an anchor is dereferenced
     config.flatten.each do |element|
       argument = ''

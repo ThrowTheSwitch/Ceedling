@@ -264,6 +264,9 @@ class ConfiguratorSetup
       # Only validate lists of compilation symbols in this block (look for matchers in next block)
       next if config.class != Array
 
+      # Handle any YAML alias referencing causing a nested array
+      config.flatten!()
+
       # Ensure each item in list is a string
       config.each do |symbol|
         if symbol.class != String
@@ -294,14 +297,27 @@ class ConfiguratorSetup
       # Skip processing if context isn't present or is present but is not a matcher hash
       next if matchers.nil? or matchers.class != Hash
 
-      walk = @reportinator.generate_config_walk( [:defines, context] )
-
       # Inspect each test matcher
       matchers.each_pair do |matcher, symbols|
 
+        walk = @reportinator.generate_config_walk( [:defines, context, matcher] )
+    
+        # Ensure container associated with matcher is a list
+        if symbols.class != Array
+          msg = "#{walk} entry '#{symbols}' is not a list of compilation symbols but a #{symbols.class.to_s.downcase}"
+          @loginator.log( msg, Verbosity::ERRORS )
+          valid = false
+
+          # Skip further validation if matcher value is not a list of symbols
+          next          
+        end
+
+        # Handle any YAML alias nesting in array
+        symbols.flatten!()
+
         # Ensure matcher itself is a Ruby symbol or string
         if matcher.class != Symbol and matcher.class != String
-          msg = "#{walk} entry '#{matcher}' is not a string or symbol"
+          msg = "#{walk} matcher is not a string or symbol"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
 
@@ -447,6 +463,9 @@ class ConfiguratorSetup
         # Only validate lists of flags in this block (look for matchers in next block)
         next if flags.class != Array
 
+        # Handle any YAML alias referencing causing a nested array
+        flags.flatten!()
+
         # Ensure each item in list is a string
         flags.each do |flag|
           if flag.class != String
@@ -500,6 +519,19 @@ class ConfiguratorSetup
         end
 
         walk = @reportinator.generate_config_walk( [:flags, :test, operation, matcher] )
+
+        # Ensure container associated with matcher is a list
+        if flags.class != Array
+          msg = "#{walk} entry '#{flags}' is not a list of command line flags but a #{flags.class.to_s.downcase}"
+          @loginator.log( msg, Verbosity::ERRORS )
+          valid = false
+
+          # Skip further validation if matcher value is not a list of flags
+          next          
+        end
+
+        # Handle any YAML alias nesting in array
+        flags.flatten!()
         
         # Ensure each item in flags list for matcher is a string
         flags.each do |flag|

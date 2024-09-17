@@ -40,7 +40,8 @@ class Defineinator
     defines = @config_matchinator.get_config(primary:topkey, secondary:subkey)
 
     if defines == nil then return default
-    elsif defines.is_a?(Array) then return defines.flatten # Flatten to handle list-nested YAML aliases
+    # Flatten to handle list-nested YAML aliasing (should have already been flattened during validation)
+    elsif defines.is_a?(Array) then return defines.flatten
     elsif defines.is_a?(Hash)
       arg_hash = {
         hash: defines,
