@@ -91,12 +91,8 @@ class TestInvokerHelper
     return paths.uniq
   end
 
-  def compile_defines(context:, filepath:)
-    # If this context exists ([:defines][context]), use it. Otherwise, default to test context.
-    context = TEST_SYM unless @defineinator.defines_defined?( context:context )
-
-    defines = @defineinator.generate_test_definition( filepath:filepath )
-    defines += @defineinator.defines( subkey:context, filepath:filepath )
+  def framework_defines()
+    defines = []
 
     # Unity defines
     defines += @defineinator.defines( topkey:UNITY_SYM, subkey: :defines )
@@ -106,9 +102,6 @@ class TestInvokerHelper
 
     # CException defines
     defines += @defineinator.defines( topkey:CEXCEPTION_SYM, subkey: :defines )
-
-    # Injected defines (based on other settings)
-    defines += @test_runner_manager.collect_defines
 
     return defines.uniq
   end
@@ -152,19 +145,48 @@ class TestInvokerHelper
     return _search_paths.uniq
   end
 
-  def preprocess_defines(test_defines:, filepath:)
-    # Preprocessing defines for the test file
-    preprocessing_defines = @defineinator.defines( subkey:PREPROCESS_SYM, filepath:filepath )
-
-    # If no preprocessing defines are present, default to the test compilation defines
-    return (preprocessing_defines.empty? ? test_defines : preprocessing_defines)
+  def runner_defines()
+    return @test_runner_manager.collect_defines()
   end
 
-  def flags(context:, operation:, filepath:)
+  def compile_defines(context:, filepath:)
+    # If this context exists ([:defines][context]), use it. Otherwise, default to test context.
+    context = TEST_SYM unless @defineinator.defines_defined?( context:context )
+
+    defines = @defineinator.generate_test_definition( filepath:filepath )
+    defines += @defineinator.defines( subkey:context, filepath:filepath )
+
+    return defines.uniq
+  end
+
+  def preprocess_defines(test_defines:, filepath:)
+    # Preprocessing defines for the test file
+    preprocessing_defines = @defineinator.defines( subkey:PREPROCESS_SYM, filepath:filepath, default:nil )
+
+    # If no defines were set, default to using test_defines
+    return test_defines if preprocessing_defines.nil?
+      
+    # Otherwise, return the defines we looked up
+    # This includes an explicitly set empty list to override / clear test_defines
+    return preprocessing_defines
+  end
+
+  def flags(context:, operation:, filepath:, default:[])
     # If this context + operation exists ([:flags][context][operation]), use it. Otherwise, default to test context.
     context = TEST_SYM unless @flaginator.flags_defined?( context:context, operation:operation )
 
-    return @flaginator.flag_down( context:context, operation:operation, filepath:filepath )
+    return @flaginator.flag_down( context:context, operation:operation, filepath:filepath, default:default )
+  end
+
+  def preprocess_flags(context:, compile_flags:, filepath:)
+    preprocessing_flags = flags( context:context, operation:OPERATION_PREPROCESS_SYM, filepath:filepath, default:nil )
+
+    # If no flags were set, default to using compile_flags
+    return compile_flags if preprocessing_flags.nil?
+
+    # Otherwise, return the flags we looked up
+    # This includes an explicitly set empty list to override / clear compile_flags
+    return preprocessing_flags
   end
 
   def collect_test_framework_sources(mocks)

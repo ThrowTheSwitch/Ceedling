@@ -113,13 +113,19 @@ class TestInvoker
 
       # Fill out testables data structure with build context
       @batchinator.build_step("Ingesting Test Configurations") do
+        framework_defines  = @helper.framework_defines()
+        runner_defines     = @helper.runner_defines()
+
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
 
           search_paths       = @helper.search_paths( filepath, details[:name] )
+
           compile_flags      = @helper.flags( context:context, operation:OPERATION_COMPILE_SYM, filepath:filepath )
+          preprocess_flags   = @helper.preprocess_flags( context:context, compile_flags:compile_flags, filepath:filepath )
           assembler_flags    = @helper.flags( context:context, operation:OPERATION_ASSEMBLE_SYM, filepath:filepath )
           link_flags         = @helper.flags( context:context, operation:OPERATION_LINK_SYM, filepath:filepath )
+
           compile_defines    = @helper.compile_defines( context:context, filepath:filepath )
           preprocess_defines = @helper.preprocess_defines( test_defines: compile_defines, filepath:filepath )
 
@@ -132,11 +138,12 @@ class TestInvoker
 
           @lock.synchronize do
             details[:search_paths] = search_paths
+            details[:preprocess_flags] = preprocess_flags
             details[:compile_flags] = compile_flags
             details[:assembler_flags] = assembler_flags
             details[:link_flags] = link_flags
-            details[:compile_defines] = compile_defines
-            details[:preprocess_defines] = preprocess_defines
+            details[:compile_defines] = compile_defines + framework_defines + runner_defines
+            details[:preprocess_defines] = preprocess_defines + framework_defines
           end
         end
       end
@@ -147,7 +154,7 @@ class TestInvoker
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
-            flags:         details[:compile_flags],
+            flags:         details[:preprocess_flags],
             include_paths: details[:search_paths],
             defines:       details[:preprocess_defines]
           }
@@ -214,7 +221,7 @@ class TestInvoker
           arg_hash = {
             filepath:      details[:source],
             test:          testable[:name],
-            flags:         testable[:compile_flags],
+            flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
             defines:       testable[:preprocess_defines]
           }
@@ -248,7 +255,7 @@ class TestInvoker
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
-            flags:         details[:compile_flags],
+            flags:         details[:preprocess_flags],
             include_paths: details[:search_paths],
             defines:       details[:preprocess_defines]
           }

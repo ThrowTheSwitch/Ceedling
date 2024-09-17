@@ -333,15 +333,15 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
 
   :defines => {
     :use_test_definition => false,
-    :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
-    :preprocess => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
-    :release => []
+    :test => [],   # List of symbols or matcher hashes with test executables as keys
+    # :preprocess is identical to :test but lacks a default here as missing vs. empty values have additional meaning
+    :release => [] # List of symbols only
     },
 
   :flags => {
     # Test & release flags are validated for presence--empty flags causes an error
-    # :test => [], # A hash/sub-hashes in config file can include operations and test executable matchers as keys
-    # :release => [] # A hash/sub-hashes in config file can include arrays for operations
+    # :test => {},   # hash/sub-hash of operations containing lists of flags or matcher hashes with test executables as keys
+    # :release => {} # hash/sub-hashes of operations containing lists of flags
     },
 
   :libraries => {

@@ -36,10 +36,10 @@ class Defineinator
 
   # Defaults to inspecting configurations beneath top-level :defines
   # (But, we can also lookup defines symbol lists within framework configurations--:unity, :cmock, :cexception)
-  def defines(topkey:@topkey, subkey:, filepath:nil)
+  def defines(topkey:@topkey, subkey:, filepath:nil, default:[])
     defines = @config_matchinator.get_config(primary:topkey, secondary:subkey)
 
-    if defines == nil then return []
+    if defines == nil then return default
     elsif defines.is_a?(Array) then return defines.flatten # Flatten to handle list-nested YAML aliases
     elsif defines.is_a?(Hash)
       arg_hash = {

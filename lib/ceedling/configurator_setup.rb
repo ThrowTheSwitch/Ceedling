@@ -205,7 +205,8 @@ class ConfiguratorSetup
 
     valid = true
 
-    # Validate that each context contains only a list of symbols or a matcher hash for :test context
+    # Validate that each context contains only a list of symbols or a matcher hash for :test / :preprocess context
+    #
     # :defines:
     #   :<context>:
     #    - FOO
@@ -218,29 +219,35 @@ class ConfiguratorSetup
     #     :<matcher>:
     #       - FOO
     #       - BAR
+    #   :preprocess:
+    #     :<matcher>:
+    #       - FOO
+    #       - BAR
+
     defines.each_pair do |context, config|
       walk = @reportinator.generate_config_walk( [:defines, context] )
 
-      # Special handling for setting, not context
+      # Special handling for configuration setting, not a hash context container
       next if context == :use_test_definition
 
-      # Non-test contexts
-      if context != :test
-        # Handle the (probably) common case of trying to use matchers for any context other than test
+      # Matcher contexts (only contexts that support matcher hashes)
+      if context == :test or context == :preprocess
+        if config.class != Array and config.class != Hash
+          msg = "#{walk} entry '#{config}' must be a list or matcher, not #{config.class.to_s.downcase} (see docs for examples)"
+          @loginator.log( msg, Verbosity::ERRORS )
+          valid = false
+        end
+
+      # All other (simple) contexts
+      else
+        # Handle the (probably) common case of trying to use matchers for any context other than :test or :preprocess
         if config.class == Hash
-          msg = "#{walk} entry '#{config}' must be a list--matcher hashes only availalbe for the :test context (see docs for details)"
+          msg = "#{walk} entry '#{config}' must be a list--matcher hashes only availalbe for :test & :preprocess contexts (see docs for details)"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
         # Catchall for any oddball entries
         elsif config.class != Array
           msg = "#{walk} entry '#{config}' must be a list, not #{config.class.to_s.downcase} (see docs for examples)"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-        end
-      # Test contexts
-      else
-        if config.class != Array and config.class != Hash
-          msg = "#{walk} entry '#{config}' must be a list or matcher, not #{config.class.to_s.downcase} (see docs for examples)"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
         end
@@ -252,8 +259,9 @@ class ConfiguratorSetup
     #   :<context>: # :test, :release, etc.
     #    - FOO
     #    - BAR
+
     defines.each_pair do |context, config|
-      # Only validate lists of compilation symbols in this block (look for test matchers in next block)
+      # Only validate lists of compilation symbols in this block (look for matchers in next block)
       next if config.class != Array
 
       # Ensure each item in list is a string
@@ -267,52 +275,60 @@ class ConfiguratorSetup
       end
     end
 
-    # Validate test context matchers (hash) if they exist
+    # Validate :test / :preprocess context matchers (hash) if they exist
     # :defines:
     #   :test:
     #     :<matcher>: # Can be wildcard, substring, or regular expression in a string or symbol
     #       - FOO
     #       - BAR
+    #   :preprocess:
+    #     :<matcher>: # Can be wildcard, substring, or regular expression in a string or symbol
+    #       - FOO
+    #       - BAR
 
-    # If there's no test context with a hash of matchers, we're done
-    return valid if !(defines[:test] and defines[:test].class == Hash)
+    contexts = [:test, :preprocess]
 
-    matchers = defines[:test]
+    contexts.each do |context|
+      matchers = defines[context]
 
-    walk = @reportinator.generate_config_walk( [:defines, :test] )
+      # Skip processing if context isn't present or is present but is not a matcher hash
+      next if matchers.nil? or matchers.class != Hash
 
-    # Inspect each test matcher
-    matchers.each_pair do |matcher, symbols|
+      walk = @reportinator.generate_config_walk( [:defines, context] )
 
-      # Ensure matcher itself is a Ruby symbol or string
-      if matcher.class != Symbol and matcher.class != String
-        msg = "#{walk} entry '#{matcher}' is not a string or symbol"
-        @loginator.log( msg, Verbosity::ERRORS )
-        valid = false
+      # Inspect each test matcher
+      matchers.each_pair do |matcher, symbols|
 
-        # Skip further validation if matcher key is not a symbol
-        next
-      end
+        # Ensure matcher itself is a Ruby symbol or string
+        if matcher.class != Symbol and matcher.class != String
+          msg = "#{walk} entry '#{matcher}' is not a string or symbol"
+          @loginator.log( msg, Verbosity::ERRORS )
+          valid = false
 
-      walk = @reportinator.generate_config_walk( [:defines, :test, matcher] )
+          # Skip further validation if matcher key is not a symbol
+          next
+        end
 
-      # Ensure each item in compilation symbols list for matcher is a string
-      symbols.each do |symbol|
-        if symbol.class != String
-          msg = "#{walk} entry '#{symbol}' is not a string"
+        walk = @reportinator.generate_config_walk( [:defines, context, matcher] )
+
+        # Ensure each item in compilation symbols list for matcher is a string
+        symbols.each do |symbol|
+          if symbol.class != String
+            msg = "#{walk} entry '#{symbol}' is not a string"
+            @loginator.log( msg, Verbosity::ERRORS )
+            valid = false
+          end
+        end
+
+        begin
+          @configurator_validator.validate_matcher( matcher.to_s.strip() )
+        rescue Exception => ex
+          msg = "Matcher #{walk} contains #{ex.message}"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
         end
-      end
 
-      begin
-        @configurator_validator.validate_matcher( matcher.to_s.strip() )
-      rescue Exception => ex
-        msg = "Matcher #{walk} contains #{ex.message}"
-        @loginator.log( msg, Verbosity::ERRORS )
-        valid = false
       end
-
     end
 
     return valid
@@ -339,11 +355,21 @@ class ConfiguratorSetup
     #   :<context>:     # :test, :release, etc.
     #     :<operation>: # :compile, :link, etc.
     #       ...
+
     flags.each_pair do |context, operations|
+      walk = @reportinator.generate_config_walk( [:flags, context] )
+
+      if operations.nil?
+        msg = "#{walk} operations key / value pairs are missing"
+        @loginator.log( msg, Verbosity::ERRORS )
+
+        valid = false
+        next
+      end
+
       if operations.class != Hash
-        walk = @reportinator.generate_config_walk( [:flags, context] )
         example = @reportinator.generate_config_walk( [:flags, context, :compile] )
-        msg = "#{walk} context must contain :<operation> key / value pairs, not #{operations.class.to_s.downcase} (ex. #{example})"
+        msg = "#{walk} context must contain :<operation> key / value pairs, not #{operations.class.to_s.downcase} '#{operations}' (ex. #{example})"
         @loginator.log( msg, Verbosity::ERRORS )
 
         # Immediately bail out
@@ -351,28 +377,52 @@ class ConfiguratorSetup
       end
     end
 
-    # Validate that each operation contains only a list of flags or a matcher hash for :test context
+    if !!flags[:release] and !!flags[:release][:preprocess]
+      walk = @reportinator.generate_config_walk( [:flags, :release, :preprocess] )
+      msg = "Preprocessing configured at #{walk} is only supported in the :test context"
+      @loginator.log( msg, Verbosity::ERRORS, LogLabels::WARNING )      
+    end
+
+    # Validate that each <:context> ↳ <:operation> contains only a list of flags or that :test ↳ <:operation> optionally contains a matcher hash
+    #
     # :flags:
-    #   :<context>:
-    #     :<operation>:
+    #   :<context>:      # :test or :release
+    #     :<operation>:  # :compile, :link, or :assemble (plus :preprocess for :test context)
     #      - --flag
     #
     # or
     #
     # :flags:
     #   :test:
-    #     :operation:
+    #     :<operation>:
     #       :<matcher>:
     #         - --flag
+
     flags.each_pair do |context, operations|
       operations.each_pair do |operation, config|
-        walk = @reportinator.generate_config_walk( [:defines, context, operation] )
+        walk = @reportinator.generate_config_walk( [:flags, context, operation] )
 
-        # Non-test contexts
-        if context != :test
-          # Handle the (probably) common case of trying to use matchers for any context other than test
+        if config.nil?
+          msg = "#{walk} is missing a list or matcher hash"
+          @loginator.log( msg, Verbosity::ERRORS )
+
+          valid = false
+          next
+        end
+
+        # :test context operations with lists or matchers (hashes)
+        if context == :test
+          if config.class != Array and config.class != Hash
+            msg = "#{walk} entry '#{config}' must be a list or matcher hash, not #{config.class.to_s.downcase} (see docs for examples)"
+            @loginator.log( msg, Verbosity::ERRORS )
+            valid = false
+          end
+
+        # Other (simple) contexts
+        else
+          # Handle the (probably) common case of trying to use matchers for operations in any context other than :test
           if config.class == Hash
-            msg = "#{walk} entry '#{config}' must be a list--matcher hashes only availalbe for the :test context (see docs for details)"
+            msg = "#{walk} entry '#{config}' must be a list--matcher hashes only availalbe for :test context (see docs for details)"
             @loginator.log( msg, Verbosity::ERRORS )
             valid = false
           # Catchall for any oddball entries
@@ -381,26 +431,20 @@ class ConfiguratorSetup
             @loginator.log( msg, Verbosity::ERRORS )
             valid = false
           end
-        # Test contexts
-        else
-          if config.class != Array and config.class != Hash
-            msg = "#{walk} entry '#{config}' must be a list or matcher, not #{config.class.to_s.downcase} (see docs for examples)"
-            @loginator.log( msg, Verbosity::ERRORS )
-            valid = false
-          end
         end
       end
     end
 
-    # Validate simple option of lists of flags (strings) for :context ↳ :operation
+    # Validate simple option of lists of flags (strings) for <:context> ↳ <:operation>
     # :flags
     #   :<context>:
     #     :<operation>:
     #       - --flag
+
     flags.each_pair do |context, operations|
       operations.each_pair do |operation, flags|
 
-        # Only validate lists of flags in this block (look for test matchers in next block)
+        # Only validate lists of flags in this block (look for matchers in next block)
         next if flags.class != Array
 
         # Ensure each item in list is a string
@@ -415,7 +459,7 @@ class ConfiguratorSetup
       end
     end
 
-    # Validate test context matchers (hash) if they exist
+    # Validate :test ↳ <:operation> matchers (hash) if they exist
     # :flags:
     #   :test:
     #     :<operation>: # :preprocess, :compile, :assemble, :link
@@ -423,7 +467,7 @@ class ConfiguratorSetup
     #         - FOO
     #         - BAR
 
-    # If there's no test context with an operation having a hash of matchers, we're done    
+    # If there's no test context, we're done    
     test_context = flags[:test]
     return valid if test_context.nil?
 
@@ -435,13 +479,13 @@ class ConfiguratorSetup
       end
     end
 
-    # We found no matchers, so bail out
+    # If there's no matchers for :test ↳ <:operation>, we're done
     return valid if !matchers_present
 
-    # Inspect each test operation matcher
+    # Inspect each :test ↳ <:operation> matcher
     test_context.each_pair do |operation, matchers|
       # Only validate matchers (skip simple lists of flags)
-      next if !matchers.class == Hash
+      next if matchers.class != Hash
 
       matchers.each_pair do |matcher, flags|
         # Ensure matcher itself is a Ruby symbol or string
@@ -451,7 +495,7 @@ class ConfiguratorSetup
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
 
-          # Skip further validation if matcher key is not a symbol
+          # Skip further validation if matcher key is not a string or symbol
           next
         end
 

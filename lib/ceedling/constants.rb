@@ -125,9 +125,10 @@ UTILS_ROOT_NAME   = 'utils'                unless defined?(UTILS_ROOT_NAME)
 UTILS_TASK_ROOT   = UTILS_ROOT_NAME + ':'  unless defined?(UTILS_TASK_ROOT)
 UTILS_SYM         = UTILS_ROOT_NAME.to_sym unless defined?(UTILS_SYM)
 
-OPERATION_COMPILE_SYM  = :compile  unless defined?(OPERATION_COMPILE_SYM)
-OPERATION_ASSEMBLE_SYM = :assemble unless defined?(OPERATION_ASSEMBLE_SYM)
-OPERATION_LINK_SYM     = :link     unless defined?(OPERATION_LINK_SYM)
+OPERATION_PREPROCESS_SYM  = :preprocess unless defined?(OPERATION_PREPROCESS_SYM)
+OPERATION_COMPILE_SYM     = :compile    unless defined?(OPERATION_COMPILE_SYM)
+OPERATION_ASSEMBLE_SYM    = :assemble   unless defined?(OPERATION_ASSEMBLE_SYM)
+OPERATION_LINK_SYM        = :link       unless defined?(OPERATION_LINK_SYM)
 
 
 # Match presence of any glob pattern characters

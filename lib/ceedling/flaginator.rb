@@ -40,10 +40,10 @@ class Flaginator
     return @config_matchinator.config_include?(primary:@section, secondary:context, tertiary:operation)
   end
 
-  def flag_down(context:, operation:, filepath:nil)
+  def flag_down(context:, operation:, filepath:nil, default:[])
     flags = @config_matchinator.get_config(primary:@section, secondary:context, tertiary:operation)
 
-    if flags == nil then return []
+    if flags == nil then return default
     elsif flags.is_a?(Array) then return flags.flatten # Flatten to handle list-nested YAML aliases
     elsif flags.is_a?(Hash)
       arg_hash = {
