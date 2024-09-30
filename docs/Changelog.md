@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-09-02
+# [1.0.0 pre-release] — 2024-09-30
 
 ## 🌟 Added
 

@@ -7,7 +7,7 @@ These breaking changes are complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-08-27
+# [1.0.0 pre-release] — 2024-09-30
 
 ## Explicit `:paths` ↳ `:include` entries in the project file
 
