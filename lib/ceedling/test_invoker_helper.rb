@@ -193,7 +193,7 @@ class TestInvokerHelper
     sources = []
 
     sources << File.join(PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE)
-    sources << File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE) if @configurator.project_use_mocks and !mocks.empty?
+    sources << File.join(PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE) if @configurator.project_use_mocks and mocks
     sources << File.join(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE) if @configurator.project_use_exceptions
 
     # If we're (a) using mocks (b) a Unity helper is defined and (c) that unity helper includes a source file component,
