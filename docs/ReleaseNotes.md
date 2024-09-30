@@ -9,13 +9,13 @@ These release notes are complemented by two other documents:
 
 # 1.0.0 pre-release — September 30, 2024
 
-This Ceedling release is probably the most significant since the project was first [posted to SourceForge in 2009][sourceforge].
+**This Ceedling release is probably the most significant since the project was first [posted to SourceForge in 2009][sourceforge].**
 
 Ceedling now runs in Ruby 3. Builds can now run much faster than previous versions because of parallelized tasks. In test suites, header file search paths, code defines, and tool run flags are now customizable per test executable. Ceedling now also offers integrated debugging options to find the cause of crashing tests.
 
-* See all the [Highlights][#-highlights] below for an overview of everything in this big release.
+* See all the [Highlights](#-highlights) below for an overview of everything in this big release.
 * See the [Changelog](Changelog.md) for a detailed list of new features, fixes, and changes in this release.
-* We’ve included below a [project configuration cheatsheet][#-project-configuration-cheatsheet-for-100-changes] for those already familiar with Ceedling that want to understand the various configuration changes.
+* We’ve included below a [project configuration cheatsheet](#-project-configuration-cheatsheet-for-100-changes) for those already familiar with Ceedling that want to understand the various configuration changes.
 
 ## 🏴‍☠️ Avast, Breaking Changes, Ye Scallywags!
 
