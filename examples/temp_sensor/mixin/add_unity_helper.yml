@@ -10,7 +10,13 @@
 # Enable the unity helper's define to enable our custom assertion
 :defines:
   :test:
-    - TEST_CUSTOM_EXAMPLE_STRUCT_T
+    '*':
+      - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
+      - TEST_CUSTOM_EXAMPLE_STRUCT_T
+    'TestUsartIntegrated.c':
+      - TEST 
+      - TEST_CUSTOM_EXAMPLE_STRUCT_T
+      - TEST_USART_INTEGRATED_STRING=\"It's Awesome Time!\n\"
   :release: []
 
 # Add the unity helper configuration to cmock

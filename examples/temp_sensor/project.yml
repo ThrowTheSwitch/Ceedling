@@ -55,7 +55,7 @@
   :enabled:
     #- beep                           # beeps when finished, so you don't waste time waiting for ceedling
     - module_generator               # handy for quickly creating source, header, and test templates
-    - gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
+    #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
     #- compile_commands_json_db          # generate a compile_commands.json file
@@ -120,7 +120,11 @@
 #  - Specifiying symbols used during test preprocessing
 :defines:
   :test:
-    - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
+    '*':
+      - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
+    'TestUsartIntegrated.c':
+      - TEST 
+      - TEST_USART_INTEGRATED_STRING=\"It's Awesome Time!\n\"
   :release: []
 
   # Enable to inject name of a test as a unique compilation symbol into its respective executable build. 
