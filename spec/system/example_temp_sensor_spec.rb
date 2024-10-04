@@ -47,8 +47,8 @@ describe "Ceedling" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
             @output = `bundle exec ruby -S ceedling test:all 2>&1`
-            expect(@output).to match(/TESTED:\s+47/)
-            expect(@output).to match(/PASSED:\s+47/)
+            expect(@output).to match(/TESTED:\s+51/)
+            expect(@output).to match(/PASSED:\s+51/)
           end
         end
       end
@@ -111,8 +111,8 @@ describe "Ceedling" do
           Dir.chdir "temp_sensor" do
             @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious --mixin=mixin/add_unity_helper.yml 2>&1`
             expect(@output).to match(/Merging command line mixin using mixin\/add_unity_helper\.yml/)
-            expect(@output).to match(/TESTED:\s+47/)
-            expect(@output).to match(/PASSED:\s+47/)
+            expect(@output).to match(/TESTED:\s+51/)
+            expect(@output).to match(/PASSED:\s+51/)
           end
         end
       end
@@ -122,8 +122,8 @@ describe "Ceedling" do
           Dir.chdir "temp_sensor" do
             @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious --mixin=add_unity_helper 2>&1`
             expect(@output).to match(/Merging command line mixin using mixin\/add_unity_helper\.yml/)
-            expect(@output).to match(/TESTED:\s+47/)
-            expect(@output).to match(/PASSED:\s+47/)
+            expect(@output).to match(/TESTED:\s+51/)
+            expect(@output).to match(/PASSED:\s+51/)
           end
         end
       end
@@ -134,8 +134,8 @@ describe "Ceedling" do
           Dir.chdir "temp_sensor" do
             @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious 2>&1`
             expect(@output).to match(/Merging CEEDLING_MIXIN_1 mixin using mixin\/add_unity_helper\.yml/)
-            expect(@output).to match(/TESTED:\s+47/)
-            expect(@output).to match(/PASSED:\s+47/)
+            expect(@output).to match(/TESTED:\s+51/)
+            expect(@output).to match(/PASSED:\s+51/)
           end
         end
       end

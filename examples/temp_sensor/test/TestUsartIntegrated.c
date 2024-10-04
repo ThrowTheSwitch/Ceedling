@@ -16,7 +16,7 @@
 #include "MockUsartPutChar.h"
 #include "MockTemperatureFilter.h"
 #include "MockUsartBaudRateRegisterCalculator.h"
-#include <math.h>
+#include <string.h>
 
 /* NOTE: we probably wouldn't actually perform this test on our own projects
   but it's a good example of testing the same module(s) from multiple test
