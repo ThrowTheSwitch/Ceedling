@@ -59,9 +59,9 @@ describe "Ceedling" do
         it "should be testable" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling gcov:all 2>&1`
-              expect(@output).to match(/TESTED:\s+47/)
-              expect(@output).to match(/PASSED:\s+47/)
+              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:all 2>&1`
+              expect(@output).to match(/TESTED:\s+51/)
+              expect(@output).to match(/PASSED:\s+51/)
 
               expect(@output).to match(/AdcConductor\.c \| Lines executed:/i)
               expect(@output).to match(/AdcHardware\.c \| Lines executed:/i)
@@ -79,7 +79,7 @@ describe "Ceedling" do
         it "should be able to test a single module (it should INHERIT file-specific flags)" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling gcov:TemperatureCalculator 2>&1`
+              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:TemperatureCalculator 2>&1`
               expect(@output).to match(/TESTED:\s+2/)
               expect(@output).to match(/PASSED:\s+2/)
 
@@ -91,7 +91,7 @@ describe "Ceedling" do
         it "should be able to test multiple files matching a pattern" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling gcov:pattern[Temp] 2>&1`
+              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:pattern[Temp] 2>&1`
               expect(@output).to match(/TESTED:\s+6/)
               expect(@output).to match(/PASSED:\s+6/)
 
@@ -104,7 +104,7 @@ describe "Ceedling" do
         it "should be able to test all files matching in a path" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling gcov:path[adc] 2>&1`
+              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:path[adc] 2>&1`
               expect(@output).to match(/TESTED:\s+15/)
               expect(@output).to match(/PASSED:\s+15/)
 
@@ -118,7 +118,7 @@ describe "Ceedling" do
         it "should be able to test specific test cases in a file" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling gcov:path[adc] --test-case="RunShouldNot" 2>&1`
+              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:path[adc] --test-case="RunShouldNot" 2>&1`
               expect(@output).to match(/TESTED:\s+2/)
               expect(@output).to match(/PASSED:\s+2/)
 
