@@ -305,8 +305,8 @@ module CeedlingTasks
       • `--test-case` and its inverse `--exclude-test-case` set test case name 
       matchers to run only a subset of the unit test suite. See docs for full details.
 
-      • The simple `--log` flag and more configurable `--logfile <filepath>` are 
-      mutually exclusive. It is valid to use one or the other but not both.
+      • The simple `--log` flag and more configurable `--logfile` are mutually 
+      exclusive. It is valid to use one or the other but not both.
       LONGDESC
     ) )
     def build(*tasks)
