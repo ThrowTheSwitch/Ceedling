@@ -175,18 +175,32 @@ class CliHelper
   end
 
 
-  def process_logging(enabled, filepath)
-    # No log file if neither enabled nor a specific filename/filepath
-    return '' if !enabled && (filepath.nil? || filepath.empty?())
+  def process_logging_path(config)
+    build_root, _ = @config_walkinator.fetch_value( :project, :build_root, hash:config )
 
-    # Default logfile name (to be placed in default location) if enabled but no filename/filepath
-    return DEFAULT_CEEDLING_LOGFILE if enabled && filepath.empty?()
+    return '' if build_root.nil?
+
+    return File.join( build_root, 'logs' )
+  end
+
+
+  def process_log_filepath(enabled, logging_path, filepath)
+    # No log file if neither enabled nor a specific filename/filepath
+    return '' if !enabled && (filepath.nil? || filepath.empty?)
+
+    # Default logfile name (to be placed in default location of logging_path) if enabled but no filename/filepath
+    if (enabled && filepath.empty?)
+      filepath = File.join( logging_path, DEFAULT_CEEDLING_LOGFILE )
+    end
 
     # Otherwise, a filename/filepath was provided that implicitly enables logging
+
+    filepath = File.expand_path( filepath )
+
     dir = File.dirname( filepath )
 
     # Ensure logging directory path exists
-    if not dir.empty?
+    if !File.exist?( dir )
       @file_wrapper.mkdir( dir )
     end
 

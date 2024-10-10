@@ -54,7 +54,7 @@ class Setupinator
     @configurator.set_verbosity( config_hash )
 
     # Logging configuration
-    @loginator.set_logfile( form_log_filepath( app_cfg[:log_filepath] ) )
+    @loginator.set_logfile( app_cfg[:log_filepath] )
     @configurator.project_logging = @loginator.project_logging
 
     log_step( 'Validating configuration contains minimum required sections', heading:false )
@@ -162,7 +162,7 @@ class Setupinator
     # Skip logging this step as the end user doesn't care about this internal preparation
 
     # Partially flatten config + build Configurator accessors and globals
-    @configurator.build( app_cfg[:ceedling_lib_path], config_hash, :environment )
+    @configurator.build( app_cfg[:ceedling_lib_path], app_cfg[:logging_path], config_hash, :environment )
 
     ##
     ## 8. Final plugins handling
@@ -191,19 +191,6 @@ class Setupinator
 ### Private
 
 private
-
-  def form_log_filepath( log_filepath )
-    # Bail out early if logging is disabled
-    return log_filepath if log_filepath.empty?()
-
-    # If there's no directory path, put named log file in default location
-    if File.dirname( log_filepath ).empty?()
-      return File.join( @configurator.project_log_path, log_filepath )
-    end
-
-    # Otherwise, log filepath includes a directory (that's already been created)
-    return log_filepath
-  end
 
   # Neaten up a build step with progress message and some scope encapsulation
   def log_step(msg, heading:true)

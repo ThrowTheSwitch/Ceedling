@@ -42,7 +42,10 @@ class CeedlingAppConfig
       # Blank initial value for completeness
       :project_config => {},
 
-      # Default, blank value
+      # Default path (in build directory) to hold logs
+      :logging_path => '',
+
+      # If logging enabled, the filepath for Ceedling's log (may be explicitly set to be outside :logging_path)
       :log_filepath => '',
 
       # Only specified in project config (no command line or environment variable)
@@ -74,6 +77,10 @@ class CeedlingAppConfig
 
   def set_project_config(config)
     @app_cfg[:project_config] = config
+  end
+
+  def set_logging_path(path)
+    @app_cfg[:logging_path] = path
   end
 
   def set_log_filepath(filepath)

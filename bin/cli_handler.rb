@@ -174,10 +174,14 @@ class CliHandler
       default_tasks: default_tasks
     )
 
-    log_filepath = @helper.process_logging( options[:log], options[:logfile] )
+    logging_path = @helper.process_logging_path( config )
+    log_filepath = @helper.process_log_filepath( options[:log], logging_path, options[:logfile] )
+
+    @loginator.log( " > Logfile: #{log_filepath}" ) if !log_filepath.empty?
 
     # Save references
     app_cfg.set_project_config( config )
+    app_cfg.set_logging_path( logging_path )
     app_cfg.set_log_filepath( log_filepath )
     app_cfg.set_include_test_case( options[:test_case] )
     app_cfg.set_exclude_test_case( options[:exclude_test_case] )
