@@ -24,19 +24,26 @@ containing header files that might want to be included by your release project.
 
 So how does all this magic work?
 
-First, you need to add the `:dependencies` plugin to your list. Then, we'll add a new
-section called :dependencies. There, you can list as many dependencies as you desire. Each
-has a series of fields which help Ceedling to understand your needs. Many of them are
-optional. If you don't need that feature, just don't include it! In the end, it'll look
-something like this:
+First, you need to add the Dependencies plugin to your list of enabled plugins. Then, we'll 
+add a new comfiguration section called `:dependencies`. There, you can list as many 
+dependencies as you desire. Each has a series of fields that help Ceedling to understand 
+your needs. Many of them are optional. If you don't need that feature, just don't include 
+it! In the end, it'll look something like this:
 
-```
+```yaml
+:plugins:
+  :enabled:
+    - dependencies
+
 :dependencies:
-  :libraries:
+  :deps:
     - :name: WolfSSL
-      :source_path:   third_party/wolfssl/source
-      :build_path:    third_party/wolfssl/build
-      :artifact_path: third_party/wolfssl/install
+      :paths:
+        :fetch:        third_party/wolfssl/source
+        :source:       third_party/wolfssl/source
+        :build:        third_party/wolfssl/build
+        :artifact_lib: third_party/wolfssl/install
+        :artifact_inc: third_party/wolfssl/install
       :fetch:
         :method: :zip
         :source: \\shared_drive\third_party_libs\wolfssl\wolfssl-4.2.0.zip
@@ -72,25 +79,32 @@ it easier for us to see the name of each dependency with starting dash.
 The name field is only used to print progress while we're running Ceedling. You may
 call the name of the field whatever you wish.
 
-Working Folders
----------------
+Working Paths
+-------------
 
-The `:source_path` field allows us to specify where the source code for each of our
-dependencies is stored. If fetching the dependency from elsewhere, it will be fetched
-to this location. All commands to build this dependency will be executed from
-this location (override this by specifying a `:build_path`). Finally, the output
-artifacts will be referenced to this location (override this by specifying a `:artifact_path`)
+All paths are collected under `:dependencies` ↳ `:paths`. The `:source` field allows us 
+to specify where the source code for each of our dependencies is stored. By default, it's
+the same as the `:fetch` path, which is where source will be fetched TO when fetching the 
+dependency from elsewhere. All commands to build this dependency will be executed from
+the `:source` location. Temporary data will be placed in the `:build` location. Unless you're
+using one of Ceedling's built-in builders, you'll need to learn where the tool you're using to
+build places it's built artifacts , and list that here. Finally, the output
+artifacts will be referenced to this location. You override this by specifying a `:artifact`
+path. In summary:
 
-If unspecified, the `:source_path` will be `dependencies\dep_name` where `dep_name`
-is the name specified in `:name` above (with special characters removed). It's best,
-though, if you specify exactly where you want your dependencies to live.
+ - `:paths`
+   - `:fetch` -- where things are fetched to (defaults to `build/deps/depname/`)
+   - `:source` -- where we trigger builds (defaults to `:fetch`)
+   - `:build` -- where we have the produced build files (defaults to `<:fetch>/build`)
+   - `:deploy` -- where any produced library files should be copied (defaults to same as release executable)
+   - `:artifact` -- where output libraries can be found (defaults to `:build`)
 
 If the dependency is directly included in your project (you've specified `:none` as the
-`:method` for fetching), then `:source_path` should be where your Ceedling can find the
+`:method` for fetching), then `:source` should be where your Ceedling can find the
 source for your dependency in you repo.
 
-All artifacts are relative to the `:artifact_path` (which defaults to be the same as
-`:source_path`)
+All artifacts are relative to the appropriate `:artifact` path. So if there are multiple 
+include dirs, choose the highest level and make the rest relative from there. 
 
 Fetching Dependencies
 ---------------------
@@ -102,30 +116,43 @@ couple of fields:
 - `:method` -- This is the method that this dependency is fetched.
   - `:none` -- This tells Ceedling that the code is already included in the project.
   - `:zip` -- This tells Ceedling that we want to unpack a zip file to our source path.
+  - `:gzip` -- This tells Ceedling that we want to unpack a gzip file to our source path.
   - `:git` -- This tells Ceedling that we want to clone a git repo to our source path.
   - `:svn` -- This tells Ceedling that we want to checkout a subversion repo to our source path.
   - `:custom` -- This tells Ceedling that we want to use a custom command or commands to fetch the code.
-- `:source` -- This is the path or url to fetch code when using the zip or git method.
-- `:tag`/`:branch` -- This is the specific tag or branch that you wish to retrieve (git only. optional).
-- `:hash` -- This is the specific SHA1 hash you want to fetch (git only. optional, requires a deep clone).
-- `:revision` -- This is the specific revision you want to fetch (svn only. optional).
-- `:executable` -- This is a list of commands to execute when using the `:custom` method
+- `:source` -- This is the path or url to fetch code when using the `:zip`, `:gzip` or `:git` method.
+- `:tag`/`:branch` -- This is the specific tag or branch that you wish to retrieve (`:git` only, optional).
+- `:hash` -- This is the specific SHA1 hash you want to fetch (`:git` only, optional and triggers a deep clone).
+- `:revision` -- This is the specific revision you want to fetch (`:svn` only, optional).
+- `:executable` -- This is a YAML list of commands to execute when using the `:custom` method
 
+Some notes:
+
+The `:source` location for fetching a `:zip` or `:gzip` file is relative to the `:paths` ↳ `:source`
+folder. 
 
 Environment Variables
 ---------------------
 
 Many build systems support customization through environment variables. By specifying
-an array of environment variables, Ceedling will customize the shell environment before
-calling the build process.
+an array of environment variables, the Dependencies plugin will customize the shell environment 
+before calling the build process.
+
+Note that Ceedling’s project configuration includes a top-level `:environment` sections itself.
+The top-level `:environment` section is for all of Ceedling. The `:environment` section nested 
+within a specific dependency’s configuration is only for the shell environment used to process
+that dependency. The format and abilities of the two `:environment` configuration sections are
+also different.
 
 Environment variables may be specified in three ways. Let's look at one of each:
 
-```
-  :environment:
-    - ARCHITECTURE=ARM9
-    - CFLAGS+=-DADD_AWESOMENESS
-    - CFLAGS-=-DWASTE
+```yaml
+:dependencies:
+  <a dependency configuration>:
+    :environment:
+      - ARCHITECTURE=ARM9
+      - CFLAGS+=-DADD_AWESOMENESS
+      - CFLAGS-=-DWASTE
 ```
 
 In the first example, you see the most straightforward method. The environment variable
@@ -199,7 +226,7 @@ In this case, Ceedling is able to automatically add these to its internal source
 these files to be used while building your release code.
 
 Tasks
------
+=====
 
 Once configured correctly, the `:dependencies` plugin should integrate seamlessly into your
 workflow and you shouldn't have to think about it. In the real world, that doesn't always happen.
@@ -240,15 +267,55 @@ dependencies.
 Maybe you want to take that query further and actually get a list of ALL the header files
 Ceedling has found, including those belonging to your dependencies.
 
-Testing
-=======
+Custom Tools
+============
 
-Hopefully all your dependencies are fully tested... but we can't always depend on that.
-In the event that they are tested with Ceedling, you'll probably want to consider using
-the `:subprojects` plugin instead of this one. The purpose of this plugin is to pull in
-third party code for release... and to provide a mockable interface for Ceedling to use
-during its tests of other modules.
+You can optionally specify a compiler, assembler, and linker, just as you would a release build:
 
-If that's what you're after... you've found the right plugin!
+```yaml
+:tools:
+  :deps_compiler:
+    :executable: gcc
+    :arguments:
+      - -g
+      - -I"$": COLLECTION_PATHS_SUBPROJECTS
+      - -D$: COLLECTION_DEFINES_SUBPROJECTS
+      - -c "${1}"
+      - -o "${2}"
+  :deps_linker:
+    :executable: ar
+    :arguments:
+      - rcs
+      - ${2}
+      - ${1}
+```
+
+Then, once created, you can reference these tools in your build steps by using the `:build_lib` symbol instead
+of a series of strings to explain all the steps. Ceedling will understand that it should build all the specified
+source and/or assembly files into the specified library:
+
+```yaml
+:dependencies:
+  :deps:
+    - :name: CaptainCrunch
+      :paths:
+        :fetch:    ../cc/
+        :source:   ../cc/
+        :build:    ../cc/build
+        :artifact: ../cc/build
+      :fetch:
+        :method: :none
+      :environment: []
+      :build:
+        - :build_lib
+      :artifacts:
+        :static_libraries:
+          - release/cc.a
+        :dynamic_libraries: []
+        :includes: 
+          - ./cc.h
+      :defines:
+        - THESE_GET_USED_DURING_COMPILATION
+```
 
 Happy Testing!

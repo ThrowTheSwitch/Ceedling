@@ -1,3 +1,10 @@
+/* =========================================================================
+    Ceedling - Test-Centered Build System for C
+    ThrowTheSwitch.org
+    Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+    SPDX-License-Identifier: MIT
+========================================================================= */
+
 #include "unity.h"
 #include "Types.h"
 #include "UsartModel.h"
@@ -19,7 +26,7 @@ void testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSettin
   uint8 dummyRegisterSetting = 17;
   UsartModel_CalculateBaudRateRegisterSetting_ExpectAndReturn(MASTER_CLOCK, USART0_BAUDRATE, dummyRegisterSetting);
 
-  TEST_ASSERT_EQUAL(dummyRegisterSetting, UsartModel_GetBaudRateRegisterSetting());
+  TEST_ASSERT_EQUAL_UINT8(dummyRegisterSetting, UsartModel_GetBaudRateRegisterSetting());
 }
 
 void testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately(void)

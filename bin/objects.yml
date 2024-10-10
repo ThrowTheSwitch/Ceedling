@@ -1,0 +1,80 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+#
+# Loaded from lib/
+# ----------------
+#
+
+file_wrapper:
+
+yaml_wrapper:
+
+config_walkinator:
+
+system_wrapper:
+
+verbosinator:
+
+loginator:
+  compose:
+    - verbosinator
+    - file_wrapper
+    - system_wrapper
+
+#
+# Loaded from bin/
+# ----------------
+#
+
+actions_wrapper:
+
+# Separation of logic from CLI user interface
+cli_handler:
+  compose:
+    - configinator
+    - projectinator
+    - cli_helper
+    - path_validator
+    - actions_wrapper
+    - loginator
+
+cli_helper:
+  compose:
+    - file_wrapper
+    - config_walkinator
+    - path_validator
+    - actions_wrapper
+    - loginator
+    - system_wrapper
+
+path_validator:
+  compose:
+    - file_wrapper
+    - loginator
+
+mixinator:
+  compose:
+    - path_validator
+    - yaml_wrapper
+    - loginator
+
+projectinator:
+  compose:
+    - file_wrapper
+    - path_validator
+    - yaml_wrapper
+    - loginator
+    - system_wrapper
+
+configinator:
+  compose:
+    - config_walkinator
+    - projectinator
+    - mixinator
+
+

@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 directory(BULLSEYE_BUILD_OUTPUT_PATH)
 directory(BULLSEYE_RESULTS_PATH)
 directory(BULLSEYE_ARTIFACTS_PATH)
@@ -12,7 +19,7 @@ PLUGINS_BULLSEYE_LIB_PATH = 'C:\\tools\\BullseyeCoverage\\lib' if not defined?(P
 
 rule(/#{BULLSEYE_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
        proc do |task_name|
-         @ceedling[:file_finder].find_compilation_input_file(task_name)
+         @ceedling[:file_finder].find_build_input_file(filepath: task_name, context: BULLSEYE_SYM)
        end
      ]) do |object|
 
@@ -55,7 +62,7 @@ end
 
 rule(/#{BULLSEYE_DEPENDENCIES_PATH}\/#{'.+\\'+EXTENSION_DEPENDENCIES}$/ => [
        proc do |task_name|
-         @ceedling[:file_finder].find_compilation_input_file(task_name)
+         @ceedling[:file_finder].find_build_input_file(filepath: task_name, context: BULLSEYE_SYM)
        end
      ]) do |dep|
   @ceedling[:generator].generate_dependencies_file(
@@ -70,13 +77,22 @@ end
 task :directories => [BULLSEYE_BUILD_OUTPUT_PATH, BULLSEYE_RESULTS_PATH, BULLSEYE_DEPENDENCIES_PATH, BULLSEYE_ARTIFACTS_PATH]
 
 namespace BULLSEYE_SYM do
+
+  TOOL_COLLECTION_BULLSEYE_TASKS = {
+    :context        => BULLSEYE_SYM,
+    :test_compiler  => TOOLS_BULLSEYE_COMPILER,
+    :test_assembler => TOOLS_TEST_ASSEMBLER,
+    :test_linker    => TOOLS_BULLSEYE_LINKER,
+    :test_fixture   => TOOLS_BULLSEYE_FIXTURE
+  }
+
   task source_coverage: COLLECTION_ALL_SOURCE.pathmap("#{BULLSEYE_BUILD_OUTPUT_PATH}/%n#{@ceedling[:configurator].extension_object}")
 
   desc 'Run code coverage for all tests'
-  task all: [:test_deps] do
+  task all: [:prepare] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, BULLSEYE_SYM)
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, TOOL_COLLECTION_BULLSEYE_TASKS)
     @ceedling[:configurator].restore_config
   end
 
@@ -86,11 +102,11 @@ namespace BULLSEYE_SYM do
               "Use a real test or source file name (no path) in place of the wildcard.\n" +
               "Example: rake #{BULLSEYE_ROOT_NAME}:foo.c\n\n"
 
-    @ceedling[:streaminator].stdout_puts( message )
+    @ceedling[:loginator].log( message )
   end
 
   desc 'Run tests by matching regular expression pattern.'
-  task :pattern, [:regex] => [:test_deps] do |_t, args|
+  task :pattern, [:regex] => [:prepare] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each do |test|
@@ -100,15 +116,15 @@ namespace BULLSEYE_SYM do
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
       @ceedling[BULLSEYE_SYM].enableBullseye(true)
-      @ceedling[:test_invoker].setup_and_invoke(matches, BULLSEYE_SYM, force_run: false)
+      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
       @ceedling[:configurator].restore_config
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
+      @ceedling[:loginator].log("\nFound no tests matching pattern /#{args.regex}/.")
     end
   end
 
   desc 'Run tests whose test path contains [dir] or [dir] substring.'
-  task :path, [:dir] => [:test_deps] do |_t, args|
+  task :path, [:dir] => [:prepare] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each do |test|
@@ -118,18 +134,18 @@ namespace BULLSEYE_SYM do
     if !matches.empty?
       @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
       @ceedling[BULLSEYE_SYM].enableBullseye(true)
-      @ceedling[:test_invoker].setup_and_invoke(matches, BULLSEYE_SYM, force_run: false)
+      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
       @ceedling[:configurator].restore_config
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
+      @ceedling[:loginator].log("\nFound no tests including the given path or path component.")
     end
   end
 
   desc 'Run code coverage for changed files'
-  task delta: [:test_deps] do
+  task delta: [:prepare] do
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, BULLSEYE_SYM, {:force_run => false})
+    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, {:force_run => false}.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
     @ceedling[:configurator].restore_config
   end
 
@@ -142,24 +158,13 @@ namespace BULLSEYE_SYM do
         @ceedling[:file_finder].find_test_from_file_path(test)
       end
   ]) do |test|
-    @ceedling[:rake_wrapper][:test_deps].invoke
+    @ceedling[:rake_wrapper][:prepare].invoke
     @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke([test.source], BULLSEYE_SYM)
+    @ceedling[:test_invoker].setup_and_invoke([test.source], TOOL_COLLECTION_BULLSEYE_TASKS)
     @ceedling[:configurator].restore_config
   end
 
-end
-
-if PROJECT_USE_DEEP_DEPENDENCIES
-namespace REFRESH_SYM do
-  task BULLSEYE_SYM do
-    @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
-    @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].refresh_deep_dependencies
-    @ceedling[:configurator].restore_config
-  end
-end
 end
 
 namespace UTILS_SYM do
@@ -167,7 +172,7 @@ namespace UTILS_SYM do
   desc "Open Bullseye code coverage browser"
   task BULLSEYE_SYM do
     command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BROWSER, [])
-    @ceedling[:tool_executor].exec(command[:line], command[:options])
+    @ceedling[:tool_executor].exec( command )
   end
 
 end

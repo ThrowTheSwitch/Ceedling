@@ -1,5 +1,7 @@
-build/artifacts
-build/gcov
-build/logs 
-build/temp
-build/test
+# Ignore the build/ directory in the root of the project.
+# Generally speaking, best practice is to omit generated files from revision control.
+/build/
+
+# But reserve the artifacts/ subdirectory for revision control.
+# Ceedling's notion of artifacts includes reports or release binaries you *may* want to revision. 
+!/build/artifacts/

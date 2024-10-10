@@ -1,7 +1,11 @@
-#include "unity.h"
+/* =========================================================================
+    Ceedling - Test-Centered Build System for C
+    ThrowTheSwitch.org
+    Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+    SPDX-License-Identifier: MIT
+========================================================================= */
 
-#define TEST_CASE(...)
-#define TEST_RANGE(...)
+#include "unity.h"
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -10,6 +14,11 @@ TEST_CASE(25)
 TEST_CASE(125)
 TEST_CASE(5)
 void test_should_handle_divisible_by_5_for_parameterized_test_case(int num) {
+ TEST_ASSERT_EQUAL_MESSAGE(0, (num % 5), "All The Values Are Divisible By 5");
+}
+
+TEST_RANGE([5, 100, 5])
+void test_should_handle_divisible_by_5_for_parameterized_test_range(int num) {
  TEST_ASSERT_EQUAL_MESSAGE(0, (num % 5), "All The Values Are Divisible By 5");
 }
 
