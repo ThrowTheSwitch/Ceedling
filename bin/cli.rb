@@ -278,8 +278,9 @@ module CeedlingTasks
     method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :verbosity, :type => :string, :default => VERBOSITY_NORMAL, :aliases => ['-v'], :desc => "Sets logging level"
-    method_option :log, :type => :boolean, :default => false, :aliases => ['-l'], :desc => "Enable logging to default filepath in build directory"
-    method_option :logfile, :type => :string, :default => '', :desc => "Enable logging to given filepath"
+    # --log defaults to nil so we can check if it's been set by user as part of --logfile mutually exclusive option check
+    method_option :log, :type => :boolean, :default => nil, :aliases => ['-l'], :desc => "Enable logging to default <build path>/logs/#{DEFAULT_CEEDLING_LOGFILE}"
+    method_option :logfile, :type => :string, :default => nil, :desc => "Enable logging to filepath (ex. foo/bar/mybuild.log)"
     method_option :graceful_fail, :type => :boolean, :default => nil, :desc => "Force exit code of 0 for unit test failures"
     method_option :test_case, :type => :string, :default => '', :desc => "Filter for individual unit test names"
     method_option :exclude_test_case, :type => :string, :default => '', :desc => "Prevent matched unit test names from running"
@@ -309,9 +310,19 @@ module CeedlingTasks
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
       _options[:project] = options[:project].dup() if !options[:project].nil?
+      _options[:logfile] = options[:logfile].dup()
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
       _options[:verbosity] = VERBOSITY_DEBUG if options[:debug]
+
+      # Mutually exclusive options check (Thor does not offer option combination limitations)
+      # If :log is not nil, then the user set it. If :logfile is not empty, the user set it too.
+      if !options[:log].nil? and !options[:logfile].empty?
+        raise Thor::Error, "Use only one of --log(-l) or --logfile"
+      end
+
+      # Force default of false since we use nil as default value in Thor option definition
+      _options[:log] = false if options[:log].nil?
 
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )
     end

@@ -109,7 +109,7 @@ class ConfiguratorBuilder
   end
 
 
-  def set_build_paths(in_hash)
+  def set_build_paths(in_hash, logging_path)
     out_hash = {}
 
     project_build_artifacts_root = File.join(in_hash[:project_build_root], 'artifacts')
@@ -139,7 +139,7 @@ class ConfiguratorBuilder
       [:project_release_build_output_path,      File.join(project_build_release_root, 'out'),               in_hash[:project_release_build] ],
       [:project_release_dependencies_path,      File.join(project_build_release_root, 'dependencies'),      in_hash[:project_release_build] ],
 
-      [:project_log_path,                       File.join(in_hash[:project_build_root], 'logs'), true ],
+      [:project_log_path,                       logging_path, true ],
 
       [:project_test_preprocess_includes_path,  File.join(project_build_tests_root, 'preprocess/includes'), (in_hash[:project_use_test_preprocessor] != :none) ],
       [:project_test_preprocess_files_path,     File.join(project_build_tests_root, 'preprocess/files'),    (in_hash[:project_use_test_preprocessor] != :none) ],
