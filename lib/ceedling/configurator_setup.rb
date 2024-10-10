@@ -53,7 +53,7 @@ class ConfiguratorSetup
 
     flattened_config[:project_build_paths].each do |path|
       if path.nil? or path.empty?
-        raise CeedlingException.new( "Blank internal project build path subdirectory value" )
+        raise CeedlingException.new( "An internal project build path subdirectory path is unexpectedly blank" )
       end
 
       @file_wrapper.mkdir( path )

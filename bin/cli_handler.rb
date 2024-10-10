@@ -244,6 +244,7 @@ class CliHandler
 
         # Save references
         app_cfg.set_project_config( config )
+        app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
         _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
@@ -273,6 +274,7 @@ class CliHandler
 
     # Save references
     app_cfg.set_project_config( config )
+    app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
@@ -450,6 +452,7 @@ class CliHandler
 
     # Save reference to loaded configuration
     app_cfg.set_project_config( config )
+    app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
