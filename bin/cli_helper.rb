@@ -184,18 +184,21 @@ class CliHelper
   end
 
 
-  def process_log_filepath(enabled, logging_path, filepath)
-    # No log file if neither enabled nor a specific filename/filepath
-    return '' if !enabled && (filepath.nil? || filepath.empty?)
+  def process_log_filepath(logging_path, filepath)
+    case filepath
+    # No logging
+    when false
+      return ''
 
-    # Default logfile name (to be placed in default location of logging_path) if enabled but no filename/filepath
-    if (enabled && filepath.empty?)
+    # Default logfile path if no filename/filepath
+    when true
       filepath = File.join( logging_path, DEFAULT_CEEDLING_LOGFILE )
+      filepath = File.expand_path( filepath )
+
+    # Otherwise, explcit filename/filepath provided that implicitly enables logging
+    else
+      filepath = File.expand_path( filepath )
     end
-
-    # Otherwise, a filename/filepath was provided that implicitly enables logging
-
-    filepath = File.expand_path( filepath )
 
     dir = File.dirname( filepath )
 
