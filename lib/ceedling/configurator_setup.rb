@@ -30,12 +30,12 @@ class ConfiguratorSetup
     return this.class.name
   end
 
-  def build_project_config(ceedling_lib_path, flattened_config)
+  def build_project_config(ceedling_lib_path, logging_path, flattened_config)
     # Housekeeping
     @configurator_builder.cleanup( flattened_config )
 
     # Add to hash values we build up from configuration & file system contents
-    flattened_config.merge!( @configurator_builder.set_build_paths( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.set_build_paths( flattened_config, logging_path ) )
     flattened_config.merge!( @configurator_builder.set_rakefile_components( ceedling_lib_path, flattened_config ) )
     flattened_config.merge!( @configurator_builder.set_release_target( flattened_config ) )
     flattened_config.merge!( @configurator_builder.set_build_thread_counts( flattened_config ) )
@@ -53,7 +53,7 @@ class ConfiguratorSetup
 
     flattened_config[:project_build_paths].each do |path|
       if path.nil? or path.empty?
-        raise CeedlingException.new( "Blank internal project build path subdirectory value" )
+        raise CeedlingException.new( "An internal project build path subdirectory path is unexpectedly blank" )
       end
 
       @file_wrapper.mkdir( path )

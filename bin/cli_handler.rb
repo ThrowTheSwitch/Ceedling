@@ -160,7 +160,9 @@ class CliHandler
   def build(env:, app_cfg:, options:{}, tasks:)
     @helper.set_verbosity( options[:verbosity] )
 
-    @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
+    @path_validator.standardize_paths( options[:project], *options[:mixin] )
+
+    @path_validator.standardize_paths( options[:logfile] ) if options[:logfile].class == String
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
@@ -174,10 +176,14 @@ class CliHandler
       default_tasks: default_tasks
     )
 
-    log_filepath = @helper.process_logging( options[:log], options[:logfile] )
+    logging_path = @helper.process_logging_path( config )
+    log_filepath = @helper.process_log_filepath( logging_path, options[:logfile] )
+
+    @loginator.log( " > Logfile: #{log_filepath}" ) if !log_filepath.empty?
 
     # Save references
     app_cfg.set_project_config( config )
+    app_cfg.set_logging_path( logging_path )
     app_cfg.set_log_filepath( log_filepath )
     app_cfg.set_include_test_case( options[:test_case] )
     app_cfg.set_exclude_test_case( options[:exclude_test_case] )
@@ -240,6 +246,7 @@ class CliHandler
 
         # Save references
         app_cfg.set_project_config( config )
+        app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
         _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
@@ -269,6 +276,7 @@ class CliHandler
 
     # Save references
     app_cfg.set_project_config( config )
+    app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
@@ -446,6 +454,7 @@ class CliHandler
 
     # Save reference to loaded configuration
     app_cfg.set_project_config( config )
+    app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 

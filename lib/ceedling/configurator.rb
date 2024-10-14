@@ -609,10 +609,10 @@ class Configurator
 
 
   # Create constants and accessors (attached to this object) from given hash
-  def build(ceedling_lib_path, config, *keys)
+  def build(ceedling_lib_path, logging_path, config, *keys)
     flattened_config = @configurator_builder.flattenify( config )
 
-    @configurator_setup.build_project_config( ceedling_lib_path, flattened_config )
+    @configurator_setup.build_project_config( ceedling_lib_path, logging_path, flattened_config )
 
     @configurator_setup.build_directory_structure( flattened_config )
 

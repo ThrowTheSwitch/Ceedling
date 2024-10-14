@@ -138,6 +138,9 @@ module CeedlingTasks
     specified YAML file. See documentation for complete details.
     \x5> --mixin my_compiler --mixin my/path/mixin.yml"
 
+  # Intentionally disallowed Linux/Unix/Windows filename characters to avoid mistakenly filtering --logfile default
+  MISSING_LOGFILE_DEFAULT = "/<>\\||*"
+
   class CLI < Thor
     include Thor::Actions
     extend PermissiveCLI
@@ -278,8 +281,10 @@ module CeedlingTasks
     method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :verbosity, :type => :string, :default => VERBOSITY_NORMAL, :aliases => ['-v'], :desc => "Sets logging level"
-    method_option :log, :type => :boolean, :default => false, :aliases => ['-l'], :desc => "Enable logging to default filepath in build directory"
-    method_option :logfile, :type => :string, :default => '', :desc => "Enable logging to given filepath"
+    # :default, :lazy_default & :check_default_type: allow us to encode 3 possible logfile scenarios (see special handling comments below)
+    method_option :logfile, :type => :string,  :aliases => ['-l'],
+                  :default => false, :lazy_default => MISSING_LOGFILE_DEFAULT, :check_default_type => false,
+                  :desc => "Enables logging to <build path>/logs/#{DEFAULT_CEEDLING_LOGFILE} if blank or to specified filepath"
     method_option :graceful_fail, :type => :boolean, :default => nil, :desc => "Force exit code of 0 for unit test failures"
     method_option :test_case, :type => :string, :default => '', :desc => "Filter for individual unit test names"
     method_option :exclude_test_case, :type => :string, :default => '', :desc => "Prevent matched unit test names from running"
@@ -312,6 +317,31 @@ module CeedlingTasks
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
       _options[:verbosity] = VERBOSITY_DEBUG if options[:debug]
+
+      # Set something to be reset below
+      _options[:logfile] = nil
+
+      # Handle the 3 logging option values:
+      #  1. No logging (default)
+      #  2. Enabling logging with default log filepath
+      #  3. Explicitly set log filepath 
+      case options[:logfile]
+      
+      # Match against Thor's :lazy_default for --logging flag with missing value
+      when MISSING_LOGFILE_DEFAULT
+        # Enable logging to default log filepath
+        _options[:logfile] = true
+      
+      # Match against missing --logging flag
+      when false
+        # No logging
+        _options[:logfile] = false
+      
+      # Copy in explicitly provided filepath from --logging=<filepath>
+      else
+        # Filepath to explicitly set log file
+        _options[:logfile] = options[:logfile].dup()
+      end
 
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )
     end
@@ -381,6 +411,7 @@ module CeedlingTasks
 
       @handler.environment( ENV, @app_cfg, _options )
     end
+
 
     desc "examples", "List available example projects"
     method_option :debug, :type => :boolean, :default => false, :hide => true
