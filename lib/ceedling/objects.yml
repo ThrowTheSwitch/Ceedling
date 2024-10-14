@@ -308,6 +308,7 @@ test_invoker:
     - generator
     - test_context_extractor
     - file_path_utils
+    - file_finder
     - file_wrapper
     - verbosinator
 

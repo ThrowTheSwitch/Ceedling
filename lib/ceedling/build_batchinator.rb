@@ -52,39 +52,47 @@ class BuildBatchinator
 
     threads = (1..workers).collect do
       thread = Thread.new do
-        begin
-          # Run tasks until there are no more enqueued
-          loop do
-            # pop(true) is non-blocking and raises ThreadError when queue is empty
-            yield @queue.pop(true)
-          end
+        Thread.handle_interrupt(Exception => :never) do
+          begin
+            Thread.handle_interrupt(Exception => :immediate) do
+              # Run tasks until there are no more enqueued
+              loop do
+                # pop(true) is non-blocking and raises ThreadError when queue is empty
+                yield @queue.pop(true)
+              end
+            end
+           # First, handle thread exceptions (should always be due to empty queue)
+          rescue ThreadError => e
+            # Typical case: do nothing and allow thread to wind down
 
-         # First, handle thread exceptions (should always be due to empty queue)
-        rescue ThreadError => e
-          # Typical case: do nothing and allow thread to wind down
+            # ThreadError outside scope of expected empty queue condition
+            unless e.message.strip.casecmp("queue empty")
+              @loginator.log(e.message, Verbosity::ERRORS)
 
-          # ThreadError outside scope of expected empty queue condition
-          unless e.message.strip.casecmp("queue empty")
+              # Shutdown all worker threads
+              shutdown_threads(threads) #TODO IT SEEMS LIKE threads MIGHT NOT BE VALID YET
+
+              raise(e) # Raise exception again
+            end
+
+          # Second, catch every other kind of exception so we can intervene with thread cleanup.
+          # Generally speaking, catching Exception is a no-no, but we must in this case.
+          # Raise the exception again so that:
+          #  1. Calling code knows something bad happened and handles appropriately
+          #  2. Ruby runtime can handle most serious problems
+          rescue Exception => e
+            @loginator.log(e.message, Verbosity::ERRORS)
+
             # Shutdown all worker threads
-            shutdown_threads(threads)
+            shutdown_threads(threads) #TODO IT SEEMS LIKE threads MIGHT NOT BE VALID YET
 
-            raise(e) # Raise exception again
+            raise(e) # Raise exception again after intervening
           end
-
-        # Second, catch every other kind of exception so we can intervene with thread cleanup.
-        # Generally speaking, catching Exception is a no-no, but we must in this case.
-        # Raise the exception again so that:
-        #  1. Calling code knows something bad happened and handles appropriately
-        #  2. Ruby runtime can handle most serious problems
-        rescue Exception => e
-          # Shutdown all worker threads
-          shutdown_threads(threads)
-
-          raise(e) # Raise exception again after intervening
         end
       end
 
       # Hand thread to Enumerable collect() routine
+      thread.abort_on_exception = true
       thread
     end
 
