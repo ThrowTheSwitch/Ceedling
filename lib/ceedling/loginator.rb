@@ -309,3 +309,7 @@ class Loginator
   end
 
 end
+
+END {
+  @ceedling[:loginator].wrapup
+}

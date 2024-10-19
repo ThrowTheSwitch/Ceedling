@@ -61,7 +61,8 @@ class BuildBatchinator
                 yield @queue.pop(true)
               end
             end
-           # First, handle thread exceptions (should always be due to empty queue)
+
+          # First, handle thread exceptions (should always be due to empty queue)
           rescue ThreadError => e
             # Typical case: do nothing and allow thread to wind down
 
@@ -70,7 +71,7 @@ class BuildBatchinator
               @loginator.log(e.message, Verbosity::ERRORS)
 
               # Shutdown all worker threads
-              shutdown_threads(threads) #TODO IT SEEMS LIKE threads MIGHT NOT BE VALID YET
+              shutdown_threads(threads) 
 
               raise(e) # Raise exception again
             end
@@ -84,7 +85,7 @@ class BuildBatchinator
             @loginator.log(e.message, Verbosity::ERRORS)
 
             # Shutdown all worker threads
-            shutdown_threads(threads) #TODO IT SEEMS LIKE threads MIGHT NOT BE VALID YET
+            shutdown_threads(threads) 
 
             raise(e) # Raise exception again after intervening
           end

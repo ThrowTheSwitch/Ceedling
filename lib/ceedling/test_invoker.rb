@@ -238,7 +238,7 @@ class TestInvoker
           testable = mock[:testable]
 
           arg_hash = {
-            context:        TEST_SYM,
+            context:        context,
             mock:           mock[:name],
             test:           testable[:name],
             input_filepath: details[:input],
@@ -287,7 +287,7 @@ class TestInvoker
       @batchinator.build_step("Test Runners") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           arg_hash = {
-            context:         TEST_SYM,
+            context:         context,
             mock_list:       details[:mock_list],
             includes_list:   @test_context_extractor.lookup_header_includes_list( details[:filepath] ),
             test_filepath:   details[:filepath],
@@ -349,7 +349,7 @@ class TestInvoker
             details[:no_link_objects] = test_no_link_objects
             details[:results_pass]    = test_pass
             details[:results_fail]    = test_fail
-            details[:tool]            = TOOLS_TEST_COMPILER #TODO: VERIFY THIS GETS REPLACED WHEN IN GCOV OR BULLSEYE MODE
+            details[:tool]            = TOOLS_TEST_COMPILER
           end
         end
       end
@@ -358,8 +358,8 @@ class TestInvoker
       @batchinator.build_step("Building Objects") do
         @testables.each do |_, details|
           details[:objects].each do |obj|
-            src = @file_finder.find_build_input_file(filepath: obj, context: TEST_SYM)
-            compile_test_component(tool: details[:tool], context: TEST_SYM, test: details[:name], source: src, object: obj, msg: details[:msg])
+            src = @file_finder.find_build_input_file(filepath: obj, context: context)
+            compile_test_component(tool: details[:tool], context: context, test: details[:name], source: src, object: obj, msg: details[:msg])
           end
         end
       end

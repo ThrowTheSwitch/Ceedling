@@ -61,15 +61,20 @@ class Gcov < Plugin
   end
 
   def pre_compile_execute(arg_hash)
-    source = arg_hash[:source]
+    if arg_hash[:context] == GCOV_SYM
+      source = arg_hash[:source]
 
-    # Handle assembly file that comes through
-    if File.extname(source) == EXTENSION_ASSEMBLY
-      arg_hash[:tool] = TOOLS_TEST_ASSEMBLER
-    # If a source file (not unity, mocks, etc.) is to be compiled use code coverage compiler
-    elsif @configurator.collection_all_source.include?(source)
-      arg_hash[:tool] = TOOLS_GCOV_COMPILER
-      arg_hash[:msg] = "Compiling #{File.basename(source)} with coverage..."
+      # If a source file (not unity, mocks, etc.) is to be compiled use code coverage compiler
+      if (File.extname(source) != EXTENSION_ASSEMBLY) && @configurator.collection_all_source.include?(source)
+        arg_hash[:tool] = TOOLS_GCOV_COMPILER
+        arg_hash[:msg] = "Compiling #{File.basename(source)} with coverage..."
+      end
+    end
+  end
+
+  def pre_link_execute(arg_hash)
+    if arg_hash[:context] == GCOV_SYM
+      arg_hash[:tool] = TOOLS_GCOV_LINKER
     end
   end
 
