@@ -20,17 +20,6 @@ CLEAN.include(File.join(GCOV_DEPENDENCIES_PATH, '*'))
 
 CLOBBER.include(File.join(GCOV_BUILD_PATH, '**/*'))
 
-rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
-    proc do |task_name|
-      _, object = (task_name.split('+'))
-      @ceedling[:file_finder].find_build_input_file(filepath: object, context: GCOV_SYM)
-    end
-  ]) do |target|
-    test, object = (target.name.split('+'))
-
-    @ceedling[GCOV_SYM].generate_coverage_object_file(test.to_sym, target.source, object)
-  end
-
 task directories: [GCOV_BUILD_OUTPUT_PATH, GCOV_RESULTS_PATH, GCOV_DEPENDENCIES_PATH, GCOV_ARTIFACTS_PATH]
 
 namespace GCOV_SYM do

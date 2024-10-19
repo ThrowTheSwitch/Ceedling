@@ -17,6 +17,7 @@ class Loginator
   constructor :verbosinator, :file_wrapper, :system_wrapper
 
   def setup()
+    $loginator = self
     @decorators = false
 
     # Friendly robustification for certain testing scenarios
@@ -43,8 +44,68 @@ class Loginator
 
     @project_logging = false
     @log_filepath = nil
+  
+    @queue = Queue.new
+    @worker = Thread.new do
+      # Run tasks until there are no more enqueued
+      @done = false
+      while !@done do
+        Thread.handle_interrupt(Exception => :never) do
+          begin
+            Thread.handle_interrupt(Exception => :immediate) do
+              # pop(false) is blocking and should just hang here and wait for next message
+              item = @queue.pop(false)
+              if (item.nil?)
+                @done = true
+                next
+              end
+
+              # pick out the details
+              message   = item[:message]
+              label     = item[:label]
+              verbosity = item[:verbosity]
+              stream    = item[:stream]
+              
+              # Write to log as though Verbosity::DEBUG (no filtering at all) but without fun characters
+              if @project_logging
+                file_msg = message.dup() # Copy for safe inline modifications
+        
+                # Add labels
+                file_msg = format( file_msg, verbosity, label, false )
+        
+                # Note: In practice, file-based logging only works with trailing newlines (i.e. `log()` calls)
+                #       `out()` calls will be a little ugly in the log file, but these are typically only
+                #       used for console logging anyhow.
+                logfile( sanitize( file_msg, false ), extract_stream_name( stream ) )
+              end
+        
+              # Only output to console when message reaches current verbosity level
+              if !stream.nil? && (@verbosinator.should_output?( verbosity ))
+                # Add labels and fun characters
+                console_msg = format( message, verbosity, label, @decorators )
+        
+                # Write to output stream after optionally removing any problematic characters
+                stream.print( sanitize( console_msg, @decorators ) )
+              end
+            end
+          rescue ThreadError
+            @done = true
+          rescue Exception => e
+            puts e.inspect
+          end
+        end
+      end
+    end
   end
 
+  def wrapup
+    begin
+      @queue.close
+      @worker.join
+    rescue
+      #If we failed at this point, just give up on it
+    end
+  end
 
   def set_logfile( log_filepath )
     if !log_filepath.empty?
@@ -89,27 +150,14 @@ class Loginator
     # Message contatenated with "\n" (unless it aready ends with a newline)
     message += "\n" unless message.end_with?( "\n" )
 
-    # Write to log as though Verbosity::DEBUG (no filtering at all) but without fun characters
-    if @project_logging
-      file_msg = message.dup() # Copy for safe inline modifications
-
-      # Add labels
-      file_msg = format( file_msg, verbosity, label, false )
-
-      # Note: In practice, file-based logging only works with trailing newlines (i.e. `log()` calls)
-      #       `out()` calls will be a little ugly in the log file, but these are typically only
-      #       used for console logging anyhow.
-      logfile( sanitize( file_msg, false ), extract_stream_name( stream ) )
-    end
-
-    # Only output to console when message reaches current verbosity level
-    return if !(@verbosinator.should_output?( verbosity ))
-
-    # Add labels and fun characters
-    console_msg = format( message, verbosity, label, @decorators )
-
-    # Write to output stream after optionally removing any problematic characters
-    stream.print( sanitize( console_msg, @decorators ) )
+    # Add item to the queue
+    item = {
+      :message => message,
+      :verbosity => verbosity,
+      :label => label,
+      :stream => stream
+    }
+    @queue << item
   end
 
 
@@ -262,3 +310,7 @@ class Loginator
   end
 
 end
+
+END {
+  $loginator.wrapup unless $loginator.nil?
+}
