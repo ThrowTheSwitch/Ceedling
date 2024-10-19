@@ -17,6 +17,7 @@ class Loginator
   constructor :verbosinator, :file_wrapper, :system_wrapper
 
   def setup()
+    $loginator = self
     @decorators = false
 
     # Friendly robustification for certain testing scenarios
@@ -311,5 +312,5 @@ class Loginator
 end
 
 END {
-  @ceedling[:loginator].wrapup
+  $loginator.wrapup unless $loginator.nil?
 }
