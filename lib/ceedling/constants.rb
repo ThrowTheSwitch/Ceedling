@@ -71,6 +71,7 @@ GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
 NEWLINE_TOKEN = '\\n'
 
 DEFAULT_PROJECT_FILENAME = 'project.yml'
+DEFAULT_BUILD_LOGS_PATH = 'logs'
 
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
 
@@ -110,8 +111,8 @@ DEFAULT_CEEDLING_LOGFILE = 'ceedling.log'
 
 BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
 
-INPUT_CONFIGURATION_CACHE_FILE     = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
-DEFINES_DEPENDENCY_CACHE_FILE      = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files
+INPUT_CONFIGURATION_CACHE_FILE = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
+DEFINES_DEPENDENCY_CACHE_FILE  = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files
 
 TEST_ROOT_NAME    = 'test'                unless defined?(TEST_ROOT_NAME)
 TEST_TASK_ROOT    = TEST_ROOT_NAME + ':'  unless defined?(TEST_TASK_ROOT)

@@ -160,9 +160,7 @@ class CliHandler
   def build(env:, app_cfg:, options:{}, tasks:)
     @helper.set_verbosity( options[:verbosity] )
 
-    @path_validator.standardize_paths( options[:project], *options[:mixin] )
-
-    @path_validator.standardize_paths( options[:logfile] ) if options[:logfile].class == String
+    @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
@@ -177,7 +175,7 @@ class CliHandler
     )
 
     logging_path = @helper.process_logging_path( config )
-    log_filepath = @helper.process_log_filepath( logging_path, options[:logfile] )
+    log_filepath = @helper.process_log_filepath( logging_path, options[:log], options[:logfile] )
 
     @loginator.log( " > Logfile: #{log_filepath}" ) if !log_filepath.empty?
 

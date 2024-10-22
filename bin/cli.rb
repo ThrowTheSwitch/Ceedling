@@ -139,7 +139,7 @@ module CeedlingTasks
     \x5> --mixin my_compiler --mixin my/path/mixin.yml"
 
   # Intentionally disallowed Linux/Unix/Windows filename characters to avoid mistakenly filtering --logfile default
-  MISSING_LOGFILE_DEFAULT = "/<>\\||*"
+  CLI_MISSING_LOGFILE_DEFAULT = "/<>\\||*"
 
   class CLI < Thor
     include Thor::Actions
@@ -282,9 +282,10 @@ module CeedlingTasks
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :verbosity, :type => :string, :default => VERBOSITY_NORMAL, :aliases => ['-v'], :desc => "Sets logging level"
     # :default, :lazy_default & :check_default_type: allow us to encode 3 possible logfile scenarios (see special handling comments below)
-    method_option :logfile, :type => :string,  :aliases => ['-l'],
-                  :default => false, :lazy_default => MISSING_LOGFILE_DEFAULT, :check_default_type => false,
-                  :desc => "Enables logging to <build path>/logs/#{DEFAULT_CEEDLING_LOGFILE} if blank or to specified filepath"
+    method_option :log, :type => :boolean, :default => nil,
+                  :desc => "Enable logging to <build path>/#{DEFAULT_BUILD_LOGS_PATH}/#{DEFAULT_CEEDLING_LOGFILE}"
+    method_option :logfile, :type => :string, :aliases => ['-l'], :default => '', :lazy_default => CLI_MISSING_LOGFILE_DEFAULT,
+                  :desc => "Enables logging to specified filepath"
     method_option :graceful_fail, :type => :boolean, :default => nil, :desc => "Force exit code of 0 for unit test failures"
     method_option :test_case, :type => :string, :default => '', :desc => "Filter for individual unit test names"
     method_option :exclude_test_case, :type => :string, :default => '', :desc => "Prevent matched unit test names from running"
@@ -308,6 +309,9 @@ module CeedlingTasks
 
       • `--test-case` and its inverse `--exclude-test-case` set test case name 
       matchers to run only a subset of the unit test suite. See docs for full details.
+
+      • `If --log and --logfile are both specified, --logfile will set the log file path.
+      If --no-log and --logfile are both specified, no logging will occur.
       LONGDESC
     ) )
     def build(*tasks)
@@ -317,30 +321,10 @@ module CeedlingTasks
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
       _options[:verbosity] = VERBOSITY_DEBUG if options[:debug]
+      _options[:logfile] = options[:logfile].dup()
 
-      # Set something to be reset below
-      _options[:logfile] = nil
-
-      # Handle the 3 logging option values:
-      #  1. No logging (default)
-      #  2. Enabling logging with default log filepath
-      #  3. Explicitly set log filepath 
-      case options[:logfile]
-      
-      # Match against Thor's :lazy_default for --logging flag with missing value
-      when MISSING_LOGFILE_DEFAULT
-        # Enable logging to default log filepath
-        _options[:logfile] = true
-      
-      # Match against missing --logging flag
-      when false
-        # No logging
-        _options[:logfile] = false
-      
-      # Copy in explicitly provided filepath from --logging=<filepath>
-      else
-        # Filepath to explicitly set log file
-        _options[:logfile] = options[:logfile].dup()
+      if options[:logfile] == CLI_MISSING_LOGFILE_DEFAULT
+        raise Thor::Error.new( "--logfile is missing a required filepath parameter" )
       end
 
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )

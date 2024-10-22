@@ -180,25 +180,29 @@ class CliHelper
 
     return '' if build_root.nil?
 
-    return File.join( build_root, 'logs' )
+    return File.join( build_root, DEFAULT_BUILD_LOGS_PATH )
   end
 
 
-  def process_log_filepath(logging_path, filepath)
-    case filepath
-    # No logging
-    when false
+  def process_log_filepath(logging_path, log, logfile)
+    filepath = nil
+
+    # --log => nil (default / not set), false (explicitly disabled), true (explicitly enabled)
+    if log == false
       return ''
-
-    # Default logfile path if no filename/filepath
-    when true
-      filepath = File.join( logging_path, DEFAULT_CEEDLING_LOGFILE )
-      filepath = File.expand_path( filepath )
-
-    # Otherwise, explcit filename/filepath provided that implicitly enables logging
-    else
-      filepath = File.expand_path( filepath )
     end
+
+    # --logfile => '' default or a path
+    if not logfile.empty?
+      filepath = logfile
+    # If logging is enabled without a filepath in --logfile, then set up the default path
+    elsif log
+      filepath = File.join( logging_path, DEFAULT_CEEDLING_LOGFILE )
+    elsif logfile.empty?
+      return ''
+    end
+
+    filepath = File.expand_path( filepath )
 
     dir = File.dirname( filepath )
 
