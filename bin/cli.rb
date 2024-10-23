@@ -138,8 +138,9 @@ module CeedlingTasks
     specified YAML file. See documentation for complete details.
     \x5> --mixin my_compiler --mixin my/path/mixin.yml"
 
-  # Intentionally disallowed Linux/Unix/Windows filename characters to avoid mistakenly filtering --logfile default
-  CLI_MISSING_LOGFILE_DEFAULT = "/<>\\||*"
+  # Intentionally disallowed Linux/Unix/Windows filename characters to minimize the chance
+  # of mistakenly filtering various string-base flags missing a parmeter
+  CLI_MISSING_PARAMETER_DEFAULT = "/<>\\||*"
 
   class CLI < Thor
     include Thor::Actions
@@ -167,7 +168,7 @@ module CeedlingTasks
 
     # Override Thor help to list Rake tasks as well
     desc "help [COMMAND]", "Describe available commands and list build operations"
-    method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :project, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
@@ -188,6 +189,12 @@ module CeedlingTasks
       LONGDESC
     ) )
     def help(command=nil)
+      @handler.validate_string_param(
+        options[:project],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--project is missing a required filepath parameter"
+      )
+
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
       _options[:project] = options[:project].dup() if !options[:project].nil?
@@ -237,9 +244,8 @@ module CeedlingTasks
       @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, name, _dest )
     end
 
-
     desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project at PATH"
-    method_option :project, :type => :string, :default => DEFAULT_PROJECT_FILENAME, :desc => "Project filename"
+    method_option :project, :type => :string, :default => DEFAULT_PROJECT_FILENAME, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :desc => "Project filename"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
@@ -266,6 +272,12 @@ module CeedlingTasks
       LONGDESC
     ) )
     def upgrade(path)
+      @handler.validate_string_param(
+        options[:project],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--project is missing a required filename parameter"
+      )
+
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
       _options[:project] = options[:project].dup()
@@ -278,17 +290,20 @@ module CeedlingTasks
 
 
     desc "build [TASKS...]", "Run build tasks (`build` keyword not required)"
-    method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :project, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
-    method_option :verbosity, :type => :string, :default => VERBOSITY_NORMAL, :aliases => ['-v'], :desc => "Sets logging level"
-    # :default, :lazy_default & :check_default_type: allow us to encode 3 possible logfile scenarios (see special handling comments below)
+    method_option :verbosity, :type => :string, :default => VERBOSITY_NORMAL, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-v'],
+                  :desc => "Sets logging level"
     method_option :log, :type => :boolean, :default => nil,
                   :desc => "Enable logging to <build path>/#{DEFAULT_BUILD_LOGS_PATH}/#{DEFAULT_CEEDLING_LOGFILE}"
-    method_option :logfile, :type => :string, :aliases => ['-l'], :default => '', :lazy_default => CLI_MISSING_LOGFILE_DEFAULT,
+    # :lazy_default allows us to check for missing parameters (if no filepath given Thor unhelpfully provides the flag name as its value)
+    method_option :logfile, :type => :string, :aliases => ['-l'], :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT,
                   :desc => "Enables logging to specified filepath"
     method_option :graceful_fail, :type => :boolean, :default => nil, :desc => "Force exit code of 0 for unit test failures"
-    method_option :test_case, :type => :string, :default => '', :desc => "Filter for individual unit test names"
-    method_option :exclude_test_case, :type => :string, :default => '', :desc => "Prevent matched unit test names from running"
+    method_option :test_case, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT,
+                  :desc => "Filter for individual unit test names"
+    method_option :exclude_test_case, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT,
+                  :desc => "Prevent matched unit test names from running"
     # Include for consistency with other commands (override --verbosity)
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
@@ -315,6 +330,36 @@ module CeedlingTasks
       LONGDESC
     ) )
     def build(*tasks)
+      @handler.validate_string_param(
+        options[:project],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--project is missing a required filepath parameter"
+      )
+
+      @handler.validate_string_param(
+        options[:verbosity],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--verbosity is missing a required parameter"
+      )
+
+      @handler.validate_string_param(
+        options[:logfile],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--logfile is missing a required filepath parameter"
+      )
+
+      @handler.validate_string_param(
+        options[:test_case],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--test-case is missing a required test case name parameter"
+      )
+
+      @handler.validate_string_param(
+        options[:exclude_test_case],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--exclude-test-case is missing a required test case name parameter"
+      )
+
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
       _options[:project] = options[:project].dup() if !options[:project].nil?
@@ -323,16 +368,13 @@ module CeedlingTasks
       _options[:verbosity] = VERBOSITY_DEBUG if options[:debug]
       _options[:logfile] = options[:logfile].dup()
 
-      if options[:logfile] == CLI_MISSING_LOGFILE_DEFAULT
-        raise Thor::Error.new( "--logfile is missing a required filepath parameter" )
-      end
-
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )
     end
 
 
     desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and write final config to a YAML file"
-    method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :project, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
+                  :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :app, :type => :boolean, :default => true, :desc => "Runs Ceedling application and its config manipulations"
     method_option :debug, :type => :boolean, :default => false, :hide => true
@@ -358,6 +400,12 @@ module CeedlingTasks
       LONGDESC
     ) )
     def dumpconfig(filepath, *sections)
+      @handler.validate_string_param(
+        options[:project],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--project is missing a required filepath parameter"
+      )
+
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
       _options[:project] = options[:project].dup() if !options[:project].nil?
@@ -372,7 +420,8 @@ module CeedlingTasks
 
 
     desc "environment", "List all configured environment variable names with values."
-    method_option :project, :type => :string, :default => nil, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :project, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
+                  :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
@@ -385,6 +434,12 @@ module CeedlingTasks
       LONGDESC
     ) )
     def environment()
+      @handler.validate_string_param(
+        options[:project],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--project is missing a required filepath parameter"
+      )
+
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
       _options[:project] = options[:project].dup() if !options[:project].nil?

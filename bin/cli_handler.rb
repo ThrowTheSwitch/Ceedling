@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'thor'
 require 'mixins' # Built-in Mixins
 require 'ceedling/constants' # From Ceedling application
 require 'versionator' # Outisde DIY context
@@ -19,10 +20,18 @@ class CliHandler
     return this.class.name
   end
 
+
   def setup()
     # Aliases
     @helper = @cli_helper
     @actions = @actions_wrapper
+  end
+
+
+  def validate_string_param( param, missing, message )
+    if param == missing
+      raise Thor::Error.new( message )
+    end
   end
 
 
