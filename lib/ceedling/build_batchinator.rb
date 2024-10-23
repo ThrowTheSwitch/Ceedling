@@ -68,7 +68,7 @@ class BuildBatchinator
 
             # ThreadError outside scope of expected empty queue condition
             unless e.message.strip.casecmp("queue empty")
-              @loginator.log(e.message, Verbosity::ERRORS)
+              @loginator.log(e.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
 
               # Shutdown all worker threads
               shutdown_threads(threads) 
@@ -82,7 +82,7 @@ class BuildBatchinator
           #  1. Calling code knows something bad happened and handles appropriately
           #  2. Ruby runtime can handle most serious problems
           rescue Exception => e
-            @loginator.log(e.message, Verbosity::ERRORS)
+            @loginator.log(e.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
 
             # Shutdown all worker threads
             shutdown_threads(threads) 

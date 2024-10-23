@@ -40,7 +40,7 @@ class PluginManager
         # Add plugins to hash of all system objects
         system_objects[hash[:plugin].downcase().to_sym()] = object
       rescue 
-        @loginator.log( "Exception raised while trying to load plugin: #{hash[:plugin]}", Verbosity::ERRORS )
+        @loginator.log( "Exception raised while trying to load plugin: #{hash[:plugin]}", Verbosity::ERRORS, LogLabels::EXCEPTION  )
         raise # Raise again for backtrace, etc.
       end
     end

@@ -21,7 +21,6 @@ class FilePathCollectionUtils
     @working_dir_path = Pathname.new( Dir.pwd() )
   end
 
-
   # Build up a directory path list from one or more strings or arrays of (+:/-:) simple paths & globs
   def collect_paths(paths)
     plus  = Set.new # All real, expanded directory paths to add
@@ -78,11 +77,7 @@ class FilePathCollectionUtils
 
     # Use Set subtraction operator to remove any excluded paths
     paths = (plus - minus).to_a
-
-    paths.map! do |path|
-      # Reform path from full absolute to nice, neat relative path instead
-      (Pathname.new( path ).relative_path_from( @working_dir_path )).to_s()
-    end
+    paths.map! {|path| shortest_path_from_working(path) }
 
     return paths
   end
@@ -124,13 +119,19 @@ class FilePathCollectionUtils
 
     # Use Set subtraction operator to remove any excluded paths
     paths = (plus - minus).to_a
-
-    paths.map! do |path|
-      # Reform path from full absolute to nice, neat relative path instead
-      (Pathname.new( path ).relative_path_from( @working_dir_path )).to_s()
-    end
+    paths.map! {|path| shortest_path_from_working(path) }
 
     return FileList.new( paths )
+  end
+
+  def shortest_path_from_working(path)
+    begin
+      # Reform path from full absolute to nice, neat relative path instead
+      (Pathname.new( path ).relative_path_from( @working_dir_path )).to_s
+    rescue
+      # If we can't form a relative path between these paths, use the absolute
+      path 
+    end
   end
 
 end
