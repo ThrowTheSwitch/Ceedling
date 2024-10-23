@@ -60,28 +60,22 @@ class Gcov < Plugin
     return (@project_config[:gcov_report_task] == false)
   end
 
-  def generate_coverage_object_file(test, source, object)
-    # Non-coverage compiler
-    tool = TOOLS_TEST_COMPILER
-    msg = nil
+  def pre_compile_execute(arg_hash)
+    if arg_hash[:context] == GCOV_SYM
+      source = arg_hash[:source]
 
-    # Handle assembly file that comes through
-    if File.extname(source) == EXTENSION_ASSEMBLY
-      tool = TOOLS_TEST_ASSEMBLER
-    # If a source file (not unity, mocks, etc.) is to be compiled use code coverage compiler
-    elsif @configurator.collection_all_source.include?(source)
-      tool = TOOLS_GCOV_COMPILER
-      msg = "Compiling #{File.basename(source)} with coverage..."
+      # If a source file (not unity, mocks, etc.) is to be compiled use code coverage compiler
+      if (File.extname(source) != EXTENSION_ASSEMBLY) && @configurator.collection_all_source.include?(source)
+        arg_hash[:tool] = TOOLS_GCOV_COMPILER
+        arg_hash[:msg] = "Compiling #{File.basename(source)} with coverage..."
+      end
     end
+  end
 
-    @test_invoker.compile_test_component(
-      tool:    tool,
-      context: GCOV_SYM,
-      test:    test,
-      source:  source,
-      object:  object,
-      msg:     msg
-      )
+  def pre_link_execute(arg_hash)
+    if arg_hash[:context] == GCOV_SYM
+      arg_hash[:tool] = TOOLS_GCOV_LINKER
+    end
   end
 
   # `Plugin` build step hook

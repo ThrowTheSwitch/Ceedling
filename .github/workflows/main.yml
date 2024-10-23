@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.0', '3.1', '3.2']
+        ruby: ['3.0', '3.1', '3.2', '3.3']
     steps:
       # Use a cache for our tools to speed up testing
       - uses: actions/cache@v4
@@ -131,7 +131,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.0', '3.1', '3.2']
+        ruby: ['3.0', '3.1', '3.2', '3.3']
     steps:
       # Use a cache for our tools to speed up testing
       - uses: actions/cache@v4
@@ -287,15 +287,4 @@ jobs:
           asset_path: ./ceedling-${{ env.ceedling_tag }}.gem
           asset_name: ceedling-${{ env.ceedling_build }}.gem
           asset_content_type: test/x-gemfile
-
-      # - name: Upload Pre-Release Gem
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     # repo_token: "${{ secrets.GITHUB_TOKEN }}"
-      #     body: |
-      #       [Release Notes](${{ github.workspace }}/docs/ReleaseNotes.md)
-      #     name: ${{ env.full_ver }}
-      #     prerelease: true
-      #     files: |
-      #       *.gem
 

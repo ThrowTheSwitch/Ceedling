@@ -25,6 +25,7 @@ class TestInvoker
               :test_context_extractor,
               :file_path_utils,
               :file_wrapper,
+              :file_finder,
               :verbosinator
 
   def setup
@@ -237,7 +238,7 @@ class TestInvoker
           testable = mock[:testable]
 
           arg_hash = {
-            context:        TEST_SYM,
+            context:        context,
             mock:           mock[:name],
             test:           testable[:name],
             input_filepath: details[:input],
@@ -286,7 +287,7 @@ class TestInvoker
       @batchinator.build_step("Test Runners") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           arg_hash = {
-            context:         TEST_SYM,
+            context:         context,
             mock_list:       details[:mock_list],
             includes_list:   @test_context_extractor.lookup_header_includes_list( details[:filepath] ),
             test_filepath:   details[:filepath],
@@ -348,16 +349,18 @@ class TestInvoker
             details[:no_link_objects] = test_no_link_objects
             details[:results_pass]    = test_pass
             details[:results_fail]    = test_fail
+            details[:tool]            = TOOLS_TEST_COMPILER
           end
         end
       end
 
       # Build All Test objects
       @batchinator.build_step("Building Objects") do
-        # FYI: Temporarily removed direct object generation to allow rake invoke() to execute custom compilations (plugins, special cases)
-        # @test_invoker_helper.generate_objects_now(object_list, options)
         @testables.each do |_, details|
-          @task_invoker.invoke_test_objects(test: details[:name], objects:details[:objects])
+          details[:objects].each do |obj|
+            src = @file_finder.find_build_input_file(filepath: obj, context: context)
+            compile_test_component(tool: details[:tool], context: context, test: details[:name], source: src, object: obj, msg: details[:msg])
+          end
         end
       end
 
@@ -432,7 +435,7 @@ class TestInvoker
   end
 
   def compile_test_component(tool:, context:TEST_SYM, test:, source:, object:, msg:nil)
-    testable = @testables[test]
+    testable = @testables[test.to_sym]
     filepath = testable[:filepath]
     defines = testable[:compile_defines]
 

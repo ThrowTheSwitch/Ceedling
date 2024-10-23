@@ -139,12 +139,13 @@ class Generator
                  :flags => flags,
                  :defines => defines,
                  :list => list,
-                 :dependencies => dependencies
+                 :dependencies => dependencies,
+                 :msg => String(msg)
                }
 
     @plugin_manager.pre_compile_execute(arg_hash)
 
-    msg = String(msg)
+    msg = arg_hash[:msg]
     msg = @reportinator.generate_module_progress(
       operation: "Compiling",
       module_name: module_name,
