@@ -168,7 +168,7 @@ module CeedlingTasks
 
     # Override Thor help to list Rake tasks as well
     desc "help [COMMAND]", "Describe available commands and list build operations"
-    method_option :project, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
@@ -290,7 +290,7 @@ module CeedlingTasks
 
 
     desc "build [TASKS...]", "Run build tasks (`build` keyword not required)"
-    method_option :project, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :verbosity, :type => :string, :default => VERBOSITY_NORMAL, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-v'],
                   :desc => "Sets logging level"
@@ -373,7 +373,7 @@ module CeedlingTasks
 
 
     desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and write final config to a YAML file"
-    method_option :project, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
+    method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
                   :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :app, :type => :boolean, :default => true, :desc => "Runs Ceedling application and its config manipulations"
@@ -420,7 +420,7 @@ module CeedlingTasks
 
 
     desc "environment", "List all configured environment variable names with values."
-    method_option :project, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
+    method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
                   :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
