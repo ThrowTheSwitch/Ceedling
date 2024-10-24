@@ -254,29 +254,6 @@ class TestInvokerHelper
     end
   end
 
-  def generate_objects_now(object_list, context, options)
-    @batchinator.exec(workload: :compile, things: object_list) do |object|
-      src = @file_finder.find_build_input_file(filepath: object, context: TEST_SYM)
-      if (File.basename(src) =~ /#{EXTENSION_SOURCE}$/)
-        @generator.generate_object_file(
-          options[:test_compiler],
-          OPERATION_COMPILE_SYM,
-          context,
-          src,
-          object,
-          @file_path_utils.form_test_build_list_filepath( object ),
-          @file_path_utils.form_test_dependencies_filepath( object ))
-      elsif (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
-        @generator.generate_object_file(
-          options[:test_assembler],
-          OPERATION_ASSEMBLE_SYM,
-          context,
-          src,
-          object )
-      end
-    end
-  end
-
   # Convert libraries configuration form YAML configuration
   # into a string that can be given to the compiler.
   def convert_libraries_to_arguments()

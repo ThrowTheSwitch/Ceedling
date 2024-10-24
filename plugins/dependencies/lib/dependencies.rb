@@ -396,7 +396,11 @@ class Dependencies < Plugin
     name = blob[:name] || ""
     source_path = Pathname.new get_source_path(blob)
     build_path = Pathname.new get_build_path(blob)
-    relative_build_path = build_path.relative_path_from(source_path)
+    relative_build_path = begin
+      build_path.relative_path_from(source_path)
+    rescue
+      build_path 
+    end
 
     # Verify there is an artifact that we're building that makes sense
     libs = []

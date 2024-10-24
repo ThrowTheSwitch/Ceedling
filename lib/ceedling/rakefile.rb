@@ -124,9 +124,11 @@ END {
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )
       boom_handler( @ceedling[:loginator], ex )
+      @ceedling[:loginator].wrapup
       exit(1)
     end
 
+    @ceedling[:loginator].wrapup
     exit(0)
   else
     msg = "Ceedling could not complete operations because of errors"
@@ -136,6 +138,7 @@ END {
     rescue => ex
       boom_handler( @ceedling[:loginator], ex)
     ensure
+      @ceedling[:loginator].wrapup
       exit(1)
     end
   end
