@@ -73,8 +73,9 @@ rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
 end
 
 namespace RELEASE_SYM do
-  # use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
+  # Use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
 
+  # Unadvertised Rake tasks to execute source file compilation
   namespace :compile do
     rule(/^#{RELEASE_COMPILE_TASK_ROOT}\S+(#{Regexp.escape(EXTENSION_SOURCE)}|#{Regexp.escape(EXTENSION_CORE_SOURCE)})$/ => [ # compile task names by regex
         proc do |task_name|
@@ -87,6 +88,7 @@ namespace RELEASE_SYM do
     end
   end
 
+  # Unadvertised Rake tasks to execute source file assembly
   if (RELEASE_BUILD_USE_ASSEMBLY)
   namespace :assemble do
     rule(/^#{RELEASE_ASSEMBLE_TASK_ROOT}\S+#{Regexp.escape(EXTENSION_ASSEMBLY)}$/ => [ # assemble task names by regex
