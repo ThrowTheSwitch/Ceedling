@@ -244,8 +244,23 @@ class TestInvokerHelper
   end
 
   # TODO: Use search_paths to find/match header file from which to generate mock
-  def find_header_input_for_mock_file(mock, search_paths)
-    return @file_finder.find_header_input_for_mock_file(mock)
+  # Today, this is just a pass-through wrapper
+  def find_header_input_for_mock(mock, search_paths)
+    return @file_finder.find_header_input_for_mock( mock )
+  end
+
+  # Transform list of mock names into filenames with source extension
+  def form_mock_filenames(mocklist)
+    return mocklist.map {|mock| mock + @configurator.extension_source}
+  end
+
+  def remove_mock_original_headers( filelist, mocklist )
+    filelist.delete_if do |filepath|
+      # Create a simple mock name from the filepath => mock prefix + filepath base name with no extension
+      mock_name = @configurator.cmock_mock_prefix + File.basename( filepath, '.*' )
+      # Tell `delete_if()` logic to remove inspected filepath if simple mocklist includes the name we just generated
+      mocklist.include?( mock_name )
+    end
   end
 
   def clean_test_results(path, tests)

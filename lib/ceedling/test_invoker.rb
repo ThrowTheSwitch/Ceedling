@@ -179,7 +179,7 @@ class TestInvoker
           mocks = {}
           mocks_list = @configurator.project_use_mocks ? @context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
           mocks_list.each do |name|
-            source = @helper.find_header_input_for_mock_file( name, details[:search_paths] )
+            source = @helper.find_header_input_for_mock( name, details[:search_paths] )
             preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
             mocks[name.to_sym] = {
               :name => name,
@@ -303,14 +303,11 @@ class TestInvoker
       @batchinator.build_step("Determining Artifacts to Be Built", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
           # Source files referenced by conventions or specified by build directives in a test file
-          test_sources       = @test_invoker_helper.extract_sources( details[:filepath] )
-          test_core          = test_sources + details[:mock_list]
+          test_sources       = @helper.extract_sources( details[:filepath] )
+          test_core          = test_sources + @helper.form_mock_filenames( details[:mock_list] )
 
           # When we have a mock and an include for the same file, the mock wins
-          test_core.delete_if do |v| 
-            mock_of_this_file = "#{@configurator.cmock_mock_prefix}#{File.basename(v,'.*')}"
-            details[:mock_list].include?(mock_of_this_file)
-          end
+          @helper.remove_mock_original_headers( test_core, details[:mock_list] )
           
           # CMock + Unity + CException
           test_frameworks    = @helper.collect_test_framework_sources( !details[:mock_list].empty? )
@@ -380,7 +377,7 @@ class TestInvoker
             options:    options            
           }
 
-          @test_invoker_helper.generate_executable_now(**arg_hash)
+          @helper.generate_executable_now(**arg_hash)
         end
       end
 
@@ -397,7 +394,7 @@ class TestInvoker
               options:        options              
             }
 
-            @test_invoker_helper.run_fixture_now(**arg_hash)
+            @helper.run_fixture_now(**arg_hash)
 
           # Handle exceptions so we can ensure post_test() is called.
           # A lone `ensure` includes an implicit rescuing of StandardError 

@@ -14,24 +14,34 @@ class FileFinder
   constructor :configurator, :file_finder_helper, :cacheinator, :file_path_utils, :file_wrapper, :yaml_wrapper
 
 
-  def find_header_file(mock_file)
-    header = File.basename(mock_file).sub(/#{@configurator.cmock_mock_prefix}/, '').ext(@configurator.extension_header)
+  def find_header_input_for_mock(mock_name)
+    # Mock name => <mock prefix><header filename without extension>
+    # Examples: 'Mockfoo' or 'mock_Bar'
+    # Note: In some rare cases, a mock name may include a dot (ex. Sensor.44) because of versioning file naming convention
+    #       Be careful about assuming the end of the name has any sort of file extension
 
-    found_path = @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_headers, :error, mock_file)
+    header = mock_name.sub(/#{@configurator.cmock_mock_prefix}/, '') + @configurator.extension_header
+
+    found_path = @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_headers, :error, mock_name)
 
     return found_path
   end
 
 
-  def find_header_input_for_mock_file(mock_file)
-    return find_header_file(mock_file)
+  # Find test filepath from another filepath (e.g. test executable with same base name, a/path/test_foo.exe)
+  def find_test_file_from_filepath(filepath)
+    # Strip filepath down to filename and remove file extension
+    name = File.basename( filepath ).ext('')
+
+    return find_test_file_from_name( name )
   end
 
 
-  def find_test_from_file_path(filepath)
-    test_file = File.basename(filepath).ext(@configurator.extension_source)
+  # Find test filepath from only the base name of a test file (e.g. 'test_foo')
+  def find_test_file_from_name(name)
+    test_file = name + @configurator.extension_source
 
-    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error, filepath)
+    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error, name)
 
     return found_path
   end
@@ -42,6 +52,7 @@ class FileFinder
 
     found_file = nil
 
+    # Strip off file extension
     source_file = File.basename(filepath).ext('')
 
     # We only collect files that already exist when we start up.
@@ -49,9 +60,13 @@ class FileFinder
     # So collect mocks and runners separately and right now.
     # Assume that project configuration options will have already filtered out any files that should not be searched for.
 
+    # Note: We carefully add file extensions below with string addition instead of using .ext()
+    #       Some legacy files can include naming conventions like <name>.##.<ext> for versioning.
+    #       If we use .ext() below we'll clobber the dotted portion of the filename
+
     # Generated test runners
     if (!release) and (source_file =~ /^#{@configurator.project_test_file_prefix}.+#{@configurator.test_runner_file_suffix}$/)
-      _source_file = source_file.ext(EXTENSION_CORE_SOURCE)
+      _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
@@ -61,7 +76,7 @@ class FileFinder
 
     # Generated mocks
     elsif (!release) and (source_file =~ /^#{@configurator.cmock_mock_prefix}/)
-      _source_file = source_file.ext(EXTENSION_CORE_SOURCE)
+      _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
@@ -72,7 +87,7 @@ class FileFinder
     # Vendor framework sources (unity.c, cmock.c, cexception.c, etc.)
     # Note: Taking a small chance by mixing test and release frameworks without smart checks on test/release build
     elsif (@configurator.collection_vendor_framework_sources.include?(source_file.ext(EXTENSION_CORE_SOURCE)))
-      _source_file = source_file.ext(EXTENSION_CORE_SOURCE)
+      _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
@@ -97,7 +112,7 @@ class FileFinder
 
     # Assembly files for release build 
     if release and @configurator.release_build_use_assembly
-      _source_file = File.basename(filepath).ext(@configurator.extension_assembly)
+      _source_file = source_file + @configurator.extension_assembly
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
@@ -107,7 +122,7 @@ class FileFinder
 
     # Assembly files for test build 
     elsif (!release) and @configurator.test_build_use_assembly
-      _source_file = File.basename(filepath).ext(@configurator.extension_assembly)
+      _source_file = source_file + @configurator.extension_assembly
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
@@ -122,7 +137,7 @@ class FileFinder
 
     # Release build C files
     if release
-      _source_file = File.basename(filepath).ext(@configurator.extension_source)
+      _source_file = source_file + @configurator.extension_source
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
@@ -132,7 +147,7 @@ class FileFinder
         
     # Test build C files
     else
-      _source_file = File.basename(filepath).ext(@configurator.extension_source)
+      _source_file = source_file + @configurator.extension_source
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,

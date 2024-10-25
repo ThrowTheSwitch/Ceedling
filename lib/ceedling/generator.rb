@@ -347,7 +347,7 @@ class Generator
       executable,
       shell_result,
       arg_hash[:result_file],
-      @file_finder.find_test_from_file_path( arg_hash[:executable] )
+      @file_finder.find_test_file_from_filepath( arg_hash[:executable] )
     )
 
     arg_hash[:result_file]  = processed[:result_file]

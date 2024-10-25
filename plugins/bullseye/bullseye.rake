@@ -155,7 +155,7 @@ namespace BULLSEYE_SYM do
       proc do |task_name|
         test = task_name.sub(/#{BULLSEYE_TASK_ROOT}/, '')
         test = "#{PROJECT_TEST_FILE_PREFIX}#{test}" unless test.start_with?(PROJECT_TEST_FILE_PREFIX)
-        @ceedling[:file_finder].find_test_from_file_path(test)
+        @ceedling[:file_finder].find_test_file_from_name(test)
       end
   ]) do |test|
     @ceedling[:rake_wrapper][:prepare].invoke
