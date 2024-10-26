@@ -1,5 +1,14 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
+
+_October 26, 2024_ 🚚 **Ceedling 1.0.0** will be shipping very soon.
+[Prerelease versions are available now](https://github.com/ThrowTheSwitch/Ceedling/releases).
+See the [all new README](https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/README.md)
+for a reintroduction to Ceedling and links to a variety of complementary resources. See the 
+[Release Notes](https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/ReleaseNotes.md)
+for an overview of all that’s new since 0.31.1 plus links to a detailed Changelog and list of 
+Breaking Changes.
+
 Ceedling is a build system for C projects that is something of an extension 
 around Ruby’s Rake (make-ish) build system. Ceedling also makes TDD (Test-Driven Development) 
 in C a breeze by integrating [CMock](https://github.com/throwtheswitch/cmock), 
