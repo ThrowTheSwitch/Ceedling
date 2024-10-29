@@ -6,7 +6,10 @@
 # =========================================================================
 
 require 'app_cfg'
-require 'ceedling/constants' # From Ceedling application
+
+# From Ceedling application
+require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 class CliHelper
 
@@ -246,7 +249,26 @@ class CliHelper
 
   def run_rake_tasks(tasks)
     Rake.application.collect_command_line_tasks( tasks )
-    Rake.application.top_level()
+    
+    # Replace Rake's exception message to reduce any confusion
+    begin
+      Rake.application.top_level()
+
+    rescue RuntimeError => ex
+      # Check if exception contains an unknown Rake task message
+      matches = ex.message.match( /how to build task '(.+)'/i )
+
+      # If it does, replacing the message with our own
+      if matches.size == 2
+        message = "Unrecognized build task '#{matches[1]}'. List available build tasks with `ceedling help`."
+        raise CeedlingException.new( message )
+      
+      # Otherwise, just re-raise
+      else
+        raise
+      end
+    end
+
   end
 
 
