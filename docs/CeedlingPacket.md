@@ -1267,52 +1267,30 @@ within source directories, or tests and source directories
 can be wholly separated at the top of your project's directory
 tree.
 
-## Search Path / File Collection Ordering
+## Search Paths for Test Builds
 
-Path order is important and needed by various functions. Ceedling
-itself needs a path order to find files such as header files
-that get mocked. Tasks are often ordered by the contents of file 
-collections Ceedling builds. Toolchains rely on a search path 
-order to compile code.
-
-Paths are organized and prioritized like this:
-
-1. Test paths
-1. Support paths
-1. Source paths
-1. Source include paths
-
-Of course, this list is context dependent. A release build pays
-no attention to test or support paths. And, as is documented 
-elsewhere, header file search paths do not incorporate source 
-file paths.
-
-This ordering can be useful to the user in certain testing scenarios 
-where we desire Ceedling or a compiler to find a stand-in header 
-file in our support directory before the actual source header 
-file of the same name in the source include path list.
-
-If you define your own tools in the project configuration file (see 
-the `:tools` section documented later in this here document), you have 
-some control over what directories are searched and in what order.
-
-## Configuring Your Header File Search Paths
+Test builds in C are fairly complex. Each test file becomes a test
+executable. Each test executable needs generated runner code and 
+optionally generated mocks. Slicing and dicing what files are 
+compiled and linked and how search paths are assembled is tricky
+business. That’s why Ceedling exists in the first place. Because
+of these issues, search paths, in particular, require quite a bit
+of special handling.
 
 Unless your project is relying exclusively on `extern` statements and
 uses no mocks for testing, Ceedling _**must**_ be told where to find 
 header files. Without search path knowledge, mocks cannot be generated, 
 and code cannot be compiled.
 
-Ceedling provides two mechanisms for configuring header file 
-search paths:
+Ceedling provides two mechanisms for configuring search paths:
 
 1. The [`:paths` ↳ `:include`](#paths--include) section within your 
-   project file. This is available to both test and release builds.
+   project file.
 1. The [`TEST_INCLUDE_PATH(...)`](#test_include_path) build directive 
    macro. This is only available within test files.
 
-In testing contexts, you have three options for creating the header 
-file search path list used by Ceedling:
+In testing contexts, you have three options for assembling the core of 
+the search path list used by Ceedling for test builds:
 
 1. List all search paths within the `:paths` ↳ `:include` subsection 
    of your project file. This is the simplest and most common approach.
@@ -1322,8 +1300,58 @@ file search path list used by Ceedling:
    within your project file acts as a common, base list of search 
    paths while the build directive macro allows the list to be 
    expanded upon for each test file. This method is especially helpful 
-   for large and/or complex projects—especially in trimming down 
+   for large and/or complex projects in trimming down 
    problematically long compiler command lines.
+
+As for the complete search path list for test builds created by Ceedling,
+it is assembled from a variety of sources. In order:
+
+1. Mock generation build path (if mocking is enabled)
+1. Paths provided via `TEST_INCLUDE_PATH(...)` build directive macro
+1. Any paths within `:paths` ↳ `:test` list containing header files
+1. `:paths` ↳ `:support` list from your project configuration
+1. `:paths` ↳ `:include` list from your project configuration
+1. `:paths` ↳ `:libraries` list from your project configuration
+1. Internal path for Unity’s unit test framework C code
+1. Internal paths for CMock and CException’s C code (if respective 
+   features enabled)
+1. `:paths` ↳ `:test_toolchain_include` list from your project 
+   configuration
+
+The paths lists above are documented in detail in the discussion of 
+project configuration.
+
+_**Notes:**_
+
+* The logic of the ordering above is essentially that:
+   * Everything above (5) should have precedence to allow test-specific 
+     symbols, function signatures, etc. to be found before that of your 
+     source code under test. This is the necessary pattern for effective 
+     testing and test builds.
+   * Everything below (5) is supporting symbols and function signatures
+     for your source code. Your source code should be processed before
+     these for effective builds generally.
+* (3) is a balancing act. It is entirely possible that test developers
+  will choose to create common files of symbols and supporting code 
+  necessary for unit tests and choose to organize it alongside their 
+  test files. A test build must be able to find these references. At the
+  same time it is highly unlikely every test directory path in a project
+  is necessary for a test build — particularly in large and sophisticated
+  projects. To reduce overall search path length and problematic command
+  lines, this convention tailors the search path. This is low risk
+  tailoring but could cause gotchas in edge cases or when Ceedling is 
+  combined with other tools. Any other such tailoring is avoided as it
+  could too easily cause maddening build problems.
+
+## Search Paths for Release Builds
+
+Unlike test builds, release builds are relatively straightforward. Each
+source file is compiled into an object file. All object files are linked.
+A Ceedling release build may optionally compile and link in CException
+and can handle linking in libraries as well.
+
+Search paths for release builds are configured with `:paths` ↳ `:include` 
+in your project configuration. That’s about all there is to it.
 
 ## Conventions for Source Files & Binary Release Artifacts
 
@@ -2574,9 +2602,9 @@ internally — thus leading to unexpected behavior without warning.
 
 ## `:project`: Global project settings
 
-**_NOTE:_** In future versions of Ceedling, test and release build 
-settings presently organized beneath `:project` will be renamed and 
-migrated to the `:test_build` and `:release_build` sections.
+**_NOTE:_** In future versions of Ceedling, test-specific and release-specific
+build settings presently organized beneath `:project` will likely be renamed 
+and migrated to the `:test_build` and `:release_build` sections.
 
 * `:build_root`
 
@@ -2915,7 +2943,7 @@ organized beneath `:project` will be renamed and migrated to this section.
 ## `:release_build` Configuring a release build
 
 **_NOTE:_** In future versions of Ceedling, release build-related settings 
-presently organized beneath `:project` will be renamed and migrated to 
+presently organized beneath `:sproject` will be renamed and migrated to 
 this section.
 
 * `:output`
