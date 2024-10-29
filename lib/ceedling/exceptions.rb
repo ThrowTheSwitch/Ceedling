@@ -13,28 +13,35 @@ class CeedlingException < RuntimeError
 end
 
 
-class ShellExecutionException < CeedlingException
+class ShellException < CeedlingException
 
   attr_reader :shell_result
 
   def initialize(shell_result:{}, name:, message:'')
     @shell_result = shell_result
+
+    _message = ''
     
-    # If shell results exist...
+    # Most shell exceptions will be from build compilation and linking.
+    # The formatting of these messages should place the tool output on its own
+    # lines without any other surrounding characters.
+    # This formatting maximizes the ability of IDEs to parse, highlight, and make 
+    # actionable the build errors that appear within their terminal windows.
+
+    # If shell results exist, report the exit code...
     if !shell_result.empty?
-      message = "Tool #{name} terminated with exit code [#{shell_result[:exit_code]}]"
+      _message = "#{name} terminated with exit code [#{shell_result[:exit_code]}]"
 
       if !shell_result[:output].empty?
-        message += " and output >> \"#{shell_result[:output].strip()}\""
+        _message += " and output >>\n#{shell_result[:output].strip()}"
       end
 
-      super( message )
-
-    # Otherwise, just report the provided message
+    # Otherwise, just report the exception message
     else
-      message = "Tool #{name} encountered an error:: #{message}"
-      super( message )
+      _message = "#{name} encountered an error with output >>\n#{message}"
     end
 
+    # Hand the message off to parent Exception
+    super( _message )
   end
 end

@@ -94,7 +94,7 @@ class ReportGeneratorReportinator
         # Generate the report(s).
         begin
           shell_result = run(args)
-        rescue ShellExecutionException => ex
+        rescue ShellException => ex
           shell_result = ex.shell_result
           # Re-raise
           raise ex

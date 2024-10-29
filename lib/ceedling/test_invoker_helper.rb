@@ -298,7 +298,7 @@ class TestInvokerHelper
         @file_path_utils.form_test_build_map_filepath( build_path, executable ),
         lib_args,
         lib_paths )
-    rescue ShellExecutionException => ex
+    rescue ShellException => ex
       if ex.shell_result[:output] =~ /symbol/i
         notice =    "If the linker reports missing symbols, the following may be to blame:\n" +
                     "  1. This test lacks #include statements corresponding to needed source files (see note below).\n" +

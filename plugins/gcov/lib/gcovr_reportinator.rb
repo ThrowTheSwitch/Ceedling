@@ -312,7 +312,7 @@ class GcovrReportinator
 
     begin
       shell_result = @tool_executor.exec( command )
-    rescue ShellExecutionException => ex
+    rescue ShellException => ex
       result = ex.shell_result
       @reportinator_helper.print_shell_result( result )
       raise(ex) if gcovr_exec_exception?( opts, result[:exit_code], boom )

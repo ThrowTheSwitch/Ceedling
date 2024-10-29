@@ -167,7 +167,7 @@ class Generator
 
     begin
       shell_result = @tool_executor.exec( command )
-    rescue ShellExecutionException => ex
+    rescue ShellException => ex
       shell_result = ex.shell_result
       raise ex
     ensure
@@ -230,7 +230,7 @@ class Generator
 
     begin
       shell_result = @tool_executor.exec( command )
-    rescue ShellExecutionException => ex
+    rescue ShellException => ex
       shell_result = ex.shell_result
       raise ex
     ensure
@@ -270,7 +270,7 @@ class Generator
 
     begin
       shell_result = @tool_executor.exec( command )
-    rescue ShellExecutionException => ex
+    rescue ShellException => ex
       shell_result = ex.shell_result
       raise ex
     ensure

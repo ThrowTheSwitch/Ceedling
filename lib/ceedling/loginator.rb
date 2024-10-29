@@ -161,6 +161,16 @@ class Loginator
   end
 
 
+  def log_debug_backtrace(exception)
+      log( "\nDebug Backtrace ==>", Verbosity::DEBUG )
+      
+      # Send backtrace to debug logging, formatted almost identically to how Ruby does it.
+      # Don't log the exception message itself in the first `log()` call as it will already be logged elsewhere
+      log( "#{exception.backtrace.first}: (#{exception.class})", Verbosity::DEBUG )
+      log( exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"),                  Verbosity::DEBUG )
+  end
+
+
   def decorate(str, label=LogLabels::NONE)
     return str if !@decorators
 

@@ -11,8 +11,11 @@ require 'ceedling/file_path_utils'
 
 desc "Build release target."
 task RELEASE_SYM => [:prepare] do
-  header = "Release build '#{File.basename(PROJECT_RELEASE_BUILD_TARGET)}'"
-  @ceedling[:loginator].log("\n\n#{header}\n#{'-' * header.length}")  
+  header = "Release build '#{File.basename( PROJECT_RELEASE_BUILD_TARGET )}'"
+
+  banner = @ceedling[:reportinator].generate_banner( header )
+
+  @ceedling[:loginator].log( banner )
   
   begin
     @ceedling[:plugin_manager].pre_release
@@ -30,13 +33,10 @@ task RELEASE_SYM => [:prepare] do
   rescue StandardError => ex
     @ceedling[:application].register_build_failure
 
-    @ceedling[:loginator].log( "#{ex.class} ==> #{ex.message}", Verbosity::ERRORS, LogLabels::EXCEPTION )
+    @ceedling[:loginator].log( ex.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
 
-    # Debug backtrace
-    @ceedling[:loginator].log( "Backtrace ==>", Verbosity::DEBUG )
-    # Output to console the exception backtrace, formatted like Ruby does it
-    @ceedling[:loginator].log( "#{ex.backtrace.first}: #{ex.message} (#{ex.class})", Verbosity::DEBUG )
-    @ceedling[:loginator].log( ex.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"), Verbosity::DEBUG )
+    # Debug backtrace (only if debug verbosity)
+    @ceedling[:loginator].log_debug_backtrace( ex )
   ensure
     @ceedling[:plugin_manager].post_release  
   end

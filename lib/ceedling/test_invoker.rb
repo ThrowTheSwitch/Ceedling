@@ -407,16 +407,14 @@ class TestInvoker
 
     # Handle application-level exceptions.
     # StandardError is the parent class of all application-level exceptions.
-    # Runtime errors (parent is Exception) continue on up to be caught by Ruby itself.
-    rescue StandardError => e
+    # Runtime errors (parent is Exception) continue on up to be handled by Ruby itself.
+    rescue StandardError => ex
       @application.register_build_failure
-      @loginator.log( "#{e.class} ==> #{e.message}", Verbosity::ERRORS, LogLabels::EXCEPTION )
 
-      # Debug backtrace
-      @loginator.log("Backtrace ==>", Verbosity::DEBUG)
-      if @verbosinator.should_output?(Verbosity::DEBUG)
-        @loginator.log(e.backtrace, Verbosity::DEBUG)
-      end
+      @loginator.log( ex.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
+
+      # Debug backtrace (only if debug verbosity)
+      @loginator.log_debug_backtrace( ex )
     end
   end
 
