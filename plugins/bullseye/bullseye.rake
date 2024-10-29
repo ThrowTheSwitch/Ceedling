@@ -149,20 +149,22 @@ namespace BULLSEYE_SYM do
     @ceedling[:configurator].restore_config
   end
 
-  # use a rule to increase efficiency for large projects
-  # bullseye test tasks by regex
-  rule(/^#{BULLSEYE_TASK_ROOT}\S+$/ => [
+  # Use a rule to increase efficiency for large projects
+  rule(/^#{BULLSEYE_TASK_ROOT}\S+$/ => [ # Bullseye test tasks by regex
       proc do |task_name|
-        test = task_name.sub(/#{BULLSEYE_TASK_ROOT}/, '')
-        test = "#{PROJECT_TEST_FILE_PREFIX}#{test}" unless test.start_with?(PROJECT_TEST_FILE_PREFIX)
-        @ceedling[:file_finder].find_test_file_from_name(test)
+        # Yield clean test name => Strip the task string, remove Rake test task prefix, and remove any code file extension
+        test = task_name.strip().sub(/^#{BULLSEYE_TASK_ROOT}/, '').chomp( EXTENSION_SOURCE )
+
+        # Ensure the test name begins with a test name prefix
+        test = PROJECT_TEST_FILE_PREFIX + test if not (test.start_with?( PROJECT_TEST_FILE_PREFIX ))
+
+        # Provide the filepath for the target test task back to the Rake task
+        @ceedling[:file_finder].find_test_file_from_name( test )
       end
   ]) do |test|
     @ceedling[:rake_wrapper][:prepare].invoke
-    @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
     @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke([test.source], TOOL_COLLECTION_BULLSEYE_TASKS)
-    @ceedling[:configurator].restore_config
+    @ceedling[:test_invoker].setup_and_invoke( [test.source], TOOL_COLLECTION_BULLSEYE_TASKS )
   end
 
 end
@@ -171,7 +173,7 @@ namespace UTILS_SYM do
 
   desc "Open Bullseye code coverage browser"
   task BULLSEYE_SYM do
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_BROWSER, [])
+    command = @ceedling[:tool_executor].build_command_line( TOOLS_BULLSEYE_BROWSER, [] )
     @ceedling[:tool_executor].exec( command )
   end
 
