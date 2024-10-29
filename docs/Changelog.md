@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-09-30
+# [1.0.0 pre-release] — 2024-10-29
 
 ## 🌟 Added
 
@@ -228,6 +228,12 @@ A previously semi-documented feature allowed you to point to a version of Ceedli
 This feature is primarily of use to Ceedling developers but can be useful in other specialized scenarios. See the documentation in _[CeedlingPacket](CeedlingPacket.md))_ for full deatils as this is an advanced feature.
 
 The existing feature has been improved with logging and validation as well as proper documentation. An environment variable `WHICH_CEEDLING` is now also supported. If set, this variable supersedes any other settings. In the case of `ceedling new` and `ceedling upgrade`, it is the only way to change which Ceedling is in use as a project file either does not exist for the former or is not loaded for the latter.
+
+### Ceedling now handles C files with dots in their filenames
+
+Previous versions of Ceedling made assumptions about file naming conventions — specifically that the only place a period occurred was in a filename extension. In reality, C supports the same basic filenames as any file system does. Filenames can include periods throughout their name.
+
+As an example, some legacy code includes a versioning scheme in the name itself — _foo.12.h_. Such names would previously break builds. This has been fixed.
 
 ## ⚠️ Changed
 
