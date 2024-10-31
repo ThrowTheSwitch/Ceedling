@@ -279,6 +279,10 @@ The `:simple` and `:gdb` options for this feature fully and correctly report eac
 
 See _[CeedlingPacket](CeedlingPacket.md))_ for the new `:project` ↳ `:use_backtrace` feature to control how much detail is extracted from a crashed test executable to help you find the cause.
 
+#### Test builds can now incorporate assembly code
+
+See the documentation for `:test_build` ↳ `:use_assembly` to understand how to incorporate assembly code into a given test executable’s build. This complementes Ceedling’s existing ability to incorporate assembly code in a release artifact build.
+
 #### Configuration defaults and configuration set up order
 
 Ceedling’s previous handling of defaults and configuration processing order certainly worked, but it was not as proper as it could be. To oversimplify, default values were applied in an ordering that caused complications for advanced plugins and advanced users. This has been rectified. Default settings are now processed after all user configurations and plugins.
