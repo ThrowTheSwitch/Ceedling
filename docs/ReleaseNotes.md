@@ -7,7 +7,7 @@ These release notes are complemented by two other documents:
 
 ---
 
-# 1.0.0 pre-release — October 29, 2024
+# 1.0.0 pre-release — October 31, 2024
 
 **This Ceedling release is probably the most significant since the project was first [posted to SourceForge in 2009][sourceforge].**
 
@@ -132,6 +132,12 @@ To be clear, more has changed than what is referenced in this YAML blurb. Most n
   # If the :gdb option is enabled (and the GNU debugger is installed), Ceedling will provide you the trace to the line of code causing a test case to crash.
   # ---------------------------
   :use_backtrace: :simple
+
+# Complemeneting its existing abilities to build assembly code as part of a release artifact, Ceedling can now also incorporate assembly code into test builds.
+# See CeedlingPacket for full details on how to make use of this feature after enabling it.
+# In short, your assembly code will need to be findable in your project paths, and you will need to use the new test directive macro TEST_SOURCE_FILE() inside your test files to tell Ceedling which assembly file to include in the respective test executable build.
+:test_build:
+  :use_assembly: TRUE
 
 # Ceedling executables are now built as self-contained mini-projects.
 # You can now define symbols for a release build and each test executable build.

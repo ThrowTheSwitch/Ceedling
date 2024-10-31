@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-10-29
+# [1.0.0 pre-release] — 2024-10-31
 
 ## 🌟 Added
 
@@ -73,7 +73,7 @@ Ceedling’s validation of your configuration has been significantly expanded to
 
 ### Broader crash detection in test suites and new backtrace abilities
 
-Previously Ceedling had a limited ability to detect and report segmentation faults and primarily on Unix-like platforms. This has been expanded and improved to crash detection more broadly. Invalid memory accesses, stack overflows, heap errors, and branching problems can all lead to crashed test executables. Ceedling is now able to detect these across platforms and report on them appropriately.
+Previously Ceedling had a limited ability to detect and report segmentation faults and primarily only on Unix-like platforms. This has been expanded and improved to crash detection more broadly. Invalid memory accesses, stack overflows, heap errors, and branching problems can all lead to crashed test executables. Ceedling is now able to detect these across platforms and report on them appropriately.
 
 Ceedling defaults to executing this new behavior. Optionally, it can be disabled or its reporting enhanced further by enabling the use of `gdb`.
 
@@ -105,7 +105,7 @@ Previous versions of Ceedling had limited support for enabling builds of Unity�
 
 This new plugin consolidates a handful of previously discrete report gernation plugins into a single plugin that also enables low-code, custom, end-user created reports.
 
-The output of these prior plugins are now simply configuration options for this new plugin:
+The abilities of these previously independent plugins are now supersededed by configuration options for the single, new `report_tests_log_factory` plugin:
 
 1. `junit_tests_report`
 1. `json_tests_report`
@@ -119,7 +119,27 @@ A community member submitted an [HTML report generation plugin](https://github.c
 
 ### Improved Segfault Handling
 
-Segmentation faults are now reported as failures instead of an error with as much detail as possible. See the project configuration file documentation on `:project` ↳ `:use_backtrace` for more!
+Segmentation faults are now reported as failures with as much details as possible instead of as build errors. If `gdb` is available, Ceedling can now even automatically highlight the source of the segfault (see section above on crash detection).
+
+### Support for assembly code in test builds with `:test_build` ↳ `:use_assembly`
+
+Previous versions of Ceedling included support for including assembly code in release builds. Now Ceedling can include assembly code in test builds as well.
+
+The default assembler is the GNU tool `as`. Like all other tools it may be overridden in the `:tools` section.
+
+To enable this feature, use the following in your project configuration:
+
+```yaml
+:test_build:
+  :use_assembly: TRUE
+```
+
+In order to inject assembly code files into the build of a test executable after enabling test build assembly code, two conditions must be true:
+
+1. The assembly files must be visible to Ceedling by way of `:paths` and `:extension` settings for assembly files — just like C code files.
+1. Ceedling must be told into which test executable build to insert a given assembly file. The easiest way to do so is with the new `TEST_SOURCE_FILE()` build directive macro — described elsewhere in this Changelog and documented in _[CeedlingPacket](CeedlingPacket.md)_.
+
+When either `:test_build` ↳ `:use_assembly` or `:release_build` ↳ `:use_assembly` are enabled, Ceedling’s command line `files:` tasks will list assembly files among the files it discovers from your project configuration. That is, you can confirm your settings for assembly code with those tasks. See _[CeedlingPacket](CeedlingPacket.md)_’s documentation for the command line.
 
 ### Pretty logging output
 
