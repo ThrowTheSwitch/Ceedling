@@ -1,4 +1,5 @@
-# Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
+Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
+========
 
 _October 29, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
 shipping very soon. See the [Release Notes](docs/ReleaseNotes.md) for an overview
