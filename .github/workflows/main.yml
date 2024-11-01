@@ -1,9 +1,15 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 ---
-# Continuous Integration Workflow: Test case suite run + validation build check
+# Continuous Integration Workflow
 name: CI
 
-# Controls when the action will run.
-# Triggers the workflow on push or pull request events but only for the master branch
+# Triggers the workflow on push or pull request events for master & test branches
 on:
   push:
     branches:
@@ -13,30 +19,34 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
+
+# Needed by softprops/action-gh-release
+permissions:
+  # Allow built gem file push to Github release
+  contents: write
+
+
 jobs:
-  # Job: Unit test suite
-  unit-tests:
-    name: "Unit Tests"
+  # Job: Linux unit test suite
+  unit-tests-linux:
+    name: "Linux Test Suite"
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        ruby: ['2.7', '3.0', '3.1']
+        ruby: ['3.0', '3.1', '3.2', '3.3']
     steps:
-      # Install Binutils, Multilib, etc
-      - name: Install C dev Tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install --assume-yes --quiet gcc-multilib
-          sudo apt-get install -qq gcc-avr binutils-avr avr-libc gdb
-
-      # Install GCovr
-      - name: Install GCovr
-        run: |
-          sudo pip install gcovr
+      # Use a cache for our tools to speed up testing
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
 
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -45,6 +55,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+          
       # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
       - name: Install Ruby Testing Tools
         run: |
@@ -54,10 +65,30 @@ jobs:
           bundle update
           bundle install
 
+      # Install gdb for backtrace feature testing
+      - name: Install gdb for Backtrace Feature Testing
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --assume-yes --quiet gdb
+
+      # Install GCovr for Gcov plugin
+      - name: Install GCovr for Gcov Plugin Tests
+        run: |
+          sudo pip install gcovr
+
+      # Install ReportGenerator for Gcov plugin
+      # Fix PATH before tool installation
+      # https://stackoverflow.com/questions/59010890/github-action-how-to-restart-the-session
+      - name: Install ReportGenerator for Gcov Plugin Tests
+        run: |
+          mkdir --parents $HOME/.dotnet/tools
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+
       # Run Tests
       - name: Run All Self Tests
         run: |
-          bundle exec rake ci
+          rake ci
 
       # Build & Install Gem
       - name: Build and Install Gem
@@ -65,17 +96,195 @@ jobs:
           gem build ceedling.gemspec
           gem install --local ceedling-*.gem
 
-      # Run Blinky
-      # Disabled because it's set up for avr-gcc
-      #- name: Run Tests On Blinky Project
-      #  run: |
-      #    cd examples/blinky
-      #    ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
-      #    cd ../..
-
-      # Run Temp Sensor
-      - name: Run Tests On Temp Sensor Project
+      # Run temp_sensor
+      - name: Run Tests on temp_sensor Project
         run: |
           cd examples/temp_sensor
-          ceedling module:create[someNewModule] module:destroy[someNewModule] test:all
+          ceedling test:all
           cd ../..
+
+      # Run FFF Plugin Tests
+      - name: Run Tests on FFF Plugin
+        run: |
+          cd plugins/fff
+          rake
+          cd ../..
+
+      # Run Module Generator Plugin Tests
+      - name: Run Tests on Module Generator Plugin
+        run: |
+          cd plugins/module_generator
+          rake
+          cd ../..
+
+      # Run Dependencies Plugin Tests
+      - name: Run Tests on Dependencies Plugin
+        run: |
+          cd plugins/dependencies
+          rake
+          cd ../..
+
+  # Job: Windows unit test suite
+  unit-tests-windows:
+    name: "Windows Test Suite"
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.0', '3.1', '3.2', '3.3']
+    steps:
+      # Use a cache for our tools to speed up testing
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+
+      # Checks out repository under $GITHUB_WORKSPACE
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Setup Ruby Testing Tools to do tests on multiple ruby version
+      - name: Set Up Ruby Testing Tools
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          
+      # Install Ruby Testing Tools
+      # Bundler version should match the one in Gemfile.lock
+      - name: Install Ruby Testing Tools
+        shell: bash
+        run: |
+          gem install rspec
+          gem install rubocop -v 0.57.2
+          gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
+          bundle update
+          bundle install
+
+      # Install GCovr for Gcov plugin test
+      - name: Install GCovr for Gcov Plugin Tests
+        run: |
+          pip install gcovr
+
+      # Install ReportGenerator for Gcov plugin test
+      - name: Install ReportGenerator for Gcov Plugin Tests
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      # Run Tests
+      - name: Run All Self Tests
+        run: |
+          rake ci
+
+      # Build & Install Gem
+      - name:  Build and Install Gem
+        run: |
+          gem build ceedling.gemspec
+          gem install --local ceedling-*.gem
+
+      # Run temp_sensor example project
+      - name: Run Tests on temp_sensor Project
+        run: |
+          cd examples/temp_sensor
+          ceedling test:all
+          cd ../..
+
+      # Run FFF Plugin Tests
+      - name: Run Tests on FFF Plugin
+        run: |
+          cd plugins/fff
+          rake
+          cd ../..
+
+      # Run Module Generator Plugin Tests
+      - name: Run Tests on Module Generator Plugin
+        run: |
+          cd plugins/module_generator
+          rake
+          cd ../..
+
+      # Run Dependencies Plugin Tests
+      - name: Run Tests on Dependencies Plugin
+        run: |
+          cd plugins/dependencies
+          rake
+          cd ../..
+
+  # Job: Automatic Minor Release
+  auto-release:
+    name: "Automatic Minor Release"
+    needs:
+      - unit-tests-linux
+      - unit-tests-windows
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby: [3.2]
+
+    steps:
+      # Checks out repository under $GITHUB_WORKSPACE
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Set Up Ruby Tools
+      - name: Set Up Ruby Tools
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
+      # Capture the SHA string
+      - name: Git commit short SHA as environment variable
+        shell: bash
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Ceedling tag as environment variable
+        shell: bash
+        run: |
+          echo "ceedling_tag=$(ruby ./lib/version.rb)" >> $GITHUB_ENV
+
+      - name: Ceedling build string as environment variable
+        shell: bash
+        run: |
+          echo "ceedling_build=${{ env.ceedling_tag }}-${{ env.sha_short }}" >> $GITHUB_ENV
+
+      # Create Git Commit SHA file in root of checkout
+      - name: Git Commit SHA file
+        shell: bash
+        run: |
+          echo "${{ env.sha_short }}" > ${{ github.workspace }}/GIT_COMMIT_SHA
+
+      # Build Gem
+      - name:  Build Gem
+        run: |
+          gem build ceedling.gemspec
+
+      # Create Unofficial Release
+      - name: Create Pre-Release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: true
+          release_name: ${{ env.ceedling_build }}
+          tag_name: ${{ env.ceedling_build }}
+          body: "Automatic pre-release for ${{ env.ceedling_build }}"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # Post Gem to Unofficial Release
+      - name: Upload Pre-Release Gem
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ceedling-${{ env.ceedling_tag }}.gem
+          asset_name: ceedling-${{ env.ceedling_build }}.gem
+          asset_content_type: test/x-gemfile
+

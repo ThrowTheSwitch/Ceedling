@@ -1,73 +1,62 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
-
-rule(/#{PROJECT_TEST_FILE_PREFIX}#{'.+'+TEST_RUNNER_FILE_SUFFIX}#{'\\'+EXTENSION_SOURCE}$/ => [
+rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
     proc do |task_name|
-      @ceedling[:file_finder].find_test_input_for_runner_file(task_name)
+      _, object = (task_name.split('+'))
+      @ceedling[:file_finder].find_build_input_file(filepath: object, context: TEST_SYM)
     end
-  ]) do |runner|
-  @ceedling[:generator].generate_test_runner(TEST_SYM, runner.source, runner.name)
-end
+  ]) do |target|
+    test, object = (target.name.split('+'))
 
-rule(/#{PROJECT_TEST_BUILD_OUTPUT_C_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
-    proc do |task_name|
-      @ceedling[:file_finder].find_compilation_input_file(task_name)
+    tool = TOOLS_TEST_COMPILER
+
+    if @ceedling[:file_wrapper].extname(target.source) == EXTENSION_ASSEMBLY
+      tool = TOOLS_TEST_ASSEMBLER
     end
-  ]) do |object|
-  if (File.basename(object.source) =~ /#{EXTENSION_SOURCE}$/)
-    @ceedling[:generator].generate_object_file(
-      TOOLS_TEST_COMPILER,
-      OPERATION_COMPILE_SYM,
-      TEST_SYM,
-      object.source,
-      object.name,
-      @ceedling[:file_path_utils].form_test_build_list_filepath( object.name ),
-      @ceedling[:file_path_utils].form_test_dependencies_filepath( object.name ))
-  elsif (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
-    @ceedling[:generator].generate_object_file(
-      TOOLS_TEST_ASSEMBLER,
-      OPERATION_ASSEMBLE_SYM,
-      TEST_SYM,
-      object.source,
-      object.name )
+
+    @ceedling[:test_invoker].compile_test_component(
+      tool: tool,
+      test: test.to_sym,
+      source: target.source,
+      object: object
+    )
   end
-end
-
-
-rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
-  lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
-  lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
-  @ceedling[:generator].generate_executable_file(
-    TOOLS_TEST_LINKER,
-    TEST_SYM,
-    bin_file.prerequisites,
-    bin_file.name,
-    @ceedling[:file_path_utils].form_test_build_map_filepath( bin_file.name ),
-    lib_args,
-    lib_paths )
-end
-
-
-rule(/#{PROJECT_TEST_RESULTS_PATH}\/#{'.+\\'+EXTENSION_TESTPASS}$/ => [
-    proc do |task_name|
-      @ceedling[:file_path_utils].form_test_executable_filepath(task_name)
-    end
-  ]) do |test_result|
-  @ceedling[:generator].generate_test_results(TOOLS_TEST_FIXTURE, TEST_SYM, test_result.source, test_result.name)
-end
-
 
 namespace TEST_SYM do
-  # use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
-  @ceedling[:unity_utils].create_test_runner_additional_args
-  rule(/^#{TEST_TASK_ROOT}\S+$/ => [ # test task names by regex
+  TOOL_COLLECTION_TEST_RULES = {
+    :context        => TEST_SYM,
+    :test_compiler  => TOOLS_TEST_COMPILER,
+    :test_assembler => TOOLS_TEST_ASSEMBLER,
+    :test_linker    => TOOLS_TEST_LINKER,
+    :test_fixture   => TOOLS_TEST_FIXTURE
+  }
+
+  # Use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
+  rule(/^#{TEST_TASK_ROOT}\S+$/ => [ # Test task names by regex
       proc do |task_name|
-        test = task_name.sub(/#{TEST_TASK_ROOT}/, '')
-        test = "#{PROJECT_TEST_FILE_PREFIX}#{test}" if not (test.start_with?(PROJECT_TEST_FILE_PREFIX))
-        @ceedling[:file_finder].find_test_from_file_path(test)
+        # Yield clean test name => Strip the task string, remove Rake test task prefix, and remove any code file extension
+        test = task_name.strip().sub(/^#{TEST_TASK_ROOT}/, '').chomp( EXTENSION_SOURCE )
+
+        # Ensure the test name begins with a test name prefix
+        test = PROJECT_TEST_FILE_PREFIX + test if not (test.start_with?( PROJECT_TEST_FILE_PREFIX ))
+
+        # Provide the filepath for the target test task back to the Rake task
+        @ceedling[:file_finder].find_test_file_from_name( test )
       end
   ]) do |test|
-    @ceedling[:rake_wrapper][:test_deps].invoke
-    @ceedling[:test_invoker].setup_and_invoke([test.source])
+    # Do essential Rake-based set up
+    @ceedling[:rake_wrapper][:prepare].invoke
+
+    # Execute the test task
+    @ceedling[:test_invoker].setup_and_invoke(
+      tests:[test.source],
+      options:{:force_run => true, :build_only => false}.merge( TOOL_COLLECTION_TEST_RULES )
+    )
   end
 end
 
