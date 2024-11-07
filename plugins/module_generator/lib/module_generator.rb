@@ -61,6 +61,9 @@ class ModuleGenerator < Plugin
       :naming       => ((defined? MODULE_GENERATOR_NAMING      ) ? MODULE_GENERATOR_NAMING : nil ),
       :update_svn   => ((defined? MODULE_GENERATOR_UPDATE_SVN  ) ? MODULE_GENERATOR_UPDATE_SVN : false ),
       :test_define  => ((defined? MODULE_GENERATOR_TEST_DEFINE ) ? MODULE_GENERATOR_TEST_DEFINE : "TEST" ),
+      :path_src     => ((defined? MODULE_GENERATOR_PATH_SRC    ) ? MODULE_GENERATOR_PATH_SRC : nil ),
+      :path_inc     => ((defined? MODULE_GENERATOR_PATH_INC    ) ? MODULE_GENERATOR_PATH_INC : nil ),
+      :path_tst     => ((defined? MODULE_GENERATOR_PATH_TST    ) ? MODULE_GENERATOR_PATH_TST : nil ),
     }
 
     # Add our lookup paths to this, based on overall project configuration
@@ -99,11 +102,12 @@ class ModuleGenerator < Plugin
 
     # Check if using "create[<module_root>:<module_name>]" optional paths from command line.
     if optz[:module_root_path].to_s.empty?
-      # No path specified. Use the first of each list because we have nothing else to base it on
-      unity_generator_options[:skeleton_path] = unity_generator_options[:paths_src][0]
-      unity_generator_options[:path_src] = unity_generator_options[:paths_src][0]
-      unity_generator_options[:path_inc] = unity_generator_options[:paths_inc][0]
-      unity_generator_options[:path_tst] = unity_generator_options[:paths_tst][0]
+      # No path specified. Use the one specified in the module generator section if it exists, 
+      # else the first of each list because we have nothing else to base it on
+      unity_generator_options[:skeleton_path] ||= unity_generator_options[:paths_src][0]
+      unity_generator_options[:path_src] ||= unity_generator_options[:paths_src][0]
+      unity_generator_options[:path_inc] ||= unity_generator_options[:paths_inc][0]
+      unity_generator_options[:path_tst] ||= unity_generator_options[:paths_tst][0]
     else
       # A path was specified. Do our best to determine which is the best choice based on this information
       unity_generator_options[:skeleton_path] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_src], :ignore) || unity_generator_options[:paths_src][0]

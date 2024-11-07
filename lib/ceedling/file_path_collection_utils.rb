@@ -128,7 +128,7 @@ class FilePathCollectionUtils
     begin
       # Reform path from full absolute to nice, neat relative path instead
       (Pathname.new( path ).relative_path_from( @working_dir_path )).to_s
-    rescue
+    rescue StandardError
       # If we can't form a relative path between these paths, use the absolute
       path 
     end

@@ -398,7 +398,7 @@ class Dependencies < Plugin
     build_path = Pathname.new get_build_path(blob)
     relative_build_path = begin
       build_path.relative_path_from(source_path)
-    rescue
+    rescue StandardError
       build_path 
     end
 
