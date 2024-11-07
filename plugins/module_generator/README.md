@@ -37,6 +37,14 @@ that nice?
 
 ### Paths
 
+The directories found in the project `:paths:` are reused. You can also specify an alternative default generation path using: 
+```
+:module_generator:
+  :path_src: src/
+  :path_inc: src/
+  :path_tst: test/
+```
+
 But what if I don't want it to place my new files in the default location?
 
 It can do that too! You can give it a hint as to where to find your files. The pattern matching
