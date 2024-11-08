@@ -1285,7 +1285,7 @@ and code cannot be compiled.
 Ceedling provides two mechanisms for configuring search paths:
 
 1. The [`:paths` ↳ `:include`](#paths--include) section within your 
-   project file.
+   project file (or mixin files).
 1. The [`TEST_INCLUDE_PATH(...)`](#test_include_path) build directive 
    macro. This is only available within test files.
 
@@ -1342,6 +1342,9 @@ _**Notes:**_
   tailoring but could cause gotchas in edge cases or when Ceedling is 
   combined with other tools. Any other such tailoring is avoided as it
   could too easily cause maddening build problems.
+* Remember that the ordering of search paths is impacted by the merge 
+  order of any Mixins. Paths specified with Mixins will be added to 
+  path lists in your project configuration in the order of merging.
 
 ## Search Paths for Release Builds
 
@@ -2064,8 +2067,8 @@ this:
 1. Merge the base configuration with zero or more Mixins from YAML files.
 1. Load zero or more plugins that provide default configuration values
    or alter the base project configuration.
-1. Populate the configuration with default values to ensure all necessary 
-   configuration to run is present.
+1. Populate the configuration with default values if anything was left
+   unset to ensure all configuration needed to run is present.
 
 Ceedling provides reasonably verbose logging at startup telling you which
 configuration files were used and in what order they were merged.
@@ -2281,6 +2284,15 @@ follows a few basic rules:
 * If a container — e.g. list or hash — already exists at the time of a
   merge, the contents are _combined_. In the case of lists, merged 
   values are added to the end of the existing list.
+
+_**Mote:**_ That last bullet can have a significant impact on how your
+various project configuration paths -- including those used for header 
+search paths -- are ordered. In brief, the contents of your `:paths` 
+from your base configuration will come first followed by any additions
+from your mixins. See the section [Search Paths for Test Builds][test-search-paths]
+for more.
+
+[test-search-paths]: #search-paths-for-test-builds
 
 ## Options for Loading Mixins
 
@@ -3028,6 +3040,12 @@ Ceedling project files use lists broken up per line.
 Examples that illustrate the many `:paths` entry features follow all
 the various path-related documentation sections.
 
+_**Note:**_ If you use Mixins to build up path lists in your project 
+configuration, the merge order of those Mixins will dictate the ordering of
+your path lists. Particularly given that the search path list built with
+`:paths` ↳ `:include` you will want to pay attention to ordering issues
+involved in specifying path lists in Mixins.
+
 * <h3><code>:paths</code> ↳ <code>:test</code></h3>
 
   All C files containing unit test code. NOTE: this is one of the
@@ -3187,6 +3205,11 @@ use `+:`, but strictly speaking, it's not necessary.
 Subtractive paths may be simple paths or globs just like any other path entry.
 
 See examples below.
+
+_**Note:**_ The resolution of subtractive paths happens after your full paths
+lists are assembled. So, if you use `:paths` entries in Mixins to build up your 
+project configuration, subtractive paths will only be processed after the final 
+mixin is merged.
 
 ### Example `:paths` YAML blurbs
 
