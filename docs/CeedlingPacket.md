@@ -1280,7 +1280,8 @@ of special handling.
 Unless your project is relying exclusively on `extern` statements and
 uses no mocks for testing, Ceedling _**must**_ be told where to find 
 header files. Without search path knowledge, mocks cannot be generated, 
-and code cannot be compiled.
+and test file compilation will fail for lack of symbol definitions
+and function declarations.
 
 Ceedling provides two mechanisms for configuring search paths:
 
@@ -1323,6 +1324,8 @@ project configuration.
 
 _**Notes:**_
 
+* The order of your `:paths` entries directly translates to the ordering
+  of search paths.
 * The logic of the ordering above is essentially that:
    * Everything above (5) should have precedence to allow test-specific 
      symbols, function signatures, etc. to be found before that of your 
@@ -2285,9 +2288,9 @@ follows a few basic rules:
   merge, the contents are _combined_. In the case of lists, merged 
   values are added to the end of the existing list.
 
-_**Mote:**_ That last bullet can have a significant impact on how your
-various project configuration paths -- including those used for header 
-search paths -- are ordered. In brief, the contents of your `:paths` 
+_**Note:**_ That last bullet can have a significant impact on how your
+various project configuration paths—including those used for header 
+search paths—are ordered. In brief, the contents of your `:paths` 
 from your base configuration will come first followed by any additions
 from your mixins. See the section [Search Paths for Test Builds][test-search-paths]
 for more.
@@ -3209,7 +3212,9 @@ See examples below.
 _**Note:**_ The resolution of subtractive paths happens after your full paths
 lists are assembled. So, if you use `:paths` entries in Mixins to build up your 
 project configuration, subtractive paths will only be processed after the final 
-mixin is merged.
+mixin is merged. That is, you can merge in additive and subtractive paths with
+Mixins to your heart’s content. The subtractive paths are not removed until all
+Mixins have been merged.
 
 ### Example `:paths` YAML blurbs
 
