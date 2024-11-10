@@ -432,15 +432,15 @@ When the container launches as shown below, it will drop you into a Z-shell comm
 Once the _MadScienceLab_ container’s command line is available, to run Ceedling, execute it just as you would after installing Ceedling locally:
 
 ```shell
- dev | ~/project > ceedling help
+ ~/project > ceedling help
 ```
 
 ```shell
- dev | ~/project > ceedling new ...
+ ~/project > ceedling new ...
 ```
 
 ```shell
- dev | ~/project > ceedling test:all
+ ~/project > ceedling test:all
 ```
 
 #### Run a _MadScienceLab_ Docker Image as a command line utility
@@ -667,7 +667,7 @@ experimenting with project builds and running self-tests is simple.
 1. Look up and note Ceedling’s installation path (listed in `version` output) from within the container command line:
 
    ```shell
-   dev | ~/project > ceedling version
+   ~/project > ceedling version
 
 
    ```
