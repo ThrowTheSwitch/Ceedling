@@ -259,7 +259,7 @@ class CliHelper
       matches = ex.message.match( /how to build task '(.+)'/i )
 
       # If it does, replacing the message with our own
-      if matches.size == 2
+      if !matches.nil? and matches.size == 2
         message = "Unrecognized build task '#{matches[1]}'. List available build tasks with `ceedling help`."
         raise CeedlingException.new( message )
       
