@@ -4405,15 +4405,16 @@ generation configuration values for you.
 [Test runner configuration options are documented in the Unity project][unity-runner-options].
 
 **_Notes:_**
-   * **Unless you have advanced or unique needs, Unity test runner generation
-     configuration in Ceedling is generally not needed.**
-   * In previous versions of Ceedling, the test runner option
-     `:cmdline_args` was needed for certain advanced test suite features. This
-     option is still needed, but Ceedling automatically sets it for you in the
-     scenarios requiring it. Be aware that this option works well in desktop,
-     native testing but is generally unsupported by emulators running test
-     executables (the idea of command line arguments passed to an executable is
-     generally only possible with desktop command line terminals.)
+
+* **Unless you have advanced or unique needs, Unity test runner generation
+  configuration in Ceedling is generally not needed.**
+* In previous versions of Ceedling, the test runner option
+  `:cmdline_args` was needed for certain advanced test suite features. This
+  option is still needed, but Ceedling automatically sets it for you in the
+  scenarios requiring it. Be aware that this option works well in desktop,
+  native testing but is generally unsupported by emulators running test
+  executables (the idea of command line arguments passed to an executable is
+  generally only possible with desktop command line terminals.)
 
 Example configuration:
 
@@ -5029,26 +5030,38 @@ Ceedling to parse. But, by placing them in your test files they
 communicate instructions to Ceedling when scanned at the beginning of a 
 test build.
 
-**_NOTE:_ `TEST_SOURCE_FILE()` and `TEST_INCLUDE_PATH()`, new in Ceedling 
-1.0.0 are incompatible with enclosing conditional compilation C 
-preprocessing statements. See the [Ceedling’s preprocessing documentation](#preprocessing-gotchas) 
-for more details.**
+**_Notes:_**
+
+- Since these macros are defined in _unity.h_, it’s essential to 
+  `#include "unity.h"` before making use of them in your test file. 
+  Typically, _unity.h_ is referenced at or near the top of a test file
+  anyhow, but this is an important detail to call out.
+- **`TEST_SOURCE_FILE()` and `TEST_INCLUDE_PATH()`, new in Ceedling 
+  1.0.0, are incompatible with enclosing conditional compilation C 
+  preprocessing statements.** See
+  [Ceedling’s preprocessing documentation](#preprocessing-gotchas) 
+  for more details.
 
 ## `TEST_SOURCE_FILE()`
 
 ### `TEST_SOURCE_FILE()` Purpose
 
 The `TEST_SOURCE_FILE()` build directive allows the simple injection of 
-a specific source file into a test executable's build.
+a specific source file into a test executable’s build.
 
-The Ceedling convention of compiling and linking any C file that 
-corresponds in name to an `#include`d header file does not always work.
-The alternative of `#include`ing a C source file directly is ugly and can
-cause various build problems with duplicated symbols, etc.
+The Ceedling [convention][ceedling-conventions] of compiling and linking 
+any C file that corresponds in name to an `#include`d header file does 
+not always work. A given source file may not have a header file that 
+corresponds directly to its name. In some specialized cases, a source 
+file may not rely on a header file at all.
 
-`TEST_SOURCE_FILE()` is also likely the best method for adding an assembly 
-file to the build of a given test executable — if assembly support is
-enabled for test builds.
+Attempting to `#include` a needed C source file directly is both ugly and
+can cause various build problems with duplicated symbols, etc.
+
+`TEST_SOURCE_FILE()` is the way to cleanly and simply add a given C file
+to the executable built from a test file. `TEST_SOURCE_FILE()` is also one 
+of the best methods for adding an assembly file to the build of a given 
+test executable—if assembly support is enabled for test builds.
 
 ### `TEST_SOURCE_FILE()` Usage
 
@@ -5059,7 +5072,8 @@ present within Ceedling’s source file collection.
 
 To understand your source file collection:
 
-- See the documentation for project file configuration section [`:paths`](#project-paths-configuration).
+- See the documentation for project file configuration section 
+  [`:paths`](#project-paths-configuration).
 - Dump a listing your project’s source files with the command line task
   `ceedling files:source`.
 
@@ -5069,19 +5083,26 @@ want one per line within your test file.
 ### `TEST_SOURCE_FILE()` Example
 
 ```c
-// Test file test_mycode.c
-#include "unity.h"
-#include "somefile.h"
+/*
+ * Test file test_mycode.c to exercise functions in mycode.c.
+ */
+ 
+#include "unity.h"    // Contains TEST_SOURCE_FILE() definition
+#include "support.h"  // Needed symbols and macros
+//#include "mycode.h" // Header file corresponding to mycode.c by convention does not exist
 
-// There is no file.h in this project to trigger Ceedling’s convention.
-// Compile file.c and link into test_mycode executable.
-TEST_SOURCE_FILE("foo/bar/file.c")
+// Tell Ceedling to compile and link mycode.c as part of the test_mycode executable
+TEST_SOURCE_FILE("foo/bar/mycode.c")
+
+// --- Unit test framework calls ---
 
 void setUp(void) {
-  // Do some set up
+  ...
 }
 
-// ...
+void test_MyCode_FooBar(void) {
+  ...
+}
 ```
 
 ## `TEST_INCLUDE_PATH()`
@@ -5091,27 +5112,30 @@ void setUp(void) {
 The `TEST_INCLUDE_PATH()` build directive allows a header search path to
 be injected into the build of an individual test executable.
 
+Unless you have a pretty funky C project, generally at least one search path entry
+is necessary for every test executable build. That path can come from a `:paths`  
+↳ `:include` entry in your project configuration or by using `TEST_INCLUDE_PATH()` 
+in a test file.
+
+Please see [Configuring Your Header File Search Paths][header-file-search-paths]
+for an overview of Ceedling’s options and conventions for header file search paths.
+
 ### `TEST_INCLUDE_PATH()` Usage
 
 `TEST_INCLUDE_PATH()` entries in your test file are only an additive customization.
 The path will be added to the base / common path list specified by 
-`:paths`  ↳ `:include` in the project file. If no list is specified in the project 
-file, `TEST_INCLUDE_PATH()` entries will comprise the entire header search path list.
-
-Unless you have a pretty funky C project, generally, at least one search path entry
-is necessary for every test executable. That path can come from a `:paths`  ↳ `:include`
-entry in your project configuration or by using `TEST_INCLUDE_PATH()` in your test
-file. Please see [Configuring Your Header File Search Paths][header-file-search-paths]
-for an overview of Ceedling’s conventions on header file search paths.
+`:paths`  ↳ `:include` in the project file. If no list is specified in your project 
+configuration, `TEST_INCLUDE_PATH()` entries will comprise the entire header search 
+path list.
 
 The argument for the `TEST_INCLUDE_PATH()` build directive macro is a single 
 filepath as a string enclosed in quotation marks. Use forward slashes for 
 path separators.
 
-At present, a limitation of the `TEST_INCLUDE_PATH()` build directive macro is that
-paths are relative to the working directory from which you are executing `ceedling`.
-A change to your working directory could require updates to the path arguments of
-all instances of `TEST_INCLUDE_PATH()`.
+**_Note_**: At present, a limitation of the `TEST_INCLUDE_PATH()` build directive 
+macro is that paths are relative to the working directory from which you are 
+executing `ceedling`. A change to your working directory could require updates to 
+the path arguments of dall instances of `TEST_INCLUDE_PATH()`.
 
 Multiple uses of `TEST_INCLUDE_PATH()` are perfectly fine. You’ll likely want one 
 per line within your test file.
@@ -5121,20 +5145,27 @@ per line within your test file.
 ### `TEST_INCLUDE_PATH()` Example
 
 ```c
-// Test file test_mycode.c
-#include "unity.h"
-#include "somefile.h"
+/*
+ * Test file test_mycode.c to exercise functions in mycode.c.
+ */
+
+#include "unity.h"    // Contains TEST_INCLUDE_PATH() definition
+#include "somefile.h" // Needed symbols and macros
 
 // Add the following to the compiler's -I search paths used to
 // compile all components comprising the test_mycode executable.
 TEST_INCLUDE_PATH("foo/bar/")
 TEST_INCLUDE_PATH("/usr/local/include/baz/")
 
+// --- Unit test framework calls ---
+
 void setUp(void) {
-  // Do some set up
+  ...
 }
 
-// ...
+void test_MyCode_FooBar(void) {
+  ...
+}
 ```
 
 <br/>
