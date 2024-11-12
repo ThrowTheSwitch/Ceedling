@@ -656,7 +656,7 @@ and details on how everything fits together.
 
 ## Core concepts in code
 
-After absorbing this sample code, you'll have context for much
+After absorbing this sample code, you’ll have context for much
 of the documentation that follows.
 
 The sample test file below demonstrates the following:
@@ -754,7 +754,7 @@ The [Unity] project provides the actual framework for test case assertions
 and unit test sucess/failure accounting. If mocks are enabled, [CMock] builds 
 on Unity to generate mock functions from source header files with expectation
 test accounting. Ceedling is the glue that combines these frameworks, your
-project's toolchain, and your source code into a collection of test 
+project’s toolchain, and your source code into a collection of test 
 executables you can run as a singular suite.
 
 ## What is a test executable?
@@ -921,7 +921,7 @@ In this usage, the container starts, executes Ceedling, and then ends.
 
 ## Getting Started after Ceedling is Installed
 
-1. Once Ceedling is installed, you'll want to start to integrate it with new
+1. Once Ceedling is installed, you’ll want to start to integrate it with new
    and old projects alike. If you wanted to start to work on a new project
    named `foo`, Ceedling can create the skeleton of the project using `ceedling
    new foo <destination>`. Likewise if you already have a project named `bar` 
@@ -1290,7 +1290,7 @@ files. Test file naming is covered later in this section.
 Test files and source files must be segregated by directories.
 Any directory structure will do. Tests can be held in subdirectories
 within source directories, or tests and source directories
-can be wholly separated at the top of your project's directory
+can be wholly separated at the top of your project’s directory
 tree.
 
 ## Search Paths for Test Builds
@@ -1449,7 +1449,7 @@ By naming your test functions according to convention, Ceedling
 will extract and collect into a generated test runner C file the 
 appropriate calls to all your test case functions. This runner 
 file handles all the execution minutiae so that your test file 
-can be quite simple. As a bonus, you'll never forget to wire up 
+can be quite simple. As a bonus, you’ll never forget to wire up 
 a test function to be executed.
 
 In this generated runner lives the `main()` entry point for the 
@@ -1809,9 +1809,9 @@ the files and directories generated below the root build directory.
 
 As noted already, it's good practice to add your top-level build
 directory to source control but nothing generated beneath it.
-You'll spare yourself headache if you let Ceedling delete and
+you’ll spare yourself headache if you let Ceedling delete and
 regenerate files and directories in a non-versioned corner
-of your project's filesystem beneath the top-level build directory.
+of your project’s filesystem beneath the top-level build directory.
 
 The `artifacts/` directory is the one and only directory you may
 want to know about beneath the top-level build directory. The
@@ -1864,7 +1864,7 @@ build with an exit code of 0 even upon test case failures.
    :graceful_fail: true
 ```
 
-If you use the option for graceful failures in CI, you'll want to
+If you use the option for graceful failures in CI, you’ll want to
 rig up some kind of logging monitor that scans Ceedling’s test
 summary report sent to `$stdout` and/or a log file. Otherwise, you
 could have a successful build but failing tests.
@@ -1899,19 +1899,22 @@ If you are using Ceedling for unit testing, this means you are using Unity,
 the C testing framework. Unity is fully built-in and enabled for test builds.
 It cannot be disabled.
 
-If you want to use mocks in your test cases, then you'll need to configure CMock. 
-CMock is fully supported by Ceedling, enabled by default, but generally requires
-some set up for your project's needs.
+If you want to use mocks in your test cases, you’ll need to enable mocking 
+and configure CMock with `:project` ↳ `:use_mocks` and the `:cmock` section 
+of your project configuration respectively. CMock is fully supported by 
+Ceedling but generally requires some set up for your project’s needs.
 
-If you are incorporating CException into your release artifact, you'll need to
-both enable it and configure it. Enabling CException makes it available in 
-both release builds and test builds.
+If you are incorporating CException into your release artifact, you’ll need 
+to enable exceptions and configure CException with `:project` ↳ 
+`:use_exceptions` and the `:cexception` section of your project 
+configuration respectively. Enabling CException makes it available in both 
+release builds and test builds.
 
 This section provides a high-level view of how the various tools become
 part of your builds and fit into Ceedling’s configuration file. Ceedling’s 
 configuration file is discussed in detail in the next section.
 
-See [Unity], [CMock], and [CException]'s project documentation for all 
+See [Unity], [CMock], and [CException]’s project documentation for all 
 your configuration options. Ceedling offers facilities for providing these
 frameworks their compilation and configuration settings. Discussing 
 these tools and all their options in detail is beyond the scope of Ceedling 
@@ -3118,7 +3121,7 @@ involved in specifying path lists in Mixins.
   some or all of your `:paths` ↳ `:source` entries here.
 
   In its simplest use, your include paths list can be exhaustive.
-  That is, you list all path locations where your project's header files
+  That is, you list all path locations where your project’s header files
   reside in this configuration list.
 
   However, if you have a complex project or many, many include paths that 
@@ -4491,7 +4494,7 @@ among all your options.
 
 You can and sometimes must run a Ceedling test suite in an emulator or on
 target, and Ceedling allows you to do this through tool definitions documented
-here. Generally, you'll likely want to rely on the default definitions.
+here. Generally, you’ll likely want to rely on the default definitions.
 
 [sweet-suite]: #all-your-sweet-sweet-test-suite-options
 
@@ -4499,7 +4502,7 @@ here. Generally, you'll likely want to rely on the default definitions.
 
 More often than not, release builds require custom tool definitions. The GNU
 toolchain is configured for Ceeding release builds by default just as with test
-builds. You'll likely need your own definitions for `:release_compiler`, 
+builds. you’ll likely need your own definitions for `:release_compiler`, 
 `:release_linker`, and possibly `:release_assembler`.
 
 ### Ceedling plugin tools
@@ -5403,7 +5406,7 @@ release build target.
 
 [This plugin][compile_commands_json_db] create a [JSON Compilation Database][json-compilation-database]. 
 This file is useful to [any code editor or IDE][lsp-tools] that implements 
-syntax highlighting, etc. by way of the LLVM project's [`clangd`][clangd] 
+syntax highlighting, etc. by way of the LLVM project’s [`clangd`][clangd] 
 Language Server Protocol conformant language server.
 
 [compile_commands_json_db]: ../plugins/compile_commands_json_db
