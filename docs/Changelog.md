@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-10-31
+# [1.0.0 pre-release] — 2024-11-15
 
 ## 🌟 Added
 
@@ -463,4 +463,9 @@ When Ceedling was very young and tool definitions were relatively simple, Ceedli
 
 If you want to incorporate environment variables into your tool definitions, you may still do so. See the documentation for inline Ruby string exapnsion and the various options for defining or modifying a tool definition. In short, you may incorporate `"#{ENV['<VAR>']}"` strings into your tooling.
   
+### Undocumented `:project` ↳ `:debug` has been removed
+
+This project setting existed from Ceedling’s earliest days and was a crude stand-in for command line debug verbosity handling.
+
+It has been removed as it was rarely if ever utilized and needlessly complicated internal mechanisms for verbosity handling and project validation.
 

@@ -72,10 +72,7 @@ class Configurator
   def set_verbosity(config)
     # PROJECT_VERBOSITY and PROJECT_DEBUG set at command line processing before Ceedling is loaded
 
-    # Configurator will later try to create these accessors automatically but will silently 
-    # fail if they already exist.
-
-    if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG) or (config[:project][:debug])
+    if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG)
       eval("def project_debug() return true end", binding())
     else
       eval("def project_debug() return false end", binding())      

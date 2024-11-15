@@ -296,8 +296,7 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :use_test_preprocessor => :none,
     :test_file_prefix => 'test_',
     :release_build => false,
-    :use_backtrace => :simple,
-    :debug => false
+    :use_backtrace => :simple
     },
 
   :release_build => {

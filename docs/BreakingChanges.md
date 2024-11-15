@@ -7,7 +7,7 @@ These breaking changes are complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-10-31
+# [1.0.0 pre-release] — 2024-11-15
 
 ## Explicit `:paths` ↳ `:include` entries in the project file
 
@@ -243,3 +243,10 @@ The above subproject definition will now look like the following:
         - DEFINE_JUST_FOR_THIS_FILE
         - AND_ANOTHER
 ```
+
+## Undocumented `:project` ↳ `:debug` has been removed
+
+This project setting existed from Ceedling’s earliest days and was a crude stand-in for command line debug verbosity handling.
+
+It has been removed as it was rarely if ever utilized and needlessly complicated internal mechanisms for verbosity handling and project validation.
+
