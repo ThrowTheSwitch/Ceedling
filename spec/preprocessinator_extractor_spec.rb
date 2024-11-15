@@ -5,55 +5,58 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# derived from test_graveyard/unit/preprocessinator_extractor_test.rb
-
-require 'spec_helper'
 require 'ceedling/preprocessinator_extractor'
 
 describe PreprocessinatorExtractor do
-  context "#extract_base_file_from_preprocessed_expansion" do
-    it "should extract text from the original file and keep #pragma statements" do
-      file_path = "path/to/WANT.c"
-      input_str = [
+  context "#extract_file_from_full_expansion" do
+    it "should extract text of the original file from preprocessed expansion (and preserve #pragma statements)" do
+      filepath = "path/to/WANT.c"
+      
+      file_contents = [
         '# 1 "some/file/we/do/not/care/about.c" 5',
+        '',
         '#pragma shit',
         'some_text_we_do_not_want();',
-        '# 1 "some/file/we/DO/WANT.c" 99999',
-        'some_text_we_do_not_want();',
-        '#pragma want',
-        'some_awesome_text_we_want_so_hard();',
-        'holy_crepes_more_awesome_text();',
-        '# oh darn',
+        '',
+        '# 1 "some/file/we/DO/WANT.c" 99999',        # Beginning of block to extract
+        'some_text_we_do_want();',                   #  Line to extract
+        '#pragma want',                              #  Line to extract (do not recognize #pragma as preprocessor directive)
+        'some_awesome_text_we_want_so_hard();',      #  Line to extract
+        '',                                          #  Blank line
+        'holy_crepes_more_awesome_text();',          #  Line to extract
+        '  ',                                        #  Blank line
+        '# oh darn',                                 # End of block to extract (faux preprocessor directive)
+        '',
         '# 1 "some/useless/file.c" 9',
         'a set of junk',
         'more junk',
-        '# 1 "holy/shoot/yes/WANT.c" 10',
-        'some_additional_awesome_want_text();',
-      ]
+        '',
+        '# 1 "holy/shoot/yes/WANT.c" 10',            # Beginning of block to extract
+        'some_additional_awesomely_wanted_text();',  #  Line to extract
+      ]                                              # End of block to extract
 
-      expect_str = [
-        'some_text_we_do_not_want();',
+      expected = [
+        'some_text_we_do_want();',
         '#pragma want',
         'some_awesome_text_we_want_so_hard();',
+        '',
         'holy_crepes_more_awesome_text();',
-        'some_additional_awesome_want_text();',
+        '',
+        'some_additional_awesomely_wanted_text();',
       ]
 
-      expect(File).to receive(:readlines).with(file_path).and_return( input_str )
+      input = StringIO.new( file_contents.join( "\n" ) )
 
-      expect(subject.extract_base_file_from_preprocessed_expansion(file_path)).to eq expect_str
+      expect( subject.extract_file_from_full_expansion(input, filepath) ).to eq expected
     end
 
-    # These were originally hinted at by the old test, but we don't see anything
-    # in the implementation that does this. They are here as reminders in the future.
-    # # xit "should ignore formatting"
-    # # xit "should ignore whitespace"
   end
 
-  context "#extract_base_file_from_preprocessed_directives" do
-    it "should extract last chunk of text after last '#'line containing file name of our filepath" do
-      file_path = "path/to/WANT.c"
-      input_str = [
+  context "#extract_file_from_directives_only_expansion" do
+    it "should extract last chunk of text after last '#' line containing file name of our filepath" do
+      filepath = "path/to/WANT.c"
+
+      file_contents = [
         '# 1 "some/file/we/do/not/care/about.c" 5',
         '#pragma trash',
         'some_text_we_do_not_want();',
@@ -64,25 +67,32 @@ describe PreprocessinatorExtractor do
         '# 1 "some/useless/file.c" 9',
         'a set of junk',
         'more junk',
-        '# 1 "holy/shoot/yes/WANT.c" 10',
+        '# 1 "holy/shoot/yes/WANT.c" 10',            # Beginning of block to extract
         '#pragma want',
+        '',
         '#define INCREDIBLE_DEFINE 911',
+        '  ',
         'some_additional_awesome_want_text();',
-        'holy_crepes_more_awesome_text();',
-        '# oh darn',
+        '  ',
+        'holy_crepes_more_awesome_text();'
       ]
 
-      expect_str = [
-        '#pragma want',
-        '#define INCREDIBLE_DEFINE 911',
-        'some_additional_awesome_want_text();',
-        'holy_crepes_more_awesome_text();',
-        '# oh darn',
-      ]
+      # Note spaces in empty lines of heredoc
+      expected = <<~EXTRACTED
+        #pragma want
+        
+        #define INCREDIBLE_DEFINE 911
+          
+        some_additional_awesome_want_text();
+          
+        holy_crepes_more_awesome_text();
+      EXTRACTED
 
-      expect(File).to receive(:readlines).with(file_path).and_return( input_str )
+      expected.strip!()
 
-      expect(subject.extract_base_file_from_preprocessed_directives(file_path)).to eq expect_str
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( subject.extract_file_from_directives_only_expansion( input, filepath) ).to eq expected
     end
   end
 end

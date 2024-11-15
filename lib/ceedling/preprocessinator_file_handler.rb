@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'rake' # for ext() method
+
 class PreprocessinatorFileHandler
 
   constructor :preprocessinator_extractor, :configurator, :flaginator, :tool_executor, :file_path_utils, :file_wrapper, :loginator
@@ -23,7 +25,17 @@ class PreprocessinatorFileHandler
     
     shell_result = @tool_executor.exec( command )
 
-    contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
+    # Preserve output from preprocessor
+    if @configurator.project_debug
+      _ext = File.extname( preprocessed_filepath )
+      @file_wrapper.cp( preprocessed_filepath, preprocessed_filepath.ext( '.debug' + _ext ) )
+    end
+
+    contents = []
+
+    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+      contents = @preprocessinator_extractor.extract_file_from_full_expansion( file, preprocessed_filepath )
+    end
 
     # Reinsert #include statements into stripped down file
     # ----------------------------------------------------
@@ -65,6 +77,7 @@ class PreprocessinatorFileHandler
     #  - Match (#include ")((path/)+)(file") and reassemble string using first and last matching groups
     contents.gsub!( /(#include\s+")(([^\/]+\/)+)(.+")/, '\1\4' )
     
+    # Rewrite contents of file we originally loaded
     @file_wrapper.write( preprocessed_filepath, contents )
 
     return shell_result
@@ -82,7 +95,17 @@ class PreprocessinatorFileHandler
     
     shell_result = @tool_executor.exec( command )
 
-    contents = @preprocessinator_extractor.extract_base_file_from_preprocessed_expansion( preprocessed_filepath )
+    # Preserve output from preprocessor
+    if @configurator.project_debug
+      _ext = File.extname( preprocessed_filepath )
+      @file_wrapper.cp( preprocessed_filepath, preprocessed_filepath.ext( '.debug' + _ext ) )
+    end
+
+    contents = []
+
+    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+      contents = @preprocessinator_extractor.extract_file_from_full_expansion( file, preprocessed_filepath )
+    end
 
     # Reinsert #include statements into stripped down file
     # ----------------------------------------------------
@@ -105,6 +128,7 @@ class PreprocessinatorFileHandler
     contents.gsub!( /(\n){2,}\}/, "\n}" )   # Collapse any unnecessary white space between code and closing function bracket
     contents.gsub!( /(\h*\n){3,}/, "\n\n" ) # Collapse repeated blank lines
 
+    # Rewrite contents of file we originally loaded
     @file_wrapper.write( preprocessed_filepath, contents )
 
     return shell_result
