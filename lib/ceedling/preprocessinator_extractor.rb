@@ -5,16 +5,24 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-class PreprocessinatorExtractor
+require 'ceedling/constants'
 
-  # Preprocessing expands macros, eliminates comments, strips out #ifdef code, etc.
-  # However, it also expands in place each #include'd file. So, we must extract 
-  # only the lines of the file that belong to the file originally preprocessed.
-
+class PreprocessinatorExtractor 
+ 
   ##
   ## Preprocessor Expansion Output Handling
   ## ======================================
+  ## 
+  ## Preprocessing expands macros, eliminates comments, strips out #ifdef code, etc.
+  ## However, it also expands in place each #include'd file. So, we must extract 
+  ## only the lines of the file that belong to the file originally preprocessed.
+  ## 
+  ## We do this by examininig each line and ping-ponging between extracting and
+  ## ignoring text based on preprocessor statements referencing the file we're
+  ## seeking to reassemble.
   ##
+  ## Note that the same text handling approach applies to full preprocessor 
+  ## expansion as directives only expansion.
   ## 
   ## Example preprocessed expansion output
   ## --------------------------------------
@@ -67,16 +75,21 @@ class PreprocessinatorExtractor
   ## }
 
   # `input` must have the interface of IO -- StringIO for testing or File in typical use
-  def extract_file_from_full_expansion(input, filepath)
+  def extract_file_as_array_from_expansion(input, filepath)
 
     # Iterate through all lines and alternate between extract and ignore modes.
     # All lines between a '#' line containing the file name of our filepath and the
     # next '#' line should be extracted.
+    #
+    # Notes:
+    #  1. Successive blocks can all be for the same source text file without terminating
+    #  2. The first line of the file could start a text block we care about
+    #  3. End of file could end a text block
 
     base_name  = File.basename( filepath )
-    pattern    = /^#.*(\s|\/|\\|\")#{Regexp.escape(base_name)}/
-    directive  = /^#(?!pragma\b)/ # Preprocessor directive that's not a #pragma
-    extract    = false # Found lines of file we care about?
+    directive  = /^# \d+ \"/
+    marker     = /^# \d+ \".*#{Regexp.escape(base_name)}\"/
+    extract    = false
 
     lines = []
 
@@ -88,63 +101,65 @@ class PreprocessinatorExtractor
       # Clean up any oddball characters in an otherwise ASCII document
       line.encode!('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
       
-      # Handle extract mode if the line is not a preprocessor directive
+      # Handle extraction if the line is not a preprocessor directive
       if extract and not line =~ directive
-        # Add the line with whitespace removed
-        lines << line.strip()
-      
+        _line = line.strip()
+        # Restore line if stripping leaves text
+        _line = line if !_line.empty?
+        lines << _line
       # Otherwise the line contained a preprocessor directive; drop out of extract mode
       else
         extract = false
       end
 
       # Enter extract mode if the line is a preprocessor directive with filename of interest
-      extract = true if line =~ pattern
+      extract = true if line =~ marker
     end
 
     return lines
   end
 
 
-  # `input` must have the interface of IO -- StringIO for testing or File in typical use
-  # `buffer_size` exposed mostly for testing of stream handling
-  def extract_file_from_directives_only_expansion(input, filepath, buffer_size:256)
-    contents = ""
+  # Simple variation of preceding that returns file contents as single string
+  def extract_file_as_string_from_expansion(input, filepath)
+    return extract_file_as_array_from_expansion(input, filepath).join( "\n" )
+  end
 
-    base_name  = File.basename(filepath)
-    pattern    = /(^#.+\".*#{Regexp.escape(base_name)}\"\s+\d+\s*\n)(.+)/m
 
-    # Seek tracking and buffer size management
-    _buffer_size = [buffer_size, input.size()].min
-    read_total   = 0
+  # Extract all test directive macros as a list from a file as string
+  def extract_test_directive_macros(file_contents)
+    regexes = [
+      /#{UNITY_TEST_SOURCE_FILE}.+?"\)/,
+      /#{UNITY_TEST_INCLUDE_PATH}.+?"\)/
+    ]
 
-    # Iteratively scan backwards until we find line matching regex pattern
-    while read_total < input.size()
+    return extract_tokens_by_regex_list( file_contents, regexes )
+  end
 
-      # Move input pointer backward from end
-      input.seek( input.size() - read_total - _buffer_size, IO::SEEK_SET )
+  # Extract all macro definitions and pragmas as a list from a file as string
+  def extract_macros_defs_and_pragmas(file_contents)
+    regexes = [
+      /(#\s*define\s+(\w+)(?:\s*\([^)]*\))?\s*((?:\\[ \t]*\n\s*)*.*))/m,
+      /(#pragma.+)\n/
+    ]
 
-      # Read from IO stream into a buffer
-      buffer = input.read( _buffer_size )
+    tokens = extract_tokens_by_regex_list( file_contents, regexes )
 
-      # Update total bytes read
-      read_total += _buffer_size
+    return tokens.map {|token| token[0]}
+  end
 
-      # Determine next buffer read size -- minimum of target buffer size or remaining bytes in stream
-      _buffer_size  = [buffer_size, (input.size() - read_total)].min
+  ### Private ###
 
-      # Inline handle any oddball bytes
-      buffer.encode!('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
+  private
 
-      # Prepend bytes read to contents
-      contents = buffer + contents
+  def extract_tokens_by_regex_list(file_contents, regexes)
+    tokens = []
 
-      # Match on the pattern
-      match = pattern.match( contents )
-
-      # If a match, return everything after preprocessor directive line with filename of interest
-      return match[2] if !match.nil?
+    regexes.each do |regex|
+      tokens += file_contents.scan( regex )
     end
+
+    return tokens
   end
 
 end

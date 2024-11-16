@@ -34,7 +34,7 @@ class PreprocessinatorFileHandler
     contents = []
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_extractor.extract_file_from_full_expansion( file, preprocessed_filepath )
+      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, preprocessed_filepath )
     end
 
     # Reinsert #include statements into stripped down file
@@ -104,7 +104,7 @@ class PreprocessinatorFileHandler
     contents = []
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_extractor.extract_file_from_full_expansion( file, preprocessed_filepath )
+      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, preprocessed_filepath )
     end
 
     # Reinsert #include statements into stripped down file
