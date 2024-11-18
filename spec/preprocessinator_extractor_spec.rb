@@ -129,8 +129,8 @@ describe PreprocessinatorExtractor do
     end
   end
 
-  context "#extract_test_directive_macros" do
-    it "should extract any and all test directive macros from test file text" do
+  context "#extract_test_directive_macro_calls" do
+    it "should extract any and all test directive macro calls from test file text" do
       file_text = <<~FILE_TEXT
         TEST_SOURCE_FILE("foo/bar/file.c")TEST_SOURCE_FILE("yo/data.c")
 
@@ -146,46 +146,106 @@ describe PreprocessinatorExtractor do
         'TEST_INCLUDE_PATH("hello/there")'
       ]
 
-      expect( subject.extract_test_directive_macros( file_text ) ).to eq expected
+      expect( subject.extract_test_directive_macro_calls( file_text ) ).to eq expected
     end
   end
 
-  context "#extract_macros_defs_and_pragmas" do
-    it "should extract any and all macro defintions and pragmas from header file text" do
+  context "#extract_pragmas" do
+    it "should extract any and all pragmas from file text" do
       file_text = <<~FILE_TEXT
         SOME_MACRO("yo")
 
-          #define PI 3.14159
+          #define  PI  3.14159
 
-        #pragma pack(1)
+        #pragma pack(1)    
 
         extern void func_sig(int, byte);
         #define SQUARE(x) ((x) * (x))
 
         #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-        #pragma warning(disable : 4996)
+        #pragma warning(disable : 4996)  
         #pragma GCC optimize("O3")
-
-        #define MACRO(num, str) {\ 
-                    printf("%d", num);\ 
-                    printf(" is");\ 
-                    printf(" %s number", str);\ 
-                    printf("\n");\ 
-                   }  
 
         SOME_OTHER_MACRO("more")
       FILE_TEXT
 
       expected = [
-        '#define PI 3.14159',
-        '#define SQUARE(x) ((x) * (x))',
-        '#define MAX(a, b) ((a) > (b) ? (a) : (b))',
-        '#pragma warning(disable : 4996)',
-        '#pragma GCC optimize("O3")',
+        "#pragma pack(1)",
+        "#pragma warning(disable : 4996)",
+        "#pragma GCC optimize(\"O3\")"
       ]
 
-      expect( subject.extract_macros_defs_and_pragmas( file_text ) ).to eq expected
+      expect( subject.extract_pragmas( file_text ) ).to eq expected
+    end
+  end
+
+  context "#extract_macro_defs" do
+    it "should extract any and all macro defintions from file text" do
+
+      # Note aspects of this heredoc text block under test:
+      #  - Macros beginning indented
+      #  - Repeated whitespace characters
+      #  - Single line and multiline macro definitions
+      #  - Whitespace after continuation slashes (eliminated in extraction)
+      #  - No empty lines between macro definitions
+
+      file_text = <<~FILE_TEXT
+        SOME_MACRO("yo")
+
+          #define  PI  3.14159
+
+        #pragma GCC something
+
+        extern void func_sig(int, byte);
+        #define SQUARE(x) ((x) * (x))  
+
+        #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+        extern void function(void);
+
+        #define MACRO(num, str) {\\  
+                    printf("%d", num);\\
+                    printf(" is");            \\ 
+                    printf(" %s number", str);\\ 
+                    printf("\\n");\\ 
+                   }  
+
+        #define LONG_STRING "This is a very long string that \\
+                              continues on the next line"
+        #define MULTILINE_MACRO do { \\ 
+              something(); \\
+              something_else(); \\ 
+            } while(0)
+
+        SOME_OTHER_MACRO("more")
+      FILE_TEXT
+
+      expected = [
+        "#define  PI  3.14159",
+        "#define SQUARE(x) ((x) * (x))",
+        "#define MAX(a, b) ((a) > (b) ? (a) : (b))",
+        [
+          "#define MACRO(num, str) {\\",
+          "            printf(\"%d\", num);\\",
+          "            printf(\" is\");            \\",
+          "            printf(\" %s number\", str);\\",
+          "            printf(\"\\n\");\\",
+          "           }"
+        ],
+        [
+          "#define LONG_STRING \"This is a very long string that \\",
+          "                      continues on the next line\""
+        ],
+        [
+          "#define MULTILINE_MACRO do { \\",
+          "      something(); \\",
+          "      something_else(); \\",
+          "    } while(0)"
+        ]
+      ]
+
+      expect( subject.extract_macro_defs( file_text ) ).to eq expected
     end
   end
 

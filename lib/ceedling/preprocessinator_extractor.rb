@@ -127,32 +127,50 @@ class PreprocessinatorExtractor
 
 
   # Extract all test directive macros as a list from a file as string
-  def extract_test_directive_macros(file_contents)
+  def extract_test_directive_macro_calls(file_contents)
     regexes = [
       /#{UNITY_TEST_SOURCE_FILE}.+?"\)/,
       /#{UNITY_TEST_INCLUDE_PATH}.+?"\)/
     ]
 
-    return extract_tokens_by_regex_list( file_contents, regexes )
+    return extract_tokens_by_regex_list( file_contents, *regexes )
   end
 
+
+  # Extract all pragmas as a list from a file as string
+  def extract_pragmas(file_contents)
+    tokens = extract_tokens_by_regex_list( file_contents, /#pragma.+$/ )
+    return tokens.map {|token| token.rstrip()}
+  end
+
+
   # Extract all macro definitions and pragmas as a list from a file as string
-  def extract_macros_defs_and_pragmas(file_contents)
-    regexes = [
-      /(#\s*define\s+(\w+)(?:\s*\([^)]*\))?\s*((?:\\[ \t]*\n\s*)*.*))/m,
-      /(#pragma.+)\n/
-    ]
+  def extract_macro_defs(file_contents)
+    results = []
 
-    tokens = extract_tokens_by_regex_list( file_contents, regexes )
+    tokens = extract_tokens_by_regex_list(
+      file_contents,
+      /(#\s*define\s+.*?(\\\s*\n.*?)*)\n/
+    )
 
-    return tokens.map {|token| token[0]}
+    tokens.each do |token|
+      multiline = token[0].split( "\n" )
+      multiline.map! {|line| line.rstrip()}
+      if multiline.size == 1
+        results << multiline[0]
+      else
+        results << multiline
+      end
+    end
+
+    return results
   end
 
   ### Private ###
 
   private
 
-  def extract_tokens_by_regex_list(file_contents, regexes)
+  def extract_tokens_by_regex_list(file_contents, *regexes)
     tokens = []
 
     regexes.each do |regex|
