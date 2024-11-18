@@ -40,13 +40,13 @@ describe PreprocessinatorExtractor do
       
       file_contents = [
         '# 1 "MY_FILE.C" 99999',                     # Beginning of block to extract
-        '       ',                                   #  Whitespace to clean up & preserve
+        '       ',                                   #  Whitespace collapse & preserve as blank line
         '#pragma yo sup',                            #  Line to extract -- #pragma is not end-of-block preprocessor directive
         '#define FOO(...)',                          #  Line to extract -- #define is not end-of-block preprocessor directive
         'void some_function(void) {',                #  Line to extract
-        '  do_something();',                         #  Line to extract with leading whitespace that should remain
-        '}',                                         #  Line to extract
-        "\t",                                        #  Whitespace to clean up & preserve
+        '  do_something();   ',                      #  Line to extract with leading whitespace that should remain
+        '  }',                                       #  Line to extract with leading whitespace that should remain
+        "\t",                                        #  Whitespace collapse & preserve as blank line
         '# 1 "some/useless/file.c"'                  # End of block to extract
       ]
 
@@ -56,7 +56,7 @@ describe PreprocessinatorExtractor do
         '#define FOO(...)',
         'void some_function(void) {',
         '  do_something();',         
-        '}',                         
+        '  }',                         
         ''
       ]
 
@@ -162,6 +162,10 @@ describe PreprocessinatorExtractor do
         extern void func_sig(int, byte);
         #define SQUARE(x) ((x) * (x))
 
+          #pragma TOOL command \\ 
+                  with_some_args  \\
+                  that wrap
+
         #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
         #pragma warning(disable : 4996)  
@@ -172,6 +176,11 @@ describe PreprocessinatorExtractor do
 
       expected = [
         "#pragma pack(1)",
+        [
+          "#pragma TOOL command \\",
+          "          with_some_args  \\",
+          "          that wrap"
+        ],
         "#pragma warning(disable : 4996)",
         "#pragma GCC optimize(\"O3\")"
       ]

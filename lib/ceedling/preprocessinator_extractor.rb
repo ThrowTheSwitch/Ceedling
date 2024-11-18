@@ -82,20 +82,24 @@ class PreprocessinatorExtractor
     # next '#' line should be extracted.
     #
     # Notes:
-    #  1. Successive blocks can all be for the same source text file without terminating
-    #  2. The first line of the file could start a text block we care about
-    #  3. End of file could end a text block
+    #  1. Successive blocks can all be from the same source text file without a different, intervening '#' line.
+    #     Multiple back-to-back blocks could all begin with '# 99 "path/file.c"'.
+    #  2. The first line of the file could start a text block we care about.
+    #  3. End of file could end a text block.
 
     base_name  = File.basename( filepath )
+    # Preprocessor output blocks take the form of '# <digits> <text> [optional digits]'
     directive  = /^# \d+ \"/
+    # Preprocessor output blocks for the file we care about take the form of '# <digits> "path/filename.ext" [optional digits]'
     marker     = /^# \d+ \".*#{Regexp.escape(base_name)}\"/
+    # Boolean to ping pong between line-by-line extract/ignore
     extract    = false
 
     lines = []
 
-    # Use `each_line()` instead of `readlines()`.
-    # `each_line()` processes IO buffer one line at a time instead of all lines in an array.
-    # At large buffer sizes this is far more memory efficient and faster
+    # Use `each_line()` instead of `readlines()` (chomp removes newlines).
+    # `each_line()` processes the IO buffer one line at a time instead of ingesting lines in an array.
+    # At large buffer sizes needed for potentially lengthy preprocessor output this is far more memory efficient and faster.
     input.each_line( chomp:true ) do |line|
       
       # Clean up any oddball characters in an otherwise ASCII document
@@ -103,10 +107,12 @@ class PreprocessinatorExtractor
       
       # Handle extraction if the line is not a preprocessor directive
       if extract and not line =~ directive
+        # Strip a line so we can omit useless blank lines
         _line = line.strip()
-        # Restore line if stripping leaves text
-        _line = line if !_line.empty?
+        # Restore text with left-side whitespace if previous stripping left some text
+        _line = line.rstrip() if !_line.empty?
         lines << _line
+
       # Otherwise the line contained a preprocessor directive; drop out of extract mode
       else
         extract = false
@@ -128,6 +134,8 @@ class PreprocessinatorExtractor
 
   # Extract all test directive macros as a list from a file as string
   def extract_test_directive_macro_calls(file_contents)
+    # Look for TEST_SOURCE_FILE("...") and TEST_INCLUDE_PATH("...") in a string (i.e. a file's contents as a string)
+
     regexes = [
       /#{UNITY_TEST_SOURCE_FILE}.+?"\)/,
       /#{UNITY_TEST_INCLUDE_PATH}.+?"\)/
@@ -139,40 +147,54 @@ class PreprocessinatorExtractor
 
   # Extract all pragmas as a list from a file as string
   def extract_pragmas(file_contents)
-    tokens = extract_tokens_by_regex_list( file_contents, /#pragma.+$/ )
-    return tokens.map {|token| token.rstrip()}
+    return extract_multiline_directives( file_contents, 'pragma' )
   end
 
 
-  # Extract all macro definitions and pragmas as a list from a file as string
+  # Extract all macro definitions as a list from a file as string
   def extract_macro_defs(file_contents)
-    results = []
-
-    tokens = extract_tokens_by_regex_list(
-      file_contents,
-      /(#\s*define\s+.*?(\\\s*\n.*?)*)\n/
-    )
-
-    tokens.each do |token|
-      multiline = token[0].split( "\n" )
-      multiline.map! {|line| line.rstrip()}
-      if multiline.size == 1
-        results << multiline[0]
-      else
-        results << multiline
-      end
-    end
-
-    return results
+    return extract_multiline_directives( file_contents, 'define' )
   end
 
   ### Private ###
 
   private
 
+  def extract_multiline_directives(file_contents, directive)
+    results = []
+
+    # This regex captures any single or multiline preprocessor directive definition:
+    #  - Looks for any string that begins with '#<directive>' ('#' and '<directive>' may be separated by spaces per C spec).
+    #  - Captures all text (non-greedily) after '#<directive>' on a first line through 0 or more line continuations up to a final newline.
+    #  - Line continuations comprise a final '\' on a given line followed by whitespace & newline, wrapping to the next
+    #    line up to a final '\' on that next line.
+    regex = /(#\s*#{directive}\s+.*?(\\\s*\n.*?)*)\n/
+
+    tokens = extract_tokens_by_regex_list( file_contents, regex )
+
+    tokens.each do |token|
+      # Get the full text string from `scan() results` and split it at any newlines
+      lines = token[0].split( "\n" )
+      # Lop off any trailing whitespace (mostly to simplify unit testing)
+      lines.map! {|line| line.rstrip()}
+
+      # If the result of splitting is just a single string, add it to the results array as a single string
+      if lines.size == 1
+        results << lines[0]
+      # Otherwise, add the array of split strings to the results as a sub-array
+      else
+        results << lines
+      end
+    end
+
+    return results
+  end
+
+
   def extract_tokens_by_regex_list(file_contents, *regexes)
     tokens = []
 
+    # For each regex provided, extract all matches from the source string
     regexes.each do |regex|
       tokens += file_contents.scan( regex )
     end
