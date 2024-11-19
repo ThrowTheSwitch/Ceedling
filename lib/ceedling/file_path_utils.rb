@@ -151,12 +151,20 @@ class FilePathUtils
     return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_list) )
   end
 
+  def form_preprocessed_includes_list_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_includes_path, subdir, File.basename(filepath) + @configurator.extension_yaml )
+  end
+
   def form_preprocessed_file_filepath(filepath, subdir)
     return File.join( @configurator.project_test_preprocess_files_path, subdir, File.basename(filepath) )
   end
 
-  def form_preprocessed_includes_list_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_includes_path, subdir, File.basename(filepath) + @configurator.extension_yaml )
+  def form_preprocessed_file_full_expansion_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_files_path, subdir, 'full_expansion', File.basename(filepath) )
+  end
+
+  def form_preprocessed_file_directives_only_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_files_path, subdir, 'directives_only', File.basename(filepath) )
   end
 
   def form_test_build_objects_filelist(path, sources)
