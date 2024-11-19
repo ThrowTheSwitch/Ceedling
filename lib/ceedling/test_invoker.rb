@@ -54,6 +54,7 @@ class TestInvoker
           name = key.to_s
           build_path = File.join( @configurator.project_build_root, context.to_s, 'out', name )
           mocks_path = File.join( @configurator.cmock_mock_path, name )
+
           preprocess_includes_path = File.join( @configurator.project_test_preprocess_includes_path, name )
           preprocess_files_path    = File.join( @configurator.project_test_preprocess_files_path, name )
 
@@ -71,10 +72,12 @@ class TestInvoker
             if @configurator.project_use_test_preprocessor != :none
               paths[:preprocess_incudes] = preprocess_includes_path
               paths[:preprocess_files] = preprocess_files_path
+              paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, 'full_expansion' )
+              paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, 'directives_only' )
             end
           end
 
-          @testables[key][:paths].each {|_, path| @file_wrapper.mkdir(path) }
+          @testables[key][:paths].each {|_, path| @file_wrapper.mkdir( path ) }
         end
 
         # Remove any left over test results from previous runs
@@ -227,7 +230,7 @@ class TestInvoker
             defines:       testable[:preprocess_defines]
           }
 
-          @preprocessinator.preprocess_mockable_header_file(**arg_hash)
+          @preprocessinator.preprocess_mockable_header_file( **arg_hash )
         end
       } if @configurator.project_use_mocks and @configurator.project_use_test_preprocessor_mocks
 
