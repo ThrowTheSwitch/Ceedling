@@ -108,9 +108,9 @@ DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
     ].freeze
   }
 
-DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
+DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_file_preprocessor'.freeze,
+  :name => 'default_test_file_full_preprocessor'.freeze,
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,
@@ -119,6 +119,23 @@ DEFAULT_TEST_FILE_PREPROCESSOR_TOOL = {
     "-DGNU_COMPILER".freeze, # OSX clang
     # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "-x c".freeze,           # Force C language
+    "\"${1}\"".freeze,
+    "-o \"${2}\"".freeze
+    ].freeze
+  }
+
+DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
+  :name => 'default_test_file_directives_only_preprocessor'.freeze,
+  :optional => false.freeze,
+  :arguments => [
+    '-E'.freeze,
+    "-I\"${4}\"".freeze, # Per-test executable search paths
+    "-D\"${3}\"".freeze, # Per-test executable defines
+    "-DGNU_COMPILER".freeze, # OSX clang
+    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
+    "-x c".freeze,           # Force C language
+    "-fdirectives-only",     # Only preprocess directives
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
     ].freeze
@@ -252,9 +269,10 @@ DEFAULT_TOOLS_TEST_ASSEMBLER = {
 
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
-    :test_shallow_includes_preprocessor => DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL,
-    :test_nested_includes_preprocessor => DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL,
-    :test_file_preprocessor     => DEFAULT_TEST_FILE_PREPROCESSOR_TOOL,
+    :test_shallow_includes_preprocessor      => DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL,
+    :test_nested_includes_preprocessor       => DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL,
+    :test_file_full_preprocessor             => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
+    :test_file_directives_only_preprocessor  => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
     }
   }
 
