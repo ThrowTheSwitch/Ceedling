@@ -189,6 +189,50 @@ describe PreprocessinatorExtractor do
     end
   end
 
+  context "#extract_include_guard" do
+    it "should extract a simple include guard from among file text" do
+      file_text = <<~FILE_TEXT
+        #ifndef _HEADER_INCLUDE_GUARD_
+        #define  _HEADER_INCLUDE_GUARD_
+
+        ...
+
+        #endif // _HEADER_INCLUDE_GUARD_
+      FILE_TEXT
+
+      expect( subject.extract_include_guard( file_text ) ).to eq '_HEADER_INCLUDE_GUARD_'
+    end
+
+    it "should extract the first text that looks like an include guard from among file text" do
+      file_text = <<~FILE_TEXT
+
+        #ifndef HEADER_INCLUDE_GUARD
+
+         #define  HEADER_INCLUDE_GUARD
+
+        #ifndef DUMMY_INCLUDE_GUARD
+        #define DUMMY_INCLUDE_GUARD
+
+        #endif // HEADER_INCLUDE_GUARD
+      FILE_TEXT
+
+      expect( subject.extract_include_guard( file_text ) ).to eq 'HEADER_INCLUDE_GUARD'
+    end
+
+    it "should not extract an include guard from among file text" do
+      file_text = <<~FILE_TEXT
+        #ifndef SOME_GUARD_NAME
+        #define  OME_GUARD_NAME
+
+        #define SOME_GUARD_NAME
+
+        #endif // SOME_GUARD_NAME
+      FILE_TEXT
+
+      expect( subject.extract_include_guard( file_text ) ).to eq nil
+    end
+  end
+
   context "#extract_macro_defs" do
     it "should extract any and all macro defintions from file text" do
 
@@ -254,13 +298,33 @@ describe PreprocessinatorExtractor do
         ]
       ]
 
-      expect( subject.extract_macro_defs( file_text ) ).to eq expected
+      expect( subject.extract_macro_defs( file_text, nil ) ).to eq expected
     end
+
+    it "should ignore include guard among macro defintions in file text" do
+      file_text = <<~FILE_TEXT
+        #ifndef _INCLUDE_GUARD_
+        #define _INCLUDE_GUARD_
+
+        #define PI 3.14159
+
+        #define LONG_STRING "This is a very long string that \\
+                              continues on the next line"
+
+        SOME_OTHER_MACRO("more")
+      FILE_TEXT
+
+      expected = [
+        "#define PI 3.14159",
+        [
+          "#define LONG_STRING \"This is a very long string that \\",
+          "                      continues on the next line\""
+        ]
+      ]
+
+      expect( subject.extract_macro_defs( file_text, '_INCLUDE_GUARD_' ) ).to eq expected
+    end
+
   end
-
-
-
-
-
 
 end

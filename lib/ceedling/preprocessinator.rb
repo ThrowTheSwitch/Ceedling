@@ -33,6 +33,7 @@ class Preprocessinator
     includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
     includes = []
+
     if @file_wrapper.newer?(includes_list_filepath, filepath)
       msg = @reportinator.generate_module_progress(
         operation: "Loading #include statement listing file for",
@@ -56,6 +57,7 @@ class Preprocessinator
 
       @loginator.log( msg, Verbosity::DEBUG )
       @loginator.log( '', Verbosity::DEBUG )
+
     else
       includes = @includes_handler.extract_includes(
         filepath:      filepath,
@@ -108,20 +110,31 @@ class Preprocessinator
       defines:        defines      
     }
 
-    # Extract shallow includes & print status message    
+    # Extract includes & print status message    
     includes = preprocess_file_common( **arg_hash )
 
     arg_hash = {
       source_filepath:       filepath,
-      preprocessed_filepath: preprocessed_filepath,
-      includes:              includes,
+      test:                  test,
       flags:                 flags,
       include_paths:         include_paths,
       defines:               defines      
     }
 
+    contents, extras = @file_handler.collect_header_file_contents( **arg_hash )
+
     # Run file through preprocessor & further process result
-    plugin_arg_hash[:shell_result] = @file_handler.preprocess_header_file( **arg_hash )
+    # plugin_arg_hash[:shell_result] = @file_handler.preprocess_header_file( **arg_hash )
+
+    arg_hash = {
+      filename:              File.basename( filepath ),
+      preprocessed_filepath: preprocessed_filepath,
+      contents:              contents,
+      extras:                extras,
+      includes:              includes                       
+    }
+
+    @file_handler.assemble_preprocessed_header_file( **arg_hash )
 
     # Trigger post_mock_preprocessing plugin hook
     @plugin_manager.post_mock_preprocess( plugin_arg_hash )
@@ -153,20 +166,40 @@ class Preprocessinator
       defines:       defines      
     }
 
-    # Extract shallow includes & print status message
+    # Extract includes & print status message
     includes = preprocess_file_common( **arg_hash )
+
+    # arg_hash = {
+    #   source_filepath:       filepath,
+    #   preprocessed_filepath: preprocessed_filepath,
+    #   includes:              includes,
+    #   flags:                 flags,
+    #   include_paths:         include_paths,
+    #   defines:               defines      
+    # }
 
     arg_hash = {
       source_filepath:       filepath,
-      preprocessed_filepath: preprocessed_filepath,
-      includes:              includes,
+      test:                  test,
       flags:                 flags,
       include_paths:         include_paths,
       defines:               defines      
     }
 
+    contents, extras = @file_handler.collect_test_file_contents( **arg_hash )
+
     # Run file through preprocessor & further process result
-    plugin_arg_hash[:shell_result] = @file_handler.preprocess_test_file( **arg_hash )
+    # plugin_arg_hash[:shell_result] = @file_handler.preprocess_test_file( **arg_hash )
+
+    arg_hash = {
+      filename:              File.basename( filepath ),
+      preprocessed_filepath: preprocessed_filepath,
+      contents:              contents,
+      extras:                extras,
+      includes:              includes                       
+    }
+
+    @file_handler.assemble_preprocessed_test_file( **arg_hash )
 
     # Trigger pre_mock_preprocessing plugin hook
     @plugin_manager.post_test_preprocess( plugin_arg_hash )

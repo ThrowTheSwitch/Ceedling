@@ -151,9 +151,34 @@ class PreprocessinatorExtractor
   end
 
 
+  # Find include guard in file contents as string
+  def extract_include_guard(file_contents)
+    # Look for first occurrence of #ifndef <sring> followed by #define <string>
+    regex = /#\s*ifndef\s+(\w+)(?:\s*\n)+\s*#\s*define\s+(\w+)/
+    matches = file_contents.match( regex )
+
+    # Return if no match results
+    return nil if matches.nil?
+
+    # Return if match results are not expected size
+    return nil if matches.size != 3
+
+    # Return if #ifndef <string> does not match #define <string>
+    return nil if matches[1] != matches[2]
+
+    # Return string in common
+    return matches[1]
+  end
+
+
   # Extract all macro definitions as a list from a file as string
-  def extract_macro_defs(file_contents)
-    return extract_multiline_directives( file_contents, 'define' )
+  def extract_macro_defs(file_contents, include_guard)
+    macro_definitions = extract_multiline_directives( file_contents, 'define' )
+
+    # Remove an include guard if provided
+    macro_definitions.reject! {|macro| macro.include?( include_guard ) } if !include_guard.nil?
+
+    return macro_definitions
   end
 
   ### Private ###
