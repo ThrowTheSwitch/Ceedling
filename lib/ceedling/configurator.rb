@@ -49,23 +49,6 @@ class Configurator
   end
 
 
-  def reset_defaults(config)
-    [:test_compiler,
-     :test_linker,
-     :test_fixture,
-     :test_includes_preprocessor,
-     :test_file_preprocessor,
-     :test_dependencies_generator,
-     :release_compiler,
-     :release_assembler,
-     :release_linker,
-     :release_dependencies_generator
-    ].each do |tool|
-      config[:tools].delete(tool) if (not (config[:tools][tool].nil?))
-    end
-  end
-
-
   # Set up essential flattened config related to verbosity.
   # We do this because early config validation failures may need access to verbosity,
   # but the accessors won't be available until after configuration is validated.

@@ -184,9 +184,6 @@ class Setupinator
     @plugin_reportinator.set_system_objects( @ceedling )
   end
 
-  def reset_defaults(config_hash)
-    @configurator.reset_defaults( config_hash )
-  end
 
 ### Private
 
