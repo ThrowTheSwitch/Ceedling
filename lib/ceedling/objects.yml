@@ -280,7 +280,6 @@ preprocessinator_file_handler:
   compose:
     - preprocessinator_extractor
     - configurator
-    - flaginator
     - tool_executor
     - file_path_utils
     - file_wrapper
