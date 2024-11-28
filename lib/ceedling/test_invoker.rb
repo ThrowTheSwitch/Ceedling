@@ -91,19 +91,19 @@ class TestInvoker
           filepath = details[:filepath]
 
           if @configurator.project_use_test_preprocessor_tests
-            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros" )
+            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for include path build directive macros" )
             @loginator.log( msg )
 
-            # Just build directive macros using simple text scanning.
+            # Just build directive macro using simple text scanning.
             # Other context collected in later steps with help of preprocessing.
             @file_wrapper.open( filepath, 'r' ) do |input|
-              @context_extractor.collect_simple_context( filepath, input, :build_directive_source_files, :build_directive_include_paths )
+              @context_extractor.collect_simple_context( filepath, input, :build_directive_include_paths )
             end
           else
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
             @loginator.log( msg )
 
-            # Collect everything using simple text scanning (no preprocessing involve).
+            # Collect everything using simple text scanning (no preprocessing involved).
             @file_wrapper.open( filepath, 'r' ) do |input|
               @context_extractor.collect_simple_context( filepath, input, :all )
             end
@@ -111,13 +111,8 @@ class TestInvoker
 
         end
 
-        # Validate test build directive paths via TEST_INCLUDE_PATH() & augment header file collection from the same
+        # Validate paths via TEST_INCLUDE_PATH() & augment header file collection from the same
         @helper.process_project_include_paths()
-
-        # Validate test build directive source file entries via TEST_SOURCE_FILE()
-        @testables.each do |_, details|
-          @helper.validate_build_directive_source_files( test:details[:name], filepath:details[:filepath] )
-        end
       end
 
       # Fill out testables data structure with build context
@@ -273,6 +268,17 @@ class TestInvoker
 
           # Replace default input with preprocessed file
           @lock.synchronize { details[:runner][:input_filepath] = filepath }
+
+          # Collect sources added to test build with TEST_SOURCE_FILE() directive macro
+          # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them
+          @file_wrapper.open( filepath, 'r' ) do |input|
+            @context_extractor.collect_simple_context( filepath, input, :build_directive_source_files )
+          end
+
+          # Validate test build directive source file entries via TEST_SOURCE_FILE()
+          @testables.each do |_, details|
+            @helper.validate_build_directive_source_files( test:details[:name], filepath:details[:filepath] )
+          end
         end
       } if @configurator.project_use_test_preprocessor_tests
 

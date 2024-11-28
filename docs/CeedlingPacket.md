@@ -1546,22 +1546,38 @@ limitation that affects Unity features triggered by the following macros:**
 
 With Ceedling’s preprocessing enabled, Unity’s `TEST_CASE()` and `TEST_RANGE()`
 in your test files will effectively vanish before test compilation is able to 
-process them. That is, Ceedling’s preprocessing and these Unity features are 
-not presently compatible. (Note that it is possible to enable preprocessing for
-mockable header files apart from enabling it for test files.)
+process them.
 
-**_NOTE:_ The following new build directive macros available in Ceedling 1.0.0
-are incompatible with enclosing conditional compilation C preprocessing 
-statements:**
+That is, Ceedling’s preprocessing and these Unity features are not presently 
+compatible. Note that it _is_ possible to enable preprocessing for mockable 
+header files apart from enabling it for test files. See the documentation for
+`:project` ↳ `:use_test_preprocessing`.
 
-* `TEST_SOURCE_FILE()`
-* `TEST_INCLUDE_PATH()`
+**_IMPORTANT:_ The following new build directive macro `TEST_INCLUDE_PATH()` 
+available in Ceedling 1.0.0 is incompatible with enclosing conditional 
+compilation C preprocessing statements:**
 
-Wrapping `TEST_SOURCE_FILE()` and `TEST_INCLUDE_PATH()` in conditional 
-compilation statements (e.g. `#ifdef`) will not behave as you expect. These 
-macros are used as markers for advanced abilities discovered by Ceedling parsing 
-a test file as plain text. Whether or not Ceedling preprocessing is enabled, 
-Ceedling will always discover these marker macros in the plain text of a test file.
+Wrapping `TEST_INCLUDE_PATH()` in conditional compilation statements 
+(e.g. `#ifdef`) will not behave as you expect. This macro is used as a marker
+for advanced abilities discovered by Ceedling parsing a test file as plain text.
+Whether or not Ceedling preprocessing is enabled, Ceedling will always discover 
+this marker macro in the plain text of a test file.
+
+Why is `TEST_INCLUDE_PATH()` incompatible with `#ifdef`? Well, it’s because of
+a cyclical dependency that cannot be resolved. In order to perform test 
+preprocessing, we need a full complement of `#include` search paths. These 
+could be provided, in part, by `TEST_INCLUDE_PATH()`. But, if we allow 
+`TEST_INCLUDE_PATH()` to be placed within conditional compilation C 
+preprocessing statements, our search paths may be different after test 
+preprocessing! The only solution is to disallow this and scan a test file as
+plain text looking for this macro at the beginning of a test build.
+
+**_Notes:_**
+
+* `TEST_SOURCE_FILE()` _can_ be placed within conditional compilation
+  C preprocessing statements.
+* `TEST_INCLUDE_PATH()` & `TEST_SOURCE_FILE()` can be “hidden” from Ceedling’s
+  text scanning with traditional C comments.
 
 ### Preprocessing of your test files
 
