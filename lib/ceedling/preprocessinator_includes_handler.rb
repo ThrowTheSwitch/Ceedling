@@ -219,7 +219,12 @@ class PreprocessinatorIncludesHandler
     @loginator.log(msg, Verbosity::NORMAL)
 
     # Use abilities of @test_context_extractor to extract the #includes via regex on the file
-    return @test_context_extractor.extract_includes( filepath )
+    includes = []
+    @file_wrapper.open( filepath, 'r' ) do |file|
+      includes = @test_context_extractor.extract_includes( file )
+    end
+
+    return includes
   end
 
   def extract_nested_includes(filepath:, include_paths:, flags:, defines:, shallow:false)

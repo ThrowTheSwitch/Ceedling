@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
+require 'ceedling/file_path_utils'
 require 'ceedling/generator_test_runner' # From lib/ not vendor/unity/auto
 
 class TestContextExtractor
@@ -13,41 +14,77 @@ class TestContextExtractor
   constructor :configurator, :file_wrapper, :loginator
 
   def setup
-    @all_header_includes = {} # Full list of all headers a test #includes
+    # Per test-file lookup hashes
+    @all_header_includes = {} # Full list of all headers from test #include statements
     @header_includes     = {} # List of all headers minus mocks & framework files
-    @source_includes     = {} 
-    @source_extras       = {}
+    @source_includes     = {} # List of C files #include'd in a test file
+    @source_extras       = {} # C source files outside of header convention added to test build by TEST_SOURCE_FILE()
     @test_runner_details = {} # Test case lists & Unity runner generator instances
-    @mocks               = {}
-    @include_paths       = {}
-    @all_include_paths   = []
+    @mocks               = {} # List of mocks by name without header file extension
+    @include_paths       = {} # Additional search paths added to a test build via TEST_INCLUDE_PATH()
+    
+    # Arrays
+    @all_include_paths   = [] # List of all search paths added through individual test files using TEST_INCLUDE_PATH()
 
     @lock = Mutex.new
   end
 
-  def collect_simple_context( filepath, *args )
-    content = @file_wrapper.read( filepath )
-    content = sanitize_encoding( content )
-    content_no_comments = remove_comments( content )
+  # `input` must have the interface of IO -- StringIO for testing or File in typical use
+  def collect_simple_context( filepath, input, *args )
+    all_options = [
+      :build_directive_include_paths,
+      :build_directive_source_files,
+      :includes,
+      :test_runner_details
+    ]
 
+    # Code error check--bad context symbol argument
     args.each do |context|
-      case context
-      when :build_directive_macros
-        collect_build_directives( filepath, content_no_comments )
+      next if context == :all
+      msg = "Unrecognized test context for collection :#{context}"
+      raise CeedlingException.new( msg ) if !all_options.include?( context )
+    end
 
-      when :includes
-        collect_includes( filepath, content_no_comments )
+    # Handle the :all shortcut to redefine list to include all contexts
+    args = all_options if args.include?( :all )
 
-      when :test_runner_details
-        _collect_test_runner_details( filepath, content )
+    include_paths = []
+    source_extras = []
+    includes = []
 
-      else
-        raise CeedlingException.new( "Unrecognized test context for collection :#{context}" )
+    code_lines( input ) do |line|
+      if args.include?( :build_directive_include_paths )
+        # Scan for build directives: TEST_INCLUDE_PATH()
+        include_paths += extract_build_directive_include_paths( line )
       end
+
+      if args.include?( :build_directive_source_files )
+        # Scan for build directives: TEST_SOURCE_FILE()
+        source_extras += extract_build_directive_source_files( line )
+      end
+
+      if args.include?( :includes )
+        # Scan for contents of #include directives
+        includes += _extract_includes( line )
+      end
+    end
+
+    collect_build_directive_include_paths( filepath, include_paths )
+    collect_build_directive_source_files( filepath, source_extras )
+    collect_includes( filepath, includes )
+
+    # Different code processing pattern for test runner
+    if args.include?( :test_runner_details )
+      # Go back to beginning of IO object for a full string extraction
+      input.rewind()
+
+      # Ultimately, we rely on Unity's runner generator that processes file contents as a single string
+      _collect_test_runner_details( filepath, input.read() )
     end
   end
 
   def collect_test_runner_details(test_filepath, input_filepath=nil)
+    # Ultimately, we rely on Unity's runner generator that processes file contents as a single string
     _collect_test_runner_details(
       test_filepath,
       @file_wrapper.read( test_filepath ),
@@ -55,13 +92,15 @@ class TestContextExtractor
     )
   end
 
-  # Scan for all includes
-  def extract_includes(filepath)
-    content = @file_wrapper.read( filepath )
-    content = sanitize_encoding( content )
-    content = remove_comments( content )
+  # Scan for all includes.
+  # Unlike other extract() calls, extract_includes() is public to be called externally.
+  # `input` must have the interface of IO -- StringIO for testing or File in typical use  
+  def extract_includes(input)
+    includes = []
 
-    return extract_includes( filepath, content )
+    code_lines( input ) {|line| includes += _extract_includes( line ) }
+
+    return includes.uniq
   end
 
   # All header includes .h of test file
@@ -110,9 +149,12 @@ class TestContextExtractor
   end
 
   def lookup_test_cases(filepath)
-    val = nil
+    val = []
     @lock.synchronize do
-      val = @test_runner_details[form_file_key( filepath )][:test_cases] || []
+      details = @test_runner_details[form_file_key( filepath )]
+      if !details.nil?
+        val = details[:test_cases]
+      end
     end
     return val
   end
@@ -120,7 +162,10 @@ class TestContextExtractor
   def lookup_test_runner_generator(filepath)
     val = nil
     @lock.synchronize do
-      val = @test_runner_details[form_file_key( filepath )][:generator]
+      details = @test_runner_details[form_file_key( filepath )]
+      if !details.nil?
+        val = details[:generator]
+      end
     end
     return val
   end
@@ -148,6 +193,7 @@ class TestContextExtractor
     end
   end
 
+  # Unlike other ingest() calls, ingest_includes() can be called externally.
   def ingest_includes(filepath, includes)
     mock_prefix = @configurator.cmock_mock_prefix
     file_key    = form_file_key( filepath )
@@ -188,59 +234,72 @@ class TestContextExtractor
     end
   end
 
+  # Exposed for testing (called from private `code_lines()`)
+  def clean_code_line(line, comment_block)
+    sanitize_encoding( line )
+
+    # Remove line comments
+    _line = line.gsub(/\/\/.*$/, '')
+
+    # Handle end of previously begun comment block
+    if comment_block
+      if _line.include?( '*/' )
+        # Turn off comment block handling state
+        comment_block = false
+        
+        # Remove everything up to end of comment block
+        _line.gsub!(/^.*\*\//, '')
+      else
+        # Ignore contents of the line if its entirely within a comment block
+        return '', comment_block        
+      end
+
+    end
+
+    # Block comments inside a C string are valid C, but we remove to simplify other parsing.
+    # No code we care about will be inside a C string.
+    # Note that we're not attempting the complex case of multiline string enclosed comment blocks
+    _line.gsub!(/"\s*\/\*.*"/, '')
+
+    # Remove single-line block comments
+    _line.gsub!(/\/\*.*\*\//, '')
+
+    # Handle beginning of any remaining multiline comment block
+    if _line.include?( '/*' )
+      comment_block = true
+
+      # Remove beginning of block comment
+      _line.gsub!(/\/\*.*/, '')
+    end
+
+    return _line, comment_block
+  end
+
   private #################################
 
-  # Scan for & store build directives
-  #  - TEST_SOURCE_FILE()
-  #  - TEST_INCLUDE_PATH()
-  #
-  # Note: This method is private unlike other `collect_ ()` methods. It is always
-  #       called in the context collection process by way of `collect_context()`.
-  def collect_build_directives(filepath, content)
-    include_paths, source_extras = extract_build_directives( filepath, content )
+  def collect_build_directive_source_files(filepath, files)
+    ingest_build_directive_source_files( filepath, files.uniq )
 
-    ingest_build_directives(
-      filepath: filepath,
-      include_paths: include_paths,
-      source_extras: source_extras
+    debug_log_list(
+      "Extra source files found via #{UNITY_TEST_SOURCE_FILE}()",
+      filepath,
+      files
     )
   end
 
-  # Scan for & store includes (.h & .c) and mocks
-  # Note: This method is private unlike other `collect_ ()` methods. It is only 
-  #       called by way of `collect_context()`.
-  def collect_includes(filepath, content)
-    includes = _extract_includes( filepath, content )
-    ingest_includes( filepath, includes )
+  def collect_build_directive_include_paths(filepath, paths)
+    ingest_build_directive_include_paths( filepath, paths.uniq )
+
+    debug_log_list(
+      "Search paths for #includes found via #{UNITY_TEST_INCLUDE_PATH}()",
+      filepath,
+      paths
+    )
   end
 
-  def extract_build_directives(filepath, content)
-    include_paths = []
-    source_extras = []
-
-    content.split("\n").each do |line|
-      # Look for TEST_INCLUDE_PATH("<*>") statements
-      results = line.scan(/#{UNITY_TEST_INCLUDE_PATH}\(\s*\"\s*(.+)\s*\"\s*\)/)
-      include_paths << FilePathUtils.standardize( results[0][0] ) if (results.size > 0)
-
-      # Look for TEST_SOURCE_FILE("<*>.<*>) statement
-      results = line.scan(/#{UNITY_TEST_SOURCE_FILE}\(\s*\"\s*(.+\.\w+)\s*\"\s*\)/)
-      source_extras << FilePathUtils.standardize( results[0][0] ) if (results.size > 0)
-    end
-
-    return include_paths.uniq, source_extras.uniq
-  end
-
-  def _extract_includes(filepath, content)
-    includes = []
-
-    content.split("\n").each do |line|
-      # Look for #include statements
-      results = line.scan(/#\s*include\s+\"\s*(.+)\s*\"/)
-      includes << results[0][0] if (results.size > 0)
-    end
-
-    return includes.uniq
+  def collect_includes(filepath, includes)
+    ingest_includes( filepath, includes.uniq )
+    debug_log_list( "#includes found", filepath, includes )
   end
 
   def _collect_test_runner_details(filepath, test_content, input_content=nil)
@@ -255,29 +314,63 @@ class TestContextExtractor
       test_runner_generator: unity_test_runner_generator
     )
 
-    msg = "Test cases found in #{filepath}:"
     test_cases = unity_test_runner_generator.test_cases
-    if test_cases.empty?
-      msg += " <none>"
-    else
-      msg += "\n"
-      test_cases.each do |test_case|
-        msg += " - #{test_case[:line_number]}:#{test_case[:test]}()\n"
-      end
-    end
+    test_cases = test_cases.map {|test_case| "#{test_case[:line_number]}:#{test_case[:test]}()" }
 
-    @loginator.log( msg, Verbosity::DEBUG )
+    debug_log_list( "Test cases found ", filepath, test_cases )
   end
 
-  def ingest_build_directives(filepath:, include_paths:, source_extras:)
+  def extract_build_directive_source_files(line)
+    source_extras = []
+
+    # Look for TEST_SOURCE_FILE("<*>.<*>") statement
+    results = line.scan(/#{UNITY_TEST_SOURCE_FILE}\(\s*\"\s*(.+?\.\w+)*?\s*\"\s*\)/)
+    results.each do |result|
+      source_extras << FilePathUtils.standardize( result[0] )
+    end
+
+    return source_extras
+  end
+
+  def extract_build_directive_include_paths(line)
+    include_paths = []
+
+    # Look for TEST_INCLUDE_PATH("<*>") statements
+    results = line.scan(/#{UNITY_TEST_INCLUDE_PATH}\(\s*\"\s*(.+?)\s*\"\s*\)/)
+    results.each do |result|
+      include_paths << FilePathUtils.standardize( result[0] )
+    end
+
+    return include_paths
+  end
+
+  def _extract_includes(line)
+    includes = []
+
+    # Look for #include statements
+    results = line.match(/#\s*include\s+\"\s*((\w|\.)+)\s*\"/)
+    includes << results[1] if !results.nil?
+
+    return includes
+  end
+
+  ##
+  ## Data structure management ingest methods
+  ##
+
+  def ingest_build_directive_source_files(filepath, source_extras)
+    key = form_file_key( filepath )
+
+    @lock.synchronize do
+      @source_extras[key] = source_extras
+    end
+  end
+
+  def ingest_build_directive_include_paths(filepath, include_paths)
     key = form_file_key( filepath )
 
     @lock.synchronize do
       @include_paths[key] = include_paths
-    end
-
-    @lock.synchronize do
-      @source_extras[key] = source_extras
     end
 
     @lock.synchronize do
@@ -296,6 +389,23 @@ class TestContextExtractor
     end
   end
 
+  ##
+  ## Utility methods
+  ##
+
+  def form_file_key( filepath )
+    return filepath.to_s.to_sym
+  end
+
+  def code_lines(input)
+    comment_block = false
+    # Far more memory efficient and faster (for large files) than slurping entire file into memory
+    input.each_line do |line|
+      _line, comment_block = clean_code_line( line, comment_block )
+      yield( _line )
+    end    
+  end
+
   # Note: This method modifies encoding in place (encode!) in an attempt to reduce long string copies
   def sanitize_encoding(content)
     if not content.valid_encoding?
@@ -304,21 +414,19 @@ class TestContextExtractor
     return content
   end
 
-  # Note: This method is destructive to argument content in an attempt to reduce memory usage
-  def remove_comments(content)
-    _content = content.clone
+  def debug_log_list(message, filepath, list)
+    msg = "#{message} in #{filepath}:"
+    if list.empty?
+      msg += " <none>"
+    else
+      msg += "\n"
+      list.each do |item|
+        msg += " - #{item}\n"
+      end
+    end
 
-    # Remove line comments
-    _content.gsub!(/\/\/.*$/, '')
-
-    # Remove block comments
-    _content.gsub!(/\/\*.*?\*\//m, '')
-
-    return _content
-  end
-
-  def form_file_key( filepath )
-    return filepath.to_s.to_sym
+    @loginator.log( msg, Verbosity::DEBUG )
+    @loginator.log( '', Verbosity::DEBUG )
   end
 
 end

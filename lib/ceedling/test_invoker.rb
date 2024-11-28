@@ -94,14 +94,19 @@ class TestInvoker
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros" )
             @loginator.log( msg )
 
-            # Just build directive macros (other context collected in later steps with help of preprocessing)
-            @context_extractor.collect_simple_context( filepath, :build_directive_macros )
+            # Just build directive macros using simple text scanning.
+            # Other context collected in later steps with help of preprocessing.
+            @file_wrapper.open( filepath, 'r' ) do |input|
+              @context_extractor.collect_simple_context( filepath, input, :build_directive_source_files, :build_directive_include_paths )
+            end
           else
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
             @loginator.log( msg )
 
-            # Collect the works
-            @context_extractor.collect_simple_context( filepath, :build_directive_macros, :includes, :test_runner_details )
+            # Collect everything using simple text scanning (no preprocessing involve).
+            @file_wrapper.open( filepath, 'r' ) do |input|
+              @context_extractor.collect_simple_context( filepath, input, :all )
+            end
           end
 
         end
@@ -286,7 +291,7 @@ class TestInvoker
         end
       } if @configurator.project_use_test_preprocessor_tests
 
-      # Build runners for all tests
+      # Generate runners for all tests
       @batchinator.build_step("Test Runners") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           arg_hash = {
@@ -437,7 +442,10 @@ class TestInvoker
     filepath = testable[:filepath]
     defines = testable[:compile_defines]
 
-    # Tailor search path--remove duplicates and reduce list to only those needed by vendor / support file compilation
+    # Tailor search path:
+    #  1. Remove duplicates.
+    #  2. If it's compilations of vendor / support files, reduce paths to only framework & support paths
+    #     (e.g. we don't need all search paths to compile unity.c).
     search_paths = @helper.tailor_search_paths(search_paths:testable[:search_paths], filepath:source)
 
     # C files (user-configured extension or core framework file extensions)
