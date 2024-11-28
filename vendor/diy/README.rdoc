@@ -2,16 +2,16 @@
 
 * http://atomicobject.github.com/diy
 
-== DESCRIPTION:
+== Desciption
 
 DIY (Dependency Injection in YAML) is a simple dependency injection library
 which focuses on declarative composition of objects through constructor injection.
 
-== INSTALL:
+== Install
 
 * gem install diy
 
-== SYNOPSIS:
+== Synopsis
 
 === Common Usage
 
@@ -77,7 +77,7 @@ as opposed to a comma-separated list:
 Sometimes you won't be able to rely on DIY's basic assumptions about class names and library files.
 
 * You can specify the 'class' option
-* You can specify the 'library' option.  If you do not, the library is inferred from the class name. 
+* You can specify the 'library' option.  If you do not, the library is inferred from the class name.
   (Eg, My::Train::Station will be sought in "my/train/station.rb"
 
   engine:
@@ -93,7 +93,7 @@ object names, you can specify them one-by-one:
     the_block: block
 
 === Non-singleton objects
- 
+
 Non-singletons are named objects that provide a new instance every time you ask for them.
 By default, DIY considers all objects to be singletons.  To override, use the "singleton" setting and
 set it to false:
@@ -103,9 +103,9 @@ set it to false:
 
 === Sub-Contexts
 
-Sub-contexts are useful for creating isolated object networks that may need to be instantiated 
-zero or many times in your application.  Objects defined in subcontexts can reference "upward" to 
-their surroundings, as well as objects in the subcontext itself. 
+Sub-contexts are useful for creating isolated object networks that may need to be instantiated
+zero or many times in your application.  Objects defined in subcontexts can reference "upward" to
+their surroundings, as well as objects in the subcontext itself.
 
 If you wanted to be able to make more than one Engine from the preceding examples, you might try:
 
@@ -132,7 +132,7 @@ Subcontexts are not initialized until you call upon them, which you do using the
 === Direct Class References
 
 Occasionally you will have a class at your disposal that you'd like to provide directly as components
-to other objects (as opposed to getting _instances_ of that class, you want to reference the class itself, eg, 
+to other objects (as opposed to getting _instances_ of that class, you want to reference the class itself, eg,
 to use its factory methods).  Enter the "use_class_directly" flag:
 
   ---
@@ -173,8 +173,8 @@ If this is not desired (in Rails, auto-require can lead to library double-load i
 can deactivate auto-require.  There is a global default setting (handled in code) and
 a per-object override (handled in the context YAML):
 
-  DIY::Context.auto_require = false 
-    
+  DIY::Context.auto_require = false
+
   ---
   engine:
     auto_require: false
@@ -193,41 +193,23 @@ It is possible to create factories automatically with DIY:
 Then you can use the factory to easily build objects:
 
   context = DIY::Context.from_file('context.yml')
-  context[:car_factory].create  => <Car:0x81eb0> 
+  context[:car_factory].create  => <Car:0x81eb0>
 
 === Method Directive
 
-This introduces the concept of first class methods. An object can now be constructed with a method object 
+This introduces the concept of first class methods. An object can now be constructed with a method object
 bound to a particular object in the diy context.
-  
+
   ---
   trinket_builder:
 
   method build_trinket:
       object: trinket_builder
       method: build
-       
-== LICENSE:
 
-(The MIT License)
 
-Copyright (c) 2007 Atomic Object
+== Authors
 
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-'Software'), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+* David Crosby (crosby@atomicobject.com)
+* © 2007-2024 {Atomic Object}[http://www.atomicobject.com]
+* More Atomic Object {open source}[http://www.atomicobject.com/pages/Software+Commons] projects

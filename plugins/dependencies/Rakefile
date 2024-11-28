@@ -1,0 +1,188 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'rake'
+
+require 'rbconfig'
+
+def windows?()
+  return (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
+end
+
+# Add `ruby` to the command line on Windows to execute the Ruby-based shell script bin/ceedling
+CEEDLING_CLI_EXEC = "#{'ruby ' if windows?}../../../../bin/ceedling"
+
+def prep_test
+end
+
+def assert_file_exist(path)
+  if File.exist?(path)
+    puts "File #{path} exists."
+  else
+    raise "File #{path} doesn't exist after create"
+  end
+end
+
+def assert_file_contains(path, expected)
+  if File.exist?(path)
+    actual = File.read(path)
+    if actual.match?(expected)
+      puts "File #{path} exists and contains specified contents."
+    else
+      puts "Expected content: #{expected}" # Debug logging
+      puts "Actual content: #{actual}" # Debug logging
+      raise "File #{path} exists but doesn't contain specified contents."
+    end
+  else
+    raise "File #{path} doesn't exist after create"
+  end
+end
+
+def assert_file_not_exist(path)
+  unless File.exist?(path)
+    puts "File #{path} doesn't exist after destroy"
+  else
+    raise "File #{path} still exists after destroy."
+  end
+end
+
+def assert_cmd_return(cmd, expected)
+  retval = `#{CEEDLING_CLI_EXEC} #{cmd}`
+  if (retval.include? expected)
+    puts "Testing included `#{expected}`"
+  else
+    puts retval # Debug logging
+    raise "Testing did not include `#{expected}`"
+  end
+end
+
+def assert_cmd_not_return(cmd, expected)
+  retval = `#{CEEDLING_CLI_EXEC} #{cmd}`
+  if (!retval.include? expected)
+    puts "Testing didn't included `#{expected}`"
+  else
+    raise "Testing included `#{expected}`, which was unexpected."
+  end
+end
+
+desc "Run integration test on example"
+task :integration_test do
+  chdir("./example/boss") do
+
+    # Start with a blank example project
+    prep_test
+
+    # verify we can clean the dependencies
+    puts "\nCleaning the Dependencies:"
+    assert_cmd_not_return("dependencies:clean",'error')
+    assert_file_not_exist("./third_party/bees/source/makefile")
+    assert_file_not_exist("./third_party/bees/source/src/worker.c")
+    assert_file_not_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
+
+    # verify we can fetch the dependencies
+    puts "\nFetching the Dependencies:"
+    assert_cmd_not_return("dependencies:fetch",'error')
+    assert_file_exist("./third_party/bees/source/makefile")
+    assert_file_exist("./third_party/bees/source/src/worker.c")
+    assert_file_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
+
+    # verify we can make the dependencies
+    puts "\nMaking the Dependencies:"
+    assert_cmd_not_return("dependencies:make",'error')
+    assert_file_exist("./third_party/bees/source/makefile")
+    assert_file_exist("./third_party/bees/source/src/worker.c")
+    assert_file_exist("./third_party/bees/source/src/worker.h")
+    assert_file_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
+
+    # verify we can clean the dependencies again
+    puts "\nCleaning the Dependencies (round 2):"
+    assert_cmd_not_return("dependencies:clean",'error')
+    assert_file_not_exist("./third_party/bees/source/makefile")
+    assert_file_not_exist("./third_party/bees/source/src/worker.c")
+    assert_file_not_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
+
+    # verify dependencies are built automatically for a release build
+    puts "\nRelease with Dependencies:"
+    assert_cmd_not_return("release",'error')
+    assert_file_exist("./third_party/bees/source/makefile")
+    assert_file_exist("./third_party/bees/source/src/worker.c")
+    assert_file_exist("./third_party/bees/source/src/worker.h")
+    assert_file_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
+
+    # verify we can clean the dependencies again
+    puts "\nCleaning the Dependencies (round 3):"
+    assert_cmd_not_return("dependencies:clean",'error')
+    assert_file_not_exist("./third_party/bees/source/makefile")
+    assert_file_not_exist("./third_party/bees/source/src/worker.c")
+    assert_file_not_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
+
+    # verify dependencies are built automatically for a test build
+    puts "\nTesting with Dependencies:"
+    assert_cmd_not_return("test:all",'error')
+    assert_file_exist("./third_party/bees/source/makefile")
+    assert_file_exist("./third_party/bees/source/src/worker.c")
+    assert_file_exist("./third_party/bees/source/src/worker.h")
+    assert_file_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
+
+    # verify we can clean the dependencies again
+    puts "\nCleaning the Dependencies (round 4):"
+    assert_cmd_not_return("dependencies:clean",'error')
+    assert_file_not_exist("./third_party/bees/source/makefile")
+    assert_file_not_exist("./third_party/bees/source/src/worker.c")
+    assert_file_not_exist("./third_party/bees/source/src/worker.h")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.a")
+    assert_file_not_exist("./third_party/bees/source/build/libworker.h")
+    assert_file_not_exist("../supervisor/build/release/libsupervisor.a")
+    assert_file_not_exist("../supervisor/build/artifacts/release/libsupervisor.a")
+    assert_file_exist("../supervisor/src/supervisor.c")
+    assert_file_exist("../supervisor/src/supervisor.h")
+
+    puts "\nPASSES MODULE SELF-TESTS"
+
+  end
+end
+
+task :default => [:integration_test]

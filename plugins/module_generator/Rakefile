@@ -1,0 +1,205 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'rake'
+require 'rbconfig'
+
+def windows?()
+  return (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
+end
+
+# Add `ruby` to the command line on Windows to execute the Ruby-based shell script bin/ceedling
+CEEDLING_CLI_EXEC = "#{'ruby ' if windows?}../../../bin/ceedling"
+
+def prep_test
+  FileUtils.rm_rf Dir['./**/*.c']
+  FileUtils.rm_rf Dir['./**/*.h']
+  FileUtils.mkdir_p "./s/rev"
+  FileUtils.mkdir_p "./i/rev"
+  FileUtils.mkdir_p "./t/rev"
+  FileUtils.mkdir_p "./sub/s"
+  FileUtils.mkdir_p "./sub/i"
+  FileUtils.mkdir_p "./sub/t"
+end
+
+def prep_stub(num)
+  FileUtils.cp_r("../assets/stubby#{num}.h","./i/stubby.h")
+end
+
+def assert_file_exist(path)
+  if File.exist?(path)
+    puts "File #{path} exists."
+  else
+    raise "File #{path} doesn't exist after create"
+  end
+end
+
+def assert_file_contains(path, expected)
+  if File.exist?(path)
+    actual = File.read(path)
+    if actual.match?(expected)
+      puts "File #{path} exists and contains specified contents."
+    else
+      puts "Expected content: #{expected}" # Debug logging
+      puts "Actual content: #{actual}" # Debug logging
+      raise "File #{path} exists but doesn't contain specified contents."
+    end
+  else
+    raise "File #{path} doesn't exist after create"
+  end
+end
+
+def assert_file_not_exist(path)
+  unless File.exist?(path)
+    puts "File #{path} doesn't exist after destroy"
+  else
+    raise "File #{path} still exists after destroy."
+  end
+end
+
+def assert_test_run_contains(expected)
+  retval = `#{CEEDLING_CLI_EXEC} clobber test:all 2>&1`
+  if (retval.include? expected)
+    puts "Testing included `#{expected}`"
+  else
+    puts retval # Debug logging
+    raise "Testing did not include `#{expected}`"
+  end
+end
+
+def call_create(cmd)
+  retval = `#{CEEDLING_CLI_EXEC} module:create[#{cmd}] 2>&1`
+  puts retval # Debug logging
+  if retval.match? /Error/i
+    raise "Received error when creating:\n#{retval}"
+  else
+    puts "Created #{cmd}"
+  end
+end
+
+def call_destroy(cmd)
+  retval = `#{CEEDLING_CLI_EXEC} module:destroy[#{cmd}] 2>&1`
+  puts retval # Debug logging
+  if retval.match? /Error/i
+    raise "Received error when destroying:\n#{retval}"
+  else
+    puts "Destroyed #{cmd}"
+  end
+end
+
+def call_stub(cmd)
+  retval = `#{CEEDLING_CLI_EXEC} module:stub[#{cmd}] 2>&1`
+  puts retval # Debug logging
+  if retval.match? /Error/i
+    raise "Received error when stubbing:\n#{retval}"
+  else
+    puts "Stubbed #{cmd}"
+  end
+end
+
+desc "Run integration test on example"
+task :integration_test do
+  chdir("./example/") do
+
+    # Start with a blank example project
+    prep_test
+    assert_test_run_contains("No tests executed")
+
+    # Add a module without path. 
+    # It should be added to first path on list of each category
+    puts "\nVerifying Default Create:"
+    call_create("a_file")
+    assert_file_exist("s/rev/a_file.c")
+    assert_file_exist("i/rev/a_file.h")
+    assert_file_exist("sub/t/test_a_file.c")
+    assert_test_run_contains("TESTED:  1")
+
+    # Make sure that we can add modules properly when the directory
+    # pattern is subdirs with src, inc, and test folders each
+    puts "\nVerifying Subdirectory Create:"
+    call_create("sub:b_file")
+    assert_file_exist("sub/s/b_file.c")
+    assert_file_exist("sub/i/b_file.h")
+    assert_file_exist("sub/t/test_b_file.c")
+    assert_test_run_contains("TESTED:  2")
+
+    # Make sure that we can add modules properly when the directory
+    # pattern is subdirs under the src, inc, and test folders
+    puts "\nVerifying Reverse Subdirectory Create:"
+    call_create("rev:c_file")
+    assert_file_exist("s/rev/c_file.c")
+    assert_file_exist("i/rev/c_file.h")
+    assert_file_exist("t/rev/test_c_file.c")
+    assert_test_run_contains("TESTED:  3")
+
+    # Does our Boilerplate mechanism work?
+    puts "\nVerifying Boilerplate:"
+    assert_file_contains("s/rev/c_file.c", "MAY THE SOURCE BE WITH YOU")
+    assert_file_contains("i/rev/c_file.h", "feel included")
+    assert_file_contains("t/rev/test_c_file.c", "Don't Test Me, Sir")
+
+    # Are other essentials being injected
+    puts "\nVerifying Guts:"
+    assert_file_contains("s/rev/a_file.c", "#include \"a_file.h\"")
+    assert_file_contains("i/rev/a_file.h", "#ifndef A_FILE_H")
+    assert_file_contains("sub/t/test_a_file.c", "test_a_file_NeedToImplement")
+
+    # Destroy a module without path. 
+    # It should be removed from first path on list of each category
+    puts "\nVerifying Default Destroy:"
+    call_destroy("a_file")
+    assert_file_not_exist("s/rev/a_file.c")
+    assert_file_not_exist("i/rev/a_file.h")
+    assert_file_not_exist("sub/t/test_a_file.c")
+    assert_test_run_contains("TESTED:  2")
+
+    # Make sure that we can destroy modules properly when the directory
+    # pattern is subdirs with src, inc, and test folders each
+    puts "\nVerifying Subdirectory Destroy:"
+    call_destroy("sub:b_file")
+    assert_file_not_exist("sub/s/b_file.c")
+    assert_file_not_exist("sub/i/b_file.h")
+    assert_file_not_exist("sub/t/test_b_file.c")
+    assert_test_run_contains("TESTED:  1")
+
+    # Make sure that we can destroy modules properly when the directory
+    # pattern is subdirs under the src, inc, and test folders
+    puts "\nVerifying Reverse Subdirectory Destroy:"
+    call_destroy("rev:c_file")
+    assert_file_not_exist("s/rev/c_file.c")
+    assert_file_not_exist("i/rev/c_file.h")
+    assert_file_not_exist("t/rev/test_c_file.c")
+    assert_test_run_contains("No tests executed")
+
+    # Verify stubbing functionality can make a new source file
+    puts "\nVerifying Stubbing:"
+    prep_stub(1)
+    call_stub("i:stubby")
+    assert_file_contains("s/rev/stubby.c","void shorty")
+
+    # Verify stubbing functionality can update a source file
+    puts "\nVerifying Stub Updating:"
+    prep_stub(2)
+    call_stub("i:stubby")
+    assert_file_contains("s/rev/stubby.c","void shorty")
+    assert_file_contains("s/rev/stubby.c","void shrimpy")
+    assert_file_contains("s/rev/stubby.c","int tiny")
+
+    # Make sure that we can destroy modules properly even when the
+    # entire set doesn't exist
+    puts "\nVerifying Partial Destroy:"
+    call_destroy("i:stubby")
+    assert_file_not_exist("s/rev/stubby.c")
+    assert_file_not_exist("i/rev/stubby.h")
+    prep_test
+
+    puts "\nPASSES MODULE SELF-TESTS"
+
+  end
+end
+
+task :default => [:integration_test]
