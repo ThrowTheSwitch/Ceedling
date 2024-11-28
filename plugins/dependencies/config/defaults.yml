@@ -1,5 +1,78 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 ---
 :dependencies:
-  :libraries: []
+  :deps: []
+
+:tools:  
+  :deps_compiler:  
+    :executable: gcc
+    :name: 'Dependencies compiler'
+    :arguments:  
+      - -g  
+      - -I"$": COLLECTION_PATHS_DEPS  
+      - -D$: COLLECTION_DEFINES_DEPS  
+      - -c "${1}"  
+      - -o "${2}"  
+
+  :deps_linker:
+    :executable: ar  
+    :name: 'Dependencies archiver'
+    :arguments:  
+      - rcs  
+      - ${2}  
+      - ${1}
+
+  :deps_zip:
+    :executable: unzip
+    :name: 'Dependencies zip unarchiver'
+    :optional: true
+    :arguments:
+      - -o
+      - ${1}  # Filepath
+
+  :deps_targzip:
+    :executable: tar
+    :name: 'Dependencies tar gzip unarchiver'
+    :optional: true
+    :arguments:
+      - -xvzf
+      - ${1}  # Filepath
+      - -C
+      - ./
+
+  :deps_git_clone:
+    :executable: git
+    :name: 'Dependencies git clone'
+    :optional: true
+    :arguments:
+      - clone
+      - ${1}  # Optional branch with `-b` flag
+      - ${2}  # Optional depth with `--depth` flag
+      - ${3}  # Repository source
+      - .
+
+  :deps_git_checkout:
+    :executable: git
+    :name: 'Dependencies git checkout'
+    :optional: true
+    :arguments:
+      - checkout
+      - ${1}  # Git hash
+
+  :deps_subversion:
+    :executable: svn
+    :name: 'Dependencies subversion'
+    :optional: true
+    :arguments:
+      - checkout
+      - ${1}  # Optional branch with `--revision` flag
+      - ${2}  # Repository source
+      - .
 
 ...

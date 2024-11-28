@@ -1,0 +1,234 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+:project:
+  # how to use ceedling. If you're not sure, leave this as `gem` and `?`
+  :which_ceedling: ../../../..
+  :ceedling_version: '?'
+
+  # optional features. If you don't need them, keep them turned off for performance
+  :use_mocks: TRUE
+  :use_test_preprocessor: :all
+  :use_backtrace: :none
+
+  # tweak the way ceedling handles automatic tasks
+  :build_root: build
+  :test_file_prefix: test_
+  :default_tasks:
+    - test:all
+
+  # performance options. If your tools start giving mysterious errors, consider 
+  # dropping this to 1 to force single-tasking
+  :test_threads: 8
+  :compile_threads: 8
+
+  # you can specify different yaml config files which modify the existing one
+  :options_paths: []
+
+  # enable release build (more details in release_build section below)
+  :release_build: TRUE
+
+# further details to configure the way Ceedling handles test code
+:test_build:
+  :use_assembly: FALSE
+
+# further details to configure the way Ceedling handles release code
+:release_build:
+  :output: DepTest
+  :use_assembly: FALSE
+  :artifacts: []
+
+# add the following dependencies to our build
+:dependencies:
+  :deps:
+    - :name: SupervisorSupremo
+      :paths:
+        :fetch:    ../supervisor/
+        :source:   ../supervisor/
+        :build:    ../supervisor/build
+        :artifact: ../supervisor/build
+      :fetch:
+        :method: :none
+      :environment: []
+      :build:
+        - "ceedling clobber test:all release"
+      :artifacts:
+        :static_libraries:
+          - release/libsupervisor.a
+        :dynamic_libraries: []
+        :includes: 
+          - ../src/supervisor.h
+    - :name: WorkerBees
+      :paths:
+        :fetch:    third_party/bees/source
+        :source:   third_party/bees/source
+        :build:    third_party/bees/source/build
+        :artifact: third_party/bees/source/build
+      :fetch:
+        :method: :zip
+        :source: ../../../../workerbees.zip #relative to source_path above
+      :environment: []
+      :build:
+        - make
+      :artifacts:
+        :static_libraries:
+          - libworker.a
+        :dynamic_libraries: []
+        :includes:
+          - libworker.h
+    - :name: VersionReporter
+      :paths:
+        :fetch:    third_party/version/reporter
+        :source:   third_party/version/reporter
+        :build:    third_party/version/build
+        :artifact: third_party/version/build
+      :fetch:
+        :method: :tar_gzip
+        :source: ../../../../version.tar.gzip #relative to source_path above
+      :environment: []
+      :build:
+        - :build_lib
+      :artifacts:
+        :static_libraries:
+          - libver.a
+        :dynamic_libraries: []
+        :includes:
+          - ../reporter/version.h
+
+# Plugins are optional Ceedling features which can be enabled. Ceedling supports
+# a variety of plugins which may effect the way things are compiled, reported, 
+# or may provide new command options. Refer to the readme in each plugin for 
+# details on how to use it.
+:plugins:
+  :load_paths: []
+  :enabled:
+    #- beep                           # beeps when finished, so you don't waste time waiting for ceedling
+    #- module_generator               # handy for quickly creating source, header, and test templates
+    #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
+    #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
+    #- command_hooks                  # write custom actions to be called at different points during the build process
+    #- compile_commands_json          # generate a compile_commands.json file
+    - dependencies                    # automatically fetch 3rd party libraries, etc.
+    #- subprojects                    # managing builds and test for static libraries
+    #- fake_function_framework        # use FFF instead of CMock
+
+    # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
+    - report_tests_pretty_stdout
+
+# override the default extensions for your system and toolchain
+:extension:
+  #:header: .h
+  #:source: .c
+  #:assembly: .s
+  #:dependencies: .d
+  #:object: .o
+  :executable: .out
+  #:testpass: .pass
+  #:testfail: .fail
+  :subprojects: .a
+
+# This is where Ceedling should look for your source and test files.
+# see documentation for the many options for specifying this.
+:paths:
+  :test:
+    - ./test
+  :source:
+    - ./src
+  :include:
+    - ./src
+  :libraries: []
+
+# You can even specify specific files to add or remove from your test
+# and release collections. Usually it's better to use paths and let
+# Ceedling do the work for you!
+:files:
+  :test: []
+  :source: []
+
+# Compilation symbols to be injected into builds
+# See documentation for advanced options:
+#  - Test name matchers for different symbols per test executable build
+#  - Referencing symbols in multiple lists using advanced YAML
+#  - Specifiying symbols used during test preprocessing
+:defines:
+  :test:
+    - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
+    - STATIC=
+  :release:
+    - STATIC=static
+
+  # Enable to inject name of a test as a unique compilation symbol into its respective executable build. 
+  :use_test_definition: FALSE 
+
+# Configure additional command line flags provided to tools used in each build step
+# :flags:
+#   :release:
+#     :compile:         # Add '-Wall' and '--02' to compilation of all files in release target
+#       - -Wall
+#       - --O2
+#   :test:
+#     :compile:
+#       '(_|-)special': # Add '-pedantic' to compilation of all files in all test executables with '_special' or '-special' in their names
+#         - -pedantic
+#       '*':            # Add '-foo' to compilation of all files in all test executables
+#         - -foo
+
+# Configuration Options specific to CMock. See CMock docs for details
+:cmock:
+  :mock_prefix: mock_
+  :when_no_prototypes: :warn
+  :enforce_strict_ordering: TRUE
+  :plugins:
+    - :ignore
+    - :callback
+  :treat_as:
+    uint8:    HEX8
+    uint16:   HEX16
+    uint32:   UINT32
+    int8:     INT8
+    bool:     UINT8
+
+# Configuration options specific to Unity. 
+:unity:
+  :defines:
+    - UNITY_EXCLUDE_FLOAT
+
+# You can optionally have ceedling create environment variables for you before
+# performing the rest of its tasks.
+:environment: []
+
+# LIBRARIES
+# These libraries are automatically injected into the build process. Those specified as
+# common will be used in all types of builds. Otherwise, libraries can be injected in just
+# tests or releases. These options are MERGED with the options in supplemental yaml files.
+:libraries:
+  :placement: :end
+  :flag: "-l${1}"
+  :path_flag: "-L ${1}"
+  :system: []    # for example, you might list 'm' to grab the math library
+  :test: []
+  :release: []
+
+# TOOLS 
+# This is custom configuration for any tools, but in this case, we are highlighting the
+# configuration options for the dependency tools
+:tools:
+  :deps_compiler:
+    :executable: gcc
+    :arguments:
+      - -g
+      - -I"$": COLLECTION_PATHS_DEPS
+      - -D$: COLLECTION_DEFINES_DEPS
+      - -c "${1}"
+      - -o "${2}"
+  :deps_linker:
+    :executable: ar
+    :arguments:
+      - -rcs
+      - ${2}
+      - ${1}

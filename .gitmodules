@@ -10,6 +10,3 @@
 	path = vendor/cmock
 	url = https://github.com/ThrowTheSwitch/CMock.git     
 	branch = master
-[submodule "plugins/fake_function_framework"]
-	path = plugins/fake_function_framework
-	url = https://github.com/ElectronVector/fake_function_framework.git
