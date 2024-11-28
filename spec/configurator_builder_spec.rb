@@ -9,6 +9,7 @@
 #derived from test_graveyard/unit/busted/configurator_builder_test.rb
 
 require 'spec_helper'
+require 'ceedling/configurator_builder'
 
 describe ConfiguratorBuilder do
 	xit "is scary"

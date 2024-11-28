@@ -16,6 +16,7 @@ here = File.dirname(__FILE__)
 
 $: << File.join(here, '../lib')
 $: << File.join(here, '../vendor/cmock/lib')
+$: << File.join(here, '../vendor/unity/auto')
 
 support_files = File.join(File.dirname(__FILE__), "support/**/*.rb")
 require_all Dir.glob(support_files, File::FNM_PATHNAME)
@@ -26,8 +27,5 @@ support_dir = File.join(File.dirname(__FILE__), 'support')
 # # ceedling_files = File.join(File.dirname(__FILE__), '../lib/**/*.rb')
 # # require_all Dir.glob(ceedling_files, File::FNM_PATHNAME)
 
-require 'ceedling/preprocessinator_extractor'
-require 'ceedling/configurator_builder'
-require 'ceedling/configurator'
 
 
