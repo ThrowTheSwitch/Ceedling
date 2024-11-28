@@ -192,6 +192,8 @@ class Configurator
     msg = @reportinator.generate_progress( 'Processing Unity configuration' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
+    # :unity is not guaranteed to exist in a user configuration before populating it.
+
     if config[:unity][:use_param_tests]
       config[:unity][:defines] << 'UNITY_SUPPORT_TEST_CASES'
       config[:unity][:defines] << 'UNITY_SUPPORT_VARIADIC_MACROS'
@@ -200,6 +202,8 @@ class Configurator
 
 
   def populate_cmock_config(config)
+    # :unity is not guaranteed to exist in a user configuration before populating it.
+
     # Populate config with CMock config
     cmock = config[:cmock] || {}
     @cmock_config = cmock
