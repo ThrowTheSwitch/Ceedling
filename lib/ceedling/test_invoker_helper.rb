@@ -24,15 +24,15 @@ class TestInvokerHelper
               :generator,
               :test_runner_manager
 
-  def setup
+  def setup()
     # Alias for brevity
     @batchinator = @build_batchinator
   end
 
-  def process_project_include_paths
-    @include_pathinator.validate_test_build_directive_paths
-    headers = @include_pathinator.validate_header_files_collection
-    @include_pathinator.augment_environment_header_files(headers)
+  def process_project_include_paths()
+    @include_pathinator.validate_test_build_directive_paths()
+    headers = @include_pathinator.validate_header_files_collection()
+    @include_pathinator.augment_environment_header_files( headers )
   end
 
   def extract_include_directives(arg_hash)
