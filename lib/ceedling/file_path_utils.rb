@@ -9,6 +9,7 @@ require 'rubygems'
 require 'rake' # for ext()
 require 'fileutils'
 require 'ceedling/system_wrapper'
+require 'ceedling/constants'
 
 # global utility methods (for plugins, project files, etc.)
 def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)
@@ -151,12 +152,20 @@ class FilePathUtils
     return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_list) )
   end
 
+  def form_preprocessed_includes_list_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_includes_path, subdir, File.basename(filepath) + @configurator.extension_yaml )
+  end
+
   def form_preprocessed_file_filepath(filepath, subdir)
     return File.join( @configurator.project_test_preprocess_files_path, subdir, File.basename(filepath) )
   end
 
-  def form_preprocessed_includes_list_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_includes_path, subdir, File.basename(filepath) + @configurator.extension_yaml )
+  def form_preprocessed_file_full_expansion_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_FULL_EXPANSION_DIR, File.basename(filepath) )
+  end
+
+  def form_preprocessed_file_directives_only_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_DIRECTIVES_ONLY_DIR, File.basename(filepath) )
   end
 
   def form_test_build_objects_filelist(path, sources)

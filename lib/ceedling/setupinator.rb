@@ -69,19 +69,13 @@ class Setupinator
     ## 2. Handle basic configuration
     ##
 
-    log_step( 'Project Configuration Handling' )
+    log_step( 'Base configuration handling', heading:false )
 
     # Evaluate environment vars before plugin configurations that might reference with inline Ruby string expansion
     @configurator.eval_environment_variables( config_hash )
 
     # Standardize paths and add to Ruby load paths
     plugins_paths_hash = @configurator.prepare_plugins_load_paths( app_cfg[:ceedling_plugins_path], config_hash )
-
-    # Populate Unity configuration with values to tie vendor tool configurations together
-    @configurator.populate_unity_config( config_hash )
-
-    # Populate CMock configuration with values to tie vendor tool configurations together
-    @configurator.populate_cmock_config( config_hash )
 
     ##
     ## 3. Plugin Handling
@@ -115,13 +109,14 @@ class Setupinator
 
     log_step( 'Completing Project Configuration' )
 
+    # Populate Unity configuration with values to tie vendor tool configurations together
+    @configurator.populate_unity_config( config_hash )
+
+    # Populate CMock configuration with values to tie vendor tool configurations together
+    @configurator.populate_cmock_config( config_hash )
+
     # Configure test runner generation
     @configurator.populate_test_runner_generation_config( config_hash )
-
-    @loginator.log( "Unity configuration >> #{config_hash[:unity]}", Verbosity::DEBUG )
-    @loginator.log( "CMock configuration >> #{config_hash[:cmock]}", Verbosity::DEBUG )
-    @loginator.log( "Test Runner configuration >> #{config_hash[:test_runner]}", Verbosity::DEBUG )
-    @loginator.log( "CException configuration >> #{config_hash[:cexception]}", Verbosity::DEBUG )
 
     # Automagically enable use of exceptions based on CMock settings
     @configurator.populate_exceptions_config( config_hash )
@@ -184,9 +179,6 @@ class Setupinator
     @plugin_reportinator.set_system_objects( @ceedling )
   end
 
-  def reset_defaults(config_hash)
-    @configurator.reset_defaults( config_hash )
-  end
 
 ### Private
 

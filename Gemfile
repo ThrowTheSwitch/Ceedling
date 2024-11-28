@@ -8,15 +8,19 @@
 source "http://rubygems.org/"
 
 gem "bundler", "~> 2.5"
-gem "rake"
+
+# Testing tools
 gem "rspec", "~> 3.8"
-gem "require_all"
-gem "constructor"
-gem "diy"
+gem "rake", ">= 12", "< 14"
 gem "rr"
-gem "thor"
-gem "deep_merge"
-gem "unicode-display_width"
+gem "require_all"
+
+# Ceedling dependencies
+gem "diy", "~> 1.1"
+gem "constructor", "~> 2"
+gem "thor", "~> 1.3"
+gem "deep_merge", "~> 1.2"
+gem "unicode-display_width", "~> 3.1"
 
 #these will be used if present, but ignored otherwise
 #gem "curses"

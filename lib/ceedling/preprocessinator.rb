@@ -33,7 +33,9 @@ class Preprocessinator
     includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
     includes = []
-    if @file_wrapper.newer?(includes_list_filepath, filepath)
+
+    # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
+    if @file_wrapper.newer?( includes_list_filepath, filepath )
       msg = @reportinator.generate_module_progress(
         operation: "Loading #include statement listing file for",
         module_name: test,
@@ -56,6 +58,8 @@ class Preprocessinator
 
       @loginator.log( msg, Verbosity::DEBUG )
       @loginator.log( '', Verbosity::DEBUG )
+
+    # Full preprocessing-based #include extraction with saving to YAML file
     else
       includes = @includes_handler.extract_includes(
         filepath:      filepath,
@@ -108,20 +112,34 @@ class Preprocessinator
       defines:        defines      
     }
 
-    # Extract shallow includes & print status message    
+    # Extract includes & log progress and details   
     includes = preprocess_file_common( **arg_hash )
 
     arg_hash = {
       source_filepath:       filepath,
-      preprocessed_filepath: preprocessed_filepath,
-      includes:              includes,
+      test:                  test,
       flags:                 flags,
       include_paths:         include_paths,
-      defines:               defines      
+      defines:               defines,
+      extras:                (@configurator.cmock_treat_inlines == :include)
     }
 
-    # Run file through preprocessor & further process result
-    plugin_arg_hash[:shell_result] = @file_handler.preprocess_header_file( **arg_hash )
+    # `contents` & `extras` are arrays of text strings to be assembled in generating a new header file.
+    # `extras` are macro definitions, pragmas, etc. needed for the special case of mocking `inline` function declarations.
+    # `extras` are empty for any cases other than mocking `inline` function declarations
+    #  (We don't want to increase our chances of a badly generated file--extracting extras could fail in complex files.)
+    contents, extras = @file_handler.collect_header_file_contents( **arg_hash )
+
+    arg_hash = {
+      filename:              File.basename( filepath ),
+      preprocessed_filepath: preprocessed_filepath,
+      contents:              contents,
+      extras:                extras,
+      includes:              includes                       
+    }
+
+    # Create a reconstituted header file from preprocessing expansion and preserving any extras
+    @file_handler.assemble_preprocessed_header_file( **arg_hash )
 
     # Trigger post_mock_preprocessing plugin hook
     @plugin_manager.post_mock_preprocess( plugin_arg_hash )
@@ -153,20 +171,31 @@ class Preprocessinator
       defines:       defines      
     }
 
-    # Extract shallow includes & print status message
+    # Extract includes & log progress and info
     includes = preprocess_file_common( **arg_hash )
 
     arg_hash = {
       source_filepath:       filepath,
-      preprocessed_filepath: preprocessed_filepath,
-      includes:              includes,
+      test:                  test,
       flags:                 flags,
       include_paths:         include_paths,
       defines:               defines      
     }
 
-    # Run file through preprocessor & further process result
-    plugin_arg_hash[:shell_result] = @file_handler.preprocess_test_file( **arg_hash )
+    # `contents` & `extras` are arrays of text strings to be assembled in generating a new test file.
+    # `extras` are test build directives TEST_SOURCE_FILE() and TEST_INCLUDE_PATH().
+    contents, extras = @file_handler.collect_test_file_contents( **arg_hash )
+
+    arg_hash = {
+      filename:              File.basename( filepath ),
+      preprocessed_filepath: preprocessed_filepath,
+      contents:              contents,
+      extras:                extras,
+      includes:              includes                       
+    }
+
+    # Create a reconstituted test file from preprocessing expansion and preserving any extras
+    @file_handler.assemble_preprocessed_test_file( **arg_hash )
 
     # Trigger pre_mock_preprocessing plugin hook
     @plugin_manager.post_test_preprocess( plugin_arg_hash )

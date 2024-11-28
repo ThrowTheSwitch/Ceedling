@@ -219,7 +219,12 @@ class PreprocessinatorIncludesHandler
     @loginator.log(msg, Verbosity::NORMAL)
 
     # Use abilities of @test_context_extractor to extract the #includes via regex on the file
-    return @test_context_extractor.extract_includes( filepath )
+    includes = []
+    @file_wrapper.open( filepath, 'r' ) do |file|
+      includes = @test_context_extractor.extract_includes( file )
+    end
+
+    return includes
   end
 
   def extract_nested_includes(filepath:, include_paths:, flags:, defines:, shallow:false)
@@ -313,10 +318,16 @@ class PreprocessinatorIncludesHandler
     #  - Do not return mocks if mocking is disabled
     mocks = []
 
-    if @configurator.project_use_mocks
-      # Use some greediness to ensure we get all possible mocks
-      lists.each { |list| mocks |= extract_mocks( list ) }      
-    end
+    # Bail out early if mocks are not enabled
+    return [] if !@configurator.project_use_mocks
+
+    # Use some greediness to ensure we get all possible mocks
+    lists.each { |list| mocks |= extract_mocks( list ) }      
+
+    # If generated mocks are in the build directory, the preprocessor will have found them.
+    # This leads to duplicated mocks -- the shallow list with no paths and the nested list with paths.
+    # Remove mocks with any path (the path will be the build directory); preserve just the shallow list.
+    mocks.reject! {|mock| File.dirname( mock ) != '.' }
 
     return mocks
   end

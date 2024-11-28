@@ -7,7 +7,7 @@ These breaking changes are complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-10-31
+# [1.0.0 pre-release] — 2024-11-28
 
 ## Explicit `:paths` ↳ `:include` entries in the project file
 
@@ -60,17 +60,15 @@ In place of `true` or `false`, `:use_test_preprocessing` now accepts:
 
 The previously undocumented `TEST_FILE()` build directive macro (#796) available within test files has been renamed and is now officially documented.
 
-## Preprocessing is temporarily unable to handle `TEST_CASE()`, `TEST_RANGE()`, `TEST_SOURCE_FILE()`, and `TEST_INCLUDE_PATH()`
+## Preprocessing is unable to handle Unity’s `TEST_CASE()` and `TEST_RANGE()` and has limits for `TEST_INCLUDE_PATH()`
 
-Ceedling’s preprocessing abilities have been nearly entirely rewritten. In the process of doing so Ceedling has temporarily lost the ability to preprocess a test file but properly handle directive macros including Unity’s parameterized test case macros and test file build diretive macros.
+Ceedling’s preprocessing abilities have been nearly entirely rewritten. The one case Ceedling cannot yet handle is preprocessing test files that contain Unity’s parameterized test case macros.
 
-`TEST_CASE()` and `TEST_RANGE()` are Unity macros that effectively disappear when Ceedling uses the GNU preprocessor to expand a test file into raw code to extract details with text parsing. After preprocessing, these macros no longer exist in the test file that is then compiled.
+`TEST_CASE()` and `TEST_RANGE()` are Unity macros that are positional in a file in relation to the test case functions they modify. While Ceedling's test preprocessing can preserve these macro calls, their position cannot be preserved.
 
-You may have need to wrap `TEST_SOURCE_FILE()` and `TEST_INCLUDE_PATH()` in conditional compilation preprocessor statements (e.g. `#ifdef`). This will not work as you expect. These macros are used as markers for advanced abilities discovered by Ceedling parsing a test file as plain text. Whether or not Ceedling preprocessing is enabled, Ceedling will always discover these marker macros in the plain text of a test file.
+You may want to wrap `TEST_INCLUDE_PATH()` in conditional compilation preprocessor statements (e.g. `#ifdef`). This will not work as you expect. This macro “marker” must be discovered at the beginning of a test build by Ceedling parsing a test file as plain text. Cyclical dependencies related to preprocessing prevent anything more sophisticated.
 
-In future revisions of Ceedling, support for these macros in preprocessing scenarios will be brought back (very likely without a dedicated configuration option — hopefully, we’ll get it to just work).
-
-Note: `:project` ↳ `:use_test_preprocessor` is no longer a binary setting (`true`/`false`). Mockable header file preprocessing can now be enabled with a `:mocks` setting while test files are left untouched by preprocessing. This should support the majority of advanced use cases for preprocessing.
+Note: `:project` ↳ `:use_test_preprocessor` is no longer a binary setting (`true`/`false`). Mockable header file preprocessing can now be enabled with a `:mocks` setting while test files are left untouched by preprocessing. This can allow test preprocessing in the common cases of sophtisticate mockable headers while Unity’s `TEST_CASE()` and `TEST_RANGE()` are utilized in a test file untouched by preprocessing.
 
 ## Quoted executables in tool definitions
 
@@ -243,3 +241,10 @@ The above subproject definition will now look like the following:
         - DEFINE_JUST_FOR_THIS_FILE
         - AND_ANOTHER
 ```
+
+## Undocumented `:project` ↳ `:debug` has been removed
+
+This project setting existed from Ceedling’s earliest days and was a crude stand-in for command line debug verbosity handling.
+
+It has been removed as it was rarely if ever utilized and needlessly complicated internal mechanisms for verbosity handling and project validation.
+

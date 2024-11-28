@@ -50,16 +50,15 @@ jobs:
         with:
           submodules: recursive
 
-      # Setup Ruby Testing Tools to do tests on multiple ruby version
-      - name: Setup Ruby Testing Tools
+      # Setup Ruby to run test & build steps on multiple ruby versions
+      - name: Setup Ruby Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           
-      # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
-      - name: Install Ruby Testing Tools
+      # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
+      - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
         run: |
-          gem install rspec
           gem install rubocop -v 0.57.2
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
           bundle update
@@ -90,8 +89,8 @@ jobs:
         run: |
           rake ci
 
-      # Build & Install Gem
-      - name: Build and Install Gem
+      # Build & Install Ceedling Gem
+      - name: Build and Install Ceedling Gem
         run: |
           gem build ceedling.gemspec
           gem install --local ceedling-*.gem
@@ -104,21 +103,21 @@ jobs:
           cd ../..
 
       # Run FFF Plugin Tests
-      - name: Run Tests on FFF Plugin
+      - name: "Run Tests on Ceedling Plugin: FFF"
         run: |
           cd plugins/fff
           rake
           cd ../..
 
       # Run Module Generator Plugin Tests
-      - name: Run Tests on Module Generator Plugin
+      - name: "Run Tests on Ceedling Plugin: Module Generator"
         run: |
           cd plugins/module_generator
           rake
           cd ../..
 
       # Run Dependencies Plugin Tests
-      - name: Run Tests on Dependencies Plugin
+      - name: "Run Tests on Ceedling Plugin: Dependencies"
         run: |
           cd plugins/dependencies
           rake
@@ -147,30 +146,28 @@ jobs:
         with:
           submodules: recursive
 
-      # Setup Ruby Testing Tools to do tests on multiple ruby version
-      - name: Set Up Ruby Testing Tools
+      # Setup Ruby to run test & build steps on multiple ruby versions
+      - name: Setup Ruby Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           
-      # Install Ruby Testing Tools
-      # Bundler version should match the one in Gemfile.lock
-      - name: Install Ruby Testing Tools
+      # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
+      - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
         shell: bash
         run: |
-          gem install rspec
           gem install rubocop -v 0.57.2
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
           bundle update
           bundle install
 
       # Install GCovr for Gcov plugin test
-      - name: Install GCovr for Gcov Plugin Tests
+      - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
         run: |
           pip install gcovr
 
       # Install ReportGenerator for Gcov plugin test
-      - name: Install ReportGenerator for Gcov Plugin Tests
+      - name: "Install ReportGenerator for Tests of Ceedling Plugin: Gcov"
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
@@ -180,7 +177,7 @@ jobs:
           rake ci
 
       # Build & Install Gem
-      - name:  Build and Install Gem
+      - name:  Build and Install Ceedling Gem
         run: |
           gem build ceedling.gemspec
           gem install --local ceedling-*.gem
@@ -193,21 +190,21 @@ jobs:
           cd ../..
 
       # Run FFF Plugin Tests
-      - name: Run Tests on FFF Plugin
+      - name: "Run Tests on Ceedling Plugin: FFF"
         run: |
           cd plugins/fff
           rake
           cd ../..
 
       # Run Module Generator Plugin Tests
-      - name: Run Tests on Module Generator Plugin
+      - name: "Run Tests on Ceedling Plugin: Module Generator"
         run: |
           cd plugins/module_generator
           rake
           cd ../..
 
       # Run Dependencies Plugin Tests
-      - name: Run Tests on Dependencies Plugin
+      - name: "Run Tests on Ceedling Plugin: Dependencies"
         run: |
           cd plugins/dependencies
           rake

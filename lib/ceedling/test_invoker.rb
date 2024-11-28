@@ -54,6 +54,7 @@ class TestInvoker
           name = key.to_s
           build_path = File.join( @configurator.project_build_root, context.to_s, 'out', name )
           mocks_path = File.join( @configurator.cmock_mock_path, name )
+
           preprocess_includes_path = File.join( @configurator.project_test_preprocess_includes_path, name )
           preprocess_files_path    = File.join( @configurator.project_test_preprocess_files_path, name )
 
@@ -71,10 +72,12 @@ class TestInvoker
             if @configurator.project_use_test_preprocessor != :none
               paths[:preprocess_incudes] = preprocess_includes_path
               paths[:preprocess_files] = preprocess_files_path
+              paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
+              paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
             end
           end
 
-          @testables[key][:paths].each {|_, path| @file_wrapper.mkdir(path) }
+          @testables[key][:paths].each {|_, path| @file_wrapper.mkdir( path ) }
         end
 
         # Remove any left over test results from previous runs
@@ -88,28 +91,28 @@ class TestInvoker
           filepath = details[:filepath]
 
           if @configurator.project_use_test_preprocessor_tests
-            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros" )
+            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for include path build directive macros" )
             @loginator.log( msg )
 
-            # Just build directive macros (other context collected in later steps with help of preprocessing)
-            @context_extractor.collect_simple_context( filepath, :build_directive_macros )
+            # Just build directive macro using simple text scanning.
+            # Other context collected in later steps with help of preprocessing.
+            @file_wrapper.open( filepath, 'r' ) do |input|
+              @context_extractor.collect_simple_context( filepath, input, :build_directive_include_paths )
+            end
           else
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
             @loginator.log( msg )
 
-            # Collect the works
-            @context_extractor.collect_simple_context( filepath, :build_directive_macros, :includes, :test_runner_details )
+            # Collect everything using simple text scanning (no preprocessing involved).
+            @file_wrapper.open( filepath, 'r' ) do |input|
+              @context_extractor.collect_simple_context( filepath, input, :all )
+            end
           end
 
         end
 
-        # Validate test build directive paths via TEST_INCLUDE_PATH() & augment header file collection from the same
+        # Validate paths via TEST_INCLUDE_PATH() & augment header file collection from the same
         @helper.process_project_include_paths()
-
-        # Validate test build directive source file entries via TEST_SOURCE_FILE()
-        @testables.each do |_, details|
-          @helper.validate_build_directive_source_files( test:details[:name], filepath:details[:filepath] )
-        end
       end
 
       # Fill out testables data structure with build context
@@ -227,7 +230,7 @@ class TestInvoker
             defines:       testable[:preprocess_defines]
           }
 
-          @preprocessinator.preprocess_mockable_header_file(**arg_hash)
+          @preprocessinator.preprocess_mockable_header_file( **arg_hash )
         end
       } if @configurator.project_use_mocks and @configurator.project_use_test_preprocessor_mocks
 
@@ -265,6 +268,17 @@ class TestInvoker
 
           # Replace default input with preprocessed file
           @lock.synchronize { details[:runner][:input_filepath] = filepath }
+
+          # Collect sources added to test build with TEST_SOURCE_FILE() directive macro
+          # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them
+          @file_wrapper.open( filepath, 'r' ) do |input|
+            @context_extractor.collect_simple_context( details[:filepath], input, :build_directive_source_files )
+          end
+
+          # Validate test build directive source file entries via TEST_SOURCE_FILE()
+          @testables.each do |_, details|
+            @helper.validate_build_directive_source_files( test:details[:name], filepath:details[:filepath] )
+          end
         end
       } if @configurator.project_use_test_preprocessor_tests
 
@@ -283,7 +297,7 @@ class TestInvoker
         end
       } if @configurator.project_use_test_preprocessor_tests
 
-      # Build runners for all tests
+      # Generate runners for all tests
       @batchinator.build_step("Test Runners") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           arg_hash = {
@@ -434,7 +448,10 @@ class TestInvoker
     filepath = testable[:filepath]
     defines = testable[:compile_defines]
 
-    # Tailor search path--remove duplicates and reduce list to only those needed by vendor / support file compilation
+    # Tailor search path:
+    #  1. Remove duplicates.
+    #  2. If it's compilations of vendor / support files, reduce paths to only framework & support paths
+    #     (e.g. we don't need all search paths to compile unity.c).
     search_paths = @helper.tailor_search_paths(search_paths:testable[:search_paths], filepath:source)
 
     # C files (user-configured extension or core framework file extensions)

@@ -49,33 +49,13 @@ class Configurator
   end
 
 
-  def reset_defaults(config)
-    [:test_compiler,
-     :test_linker,
-     :test_fixture,
-     :test_includes_preprocessor,
-     :test_file_preprocessor,
-     :test_dependencies_generator,
-     :release_compiler,
-     :release_assembler,
-     :release_linker,
-     :release_dependencies_generator
-    ].each do |tool|
-      config[:tools].delete(tool) if (not (config[:tools][tool].nil?))
-    end
-  end
-
-
   # Set up essential flattened config related to verbosity.
   # We do this because early config validation failures may need access to verbosity,
   # but the accessors won't be available until after configuration is validated.
   def set_verbosity(config)
     # PROJECT_VERBOSITY and PROJECT_DEBUG set at command line processing before Ceedling is loaded
 
-    # Configurator will later try to create these accessors automatically but will silently 
-    # fail if they already exist.
-
-    if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG) or (config[:project][:debug])
+    if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG)
       eval("def project_debug() return true end", binding())
     else
       eval("def project_debug() return false end", binding())      
@@ -207,6 +187,13 @@ class Configurator
     config.deep_merge( runtime_config )
   end
 
+  def populate_with_defaults( config_hash, defaults_hash )
+    msg = @reportinator.generate_progress( 'Populating project configuration with collected default values' )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )    
+
+    @configurator_builder.populate_with_defaults( config_hash, defaults_hash )
+  end
+
 
   def populate_unity_config(config)
     msg = @reportinator.generate_progress( 'Processing Unity configuration' )
@@ -216,15 +203,22 @@ class Configurator
       config[:unity][:defines] << 'UNITY_SUPPORT_TEST_CASES'
       config[:unity][:defines] << 'UNITY_SUPPORT_VARIADIC_MACROS'
     end
+
+    @loginator.log( "Unity configuration >> #{config[:unity]}", Verbosity::DEBUG )    
   end
 
 
   def populate_cmock_config(config)
-    # Populate config with CMock config
-    cmock = config[:cmock] || {}
-    @cmock_config = cmock
+    # Save CMock config reference
+    @cmock_config = config[:cmock]
 
-    return if !config[:project][:use_mocks]
+    cmock = config[:cmock]
+
+    # Do no more prep if we're not using mocks
+    if !config[:project][:use_mocks]
+      @loginator.log( "CMock configuration >> #{cmock}", Verbosity::DEBUG )
+      return
+    end
 
     msg = @reportinator.generate_progress( 'Processing CMock configuration' )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
@@ -233,11 +227,6 @@ class Configurator
     cmock[:plugins].map! { |plugin| plugin.to_sym() }
     cmock[:plugins].uniq!
 
-    # CMock includes safe defaults
-    cmock[:includes] = [] if (cmock[:includes].nil?)
-
-    # Default to empty array if cmock[:unity_helper_path] not provided
-    cmock[:unity_helper_path] = [] if cmock[:unity_helper_path].nil?
     # Reformulate CMock helper path value as array of one element if it's a string in config
     cmock[:unity_helper_path] = [cmock[:unity_helper_path]] if cmock[:unity_helper_path].is_a?( String )
 
@@ -247,14 +236,8 @@ class Configurator
     end
 
     cmock[:includes].uniq!
-  end
 
-
-  def populate_with_defaults( config_hash, defaults_hash )
-    msg = @reportinator.generate_progress( 'Populating project configuration with collected default values' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )    
-
-    @configurator_builder.populate_with_defaults( config_hash, defaults_hash )
+    @loginator.log( "CMock configuration >> #{cmock}", Verbosity::DEBUG )
   end
 
 
@@ -279,6 +262,8 @@ class Configurator
     config[:test_runner][:use_param_tests] = config[:unity][:use_param_tests]
 
     @runner_config = config[:test_runner]
+
+    @loginator.log( "Test Runner configuration >> #{config[:test_runner]}", Verbosity::DEBUG )
   end
 
 
@@ -290,6 +275,8 @@ class Configurator
 
       config[:project][:use_exceptions] = true
     end
+
+    @loginator.log( "CException configuration >> #{config[:cexception]}", Verbosity::DEBUG )
   end
 
 

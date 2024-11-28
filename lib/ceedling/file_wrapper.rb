@@ -93,8 +93,8 @@ class FileWrapper
     end
   end
 
-  def read(filepath)
-    return File.read(filepath)
+  def read(filepath, length=nil)
+    return File.read(filepath, length)
   end
 
   def touch(filepath, options={})

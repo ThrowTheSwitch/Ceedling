@@ -131,6 +131,8 @@ OPERATION_COMPILE_SYM     = :compile    unless defined?(OPERATION_COMPILE_SYM)
 OPERATION_ASSEMBLE_SYM    = :assemble   unless defined?(OPERATION_ASSEMBLE_SYM)
 OPERATION_LINK_SYM        = :link       unless defined?(OPERATION_LINK_SYM)
 
+PREPROCESS_FULL_EXPANSION_DIR  = 'full_expansion'
+PREPROCESS_DIRECTIVES_ONLY_DIR = 'directives_only'
 
 # Match presence of any glob pattern characters
 GLOB_PATTERN = /[\*\?\{\}\[\]]/
