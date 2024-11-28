@@ -103,8 +103,14 @@ class PreprocessinatorExtractor
     input.each_line( chomp:true ) do |line|
       
       # Clean up any oddball characters in an otherwise ASCII document
-      line.encode!('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
-      
+      encoding_options = {
+        :invalid           => :replace,  # Replace invalid byte sequences
+        :undef             => :replace,  # Replace anything not defined in ASCII
+        :replace           => '',        # Use a blank for those replacements
+        :universal_newline => true       # Always break lines with \n
+      }
+      line = line.encode("ASCII", **encoding_options).encode('UTF-8')
+
       # Handle extraction if the line is not a preprocessor directive
       if extract and not line =~ directive
         # Strip a line so we can omit useless blank lines
