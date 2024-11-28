@@ -169,15 +169,6 @@ class Preprocessinator
     # Extract includes & print status message
     includes = preprocess_file_common( **arg_hash )
 
-    # arg_hash = {
-    #   source_filepath:       filepath,
-    #   preprocessed_filepath: preprocessed_filepath,
-    #   includes:              includes,
-    #   flags:                 flags,
-    #   include_paths:         include_paths,
-    #   defines:               defines      
-    # }
-
     arg_hash = {
       source_filepath:       filepath,
       test:                  test,
