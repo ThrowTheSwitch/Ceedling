@@ -398,6 +398,9 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     #  (B) Test runner generator uses these same configuration values
     :mock_prefix => 'Mock',
     :mock_suffix => '',
+    # CMock's default duplicated here.
+    # We need a value present so preprocessing logic can safely reference it.
+    :treat_inlines => :exclude,
     # Just because strict ordering is the way to go
     :enforce_strict_ordering => true
     },
