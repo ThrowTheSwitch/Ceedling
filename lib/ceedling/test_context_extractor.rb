@@ -236,10 +236,10 @@ class TestContextExtractor
 
   # Exposed for testing (called from private `code_lines()`)
   def clean_code_line(line, comment_block)
-    sanitize_encoding( line )
+    _line = sanitize_encoding( line )
 
     # Remove line comments
-    _line = line.gsub(/\/\/.*$/, '')
+    _line.gsub!(/\/\/.*$/, '')
 
     # Handle end of previously begun comment block
     if comment_block
@@ -408,10 +408,14 @@ class TestContextExtractor
 
   # Note: This method modifies encoding in place (encode!) in an attempt to reduce long string copies
   def sanitize_encoding(content)
-    if not content.valid_encoding?
-      content.encode!("UTF-16be", :invalid=>:replace, :replace=>"?").encode('UTF-8')
-    end
-    return content
+    encoding_options = {
+      :invalid           => :replace,  # Replace invalid byte sequences
+      :undef             => :replace,  # Replace anything not defined in ASCII
+      :replace           => '',        # Use a blank for those replacements
+      :universal_newline => true       # Always break lines with \n
+    }
+
+    return content.encode("ASCII", **encoding_options).encode('UTF-8')
   end
 
   def debug_log_list(message, filepath, list)

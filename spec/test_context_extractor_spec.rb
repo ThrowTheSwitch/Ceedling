@@ -11,10 +11,10 @@ require 'ceedling/exceptions'
 
 describe TestContextExtractor do
   before(:each) do
-    # Mock these injected dependencies
-    @configurator = instance_double("Configurator", :cmock_mock_prefix)
-    @file_wrapper = Object.new
-    loginator = instance_double("Loginator")
+    # Mock injected dependencies
+    @configurator = double( "Configurator" ) # Use double() so we can mock needed methods that are added dynamically at startup
+    @file_wrapper = double( "FileWrapper" ) # Not actually exercised in these test cases
+    loginator = instance_double( "Loginator" )
     
     # Ignore all logging calls
     allow(loginator).to receive(:log)
@@ -99,13 +99,13 @@ describe TestContextExtractor do
       file_contents = <<~CONTENTS
       /* TEST_SOURCE_FILE("foo.c") */    // Eliminate single line comment block
       // TEST_SOURCE_FILE("bar.c")       // Eliminate single line comment
-      Some text
+      Some text⛔️
       /* // /*                           // Eliminate tricky comment block enclosing comments
         TEST_SOURCE_FILE("boom.c")
         */   //                          // Eliminate trailing single line comment following block comment
       More text
-      #define STR1 "/* comment  "        // Strip out block comment inside (single line) C string
-      #define STR2 "  /* comment  "      // Strip out block comment inside (single line) C string
+      #define STR1 "/* comment  "        // Strip out (single line) C string containing block comment
+      #define STR2 "  /* comment  "      // Strip out (single line) C string containing block comment
       CONTENTS
 
       got = []
@@ -120,7 +120,7 @@ describe TestContextExtractor do
       got.compact!
 
       expected = [
-        'Some text',
+        'Some text', # ⛔️ removed with encoding sanitizing
         'More text',
         "#define STR1",
         "#define STR2"
