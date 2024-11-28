@@ -94,8 +94,8 @@ describe TestContextExtractor do
     end
   end
 
-  context "#clean_code_line" do
-    it "should clean code of encoding problems and comments a line at a time" do
+  context "#code_lines" do
+    it "should clean code of encoding problems and comments" do
       file_contents = <<~CONTENTS
       /* TEST_SOURCE_FILE("foo.c") */    // Eliminate single line comment block
       // TEST_SOURCE_FILE("bar.c")       // Eliminate single line comment
@@ -109,15 +109,11 @@ describe TestContextExtractor do
       CONTENTS
 
       got = []
-      comment_block = false
 
-      file_contents.split( "\n" ).each do |line|
-        _line, comment_block = @extractor.clean_code_line( line, comment_block )
-        _line.strip!
-        got << _line if !_line.empty?
+      @extractor.code_lines( StringIO.new( file_contents ) ) do |line|
+        line.strip!
+        got << line if !line.empty?
       end
-
-      got.compact!
 
       expected = [
         'Some text', # ⛔️ removed with encoding sanitizing
