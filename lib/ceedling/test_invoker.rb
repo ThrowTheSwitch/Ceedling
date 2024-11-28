@@ -72,8 +72,8 @@ class TestInvoker
             if @configurator.project_use_test_preprocessor != :none
               paths[:preprocess_incudes] = preprocess_includes_path
               paths[:preprocess_files] = preprocess_files_path
-              paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, 'full_expansion' )
-              paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, 'directives_only' )
+              paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
+              paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
             end
           end
 
