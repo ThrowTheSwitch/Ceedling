@@ -39,7 +39,7 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
   
   s.required_ruby_version = ">= 3.0.0"
   
-  s.add_dependency "thor", ">= 0.14"
+  s.add_dependency "thor", "~> 1.3"
   s.add_dependency "rake", ">= 12", "< 14"
   s.add_dependency "deep_merge", "~> 1.2"
   s.add_dependency "constructor", "~> 2"
