@@ -71,14 +71,14 @@ jobs:
           sudo apt-get install --assume-yes --quiet gdb
 
       # Install GCovr for Gcov plugin
-      - name: Install GCovr for Gcov Plugin Tests
+      - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
         run: |
           sudo pip install gcovr
 
       # Install ReportGenerator for Gcov plugin
       # Fix PATH before tool installation
       # https://stackoverflow.com/questions/59010890/github-action-how-to-restart-the-session
-      - name: Install ReportGenerator for Gcov Plugin Tests
+      - name: "Install ReportGenerator for Tests of Ceedling Plugin: Gcov"
         run: |
           mkdir --parents $HOME/.dotnet/tools
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
