@@ -272,7 +272,7 @@ class TestInvoker
           # Collect sources added to test build with TEST_SOURCE_FILE() directive macro
           # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them
           @file_wrapper.open( filepath, 'r' ) do |input|
-            @context_extractor.collect_simple_context( filepath, input, :build_directive_source_files )
+            @context_extractor.collect_simple_context( details[:filepath], input, :build_directive_source_files )
           end
 
           # Validate test build directive source file entries via TEST_SOURCE_FILE()
