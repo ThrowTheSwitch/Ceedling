@@ -69,9 +69,9 @@ class TestContextExtractor
       end
     end
 
-    collect_build_directive_include_paths( filepath, include_paths )
-    collect_build_directive_source_files( filepath, source_extras )
-    collect_includes( filepath, includes )
+    collect_build_directive_include_paths( filepath, include_paths ) if args.include?( :build_directive_include_paths )
+    collect_build_directive_source_files( filepath, source_extras ) if args.include?( :build_directive_source_files )
+    collect_includes( filepath, includes ) if args.include?( :includes )
 
     # Different code processing pattern for test runner
     if args.include?( :test_runner_details )
@@ -359,6 +359,8 @@ class TestContextExtractor
   ##
 
   def ingest_build_directive_source_files(filepath, source_extras)
+    return if source_extras.empty?
+    
     key = form_file_key( filepath )
 
     @lock.synchronize do
@@ -367,6 +369,8 @@ class TestContextExtractor
   end
 
   def ingest_build_directive_include_paths(filepath, include_paths)
+    return if include_paths.empty?
+
     key = form_file_key( filepath )
 
     @lock.synchronize do
