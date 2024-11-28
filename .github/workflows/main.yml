@@ -51,15 +51,14 @@ jobs:
           submodules: recursive
 
       # Setup Ruby Testing Tools to do tests on multiple ruby version
-      - name: Setup Ruby Testing Tools
+      - name: Setup Ruby Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           
-      # Install Ruby Testing Tools (Bundler version should match the one in Gemfile.lock)
-      - name: Install Ruby Testing Tools
+      # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
+      - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
         run: |
-          gem install rspec
           gem install rubocop -v 0.57.2
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
           bundle update
@@ -90,8 +89,8 @@ jobs:
         run: |
           rake ci
 
-      # Build & Install Gem
-      - name: Build and Install Gem
+      # Build & Install Ceedling Gem
+      - name: Build and Install Ceedling Gem
         run: |
           gem build ceedling.gemspec
           gem install --local ceedling-*.gem
