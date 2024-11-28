@@ -1,7 +1,7 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-_October 29, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
+_November 28, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
 shipping very soon. See the [Release Notes](docs/ReleaseNotes.md) for an overview
 of all that’s new since 0.31.1 plus links to the detailed Changelog and list of 
 Breaking Changes.
@@ -333,6 +333,11 @@ A variety of options for [community-based support][TTS-help] exist.
 Training and support contracts are available through **_[Ceedling Pro][ceedling-pro]_**
 
 [TTS-help]: https://www.throwtheswitch.org/#help-section
+
+The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedling-episode]!
+
+[ae-podcast]: https://agileembeddedpodcast.com/
+[ceedling-episode]: https://agileembeddedpodcast.com/episodes/ceedling
 
 ## Ceedling docs
 

@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.0 pre-release] — 2024-11-15
+# [1.0.0 pre-release] — 2024-11-28
 
 ## 🌟 Added
 
@@ -33,22 +33,23 @@ See the _[Release Notes](ReleaseNotes.md)_ and _[CeedlingPacket](CeedlingPacket.
 
 Issue [#743](https://github.com/ThrowTheSwitch/Ceedling/issues/743)
 
-Using what we are calling build directive macros, you can now provide Ceedling certain configuration details from inside a test file.
+Using what we are calling test build directive macros, you can now provide Ceedling certain configuration details from inside a test file.
 
 See the [documentation](CeedlingPacket.md) discussion on include paths, Ceedling conventions, and these macros to understand all the details.
 
 _Notes:_
 
-* Ceedling is not yet capable of preserving build directive macros through preprocessing of test files. If, for example, you wrap these macros within conditional compilation C preprocessing statements (e.g. `#ifdef`), they will not work as you expect. Specifically, because these macros act as simple markers and are discovered by plain text parsing, Ceedling 1.0.0 will always discover them regardless of conditional compilation wrappers or Ceedling’s preprocessing configuration.
+* Ceedling can preserves these test build directive macros through preprocessing of test files. However, wrapping `TEST_INCLUDE_PATH()` in conditional compilation C preprocessing statements (e.g. `#ifdef`) can produce unexpected resutls (see documentation for more).
+* Both `TEST_INCLUDE_PATH()` & `TEST_SOURCE_FILE()` can be disabled with standard C comments.
 * However, preprocessing of mockable header files can now be enabled separately (see `:project` ↳ `:use_test_preprocessor`).
 
 #### `TEST_INCLUDE_PATH(...)` 
 
-In short, `TEST_INCLUDE_PATH()` allows you to add a header file search path to the build of the test executable in which it is found. This can mean much shorter compilation command lines and good flexibility for complicated projects.
+In short, `TEST_INCLUDE_PATH()` allows you to add a header file search path to the build of the test executable in which it is found. This can mean much shorter compilation command lines and good flexibility for complicated projects. Unlike , `TEST_SOURCE_FILE()` this should _**not**_ be wrapped in conditional compilation preprocessing statements (see documentation for more).
 
 #### `TEST_SOURCE_FILE(...)`
 
-In short, `TEST_SOURCE_FILE()` allows you to be explicit as to which source C files should be compiled and linked into a test executable. Sometimes Ceedling’s convention for matching source files with test files by way of `#include`d header files does not meet the need. This solves the problems of those scenarios.
+In short, `TEST_SOURCE_FILE()` allows you to be explicit as to which source C files should be compiled and linked into a test executable. Sometimes Ceedling’s convention for matching source files with test files by way of `#include`d header files does not meet the need. This solves the problems of those scenarios. Unlike  `TEST_INCLUDE_PATH()` , this test build directive _can_ be wrapped in in conditional compilation preprocessing statements (see documentation for more).
 
 ### Mixins for modifying your configuration
 

@@ -20,7 +20,7 @@ Ceedling plugins or by simply searching for code examples online.
 
 ## Development Roadmap & Notes
 
-_February 19, 2024_
+_November 28, 2024_
 
 (See Ceedling's _[release notes](ReleaseNotes.md)_ for more.)
 
@@ -370,6 +370,12 @@ whose associated value is itself a hash with the following contents:
   :time => <float>               # Seconds elapsed for shell operation
 }
 ```
+
+_**Note:**_ Test preprocessing steps are quite sophissticated and involve various 
+combination of tool executions. The `post_` preprocessing hooks do not inlucde shell 
+results. Future updates to Ceedling’s plugin system will create a more robust means 
+of attaching custom behaviors to test preprocessing or connecting your own preprocessing
+pipeline with toolchains other than GCC.
 
 ## `Plugin` hook methods `pre_mock_preprocess(arg_hash)` and `post_mock_preprocess(arg_hash)`
 

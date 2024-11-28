@@ -7,7 +7,7 @@ These release notes are complemented by two other documents:
 
 ---
 
-# 1.0.0 pre-release — October 31, 2024
+# 1.0.0 pre-release — November 28, 2024
 
 **This Ceedling release is probably the most significant since the project was first [posted to SourceForge in 2009][sourceforge].**
 
@@ -267,7 +267,7 @@ The previously undocumented build directive macro `TEST_FILE(...)` has been rena
 
 #### Preprocessing improvements
 
-Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing (expanding macros in test files and header files to be mocked) is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling’s long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release (some of it has been temporarily removed).
+Ceedling has been around for a number of years and has had the benefit of many contributors over that time. Preprocessing (e.g. expanding macros in test files and header files to be mocked) is quite tricky to get right but is essential for big, complicated test suites. Over Ceedling’s long life various patches and incremental improvements have evolved in such a way that preprocessing had become quite complicated and often did the wrong thing. Much of this has been fixed and improved in this release. Considerable memory and performance improvements have been made as well.
 
 #### Test Suite Crash Handling
 
@@ -316,9 +316,10 @@ Together, these changes may cause you to think that Ceedling is running steps ou
 
 ## 🩼 Known Issues
 
-1. The new internal pipeline that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. The speed gains due to parallelization more than make up for this. Future releases will concentrate on optimizing away duplication of build steps.
+1. The new internal pipeline that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. The speed gains due to parallelization help make up for this. Future releases will concentrate on optimizing away duplication of build steps.
 1. While header file search paths are now customizable per executable, this currently only applies to the search paths the compiler uses. Distinguishing test files or header files of the same name in different directories for test runner and mock generation respectively continues to rely on educated guesses in Ceedling code.
 1. Any path for a C file specified with `TEST_SOURCE_FILE(...)` is in relation to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, many of your `TEST_SOURCE_FILE(...)` calls may need to be updated. A more flexible and dynamic approach to path handling will come in a future update.
+1. Ceedling’s many test preprocessing improvements are not presently able to preserve Unity’s special `TEST_CASE()` and `TEST_RANGE()` features. However, preprocessing of test files is much less frequently needed than preprocessing of mockable header files. Test preprocessing can now be configured to enable only one or the other. As such, these advanced Unity features can still be used in even sophisticated projects.
 
 ## 📚 Background Knowledge
 

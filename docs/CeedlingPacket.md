@@ -1538,20 +1538,22 @@ The sections that follow flesh out the details of the bulleted list above.
 
 #### Preprocessing gotchas
 
-**_NOTE:_ As of Ceedling 1.0.0, Ceedling’s preprocessing feature has a 
-limitation that affects Unity features triggered by the following macros:**
+**_IMPORTANT:_ As of Ceedling 1.0.0, Ceedling’s test preprocessing feature 
+has a limitation that affects Unity features triggered by the following macros.**
 
 * `TEST_CASE()`
 * `TEST_RANGE()`
 
-With Ceedling’s preprocessing enabled, Unity’s `TEST_CASE()` and `TEST_RANGE()`
-in your test files will effectively vanish before test compilation is able to 
-process them.
+`TEST_CASE()` and `TEST_RANGE()` are Unity macros that are positional in a file 
+in relation to the test case functions they modify. While Ceedling's test file
+preprocessing can preserve these macro calls, their position cannot be preserved.
 
 That is, Ceedling’s preprocessing and these Unity features are not presently 
 compatible. Note that it _is_ possible to enable preprocessing for mockable 
 header files apart from enabling it for test files. See the documentation for
-`:project` ↳ `:use_test_preprocessing`.
+`:project` ↳ `:use_test_preprocessing`. This can allow test preprocessing in the 
+common cases of sophtisticate mockable headers while Unity’s `TEST_CASE()` and 
+`TEST_RANGE()` are utilized in a test file untouched by preprocessing.
 
 **_IMPORTANT:_ The following new build directive macro `TEST_INCLUDE_PATH()` 
 available in Ceedling 1.0.0 is incompatible with enclosing conditional 
