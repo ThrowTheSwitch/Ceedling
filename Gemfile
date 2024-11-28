@@ -8,10 +8,14 @@
 source "http://rubygems.org/"
 
 gem "bundler", "~> 2.5"
+
+# Testing tools
 gem "rspec", "~> 3.8"
 gem "rake", ">= 12", "< 14"
 gem "rr"
 gem "require_all"
+
+# Ceedling dependencies
 gem "diy", "~> 1.1"
 gem "constructor", "~> 2"
 gem "thor", "~> 1.3"
