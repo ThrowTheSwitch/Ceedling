@@ -194,6 +194,11 @@ class PreprocessinatorExtractor
   def extract_multiline_directives(file_contents, directive)
     results = []
 
+    # Output from the GCC preprocessor directives-only mode is the intended input to be processed here.
+    # The GCC preprpocessor smooshes multiline directives into a single line.
+    # We process both single and multiline directives here in case this is ever not true or we need
+    # to extract directives from files that have not been preprocessed.
+
     # This regex captures any single or multiline preprocessor directive definition:
     #  - Looks for any string that begins with '#<directive>' ('#' and '<directive>' may be separated by spaces per C spec).
     #  - Captures all text (non-greedily) after '#<directive>' on a first line through 0 or more line continuations up to a final newline.
