@@ -370,9 +370,9 @@ class PreprocessinatorIncludesHandler
 
     # Determine the filenames to include in our list
     basenames = if deep
-      ( _nested.to_set.union( _shallow.to_set ) )
+      ( _nested.keys.to_set.union( _shallow.keys.to_set ) )
     else
-      ( _nested.to_set.intersection( _shallow.to_set ) )
+      ( _nested.keys.to_set.intersection( _shallow.keys.to_set ) )
     end
 
     # Iterate through the basenames and return the fullest version of each
