@@ -49,7 +49,7 @@ class PreprocessinatorIncludesHandler
   ##      should provide the tools to intervene. 
   ##
 
-  def extract_includes(filepath:, test:, flags:, include_paths:, defines:)
+  def extract_includes(filepath:, test:, flags:, include_paths:, defines:, deep: false)
     msg = @reportinator.generate_module_progress(
       operation: "Extracting #include statements via preprocessor from",
       module_name: test,
@@ -85,7 +85,7 @@ class PreprocessinatorIncludesHandler
     # Return
     #  - Includes common to shallow and nested results, with paths from nested
     #  - Add mocks back in (may be empty if mocking not enabled)
-    return common_includes(shallow:shallow, nested:nested) + mocks
+    return common_includes(shallow:shallow, nested:nested, deep:deep) + mocks
   end
 
   # Write to disk a yaml representation of a list of includes
@@ -343,7 +343,7 @@ class PreprocessinatorIncludesHandler
   end
 
   # Return includes common in both lists with the full paths of the nested list
-  def common_includes(shallow:, nested:)
+  def common_includes(shallow:, nested:, deep: false)
     return shallow if nested.empty?
     return nested if shallow.empty?
 
@@ -354,41 +354,29 @@ class PreprocessinatorIncludesHandler
     #    same directory as the file being processed
 
     # Approach
-    #  1. Create hashed lists of shallow and nested for easier matching / deletion
-    #  2. Iterate through nested hash list and extract to common[] any filepath also in shallow
-    #  3. For each filepath extracted
-    #    a. Delete it from the nested hash list
-    #    b. Delete the corresponding entry in the shallow hash list
-    #  4. Iterate remaining nested hash list and extract to common[] and filepath whose base
-    #     filename matches a remaining entry in the shallow hash list
+    #  1. Create hashed lists of shallow and nested for easier matching 
+    #  2. Perform appropriate mix of paths
+    #    a. A union if performing a deep include list
+    #    b. An intersection if performing a shallow include list
+    #  3. Pick the "fullest" path from the lists (assumes nested list has deeper paths)
 
-    common = []
-
-    # Hash list
+    # Hash list for Shallow Search
     _shallow = {}
-    shallow.each { |item| _shallow[item] = nil }
+    shallow.each { |item| _shallow[ File.basename(item) ] = item }
 
-    # Hash list
+    # Hash list for Nested Search
     _nested = {}
-    nested.each { |item| _nested[item] = nil }
+    nested.each {|item|  _nested[ File.basename(item) ] = item }
 
-    # Iterate each _nested entry and extract filepaths with matching filepath in _shallow list
-    _nested.each_key do |filepath|
-      if _shallow.has_key?( filepath )
-        common << filepath         # Copy to common
-        _shallow.delete(filepath)  # Remove matching filepath from _shallow list
-      end
+    # Determine the filenames to include in our list
+    basenames = if deep
+      ( _nested.to_set.union( _shallow.to_set ) )
+    else
+      ( _nested.to_set.intersection( _shallow.to_set ) )
     end
 
-    # For each mached filepath, remove it from _nested list
-    common.each { |item| _nested.delete(item) }
-
-    # Find any reamining filepaths whose baseneame matches an entry in _shallow
-    _nested.each_key do |filepath|
-      common << filepath if _shallow.has_key?( File.basename(filepath) )
-    end
-
-    return common
+    # Iterate through the basenames and return the fullest version of each
+    return basenames.map {|v| _nested[v] || _shallow[v] }
   end
 
 end

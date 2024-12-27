@@ -312,6 +312,7 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :compile_threads => 1,
     :test_threads => 1,
     :use_test_preprocessor => :none,
+    :use_deep_preprocessor => :none,
     :test_file_prefix => 'test_',
     :release_build => false,
     :use_backtrace => :simple

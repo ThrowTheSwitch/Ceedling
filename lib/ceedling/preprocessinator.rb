@@ -29,7 +29,7 @@ class Preprocessinator
   end
 
 
-  def preprocess_includes(filepath:, test:, flags:, include_paths:, defines:)
+  def preprocess_includes(filepath:, test:, flags:, include_paths:, defines:, deep: false)
     includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
     includes = []
@@ -66,7 +66,8 @@ class Preprocessinator
         test:          test,
         flags:         flags,
         include_paths: include_paths,
-        defines:       defines
+        defines:       defines,
+        deep:          deep
         )
 
       msg = "Extracted #include list from #{filepath}:"
@@ -92,6 +93,9 @@ class Preprocessinator
   def preprocess_mockable_header_file(filepath:, test:, flags:, include_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
+    # Check if we're using deep define processing for mocks
+    preprocess_deep = !@configurator.project_use_deep_preprocessor.nil? && [:mocks, :all].include?(@configurator.project_use_deep_preprocessor)
+
     plugin_arg_hash = {
       header_file:              filepath,
       preprocessed_header_file: preprocessed_filepath,
@@ -109,7 +113,8 @@ class Preprocessinator
       test:           test,
       flags:          flags,
       include_paths:  include_paths,
-      defines:        defines      
+      defines:        defines,
+      deep:           preprocess_deep     
     }
 
     # Extract includes & log progress and details   
@@ -151,6 +156,9 @@ class Preprocessinator
   def preprocess_test_file(filepath:, test:, flags:, include_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
+    # Check if we're using deep define processing for mocks
+    preprocess_deep = !@configurator.project_use_deep_preprocessor.nil? && [:tests, :all].include?(@configurator.project_use_deep_preprocessor)
+
     plugin_arg_hash = {
       test_file:              filepath,
       preprocessed_test_file: preprocessed_filepath,
@@ -168,7 +176,8 @@ class Preprocessinator
       test:          test,
       flags:         flags,
       include_paths: include_paths,
-      defines:       defines      
+      defines:       defines,
+      deep:          preprocess_deep      
     }
 
     # Extract includes & log progress and info
@@ -206,7 +215,7 @@ class Preprocessinator
   ### Private ###
   private
 
-  def preprocess_file_common(filepath:, test:, flags:, include_paths:, defines:)
+  def preprocess_file_common(filepath:, test:, flags:, include_paths:, defines:, deep: false)
     msg = @reportinator.generate_module_progress(
       operation: "Preprocessing",
       module_name: test,
@@ -221,7 +230,8 @@ class Preprocessinator
       test:          test,
       flags:         flags,
       include_paths: include_paths,
-      defines:       defines) 
+      defines:       defines,
+      deep:          deep) 
 
     return includes
   end
