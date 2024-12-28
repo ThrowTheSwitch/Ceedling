@@ -7,10 +7,14 @@ out.fail
 tags
 *.taghl
 
-examples/blinky/build/
-examples/blinky/vendor/
+build/
 examples/temp_sensor/vendor/
 examples/temp_sensor/build/
+plugins/fff/examples/fff_example/build/
+plugins/module_generator/example/build/
+plugins/dependencies/example/boss/build/
+plugins/dependencies/example/boss/third_party/
+plugins/dependencies/example/supervisor/build/
 
 ceedling.sublime-project
 ceedling.sublime-workspace
@@ -19,3 +23,4 @@ ceedling-*.gem
 .ruby-version
 /.idea
 /.vscode
+/GIT_COMMIT_SHA
