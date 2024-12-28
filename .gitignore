@@ -7,6 +7,7 @@ out.fail
 tags
 *.taghl
 
+build/
 examples/temp_sensor/vendor/
 examples/temp_sensor/build/
 plugins/fff/examples/fff_example/build/

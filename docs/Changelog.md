@@ -420,6 +420,8 @@ In future revisions of Ceedling, support for `TEST_CASE()` and `TEST_RANGE()` wh
 
 Note: `:project` ↳ `:use_test_preprocessor` is no longer a binary setting (`true`/`false`). Mockable header file preprocessing can now be enabled with a `:mocks` setting while test files are left untouched by preprocessing. This should support the majority of advanced use cases for preprocessing.
 
+Note: `:project` ↳ `:use_deep_preprocessor` is an additional setting which can be used to specify if the entire header include chain should be listed in generated mock and test files. Like the option above, it has options of `:none`, `:mocks`, `:tests` and `:all`. It is very likely `:none` or `:mocks` are the right choice for you.
+
 ### Removed background task execution
 
 Background task execution for tool configurations (`:background_exec`) has been deprecated. This option was one of Ceedling’s earliest features attempting to speed up builds within the constraints of relying on Rake. This feature has rarely, if ever, been used in practice, and other, better options exist to manage any scenario that might motivate a background task.

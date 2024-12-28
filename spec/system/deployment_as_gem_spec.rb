@@ -41,6 +41,7 @@ describe "Ceedling" do
     it { can_test_projects_with_success_test_alias }
     it { can_test_projects_with_test_name_replaced_defines_with_success }
     it { can_test_projects_unity_parameterized_test_cases_with_success }
+    #it { can_test_projects_unity_parameterized_test_cases_with_preprocessor_with_success }
     it { can_test_projects_with_preprocessing_for_test_files_symbols_undefined }
     it { can_test_projects_with_preprocessing_for_test_files_symbols_defined }
     it { can_test_projects_with_preprocessing_for_mocks_success }

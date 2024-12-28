@@ -2720,11 +2720,25 @@ and migrated to the `:test_build` and `:release_build` sections.
   accessible system search path.
 
    * `:none` disables preprocessing.
-   * `:all` enables preprpocessing for all mockable header files and test C files.
+   * `:all` enables preprocessing for all mockable header files and test C files.
    * `:mocks` enables only preprocessing of header files that are to be mocked.
    * `:tests` enables only preprocessing of your test files.
 
   [test-preprocessing]: #preprocessing-behavior-for-tests
+
+  **Default**: `:none`
+
+* `:use_deep_preprocessor`
+
+  This option is an addon to `:use_test_preprocessor`. It allows Ceedling to 
+  better support situations where definitions required for building might be
+  buried in the include chain. It directly lists all includes in the chain to
+  better track these.
+
+   * `:none` disables deep preprocessing, leaving normal shallow mode.
+   * `:all` enables deep preprocessing for all mockable header files and test C files.
+   * `:mocks` enables deep preprocessing of header files that are to be mocked.
+   * `:tests` enables deep preprocessing of your test files.
 
   **Default**: `:none`
 

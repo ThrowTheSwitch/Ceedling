@@ -9,6 +9,7 @@ require 'fileutils'
 require 'tmpdir'
 require 'ceedling/yaml_wrapper'
 require 'spec_helper'
+require 'deep_merge'
 
 def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', 'assets', asset_file_name)
@@ -449,6 +450,26 @@ module CeedlingTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
         settings = { :project => { :use_test_preprocessor => :none },
+                     :unity => { :use_param_tests => true }
+                   }
+        @c.merge_project_yml_for_test(settings)
+
+        output = `bundle exec ruby -S ceedling 2>&1`
+        expect($?.exitstatus).to match(0) # Since a test either pass or are ignored, we return success here
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  # NOTE: This is not supported in this release, therefore is not getting called.
+  def can_test_projects_unity_parameterized_test_cases_with_preprocessor_with_success
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
+        settings = { :project => { :use_test_preprocessor => :all, :use_deep_preprocessor => :mocks },
                      :unity => { :use_param_tests => true }
                    }
         @c.merge_project_yml_for_test(settings)
