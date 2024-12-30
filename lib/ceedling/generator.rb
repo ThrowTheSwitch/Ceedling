@@ -312,11 +312,15 @@ class Generator
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command )
 
-    # Handle crashes
-    if @helper.test_crash?( shell_result )
-      @helper.log_test_results_crash( test_name, executable, shell_result )
+    filename = File.basename( test_filepath )
 
-      filename = File.basename( test_filepath )
+    # Handle crashes
+    if @helper.test_crash?( filename, executable, shell_result )
+      @helper.log_test_results_crash(
+        executable,
+        shell_result,
+        @configurator.project_config_hash[:project_use_backtrace]
+      )
 
       # Lookup test cases and filter based on any matchers specified for the build task
       test_cases = @test_context_extractor.lookup_test_cases( test_filepath )
