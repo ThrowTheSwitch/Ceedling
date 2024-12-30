@@ -1,0 +1,30 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+:gcov:
+  :summaries: TRUE                # Enable simple coverage summaries to console after tests
+  :report_task: FALSE             # Disabled dedicated report generation task (this enables automatic report generation)
+
+  :utilities:
+    - gcovr                       # Defaults to `gcovr` as report generation utility
+
+  :reports: []                    # User must specify a report to enable report generation
+
+  :gcovr:
+    :report_root: "."             # Gcovr defaults to scanning for results starting in working directory
+
+                                  # For v6.0+ merge coverage results for same function tested multiple times
+                                  # The default behavior is 'strict' which will cause a gcovr exception for many users
+    :merge_mode_function: merge-use-line-max
+
+  :report_generator:
+    :verbosity: Warning           # Default verbosity
+    :collection_paths_source: []  # Explicitly defined as default empty array to simplify option validation code
+    :custom_args: []              # Explicitly defined as default empty array to simplify option validation code
+    :gcov_exclude: []             # Explicitly defined as default empty array to simplify option validation code
+...

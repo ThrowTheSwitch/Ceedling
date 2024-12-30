@@ -1,146 +1,183 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'rubygems'
 require 'rake' # for adding ext() method to string
+require 'ceedling/exceptions'
+
 class FileFinder
-  SEMAPHORE = Mutex.new
 
   constructor :configurator, :file_finder_helper, :cacheinator, :file_path_utils, :file_wrapper, :yaml_wrapper
 
-  def prepare_search_sources
-    @all_test_source_and_header_file_collection =
-      @configurator.collection_all_tests +
-      @configurator.collection_all_source +
-      @configurator.collection_all_headers
-  end
 
+  def find_header_input_for_mock(mock_name)
+    # Mock name => <mock prefix><header filename without extension>
+    # Examples: 'Mockfoo' or 'mock_Bar'
+    # Note: In some rare cases, a mock name may include a dot (ex. Sensor.44) because of versioning file naming convention
+    #       Be careful about assuming the end of the name has any sort of file extension
 
-  def find_header_file(mock_file)
-    header = File.basename(mock_file).sub(/#{@configurator.cmock_mock_prefix}/, '').ext(@configurator.extension_header)
+    header = mock_name.sub(/#{@configurator.cmock_mock_prefix}/, '') + @configurator.extension_header
 
-    found_path = @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_headers, :error)
+    found_path = @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_headers, :error, mock_name)
 
     return found_path
   end
 
 
-  def find_header_input_for_mock_file(mock_file)
-    found_path = find_header_file(mock_file)
-    mock_input = found_path
+  # Find test filepath from another filepath (e.g. test executable with same base name, a/path/test_foo.exe)
+  def find_test_file_from_filepath(filepath)
+    # Strip filepath down to filename and remove file extension
+    name = File.basename( filepath ).ext('')
 
-    if (@configurator.project_use_test_preprocessor)
-      mock_input = @cacheinator.diff_cached_test_file( @file_path_utils.form_preprocessed_file_filepath( found_path ) )
-    end
-
-    return mock_input
+    return find_test_file_from_name( name )
   end
 
 
-  def find_source_from_test(test, complain)
-    test_prefix  = @configurator.project_test_file_prefix
-    source_paths = @configurator.collection_all_source
+  # Find test filepath from only the base name of a test file (e.g. 'test_foo')
+  def find_test_file_from_name(name)
+    test_file = name + @configurator.extension_source
 
-    source = File.basename(test).sub(/#{test_prefix}/, '')
-
-    # we don't blow up if a test file has no corresponding source file
-    return @file_finder_helper.find_file_in_collection(source, source_paths, complain)
-  end
-
-
-  def find_test_from_runner_path(runner_path)
-    extension_source = @configurator.extension_source
-
-    test_file = File.basename(runner_path).sub(/#{@configurator.test_runner_file_suffix}#{'\\'+extension_source}/, extension_source)
-
-    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error)
+    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error, name)
 
     return found_path
   end
 
 
-  def find_test_input_for_runner_file(runner_path)
-    found_path   = find_test_from_runner_path(runner_path)
-    runner_input = found_path
+  def find_build_input_file(filepath:, complain: :error, context:)
+    release = (context == RELEASE_SYM)
 
-    if (@configurator.project_use_test_preprocessor)
-      runner_input = @cacheinator.diff_cached_test_file( @file_path_utils.form_preprocessed_file_filepath( found_path ) )
-    end
-
-    return runner_input
-  end
-
-
-  def find_test_from_file_path(file_path)
-    test_file = File.basename(file_path).ext(@configurator.extension_source)
-
-    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error)
-
-    return found_path
-  end
-
-
-  def find_test_or_source_or_header_file(file_path)
-    file = File.basename(file_path)
-    return @file_finder_helper.find_file_in_collection(file, @all_test_source_and_header_file_collection, :error)
-  end
-
-
-  def find_compilation_input_file(file_path, complain=:error, release=false)
     found_file = nil
 
-    source_file = File.basename(file_path).ext(@configurator.extension_source)
+    # Strip off file extension
+    source_file = File.basename(filepath).ext('')
 
     # We only collect files that already exist when we start up.
     # FileLists can produce undesired results for dynamically generated files depending on when they're accessed.
     # So collect mocks and runners separately and right now.
+    # Assume that project configuration options will have already filtered out any files that should not be searched for.
 
-    SEMAPHORE.synchronize {
+    # Note: We carefully add file extensions below with string addition instead of using .ext()
+    #       Some legacy files can include naming conventions like <name>.##.<ext> for versioning.
+    #       If we use .ext() below we'll clobber the dotted portion of the filename
 
-      if (source_file =~ /#{@configurator.test_runner_file_suffix}/)
-        found_file =
-          @file_finder_helper.find_file_in_collection(
-            source_file,
-            @file_wrapper.directory_listing( File.join(@configurator.project_test_runners_path, '*') ),
-            complain)
+    # Generated test runners
+    if (!release) and (source_file =~ /^#{@configurator.project_test_file_prefix}.+#{@configurator.test_runner_file_suffix}$/)
+      _source_file = source_file + EXTENSION_CORE_SOURCE
+      found_file =
+        @file_finder_helper.find_file_in_collection(
+          _source_file,
+          @file_wrapper.directory_listing( File.join(@configurator.project_test_runners_path, '*') ),
+          complain,
+          filepath)
 
-      elsif (@configurator.project_use_mocks and (source_file =~ /#{@configurator.cmock_mock_prefix}/))
-        found_file =
-          @file_finder_helper.find_file_in_collection(
-            source_file,
-            @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '**/*.*') ),
-            complain)
+    # Generated mocks
+    elsif (!release) and (source_file =~ /^#{@configurator.cmock_mock_prefix}/)
+      _source_file = source_file + EXTENSION_CORE_SOURCE
+      found_file =
+        @file_finder_helper.find_file_in_collection(
+          _source_file,
+          @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '**/*') ),
+          complain,
+          filepath)
 
-      elsif release
-        found_file =
-          @file_finder_helper.find_file_in_collection(
-            source_file,
-            @configurator.collection_release_existing_compilation_input,
-            complain)
-      else
-        temp_complain = (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY) ? :ignore : complain
-        found_file =
-          @file_finder_helper.find_file_in_collection(
-            source_file,
-            @configurator.collection_all_existing_compilation_input,
-            temp_complain)
-        found_file ||= find_assembly_file(file_path, false) if (defined?(TEST_BUILD_USE_ASSEMBLY) && TEST_BUILD_USE_ASSEMBLY)
-      end
-    }
+    # Vendor framework sources (unity.c, cmock.c, cexception.c, etc.)
+    # Note: Taking a small chance by mixing test and release frameworks without smart checks on test/release build
+    elsif (@configurator.collection_vendor_framework_sources.include?(source_file.ext(EXTENSION_CORE_SOURCE)))
+      _source_file = source_file + EXTENSION_CORE_SOURCE
+      found_file =
+        @file_finder_helper.find_file_in_collection(
+          _source_file,
+          @configurator.collection_existing_test_build_input,
+          complain,
+          filepath)
+
+    end
+
+    if !found_file.nil?
+      return found_file
+    end
+
+    #
+    # Above we can confidently rely on the complain parameter passed to file_finder_helper because
+    # we know the specific type of file being searched for.
+    #
+    # Below we ignore file misses because of lgoical complexities of searching for potentially either 
+    # assmebly or C files, including C files that may not exist (counterparts to header files by convention).
+    # We save the existence handling until the end.
+    #
+
+    # Assembly files for release build 
+    if release and @configurator.release_build_use_assembly
+      _source_file = source_file + @configurator.extension_assembly
+      found_file =
+        @file_finder_helper.find_file_in_collection(
+          _source_file,
+          @configurator.collection_release_build_input,
+          :ignore,
+          filepath)
+
+    # Assembly files for test build 
+    elsif (!release) and @configurator.test_build_use_assembly
+      _source_file = source_file + @configurator.extension_assembly
+      found_file =
+        @file_finder_helper.find_file_in_collection(
+          _source_file,
+          @configurator.collection_existing_test_build_input,
+          :ignore,
+          filepath)
+    end
+
+    if !found_file.nil?
+        return found_file
+    end
+
+    # Release build C files
+    if release
+      _source_file = source_file + @configurator.extension_source
+      found_file =
+        @file_finder_helper.find_file_in_collection(
+          _source_file,
+          @configurator.collection_release_build_input,
+          :ignore,
+          filepath)
+        
+    # Test build C files
+    else
+      _source_file = source_file + @configurator.extension_source
+      found_file =
+        @file_finder_helper.find_file_in_collection(
+          _source_file,
+          @configurator.collection_existing_test_build_input,
+          :ignore,
+          filepath)
+    end
+
+    if found_file.nil?
+      _source_file += " or #{_source_file.ext(@configurator.extension_assembly)}" if @configurator.release_build_use_assembly
+      @file_finder_helper.handle_missing_file(_source_file, complain)
+    end
+
     return found_file
   end
 
 
-  def find_source_file(file_path, complain)
-    source_file = File.basename(file_path).ext(@configurator.extension_source)
-    return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_source, complain)
+  def find_source_file(filepath, complain = :error)
+    source_file = File.basename(filepath).ext(@configurator.extension_source)
+    return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_source, complain, filepath)
   end
 
 
-  def find_assembly_file(file_path, complain = :error)
-    assembly_file = File.basename(file_path).ext(@configurator.extension_assembly)
-    return @file_finder_helper.find_file_in_collection(assembly_file, @configurator.collection_all_assembly, complain)
+  def find_assembly_file(filepath, complain = :error)
+    assembly_file = File.basename(filepath).ext(@configurator.extension_assembly)
+    return @file_finder_helper.find_file_in_collection(assembly_file, @configurator.collection_all_assembly, complain, filepath)
   end
 
-  def find_file_from_list(file_path, file_list, complain)
-    return @file_finder_helper.find_file_in_collection(file_path, file_list, complain)
+  def find_file_from_list(filepath, file_list, complain)
+    return @file_finder_helper.find_file_in_collection(filepath, file_list, complain, filepath)
   end
 end
 
