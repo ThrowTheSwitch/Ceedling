@@ -1,7 +1,7 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-_November 28, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
+_December 29, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
 shipping very soon. See the [Release Notes](docs/ReleaseNotes.md) for an overview
 of all that’s new since 0.31.1 plus links to the detailed Changelog and list of 
 Breaking Changes.
@@ -345,6 +345,8 @@ The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedl
 * **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a variety of guides and much more.
 * The **[Plugins section](https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#ceedling-plugins)** within _Ceedling Packet_ lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
 
+_Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustrating project configuration option changes for new releases in the form of a Ceedling project YAML configuration file. This may be especially useful to those already familiar with the tool wanting to update to the latest and greatest as quickly as possible.
+
 ## Library and courses
 
 [ThrowTheSwitch.org][TTS]:
@@ -375,10 +377,10 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 ## The basics
 
-### Local installation
+### Local installation from the RubyGems repository
 
 1. Install [Ruby]. (Only Ruby 3+ supported.)
-1. Install Ceedling. All supporting frameworks are included.
+1. Install the Ceedling gem from the RubyGems repository. All supporting frameworks are included and this style of installation installs dependencies as well.
    ```shell
    > gem install ceedling
    ```
@@ -392,6 +394,14 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
    ```shell
    > ceedling test:all release
    ```
+### Local installation of the .gem file downloaded from this repo
+
+If you are working with prerelease versions of Ceedling or some other off-the-beaten-path installation scenario, you may want to install the Ceedling .gem file attached to any of the Github releases. No problem.
+
+The steps are similat to the preceding with two changes:
+
+1. `gem install --local <ceedling .gem filepath>`
+1. Any missing dependencies must be manually installed before installation of the local Ceedling gem will succeed. A local installation attempt will complain about any missing dependencies. Simply `gem install` them by name.
 
 [Ruby]: https://www.ruby-lang.org/
 
