@@ -823,24 +823,42 @@ Docker images will get you started with Ceedling and all the accompanying
 tools lickety split. Install Docker, pull down one of the _MadScienceLab_
 images and go.
 
-## Local Installation As a [Ruby Gem](http://docs.rubygems.org/read/chapter/1):
+## Local Installation As a [Ruby Gem][ruby-gem]:
 
 1. [Download and install Ruby][ruby-install]. Ruby 3 is required.
 
-1. Use Ruby’s command line gem package manager to install Ceedling:
-   `gem install ceedling`. Unity, CMock, and CException come along with 
-   Ceedling at no extra charge.
-
+1. Use Ruby’s command line gem package manager to install Ceedling from
+   the [RubyGems repository][rubygems-repo]: `gem install ceedling`.
+   * Unity, CMock, and CException come along with Ceedling at no extra 
+     charge.
+   * Installing from the RubyGems repo will also install Ceedling’s 
+     dependencies.
 1. Execute Ceedling at command line to create example project
    or an empty Ceedling project in your filesystem (executing
    `ceedling help` first is, well, helpful).
 
+[ruby-gem]: http://docs.rubygems.org/read/chapter/1
 [ruby-install]: http://www.ruby-lang.org/en/downloads/
+[rubygems-repo]: http://rubygems.org
 
 ### Gem install notes
 
-Steps 1-2 are a one time affair for your local environment. When steps 1-2 
-are completed once, only step 3 is needed for each new project.
+Steps 1–2 above are a one-time affair for your local environment. 
+When steps 1-2 are completed once, only step 3 is needed for each new 
+code projects.
+
+If you are working with prerelease versions of Ceedling or some other 
+off-the-beaten-path installation scenario, you may want to directly 
+install the Ceedling .gem file attached to any of the Github releases.
+No problem.
+
+The steps are similar to the preceding with two changes:
+
+1. `gem install --local <ceedling .gem filepath>`
+1. Any missing dependencies must be manually installed before 
+installation of the local Ceedling gem will succeed. A local 
+installation attempt will complain about any missing dependencies. 
+Simply `gem install` them by name.
 
 ## _MadScienceLab_ Docker Images
 

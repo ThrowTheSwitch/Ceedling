@@ -396,9 +396,9 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
    ```
 ### Local installation of the .gem file downloaded from this repo
 
-If you are working with prerelease versions of Ceedling or some other off-the-beaten-path installation scenario, you may want to install the Ceedling .gem file attached to any of the Github releases. No problem.
+If you are working with prerelease versions of Ceedling or some other off-the-beaten-path installation scenario, you may want to directly install the Ceedling .gem file attached to any of the Github releases. No problem.
 
-The steps are similat to the preceding with two changes:
+The steps are similar to the preceding with two changes:
 
 1. `gem install --local <ceedling .gem filepath>`
 1. Any missing dependencies must be manually installed before installation of the local Ceedling gem will succeed. A local installation attempt will complain about any missing dependencies. Simply `gem install` them by name.
