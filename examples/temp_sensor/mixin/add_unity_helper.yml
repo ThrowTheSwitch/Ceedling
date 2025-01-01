@@ -1,0 +1,26 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+
+# Enable the unity helper's define to enable our custom assertion
+:defines:
+  :test:
+    '*':
+      - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
+      - TEST_CUSTOM_EXAMPLE_STRUCT_T
+    'TestUsartIntegrated.c':
+      - TEST 
+      - TEST_CUSTOM_EXAMPLE_STRUCT_T
+      - TEST_USART_INTEGRATED_STRING=\"It's Awesome Time!\n\"
+  :release: []
+
+# Add the unity helper configuration to cmock
+:cmock:
+  :unity_helper_path: 
+    - test/support/UnityHelper.h
+...

@@ -1,0 +1,51 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+
+# Enable gcov plugin
+:plugins:
+  :enabled:
+    - gcov
+
+# Add -gcov to the plugins list to make sure of the gcov plugin
+# You will need to have gcov and gcovr both installed to make it work.
+# For more information on these options, see docs in plugins/gcov
+:gcov:
+  :utilities:
+    - gcovr           # Use gcovr to create the specified reports (default).
+    #- ReportGenerator # Use ReportGenerator to create the specified reports.
+  :reports: # Specify one or more reports to generate.
+    # Make an HTML summary report.
+    # - HtmlBasic
+    - HtmlDetailed
+    # - Text
+    # - Cobertura
+    # - SonarQube
+    # - JSON
+    # - HtmlInline
+    # - HtmlInlineAzure
+    # - HtmlInlineAzureDark
+    # - HtmlChart
+    # - MHtml
+    # - Badges
+    # - CsvSummary
+    # - Latex
+    # - LatexSummary
+    # - PngChart
+    # - TeamCitySummary
+    # - lcov
+    # - Xml
+    # - XmlSummary
+  :gcovr:
+    # :html_artifact_filename: TestCoverageReport.html
+    # :html_title: Test Coverage Report
+    :html_medium_threshold: 75
+    :html_high_threshold: 90
+    # :html_absolute_paths: TRUE
+    # :html_encoding: UTF-8
+...
