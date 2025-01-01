@@ -1,40 +1,78 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 
 class GeneratorHelper
 
-  constructor :streaminator
+  constructor :loginator
 
+  def test_crash?(test_filename, executable, shell_result)
+    runner = File.basename(executable)
 
-  def test_results_error_handler(executable, shell_result)
-    notice = ''
-    error  = false
-    
+    crash = false
+
+    # Unix Signal 11 ==> SIGSEGV
+    # Applies to Unix-like systems including MSYS on Windows
+    if (shell_result[:status].termsig == 11)
+      @loginator.log( "#{runner} process terminated with SIGSEGV (Unix Signal 11)", Verbosity::DEBUG, LogLabels::CRASH )
+      crash = true
+    end
+
+    # No test results found in test executable output
+    if (shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN).nil?
+      # No debug logging here because we log this condition in the error log handling below
+      crash = true
+    end
+
+    # Negative lookahead regex that checks all lines in test STDERR output.
+    # (?m) enables multiline mode.
+    # Matches only a line with a 'segfault' variant that does not begin with the test code filename.
+    # Processing STDERR and ignoring lines that look like test case results helps limit false positives.
+    segfault_pattern = 'Seg.*fault'
+    regex = /\A(?!(?m).*^#{Regexp.escape(test_filename)}.*$).*(?:#{segfault_pattern})/mi
+  
+    if shell_result[:stderr].match?(regex)
+      @loginator.log( "#{runner} STDERR reports segmentation fault", Verbosity::DEBUG, LogLabels::CRASH )
+      crash = true
+    end
+
+    return crash
+  end
+
+  def log_test_results_crash(executable, shell_result, backtrace)
+    runner = File.basename(executable)
+
+    notice = "Test executable `#{runner}` seems to have crashed -- likely terminating early due to a bad code reference.\n"
+
+    # Check for empty output
     if (shell_result[:output].nil? or shell_result[:output].strip.empty?)
-      error = true
-      # mirror style of generic tool_executor failure output
-      notice  = "\n" +
-                "ERROR: Test executable \"#{File.basename(executable)}\" failed.\n" +
-                "> Produced no output to $stdout.\n"
+      # Mirror style of generic tool_executor failure output
+      notice += "> Produced no output (including no final test result counts).\n"
+
+    # Check for no test results
     elsif ((shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN).nil?)
-      error = true
-      # mirror style of generic tool_executor failure output
-      notice  = "\n" +
-                "ERROR: Test executable \"#{File.basename(executable)}\" failed.\n" +
-                "> Produced no final test result counts in $stdout:\n" +
-                "#{shell_result[:output].strip}\n"
+      # Mirror style of generic tool_executor failure output
+      notice += "> Produced some output but contains no final test result counts.\n"
     end
     
-    if (error)
-      # since we told the tool executor to ignore the exit code, handle it explicitly here
-      notice += "> And exited with status: [#{shell_result[:exit_code]}] (count of failed tests).\n" if (shell_result[:exit_code] != nil)
-      notice += "> And then likely crashed.\n"                                                       if (shell_result[:exit_code] == nil)
+    notice += "> Causes can include: bad memory access, stack overflow, heap error, or bad branch in source or test code.\n"
 
-      notice += "> This is often a symptom of a bad memory access in source or test code.\n\n"
-
-      @streaminator.stderr_puts(notice, Verbosity::COMPLAIN)
-      raise      
+    # Incorporate knowledge of the backtrace setting into a recommendation
+    case backtrace
+    when :simple
+      notice += "> Consider configuring :project ↳ :use_backtrace to use the :gdb option to find the cause (see documentation).\n"
+    when :none
+      notice += "> Consider configuring :project ↳ :use_backtrace to help find the cause (see documentation).\n"
     end
+
+    @loginator.log( notice, Verbosity::ERRORS, LogLabels::CRASH )
   end
   
 end

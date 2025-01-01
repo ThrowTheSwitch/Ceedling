@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'reportgenerator_reportinator'
 require 'gcovr_reportinator'
 
@@ -8,90 +15,31 @@ directory(GCOV_DEPENDENCIES_PATH)
 
 CLEAN.include(File.join(GCOV_BUILD_OUTPUT_PATH, '*'))
 CLEAN.include(File.join(GCOV_RESULTS_PATH, '*'))
-CLEAN.include(File.join(GCOV_ARTIFACTS_PATH, '*'))
+CLEAN.include(File.join(GCOV_ARTIFACTS_PATH, '**/*'))
 CLEAN.include(File.join(GCOV_DEPENDENCIES_PATH, '*'))
 
 CLOBBER.include(File.join(GCOV_BUILD_PATH, '**/*'))
 
-rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
-       proc do |task_name|
-         @ceedling[:file_finder].find_compilation_input_file(task_name)
-       end
-     ]) do |object|
-
-  if File.basename(object.source) =~ /^(#{PROJECT_TEST_FILE_PREFIX}|#{CMOCK_MOCK_PREFIX})|(#{VENDORS_FILES.map{|source| '\b' + source + '\b'}.join('|')})/
-    @ceedling[:generator].generate_object_file(
-      TOOLS_GCOV_COMPILER,
-      OPERATION_COMPILE_SYM,
-      GCOV_SYM,
-      object.source,
-      object.name,
-      @ceedling[:file_path_utils].form_test_build_list_filepath(object.name)
-    )
-  else
-    @ceedling[GCOV_SYM].generate_coverage_object_file(object.source, object.name)
-  end
-end
-
-rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_EXECUTABLE}$/) do |bin_file|
-  lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
-  lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
-  @ceedling[:generator].generate_executable_file(
-    TOOLS_GCOV_LINKER,
-    GCOV_SYM,
-    bin_file.prerequisites,
-    bin_file.name,
-    @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name),
-    lib_args,
-    lib_paths
-  )
-end
-
-rule(/#{GCOV_RESULTS_PATH}\/#{'.+\\' + EXTENSION_TESTPASS}$/ => [
-       proc do |task_name|
-         @ceedling[:file_path_utils].form_test_executable_filepath(task_name)
-       end
-     ]) do |test_result|
-  @ceedling[:generator].generate_test_results(TOOLS_GCOV_FIXTURE, GCOV_SYM, test_result.source, test_result.name)
-end
-
-rule(/#{GCOV_DEPENDENCIES_PATH}\/#{'.+\\' + EXTENSION_DEPENDENCIES}$/ => [
-       proc do |task_name|
-         @ceedling[:file_finder].find_compilation_input_file(task_name)
-       end
-     ]) do |dep|
-  @ceedling[:generator].generate_dependencies_file(
-    TOOLS_TEST_DEPENDENCIES_GENERATOR,
-    GCOV_SYM,
-    dep.source,
-    File.join(GCOV_BUILD_OUTPUT_PATH, File.basename(dep.source).ext(EXTENSION_OBJECT)),
-    dep.name
-  )
-end
-
 task directories: [GCOV_BUILD_OUTPUT_PATH, GCOV_RESULTS_PATH, GCOV_DEPENDENCIES_PATH, GCOV_ARTIFACTS_PATH]
 
 namespace GCOV_SYM do
-  task source_coverage: COLLECTION_ALL_SOURCE.pathmap("#{GCOV_BUILD_OUTPUT_PATH}/%n#{@ceedling[:configurator].extension_object}")
 
   desc 'Run code coverage for all tests'
-  task all: [:test_deps] do
-    @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM)
-    @ceedling[:configurator].restore_config
+  task all: [:prepare] do
+    @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS )
   end
 
-  desc 'Run single test w/ coverage ([*] real test or source file name, no path).'
+  desc 'Run single test w/ coverage ([*] test or source file name, no path).'
   task :* do
-    message = "\nOops! '#{GCOV_ROOT_NAME}:*' isn't a real task. " \
+    message = "Oops! '#{GCOV_ROOT_NAME}:*' isn't a real task. " \
               "Use a real test or source file name (no path) in place of the wildcard.\n" \
-              "Example: rake #{GCOV_ROOT_NAME}:foo.c\n\n"
+              "Example: `ceedling #{GCOV_ROOT_NAME}:foo.c`"
 
-    @ceedling[:streaminator].stdout_puts(message)
+    @ceedling[:loginator].log( message, Verbosity::ERRORS )
   end
 
   desc 'Run tests by matching regular expression pattern.'
-  task :pattern, [:regex] => [:test_deps] do |_t, args|
+  task :pattern, [:regex] => [:prepare] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each do |test|
@@ -99,16 +47,14 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, force_run: false)
-      @ceedling[:configurator].restore_config
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS) )
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests matching pattern /#{args.regex}/.")
+      @ceedling[:loginator].log("\nFound no tests matching pattern /#{args.regex}/.")
     end
   end
 
   desc 'Run tests whose test path contains [dir] or [dir] substring.'
-  task :path, [:dir] => [:test_deps] do |_t, args|
+  task :path, [:dir] => [:prepare] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each do |test|
@@ -116,94 +62,39 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].setup_and_invoke(matches, GCOV_SYM, force_run: false)
-      @ceedling[:configurator].restore_config
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS) )
     else
-      @ceedling[:streaminator].stdout_puts("\nFound no tests including the given path or path component.")
+      @ceedling[:loginator].log( 'Found no tests including the given path or path component', Verbosity::ERRORS )
     end
   end
 
-  desc 'Run code coverage for changed files'
-  task delta: [:test_deps] do
-    @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, GCOV_SYM, force_run: false)
-    @ceedling[:configurator].restore_config
-  end
+  # Use a rule to increase efficiency for large projects
+  rule(/^#{GCOV_TASK_ROOT}\S+$/ => [ # gcov test tasks by regex
+     proc do |task_name|
+        # Yield clean test name => Strip the task string, remove Rake test task prefix, and remove any code file extension
+        test = task_name.strip().sub(/^#{GCOV_TASK_ROOT}/, '').chomp( EXTENSION_SOURCE )
 
-  # use a rule to increase efficiency for large projects
-  # gcov test tasks by regex
-  rule(/^#{GCOV_TASK_ROOT}\S+$/ => [
-         proc do |task_name|
-           test = task_name.sub(/#{GCOV_TASK_ROOT}/, '')
-           test = "#{PROJECT_TEST_FILE_PREFIX}#{test}" unless test.start_with?(PROJECT_TEST_FILE_PREFIX)
-           @ceedling[:file_finder].find_test_from_file_path(test)
-         end
-       ]) do |test|
-    @ceedling[:rake_wrapper][:test_deps].invoke
-    @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-    @ceedling[:test_invoker].setup_and_invoke([test.source], GCOV_SYM)
-    @ceedling[:configurator].restore_config
+        # Ensure the test name begins with a test name prefix
+        test = PROJECT_TEST_FILE_PREFIX + test if not (test.start_with?( PROJECT_TEST_FILE_PREFIX ))
+
+        # Provide the filepath for the target test task back to the Rake task
+        @ceedling[:file_finder].find_test_file_from_name( test )
+     end
+   ]) do |test|
+    @ceedling[:rake_wrapper][:prepare].invoke
+    @ceedling[:test_invoker].setup_and_invoke( tests:[test.source], context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS )
   end
 end
 
-if PROJECT_USE_DEEP_DEPENDENCIES
-  namespace REFRESH_SYM do
-    task GCOV_SYM do
-      @ceedling[:configurator].replace_flattened_config(@ceedling[GCOV_SYM].config)
-      @ceedling[:test_invoker].refresh_deep_dependencies
-      @ceedling[:configurator].restore_config
-    end
-  end
-end
+# If gcov config enables dedicated report generation task, create the task
+if not @ceedling[GCOV_SYM].automatic_reporting_enabled?
+namespace GCOV_REPORT_NAMESPACE_SYM do
 
-# Report Creation Utilities
-UTILITY_NAME_GCOVR = "gcovr"
-UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
-UTILITY_NAMES = [UTILITY_NAME_GCOVR, UTILITY_NAME_REPORT_GENERATOR]
-
-namespace UTILS_SYM do
-
-  # Returns true is the given utility is enabled, otherwise returns false.
-  def is_utility_enabled(opts, utility_name)
-    return !(opts.nil?) && !(opts[:gcov_utilities].nil?) && (opts[:gcov_utilities].map(&:upcase).include? utility_name.upcase)
-  end
-
-  desc "Create gcov code coverage html/xml/json/text report(s). (Note: Must run 'ceedling gcov' first)."
+  desc "Generate reports from coverage results (Note: a #{GCOV_SYM}: task must be executed first)"
   task GCOV_SYM do
-    # Get the gcov options from project.yml.
-    opts = @ceedling[:configurator].project_config_hash
-
-    # Create the artifacts output directory.
-    if !File.directory? GCOV_ARTIFACTS_PATH
-      FileUtils.mkdir_p GCOV_ARTIFACTS_PATH
-    end
-
-    # Remove unsupported reporting utilities.
-    if !(opts[:gcov_utilities].nil?)
-      opts[:gcov_utilities].reject! { |item| !(UTILITY_NAMES.map(&:upcase).include? item.upcase) }
-    end
-
-    # Default to gcovr when no reporting utilities are specified.
-    if opts[:gcov_utilities].nil? || opts[:gcov_utilities].empty?
-      opts[:gcov_utilities] = [UTILITY_NAME_GCOVR]
-    end
-
-    if opts[:gcov_reports].nil?
-      opts[:gcov_reports] = []
-    end
-
-    gcovr_reportinator = GcovrReportinator.new(@ceedling)
-    gcovr_reportinator.support_deprecated_options(opts)
-
-    if is_utility_enabled(opts, UTILITY_NAME_GCOVR)
-      gcovr_reportinator.make_reports(opts)
-    end
-
-    if is_utility_enabled(opts, UTILITY_NAME_REPORT_GENERATOR)
-      reportgenerator_reportinator = ReportGeneratorReportinator.new(@ceedling)
-      reportgenerator_reportinator.make_reports(opts)
-    end
-
+    @ceedling[:gcov].generate_coverage_reports()
   end
+
 end
+end
+

@@ -1,5 +1,12 @@
-ceedling-bullseye
-=================
+Bullseye Code Coverage Plugin
+=============================
+
+# June 1, 2024 Bullseye Plugin Disabled
+
+Until the Bullseye Plugin can be updated for compatibility with Ceedling >= 1.0.0,
+it has been disabled.
+
+(The key hurdle is access to a license for the proprietary Bullseye coverage tooling.)
 
 # Plugin Overview
 
@@ -55,7 +62,6 @@ by Ceedling. The following is a typical configuration example:
       - -w140
   :bullseye_report_covfn:
     :executable: covfn
-    :stderr_redirect: :auto
     :arguments:
       - '--file $': ENVIRONMENT_COVFILE
       - --width 120
@@ -63,7 +69,6 @@ by Ceedling. The following is a typical configuration example:
       - '"${1}"'
   :bullseye_browser:
     :executable: CoverageBrowser
-    :background_exec: :auto
     :optional: TRUE
     :arguments:
       - '"$"': ENVIRONMENT_COVFILE

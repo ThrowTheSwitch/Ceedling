@@ -1,3 +1,9 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
 
 namespace :module do
   module_root_separator = ":"
@@ -10,6 +16,7 @@ namespace :module do
       p = files.delete(pat)
       optz[:pattern] = p unless p.nil?
     end
+
     files.each do |v|
       module_root_path, module_name = v.split(module_root_separator, 2)
       if module_name
