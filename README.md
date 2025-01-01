@@ -67,7 +67,7 @@ library builds & dependency management, and more.
 [CException]: https://github.com/throwtheswitch/cexception
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
-[FFF]: https://github.com/meekrosoft/fff
+[FFF]: https://github.com/ElectronVector/fake_function_framework
 [FFF-plugin]: plugins/fff
 [ceedling-plugins]: docs/CeedlingPacket.md#ceedling-plugins
 
