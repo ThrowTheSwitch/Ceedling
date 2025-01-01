@@ -116,7 +116,7 @@ This new plugin also includes the option to generate an HTML report (see next se
 
 ### HTML tests report
 
-A community member submitted an [HTML report generation plugin](https://github.com/ThrowTheSwitch/Ceedling/pull/756/) that was not officially released before 0.32. It has been absorbed into the new `report_tests_log_factory` plugin (see previous section).
+A community member submitted an [HTML report generation plugin](https://github.com/ThrowTheSwitch/Ceedling/pull/756/) that was not officially released before 1.0. It has been absorbed into the new `report_tests_log_factory` plugin (see previous section).
 
 ### Improved Segfault Handling
 

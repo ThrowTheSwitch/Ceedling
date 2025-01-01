@@ -20,11 +20,9 @@ Ceedling plugins or by simply searching for code examples online.
 
 ## Development Roadmap & Notes
 
-_November 28, 2024_
-
 (See Ceedling's _[release notes](ReleaseNotes.md)_ for more.)
 
-* Ceedling 0.32 marks the beginning of moving all of Ceedling away from relying
+* Ceedling 1.0 marks the beginning of moving all of Ceedling away from relying
   on Rake. New, Rake-based plugins should not be developed. Rake dependencies
   among built-in plugins will be refactored as the transition occurs.
 * Ceedling's entire plugin architecture will be overhauled in future releases.

@@ -1,8 +1,9 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-_December 29, 2024_ 🚚 **Ceedling 1.0.0** is a release candidate and will be
-shipping very soon. See the [Release Notes](docs/ReleaseNotes.md) for an overview
+Welcome to **Ceedling 1.0.0** 
+
+See the [Release Notes](docs/ReleaseNotes.md) for an overview
 of all that’s new since 0.31.1 plus links to the detailed Changelog and list of 
 Breaking Changes.
 
@@ -13,11 +14,11 @@ Breaking Changes.
 Ceedling can build your release artifact but is especially adept at building
 unit test suites for your C projects — even in tricky embedded systems.
 
-Ceedling and its complementary pieces and parts are and always will be freely
-available and open source. **_[Ceedling Pro][ceedling-pro]_** is a growing list 
+Ceedling and its complementary pieces and parts are (and always will be) freely
+available and open source. **_[Ceedling Assist][ceedling-pro]_** is a growing list 
 of paid products and services to help you do even more with these tools.
 
-[ceedling-pro]: https://thingamabyte.com/ceedlingpro
+[ceedling-pro]: https://www.thingamabyte.com/ceedling
 
 ⭐️ **Eager to just get going? Jump to 
 [📚 Documentation & Learning](#-documentation--learning) and
