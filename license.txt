@@ -1,4 +1,6 @@
-Copyright (c) 2010-2024 Michael Karlesky, Mark VanderVoord, Greg Williams
+The MIT License (MIT)
+
+Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
