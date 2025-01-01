@@ -585,9 +585,13 @@ class Configurator
     blotter &= @configurator_setup.validate_defines( config )
     blotter &= @configurator_setup.validate_flags( config )
     blotter &= @configurator_setup.validate_test_preprocessor( config )
+    blotter &= @configurator_setup.validate_deep_preprocessor( config )
     blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
     blotter &= @configurator_setup.validate_plugins( config )
+
+    # Informational notices
+    @configurator_setup.warnings_for_problematic_configs( config )
 
     if !blotter
       raise CeedlingException.new( "Ceedling configuration failed validation" )

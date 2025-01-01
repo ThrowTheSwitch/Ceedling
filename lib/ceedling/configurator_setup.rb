@@ -566,7 +566,25 @@ class ConfiguratorSetup
 
     if !options.include?( use_test_preprocessor )
       walk = @reportinator.generate_config_walk( [:project, :use_test_preprocessor] )
-      msg = "#{walk} is :'#{use_test_preprocessor}' but must be one of #{options.map{|o| ':' + o.to_s()}.join(', ')}"
+      msg = "#{walk} is ':#{use_test_preprocessor}' but must be one of {#{options.map{|o| ':' + o.to_s()}.join(', ')}}"
+      @loginator.log( msg, Verbosity::ERRORS )
+      valid = false
+    end
+
+    return valid
+  end
+
+
+  def validate_deep_preprocessor(config)
+    valid = true
+
+    options = [:none, :mocks]
+
+    use_deep_preprocessor = config[:project][:use_deep_preprocessor]
+
+    if !options.include?( use_deep_preprocessor )
+      walk = @reportinator.generate_config_walk( [:project, :use_deep_preprocessor] )
+      msg = "#{walk} is ':#{use_deep_preprocessor}' but must be one of {#{options.map{|o| ':' + o.to_s()}.join(', ')}}"
       @loginator.log( msg, Verbosity::ERRORS )
       valid = false
     end
@@ -671,7 +689,7 @@ class ConfiguratorSetup
     if !options.include?( use_backtrace )
       walk = @reportinator.generate_config_walk( [:project, :use_backtrace] )
 
-      msg = "#{walk} is :'#{use_backtrace}' but must be one of #{options.map{|o| ':' + o.to_s()}.join(', ')}"
+      msg = "#{walk} is ':#{use_backtrace}' but must be one of {#{options.map{|o| ':' + o.to_s()}.join(', ')}}"
       @loginator.log( msg, Verbosity::ERRORS )
       valid = false
     end
@@ -737,5 +755,45 @@ class ConfiguratorSetup
 
     return ( (missing_plugins.size > 0) ? false : true )
   end
+
+  def warnings_for_problematic_configs(config)
+    warning_for_parameterized_tests_with_preprocessing( config )
+    warning_for_deep_preprocessor_without_preprocessing( config )
+  end
+
+  ### Private
+
+  private
+
+  def warning_for_parameterized_tests_with_preprocessing(config)
+    # Unity parameterized tests incompatible with Ceedling test file preprocessing
+    test_preprocessing = 
+      (config[:project][:use_test_preprocessor] == :tests) ||
+      (config[:project][:use_test_preprocessor] == :all)
+
+    if ((config[:unity][:use_param_tests] == true) and test_preprocessing)
+      setting_sym = config[:project][:use_test_preprocessor]
+      msg = "Unity's parameterized test macros are enabled [:unity ↳ :use_param_tests] " \
+            "but are incompatible with Ceedling's preprocessing of test files " \
+            "[:project ↳ :use_test_preprocessor => :#{setting_sym}]. See docs for more. " \
+            "Compilation of your test cases will probably fail."
+      @loginator.log( msg, Verbosity::COMPLAIN )
+    end
+  end
+
+  def warning_for_deep_preprocessor_without_preprocessing(config)
+    # :use_deep_preprocessor set without :use_test_preprocessor for mocks
+    mock_preprocessing = 
+      (config[:project][:use_test_preprocessor] == :mocks) ||
+      (config[:project][:use_test_preprocessor] == :all)
+
+    if ((config[:project][:use_deep_preprocessor] == :mocks) and !mock_preprocessing)
+      msg = "The deep dependencies preprocessor configuration setting [:project ↳ :use_deep_preprocessor => :mocks] " \
+            "is only useful when Ceedling's test preprocessing feature is also enabled and configured for mocks. " \
+            "See docs for more."
+      @loginator.log( msg, Verbosity::COMPLAIN )
+    end
+  end
+
 
 end
