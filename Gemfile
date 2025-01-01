@@ -22,8 +22,3 @@ gem "thor", "~> 1.3"
 gem "deep_merge", "~> 1.2"
 gem "unicode-display_width", "~> 3.1"
 gem "erb", "~> 4.0"
-
-#these will be used if present, but ignored otherwise
-#gem "curses"
-#gem "pty",    :platforms => [ :ruby ] #automatically included on *nix platforms
-#gem "popen4", :platforms => [ :mswin ]
