@@ -7,7 +7,7 @@ These release notes are complemented by two other documents:
 
 ---
 
-# 1.0.0 pre-release — November 28, 2024
+# 1.0.0 — January 01, 2025
 
 **This Ceedling release is probably the most significant since the project was first [posted to SourceForge in 2009][sourceforge].**
 
