@@ -133,8 +133,8 @@ class PreprocessinatorFileHandler
     # ----------------------------------------------------
     #  - We rely on search paths at compilation rather than explicit #include paths
     #  - Match (#include ")((path/)+)(file") and reassemble string using first and last matching groups
-    _contents.gsub!( /(#include\s+")(([^\/]+\/)+)(.+")/, '\1\4' )
-    
+    _contents.gsub!( /(#include\s+")(?:(?:[^"\/]+\/)+)([^"\/]*")/, '\1\2' )
+
     # Write contents of final preprocessed file
     @file_wrapper.write( preprocessed_filepath, _contents )
   end
