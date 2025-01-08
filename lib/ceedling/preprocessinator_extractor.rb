@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/encodinator'
 
 class PreprocessinatorExtractor 
  
@@ -103,13 +104,7 @@ class PreprocessinatorExtractor
     input.each_line( chomp:true ) do |line|
       
       # Clean up any oddball characters in an otherwise ASCII document
-      encoding_options = {
-        :invalid           => :replace,  # Replace invalid byte sequences
-        :undef             => :replace,  # Replace anything not defined in ASCII
-        :replace           => '',        # Use a blank for those replacements
-        :universal_newline => true       # Always break lines with \n
-      }
-      line = line.encode("ASCII", **encoding_options).encode('UTF-8')
+      line = line.clean_encoding
 
       # Handle extraction if the line is not a preprocessor directive
       if extract and not line =~ directive

@@ -8,6 +8,7 @@
 require 'ceedling/exceptions'
 require 'ceedling/file_path_utils'
 require 'ceedling/generator_test_runner' # From lib/ not vendor/unity/auto
+require 'ceedling/encodinator'
 
 class TestContextExtractor
 
@@ -371,7 +372,7 @@ class TestContextExtractor
   end
 
   def clean_code_line(line, comment_block)
-    _line = sanitize_encoding( line )
+    _line = line.clean_encoding
 
     # Remove line comments
     _line.gsub!(/\/\/.*$/, '')
@@ -408,18 +409,6 @@ class TestContextExtractor
     end
 
     return _line, comment_block
-  end
-
-  # Note: This method modifies encoding in place (encode!) in an attempt to reduce long string copies
-  def sanitize_encoding(content)
-    encoding_options = {
-      :invalid           => :replace,  # Replace invalid byte sequences
-      :undef             => :replace,  # Replace anything not defined in ASCII
-      :replace           => '',        # Use a blank for those replacements
-      :universal_newline => true       # Always break lines with \n
-    }
-
-    return content.encode("ASCII", **encoding_options).encode('UTF-8')
   end
 
   def debug_log_list(message, filepath, list)
