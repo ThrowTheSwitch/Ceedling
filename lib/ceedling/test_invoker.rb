@@ -343,13 +343,14 @@ class TestInvoker
           test_pass          = @file_path_utils.form_pass_results_filepath( details[:paths][:results], details[:filepath] )
           test_fail          = @file_path_utils.form_fail_results_filepath( details[:paths][:results], details[:filepath] )
 
-          # Identify all the objects shall not be linked and then remove them from objects list.
+          # Assemble a list of object files from .c files that have been #included in the test file
           test_no_link_objects = 
             @file_path_utils.form_test_build_objects_filelist(
               details[:paths][:build],
               @helper.fetch_shallow_source_includes( details[:filepath] ))
-          
-          test_objects = test_objects.uniq - test_no_link_objects
+
+          # Redefine test_objects, removing any problematic object file that would otherwise get linked into the test executable
+          test_objects = (test_objects.uniq - test_no_link_objects)
 
           @lock.synchronize do
             details[:sources]         = test_sources

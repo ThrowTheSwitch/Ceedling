@@ -131,7 +131,7 @@ class TestContextExtractor
     return val
   end
 
-  # Source header_includes within test file
+  # Source C includes within test file
   def lookup_source_includes_list(filepath)
     val = nil
     @lock.synchronize do
