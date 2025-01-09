@@ -7,7 +7,7 @@
 
 class PreprocessinatorIncludesHandler
 
-  constructor :configurator, :tool_executor, :test_context_extractor, :yaml_wrapper, :loginator, :reportinator
+  constructor :configurator, :tool_executor, :test_context_extractor, :file_wrapper, :yaml_wrapper, :loginator, :reportinator
 
   ##
   ## Includes Extraction Overview
