@@ -70,6 +70,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install --assume-yes --quiet gdb
 
+      # Install valgrind for Valgrind plugin testing
+      - name: Install valgrind for Valgrind Feature Testing
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --assume-yes --quiet valgrind
+
       # Install GCovr for Gcov plugin
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
         run: |
