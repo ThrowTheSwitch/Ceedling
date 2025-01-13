@@ -85,6 +85,11 @@ class FffCMockWrapper
 end
 
 # Switch out the CMock with FFF Mock Generator
-require "cmock"
-RealCMock = CMock
-CMock = FffCMockWrapper
+if !self.class.const_defined?(:RealCMock)
+  if !self.class.const_defined?(:CMock)
+    require "cmock"
+    RealCMock = CMock
+  end
+  self.class.send(:remove_const, :CMock)
+  CMock = FffCMockWrapper
+end
