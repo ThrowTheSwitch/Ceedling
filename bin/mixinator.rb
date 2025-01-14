@@ -5,14 +5,13 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'deep_merge'
-
 class Mixinator
 
-  constructor :path_validator, :yaml_wrapper, :loginator
+  constructor :mixin_smart_standardinator, :merginator, :path_validator, :yaml_wrapper, :loginator
 
   def setup
-    # ...
+    # Aliases
+    @standardinator = @mixin_smart_standardinator
   end
 
   def validate_cmdline_filepaths(paths)
@@ -96,7 +95,7 @@ class Mixinator
     return assembly.reverse()
   end
 
-  def merge(builtins:, config:, mixins:)
+  def mixin(builtins:, config:, mixins:)
     mixins.each do |mixin|
       source = mixin.keys.first
       filepath = mixin.values.first
@@ -124,8 +123,18 @@ class Mixinator
       # Sanitize the mixin config by removing any :mixins section (these should not end up in merges)
       _mixin.delete(:mixins)
 
-      # Merge this bad boy
-      config.deep_merge( _mixin )
+      # Run special handling using knowledge of Ceedling configuration conventions
+      notices = []
+      if @standardinator.smart_standardize( config:config, mixin:_mixin, notices:notices )
+        notices.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE ) }
+      end
+
+      warnings = []
+      if !@merginator.merge( config:config, mixin:_mixin, warnings:warnings )
+        msg = "Mixin values from #{filepath} will replace configuration values for incompatible merges..."
+        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        warnings.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN ) }
+      end
     end
 
     # Validate final configuration
