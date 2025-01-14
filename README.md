@@ -432,6 +432,7 @@ To use a _MadScienceLab_ image from your local terminal:
 1. Run the container with:
    1. The Docker `run` command and `-it --rm` command line options
    1. A Docker volume mapping from the root of your project to the default project path inside the container (_/home/dev/project_)
+   1. Use your OS user and group id in Linux to not have artifacts produced by Ceedling owned by root with `--user $(id -u):$(id -g)`
 
 See the command line examples in the following two sections.
 
@@ -442,7 +443,7 @@ Note that all of these somewhat lengthy command lines lend themselves well to be
 When the container launches as shown below, it will drop you into a Z-shell command line that has access to all the tools and utilities available within the container. In this usage, the Docker container becomes just another terminal, including ending its execution with `exit`.
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0
+ > docker run -it --rm --user $(id -u):$(id -g) -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0
 ```
 
 Once the _MadScienceLab_ container’s command line is available, to run Ceedling, execute it just as you would after installing Ceedling locally:
@@ -464,13 +465,13 @@ Once the _MadScienceLab_ container’s command line is available, to run Ceedlin
 Alternatively, you can run Ceedling through the _MadScienceLab_ Docker container directly from the command line as a command line utility. The general pattern is immediately below.
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 <Ceedling command line>
+ > docker run -it --rm --user $(id -u):$(id -g) -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 <Ceedling command line>
 ```
 
 As a specific example, to run all tests in a suite, the command line would be this:
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 ceedling test:all
+ > docker run -it --rm --user $(id -u):$(id -g) -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 ceedling test:all
 ```
 
 In this usage, the container starts, executes Ceedling, and then ends.
