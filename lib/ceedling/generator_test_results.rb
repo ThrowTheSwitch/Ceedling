@@ -105,7 +105,7 @@ class GeneratorTestResults
     results[:time] = unity_shell_result[:time] unless unity_shell_result[:time].nil?
 
     # Process test statistics
-    if (unity_shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN)
+    if (unity_shell_result[:output] =~ PATTERNS::TEST_STDOUT_STATISTICS)
       results[:counts][:total] =   $1.to_i
       results[:counts][:failed] =  $2.to_i
       results[:counts][:ignored] = $3.to_i
@@ -115,7 +115,7 @@ class GeneratorTestResults
     end
 
     # Remove test statistics lines
-    output_string = unity_shell_result[:output].sub( TEST_STDOUT_STATISTICS_PATTERN, '' )
+    output_string = unity_shell_result[:output].sub( PATTERNS::TEST_STDOUT_STATISTICS, '' )
 
     # Process test executable results line-by-line
     output_string.lines do |line|

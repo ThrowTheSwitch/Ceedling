@@ -141,11 +141,11 @@ class PreprocessinatorExtractor
     # Look for TEST_SOURCE_FILE("...") and TEST_INCLUDE_PATH("...") in a string (i.e. a file's contents as a string)
 
     regexes = [
-      /#{UNITY_TEST_SOURCE_FILE}\(\s*\"\s*[^"]+\s*\"\s*\)/,
-      /#{UNITY_TEST_INCLUDE_PATH}\(\s*\"\s*[^"]+\s*\"\s*\)/
+      /(#{PATTERNS::TEST_SOURCE_FILE})/,
+      /(#{PATTERNS::TEST_INCLUDE_PATH})/
     ]
 
-    return extract_tokens_by_regex_list( file_contents, *regexes )
+    return extract_tokens_by_regex_list( file_contents, *regexes ).map(&:first)
   end
 
 

@@ -134,7 +134,7 @@ class ToolExecutor
     args_index = 0
 
     # handle ${#} input replacement
-    if (element =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
+    if (element =~ PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
       args_index = ($2.to_i - 1)
 
       if (args.nil? or args[args_index].nil?)
@@ -159,7 +159,7 @@ class ToolExecutor
     end
 
     # handle inline ruby string substitution
-    if (build_string =~ RUBY_STRING_REPLACEMENT_PATTERN)
+    if (build_string =~ PATTERNS::RUBY_STRING_REPLACEMENT)
       build_string.replace(@system_wrapper.module_eval(build_string))
     end
 
@@ -187,7 +187,7 @@ class ToolExecutor
 
     expansion.each do |item|
       # String eval substitution
-      if (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      if (item =~ PATTERNS::RUBY_STRING_REPLACEMENT)
         elements << @system_wrapper.module_eval(item)
       # Global constants
       elsif (@system_wrapper.constants_include?(item))

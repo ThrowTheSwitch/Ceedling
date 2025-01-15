@@ -55,8 +55,8 @@ class ToolValidator
 
     # Skip everything if we've got an argument replacement pattern or Ruby string replacement in :executable
     # (Allow executable to be validated by shell at run time)
-    return true if (executable =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
-    return true if (executable =~ RUBY_STRING_REPLACEMENT_PATTERN)
+    return true if (executable =~ PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
+    return true if (executable =~ PATTERNS::RUBY_STRING_REPLACEMENT)
 
     # Extract the executable (including optional filepath) apart from any additional arguments
     # Be mindful of legal quote enclosures (e.g. `"Code Cruncher" foo bar`)

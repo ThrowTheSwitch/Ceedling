@@ -54,9 +54,6 @@ class TestContextExtractor
     includes = []
 
     @parsing_parcels.code_lines( input ) do |line|
-      # Strip out comments
-      line.gsub!(/\/\/.*/,'')
-
       if args.include?( :build_directive_include_paths )
         # Scan for build directives: TEST_INCLUDE_PATH()
         include_paths += extract_build_directive_include_paths( line )
@@ -244,7 +241,7 @@ class TestContextExtractor
     ingest_build_directive_source_files( filepath, files.uniq )
 
     debug_log_list(
-      "Extra source files found via #{UNITY_TEST_SOURCE_FILE}()",
+      "Extra source files found via TEST_SOURCE_FILE()",
       filepath,
       files
     )
@@ -254,7 +251,7 @@ class TestContextExtractor
     ingest_build_directive_include_paths( filepath, paths.uniq )
 
     debug_log_list(
-      "Search paths for #includes found via #{UNITY_TEST_INCLUDE_PATH}()",
+      "Search paths for #includes found via TEST_INCLUDE_PATH()",
       filepath,
       paths
     )
@@ -287,7 +284,7 @@ class TestContextExtractor
     source_extras = []
 
     # Look for TEST_SOURCE_FILE("<*>") statement
-    results = line.scan(/#{UNITY_TEST_SOURCE_FILE}\(\s*\"\s*([^"]+)\s*\"\s*\)/)
+    results = line.scan(PATTERNS::TEST_SOURCE_FILE)
     results.each do |result|
       source_extras << FilePathUtils.standardize( result[0] )
     end
@@ -299,7 +296,7 @@ class TestContextExtractor
     include_paths = []
 
     # Look for TEST_INCLUDE_PATH("<*>") statements
-    results = line.scan(/#{UNITY_TEST_INCLUDE_PATH}\(\s*\"\s*([^"]+)\s*\"\s*\)/)
+    results = line.scan(PATTERNS::TEST_INCLUDE_PATH)
     results.each do |result|
       include_paths << FilePathUtils.standardize( result[0] )
     end

@@ -132,7 +132,7 @@ class Configurator
     # Plugins must be loaded before generic path evaluation & magic that happen later.
     # So, perform path magic here as discrete step.
     config[:plugins][:load_paths].each do |path|
-      path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      path.replace( @system_wrapper.module_eval( path ) ) if (path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
       FilePathUtils::standardize( path )
     end
 
@@ -460,7 +460,7 @@ class Configurator
       # Process value array
       items.each do |item|
         # Process each item for Ruby string replacement
-        if item.is_a? String and item =~ RUBY_STRING_REPLACEMENT_PATTERN
+        if item.is_a? String and item =~ PATTERNS::RUBY_STRING_REPLACEMENT
           item.replace( @system_wrapper.module_eval( item ) )
         end
       end
@@ -706,7 +706,7 @@ class Configurator
     end
 
     paths.each do |path|
-      path.replace( @system_wrapper.module_eval( path ) ) if (path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      path.replace( @system_wrapper.module_eval( path ) ) if (path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
     end
   end
 
@@ -721,7 +721,7 @@ class Configurator
       if config.all? { |item| item.is_a?( String ) }
         # Expand in place each string item in the array
         config.each do |item|
-          item.replace( @system_wrapper.module_eval( item ) ) if (item =~ RUBY_STRING_REPLACEMENT_PATTERN)
+          item.replace( @system_wrapper.module_eval( item ) ) if (item =~ PATTERNS::RUBY_STRING_REPLACEMENT)
         end
       end
 
