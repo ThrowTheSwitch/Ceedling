@@ -12,7 +12,7 @@ require 'ceedling/encodinator'
 
 class TestContextExtractor
 
-  constructor :configurator, :file_wrapper, :loginator
+  constructor :configurator, :file_wrapper, :loginator, :parsing_parcels
 
   def setup
     # Per test-file lookup hashes
@@ -53,7 +53,10 @@ class TestContextExtractor
     source_extras = []
     includes = []
 
-    code_lines( input ) do |line|
+    @parsing_parcels.code_lines( input ) do |line|
+      # Strip out comments
+      line.gsub!(/\/\/.*/,'')
+
       if args.include?( :build_directive_include_paths )
         # Scan for build directives: TEST_INCLUDE_PATH()
         include_paths += extract_build_directive_include_paths( line )
@@ -99,7 +102,7 @@ class TestContextExtractor
   def extract_includes(input)
     includes = []
 
-    code_lines( input ) {|line| includes += _extract_includes( line ) }
+    @parsing_parcels.code_lines( input ) {|line| includes += _extract_includes( line ) }
 
     return includes.uniq
   end
@@ -235,16 +238,6 @@ class TestContextExtractor
     end
   end
 
-  # Exposed for testing
-  def code_lines(input)
-    comment_block = false
-    # Far more memory efficient and faster (for large files) than slurping entire file into memory
-    input.each_line do |line|
-      _line, comment_block = clean_code_line( line, comment_block )
-      yield( _line )
-    end    
-  end
-
   private #################################
 
   def collect_build_directive_source_files(filepath, files)
@@ -293,8 +286,8 @@ class TestContextExtractor
   def extract_build_directive_source_files(line)
     source_extras = []
 
-    # Look for TEST_SOURCE_FILE("<*>.<*>") statement
-    results = line.scan(/#{UNITY_TEST_SOURCE_FILE}\(\s*\"\s*(.+?\.\w+)*?\s*\"\s*\)/)
+    # Look for TEST_SOURCE_FILE("<*>") statement
+    results = line.scan(/#{UNITY_TEST_SOURCE_FILE}\(\s*\"\s*([^"]+)\s*\"\s*\)/)
     results.each do |result|
       source_extras << FilePathUtils.standardize( result[0] )
     end
@@ -306,7 +299,7 @@ class TestContextExtractor
     include_paths = []
 
     # Look for TEST_INCLUDE_PATH("<*>") statements
-    results = line.scan(/#{UNITY_TEST_INCLUDE_PATH}\(\s*\"\s*(.+?)\s*\"\s*\)/)
+    results = line.scan(/#{UNITY_TEST_INCLUDE_PATH}\(\s*\"\s*([^"]+)\s*\"\s*\)/)
     results.each do |result|
       include_paths << FilePathUtils.standardize( result[0] )
     end
@@ -369,46 +362,6 @@ class TestContextExtractor
 
   def form_file_key( filepath )
     return filepath.to_s.to_sym
-  end
-
-  def clean_code_line(line, comment_block)
-    _line = line.clean_encoding
-
-    # Remove line comments
-    _line.gsub!(/\/\/.*$/, '')
-
-    # Handle end of previously begun comment block
-    if comment_block
-      if _line.include?( '*/' )
-        # Turn off comment block handling state
-        comment_block = false
-        
-        # Remove everything up to end of comment block
-        _line.gsub!(/^.*\*\//, '')
-      else
-        # Ignore contents of the line if its entirely within a comment block
-        return '', comment_block        
-      end
-
-    end
-
-    # Block comments inside a C string are valid C, but we remove to simplify other parsing.
-    # No code we care about will be inside a C string.
-    # Note that we're not attempting the complex case of multiline string enclosed comment blocks
-    _line.gsub!(/"\s*\/\*.*"/, '')
-
-    # Remove single-line block comments
-    _line.gsub!(/\/\*.*\*\//, '')
-
-    # Handle beginning of any remaining multiline comment block
-    if _line.include?( '/*' )
-      comment_block = true
-
-      # Remove beginning of block comment
-      _line.gsub!(/\/\*.*/, '')
-    end
-
-    return _line, comment_block
   end
 
   def debug_log_list(message, filepath, list)

@@ -7,11 +7,13 @@
 
 require 'spec_helper'
 require 'ceedling/test_context_extractor'
+require 'ceedling/parsing_parcels'
 require 'ceedling/exceptions'
 
 describe TestContextExtractor do
   before(:each) do
     # Mock injected dependencies
+    @parsing_parcels = ParsingParcels.new()
     @configurator = double( "Configurator" ) # Use double() so we can mock needed methods that are added dynamically at startup
     @file_wrapper = double( "FileWrapper" ) # Not actually exercised in these test cases
     loginator = instance_double( "Loginator" )
@@ -41,6 +43,7 @@ describe TestContextExtractor do
       {
         :configurator => @configurator,
         :file_wrapper => @file_wrapper,
+        :parsing_parcels => @parsing_parcels,
         :loginator => loginator
       }
     )
@@ -92,39 +95,6 @@ describe TestContextExtractor do
     it "should provide empty list when no context extraction has occurred" do
       expect( @extractor.lookup_raw_mock_list( "path" ) ).to eq []
     end
-  end
-
-  context "#code_lines" do
-    it "should clean code of encoding problems and comments" do
-      file_contents = <<~CONTENTS
-      /* TEST_SOURCE_FILE("foo.c") */    // Eliminate single line comment block
-      // TEST_SOURCE_FILE("bar.c")       // Eliminate single line comment
-      Some text⛔️
-      /* // /*                           // Eliminate tricky comment block enclosing comments
-        TEST_SOURCE_FILE("boom.c")
-        */   //                          // Eliminate trailing single line comment following block comment
-      More text
-      #define STR1 "/* comment  "        // Strip out (single line) C string containing block comment
-      #define STR2 "  /* comment  "      // Strip out (single line) C string containing block comment
-      CONTENTS
-
-      got = []
-
-      @extractor.code_lines( StringIO.new( file_contents ) ) do |line|
-        line.strip!
-        got << line if !line.empty?
-      end
-
-      expected = [
-        'Some text', # ⛔️ removed with encoding sanitizing
-        'More text',
-        "#define STR1",
-        "#define STR2"
-      ]
-
-      expect( got ).to eq expected
-    end
-
   end
 
   context "#extract_includes" do

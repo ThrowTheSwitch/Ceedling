@@ -5,9 +5,20 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'spec_helper'
 require 'ceedling/preprocessinator_extractor'
+require 'ceedling/parsing_parcels'
 
 describe PreprocessinatorExtractor do
+  before(:each) do
+    @parsing_parcels = ParsingParcels.new()
+    @extractor = described_class.new(
+      {
+        :parsing_parcels => @parsing_parcels
+      }
+    )
+  end
+
   context "#extract_file_as_array_from_expansion" do
     it "should simply extract text of original file from preprocessed expansion" do
       filepath = "path/to/WANT.c"
@@ -32,7 +43,7 @@ describe PreprocessinatorExtractor do
 
       input = StringIO.new( file_contents.join( "\n" ) )
 
-      expect( subject.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
     end
 
     it "should extract text of original file from preprocessed expansion preserving #directives and cleaning up whitespace)" do
@@ -62,7 +73,7 @@ describe PreprocessinatorExtractor do
 
       input = StringIO.new( file_contents.join( "\n" ) )
 
-      expect( subject.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
     end
 
     it "should extract text of original file from preprocessed expansion with complex preprocessor directive sequence" do
@@ -97,7 +108,7 @@ describe PreprocessinatorExtractor do
 
       input = StringIO.new( file_contents.join( "\n" ) )
 
-      expect( subject.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
+      expect( @extractor.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
     end
   end
 
@@ -125,7 +136,7 @@ describe PreprocessinatorExtractor do
 
       input = StringIO.new( file_contents.join( "\n" ) )
 
-      expect( subject.extract_file_as_string_from_expansion( input, filepath ) ).to eq expected
+      expect( @extractor.extract_file_as_string_from_expansion( input, filepath ) ).to eq expected
     end
   end
 
@@ -146,7 +157,27 @@ describe PreprocessinatorExtractor do
         'TEST_INCLUDE_PATH("hello/there")'
       ]
 
-      expect( subject.extract_test_directive_macro_calls( file_text ) ).to eq expected
+      expect( @extractor.extract_test_directive_macro_calls( file_text ) ).to eq expected
+    end
+  end
+
+  context "#extract_test_directive_macro_calls" do
+    it "should extract only uncommented calls" do
+      file_text = <<~FILE_TEXT
+        TEST_SOURCE_FILE("foo/bar/file.c")//TEST_SOURCE_FILE("yo/data.c")
+
+            TEST_INCLUDE_PATH("some/inc/dir")
+        SOME_MACRO(TEST_INCLUDE_PATH("another/dir")) TEST_INCLUDE_PATH("hello/there")
+      FILE_TEXT
+
+      expected = [
+        'TEST_SOURCE_FILE("foo/bar/file.c")',
+        'TEST_INCLUDE_PATH("some/inc/dir")',
+        'TEST_INCLUDE_PATH("another/dir")',
+        'TEST_INCLUDE_PATH("hello/there")'
+      ]
+
+      expect( @extractor.extract_test_directive_macro_calls( file_text ) ).to eq expected
     end
   end
 
@@ -177,15 +208,15 @@ describe PreprocessinatorExtractor do
       expected = [
         "#pragma pack(1)",
         [
-          "#pragma TOOL command \\",
-          "          with_some_args  \\",
+          "#pragma TOOL command ",
+          "          with_some_args  ",
           "          that wrap"
-        ],
+        ].join,
         "#pragma warning(disable : 4996)",
         "#pragma GCC optimize(\"O3\")"
       ]
 
-      expect( subject.extract_pragmas( file_text ) ).to eq expected
+      expect( @extractor.extract_pragmas( file_text ) ).to eq expected
     end
   end
 
@@ -200,7 +231,7 @@ describe PreprocessinatorExtractor do
         #endif // _HEADER_INCLUDE_GUARD_
       FILE_TEXT
 
-      expect( subject.extract_include_guard( file_text ) ).to eq '_HEADER_INCLUDE_GUARD_'
+      expect( @extractor.extract_include_guard( file_text ) ).to eq '_HEADER_INCLUDE_GUARD_'
     end
 
     it "should extract the first text that looks like an include guard from among file text" do
@@ -216,7 +247,7 @@ describe PreprocessinatorExtractor do
         #endif // HEADER_INCLUDE_GUARD
       FILE_TEXT
 
-      expect( subject.extract_include_guard( file_text ) ).to eq 'HEADER_INCLUDE_GUARD'
+      expect( @extractor.extract_include_guard( file_text ) ).to eq 'HEADER_INCLUDE_GUARD'
     end
 
     it "should not extract an include guard from among file text" do
@@ -229,7 +260,7 @@ describe PreprocessinatorExtractor do
         #endif // SOME_GUARD_NAME
       FILE_TEXT
 
-      expect( subject.extract_include_guard( file_text ) ).to eq nil
+      expect( @extractor.extract_include_guard( file_text ) ).to eq nil
     end
   end
 
@@ -279,26 +310,26 @@ describe PreprocessinatorExtractor do
         "#define SQUARE(x) ((x) * (x))",
         "#define MAX(a, b) ((a) > (b) ? (a) : (b))",
         [
-          "#define MACRO(num, str) {\\",
-          "            printf(\"%d\", num);\\",
-          "            printf(\" is\");            \\",
-          "            printf(\" %s number\", str);\\",
-          "            printf(\"\\n\");\\",
+          "#define MACRO(num, str) {",
+          "            printf(\"%d\", num);",
+          "            printf(\" is\");            ",
+          "            printf(\" %s number\", str);",
+          "            printf(\"\\n\");",
           "           }"
-        ],
+        ].join,
         [
-          "#define LONG_STRING \"This is a very long string that \\",
+          "#define LONG_STRING \"This is a very long string that ",
           "                      continues on the next line\""
-        ],
+        ].join,
         [
-          "#define MULTILINE_MACRO do { \\",
-          "      something(); \\",
-          "      something_else(); \\",
+          "#define MULTILINE_MACRO do { ",
+          "      something(); ",
+          "      something_else(); ",
           "    } while(0)"
-        ]
+        ].join
       ]
 
-      expect( subject.extract_macro_defs( file_text, nil ) ).to eq expected
+      expect( @extractor.extract_macro_defs( file_text, nil ) ).to eq expected
     end
 
     it "should ignore include guard among macro defintions in file text" do
@@ -316,13 +347,10 @@ describe PreprocessinatorExtractor do
 
       expected = [
         "#define PI 3.14159",
-        [
-          "#define LONG_STRING \"This is a very long string that \\",
-          "                      continues on the next line\""
-        ]
+        "#define LONG_STRING \"This is a very long string that                       continues on the next line\""
       ]
 
-      expect( subject.extract_macro_defs( file_text, '_INCLUDE_GUARD_' ) ).to eq expected
+      expect( @extractor.extract_macro_defs( file_text, '_INCLUDE_GUARD_' ) ).to eq expected
     end
 
   end
