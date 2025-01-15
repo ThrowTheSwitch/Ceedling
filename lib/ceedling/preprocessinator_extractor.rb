@@ -7,9 +7,12 @@
 
 require 'ceedling/constants'
 require 'ceedling/encodinator'
+require 'ceedling/parsing_parcels'
 
 class PreprocessinatorExtractor 
  
+  constructor :parsing_parcels
+
   ##
   ## Preprocessor Expansion Output Handling
   ## ======================================
@@ -138,8 +141,8 @@ class PreprocessinatorExtractor
     # Look for TEST_SOURCE_FILE("...") and TEST_INCLUDE_PATH("...") in a string (i.e. a file's contents as a string)
 
     regexes = [
-      /#{UNITY_TEST_SOURCE_FILE}.+?"\)/,
-      /#{UNITY_TEST_INCLUDE_PATH}.+?"\)/
+      /#{UNITY_TEST_SOURCE_FILE}\(\s*\"\s*[^"]+\s*\"\s*\)/,
+      /#{UNITY_TEST_INCLUDE_PATH}\(\s*\"\s*[^"]+\s*\"\s*\)/
     ]
 
     return extract_tokens_by_regex_list( file_contents, *regexes )
@@ -199,7 +202,7 @@ class PreprocessinatorExtractor
     #  - Captures all text (non-greedily) after '#<directive>' on a first line through 0 or more line continuations up to a final newline.
     #  - Line continuations comprise a final '\' on a given line followed by whitespace & newline, wrapping to the next
     #    line up to a final '\' on that next line.
-    regex = /(#\s*#{directive}\s+.*?(\\\s*\n.*?)*)\n/
+    regex = /(#\s*#{directive}[^\n]*)\n/
 
     tokens = extract_tokens_by_regex_list( file_contents, regex )
 
@@ -227,7 +230,9 @@ class PreprocessinatorExtractor
 
     # For each regex provided, extract all matches from the source string
     regexes.each do |regex|
-      tokens += file_contents.scan( regex )
+      @parsing_parcels.code_lines( file_contents ) do |line|
+        tokens += line.scan( regex )
+      end
     end
 
     return tokens
