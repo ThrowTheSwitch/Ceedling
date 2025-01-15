@@ -52,7 +52,7 @@ class FilePathUtils
     path = self.no_aggregation_decorators(path)
 
     # Find first occurrence of glob specifier: *, ?, {, }, [, ]
-    find_index = (path =~ GLOB_PATTERN)
+    find_index = (path =~ PATTERNS::GLOB)
 
     # Return empty path if first character is part of a glob
     return '' if find_index == 0

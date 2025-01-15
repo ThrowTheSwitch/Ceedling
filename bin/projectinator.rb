@@ -109,11 +109,11 @@ class Projectinator
 
     # Handle any inline Ruby string expansion
     load_paths.each do |load_path|
-      load_path.replace( @system_wrapper.module_eval( load_path ) ) if (load_path =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      load_path.replace( @system_wrapper.module_eval( load_path ) ) if (load_path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
     end
 
     enabled.each do |mixin|
-      mixin.replace( @system_wrapper.module_eval( mixin ) ) if (mixin =~ RUBY_STRING_REPLACEMENT_PATTERN)
+      mixin.replace( @system_wrapper.module_eval( mixin ) ) if (mixin =~ PATTERNS::RUBY_STRING_REPLACEMENT)
     end
 
     # Remove the :mixins section of the configuration

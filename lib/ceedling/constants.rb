@@ -65,6 +65,15 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
+class PATTERNS
+  GLOB = /[\*\?\{\}\[\]]/
+  RUBY_STRING_REPLACEMENT = /#\{.+\}/
+  TOOL_EXECUTOR_ARGUMENT_REPLACEMENT = /(\$\{(\d+)\})/
+  TEST_STDOUT_STATISTICS  = /\n-+\s*(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
+  TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
+  TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
+end
+
 GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
 
 # Escaped newline literal (literally double-slash-n) for "encoding" multiline strings as single string
@@ -94,10 +103,6 @@ UNITY_LIB_PATH         = "#{UNITY_ROOT_PATH}/src"
 UNITY_C_FILE           = 'unity.c'
 UNITY_H_FILE           = 'unity.h'
 UNITY_INTERNALS_H_FILE = 'unity_internals.h'
-
-# Do-nothing macros defined in unity.h for extra build context to be used by build tools like Ceedling
-UNITY_TEST_SOURCE_FILE  = 'TEST_SOURCE_FILE'
-UNITY_TEST_INCLUDE_PATH = 'TEST_INCLUDE_PATH'
 
 RUNNER_BUILD_CMDLINE_ARGS_DEFINE = 'UNITY_USE_COMMAND_LINE_ARGS'
 
@@ -133,12 +138,6 @@ OPERATION_LINK_SYM        = :link       unless defined?(OPERATION_LINK_SYM)
 
 PREPROCESS_FULL_EXPANSION_DIR  = 'full_expansion'
 PREPROCESS_DIRECTIVES_ONLY_DIR = 'directives_only'
-
-# Match presence of any glob pattern characters
-GLOB_PATTERN = /[\*\?\{\}\[\]]/
-RUBY_STRING_REPLACEMENT_PATTERN = /#\{.+\}/
-TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN = /(\$\{(\d+)\})/
-TEST_STDOUT_STATISTICS_PATTERN  = /\n-+\s*(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
 
 NULL_FILE_PATH = '/dev/null'
 

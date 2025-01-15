@@ -26,7 +26,7 @@ class GeneratorHelper
     end
 
     # No test results found in test executable output
-    if (shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN).nil?
+    if (shell_result[:output] =~ PATTERNS::TEST_STDOUT_STATISTICS).nil?
       # No debug logging here because we log this condition in the error log handling below
       crash = true
     end
@@ -57,7 +57,7 @@ class GeneratorHelper
       notice += "> Produced no output (including no final test result counts).\n"
 
     # Check for no test results
-    elsif ((shell_result[:output] =~ TEST_STDOUT_STATISTICS_PATTERN).nil?)
+    elsif ((shell_result[:output] =~ PATTERNS::TEST_STDOUT_STATISTICS).nil?)
       # Mirror style of generic tool_executor failure output
       notice += "> Produced some output but contains no final test result counts.\n"
     end
