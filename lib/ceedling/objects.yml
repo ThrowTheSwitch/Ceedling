@@ -162,11 +162,14 @@ file_finder:
 file_finder_helper:
   compose: loginator
 
+parsing_parcels:
+
 test_context_extractor:
   compose:
     - configurator
     - file_wrapper
     - loginator
+    - parsing_parcels
 
 include_pathinator:
   compose:
@@ -287,6 +290,8 @@ preprocessinator_file_handler:
     - loginator
 
 preprocessinator_extractor:
+  compose:
+    - parsing_parcels
 
 build_batchinator:
   compose:

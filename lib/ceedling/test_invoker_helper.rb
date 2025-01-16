@@ -64,12 +64,12 @@ class TestInvokerHelper
       end
 
       if not valid_extension
-        error = "File '#{source}' specified with #{UNITY_TEST_SOURCE_FILE}() in #{test} is not a #{ext_message} source file"
+        error = "File '#{source}' specified with TEST_SOURCE_FILE() in #{test} is not a #{ext_message} source file"
         raise CeedlingException.new(error)
       end
 
       if @file_finder.find_build_input_file(filepath: source, complain: :ignore, context: TEST_SYM).nil?
-        error = "File '#{source}' specified with #{UNITY_TEST_SOURCE_FILE}() in #{test} cannot be found in the source file collection"
+        error = "File '#{source}' specified with TEST_SOURCE_FILE() in #{test} cannot be found in the source file collection"
         raise CeedlingException.new(error)
       end
     end
@@ -321,7 +321,7 @@ class TestInvokerHelper
         notice +=   "OPTIONS:\n" +
                     "  1. Doublecheck this test's #include statements.\n" +
                     "  2. Simplify complex macros or fully specify symbols for this test in :project ↳ :defines.\n" +
-                    "  3. If no header file corresponds to the needed source file, use the #{UNITY_TEST_SOURCE_FILE}()\n" +
+                    "  3. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE()\n" +
                     "     build diective macro in this test to inject a source file into the build.\n\n" +
                     "See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.\n\n"
 
