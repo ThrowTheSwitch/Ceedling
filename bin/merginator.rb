@@ -21,10 +21,11 @@ class Merginator
     validate = validate_merge( config:config, mixin:mixin, mismatches:warnings )
 
     # Merge this bad boy
-    config.deep_merge(
+    config.deep_merge!(
       mixin,
       # In cases of a primitive and a hash of primitives, add single item to array
-      # Handle merge cases where valid config entries can be a single string or array of strings
+      # This handles merge cases where valid config entries can be a single string or array of strings
+      # Because of the nature of Ceedling configurations, this handling is primarily for the string case
       :extend_existing_arrays => true
     )
 
@@ -62,7 +63,9 @@ class Merginator
         )
 
         valid = false unless sub_result
-      else
+
+      # Skip comparing anything where the config value is an array as it will be extended by the mixin value
+      elsif !config_value.is_a?(Array)
         # Compare types of non-hash values
         unless config_value.class == mixin_value.class
           # If mergeable values at key paths in common are not the same type, register this
