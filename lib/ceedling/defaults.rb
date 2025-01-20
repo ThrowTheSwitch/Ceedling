@@ -148,26 +148,6 @@ else
   MD_FLAG = '-MD'
 end
 
-DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL = {
-  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_dependencies_generator'.freeze,
-  :optional => false.freeze,
-  :arguments => [
-    '-E'.freeze,
-    "-I\"${5}\"".freeze, # Per-test executable search paths
-    "-D\"${4}\"".freeze, # Per-test executable defines
-    "-DGNU_COMPILER".freeze,
-    "-MT \"${3}\"".freeze,
-    '-MM'.freeze,
-    MD_FLAG.freeze,
-    '-MG'.freeze,
-    "-MF \"${2}\"".freeze,
-    "-x c".freeze, # Force C language
-    "-c \"${1}\"".freeze,
-    # '-nostdinc'.freeze,
-    ].freeze
-  }
-
 DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_release_dependencies_generator'.freeze,
@@ -273,12 +253,6 @@ DEFAULT_TOOLS_TEST_PREPROCESSORS = {
     :test_nested_includes_preprocessor       => DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL,
     :test_file_full_preprocessor             => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
     :test_file_directives_only_preprocessor  => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
-    }
-  }
-
-DEFAULT_TOOLS_TEST_DEPENDENCIES = {
-  :tools => {
-    :test_dependencies_generator => DEFAULT_TEST_DEPENDENCIES_GENERATOR_TOOL,
     }
   }
 

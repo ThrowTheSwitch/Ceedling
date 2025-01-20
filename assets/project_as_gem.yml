@@ -382,11 +382,6 @@
 #     :arguments: []
 #     :name: 
 #     :optional: FALSE
-#   :test_dependencies_generator: 
-#     :executable:
-#     :arguments: []
-#     :name: 
-#     :optional: FALSE
 #   :release_compiler: 
 #     :executable:
 #     :arguments: []
