@@ -28,12 +28,12 @@ describe Merginator do
       }
 
       mixin = {
-        :foo => :bar
+        :bar => :baz
       }
 
       expected = {
         :foo => :bar,
-        :foo => :bar        
+        :bar => :baz
       }
 
       # Successful merge
@@ -112,7 +112,7 @@ describe Merginator do
       # Expected `deep_merge!()` result
       expect( config ).to eq expected
 
-      # No warnings because merging a different type of a Mixin into a Config array is allowed
+      # No warnings because merging a a Mixin entry value into a Config array is allowed
       expect( warnings ).to eq []
     end
   end
@@ -169,5 +169,86 @@ describe Merginator do
       expect( warnings[3] ).to match( /configuration has Hash.+Mixin has Array/i )
     end
   end
+
+  context "#merge" do
+    it "should merge representative project configuration and mixin" do
+      warnings = []
+
+      config = {
+        :project => {
+          :build_root => 'build',
+          :test_file_prefix => 'Test'
+        },
+        :defines => {
+          :test => {
+            :* => [
+              'SIMULATE',
+              'TEST'
+            ]
+          }
+        },
+        :plugins => {
+          :enabled => [
+            'report_tests_pretty_stdout',
+            'report_tests_log_factory'
+          ]
+        }
+      }
+
+      mixin = {
+        :project => {
+          :test_threads => 4,
+          :compile_threads => 4
+        },
+        :defines => {
+          :test => {
+            :* => ['PROJECT_FEATURE_X']
+          }
+        },
+        :plugins => {
+          :enabled => [
+            'module_generator',
+            'command_hooks'
+          ]
+        }
+      }
+
+      expected = {
+        :project => {
+          :build_root => 'build',
+          :test_file_prefix => 'Test',
+          :test_threads => 4,
+          :compile_threads => 4
+        },
+        :defines => {
+          :test => {
+            :* => [
+              'SIMULATE',
+              'TEST',
+              'PROJECT_FEATURE_X'
+            ]
+          }
+        },
+        :plugins => {
+          :enabled => [
+            'report_tests_pretty_stdout',
+            'report_tests_log_factory',
+            'module_generator',
+            'command_hooks'
+          ]
+        }
+      }
+
+      # Successful merge
+      expect( @merginator.merge( config:config, mixin:mixin, warnings:warnings ) ).to eq true
+
+      # Expected `deep_merge!()` result
+      expect( config ).to eq expected
+
+      # No warnings because merging a a Mixin entry value into a Config array is allowed
+      expect( warnings ).to eq []
+    end
+  end
+
 
 end
