@@ -505,7 +505,7 @@ Or, use Ceedling’s built-in `examples` & `example` commands to extract a sampl
 
 See the [configuration section][ceedling-packet-config] in _Ceedling Packet_ for way more details on your project configuration options than we can provide here.
 
-[example-config-file]: assets/project_as_gem.yml
+[example-config-file]: assets/project.yml
 [ceedling-packet-config]: docs/CeedlingPacket.md#the-almighty-ceedling-project-configuration-file-in-glorious-yaml
 
 ## Using Ceedling’s command line (and related)

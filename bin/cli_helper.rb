@@ -35,16 +35,11 @@ class CliHelper
 
   def create_project_file(dest, local, ceedling_tag)
     project_filepath = File.join( dest, DEFAULT_PROJECT_FILENAME )
-    source_filepath = ''
-
-    if local
-      source_filepath = File.join( 'assets', 'project_with_guts.yml' )
-    else
-      source_filepath = File.join( 'assets', 'project_as_gem.yml' )
-    end
+    source_filepath = File.join( 'assets', DEFAULT_PROJECT_FILENAME )
 
     # Clone the project file
     @actions._copy_file( source_filepath, project_filepath, :force => true)
+
     # Silently update internal version
     @actions._gsub_file(
       project_filepath,
@@ -52,6 +47,16 @@ class CliHelper
       ":ceedling_version: #{ceedling_tag}",
       :verbose => false
     )
+
+    # Silently path to point at local install
+    if local
+      @actions._gsub_file(
+        project_filepath,
+        /:which_ceedling:\s+gem/,
+        ":which_ceedling: vendor/ceedling",
+        :verbose => false
+      )
+    end
   end
 
 

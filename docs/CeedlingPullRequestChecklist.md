@@ -16,7 +16,8 @@ Below is a quick checklist of the things that need to be done before a full PR i
  - [ ] Does it follow our coding standards?
  - [ ] Are all existing tests passing?
  - [ ] Are there new tests added and passing?
- - [ ] Have new config options been added as defaults to the `project.yml` files?
+ - [ ] Have new config options been added as defaults to the `project.yml` file?
+ - [ ] Should new config options be added to example projects' `project.yml` files?
  - [ ] Does the feature follow our "Logical Defaults" philosophy where possible?
  - [ ] Has it passed a peer review?
  - [ ] Does it pass CI (continuous integration) tests?
