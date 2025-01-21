@@ -1,6 +1,6 @@
 # A Fake Function Framework Plug-in for Ceedling
 
-This is a plug-in for [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) to use the [Fake Function Framework](https://github.com/ElectronVector/fake_function_framework) for mocking instead of CMock.
+This is a plug-in for [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) to use the [Fake Function Framework](https://github.com/meekrosoft/fff) for mocking instead of CMock.
 
 Using _fff_ provides less strict mocking than CMock, and can allow for more loosely-coupled tests.
 
