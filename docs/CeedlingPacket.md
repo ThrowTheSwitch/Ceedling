@@ -256,7 +256,7 @@ extend Ceedling’s capabilities for needs such as custom code metrics
 reporting, build artifact packaging, and much more. A variety of 
 built-in plugins come with Ceedling.
 
-[example-config-file]: ../assets/project_as_gem.yml
+[example-config-file]: ../assets/project.yml
 [project-configuration]: #the-almighty-ceedling-project-configuration-file-in-glorious-yaml
 
 ## What’s with This Name?
