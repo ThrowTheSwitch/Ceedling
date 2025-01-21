@@ -49,7 +49,7 @@ describe MixinStandardizer do
         }
       }
 
-      # Unchanged after standardizing
+      # Unchanged config and mixin after standardizing
       expected_config = config.clone()
       expected_mixin = mixin.clone()
 
@@ -98,14 +98,14 @@ describe MixinStandardizer do
         }
       }
 
-      # Unchanged after standardizing
+      # Unchanged config and mixin after standardizing
       expected_config = config.clone()
       expected_mixin = mixin.clone()
 
       # No modifications
       expect( @standardizer.smart_standardize( config:config, mixin:mixin, notices:notices ) ).to eq false
 
-      # Expected unchanged config and mixing
+      # Expected unchanged config and mixin
       expect( config ).to eq expected_config
       expect( mixin ).to eq expected_mixin
 
@@ -121,6 +121,7 @@ describe MixinStandardizer do
       config = {
         :defines => {
           :test => {
+            # :* preferred all-matches matcher symbol with matcher hash
             :* => [
               'SIMULATE',
               'TEST'
@@ -129,6 +130,7 @@ describe MixinStandardizer do
         },
         :flags => {
           :test => {
+            # Simple array list of flags for all compilation
             :compile => ['-std=c99']
           }
         }
@@ -141,7 +143,8 @@ describe MixinStandardizer do
         :flags => {
           :test => {
             :compile => {
-              :* => ['-pedantic']
+              # All-matches string-based matcher hash that could occur in wild (:* is preferred)
+              '*' => ['-pedantic']
             }
           }
         }
@@ -150,6 +153,7 @@ describe MixinStandardizer do
       expected_config = {
         :defines => {
           :test => {
+            # Unchanged matcher hash
             :* => [
               'SIMULATE',
               'TEST'
@@ -159,6 +163,7 @@ describe MixinStandardizer do
         :flags => {
           :test => {
             :compile => {
+              # Standardized original flags list to matcher hash
               :* => ['-std=c99']
             }
           }
@@ -168,28 +173,30 @@ describe MixinStandardizer do
       expected_mixin = {
         :defines => {
           :test => {
+            # Standardized original compilation symbols list to matcher hash
             :* => ['PROJECT_FEATURE_X']
           }
         },
         :flags => {
           :test => {
             :compile => {
+              # Unchanged compilation flag matcher hash but standardized to use matcher symbol key
               :* => ['-pedantic']
             }
           }
         }
       }
 
-      # Modifications
+      # Validate modifications occurred
       expect( @standardizer.smart_standardize( config:config, mixin:mixin, notices:notices ) ).to eq true
 
-      # Expected changed config and mixing
+      # Expected modified config and mixin
       expect( config ).to eq expected_config
       expect( mixin ).to eq expected_mixin
 
       # Notices
-      expect( notices[0] ).to match( /Converted mixin list to matcher hash/i )
-      expect( notices[1] ).to match( /Converted configuration list to matcher hash/i )
+      expect( notices[0] ).to match( /:defines.+Converted mixin list to matcher hash/i )
+      expect( notices[1] ).to match( /:flags.+Converted configuration list to matcher hash/i )
     end
   end
 
