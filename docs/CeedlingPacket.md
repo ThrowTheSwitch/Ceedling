@@ -2119,11 +2119,11 @@ if you wish to use it in your project.
 Ceedling needs a project configuration to accomplish anything for you.
 Ceedling's project configuration is a large in-memory data structure.
 That data structure is loaded from a human-readable file format called
-YAML.
+[YAML].
 
 The next section details Ceedling’s project configuration options in 
-YAML. This section explains all your options for loading and modifying 
-project configuration.
+available through YAML. This section explains all your options for 
+loading and modifying the project configuration itself.
 
 ## Overview of Project Configuration Loading & Smooshing
 
@@ -2139,7 +2139,10 @@ this:
    unset to ensure all configuration needed to run is present.
 
 Ceedling provides reasonably verbose logging at startup telling you which
-configuration files were used and in what order they were merged.
+configuration file and Mixins were used and in what order they were merged.
+Similarly, it provides fairly robust validation and warning messages to
+help you catch a broken configuration and problematic combinations of
+settings.
 
 For nitty-gritty details on plugin configuration behavior, see the
 _[Plugin Development Guide](PluginDevelopmentGuide.md)_
@@ -2193,11 +2196,11 @@ any number of reasons. Some example scenarios:
 
 * A single project actually contains mutiple build variations. You would
   like to maintain a common configuration that is shared among build
-  variations.
+  variations with each build variation’s differences maintained separately.
 * Your repository contains the configuration needed by your Continuous
   Integration server setup, but this is not fun to run locally. You would
-  like to modify the configuration locally with sources external to your
-  repository.
+  like to modify the configuration locally with configuration details 
+  maintained by you external to your locally cloned repository.
 * Ceedling's default `gcc` tools do not work for your project needs. You
   would like the complex tooling configurations you most often need to
   be maintained separately and shared among projects.
@@ -2207,24 +2210,94 @@ just after the base project file is loaded. The merge is so low-level
 and generic that you can, in fact, load an empty base configuration 
 and merge in entire project configurations through mixins.
 
-## Mixins Example Plus Merging Rules
+## Desgning for Mixins Plus Merging Rules
 
-Let’s start with an example that also explains how mixins are merged.
+Merging of any sort tends to be hard to do well. It’s tricky at a 
+code-level, yes, but, just as importantly, merging can be hard to grasp in
+your head.
+
+The brief sections that follow provide an overview of our recommended
+design approach and the merge rules at play.
+
+_**Note:**_ `ceedling dumpconfig` can be invaluable in developing and 
+troubleshooting your mixins. The `dumpconfig` application command will 
+load your mixins just as a build would but produce the resulting merged
+configuration for inspection in a YAML file you specify.
+
+### Design for additive Mixin merges
+
+Generally speaking, the simplest way to conceive of managing your project
+configuration with mixins is to design for an additive merge. This means
+each mixin is successively adding something to your base configuration. 
+In certain scenarios it is possible to overwrite configuration values with 
+mixin values (see the rules that follow), but an additive merge is 
+probably easier to understand and create.
+
+At a high level, additive merges can be constructed like this:
+
+1. Plan to add to lists with mixins. Path collections, plugins, and 
+   tool flags & compilation symbols are all examples of lists that
+   can be added to. Other lists exist in a project configuration too —
+   many within containing configuration entires. Add paths, plugins, and 
+   flags & symbols to your base configuration that are in common to all 
+   your buid variations and then customize the lists by adding to them 
+   with mixins.
+1. Leave entire sections in your base configuration blank and fill them 
+   out by merging mixins. With this strategy, you might configure all
+   the basics in a base project configuration but merge into it the 
+   path collections, tool configurations, and compilation symbols you need
+   for a specific project.
+
+### Mixins deep merge rules
+
+Mixins are merged in a specific order. See the documentation sections 
+following the examples for details.
+
+Smooshing of mixin configurations into the base project configuration
+follows a few basic rules:
+
+* If a configuration key/value pair does not already exist at the time
+  of merging, the mixin key/value pair is added to the configuration.
+* If a container — e.g. list or hash — already exists at the time of a
+  merge, the contents are _combined_.
+   * In the case of lists, merged list values are added to the end of 
+     the existing list.
+   * If the configuration contains a list but the mixin value is a 
+     different type, it is added to the list. The typical case is a 
+     list of strings growing with an additional single string. Note 
+     that the reverse case is not true. A configuration containing a
+     single value and a mixin containing a list, will trigger the
+     following rule.
+* If a simple value — e.g. boolean, string, numeric — already exists 
+  in the configuration at the time of merging, that value is replaced 
+  by the mixin value being merged. That merge is accompanied with a 
+  warning log entry to highlight what has happened.
+
+_**Note:**_ That second bullet can have a significant impact on how your
+various project configuration paths — including those used for header 
+search paths — are ordered. In brief, the contents of your `:paths` 
+from your base configuration will come first followed by any additions
+from your mixins. See the section [Search Paths for Test Builds][test-search-paths]
+for more.
+
+[test-search-paths]: #search-paths-for-test-builds
+
+## Mixins Example: Our Example Scenario
+
+Let’s start with an example that helps explain how mixins are merged.
 Then, the documentation sections that follow will discuss everything
 in detail.
-
-### Mixins Example: Scenario
 
 In this example, we will load a base project configuration and then
 apply three mixins using each of the available means — command line,
 envionment variable, and `:mixins` section in the base project 
 configuration file.
 
-#### Example environment variable
+### Example environment variable
 
 `CEEDLING_MIXIN_1` = `./env.yml`
 
-#### Example command line
+### Example command line
 
 `ceedling --project=base.yml --mixin=support/mixins/cmdline.yml <tasks>`
 
@@ -2232,13 +2305,14 @@ _NOTE:_ The `--mixin` flag supports more than filepaths and can be used
 multiple times in the same command line for multiple mixins (see later 
 documentation section). 
 
-The example command line above will produce the following logging output.
+The example command line above will produce the following logging output
+if verbosity is increased beyond the default.
 
 ```
-🌱 Loaded project configuration from command line argument using base.yml
- + Merged command line mixin using support/mixins/cmdline.yml
- + Merged CEEDLING_MIXIN_1 mixin using ./env.yml
- + Merged project configuration mixin using ./enabled.yml
+🚧 Loaded project configuration from command line argument using base.yml
+ + Merging command line mixin using support/mixins/cmdline.yml
+ + Merging CEEDLING_MIXIN_1 mixin using ./env.yml
+ + Merging project configuration mixin using ./enabled.yml
 ```
 
 _Notes_
@@ -2255,7 +2329,7 @@ _Notes_
 
 Our base project configuration file:
 
-1. Sets up a configuration file-baesd mixin. Ceedling will look for a mixin
+1. Sets up a configuration file-based mixin. Ceedling will look for a mixin
    named _enabled_ in the specified load paths. In this simple configuration
    that means Ceedling looks for and merges _support/mixins/enabled.yml_.
 1. Creates a `:project` section in our configuration.
@@ -2280,8 +2354,7 @@ Our base project configuration file:
 #### _support/mixins/cmdline.yml_ — Mixin via command line filepath flag
 
 This mixin will merge a `:project` section with the existing `:project`
-section from the base project file per the deep merge rules (noted after 
-the examples).
+section from the base project file per the deep merge rules above.
 
 ```yaml
 :project:
@@ -2328,39 +2401,13 @@ Behold the project configuration following mixin merges:
   :test_file_prefix: Test       # Added to :project from support/mixins/cmdline.yml
 
 :plugins:
-  :enabled:                     # :plugins ↳ :enabled from two mixins merged with oringal list in base.yml
+  :enabled:                       # :plugins ↳ :enabled from two mixins merged with oringal list in base.yml
     - report_tests_pretty_stdout  # From base.yml
     - compile_commands_json_db    # From env.yml
     - gcov                        # From support/mixins/enabled.yml
 
-# NOTE: Original :mixins section is filtered out of resulting config
+# NOTE: Original :mixins section is removed from resulting config
 ```
-
-### Mixins deep merge rules
-
-Mixins are merged in a specific order. See the next documentation 
-sections for details.
-
-Smooshing of mixin configurations into the base project configuration
-follows a few basic rules:
-
-* If a configuration key/value pair does not already exist at the time
-  of merging, it is added to the configuration.
-* If a simple value — e.g. boolean, string, numeric — already exists 
-  at the time of merging, that value is replaced by the value being
-  merged in.
-* If a container — e.g. list or hash — already exists at the time of a
-  merge, the contents are _combined_. In the case of lists, merged 
-  values are added to the end of the existing list.
-
-_**Note:**_ That last bullet can have a significant impact on how your
-various project configuration paths—including those used for header 
-search paths—are ordered. In brief, the contents of your `:paths` 
-from your base configuration will come first followed by any additions
-from your mixins. See the section [Search Paths for Test Builds][test-search-paths]
-for more.
-
-[test-search-paths]: #search-paths-for-test-builds
 
 ## Options for Loading Mixins
 
