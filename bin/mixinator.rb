@@ -7,11 +7,11 @@
 
 class Mixinator
 
-  constructor :mixin_smart_standardinator, :merginator, :path_validator, :yaml_wrapper, :loginator
+  constructor :mixin_standardizer, :merginator, :path_validator, :yaml_wrapper, :loginator
 
   def setup
     # Aliases
-    @standardinator = @mixin_smart_standardinator
+    @standardinator = @mixin_standardizer
   end
 
   def validate_cmdline_filepaths(paths)

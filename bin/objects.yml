@@ -61,13 +61,13 @@ path_validator:
 
 mixinator:
   compose:
-    - mixin_smart_standardinator
+    - mixin_standardizer
     - merginator
     - path_validator
     - yaml_wrapper
     - loginator
 
-mixin_smart_standardinator:
+mixin_standardizer:
   compose:
     - reportinator
 

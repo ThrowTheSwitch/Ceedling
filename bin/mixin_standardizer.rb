@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-class MixinSmartStandardinator
+class MixinStandardizer
 
   constructor :reportinator
 
@@ -100,13 +100,13 @@ class MixinSmartStandardinator
 
     # Promote mixin value list to all-matches matcher hash
     if config_value.is_a?(Hash) && mixin_value.is_a?(Array)
-      mixin_parent[key] = {'*' => mixin_value}
+      mixin_parent[key] = {:* => mixin_value}
       return true, 'Converted mixin list to matcher hash to facilitate merging with configuration'
     end
 
     # Promote config value list to all-matches matcher hash
     if config_value.is_a?(Array) && mixin_value.is_a?(Hash)
-      config_parent[key] = {'*' => config_value}
+      config_parent[key] = {:* => config_value}
       return true, 'Converted configuration list to matcher hash to facilitate merging with mixin'
     end
     

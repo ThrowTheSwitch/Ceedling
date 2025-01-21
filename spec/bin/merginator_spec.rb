@@ -250,5 +250,4 @@ describe Merginator do
     end
   end
 
-
 end
