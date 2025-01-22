@@ -128,10 +128,18 @@ describe MixinStandardizer do
             ]
           }
         },
+
         :flags => {
           :test => {
             # Simple array list of flags for all compilation
             :compile => ['-std=c99']
+          }
+        },
+
+        # This should be ignored
+        :something_else => {
+          :test => {
+            :* => ['SYMBOL']
           }
         }
       }
@@ -140,6 +148,7 @@ describe MixinStandardizer do
         :defines => {
           :test => ['PROJECT_FEATURE_X']
         },
+
         :flags => {
           :test => {
             :compile => {
@@ -147,6 +156,11 @@ describe MixinStandardizer do
               '*' => ['-pedantic']
             }
           }
+        },
+
+        # This should be ignored
+        :something_else => {
+          :test => ['ANOTHER_SYMBOL']
         }
       }
 
@@ -160,6 +174,7 @@ describe MixinStandardizer do
             ]
           }
         },
+
         :flags => {
           :test => {
             :compile => {
@@ -167,7 +182,14 @@ describe MixinStandardizer do
               :* => ['-std=c99']
             }
           }
-        }
+        },
+
+        # Remains unchanged from original
+        :something_else => {
+          :test => {
+            :* => ['SYMBOL']
+          }
+        }        
       }
 
       expected_mixin = {
@@ -177,6 +199,7 @@ describe MixinStandardizer do
             :* => ['PROJECT_FEATURE_X']
           }
         },
+
         :flags => {
           :test => {
             :compile => {
@@ -184,6 +207,11 @@ describe MixinStandardizer do
               :* => ['-pedantic']
             }
           }
+        },
+
+        # Remains unchanged from original
+        :something_else => {
+          :test => ['ANOTHER_SYMBOL']
         }
       }
 
