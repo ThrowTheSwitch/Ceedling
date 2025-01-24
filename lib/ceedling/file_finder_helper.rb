@@ -49,9 +49,9 @@ class FileFinderHelper
     return nil
   end
 
-  def find_best_path_in_collection(pathname, path_list, complain)
+  def find_best_path_in_collection(pathname, path_list, complain, description)
     # search our collection for the specified exact path
-    raise "No path list provided for search" if path_list.nil?
+    raise "No path list provided for #{description} search" if path_list.nil?
     return pathname if path_list.include?(pathname)
 
     # Determine the closest match by looking for matching path segments, especially paths ENDING the same
@@ -68,6 +68,20 @@ class FileFinderHelper
         best_match_value = num 
       end
     end
+
+    # If none of the options were a good match, handle to the best of our ability
+    if (best_match_value == 0) && (reverse_original_pieces.length > 0)
+      case (complain)
+        when :error
+          raise CeedlingException.new( "Found no path `#{pathname}` in #{description} search paths." ) 
+        when :warn
+          warning = "Found no path `#{pathname}` in #{description} search paths."
+          @loginator.log( warning, Verbosity::COMPLAIN )
+        when :ignore 
+          # nothing further to do
+      end
+    end
+
     return path_list[best_match_index]
   end
 
@@ -94,7 +108,7 @@ class FileFinderHelper
     
   def gripe(filename, extra_message="")
     warning = ["Found no file `#{filename}` in search paths.", extra_message].join(' ').strip
-    @loginator.log( warning + extra_message, Verbosity::COMPLAIN )
+    @loginator.log( warning, Verbosity::COMPLAIN )
   end
 
 end

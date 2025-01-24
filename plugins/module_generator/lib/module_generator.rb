@@ -12,7 +12,7 @@ require 'fileutils'
 
 class ModuleGenerator < Plugin
 
-  attr_reader :config
+  attr_reader :config, :interactionizer
 
   def create(module_name, optz={})
 
@@ -110,10 +110,10 @@ class ModuleGenerator < Plugin
       unity_generator_options[:path_tst] ||= unity_generator_options[:paths_tst][0]
     else
       # A path was specified. Do our best to determine which is the best choice based on this information
-      unity_generator_options[:skeleton_path] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_src], :ignore) || unity_generator_options[:paths_src][0]
-      unity_generator_options[:path_src] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_src], :ignore) || unity_generator_options[:paths_src][0]
-      unity_generator_options[:path_inc] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_inc], :ignore) || unity_generator_options[:paths_inc][0]
-      unity_generator_options[:path_tst] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_tst], :ignore) || unity_generator_options[:paths_tst][0]
+      unity_generator_options[:path_src] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_src], :error, 'source')  || unity_generator_options[:paths_src][0]
+      unity_generator_options[:path_inc] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_inc], :error, 'include') || unity_generator_options[:paths_inc][0]
+      unity_generator_options[:path_tst] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_tst], :error, 'test')    || unity_generator_options[:paths_tst][0]
+      unity_generator_options[:skeleton_path] = unity_generator_options[:path_src]
     end
 
     return unity_generator_options

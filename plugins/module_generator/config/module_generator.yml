@@ -6,7 +6,6 @@
 # =========================================================================
 
 :module_generator:
-  :project_root: ./
   :naming: :snake #options: :bumpy, :camel, :caps, or :snake
   :boilerplates: 
     :src: ""

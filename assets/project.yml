@@ -269,9 +269,6 @@
     # :html_encoding: UTF-8
 
 # :module_generator:
-#   :path_src: source/
-#   :path_inc: includes/
-#   :path_tst: tests/
 #   :naming: :snake #options: :bumpy, :camel, :caps, or :snake
 #   :includes:
 #     :tst: []
