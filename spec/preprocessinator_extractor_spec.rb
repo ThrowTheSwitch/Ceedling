@@ -21,12 +21,12 @@ describe PreprocessinatorExtractor do
 
   context "#extract_file_as_array_from_expansion" do
     it "should simply extract text of original file from preprocessed expansion" do
-      filepath = "path/to/WANT.c"
+      filepath = "path/do/WANT.c"
       
       file_contents = [
         '# 1 "some/file/we/do/not/care/about.c" 5',
         'some_text_we_do_not_want();',
-        '# 11 "some/file/we/DO/WANT.c" 99999',       # Beginning of block to extract
+        '# 11 "path/do/WANT.c" 99999',               # Beginning of block to extract
         'some_text_we_do_want();',                   #  Line to extract
         '',                                          #  Blank line to extract
         'some_awesome_text_we_want_so_hard();',      #  Line to extract
@@ -50,10 +50,10 @@ describe PreprocessinatorExtractor do
       filepath = "this/path/MY_FILE.C"
       
       file_contents = [
-        '# 1 "MY_FILE.C" 99999',                     # Beginning of block to extract
+        '# 1 "./this/path/MY_FILE.C" 99999',         # Beginning of block to extract
         '       ',                                   #  Whitespace collapse & preserve as blank line
-        '#pragma yo sup',                            #  Line to extract -- #pragma is not end-of-block preprocessor directive
-        '#define FOO(...)',                          #  Line to extract -- #define is not end-of-block preprocessor directive
+        '#pragma yo sup',                            #  Line to extract -- #pragma is not end-of-block preprocessor line marker
+        '#define FOO(...)',                          #  Line to extract -- #define is not end-of-block preprocessor line marker
         'void some_function(void) {',                #  Line to extract
         '  do_something();   ',                      #  Line to extract with leading whitespace that should remain
         '  }',                                       #  Line to extract with leading whitespace that should remain
@@ -76,14 +76,14 @@ describe PreprocessinatorExtractor do
       expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
     end
 
-    it "should extract text of original file from preprocessed expansion with complex preprocessor directive sequence" do
+    it "should extract text of original file from preprocessed expansion with complex preprocessor line marker sequence" do
       filepath = "dir/our_file.c"
       
       file_contents = [
         '# 1 "dir/our_file.c" 123',                  # Beginning of file / block to extract
         'some_text_we_do_want();',                   #  Line to extract
         'some_awesome_text_we_want_so_hard();',      #  Line to extract
-        '# 987 "some preprocessor directive"',       # End of block to extract (faux preprocessor directive)
+        '# 3 "some preprocessor directive"',         # End of block to extract (a directive that is a faux preprocessor line marker)
         '',
         'some_text_we_do_not_want();',
         '# 15 "dir/our_file.c" 9',                   # Beginning of block to extract
@@ -110,16 +110,66 @@ describe PreprocessinatorExtractor do
 
       expect( @extractor.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
     end
+  
+    it "should extract text of original file from preprocessed expansion ignoring embedded expansions having similar names" do
+      filepath = "dir1/dir2/our_file.c"
+      
+      file_contents = [
+        '# 1 "dir1/dir2/our_file.c" 123',            # Beginning of file / block to extract
+        'some_text_we_do_want();',                   #  Line to extract
+        'some_awesome_text_we_want_so_hard();',      #  Line to extract
+        '# 987 "some preprocessor directive"',       # End of block to extract (a directive that is a faux preprocessor line marker)
+        '',
+        'some_text_we_do_not_want();',
+        '# 15 "dir1/dir2/not_our_file.c" 9',         # Beginning of block we should ignore despite similar filename
+        'more_text_we_want();',                      #  Line to ignore
+        'void some_function(void) { func(); }',      #  Line to ignore
+        '# 9 "dir1/dir2/not_our_file.c" 77',         # Continuation of block to ignore
+        'some code',                                 #  Line to ignore
+        'test statements',                           #  Line to ignore
+        '# 6 "dir1/dir2/not_our_file.c" 19',         # Continuation of block to ignore
+        'some_additional_unwanted_text();',          #  Line to ignore
+        '',
+        'some_more_text_we_do_not_want();',
+        '# 11 "dir11/dir2/our_file.c" 9',            # Beginning of block we should ignore despite similar filepath
+        'more_text_we_want();',                      #  Line to ignore
+        'void some_function(void) { func(); }',      #  Line to ignore
+        '# 9 "dir11/dir2/our_file.c" 2 3',           # Continuation of block to ignore
+        'some code',                                 #  Line to ignore
+        'test statements',                           #  Line to ignore
+        '# 6 "dir11/dir2/our_file.c" 1',             # Continuation of block to ignore
+        'some_further_unwanted_text();',             #  Line to ignore
+        '',
+        'even_more_text_we_do_not_want();',
+        '# 11 "dir2/our_file.c" 9',                  # Beginning of block we should ignore despite similar sub-filepath
+        'more_text_we_want();',                      #  Line to ignore
+        'void some_function(void) { func(); }',      #  Line to ignore
+        '# 9 "dir2/our_file.c" 2 3',                 # Continuation of block to ignore
+        'some code',                                 #  Line to ignore
+        'test statements',                           #  Line to ignore
+        '# 6 "dir2/our_file.c" 1',                   # Continuation of block to ignore
+        'some_further_unwanted_text();'              #  Line to ignore
+      ]                                              # End of file / end of block to extract
+
+      expected = [
+        'some_text_we_do_want();',
+        'some_awesome_text_we_want_so_hard();',
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
+    end
   end
 
   context "#extract_file_as_string_from_expansion" do
     it "should simply extract text of original file from preprocessed expansion" do
-      filepath = "path/to/WANT.c"
+      filepath = "path/do/WANT.c"
       
       file_contents = [
         '# 1 "some/file/we/do/not/care/about.c" 5',
         'some_text_we_do_not_want();',
-        '# 11 "some/file/we/DO/WANT.c" 99999',       # Beginning of block to extract
+        '# 11 "./path/do/WANT.c" 99999',             # Beginning of block to extract
         'some_text_we_do_want();',                   #  Line to extract
         '',                                          #  Blank line to extract
         'some_awesome_text_we_want_so_hard();',      #  Line to extract
