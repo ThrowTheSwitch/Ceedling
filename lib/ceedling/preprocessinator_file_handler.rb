@@ -33,7 +33,7 @@ class PreprocessinatorFileHandler
     @tool_executor.exec( command )
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, preprocessed_filepath )
+      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, source_filepath )
     end
 
     # Bail out, skipping directives-only preprocessing if no extras are required
@@ -63,7 +63,7 @@ class PreprocessinatorFileHandler
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
       # Get code contents of preprocessed directives-only file as a string
       # TODO: Modify to process line-at-a-time for memory savings & performance boost
-      _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, preprocessed_filepath )
+      _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
 
       # Extract pragmas and macros from 
       pragmas = @preprocessinator_extractor.extract_pragmas( _contents )
@@ -159,7 +159,7 @@ class PreprocessinatorFileHandler
     @tool_executor.exec( command )
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, preprocessed_filepath )
+      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, source_filepath )
     end
 
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( source_filepath, test )
@@ -178,7 +178,7 @@ class PreprocessinatorFileHandler
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
       # Get code contents of preprocessed directives-only file as a string
       # TODO: Modify to process line-at-a-time for memory savings & performance boost
-      _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, preprocessed_filepath )
+      _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
 
       # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
       test_directives = @preprocessinator_extractor.extract_test_directive_macro_calls( _contents )
