@@ -81,24 +81,35 @@ class PreprocessinatorExtractor
   # `input` must have the interface of IO -- StringIO for testing or File in typical use
   def extract_file_as_array_from_expansion(input, filepath)
 
-    # Iterate through all lines and alternate between extract and ignore modes.
-    # All lines between a '#' line containing the file name of our filepath and the
-    # next '#' line should be extracted.
-    #
-    # Notes:
-    #  1. Successive blocks can all be from the same source text file without a different, intervening '#' line.
-    #     Multiple back-to-back blocks could all begin with '# 99 "path/file.c"'.
-    #  2. The first line of the file could start a text block we care about.
-    #  3. End of file could end a text block.
+    ##
+    ## Iterate through all lines and alternate between extract and ignore modes.
+    ## All lines between a '#' line containing the filepath to extract (a line marker) and the next '#' line should be extracted.
+    ##
+    ## GCC preprocessor output line marker format: `# <linenum> "<filename>" <flags>`
+    ## 
+    ## Documentation on line markers in GCC preprocessor output:
+    ##  https://gcc.gnu.org/onlinedocs/gcc-3.0.2/cpp_9.html
+    ##
+    ## Notes:
+    ##  1. Successive blocks can all be from the same source text file without a different, intervening '#' line.
+    ##     Multiple back-to-back blocks could all begin with '# 99 "path/file.c"'.
+    ##  2. The first line of the file could start a text block we care about.
+    ##  3. End of file could end a text block.
+    ##  4. Usually, the first line marker contains no trailing flag.
+    ##  5. Different preprocessors conforming to the GCC output standard may use different trailiing flags.
+    ##  6. Our simple ping-pong-between-line-markers extraction technique does not require decoding flags.
+    ##  
 
-    base_name  = File.basename( filepath )
-    # Preprocessor output blocks take the form of '# <digits> <text> [optional digits]'
-    directive  = /^# \d+ \"/
-    # Preprocessor output blocks for the file we care about take the form of '# <digits> "path/filename.ext" [optional digits]'
-    marker     = /^# \d+ \".*#{Regexp.escape(base_name)}\"/
+    # Expand filepath under inspection to ensure proper match
+    extaction_filepath = File.expand_path( filepath )
+    # Preprocessor directive blocks generally take the form of '# <digits> <text> [optional digits]'
+    directive   = /^# \d+ \"/
+    # Line markers have the specific form of '# <digits> "path/filename.ext" [optional digits]' (see above)
+    line_marker = /^#\s\d+\s\"(.+)\"/
     # Boolean to ping pong between line-by-line extract/ignore
-    extract    = false
+    extract = false
 
+    # Collection of extracted lines
     lines = []
 
     # Use `each_line()` instead of `readlines()` (chomp removes newlines).
@@ -109,12 +120,13 @@ class PreprocessinatorExtractor
       # Clean up any oddball characters in an otherwise ASCII document
       line = line.clean_encoding
 
-      # Handle extraction if the line is not a preprocessor directive
+      # Handle expansion extraction if the line is not a preprocessor directive
       if extract and not line =~ directive
         # Strip a line so we can omit useless blank lines
         _line = line.strip()
         # Restore text with left-side whitespace if previous stripping left some text
         _line = line.rstrip() if !_line.empty?
+        # Collect extracted lines
         lines << _line
 
       # Otherwise the line contained a preprocessor directive; drop out of extract mode
@@ -122,8 +134,12 @@ class PreprocessinatorExtractor
         extract = false
       end
 
-      # Enter extract mode if the line is a preprocessor directive with filename of interest
-      extract = true if line =~ marker
+      # Enter extract mode if the line is a preprocessor line marker with filepath of interest
+      matches = line.match( line_marker )
+      if matches and matches.size() > 1
+        filepath = File.expand_path( matches[1].strip() )
+        extract = true if extaction_filepath == filepath
+      end
     end
 
     return lines
