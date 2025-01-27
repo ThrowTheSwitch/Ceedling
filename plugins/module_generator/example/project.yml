@@ -162,14 +162,13 @@
   :release: []
 
 :module_generator:
-  :project_root: ./
   :naming: :snake #options: :bumpy, :camel, :caps, or :snake
   :boilerplates: 
     :src: "/* MAY THE SOURCE BE WITH YOU */"
     :inc: |
       /* ==================================
       |  It's important to make everyone
-      |  feel included, particularly in 
+      |  feel included, particularly 
       |  when making important decisions.
       ===================================*/
     :tst: "// Don't Test Me, Sir."
