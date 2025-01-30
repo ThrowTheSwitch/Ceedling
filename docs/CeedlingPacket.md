@@ -3010,9 +3010,6 @@ and migrated to the `:test_build` and `:release_build` sections.
   :build_root: project_awesome/build
   :use_exceptions: FALSE
   :use_test_preprocessor: :all
-  :options_paths:
-    - project/options
-    - external/shared/options
   :release_build: TRUE
   :compile_threads: :auto
 ```
