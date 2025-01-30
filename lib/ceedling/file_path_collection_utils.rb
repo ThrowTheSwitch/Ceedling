@@ -39,7 +39,7 @@ class FilePathCollectionUtils
       # Expand paths using Ruby's Dir.glob()
       #  - A simple path will yield that path
       #  - A path glob will expand to one or more paths
-      # Note: `sort()` becuase of Github Issue #860
+      # Note: `sort()` because of Github Issue #860
       @file_wrapper.directory_listing( _reformed ).sort.each do |entry|
         # For each result, add it to the working list *only* if it's a directory
         # Previous validation has already made warnings about filepaths in the list
@@ -57,7 +57,7 @@ class FilePathCollectionUtils
         # (Containing parent directory still exists)
         parents << FilePathUtils.no_decorators( _path ) if dirs.empty?
 
-        dirs += parents
+        dirs = parents + dirs
       end
 
       # Based on aggregation modifiers, add entries to plus and minus sets.
