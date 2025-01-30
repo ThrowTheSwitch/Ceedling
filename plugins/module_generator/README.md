@@ -35,6 +35,15 @@ In this example, we'd create 9 files total: 3 headers, 3 source files, and 3 tes
 files would be named `SecretLairModel`, `SecretLairConductor`, and `SecretLairHardware`. Isn't
 that nice?
 
+The module generator understands the following patterns:
+
+ - `src` -- generate only a source file
+ - `test` -- generate only a test file
+ - `dh` -- generate 6 files for the driver-hardware pattern
+ - `dih` -- generate 9 files for the driver-interrupt-hardware pattern
+ - `mch` -- generate 9 files for the model-conductor-hardware pattern
+ - `mvp` -- generate 9 files for the model-view-presenter pattern
+
 ### Paths
 
 The directories found in the project `:paths:` are reused. You can also specify an alternative default generation path using: 
@@ -97,13 +106,60 @@ You can see that more complicated structures will have files placed in the wrong
 time... no worries... you can move the file after it's created... but if your project has any kind of 
 consistent structure, the guessing engine does a good job of making it work.
 
-Three more quick notes about the path-matching:
+A few more quick notes about the path-matching:
 
 1. You can give multiple ordered hints that map roughly to folder nesting! `lab:secret:lair` will 
    happily match to put `lair.c` in a folder like `my/lab/secret/`.
 
-2. Whenever the matcher fails to find a good candidate (or if it finds multiple equally good 
-   candidates), it will always guess in the order you have the paths listed in your project.yml file
+2. If the matcher isn't given any path information or it finds multiple equally good candidates, 
+   it will always guess in the order you have the paths listed in your project.yml file
+
+3. If the matcher completely fails to find a good candidate, it will return an error, allowing you
+   to rectify the situation.
+
+4. What path is "first" when you're using `**` pattern in your `:paths:` specifications? The parent
+   folder is used first, then its children alphabetically, and so on. This is important when 
+   considering where files (or especially subfolders... see below) will be generated.
+
+### Adding to Paths
+
+In addition to the pattern matching above, you can add slashes (`/`) to your filename specification.
+When a slash is used instead of a colon (`:`), it will stop using pattern matching and assume the
+subdirectory is supposed to be there. If the subdir is NOT there, it will automatically add it.
+
+Let's try an example with our previous path specification:
+
+```
+:paths:
+  :source:
+    - src/**   #this might contain subfolders lab, lair, and other
+  :include:
+    - inc/**   #again, this might contain subfolders lab, lair, other, and shared
+  :test:
+    - test
+```
+
+Then, use the following command:
+
+```
+ceedling module:create[newlab/SecretLair]
+```
+
+This will create the following 3 files:
+
+ - `src/newlab/SecretLair.c`
+ - `inc/newlab/SecretLair.h`
+ - `test/newlab/TestSecretLair.c`
+
+Technically, you can start with a colon and specify part of a path, then use a slash
+to specify the remainder of the path to use. In most circumstances, this should work... however
+it suffers from the same potential issues as the matcher above, with the added joy of creating 
+new subdirectories for you without asking. 
+
+It's important to note the module generator doesn't care if these new subdirectories are covered 
+by the current path specification. This allows you to create the files before updating the
+`project.yml` file if desired, but it also means you might accidentally think you've created
+a file that Ceedling can see, when it can't. 
 
 ## Stubbing
 
@@ -130,7 +186,6 @@ follows the default ceedling structure... but what if you have a different struc
 
 ```
 :module_generator:
-  :project_root: ./
   :naming: :bumpy
   :includes: 
     - :src: []
