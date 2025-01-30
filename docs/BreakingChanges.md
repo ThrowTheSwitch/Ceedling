@@ -187,7 +187,7 @@ The following features have all been removed from Ceedling's functionality. No n
 
  - `options:blah.yml` command-line options (see `--mixin` command line option)
  - The corresponding `options_paths:` key in the project.yml file no longer has any effect. (see `:mixins:` ➡️ `:load_paths:` project.yml specification)
- - The `project.yml` file now specifies other yaml files to load using the `:mixins:` ➡️ `:enabled:` section
+ - The `:import:` section of the `project.yml` has been replaced (see `:mixins:` ➡️ `:enabled:` section)
  - `CEEDLING_PROJECT_FILE` environment variable (see `CEEDLING_MIXIN_#` specification)
  - `CEEDLING_SER_FILE` environment variable (see `CEEDLING_MIXIN_#` specification)
 

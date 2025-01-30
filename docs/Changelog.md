@@ -9,6 +9,25 @@ This changelog is complemented by two other documents:
 
 ---
 
+# [1.0.1] - 2025-01-30
+
+## 💪 Fixed
+
+- `#978` -- Ceedling attempts to link source files that are commented out and/or removed by preprocessor directives
+- `#979` -- FFF plugin generates "warning: already initialized constant CMock" on some platforms
+- `#980` -- FFF original plugin should not be part of release build (le sigh)
+- `#981` -- Ceedling could not find header file to mock when using preprocessor
+- `#982` -- Ceedling did not inject required header file into mock when using preprocessor
+- `#985` -- Macros not being properly hidden from CMock's parser when using preprocessor
+- `#988` -- Parsing of `TEST_SOURCE_FILE` did not support special characters (like `.`) in filenames
+- `#888` & `#977` -- Unicode characters produce crashes in various places
+- `#996` -- Improved handling and documentation of module generator path options
+- `#998` -- FFF plugin missing required stringio
+- `#1005` -- Additional handling of preprocessing extraction improvements
+- Restored `:use_mocks` default to `true` in Ceedling defaults to match documentation and other mocking defaults in template projects.
+- Resolved a preprocessing issue that could cause the content of a file having a similar filename to that of the file `#include`ing it to become mixed with that file.
+- additional documentation improvements
+
 # [1.0.0] — 2025-01-01
 
 ## 🌟 Added
