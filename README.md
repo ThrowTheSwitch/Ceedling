@@ -1,7 +1,7 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-Welcome to **Ceedling 1.0.0** 
+Welcome to **Ceedling 1.0.1** 
 
 See the [Release Notes](docs/ReleaseNotes.md) for an overview
 of all that’s new since 0.31.1 plus links to the detailed Changelog and list of 

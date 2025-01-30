@@ -6,6 +6,7 @@ Below is a quick checklist of the things that need to be done before a full PR i
 
 ### Documentation
 
+ - [ ] Has `README.md` been updated? (if it provides a huge feature or change... or maybe version bump)
  - [ ] Has `CeedlingPacket.md` been updated? (if it provides a new or changed feature)
  - [ ] Has `ReleaseNotes.md` been updated? (if it provides a new or changed feature)
  - [ ] Has `Changelog.md` been updated? (if it fixes something or provides something new)
