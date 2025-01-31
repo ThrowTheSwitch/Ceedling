@@ -14,6 +14,7 @@ end
 
 here = File.dirname(__FILE__)
 
+$: << File.join(here, '../bin')
 $: << File.join(here, '../lib')
 $: << File.join(here, '../vendor/cmock/lib')
 $: << File.join(here, '../vendor/unity/auto')
