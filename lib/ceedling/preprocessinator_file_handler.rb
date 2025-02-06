@@ -50,7 +50,7 @@ class PreprocessinatorFileHandler
       defines,
       include_paths
     )
-    @tool_executor.exec( command )
+    results = @tool_executor.exec( command )
 
     # Try to find an #include guard in the first 2k of the file text.
     # An #include guard is one macro from the original file we don't want to preserve if we can help it.
@@ -60,14 +60,28 @@ class PreprocessinatorFileHandler
     # ¯\_(ツ)_/¯
     include_guard = @preprocessinator_extractor.extract_include_guard( @file_wrapper.read( source_filepath, 2048 ) )
 
-    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      # Get code contents of preprocessed directives-only file as a string
-      # TODO: Modify to process line-at-a-time for memory savings & performance boost
-      _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
+    # If we received a warning from preprocessor saying that clang can't handle directives-only (common with older clang)
+    # then we need to attempt to extract the information directly from the source file instead
+    if results[:output].match /warning[^\n]+-fdirectives-only/
+      @file_wrapper.open( source_filepath, 'r' ) do |file|
+        # Get code contents of original source file as a string
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        _contents = file.read
 
-      # Extract pragmas and macros from 
-      pragmas = @preprocessinator_extractor.extract_pragmas( _contents )
-      macro_defs = @preprocessinator_extractor.extract_macro_defs( _contents, include_guard )
+        # Extract pragmas and macros from 
+        pragmas = @preprocessinator_extractor.extract_pragmas( _contents )
+        macro_defs = @preprocessinator_extractor.extract_macro_defs( _contents, include_guard )
+      end
+    else
+      @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+        # Get code contents of preprocessed directives-only file as a string
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
+
+        # Extract pragmas and macros from 
+        pragmas = @preprocessinator_extractor.extract_pragmas( _contents )
+        macro_defs = @preprocessinator_extractor.extract_macro_defs( _contents, include_guard )
+      end
     end
 
     return contents, (pragmas + macro_defs)
@@ -173,15 +187,28 @@ class PreprocessinatorFileHandler
       defines,
       include_paths
     )    
-    @tool_executor.exec( command )
+    results = @tool_executor.exec( command )
 
-    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      # Get code contents of preprocessed directives-only file as a string
-      # TODO: Modify to process line-at-a-time for memory savings & performance boost
-      _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
+    # If we receive a warning saying that clang can't handle directives-only (common with older clang)
+    # then we fall back to using the original source file to detect all TEST_SOURCE_FILE and TEST_INCLUDE_PATH macros
+    if results[:output].match /warning[^\n]+-fdirectives-only/
+      @file_wrapper.open( source_filepath, 'r' ) do |file|
+        # Get code contents of original source file as a string
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        _contents = file.read
 
-      # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
-      test_directives = @preprocessinator_extractor.extract_test_directive_macro_calls( _contents )
+        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
+        test_directives = @preprocessinator_extractor.extract_test_directive_macro_calls( _contents )
+      end
+    else
+      @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+        # Get code contents of preprocessed directives-only file as a string
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
+
+        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
+        test_directives = @preprocessinator_extractor.extract_test_directive_macro_calls( _contents )
+      end
     end
 
     return contents, test_directives
