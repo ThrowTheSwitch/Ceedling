@@ -12,7 +12,7 @@
 
 #include "Model.h"
 #include "TaskScheduler.h"
-#include "TemperatureCalculator.h"
+#include "calculators/TemperatureCalculator.h"
 #include "TemperatureFilter.h"
 
 #include "UsartConductor.h"
@@ -20,7 +20,7 @@
 #include "UsartConfigurator.h"
 #include "UsartPutChar.h"
 #include "UsartModel.h"
-#include "UsartBaudRateRegisterCalculator.h"
+#include "calculators/UsartBaudRateRegisterCalculator.h"
 #include "UsartTransmitBufferStatus.h"
 
 #include "TimerConductor.h"

@@ -206,7 +206,7 @@ class TestInvoker
       end
 
       # Create inverted/flattened mock lookup list to take advantage of threading
-      # (Iterating each testable and mock list instead would limits the number of simultaneous mocking threads)
+      # (Iterating each testable and mock list instead would limit the number of simultaneous mocking threads)
       mocks = []
       if @configurator.project_use_mocks
         @testables.each do |_, details|
@@ -239,13 +239,15 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: mocks) do |mock| 
           details = mock[:details]
           testable = mock[:testable]
+          output_subpath = @file_wrapper.dirname( mock[:name].to_s )
+          output_path = testable[:paths][:mocks] + (output_subpath.empty? ? '' : "/#{output_subpath}")
 
           arg_hash = {
             context:        context,
             mock:           mock[:name],
             test:           testable[:name],
             input_filepath: details[:input],
-            output_path:    testable[:paths][:mocks]
+            output_path:    output_path
           }
 
           @generator.generate_mock(**arg_hash)
