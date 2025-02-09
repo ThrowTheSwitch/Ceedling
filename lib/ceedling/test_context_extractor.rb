@@ -208,7 +208,7 @@ class TestContextExtractor
       # <*.h>
       if include =~ /#{Regexp.escape(@configurator.extension_header)}$/
         # Check if include is a mock with regex match that extracts only mock name (no .h)
-        scan_results = include.scan(/(#{mock_prefix}.+)#{Regexp.escape(@configurator.extension_header)}/)
+        scan_results = include.scan(/([^\s]*\b#{mock_prefix}.+)#{Regexp.escape(@configurator.extension_header)}/)
         
         if (scan_results.size > 0)
           # Collect mock name

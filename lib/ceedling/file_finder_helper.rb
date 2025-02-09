@@ -16,7 +16,7 @@ class FileFinderHelper
   
   def find_file_in_collection(filename, file_list, complain, original_filepath="")
     # Search our collection for the specified base filename
-    matches = file_list.find_all {|v| File.basename(v) == filename }
+    matches = file_list.find_all {|v| File.basename(v) == File.basename(filename) }
     
     case matches.length 
       when 0 

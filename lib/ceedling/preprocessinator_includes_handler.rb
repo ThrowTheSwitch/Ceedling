@@ -299,12 +299,13 @@ class PreprocessinatorIncludesHandler
     includes = []
 
     # Extract entries from #include listing
+    matches = list.scan(/(\.*\s+([^\s]+\.h))/)
     if shallow
       # First level of includes in preprocessor output
-      includes = list.scan(/^\. (.+$)\s*$/)  # . <filepath>
+      includes = matches.map {|v| (v[0].match?(/^\.\.+\s+/) ? nil : v[1]) }.compact
     else
       # All levels of includes in preprocessor output
-      includes = list.scan(/^\.+ (.+$)\s*$/) # ... <filepath>
+      includes = matches.map {|v| v[1] }.compact
     end
 
     includes.flatten! # Regex results can be nested arrays becuase of paren captures
@@ -322,12 +323,7 @@ class PreprocessinatorIncludesHandler
     return [] if !@configurator.project_use_mocks
 
     # Use some greediness to ensure we get all possible mocks
-    lists.each { |list| mocks |= extract_mocks( list ) }      
-
-    # If generated mocks are in the build directory, the preprocessor will have found them.
-    # This leads to duplicated mocks -- the shallow list with no paths and the nested list with paths.
-    # Remove mocks with any path (the path will be the build directory); preserve just the shallow list.
-    mocks.reject! {|mock| File.dirname( mock ) != '.' }
+    lists.each { |list| mocks |= extract_mocks( list ) }
 
     return mocks
   end
