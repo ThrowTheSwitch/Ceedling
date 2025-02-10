@@ -17,7 +17,9 @@ class ParsingParcels
   def code_lines(input)
     comment_block = false
     full_line = ''
-    input.each_line do |line|
+    lines = input.is_a?(String) ? input.split : input.readlines
+    lines.each do |line|
+    #input.each_line do |line|
         m = line.match /(.*)\\\s*$/
       if (!m.nil?)
           full_line += m[1]
