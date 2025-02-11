@@ -370,7 +370,7 @@ class TestInvoker
 
       # Build All Test objects
       @batchinator.build_step("Building Objects") do
-        @testables.each do |_, details|
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           details[:objects].each do |obj|
             src = @file_finder.find_build_input_file(filepath: obj, context: context)
             compile_test_component(tool: details[:tool], context: context, test: details[:name], source: src, object: obj, msg: details[:msg])
