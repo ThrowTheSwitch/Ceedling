@@ -114,10 +114,10 @@ DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,
-    "-I\"${4}\"".freeze, # Per-test executable search paths
-    "-D\"${3}\"".freeze, # Per-test executable defines
+    "-I\"${4}\"".freeze,     # Per-test executable search paths
+    "-D\"${3}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
+    # '-nostdinc'.freeze,    # disabled temporarily due to stdio access violations on OSX
     "-x c".freeze,           # Force C language
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
