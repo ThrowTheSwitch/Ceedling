@@ -918,13 +918,13 @@ Once the _MadScienceLab_ container’s command line is available, to run Ceedlin
 Alternatively, you can run Ceedling through the _MadScienceLab_ Docker container directly from the command line as a command line utility. The general pattern is immediately below.
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 <Ceedling command line>
+ > docker run --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 <Ceedling command line>
 ```
 
 As a specific example, to run all tests in a suite, the command line would be this:
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 ceedling test:all
+ > docker run --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 ceedling test:all
 ```
 
 In this usage, the container starts, executes Ceedling, and then ends.
