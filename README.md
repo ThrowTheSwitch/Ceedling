@@ -14,22 +14,6 @@ detailed Changelog and list of Breaking Changes.
 Ceedling can build your release artifact but is especially adept at building
 unit test suites for your C projects — even in tricky embedded systems.
 
-## Supporting this work
-
-Ceedling and its complementary [ThrowTheSwitch] pieces and parts are and always 
-will be freely available and open source.
-
-**_[Ceedling Suite][ceedling-suite]_** is a growing collection of paid 
-products and services built around Ceedling to help you do even more.
-**_[Ceedling Assist]_** for support contracts and training is now available.
-
-**[Please consider supporting Ceedling as a Github Sponsor][tts-sponsor]**
-
-[ThrowTheSwitch]: https://github.com/ThrowTheSwitch
-[ceedling-suite]: https://www.thingamabyte.com/ceedling
-[ceedling-assist]: https://www.thingamabyte.com/ceedlingassist
-[tts-sponsor]: https://github.com/sponsors/ThrowTheSwitch
-
 ⭐️ **Eager to just get going? Jump to 
 [📚 Documentation & Learning](#-documentation--learning) and
 [🚀 Getting Started](#-getting-started).**
@@ -41,6 +25,23 @@ All generated and framework code is easy to see and understand.
 Ceedling’s features support all types of C development from low-level embedded
 to enterprise systems. No tool is perfect, but Ceedling can do a whole lot to 
 help you and your team produce quality software.
+
+## Supporting this work
+
+Ceedling and its complementary [ThrowTheSwitch] pieces and parts are and always 
+will be freely available and open source.
+
+**_[Ceedling Suite][ceedling-suite]_** is a growing collection of paid 
+products and services built around Ceedling to help you do even more.
+**_[Ceedling Assist][ceedling-assist]_** for support contracts and training 
+is now available.
+
+**[Please consider supporting Ceedling as a Github Sponsor][tts-sponsor]**
+
+[ThrowTheSwitch]: https://github.com/ThrowTheSwitch
+[ceedling-suite]: https://www.thingamabyte.com/ceedling
+[ceedling-assist]: https://www.thingamabyte.com/ceedlingassist
+[tts-sponsor]: https://github.com/sponsors/ThrowTheSwitch
 
 ## Ceedling is a suite of tools
 
