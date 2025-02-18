@@ -3,9 +3,9 @@ Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg
 
 Welcome to **Ceedling 1.0.1** 
 
-See the [Release Notes](docs/ReleaseNotes.md) for an overview
-of all that’s new since 0.31.1 plus links to the detailed Changelog and list of 
-Breaking Changes.
+See the [Release Notes](docs/ReleaseNotes.md) for an overview of all that’s new 
+since the last generation of Ceedling, version 0.31.1, plus links to the 
+detailed Changelog and list of Breaking Changes.
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -14,11 +14,21 @@ Breaking Changes.
 Ceedling can build your release artifact but is especially adept at building
 unit test suites for your C projects — even in tricky embedded systems.
 
-Ceedling and its complementary pieces and parts are (and always will be) freely
-available and open source. **_[Ceedling Assist][ceedling-pro]_** is a growing list 
-of paid products and services to help you do even more with these tools.
+## Supporting this work
 
-[ceedling-pro]: https://www.thingamabyte.com/ceedling
+Ceedling and its complementary [ThrowTheSwitch] pieces and parts are and always 
+will be freely available and open source.
+
+**_[Ceedling Suite][ceedling-suite]_** is a growing collection of paid 
+products and services built around Ceedling to help you do even more.
+**_[Ceedling Assist]_** for support contracts and training is now available.
+
+**[Please consider supporting Ceedling as a Github Sponsor][tts-sponsor]**
+
+[ThrowTheSwitch]: https://github.com/ThrowTheSwitch
+[ceedling-suite]: https://www.thingamabyte.com/ceedling
+[ceedling-assist]: https://www.thingamabyte.com/ceedlingassist
+[tts-sponsor]: https://github.com/sponsors/ThrowTheSwitch
 
 ⭐️ **Eager to just get going? Jump to 
 [📚 Documentation & Learning](#-documentation--learning) and
@@ -68,7 +78,7 @@ library builds & dependency management, and more.
 [CException]: https://github.com/throwtheswitch/cexception
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
-[FFF]: https://github.com/ElectronVector/fake_function_framework
+[FFF]: https://github.com/meekrosoft/fff
 [FFF-plugin]: plugins/fff
 [ceedling-plugins]: docs/CeedlingPacket.md#ceedling-plugins
 
@@ -81,17 +91,17 @@ library builds & dependency management, and more.
 * Trying to understand features or solve a testing problem? Hit the
   **[discussion forums][forums]**.
 * Paid training, customizations, and support contracts are available through 
-  **[Ceedling Pro][ceedling-pro]**.
+  **[Ceedling Assist][ceedling-assist]**.
 
 The ThrowTheSwitch community follows a **[code of conduct](docs/CODE_OF_CONDUCT.md)**.
 
 Please familiarize yourself with our guidelines for **[contributing](docs/CONTRIBUTING.md)** to this project, be it code, reviews, documentation, or reports.
 
-Yes, work has begun on certified versions of the Ceedling suite of tools to be available through **[Ceedling Pro][ceedling-pro]**. [Reach out to ThingamaByte][thingama-contact] for more.
+Yes, work has begun on **[Ceedling Certified][ceedling-certified]**, a validated version of Ceedling to meet the needs of industry software certification.
 
 [ceedling-issues]: https://github.com/ThrowTheSwitch/Ceedling/issues
 [forums]: https://www.throwtheswitch.org/forums
-[thingama-contact]: https://www.thingamabyte.com/contact
+[ceedling-certified]: https://www.thingamabyte.com/ceedlingcertified
 
 <br/>
 
@@ -331,7 +341,7 @@ Ceedling can do all the magic to build and run this test code simply by enabling
 
 A variety of options for [community-based support][TTS-help] exist.
 
-Training and support contracts are available through **_[Ceedling Pro][ceedling-pro]_**
+Training and support contracts are available through **_[Ceedling Assist][ceedling-assist]_**
 
 [TTS-help]: https://www.throwtheswitch.org/#help-section
 
@@ -464,13 +474,13 @@ Once the _MadScienceLab_ container’s command line is available, to run Ceedlin
 Alternatively, you can run Ceedling through the _MadScienceLab_ Docker container directly from the command line as a command line utility. The general pattern is immediately below.
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 <Ceedling command line>
+ > docker run --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 <Ceedling command line>
 ```
 
 As a specific example, to run all tests in a suite, the command line would be this:
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 ceedling test:all
+ > docker run --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 ceedling test:all
 ```
 
 In this usage, the container starts, executes Ceedling, and then ends.
