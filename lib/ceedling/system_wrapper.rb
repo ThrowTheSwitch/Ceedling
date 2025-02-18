@@ -73,31 +73,73 @@ class SystemWrapper
     # some operations but not all.
     exit_code = 0
 
-    stdout, stderr = '' # Safe initialization defaults
+    stdout = ''         # Safe initialization defaults
+    stderr = ''         # Safe initialization defaults
     status = nil        # Safe initialization default
     
-    stdout, stderr, status = Open3.capture3( command )
-
+    # Use popen3 instead to control the IO reading, as Capture3 has blocking / locking potential
+    Open3.popen3(command) do |stdin, out, err, wait_thread|
+      # Close stdin since we don't use it
+      stdin.close
+      
+      readers = [out, err]
+      writers = []
+      
+      start_time = Time.now
+      out_chunks = []
+      err_chunks = []
+      
+      # Read from pipes until process exits and pipes are empty
+      while !readers.empty?
+        # Wait up to 1 second for data on either pipe
+        ready = IO.select(readers, writers, [], 1)
+        
+        next unless ready
+        
+        ready[0].each do |io|
+          begin
+            chunk = io.read_nonblock(4096)
+            if io == out
+              out_chunks << chunk
+            else
+              err_chunks << chunk
+            end
+          rescue EOFError
+            # Remove finished streams from monitoring
+            readers.delete(io)
+            io.close
+          rescue IO::WaitReadable
+            # Nothing available right now, will try again
+            next
+          end
+        end
+      end
+      
+      status = wait_thread.value
+      stdout = out_chunks.join
+      stderr = err_chunks.join
+    end
+    
     # If boom, then capture the actual exit code.
     # Otherwise, leave it as zero as though execution succeeded.
     exit_code = status.exitstatus.freeze if boom and !status.nil?
 
     # (Re)set the global system exit code so everything matches
     $exit_code = exit_code
-
+    
     return {
       # Combine stdout & stderr streams for complete output
-      :output    => (stdout + stderr).to_s.freeze,
-      
+      output: (stdout + stderr).to_s.freeze, 
+
       # Individual streams for detailed logging
-      :stdout    => stdout.freeze,
-      :stderr    => stderr.freeze,
+      stdout: stdout.freeze,
+      stderr: stderr.freeze,
 
       # Relay full Process::Status
-      :status    => status.freeze,
-      
+      status: status.freeze,
+
       # Provide simple exit code accessor
-      :exit_code => exit_code.freeze
+      exit_code: exit_code.freeze
     }
   end
 

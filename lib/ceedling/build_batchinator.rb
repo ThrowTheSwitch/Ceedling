@@ -48,7 +48,7 @@ class BuildBatchinator
 
     # Choose lesser of max workers or number of things to process & redefine workers
     # (It's neater and more efficient to avoid workers we won't use)
-    workers = [workers, things.size].min
+    workers = [1, [workers, things.size].min ].max
 
     threads = (1..workers).collect do
       thread = Thread.new do

@@ -15,7 +15,7 @@
 module Ceedling
   module Version
     # Convenience constants for gem building, etc.
-    GEM = '1.0.1'
+    GEM = '1.0.2'
     TAG = GEM
 
     # If run as a script print Ceedling's version to $stdout
