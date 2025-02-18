@@ -141,6 +141,9 @@ class Loginator
   #    simpler variants
 
   def log(message="\n", verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
+    # No sense posting if our verbosity is too low and we're not logging
+    return unless (@project_logging || @verbosinator.should_output?( verbosity ) )
+
     # Choose appropriate console stream
     stream = get_stream( verbosity, stream )
 
