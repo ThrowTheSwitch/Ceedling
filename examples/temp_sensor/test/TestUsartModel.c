@@ -10,7 +10,7 @@
 #include "UsartModel.h"
 #include "ModelConfig.h"
 #include "MockTemperatureFilter.h"
-#include "MockUsartBaudRateRegisterCalculator.h"
+#include "MockUsartBaudRateRegisterCalculator.h" //Proves we can find a mock without the path, even if the source uses the path
 #include <math.h>
 
 void setUp(void)
