@@ -110,7 +110,7 @@ class ConfigMatchinator
     # Each element of the collected _values array will be an array of values.
 
     hash.each do |matcher, values|
-      mtached = false
+      matched = false
       _matcher = matcher.to_s.strip
 
       # 1. Try gross wildcard matching -- return values for all test filepaths if '*' is the matching key
