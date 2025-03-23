@@ -330,8 +330,9 @@ class GcovrReportinator
 
     command = @tool_executor.build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], "--version")
 
-    msg = @reportinator.generate_progress("Collecting gcovr version for conditional feature handling")
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+      @reportinator.generate_progress("Collecting gcovr version for conditional feature handling")
+    end
 
     shell_result = @tool_executor.exec( command )
     version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)
