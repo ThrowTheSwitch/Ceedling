@@ -260,6 +260,7 @@ class Configurator
     # Merge Unity options used by test runner generation
     config[:test_runner][:defines] += config[:unity][:defines]
     config[:test_runner][:use_param_tests] = config[:unity][:use_param_tests]
+    config[:test_runner][:shuffle_tests] = config[:unity][:shuffle_tests]
 
     @runner_config = config[:test_runner]
 
