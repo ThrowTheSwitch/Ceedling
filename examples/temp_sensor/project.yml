@@ -65,6 +65,7 @@
     #- dependencies                   # automatically fetch 3rd party libraries, etc.
     #- subprojects                    # managing builds and test for static libraries
     #- fake_function_framework        # use FFF instead of CMock
+    #- valgrind                       # detect memory management and threading bugs using valgrind. Requires valgrind for your platform
 
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
     #- report_build_warnings_log

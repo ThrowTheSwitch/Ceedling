@@ -3,7 +3,6 @@ DEFAULT_VALGRIND = {
     :executable => ENV['VALGRIND'].nil? ? FilePathUtils.os_executable_ext('valgrind').freeze : ENV['VALGRIND'].split[0],
     :name => 'default_valgrind'.freeze,
     :stderr_redirect => StdErrRedirect::NONE.freeze,
-    :background_exec => BackgroundExec::NONE.freeze,
     :optional => false.freeze,
     :arguments => [
       "--leak-check=full".freeze,
