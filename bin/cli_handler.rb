@@ -64,6 +64,10 @@ class CliHandler
       # Silent Ceedling loading unless debug verbosity
       silent: !(verbosity == Verbosity::DEBUG)
     )
+
+    version = @helper.manufacture_app_version( app_cfg )
+
+    @helper.help_footer( version.ceedling_tag )
   end
 
 
@@ -395,10 +399,7 @@ class CliHandler
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
     # Ceedling application
-    application = Versionator.new(
-      app_cfg[:ceedling_root_path],
-      app_cfg[:ceedling_vendor_path]
-    )
+    application = @helper.manufacture_app_version( app_cfg )
 
     # Blank Ceedling version block to be built out conditionally below
     ceedling = nil
