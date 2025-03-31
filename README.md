@@ -369,7 +369,7 @@ _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustr
 
 ## Online tutorial
 
-Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling to build a C project with test suite. As the tutorial is a number of years old, the content is a bit out of date. That said, it provides an excellent overview of a real project. Matt is the author of [FFF] and the [FFF plugin][FFF-plugin] for Ceedling.
+Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling to build a C project with test suite. As the tutorial is a number of years old, the content is a bit out of date. That said, it provides an excellent overview of a real project. Matt is the author of [FFF].
 
 [ceedling-packet]: docs/CeedlingPacket.md
 [release-notes]: docs/ReleaseNotes.md
