@@ -38,8 +38,9 @@ class Loginator
 
     @replace = {
       # Problematic characters pattern => Simple characters
-      /↳/ => '>>', # Config sub-entry notation
-      /•/ => '*',  # Bulleted lists
+      /↳/ => '>>',   # Config sub-entry notation
+      /•/ => '*',    # Bulleted lists
+      /➡️/ => '>>',  # Right arrow
     }
 
     @project_logging = false
@@ -170,7 +171,7 @@ class Loginator
       # Send backtrace to debug logging, formatted almost identically to how Ruby does it.
       # Don't log the exception message itself in the first `log()` call as it will already be logged elsewhere
       log( "#{exception.backtrace.first}: (#{exception.class})", Verbosity::DEBUG )
-      log( exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"),                  Verbosity::DEBUG )
+      log( exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"), Verbosity::DEBUG )
   end
 
 
@@ -200,6 +201,12 @@ class Loginator
       prepend = '❌ '
     when LogLabels::TITLE
       prepend = '🌱 '
+    when LogLabels::DOCUMENTATION
+      prepend = '📝 '
+    when LogLabels::COMMERCIAL
+      prepend = '💼 '
+    when LogLabels::REQUEST
+      prepend = '🙏 '
     end
 
     return prepend + str

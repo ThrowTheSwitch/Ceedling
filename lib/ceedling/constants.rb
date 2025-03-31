@@ -26,18 +26,21 @@ VERBOSITY_OPTIONS = {
 
 # Label + decorator options for logging
 class LogLabels
-  NONE       =  0  # Override logic and settings with no label and no decoration
-  AUTO       =  1  # Default labeling and decorators
-  NOTICE     =  2  # decorator + 'NOTICE:'
-  WARNING    =  3  # decorator + 'WARNING:'
-  ERROR      =  4  # decorator + 'ERROR:'
-  EXCEPTION  =  5  # decorator + 'EXCEPTION:'
-  CONSTRUCT  =  6  # decorator only
-  RUN        =  7  # decorator only
-  CRASH      =  8  # decorator only
-  PASS       =  9  # decorator only
-  FAIL       = 10  # decorator only
-  TITLE      = 11  # decorator only
+  NONE          =  0  # Override logic and settings with no label and no decoration
+  AUTO          =  1  # Default labeling and decorators
+  NOTICE        =  2  # decorator + 'NOTICE:'
+  WARNING       =  3  # decorator + 'WARNING:'
+  ERROR         =  4  # decorator + 'ERROR:'
+  EXCEPTION     =  5  # decorator + 'EXCEPTION:'
+  CONSTRUCT     =  6  # decorator only
+  RUN           =  7  # decorator only
+  CRASH         =  8  # decorator only
+  PASS          =  9  # decorator only
+  FAIL          = 10  # decorator only
+  TITLE         = 11  # decorator only
+  DOCUMENTATION = 12  # decorator only
+  COMMERCIAL    = 13  # decorator only
+  REQUEST       = 14  # decorator only
 
   # Verbosity levels ERRORS – DEBUG default to certain labels or lack thereof
   # The above label constants are available to override Loginator's default AUTO level as needed
