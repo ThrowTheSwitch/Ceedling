@@ -311,7 +311,6 @@ class Generator
     # We'll analyze its results apart from tool_executor
     command[:options][:boom] = false
     shell_result = @tool_executor.exec( command )
-
     filename = File.basename( test_filepath )
 
     # Handle crashes

@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'benchmark'
+require 'parallel'
 
 class BuildBatchinator
 
@@ -33,10 +34,11 @@ class BuildBatchinator
   #  - Spin up a number of worker threads within constraints of project file config and amount of work
   #  - Each worker thread consumes one item from queue and runs the block against its details
   #  - When the queue is empty, the worker threads wind down
-  def exec(workload:, things:, &block)
+  def exec(workload:, things:, &job_block)
+
     sum_elapsed = 0.0
     all_elapsed = Benchmark.realtime do
-      workers = 0
+      workers = 1
 
       case workload
       when :compile
@@ -47,75 +49,14 @@ class BuildBatchinator
         raise NameError.new("Unrecognized batch workload type: #{workload}")
       end
 
-      # Enqueue all the items the block will execute against
-      things.each { |thing| @queue << thing }
-
-      # Choose lesser of max workers or number of things to process & redefine workers
-      # (It's neater and more efficient to avoid workers we won't use)
-      workers = [1, [workers, things.size].min ].max
-
-      threads = (1..workers).collect do
-        thread = Thread.new do
-          Thread.handle_interrupt(Exception => :never) do
-            begin
-              Thread.handle_interrupt(Exception => :immediate) do
-                # Run tasks until there are no more enqueued
-                loop do
-                  # pop(true) is non-blocking and raises ThreadError when queue is empty
-                  sum_elapsed = Benchmark.realtime { yield @queue.pop(true) }
-                end
-              end
-
-            # First, handle thread exceptions (should always be due to empty queue)
-            rescue ThreadError => e
-              # Typical case: do nothing and allow thread to wind down
-
-              # ThreadError outside scope of expected empty queue condition
-              unless e.message.strip.casecmp("queue empty")
-                # Shutdown all worker threads
-                shutdown_threads(threads) 
-                # Raise exception again after intervening
-                raise(e)
-              end
-
-            # Second, catch every other kind of exception so we can intervene with thread cleanup.
-            # Generally speaking, catching Exception is a no-no, but we must in this case.
-            # Raise the exception again so that:
-            #  1. Calling code knows something bad happened and handles appropriately
-            #  2. Ruby runtime can handle most serious problems
-            rescue Exception => e
-              # Shutdown all worker threads
-              shutdown_threads(threads) 
-              # Raise exception again after intervening
-              raise(e)
-            end
-          end
-        end
-
-        # Hand thread to Enumerable collect() routine
-        thread.abort_on_exception = true
-        thread
-      end
-
-      # Hand worker threads to scheduler / wait for them to finish
-      threads.each { |thread| thread.join }
+      sum_elapsed += Parallel.map(things, in_threads: workers) do |key, value| 
+        Benchmark.realtime { job_block.call(key, value) }
+      end.sum()
     end
+
     @loginator.lazy(Verbosity::OBNOXIOUS) do 
       "\nBatch Elapsed All: #{all_elapsed.to_s}\nBatch Elapsed Sum: #{sum_elapsed.to_s}\n"
     end
   end
-
-  ### Private ###
-
-  private
-
-  # Terminate worker threads other than ourselves (we're already winding down)
-  def shutdown_threads(workers)
-    workers.each do |thread|
-      next if thread == Thread.current
-      thread.terminate
-    end
-  end
-
 end
 

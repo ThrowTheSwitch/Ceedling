@@ -64,17 +64,17 @@ class TestInvoker
               :name => name,
               :paths => {}
             }
+          end
 
-            paths = @testables[key][:paths]
-            paths[:build] = build_path
-            paths[:results] = results_path
-            paths[:mocks] = mocks_path if @configurator.project_use_mocks
-            if @configurator.project_use_test_preprocessor != :none
-              paths[:preprocess_incudes] = preprocess_includes_path
-              paths[:preprocess_files] = preprocess_files_path
-              paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
-              paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
-            end
+          paths = @testables[key][:paths]
+          paths[:build] = build_path
+          paths[:results] = results_path
+          paths[:mocks] = mocks_path if @configurator.project_use_mocks
+          if @configurator.project_use_test_preprocessor != :none
+            paths[:preprocess_incudes] = preprocess_includes_path
+            paths[:preprocess_files] = preprocess_files_path
+            paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
+            paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
           end
 
           @testables[key][:paths].each {|_, path| @file_wrapper.mkdir( path ) }
@@ -417,7 +417,7 @@ class TestInvoker
           # A lone `ensure` includes an implicit rescuing of StandardError 
           # with the exception continuing up the call trace.
           ensure
-            @plugin_manager.post_test( details[:filepath] )
+           @plugin_manager.post_test( details[:filepath] )
           end
         end
       } unless options[:build_only]
