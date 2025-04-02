@@ -372,8 +372,7 @@ class TestContextExtractor
       end
     end
 
-    @loginator.log( msg, Verbosity::DEBUG )
-    @loginator.log( '', Verbosity::DEBUG )
+    @loginator.log( "#{msg}\n\n", Verbosity::DEBUG )
   end
 
 end

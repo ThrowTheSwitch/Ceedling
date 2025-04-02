@@ -141,8 +141,7 @@ class CliHandler
 
     which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
     if (which == :gem)
-      msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      @loginator.log( "Project configuration specifies the Ceedling gem, not vendored Ceedling", Verbosity::NORMAL, LogLabels::NOTICE )
     end
 
     # Thor Actions for project tasks use paths in relation to this path

@@ -80,9 +80,7 @@ class ToolExecutorHelper
 
         output +=   "> And terminated with status: #{shell_result[:status]}\n"
 
-        @loginator.log( '', Verbosity::DEBUG )
-        @loginator.log( output, Verbosity::DEBUG )
-        @loginator.log( '', Verbosity::DEBUG )
+        @loginator.log( "\n#{output}\n\n", Verbosity::DEBUG )
 
         return # Bail out
       end
@@ -100,8 +98,6 @@ class ToolExecutorHelper
       end
     end
 
-    @loginator.log( '', Verbosity::OBNOXIOUS )
-    @loginator.log( output, Verbosity::OBNOXIOUS )
-    @loginator.log( '', Verbosity::OBNOXIOUS )
+    @loginator.log( "\n#{output}\n\n", Verbosity::DEBUG )
   end
 end
