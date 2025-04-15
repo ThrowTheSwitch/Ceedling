@@ -18,7 +18,7 @@ class TestInvoker
               :plugin_manager,
               :reportinator,
               :loginator,
-              :build_batchinator,
+              :batchinator,
               :preprocessinator,
               :task_invoker,
               :generator,
@@ -37,7 +37,6 @@ class TestInvoker
 
     # Aliases for brevity in code that follows
     @helper = @test_invoker_helper
-    @batchinator = @build_batchinator
     @context_extractor = @test_context_extractor
   end
 
@@ -400,7 +399,7 @@ class TestInvoker
 
       # Execute Final Tests
       @batchinator.build_step("Executing") {
-        @batchinator.exec(workload: :test, things: @testables) do |_, details|
+        results = @batchinator.exec(workload: :test, things: @testables) do |_, details|
           begin
             arg_hash = {
               context:        context,
@@ -420,6 +419,7 @@ class TestInvoker
            @plugin_manager.post_test( details[:filepath] )
           end
         end
+        puts "SUPER DUMP: #{results.inspect}"
       } unless options[:build_only]
 
     # Handle application-level exceptions.

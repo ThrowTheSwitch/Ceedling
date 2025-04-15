@@ -8,7 +8,7 @@
 require 'benchmark'
 require 'parallel'
 
-class BuildBatchinator
+class Batchinator
 
   constructor :configurator, :loginator, :reportinator
 
@@ -36,10 +36,12 @@ class BuildBatchinator
   #  - When the queue is empty, the worker threads wind down
   def exec(workload:, things:, &job_block)
 
+    batch_results = []
     sum_elapsed = 0.0
-    all_elapsed = Benchmark.realtime do
-      workers = 1
 
+    all_elapsed = Benchmark.realtime do
+      # Determine number of worker threads to run
+      workers = 1
       case workload
       when :compile
         workers = @configurator.project_compile_threads
@@ -49,14 +51,26 @@ class BuildBatchinator
         raise NameError.new("Unrecognized batch workload type: #{workload}")
       end
 
-      sum_elapsed += Parallel.map(things, in_threads: workers) do |key, value| 
-        Benchmark.realtime { job_block.call(key, value) }
-      end.sum()
+      # Perform the actual parallelized work and collect the results and timing
+      batch_results = Parallel.map(things, in_threads: workers) do |key, value| 
+        this_results = ''
+        this_elapsed = Benchmark.realtime { this_results = job_block.call(key, value) }
+        [this_results, this_elapsed]
+      end
+
+      # Separate the elapsed time and results
+      if batch_results.size > 1
+        batch_results, batch_elapsed = batch_results.transpose
+        sum_elapsed = batch_elapsed.sum()
+      end
     end
 
+    # Report the timing if requested
     @loginator.lazy(Verbosity::OBNOXIOUS) do 
-      "\nBatch Elapsed All: #{all_elapsed.to_s}\nBatch Elapsed Sum: #{sum_elapsed.to_s}\n"
+      "\nBatch Elapsed: (All: %.3fsec Sum: %.3fsec)\n" % [all_elapsed, sum_elapsed]
     end
+
+    batch_results
   end
 end
 

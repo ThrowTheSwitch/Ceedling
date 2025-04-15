@@ -98,6 +98,6 @@ class ToolExecutorHelper
       end
     end
 
-    @loginator.log( "\n#{output}\n\n", Verbosity::DEBUG )
+    @loginator.log( "\n#{output}\n\n", Verbosity::OBNOXIOUS )
   end
 end

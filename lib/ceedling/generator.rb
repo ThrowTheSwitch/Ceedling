@@ -346,12 +346,10 @@ class Generator
       end
     end
 
-    processed = @generator_test_results.process_and_write_results( 
-      executable,
-      shell_result,
-      arg_hash[:result_file],
-      @file_finder.find_test_file_from_filepath( arg_hash[:executable] )
-    )
+    shell_result[:executable] = executable
+    shell_result[:result_file] = arg_hash[:result_file]
+    shell_result[:test_file] = @file_finder.find_test_file_from_filepath( arg_hash[:executable] )
+    processed = @generator_test_results.process_and_write_results( shell_result )
 
     arg_hash[:result_file]  = processed[:result_file]
     arg_hash[:results]      = processed[:results]
@@ -359,6 +357,8 @@ class Generator
     arg_hash[:shell_result] = shell_result
 
     @plugin_manager.post_test_fixture_execute( arg_hash )
+
+    shell_result
   end
 
 end
