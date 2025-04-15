@@ -141,8 +141,7 @@ class CliHandler
 
     which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
     if (which == :gem)
-      msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      @loginator.log( "Project configuration specifies the Ceedling gem, not vendored Ceedling", Verbosity::NORMAL, LogLabels::NOTICE )
     end
 
     # Thor Actions for project tasks use paths in relation to this path
@@ -224,8 +223,10 @@ class CliHandler
      CException => #{_version.cexception_tag}
     VERSION
 
-    @loginator.log( '', Verbosity::OBNOXIOUS )
-    @loginator.log( version, Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT )
+    @loginator.lazy( Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT ) do 
+      version
+    end
 
     @helper.load_ceedling( 
       config: config,
@@ -263,7 +264,7 @@ class CliHandler
           default_tasks: default_tasks
         )
       else
-        @loginator.log( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
+        @loginator.log(" > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
