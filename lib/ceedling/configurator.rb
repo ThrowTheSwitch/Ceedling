@@ -69,8 +69,9 @@ class Configurator
 
   # The default tools (eg. DEFAULT_TOOLS_TEST) are merged into default config hash
   def merge_tools_defaults(config, default_config)
-    msg = @reportinator.generate_progress( 'Collecting default tool configurations' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+      @reportinator.generate_progress( 'Collecting default tool configurations' )
+    end
 
     # config[:project] is guaranteed to exist / validated to exist but may not include elements referenced below
     # config[:test_build] and config[:release_build] are optional in a user project configuration
@@ -116,8 +117,9 @@ class Configurator
     # Cmock has its own internal defaults handling, but we need to set these specific values
     # so they're guaranteed values and present for the Ceedling environment to access
 
-    msg = @reportinator.generate_progress( 'Collecting CMock defaults' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+      @reportinator.generate_progress( 'Collecting CMock defaults' )
+    end
 
     # Begin populating defaults with CMock defaults as set by Ceedling
     default_cmock = default_config[:cmock]
@@ -153,29 +155,33 @@ class Configurator
 
 
     if !plugin_hash_defaults.empty?
-      msg = @reportinator.generate_progress( 'Collecting Plugin YAML defaults' )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
+      @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+        @reportinator.generate_progress( 'Collecting Plugin YAML defaults' )
+      end
     end
 
     # Load base configuration values (defaults) from YAML
     plugin_yml_defaults.each do |plugin, defaults|
       _defaults = @yaml_wrapper.load( defaults )
 
-      msg = " - #{plugin} >> " + _defaults.to_s()
-      @loginator.log( msg, Verbosity::DEBUG )
+      @loginator.lazy( Verbosity::DEBUG ) do 
+        " - #{plugin} >> " + _defaults.to_s()
+      end
 
       default_config.deep_merge( _defaults )
     end
 
     if !plugin_hash_defaults.empty?
-      msg = @reportinator.generate_progress( 'Collecting Plugin Ruby hash defaults' )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
+      @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+        @reportinator.generate_progress( 'Collecting Plugin Ruby hash defaults' )
+      end
     end
 
     # Load base configuration values (defaults) as hash from Ruby
     plugin_hash_defaults.each do |plugin, defaults|
-      msg = " - #{plugin} >> " + defaults.to_s()
-      @loginator.log( msg, Verbosity::DEBUG )
+      @loginator.lazy( Verbosity::DEBUG ) do 
+        " - #{plugin} >> " + defaults.to_s()
+      end
 
       default_config.deep_merge( defaults )
     end
@@ -188,23 +194,27 @@ class Configurator
   end
 
   def populate_with_defaults( config_hash, defaults_hash )
-    msg = @reportinator.generate_progress( 'Populating project configuration with collected default values' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )    
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+      @reportinator.generate_progress( 'Populating project configuration with collected default values' )
+    end
 
     @configurator_builder.populate_with_defaults( config_hash, defaults_hash )
   end
 
 
   def populate_unity_config(config)
-    msg = @reportinator.generate_progress( 'Processing Unity configuration' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+      @reportinator.generate_progress( 'Processing Unity configuration' )
+    end
 
     if config[:unity][:use_param_tests]
       config[:unity][:defines] << 'UNITY_SUPPORT_TEST_CASES'
       config[:unity][:defines] << 'UNITY_SUPPORT_VARIADIC_MACROS'
     end
 
-    @loginator.log( "Unity configuration >> #{config[:unity]}", Verbosity::DEBUG )    
+    @loginator.lazy( Verbosity::DEBUG ) do 
+      "Unity configuration >> #{config[:unity]}"
+    end
   end
 
 
@@ -216,12 +226,15 @@ class Configurator
 
     # Do no more prep if we're not using mocks
     if !config[:project][:use_mocks]
-      @loginator.log( "CMock configuration >> #{cmock}", Verbosity::DEBUG )
+      @loginator.lazy( Verbosity::DEBUG ) do 
+        "CMock configuration >> #{cmock}"
+      end
       return
     end
 
-    msg = @reportinator.generate_progress( 'Processing CMock configuration' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Processing CMock configuration' )
+    end
 
     # Plugins housekeeping
     cmock[:plugins].map! { |plugin| plugin.to_sym() }
@@ -237,13 +250,16 @@ class Configurator
 
     cmock[:includes].uniq!
 
-    @loginator.log( "CMock configuration >> #{cmock}", Verbosity::DEBUG )
+    @loginator.lazy( Verbosity::DEBUG ) do
+      "CMock configuration >> #{cmock}"
+    end
   end
 
 
   def populate_test_runner_generation_config(config)
-    msg = @reportinator.generate_progress( 'Populating test runner generation settings' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )    
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Populating test runner generation settings' )
+    end    
 
     use_backtrace = config[:project][:use_backtrace]
 
@@ -263,20 +279,25 @@ class Configurator
 
     @runner_config = config[:test_runner]
 
-    @loginator.log( "Test Runner configuration >> #{config[:test_runner]}", Verbosity::DEBUG )
+    @loginator.lazy( Verbosity::DEBUG ) do
+      "Test Runner configuration >> #{config[:test_runner]}"
+    end
   end
 
 
   def populate_exceptions_config(config)
     # Automagically set exception handling if CMock is configured for it
     if config[:cmock][:plugins] && config[:cmock][:plugins].include?(:cexception)
-      msg = @reportinator.generate_progress( 'Enabling CException use based on CMock plugins settings' )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )    
+      @loginator.lazy( Verbosity::OBNOXIOUS ) do
+        @reportinator.generate_progress( 'Enabling CException use based on CMock plugins settings' )
+      end   
 
       config[:project][:use_exceptions] = true
     end
 
-    @loginator.log( "CException configuration >> #{config[:cexception]}", Verbosity::DEBUG )
+    @loginator.lazy( Verbosity::DEBUG ) do
+      "CException configuration >> #{config[:cexception]}"
+    end
   end
 
 
@@ -300,8 +321,9 @@ class Configurator
   #    - Handle needed defaults
   #  - Configure test runner from backtrace configuration
   def populate_tools_config(config)
-    msg = @reportinator.generate_progress( 'Populating tool definition settings and expanding any string replacements' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Populating tool definition settings and expanding any string replacements' )
+    end
 
     config[:tools].each_key do |name|
       tool = config[:tools][name]
@@ -330,16 +352,14 @@ class Configurator
   #   :arguments: [...]
   #   :executable: '...'
   def populate_tools_shortcuts(config)
-    msg = @reportinator.generate_progress( 'Processing tool definition shortcuts' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Processing tool definition shortcuts' )
+    end
 
     prefix = 'tools_'
     config[:tools].each do |name, tool|
       # Lookup shortcut tool definition (:tools_<name>)
       shortcut = (prefix + name.to_s).to_sym
-
-      # Logging message to be built up
-      msg = ''
 
       # Try to lookup the executable from user config
       executable, _  = @config_walkinator.fetch_value(shortcut, :executable, 
@@ -352,52 +372,63 @@ class Configurator
                          default: []
                        )
 
-      # If either tool definition modification is happening, start building the logging message
-      if !args_to_add.empty? or !executable.nil?
-        msg += " > #{name}\n" 
-      end
-
-      # Log the executable and redefine the tool config
+      # Redefine the tool config
       if !executable.nil?
-        msg += "   executable: \"#{executable}\"\n"
         tool[:executable] = executable
       end
 
-      # Log the arguments and add to the tool config
+      # Add to the tool config
       if !args_to_add.empty?
-        msg += "   arguments: " + args_to_add.map{|arg| "\"#{arg}\""}.join( ', ' ) + "\n"
         tool[:arguments].concat( args_to_add )
       end
 
       # Log
-      @loginator.log( msg, Verbosity::DEBUG ) if !msg.empty?
+      if !args_to_add.empty? or !executable.nil?
+        @loginator.lazy( Verbosity::DEBUG ) do 
+          msg = " > #{name}\n"
+
+          if !executable.nil?
+            msg += "   executable: \"#{executable}\"\n"
+          end
+
+          if !args_to_add.empty?
+            msg += "   arguments: " + args_to_add.map{|arg| "\"#{arg}\""}.join( ', ' ) + "\n"
+          end
+
+          msg
+        end
+      end
     end
   end
 
 
   def discover_plugins(paths_hash, config)
-    msg = @reportinator.generate_progress( 'Discovering all plugins' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Discovering all plugins' )
+    end
 
     # Rake-based plugins
     @rake_plugins = @configurator_plugins.find_rake_plugins( config, paths_hash )
     if !@configurator_plugins.rake_plugins.empty?
-      msg = " > Rake plugins: " + @configurator_plugins.rake_plugins.map{|p| p[:plugin]}.join( ', ' )
-      @loginator.log( msg, Verbosity::DEBUG )
+      @loginator.lazy( Verbosity::DEBUG ) do
+        " > Rake plugins: " + @configurator_plugins.rake_plugins.map{|p| p[:plugin]}.join( ', ' )
+      end
     end
 
     # Ruby `Plugin` subclass programmatic plugins
     @programmatic_plugins = @configurator_plugins.find_programmatic_plugins( config, paths_hash )
     if !@configurator_plugins.programmatic_plugins.empty?
-      msg = " > Programmatic plugins: " + @configurator_plugins.programmatic_plugins.map{|p| p[:plugin]}.join( ', ' )
-      @loginator.log( msg, Verbosity::DEBUG )
+      @loginator.lazy( Verbosity::DEBUG ) do
+        " > Programmatic plugins: " + @configurator_plugins.programmatic_plugins.map{|p| p[:plugin]}.join( ', ' )
+      end
     end
     
     # Config plugins
     config_plugins = @configurator_plugins.find_config_plugins( config, paths_hash )
     if !@configurator_plugins.config_plugins.empty?
-      msg = " > Config plugins: " + @configurator_plugins.config_plugins.map{|p| p[:plugin]}.join( ', ' )
-      @loginator.log( msg, Verbosity::DEBUG )
+      @loginator.lazy( Verbosity::DEBUG ) do
+        " > Config plugins: " + @configurator_plugins.config_plugins.map{|p| p[:plugin]}.join( ', ' )
+      end
     end
   end
 
@@ -418,9 +449,12 @@ class Configurator
     @configurator_plugins.config_plugins.each do |hash|
       _config = @yaml_wrapper.load( hash[:path] )
 
-      msg = @reportinator.generate_progress( "Merging configuration from plugin #{hash[:plugin]}" )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
-      @loginator.log( _config.to_s, Verbosity::DEBUG )
+      @loginator.lazy( Verbosity::OBNOXIOUS ) do
+        @reportinator.generate_progress( "Merging configuration from plugin #{hash[:plugin]}" )
+      end
+      @loginator.lazy( Verbosity::DEBUG ) do 
+        _config.to_s
+      end
 
       # Special handling for plugin paths
       if (_config.include?( :paths ))
@@ -440,8 +474,9 @@ class Configurator
   def eval_environment_variables(config)
     return if config[:environment].nil?
 
-    msg = @reportinator.generate_progress( 'Processing environment variables' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Processing environment variables' )
+    end
 
     config[:environment].each do |hash|
       key   = hash.keys[0] # Get first (should be only) environment variable entry
@@ -472,7 +507,9 @@ class Configurator
 
       # Set the environment variable for our session
       @system_wrapper.env_set( key.to_s.upcase, hash[key] )
-      @loginator.log( " - #{key.to_s.upcase}: \"#{hash[key]}\"", Verbosity::DEBUG )
+      @loginator.lazy( Verbosity::DEBUG ) do 
+        " - #{key.to_s.upcase}: \"#{hash[key]}\""
+      end
     end
   end
 
@@ -481,8 +518,9 @@ class Configurator
   def eval_paths(config)
     # :plugins ↳ :load_paths already handled
 
-    msg = @reportinator.generate_progress( 'Processing path entries and expanding any string replacements' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Processing path entries and expanding any string replacements' )
+    end
 
     eval_path_entries( config[:project][:build_root] )
     eval_path_entries( config[:release_build][:artifacts] )
@@ -507,8 +545,9 @@ class Configurator
 
   # Handle any Ruby string replacement for :flags string arrays
   def eval_flags(config)
-    msg = @reportinator.generate_progress( 'Expanding any string replacements in :flags entries' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Expanding any string replacements in :flags entries' )
+    end
 
     # Descend down to array of command line flags strings regardless of depth in config block
     traverse_hash_eval_string_arrays( config[:flags] )
@@ -517,8 +556,9 @@ class Configurator
 
   # Handle any Ruby string replacement for :defines string arrays
   def eval_defines(config)
-    msg = @reportinator.generate_progress( 'Expanding any string replacements in :defines entries' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Expanding any string replacements in :defines entries' )
+    end
 
     # Descend down to array of #define strings regardless of depth in config block
     traverse_hash_eval_string_arrays( config[:defines] )
@@ -526,8 +566,9 @@ class Configurator
 
 
   def standardize_paths(config)
-    msg = @reportinator.generate_progress( 'Standardizing all paths' )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( 'Standardizing all paths' )
+    end
 
     # Individual paths that don't follow `_path` convention processed here
     paths = [
@@ -666,8 +707,9 @@ class Configurator
 
   def insert_rake_plugins(plugins)
     plugins.each do |hash|
-      msg = @reportinator.generate_progress( "Adding plugin #{hash[:plugin]} to Rake load list" )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
+      @loginator.lazy( Verbosity::OBNOXIOUS ) do
+        @reportinator.generate_progress( "Adding plugin #{hash[:plugin]} to Rake load list" )
+      end
 
       @project_config_hash[:project_rakefile_component_files] << hash[:path]
     end
