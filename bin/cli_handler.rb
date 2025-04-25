@@ -39,12 +39,11 @@ class CliHandler
   def app_help(env, app_cfg, options, command, &thor_help)
     verbosity = @helper.set_verbosity( options[:verbosity] )
 
-    # If help requested for a command, show it and skip listing build tasks
-    if !command.nil?
-      # Block handler
-      thor_help.call( command ) if block_given?
-      return
-    end
+    # Block handler
+    thor_help.call( command ) if block_given?
+
+    # If it was help for a specific command, we're done
+    return if !command.nil?
 
     @path_validator.standardize_paths( options[:project], *options[:mixin], )
     if @projectinator.config_available?( filepath:options[:project], env:env )
