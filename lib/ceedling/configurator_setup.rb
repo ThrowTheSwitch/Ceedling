@@ -224,6 +224,10 @@ class ConfiguratorSetup
     #       - FOO
     #       - BAR
 
+    # These contexts support filename matchers optionally. Others can only contain simple lists
+    contexts_supporting_matchers = [:test, :preprocess]
+    contexts_supporting_matchers << :gcov if (_config && _config[:plugins] && _config[:plugins][:enabled] && _config[:plugins][:enabled].include?('gcov'))
+
     defines.each_pair do |context, config|
       walk = @reportinator.generate_config_walk( [:defines, context] )
 
@@ -231,7 +235,7 @@ class ConfiguratorSetup
       next if context == :use_test_definition
 
       # Matcher contexts (only contexts that support matcher hashes)
-      if context == :test or context == :preprocess
+      if contexts_supporting_matchers.include? context
         if config.class != Array and config.class != Hash
           msg = "#{walk} entry '#{config}' must be a list or matcher, not #{config.class.to_s.downcase} (see docs for examples)"
           @loginator.log( msg, Verbosity::ERRORS )
@@ -414,6 +418,10 @@ class ConfiguratorSetup
     #       :<matcher>:
     #         - --flag
 
+    # These contexts support filename matchers optionally. Others can only contain simple lists
+    contexts_supporting_matchers = [:test]
+    contexts_supporting_matchers << :gcov if (_config && _config[:plugins] && _config[:plugins][:enabled] && _config[:plugins][:enabled].include?('gcov'))
+
     flags.each_pair do |context, operations|
       operations.each_pair do |operation, config|
         walk = @reportinator.generate_config_walk( [:flags, context, operation] )
@@ -427,7 +435,7 @@ class ConfiguratorSetup
         end
 
         # :test context operations with lists or matchers (hashes)
-        if context == :test
+        if contexts_supporting_matchers.include? context
           if config.class != Array and config.class != Hash
             msg = "#{walk} entry '#{config}' must be a list or matcher hash, not #{config.class.to_s.downcase} (see docs for examples)"
             @loginator.log( msg, Verbosity::ERRORS )
