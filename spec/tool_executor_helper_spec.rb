@@ -106,16 +106,14 @@ describe ToolExecutorHelper do
         @shell_result[:stderr] = ''
         @shell_result[:stdout] = ''
 
-        message =
+        message = "\n" +
           "> Shell executed command:\n" +
           "`gcc ab.c`\n" +
           "> With $stdout: <empty>\n" +
           "> With $stderr: <empty>\n" +
-          "> And terminated with status: <status>\n"
+          "> And terminated with status: <status>\n\n\n"
 
-        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
         expect(@loginator).to receive(:log).with(message, Verbosity::DEBUG)
-        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
 
         @tool_exe_helper.log_results("gcc ab.c", @shell_result)
       end
@@ -124,16 +122,14 @@ describe ToolExecutorHelper do
         @shell_result[:stderr] = "error output\n\n\n"
         @shell_result[:stdout] = ''
 
-        message =
+        message = "\n" +
           "> Shell executed command:\n" +
           "`test.exe`\n" +
           "> With $stdout: <empty>\n" +
           "> With $stderr: \nerror output\n" +
-          "> And terminated with status: <status>\n"
+          "> And terminated with status: <status>\n\n\n"
 
-        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
         expect(@loginator).to receive(:log).with(message, Verbosity::DEBUG)
-        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
 
         @tool_exe_helper.log_results("test.exe", @shell_result)
       end
@@ -142,16 +138,14 @@ describe ToolExecutorHelper do
         @shell_result[:stderr] = ''
         @shell_result[:stdout] = "output\n\n\n"
 
-        message =
+        message = "\n" +
           "> Shell executed command:\n" +
           "`utility --flag`\n" +
           "> With $stdout: \noutput\n" +
           "> With $stderr: <empty>\n" +
-          "> And terminated with status: <status>\n"
+          "> And terminated with status: <status>\n\n\n"
 
-        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
         expect(@loginator).to receive(:log).with(message, Verbosity::DEBUG)
-        expect(@loginator).to receive(:log).with('', Verbosity::DEBUG)
 
         @tool_exe_helper.log_results("utility --flag", @shell_result)
       end
@@ -168,14 +162,12 @@ describe ToolExecutorHelper do
         @shell_result[:output] = ''
         @shell_result[:exit_code] = nil
 
-        message =
+        message = "\n" +
           "> Shell executed command:\n" +
           "`gcc ab.c`\n" +
-          "> And exited prematurely\n"
+          "> And exited prematurely\n\n\n"
 
-        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
         expect(@loginator).to receive(:log).with(message, Verbosity::OBNOXIOUS)
-        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
 
         @tool_exe_helper.log_results("gcc ab.c", @shell_result)
       end
@@ -184,15 +176,13 @@ describe ToolExecutorHelper do
         @shell_result[:output] = 'some output'
         @shell_result[:exit_code] = 0
 
-        message =
+        message = "\n" +
           "> Shell executed command:\n" +
           "`test.exe --a_flag`\n" +
           "> Produced output: \nsome output\n" +
-          "> And terminated with exit code: [0]\n"
+          "> And terminated with exit code: [0]\n\n\n"
 
-        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
         expect(@loginator).to receive(:log).with(message, Verbosity::OBNOXIOUS)
-        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
 
         @tool_exe_helper.log_results("test.exe --a_flag", @shell_result)
       end
@@ -201,15 +191,13 @@ describe ToolExecutorHelper do
         @shell_result[:output] = 'some more output'
         @shell_result[:exit_code] = 37
 
-        message =
+        message = "\n" +
           "> Shell executed command:\n" +
           "`utility.out args`\n" +
           "> Produced output: \nsome more output\n" +
-          "> And terminated with exit code: [37]\n"
+          "> And terminated with exit code: [37]\n\n\n"
 
-        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
         expect(@loginator).to receive(:log).with(message, Verbosity::OBNOXIOUS)
-        expect(@loginator).to receive(:log).with('', Verbosity::OBNOXIOUS)
 
         @tool_exe_helper.log_results("utility.out args", @shell_result)
       end
