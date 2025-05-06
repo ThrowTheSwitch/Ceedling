@@ -367,13 +367,23 @@ class TestInvoker
         end
       end
 
+      # Prepare to Parallelize ALL the build objects
+      objects = @testables.map do |_, details| 
+        details[:objects].map do |obj|
+          { 
+            tool: details[:tool],
+            test: details[:name],
+            msg:  details[:msg],
+            obj:  obj
+          }
+        end
+      end.flatten
+
       # Build All Test objects
       @batchinator.build_step("Building Objects") do
-        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
-          details[:objects].each do |obj|
-            src = @file_finder.find_build_input_file(filepath: obj, context: context)
-            compile_test_component(tool: details[:tool], context: context, test: details[:name], source: src, object: obj, msg: details[:msg])
-          end
+        @batchinator.exec(workload: :compile, things: objects) do |obj|
+          src = @file_finder.find_build_input_file(filepath: obj[:obj], context: context)
+          compile_test_component(tool: obj[:tool], context: context, test: obj[:test], source: src, object: obj[:obj], msg: obj[:msg])
         end
       end
 
@@ -419,7 +429,6 @@ class TestInvoker
            @plugin_manager.post_test( details[:filepath] )
           end
         end
-        puts "SUPER DUMP: #{results.inspect}"
       } unless options[:build_only]
 
     # Handle application-level exceptions.

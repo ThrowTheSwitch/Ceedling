@@ -59,7 +59,7 @@ class Batchinator
       end
 
       # Separate the elapsed time and results
-      if batch_results.size > 1
+      if batch_results.size > 0
         batch_results, batch_elapsed = batch_results.transpose
         sum_elapsed = batch_elapsed.sum()
       end
