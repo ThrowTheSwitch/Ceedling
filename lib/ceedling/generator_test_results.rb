@@ -94,8 +94,11 @@ class GeneratorTestResults
     @sanity_checker = @generator_test_results_sanity_checker
   end
 
-  def process_and_write_results(executable, unity_shell_result, results_file, test_file)
-    output_file = results_file
+  def process_and_write_results(unity_shell_result)
+
+    executable  = unity_shell_result[:executable]
+    output_file = unity_shell_result[:result_file]
+    test_file   = unity_shell_result[:test_file]
 
     results = get_results_structure
 
@@ -149,7 +152,7 @@ class GeneratorTestResults
 
     @sanity_checker.verify( results, unity_shell_result[:exit_code] )
 
-    output_file = results_file.ext( @configurator.extension_testfail ) if (results[:counts][:failed] > 0)
+    output_file = output_file.ext( @configurator.extension_testfail ) if (results[:counts][:failed] > 0)
 
     @yaml_wrapper.dump(output_file, results)
 

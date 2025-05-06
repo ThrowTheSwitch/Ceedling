@@ -23,8 +23,9 @@ class PluginManager
       # Protect against instantiating object multiple times due to processing config multiple times (option files, etc)
       next if (@plugin_manager_helper.include?( @plugin_objects, hash[:plugin] ) )
 
-      msg = @reportinator.generate_progress( "Instantiating plugin class #{camelize( hash[:plugin] )}" )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
+      @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+        @reportinator.generate_progress( "Instantiating plugin class #{camelize( hash[:plugin] )}" )
+      end
 
       begin
         @system_wrapper.require_file( "#{hash[:plugin]}.rb" )
@@ -119,8 +120,9 @@ class PluginManager
     @plugin_objects.each do |plugin|
       begin
         if plugin.respond_to?(method)
-          message = @reportinator.generate_progress( "Plugin | #{camelize( plugin.name )} > :#{method}" )
-          @loginator.log( message, Verbosity::OBNOXIOUS )
+          @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+            @reportinator.generate_progress( "Plugin | #{camelize( plugin.name )} > :#{method}" )
+          end
           plugin.send(method, *args)
         end
       rescue

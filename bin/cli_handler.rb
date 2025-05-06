@@ -39,31 +39,27 @@ class CliHandler
   def app_help(env, app_cfg, options, command, &thor_help)
     verbosity = @helper.set_verbosity( options[:verbosity] )
 
-    # If help requested for a command, show it and skip listing build tasks
-    if !command.nil?
-      # Block handler
-      thor_help.call( command ) if block_given?
-      return
-    end
-
-    # Display Thor-generated help listing
+    # Block handler
     thor_help.call( command ) if block_given?
 
     # If it was help for a specific command, we're done
     return if !command.nil?
 
-    # If project configuration is available, also display Rake tasks
     @path_validator.standardize_paths( options[:project], *options[:mixin], )
-    return if !@projectinator.config_available?( filepath:options[:project], env:env )
-
-    list_rake_tasks(
-      env:env,
-      app_cfg: app_cfg,
-      filepath: options[:project],
-      mixins: options[:mixin],
-      # Silent Ceedling loading unless debug verbosity
-      silent: !(verbosity == Verbosity::DEBUG)
-    )
+    if @projectinator.config_available?( filepath:options[:project], env:env )
+      # If project configuration is available, also display Rake tasks
+      list_rake_tasks(
+        env:env,
+        app_cfg: app_cfg,
+        filepath: options[:project],
+        mixins: options[:mixin],
+        # Silent Ceedling loading unless debug verbosity
+        silent: !(verbosity == Verbosity::DEBUG)
+      )
+    else
+      # If no project configuration is available, note why we aren't displaying more
+      puts( "Run help commands in folder with a project file to show additional options!" )
+    end
   end
 
 
@@ -75,18 +71,17 @@ class CliHandler
   end
 
 
-  def new_project(env, app_cfg, ceedling_tag, options, name, dest)
+  def new_project(env, app_cfg, ceedling_tag, options, dest)
     @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( dest )
 
-    # If destination is nil, reassign it to name
-    # Otherwise, join the destination and name into a new path
-    dest = dest.nil? ? ('./' + name) : File.join( dest, name )
+    # If destination is nil, assume it's the working directory
+    dest ||= '.'
 
     # Check for existing project (unless --force)
     if @helper.project_exists?( dest, :|, DEFAULT_PROJECT_FILENAME, 'src', 'test' )
-      msg = "It appears a project already exists at #{dest}/. Use --force to destroy it and create a new project."
+      msg = "It appears a project already exists at \"#{dest}/\"! Use --force to destroy it and create a new project."
       raise msg
     end unless options[:force]
 
@@ -124,7 +119,7 @@ class CliHandler
     end
     
     @loginator.log() # Blank line
-    @loginator.log( "New project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "New project created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -141,8 +136,7 @@ class CliHandler
 
     which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
     if (which == :gem)
-      msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      @loginator.log( "Project configuration specifies the Ceedling gem, not vendored Ceedling", Verbosity::NORMAL, LogLabels::NOTICE )
     end
 
     # Thor Actions for project tasks use paths in relation to this path
@@ -224,8 +218,10 @@ class CliHandler
      CException => #{_version.cexception_tag}
     VERSION
 
-    @loginator.log( '', Verbosity::OBNOXIOUS )
-    @loginator.log( version, Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT )
+    @loginator.lazy( Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT ) do 
+      version
+    end
 
     @helper.load_ceedling( 
       config: config,
@@ -263,7 +259,7 @@ class CliHandler
           default_tasks: default_tasks
         )
       else
-        @loginator.log( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
+        @loginator.log(" > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
