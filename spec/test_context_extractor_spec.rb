@@ -109,8 +109,8 @@ describe TestContextExtractor do
         #include "unity.h"
 
       #include "mock_File.h"
-        #include "mock_another_file.h"
-      #include  " mock_another_file.h "  // Duplicate to be ignored
+        #include "mock_another-file.h"
+      #include  " mock_another-file.h "  // Duplicate to be ignored
       CONTENTS
 
       input = StringIO.new( file_contents )
@@ -120,7 +120,7 @@ describe TestContextExtractor do
         'more_source.h',
         'unity.h',
         'mock_File.h',
-        'mock_another_file.h'
+        'mock_another-file.h'
       ]
 
       expect( @extractor.extract_includes( input ) ).to eq expected

@@ -308,7 +308,7 @@ class TestContextExtractor
     includes = []
 
     # Look for #include statements
-    results = line.match(/#\s*include\s+\"\s*((\w|\.)+)\s*\"/)
+    results = line.match(/#\s*include\s+\"\s*([\w\.\-]+)\s*\"/)
     includes << results[1] if !results.nil?
 
     return includes
