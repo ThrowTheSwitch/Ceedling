@@ -636,7 +636,7 @@ those header files. It's kinda magical.
 
 For more on the assertions and mocking shown above, consult the 
 documentation for [Unity] and [CMock] or the resources in
-Ceedling’s [README][/README.md].
+Ceedling’s [README](/README.md).
 
 Ceedling, Unity, and CMock rely on a variety of
 [conventions to make your life easier][conventions-and-behaviors].
