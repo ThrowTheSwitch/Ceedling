@@ -242,7 +242,7 @@ class ConfiguratorSetup
       else
         # Handle the (probably) common case of trying to use matchers for any context other than :test or :preprocess
         if config.class == Hash
-          msg = "#{walk} entry '#{config}' must be a list--matcher hashes only availalbe for :test & :preprocess contexts (see docs for details)"
+          msg = "#{walk} entry '#{config}' must be a list; matcher hashes are only available for :test & :preprocess contexts (see docs for details)"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
         # Catchall for any oddball entries
@@ -438,7 +438,7 @@ class ConfiguratorSetup
         else
           # Handle the (probably) common case of trying to use matchers for operations in any context other than :test
           if config.class == Hash
-            msg = "#{walk} entry '#{config}' must be a list--matcher hashes only availalbe for :test context (see docs for details)"
+            msg = "#{walk} entry '#{config}' must be a list; matcher hashes are only available for :test context (see docs for details)"
             @loginator.log( msg, Verbosity::ERRORS )
             valid = false
           # Catchall for any oddball entries
