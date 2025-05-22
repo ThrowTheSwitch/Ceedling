@@ -206,17 +206,21 @@ class Gcov < Plugin
 
         # Handle errors instead of raising a shell exception
         if shell_results[:exit_code] != 0
-          debug = "gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
-          @loginator.log( debug, Verbosity::DEBUG, LogLabels::ERROR )
-          @loginator.log( "gcov was unable to process coverage for #{filename}", Verbosity::COMPLAIN )
+          @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do 
+            "gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
+          end
+          @loginator.lazy( Verbosity::COMPLAIN ) do 
+            "gcov was unable to process coverage for #{filename}"
+          end
           next # Skip to next loop iteration
         end
 
         # A source component may have been compiled with coverage but none of its code actually called in a test.
         # In this case, versions of gcov may not produce an error, only blank results.
         if results.empty?
-          msg = "No functions called or code paths exercised by test for #{filename}"
-          @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+          @loginator.lazy( msg, Verbosity::COMPLAIN, LogLabels::NOTICE ) do 
+            "No functions called or code paths exercised by test for #{filename}"
+          end
           next # Skip to next loop iteration
         end
 
@@ -226,8 +230,9 @@ class Gcov < Plugin
         # Extract (relative) filepath from results and expand to absolute path
         matches = results.match(/File\s+'(.+)'/)
         if matches.nil? or matches.length() != 2
-          msg = "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
-          @loginator.log( msg, Verbosity::DEBUG, LogLabels::ERROR )
+          @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do 
+            "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
+          end
         else
           # Expand to full path from likely partial path to ensure correct matches on source component within gcov results
           _source = File.expand_path(matches[1])
@@ -242,8 +247,7 @@ class Gcov < Plugin
         
         # Otherwise, found no coverage results
         else
-          msg = "Found no coverage results for #{test}::#{File.basename(source)}"
-          @loginator.log( msg, Verbosity::COMPLAIN )
+          @loginator.lazy( Verbosity::COMPLAIN ) { "Found no coverage results for #{test}::#{File.basename(source)}" }
         end
       end
     end

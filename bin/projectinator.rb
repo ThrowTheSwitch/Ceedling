@@ -221,11 +221,11 @@ class Projectinator
 
       # Log what the heck we loaded
       if !silent
-        msg  = "Loaded #{'(empty) ' if config.empty?}project configuration #{method}.\n"
-        msg += " > Using: #{filepath}\n"
-        msg += " > Working directory: #{Dir.pwd()}"
-
-        @loginator.log( msg, Verbosity::NORMAL, LogLabels::CONSTRUCT )
+        @loginator.lazy( Verbosity::NORMAL, LogLabels::CONSTRUCT ) do 
+          "Loaded #{'(empty) ' if config.empty?}project configuration #{method}.\n" +
+          " > Using: #{filepath}\n" +
+          " > Working directory: #{Dir.pwd()}"
+        end
       end
 
       return config

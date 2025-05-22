@@ -9,15 +9,13 @@ class TaskInvoker
 
   attr_accessor :first_run
 
-  constructor :dependinator, :build_batchinator, :rake_utils, :rake_wrapper
+  constructor :dependinator, :batchinator, :rake_utils, :rake_wrapper
 
   def setup
     @test_regexs = [/^#{TEST_ROOT_NAME}:/]
     @release_regexs = [/^#{RELEASE_ROOT_NAME}(:|$)/]
     @first_run = true
 
-    # Alias for brevity
-    @batchinator = @build_batchinator
   end
   
   def add_test_task_regex(regex)

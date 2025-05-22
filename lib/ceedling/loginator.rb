@@ -164,13 +164,46 @@ class Loginator
   end
 
 
+  # This is a version of the log function which performs lazy evaluation of the message itself.
+  # The purpose of this version is to improve performance by only building strings that are needed
+  # by the current log level
+  def lazy(verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil, &block)
+    # No sense posting if our verbosity is too low and we're not logging
+    return unless (@project_logging || @verbosinator.should_output?( verbosity ) )
+
+    # we've decided we need to actually use this string, so figure it out!
+    message = if block_given?
+      yield block
+    else
+      "\n"
+    end
+
+    # Choose appropriate console stream
+    stream = get_stream( verbosity, stream )
+
+    # Flatten if needed
+    message = message.flatten.join("\n") if (message.class == Array)
+
+    # Message contatenated with "\n" (unless it aready ends with a newline)
+    message += "\n" unless message.end_with?( "\n" )
+
+    # Add item to the queue
+    item = {
+      :message => message,
+      :verbosity => verbosity,
+      :label => label,
+      :stream => stream
+    }
+    @queue << item
+  end
+
   def log_debug_backtrace(exception)
-      log( "\nDebug Backtrace ==>", Verbosity::DEBUG )
-      
-      # Send backtrace to debug logging, formatted almost identically to how Ruby does it.
-      # Don't log the exception message itself in the first `log()` call as it will already be logged elsewhere
-      log( "#{exception.backtrace.first}: (#{exception.class})", Verbosity::DEBUG )
-      log( exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"),                  Verbosity::DEBUG )
+    # Send backtrace to debug logging, formatted almost identically to how Ruby does it.
+    # Don't log the exception message itself in the first `log()` call as it will already be logged elsewhere
+    lazy( Verbosity::DEBUG ) do 
+      "\nDebug Backtrace ==>\n#{exception.backtrace.first}: (#{exception.class})" +
+      exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n")
+    end
   end
 
 

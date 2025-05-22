@@ -21,7 +21,9 @@ class GeneratorHelper
     # Unix Signal 11 ==> SIGSEGV
     # Applies to Unix-like systems including MSYS on Windows
     if (shell_result[:status].termsig == 11)
-      @loginator.log( "#{runner} process terminated with SIGSEGV (Unix Signal 11)", Verbosity::DEBUG, LogLabels::CRASH )
+      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do 
+        "#{runner} process terminated with SIGSEGV (Unix Signal 11)"
+      end
       crash = true
     end
 
@@ -39,7 +41,9 @@ class GeneratorHelper
     regex = /\A(?!(?m).*^#{Regexp.escape(test_filename)}.*$).*(?:#{segfault_pattern})/mi
   
     if shell_result[:stderr].match?(regex)
-      @loginator.log( "#{runner} STDERR reports segmentation fault", Verbosity::DEBUG, LogLabels::CRASH )
+      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do 
+        "#{runner} STDERR reports segmentation fault"
+      end
       crash = true
     end
 

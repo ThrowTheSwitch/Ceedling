@@ -181,7 +181,7 @@ include_pathinator:
 task_invoker:
   compose:
     - dependinator
-    - build_batchinator
+    - batchinator
     - rake_utils
     - rake_wrapper
 
@@ -293,7 +293,7 @@ preprocessinator_extractor:
   compose:
     - parsing_parcels
 
-build_batchinator:
+batchinator:
   compose:
     - configurator
     - loginator
@@ -305,7 +305,7 @@ test_invoker:
     - configurator
     - test_invoker_helper
     - plugin_manager
-    - build_batchinator
+    - batchinator
     - reportinator
     - loginator
     - preprocessinator
@@ -321,7 +321,7 @@ test_invoker_helper:
   compose:
     - configurator
     - loginator
-    - build_batchinator
+    - batchinator
     - task_invoker
     - test_context_extractor
     - include_pathinator

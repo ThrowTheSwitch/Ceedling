@@ -142,7 +142,7 @@ class ConfigMatchinator
         matched_notice(section:section, context:context, operation:operation, matcher:_matcher, filepath:filepath)
       else # No match
         path = generate_matcher_path(section, context, operation)
-        @loginator.log("#{path} ↳ `#{matcher}` did not match #{filepath}", Verbosity::DEBUG)
+        @loginator.lazy( Verbosity::DEBUG ) { "#{path} ↳ `#{matcher}` did not match #{filepath}" }
       end
     end
 
@@ -156,7 +156,7 @@ class ConfigMatchinator
 
   def matched_notice(section:, context:, operation:, matcher:, filepath:)
     path = generate_matcher_path(section, context, operation)
-    @loginator.log("#{path} ↳ #{matcher} matched #{filepath}", Verbosity::OBNOXIOUS)
+    @loginator.lazy( Verbosity::OBNOXIOUS ) { "#{path} ↳ #{matcher} matched #{filepath}" }
   end
 
   def generate_matcher_path(*keys)

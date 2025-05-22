@@ -195,8 +195,9 @@ class PreprocessinatorIncludesHandler
     # Do not check exit code for success. In some error conditions we still get usable output.
     # Look for the first line of the make rule output.
     if not make_rules =~ make_rule_matcher
-      msg = "Preprocessor #include extraction failed: #{shell_result[:output]}"
-      @loginator.log(msg, Verbosity::DEBUG)
+      @loginator.lazy( Verbosity::DEBUG ) do
+        "Preprocessor #include extraction failed: #{shell_result[:output]}"
+      end
 
       return false, []
     end

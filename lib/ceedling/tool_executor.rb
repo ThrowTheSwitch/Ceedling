@@ -38,14 +38,13 @@ class ToolExecutor
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     # Log command as is
-    @loginator.log( "Command: #{command}", Verbosity::DEBUG )
+    @loginator.lazy( Verbosity::DEBUG ) { "Command: #{command}" }
 
     # Update executable after any expansion
     command[:executable] = executable
 
     return command
   end
-
 
   # shell out, execute command, and return response
   def exec(command, args=[])
@@ -61,11 +60,16 @@ class ToolExecutor
       @tool_executor_helper.stderr_redirect_cmdline_append( options ),
       ].flatten.compact.join(' ')
 
-    shell_result = {}
+    shell_result = {
+      :output => '',
+      :stdout => '',
+      :stderr => '',
+      :exit_code => 0
+    }
 
     # Wrap system level tool execution in exception handling
     begin
-      time = Benchmark.realtime do
+      time = Benchmark.realtime do 
         shell_result = @system_wrapper.shell_capture3( command:command_line, boom:options[:boom] )
       end
       shell_result[:time] = time

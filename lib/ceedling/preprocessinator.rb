@@ -56,8 +56,7 @@ class Preprocessinator
         includes.each { |include| msg += "\n - #{include}" }
       end
 
-      @loginator.log( msg, Verbosity::DEBUG )
-      @loginator.log( '', Verbosity::DEBUG )
+      @loginator.log( "#{msg}\n\n", Verbosity::DEBUG )
 
     # Full preprocessing-based #include extraction with saving to YAML file
     else
@@ -80,8 +79,7 @@ class Preprocessinator
         includes.each { |include| msg += "\n - #{include}" }
       end
 
-      @loginator.log( msg, Verbosity::DEBUG )
-      @loginator.log( '', Verbosity::DEBUG )
+      @loginator.log( "#{msg}\n\n", Verbosity::DEBUG )
       
       @includes_handler.write_includes_list( includes_list_filepath, includes )
     end
