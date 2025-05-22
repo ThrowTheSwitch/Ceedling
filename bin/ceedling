@@ -71,6 +71,7 @@ begin
   # This prevents double instantiation and preserves object state in handoff
   handoff_objects = {}
   handoff = [
+    :reportinator,
     :loginator,
     :file_wrapper,
     :yaml_wrapper,
