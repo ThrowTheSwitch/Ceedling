@@ -5301,7 +5301,7 @@ for how to create custom plugins.
 
 ### Ceedling plugin `report_tests_pretty_stdout`
 
-[This plugin][report_tests_pretty_stdout] is meant to tbe the default for
+[This plugin][report_tests_pretty_stdout] is meant to to be the default for
 printing test results to the console. Without it, readable test results are
 still produced but are not nicely formatted and summarized.
 
