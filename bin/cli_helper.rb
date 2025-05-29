@@ -10,6 +10,7 @@ require 'app_cfg'
 # From Ceedling application
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'versionator' # Outisde DIY context
 
 class CliHelper
 
@@ -21,7 +22,40 @@ class CliHelper
   end
 
 
-  def project_exists?( path, op, *components )
+  def manufacture_app_version(app_cfg)
+    return Versionator.new(
+      app_cfg[:ceedling_root_path],
+      app_cfg[:ceedling_vendor_path]
+    )
+  end
+
+
+  def help_footer(ceedling_tag='master')
+    # Blank line
+    @loginator.log( "" )
+
+    # Documentation incorporating Ceedling version tag in URL
+    msg = "Ceedling Packet User Manual (v#{ceedling_tag})\n" +
+          "https://github.com/ThrowTheSwitch/Ceedling/blob/#{ceedling_tag}/docs/CeedlingPacket.md"
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::DOCUMENTATION )
+
+    # Blank line
+    @loginator.log( "" )
+
+    # Ceedling Suite
+    msg = "Ceedling Suite can help you do more ➡️ https://www.thingamabyte.com/ceedling"
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::COMMERCIAL )
+
+    # GitHub Sponsors
+    msg = "Please consider supporting this work ➡️ https://github.com/sponsors/throwtheswitch"
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::REQUEST )
+
+    # Blank line
+    @loginator.log( "" )
+  end
+
+
+  def project_exists?(path, op, *components)
     exists = []
 
     components.each do |f|
@@ -243,12 +277,25 @@ class CliHelper
 
 
   def print_rake_tasks()
-    # (This required digging into Rake internals a bit.)
+    # This all required digging into Rake internals a bit.
+
+    # Monkey patch Rake::Application class to prevent writing to $stdout directly
+    require 'rake_patches'
+    Rake::Application.include( CaptureHelpOutput )
+
     Rake.application.define_singleton_method(:name=) {|n| @name = n}
     Rake.application.name = 'ceedling'
     Rake.application.options.show_tasks = :tasks
     Rake.application.options.show_task_pattern = /^(?!.*build).*$/
-    Rake.application.display_tasks_and_comments()
+
+    # Use our monkey patched help string accessor instead of Rake's `display_tasks_and_comments()`
+    rake_tasks = Rake.application.capture_display_tasks()
+    # Indent task help to match Thow
+    indentation = ' ' * 2
+    rake_tasks.gsub!(/^/, indentation)
+
+    # Add Rake logging output to our logging handler
+    @loginator.log( rake_tasks )
   end
 
 
