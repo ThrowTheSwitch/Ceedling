@@ -76,7 +76,7 @@ class ToolExecutor
 
     # Ultimately, re-raise the exception as ShellException populated with the exception message
     rescue => error
-      raise ShellException.new( name:pretty_tool_name( command ), message: error.message )
+      raise ShellException.new( name:pretty_tool_name( command ), message: "#{command_line}\n#{error.message}" )
 
     # Be sure to log what we can
     ensure
@@ -92,7 +92,7 @@ class ToolExecutor
     # Go boom if exit code is not 0 and that code means a fatal error
     # (Sometimes we don't want a non-0 exit code to cause an exception as the exit code may not mean a build-ending failure)
     if ((shell_result[:exit_code] != 0) and options[:boom])
-      raise ShellException.new( shell_result:shell_result, name:pretty_tool_name( command ) )
+      raise ShellException.new( shell_result:shell_result, name:pretty_tool_name( command ), message: "Executed Command: #{command_line}" )
     end
 
     return shell_result

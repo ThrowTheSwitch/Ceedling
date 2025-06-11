@@ -57,13 +57,23 @@ class PreprocessinatorIncludesHandler
       )
     @loginator.log(msg, Verbosity::NORMAL)
 
-    # Extract shallow includes with preprocessor and fallback regex
-    shallow = extract_shallow_includes(
+    # Extract shallow includes with fallback regex
+    fallback = extract_shallow_includes_regex(
       test:     test,
       filepath: filepath,
       flags:    flags,
       defines:  defines
       )
+
+    # Extract shallow includes with preprocessor
+    shallow_success, shallow = 
+      extract_shallow_includes_preprocessor(
+        test:     test,
+        filepath: filepath,
+        flags:    flags,
+        defines:  defines
+        )
+    shallow = fallback unless shallow_success
 
     # Extract nested includes but optionally act in fallback mode
     nested = extract_nested_includes(
@@ -85,7 +95,7 @@ class PreprocessinatorIncludesHandler
     # Return
     #  - Includes common to shallow and nested results, with paths from nested
     #  - Add mocks back in (may be empty if mocking not enabled)
-    return common_includes(shallow:shallow, nested:nested, deep:deep) + mocks
+    return common_includes(shallow:shallow, nested:nested, explicit:fallback, deep:deep) + mocks
   end
 
   # Write to disk a yaml representation of a list of includes
@@ -95,29 +105,6 @@ class PreprocessinatorIncludesHandler
 
   ### Private ###
   private
-
-  def extract_shallow_includes(test:, filepath:, flags:, defines:)
-    # Shallow includes extraction, first attempt with preprocessor
-    success, shallow = 
-      extract_shallow_includes_preprocessor(
-        test:     test,
-        filepath: filepath,
-        flags:    flags,
-        defines:  defines
-        )
-
-    # Shallow includes extraction, second attempt with file read + regex
-    if not success
-      shallow = extract_shallow_includes_regex(
-        test:     test,
-        filepath: filepath,
-        flags:    flags,
-        defines:  defines
-        )
-    end
-
-    return shallow
-  end
 
   def extract_shallow_includes_preprocessor(test:, filepath:, flags:, defines:)
     ##
@@ -340,7 +327,7 @@ class PreprocessinatorIncludesHandler
   end
 
   # Return includes common in both lists with the full paths of the nested list
-  def common_includes(shallow:, nested:, deep: false)
+  def common_includes(shallow:, nested:, explicit:, deep: false)
     return shallow if nested.empty?
     return nested if shallow.empty?
 
@@ -369,7 +356,7 @@ class PreprocessinatorIncludesHandler
     basenames = if deep
       ( _nested.keys.to_set.union( _shallow.keys.to_set ) )
     else
-      ( _nested.keys.to_set.intersection( _shallow.keys.to_set ) )
+      ( _nested.keys.to_set.intersection( _shallow.keys.to_set ) ).intersection( explicit ) #intersection of both arrays PLUS MUST BE IN EXPLICIT call list
     end
 
     # Iterate through the basenames and return the fullest version of each

@@ -36,6 +36,10 @@ class ShellException < CeedlingException
         _message += " and output >>\n#{shell_result[:output].strip()}"
       end
 
+      if !message.empty?
+        _message += "\n#{message}"
+      end
+
     # Otherwise, just report the exception message
     else
       _message = "#{name} encountered an error with output >>\n#{message}"
