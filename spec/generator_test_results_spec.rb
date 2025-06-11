@@ -97,34 +97,34 @@ describe GeneratorTestResults do
   describe '#process_and_write_results' do
     it 'raises on an empty input' do
       expect{ 
-        @generate_test_results.process_and_write_results('test_example.out', {:output => ''}, TEST_OUT_FILE, 'some/place/test_example.c')
+        @generate_test_results.process_and_write_results( { :executable => 'test_example.out', :output => '', :result_file => TEST_OUT_FILE, :test_file => 'some/place/test_example.c' } )
       }.to raise_error( /Could not parse/i )
     end
 
     it 'raises on mangled test output' do
       expect{ 
-        @generate_test_results.process_and_write_results('test_example.out', {:output => MANGLED_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
+        @generate_test_results.process_and_write_results( { :executable => 'test_example.out', :output => MANGLED_OUTPUT, :result_file => TEST_OUT_FILE, :test_file => 'some/place/test_example.c' } )
       }.to raise_error( /Could not parse/i )
     end
 
     it 'handles a normal test output' do
-      @generate_test_results.process_and_write_results('test_example.out', {:output => NORMAL_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
+      @generate_test_results.process_and_write_results( { :executable => 'test_example.out', :output => NORMAL_OUTPUT, :result_file => TEST_OUT_FILE, :test_file => 'some/place/test_example.c' } )
       expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example.pass'))
     end
 
     it 'handles a normal test output with time' do
-      @generate_test_results.process_and_write_results('test_example.out', {:output => NORMAL_OUTPUT, :time => 0.01234}, TEST_OUT_FILE, 'some/place/test_example.c')
+      @generate_test_results.process_and_write_results( { :executable => 'test_example.out', :output => NORMAL_OUTPUT, :time => 0.01234, :result_file => TEST_OUT_FILE, :test_file => 'some/place/test_example.c' } )
       expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example_with_time.pass'))
     end
 
     it 'handles a normal test output with ignores' do
-      @generate_test_results.process_and_write_results('test_example.out', {:output => IGNORE_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
+      @generate_test_results.process_and_write_results( { :executable => 'test_example.out', :output => IGNORE_OUTPUT, :result_file => TEST_OUT_FILE, :test_file => 'some/place/test_example.c' } )
       expect(IO.read(TEST_OUT_FILE)).to eq(IO.read('spec/support/test_example_ignore.pass'))
     end
 
     it 'handles a normal test output with failures' do
       allow(@configurator).to receive(:extension_testfail).and_return('.fail')
-      @generate_test_results.process_and_write_results('test_example.out', {:output => FAIL_OUTPUT}, TEST_OUT_FILE, 'some/place/test_example.c')
+      @generate_test_results.process_and_write_results( { :executable => 'test_example.out', :output => FAIL_OUTPUT, :result_file => TEST_OUT_FILE, :test_file => 'some/place/test_example.c' } )
       expect(IO.read(TEST_OUT_FILE_FAIL)).to eq(IO.read('spec/support/test_example.fail'))
     end
   end
