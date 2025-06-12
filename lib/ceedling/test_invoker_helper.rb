@@ -11,7 +11,7 @@ class TestInvokerHelper
 
   constructor :configurator,
               :loginator,
-              :build_batchinator,
+              :batchinator,
               :task_invoker,
               :test_context_extractor,
               :include_pathinator,
@@ -25,8 +25,6 @@ class TestInvokerHelper
               :test_runner_manager
 
   def setup()
-    # Alias for brevity
-    @batchinator = @build_batchinator
   end
 
   def process_project_include_paths()
