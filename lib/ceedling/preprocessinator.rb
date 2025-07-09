@@ -56,8 +56,7 @@ class Preprocessinator
         includes.each { |include| msg += "\n - #{include}" }
       end
 
-      @loginator.log( msg, Verbosity::DEBUG )
-      @loginator.log( '', Verbosity::DEBUG )
+      @loginator.log( "#{msg}\n\n", Verbosity::DEBUG )
 
     # Full preprocessing-based #include extraction with saving to YAML file
     else
@@ -80,8 +79,7 @@ class Preprocessinator
         includes.each { |include| msg += "\n - #{include}" }
       end
 
-      @loginator.log( msg, Verbosity::DEBUG )
-      @loginator.log( '', Verbosity::DEBUG )
+      @loginator.log( "#{msg}\n\n", Verbosity::DEBUG )
       
       @includes_handler.write_includes_list( includes_list_filepath, includes )
     end
@@ -156,7 +154,7 @@ class Preprocessinator
   def preprocess_test_file(filepath:, test:, flags:, include_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
-    # Check if we're using deep define processing for mocks
+    # Check if we're using deep define processing for tests
     preprocess_deep = !@configurator.project_use_deep_preprocessor.nil? && [:tests, :all].include?(@configurator.project_use_deep_preprocessor)
 
     plugin_arg_hash = {
