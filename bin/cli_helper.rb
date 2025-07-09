@@ -74,7 +74,7 @@ class CliHelper
 
     # Environment variable
     if !env['WHICH_CEEDLING'].nil?
-      @loginator.log( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS )
+      @loginator.log( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS ) 
       which_ceedling = env['WHICH_CEEDLING'].strip()
       which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
     end
@@ -84,7 +84,7 @@ class CliHelper
       value, _ = @config_walkinator.fetch_value( :project, :which_ceedling, hash:config )
       if !value.nil?
         which_ceedling = value.strip()
-        @loginator.log( " > Set which Ceedling from config :project ↳ :which_ceedling => #{which_ceedling}", Verbosity::OBNOXIOUS )
+        @loginator.lazy( Verbosity::OBNOXIOUS ) { " > Set which Ceedling from config :project ↳ :which_ceedling => #{which_ceedling}" }
         which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
       end
     end
@@ -105,7 +105,7 @@ class CliHelper
 
     # If we're launching from the gem, return :gem and initial Rakefile path
     if which_ceedling == :gem
-      @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
+      @loginator.lazy( Verbosity::OBNOXIOUS ) { " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/" }
       return which_ceedling, app_cfg[:ceedling_rakefile_filepath]
     end
 
@@ -127,7 +127,7 @@ class CliHelper
     # Update variable to full application start path
     ceedling_path = app_cfg[:ceedling_rakefile_filepath]
     
-    @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) { " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/" }
 
     return :path, ceedling_path
   end

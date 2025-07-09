@@ -330,8 +330,9 @@ class GcovrReportinator
 
     command = @tool_executor.build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], "--version")
 
-    msg = @reportinator.generate_progress("Collecting gcovr version for conditional feature handling")
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+      @reportinator.generate_progress("Collecting gcovr version for conditional feature handling")
+    end
 
     shell_result = @tool_executor.exec( command )
     version_number_match_data = shell_result[:output].match(/gcovr ([0-9]+)\.([0-9]+)/)
@@ -363,10 +364,10 @@ class GcovrReportinator
   # Output to console a human-friendly message on certain coverage failure exit codes
   # Perform the logic on whether to raise an exception
   def gcovr_exec_exception?(opts, exitcode, boom)
-
+    
     # Special handling of exit code 2 with --fail-under-line
-    if ((exitcode & 2) == 2) and !opts[:gcovr][:fail_under_line].nil?
-      msg = "Line coverage is less than the configured gcovr minimum of #{opts[:gcovr][:fail_under_line]}%"
+    if ((exitcode & 2) == 2) and !opts[:fail_under_line].nil?
+      msg = "Line coverage is less than the configured gcovr minimum of #{opts[:fail_under_line]}%"
       if boom
         raise CeedlingException.new(msg)
       else
@@ -377,8 +378,8 @@ class GcovrReportinator
     end
 
     # Special handling of exit code 4 with --fail-under-branch
-    if ((exitcode & 4) == 4) and !opts[:gcovr][:fail_under_branch].nil?
-      msg = "Branch coverage is less than the configured gcovr minimum of #{opts[:gcovr][:fail_under_branch]}%"
+    if ((exitcode & 4) == 4) and !opts[:fail_under_branch].nil?
+      msg = "Branch coverage is less than the configured gcovr minimum of #{opts[:fail_under_branch]}%"
       if boom
         raise CeedlingException.new(msg)
       else
@@ -389,8 +390,8 @@ class GcovrReportinator
     end
 
     # Special handling of exit code 8 with --fail-under-decision
-    if ((exitcode & 8) == 8) and !opts[:gcovr][:fail_under_decision].nil?
-      msg = "Decision coverage is less than the configured gcovr minimum of #{opts[:gcovr][:fail_under_decision]}%"
+    if ((exitcode & 8) == 8) and !opts[:fail_under_decision].nil?
+      msg = "Decision coverage is less than the configured gcovr minimum of #{opts[:fail_under_decision]}%"
       if boom
         raise CeedlingException.new(msg)
       else
@@ -401,8 +402,8 @@ class GcovrReportinator
     end
 
     # Special handling of exit code 16 with --fail-under-function
-    if ((exitcode & 16) == 16) and !opts[:gcovr][:fail_under_function].nil?
-      msg = "Function coverage is less than the configured gcovr minimum of #{opts[:gcovr][:fail_under_function]}%"
+    if ((exitcode & 16) == 16) and !opts[:fail_under_function].nil?
+      msg = "Function coverage is less than the configured gcovr minimum of #{opts[:fail_under_function]}%"
       if boom
         raise CeedlingException.new(msg)
       else

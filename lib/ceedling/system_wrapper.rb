@@ -72,67 +72,22 @@ class SystemWrapper
     # Parts of Process::Status's behavior is similar to an integer exit code in
     # some operations but not all.
     exit_code = 0
+    
+    stdout, stderr, status = Open3.capture3(command)
 
-    stdout = ''         # Safe initialization defaults
-    stderr = ''         # Safe initialization defaults
-    status = nil        # Safe initialization default
-    
-    # Use popen3 instead to control the IO reading, as Capture3 has blocking / locking potential
-    Open3.popen3(command) do |stdin, out, err, wait_thread|
-      # Close stdin since we don't use it
-      stdin.close
-      
-      readers = [out, err]
-      writers = []
-      
-      start_time = Time.now
-      out_chunks = []
-      err_chunks = []
-      
-      # Read from pipes until process exits and pipes are empty
-      while !readers.empty?
-        # Wait up to 1 second for data on either pipe
-        ready = IO.select(readers, writers, [], 1)
-        
-        next unless ready
-        
-        ready[0].each do |io|
-          begin
-            chunk = io.read_nonblock(4096)
-            if io == out
-              out_chunks << chunk
-            else
-              err_chunks << chunk
-            end
-          rescue EOFError
-            # Remove finished streams from monitoring
-            readers.delete(io)
-            io.close
-          rescue IO::WaitReadable
-            # Nothing available right now, will try again
-            next
-          end
-        end
-      end
-      
-      status = wait_thread.value
-      stdout = out_chunks.join
-      stderr = err_chunks.join
-    end
-    
     # If boom, then capture the actual exit code.
     # Otherwise, leave it as zero as though execution succeeded.
     exit_code = status.exitstatus.freeze if boom and !status.nil?
 
     # (Re)set the global system exit code so everything matches
-    $exit_code = exit_code
+    $exit_code = exit_code if exit_code != 0
     
     return {
       # Combine stdout & stderr streams for complete output
       output: (stdout + stderr).to_s.freeze, 
 
       # Individual streams for detailed logging
-      stdout: stdout.freeze,
+      stdout: stdout.freeze, #TODO PROBABLY DROP THESE TOO
       stderr: stderr.freeze,
 
       # Relay full Process::Status
@@ -148,6 +103,9 @@ class SystemWrapper
     $exit_code = ($?.exitstatus).freeze if boom
     return {
       :output    => output.freeze,
+      :stdout    => "",
+      :stderr    => "",
+      :status    => nil,
       :exit_code => ($?.exitstatus).freeze
     }
   end

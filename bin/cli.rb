@@ -219,10 +219,8 @@ module CeedlingTasks
       <<-LONGDESC
       `ceedling new` creates a new project structure.
 
-      NAME is required and will be the containing directory for the new project.
-
-      DEST is an optional directory path for the new project (e.g. <DEST>/<name>).
-      The default is your working directory. Nonexistent paths will be created.
+      DEST is an optional root path for the new project (e.g. <DEST>/project.yml).
+      The default is your working directory. Non-existent paths will be created.
 
       Notes on Optional Flags:
 
@@ -232,7 +230,7 @@ module CeedlingTasks
       new project.
       LONGDESC
     ) )
-    def new(name, dest=nil)
+    def new(dest=nil)
       require 'version' # lib/version.rb for TAG constant
 
       # Get unfrozen copies so we can add / modify
@@ -241,7 +239,7 @@ module CeedlingTasks
 
       _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
-      @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, name, _dest )
+      @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, _dest )
     end
 
     desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project at PATH"
