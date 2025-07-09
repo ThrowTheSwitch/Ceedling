@@ -18,7 +18,7 @@ class TestInvoker
               :plugin_manager,
               :reportinator,
               :loginator,
-              :build_batchinator,
+              :batchinator,
               :preprocessinator,
               :task_invoker,
               :generator,
@@ -37,7 +37,6 @@ class TestInvoker
 
     # Aliases for brevity in code that follows
     @helper = @test_invoker_helper
-    @batchinator = @build_batchinator
     @context_extractor = @test_context_extractor
   end
 
@@ -64,17 +63,17 @@ class TestInvoker
               :name => name,
               :paths => {}
             }
+          end
 
-            paths = @testables[key][:paths]
-            paths[:build] = build_path
-            paths[:results] = results_path
-            paths[:mocks] = mocks_path if @configurator.project_use_mocks
-            if @configurator.project_use_test_preprocessor != :none
-              paths[:preprocess_incudes] = preprocess_includes_path
-              paths[:preprocess_files] = preprocess_files_path
-              paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
-              paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
-            end
+          paths = @testables[key][:paths]
+          paths[:build] = build_path
+          paths[:results] = results_path
+          paths[:mocks] = mocks_path if @configurator.project_use_mocks
+          if @configurator.project_use_test_preprocessor != :none
+            paths[:preprocess_incudes] = preprocess_includes_path
+            paths[:preprocess_files] = preprocess_files_path
+            paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
+            paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
           end
 
           @testables[key][:paths].each {|_, path| @file_wrapper.mkdir( path ) }
@@ -368,13 +367,23 @@ class TestInvoker
         end
       end
 
+      # Prepare to Parallelize ALL the build objects
+      objects = @testables.map do |_, details| 
+        details[:objects].map do |obj|
+          { 
+            tool: details[:tool],
+            test: details[:name],
+            msg:  details[:msg],
+            obj:  obj
+          }
+        end
+      end.flatten
+
       # Build All Test objects
       @batchinator.build_step("Building Objects") do
-        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
-          details[:objects].each do |obj|
-            src = @file_finder.find_build_input_file(filepath: obj, context: context)
-            compile_test_component(tool: details[:tool], context: context, test: details[:name], source: src, object: obj, msg: details[:msg])
-          end
+        @batchinator.exec(workload: :compile, things: objects) do |obj|
+          src = @file_finder.find_build_input_file(filepath: obj[:obj], context: context)
+          compile_test_component(tool: obj[:tool], context: context, test: obj[:test], source: src, object: obj[:obj], msg: obj[:msg])
         end
       end
 
@@ -400,7 +409,7 @@ class TestInvoker
 
       # Execute Final Tests
       @batchinator.build_step("Executing") {
-        @batchinator.exec(workload: :test, things: @testables) do |_, details|
+        results = @batchinator.exec(workload: :test, things: @testables) do |_, details|
           begin
             arg_hash = {
               context:        context,
@@ -417,7 +426,7 @@ class TestInvoker
           # A lone `ensure` includes an implicit rescuing of StandardError 
           # with the exception continuing up the call trace.
           ensure
-            @plugin_manager.post_test( details[:filepath] )
+           @plugin_manager.post_test( details[:filepath] )
           end
         end
       } unless options[:build_only]

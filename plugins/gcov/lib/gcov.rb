@@ -22,9 +22,7 @@ class Gcov < Plugin
 
     # Are any reports enabled?
     @reports_enabled = reports_enabled?( @project_config[:gcov_reports] )
-    
-    # Was a gcov: task on the command line?
-    @cli_gcov_task = @ceedling[:system_wrapper].get_cmdline().any?{|item| item.include?( GCOV_TASK_ROOT )}
+    @cli_gcov_task = false
 
     # Validate the gcov tools if coverage summaries are enabled (summaries rely on the `gcov` tool)
     # Note: This gcov tool is a different configuration than the gcov tool used by ReportGenerator
@@ -38,8 +36,7 @@ class Gcov < Plugin
     # Validate configuration and tools while building Reportinators
     @reportinators = build_reportinators( 
       @project_config[:gcov_utilities],
-      @reports_enabled,
-      @cli_gcov_task
+      @reports_enabled
     )
 
     # Convenient instance variable references
@@ -74,6 +71,7 @@ class Gcov < Plugin
 
   def pre_link_execute(arg_hash)
     if arg_hash[:context] == GCOV_SYM
+      @cli_gcov_task = true
       arg_hash[:tool] = TOOLS_GCOV_LINKER
     end
   end
@@ -206,17 +204,21 @@ class Gcov < Plugin
 
         # Handle errors instead of raising a shell exception
         if shell_results[:exit_code] != 0
-          debug = "gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
-          @loginator.log( debug, Verbosity::DEBUG, LogLabels::ERROR )
-          @loginator.log( "gcov was unable to process coverage for #{filename}", Verbosity::COMPLAIN )
+          @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do 
+            "gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
+          end
+          @loginator.lazy( Verbosity::COMPLAIN ) do 
+            "gcov was unable to process coverage for #{filename}"
+          end
           next # Skip to next loop iteration
         end
 
         # A source component may have been compiled with coverage but none of its code actually called in a test.
         # In this case, versions of gcov may not produce an error, only blank results.
         if results.empty?
-          msg = "No functions called or code paths exercised by test for #{filename}"
-          @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+          @loginator.lazy( msg, Verbosity::COMPLAIN, LogLabels::NOTICE ) do 
+            "No functions called or code paths exercised by test for #{filename}"
+          end
           next # Skip to next loop iteration
         end
 
@@ -226,8 +228,9 @@ class Gcov < Plugin
         # Extract (relative) filepath from results and expand to absolute path
         matches = results.match(/File\s+'(.+)'/)
         if matches.nil? or matches.length() != 2
-          msg = "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
-          @loginator.log( msg, Verbosity::DEBUG, LogLabels::ERROR )
+          @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do 
+            "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
+          end
         else
           # Expand to full path from likely partial path to ensure correct matches on source component within gcov results
           _source = File.expand_path(matches[1])
@@ -242,18 +245,17 @@ class Gcov < Plugin
         
         # Otherwise, found no coverage results
         else
-          msg = "Found no coverage results for #{test}::#{File.basename(source)}"
-          @loginator.log( msg, Verbosity::COMPLAIN )
+          @loginator.lazy( Verbosity::COMPLAIN ) { "Found no coverage results for #{test}::#{File.basename(source)}" }
         end
       end
     end
   end
 
-  def build_reportinators(config, enabled, gcov_task)
+  def build_reportinators(config, enabled)
     reportinators = []
 
-    # Do not instantiate reportinators (and tool validation) unless reports enabled and a gcov: task present in command line
-    return reportinators if ((!enabled) or (!gcov_task))
+    # Do not instantiate reportinators (and tool validation) unless reports enabled
+    return reportinators if (!enabled)
 
     config.each do |reportinator|
       if not GCOV_UTILITY_NAMES.map(&:upcase).include?( reportinator.upcase )

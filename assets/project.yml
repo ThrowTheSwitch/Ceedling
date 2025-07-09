@@ -142,7 +142,7 @@
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:
-  # Core conffiguration
+  # Core configuration
   :plugins:                        # What plugins should be used by CMock?
     - :ignore
     - :callback
@@ -166,8 +166,8 @@
      - __stdcall
      - __cdecl
      - __fastcall
-  :treat_externs:  :exclude        # the options being :include or :exclud
-  :treat_inlines:  :exclude        # the options being :include or :exclud
+  :treat_externs:  :exclude        # the options being :include or :exclude
+  :treat_inlines:  :exclude        # the options being :include or :exclude
 
   # Type handling configuration
   #:unity_helper_path: ''          # specify a string of where to find a unity_helper.h file to discover custom type assertions
