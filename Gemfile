@@ -18,7 +18,7 @@ gem "require_all"
 # Ceedling dependencies
 gem "diy", "~> 1.1"
 gem "constructor", "~> 2"
-gem "thor", "~> 1.3"
+gem "thor", "~> 1.4"
 gem "deep_merge", "~> 1.2"
 gem "unicode-display_width", "~> 3.1"
 gem "erb", "~> 4.0"
