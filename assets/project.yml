@@ -166,8 +166,10 @@
      - __stdcall
      - __cdecl
      - __fastcall
-  :treat_externs:  :exclude        # the options being :include or :exclud
-  :treat_inlines:  :exclude        # the options being :include or :exclud
+  :treat_externs:  :exclude        # the options being :include or :exclude
+  :treat_inlines:  :exclude        # the options being :include or :exclude
+  #:inline_function_patterns:       # When treat_inlines is include this setting overrides the default patterns: "static inline", "inline static", "inline"
+  #  - INLINE       # Indicates that the INLINE keyword should be used to detect inline functions
 
   # Type handling configuration
   #:unity_helper_path: ''          # specify a string of where to find a unity_helper.h file to discover custom type assertions
