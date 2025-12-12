@@ -26,64 +26,78 @@ class Preprocessinator
     # Aliases
     @includes_handler = @preprocessinator_includes_handler
     @file_handler = @preprocessinator_file_handler
+    
+    # Thread-safe per-file locking for YAML cache operations
+    # Key: includes_list_filepath (String), Value: Mutex
+    @file_locks = {}
+    @file_locks_mutex = Mutex.new
   end
 
 
   def preprocess_includes(filepath:, test:, flags:, include_paths:, defines:, deep: false)
     includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
+    # Get or create a mutex for this specific cache file
+    file_lock = @file_locks_mutex.synchronize do
+      @file_locks[includes_list_filepath] ||= Mutex.new
+    end
+
     includes = []
 
-    # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
-    if @file_wrapper.newer?( includes_list_filepath, filepath )
-      msg = @reportinator.generate_module_progress(
-        operation: "Loading #include statement listing file for",
-        module_name: test,
-        filename: File.basename(filepath)
-        )
-      @loginator.log( msg, Verbosity::NORMAL )
-      
-      # Note: It's possible empty YAML content returns nil
-      includes = @yaml_wrapper.load( includes_list_filepath )
+    # Wrap the entire check-read-or-extract-write operation in a mutex
+    # This prevents race conditions when multiple threads process the same file
+    file_lock.synchronize do
+      # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
+      if @file_wrapper.newer?( includes_list_filepath, filepath )
+        msg = @reportinator.generate_module_progress(
+          operation: "Loading #include statement listing file for",
+          module_name: test,
+          filename: File.basename(filepath)
+          )
+        @loginator.log( msg, Verbosity::NORMAL )
+        
+        # Note: It's possible empty YAML content returns nil
+        includes = @yaml_wrapper.load( includes_list_filepath )
 
-      msg = "Loaded existing #include list from #{includes_list_filepath}:"
+        msg = "Loaded existing #include list from #{includes_list_filepath}:"
 
-      if includes.nil? or includes.empty?
-        # Ensure includes defaults to emtpy array to prevent external iteration problems
-        includes = []
-        msg += ' <empty>'
+        if includes.nil? or includes.empty?
+          # Ensure includes defaults to emtpy array to prevent external iteration problems
+          includes = []
+          msg += ' <empty>'
+        else
+          includes.each { |include| msg += "\n - #{include}" }
+        end
+
+        @loginator.log( msg, Verbosity::DEBUG )
+        @loginator.log( '', Verbosity::DEBUG )
+
+      # Full preprocessing-based #include extraction with saving to YAML file
       else
-        includes.each { |include| msg += "\n - #{include}" }
+        includes = @includes_handler.extract_includes(
+          filepath:      filepath,
+          test:          test,
+          flags:         flags,
+          include_paths: include_paths,
+          defines:       defines,
+          deep:          deep
+          )
+
+        msg = "Extracted #include list from #{filepath}:"
+
+        if includes.nil? or includes.empty?
+          # Ensure includes defaults to emtpy array to prevent external iteration problems
+          includes = []
+          msg += ' <empty>'
+        else
+          includes.each { |include| msg += "\n - #{include}" }
+        end
+
+        @loginator.log( msg, Verbosity::DEBUG )
+        @loginator.log( '', Verbosity::DEBUG )
+        
+        @includes_handler.write_includes_list( includes_list_filepath, includes )
       end
-
-      @loginator.log( msg, Verbosity::DEBUG )
-      @loginator.log( '', Verbosity::DEBUG )
-
-    # Full preprocessing-based #include extraction with saving to YAML file
-    else
-      includes = @includes_handler.extract_includes(
-        filepath:      filepath,
-        test:          test,
-        flags:         flags,
-        include_paths: include_paths,
-        defines:       defines,
-        deep:          deep
-        )
-
-      msg = "Extracted #include list from #{filepath}:"
-
-      if includes.nil? or includes.empty?
-        # Ensure includes defaults to emtpy array to prevent external iteration problems
-        includes = []
-        msg += ' <empty>'
-      else
-        includes.each { |include| msg += "\n - #{include}" }
-      end
-
-      @loginator.log( msg, Verbosity::DEBUG )
-      @loginator.log( '', Verbosity::DEBUG )
-      
-      @includes_handler.write_includes_list( includes_list_filepath, includes )
     end
 
     return includes
