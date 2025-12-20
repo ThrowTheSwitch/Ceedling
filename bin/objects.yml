@@ -20,6 +20,8 @@ system_wrapper:
 
 verbosinator:
 
+reportinator:
+
 loginator:
   compose:
     - verbosinator
@@ -59,9 +61,19 @@ path_validator:
 
 mixinator:
   compose:
+    - mixin_standardizer
+    - merginator
     - path_validator
     - yaml_wrapper
     - loginator
+
+mixin_standardizer:
+  compose:
+    - reportinator
+
+merginator:
+  compose:
+    - reportinator
 
 projectinator:
   compose:

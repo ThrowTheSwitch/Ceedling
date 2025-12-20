@@ -10,6 +10,10 @@
 
 #include <math.h>
 
+// Include a type definition for `bool`.
+// This also ensures compatibility with C23 and later that recognize `bool` as a keyword.
+#include <stdbool.h>
+
 // Application Type Definitions
 typedef unsigned int uint32;
 typedef int int32;
@@ -17,7 +21,6 @@ typedef unsigned short uint16;
 typedef short int16;
 typedef unsigned char uint8;
 typedef char int8;
-typedef char bool;
 
 // Application Special Value Definitions
 #ifndef TRUE

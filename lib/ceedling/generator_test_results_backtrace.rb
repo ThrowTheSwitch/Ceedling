@@ -174,7 +174,7 @@ class GeneratorTestResultsBacktrace
     #
     # [1] > Program received signal SIGSEGV, Segmentation fault.
     #       0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
-    # [2] > 40    uint32_t i = *nullptr;
+    # [2] > 40    uint32_t i = *null_ptr;
     #       #0  0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
     #       #1  0x0000555999f674de in run_test (func=0x555999f661e7 <testCrash>, name=0x555999f6b2e0 "testCrash", line_num=37) at build/test/runners/TestUsartModel_runner.c:76
     #       #2  0x0000555999f6766b in main (argc=3, argv=0x7fff917e2c98) at build/test/runners/TestUsartModel_runner.c:117

@@ -19,7 +19,8 @@ void test_add_numbers_adds_numbers(void) {
 
 void test_add_numbers_will_fail(void) {
   // Platform-independent way of forcing a crash
-  uint32_t* nullptr = (void*) 0;
-  uint32_t i = *nullptr;
+  // NOTE: Avoid `nullptr` as it is a keyword in C23
+  uint32_t* null_ptr = (void*) 0;
+  uint32_t i = *null_ptr;
   TEST_ASSERT_EQUAL_INT(2, add_numbers(i,2));
 }
