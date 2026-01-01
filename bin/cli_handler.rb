@@ -53,17 +53,21 @@ class CliHandler
     return if !command.nil?
 
     # If project configuration is available, also display Rake tasks
-    @path_validator.standardize_paths( options[:project], *options[:mixin], )
-    return if !@projectinator.config_available?( filepath:options[:project], env:env )
-
-    list_rake_tasks(
-      env:env,
-      app_cfg: app_cfg,
-      filepath: options[:project],
-      mixins: options[:mixin],
-      # Silent Ceedling loading unless debug verbosity
-      silent: !(verbosity == Verbosity::DEBUG)
-    )
+    @path_validator.standardize_paths( options[:project], *options[:mixin] )
+    if @projectinator.config_available?( filepath:options[:project], env:env )
+      list_rake_tasks(
+        env:env,
+        app_cfg: app_cfg,
+        filepath: options[:project],
+        mixins: options[:mixin],
+        # Silent Ceedling loading unless debug verbosity
+        silent: !(verbosity == Verbosity::DEBUG)
+      )
+    else
+      # If no project configuration is available then note why we aren't displaying more
+      msg = "Run help commands in a directory with a project file to list additional options"
+      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+    end
 
     version = @helper.manufacture_app_version( app_cfg )
 
@@ -79,18 +83,17 @@ class CliHandler
   end
 
 
-  def new_project(env, app_cfg, ceedling_tag, options, name, dest)
+  def new_project(env, app_cfg, ceedling_tag, options, dest)
     @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( dest )
 
-    # If destination is nil, reassign it to name
-    # Otherwise, join the destination and name into a new path
-    dest = dest.nil? ? ('./' + name) : File.join( dest, name )
+    # If destination is nil, assume it's the working directory
+    dest ||= '.'
 
     # Check for existing project (unless --force)
     if @helper.project_exists?( dest, :|, DEFAULT_PROJECT_FILENAME, 'src', 'test' )
-      msg = "It appears a project already exists at #{dest}/. Use --force to destroy it and create a new project."
+      msg = "It appears a project already exists at \"#{dest}/\"! Use --force to destroy it and create a new project."
       raise msg
     end unless options[:force]
 
@@ -128,7 +131,7 @@ class CliHandler
     end
     
     @loginator.log() # Blank line
-    @loginator.log( "New project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "New project created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -228,8 +231,10 @@ class CliHandler
      CException => #{_version.cexception_tag}
     VERSION
 
-    @loginator.log( '', Verbosity::OBNOXIOUS )
-    @loginator.log( version, Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT )
+    @loginator.lazy( Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT ) do 
+      version
+    end
 
     @helper.load_ceedling( 
       config: config,

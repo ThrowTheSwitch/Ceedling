@@ -186,13 +186,13 @@ private
 
   # Neaten up a build step with progress message and some scope encapsulation
   def log_step(msg, heading:true)
-    if heading
-      msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
-    else # Progress message
-      msg = "\n" + @reportinator.generate_progress( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+      if heading
+        @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+      else # Progress message
+        "\n" + @reportinator.generate_progress( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+      end
     end
-
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
   end
 
 

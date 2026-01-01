@@ -18,7 +18,7 @@ class ParsingParcels
     comment_block = false
     full_line = ''
     input.each_line do |line|
-      m = line.match /(.*)\\\s*$/
+      m = line.clean_encoding.match /(.*)\\\s*$/
       if (!m.nil?)
           full_line += m[1]
       elsif full_line.empty?

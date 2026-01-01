@@ -55,7 +55,7 @@ class Preprocessinator
           filename: File.basename(filepath)
           )
         @loginator.log( msg, Verbosity::NORMAL )
-
+      
         # Note: It's possible empty YAML content returns nil
         includes = @yaml_wrapper.load( includes_list_filepath )
 
@@ -95,7 +95,7 @@ class Preprocessinator
 
         @loginator.log( msg, Verbosity::DEBUG )
         @loginator.log( '', Verbosity::DEBUG )
-
+      
         @includes_handler.write_includes_list( includes_list_filepath, includes )
       end
     end
@@ -116,7 +116,7 @@ class Preprocessinator
       test:                     test,
       flags:                    flags,
       include_paths:            include_paths,
-      defines:                  defines
+      defines:                  defines      
     }
 
     # Trigger pre_mock_preprocessing plugin hook
@@ -128,10 +128,10 @@ class Preprocessinator
       flags:          flags,
       include_paths:  include_paths,
       defines:        defines,
-      deep:           preprocess_deep
+      deep:           preprocess_deep     
     }
 
-    # Extract includes & log progress and details
+    # Extract includes & log progress and details   
     includes = preprocess_file_common( **arg_hash )
 
     arg_hash = {
@@ -154,7 +154,7 @@ class Preprocessinator
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                extras,
-      includes:              includes
+      includes:              includes                       
     }
 
     # Create a reconstituted header file from preprocessing expansion and preserving any extras
@@ -179,7 +179,7 @@ class Preprocessinator
       test:                   test,
       flags:                  flags,
       include_paths:          include_paths,
-      defines:                defines
+      defines:                defines      
     }
 
     # Trigger pre_test_preprocess plugin hook
@@ -191,7 +191,7 @@ class Preprocessinator
       flags:         flags,
       include_paths: include_paths,
       defines:       defines,
-      deep:          preprocess_deep
+      deep:          preprocess_deep      
     }
 
     # Extract includes & log progress and info
@@ -202,7 +202,7 @@ class Preprocessinator
       test:                  test,
       flags:                 flags,
       include_paths:         include_paths,
-      defines:               defines
+      defines:               defines      
     }
 
     # `contents` & `extras` are arrays of text strings to be assembled in generating a new test file.
@@ -214,7 +214,7 @@ class Preprocessinator
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                extras,
-      includes:              includes
+      includes:              includes                       
     }
 
     # Create a reconstituted test file from preprocessing expansion and preserving any extras
@@ -245,7 +245,7 @@ class Preprocessinator
       flags:         flags,
       include_paths: include_paths,
       defines:       defines,
-      deep:          deep)
+      deep:          deep) 
 
     return includes
   end

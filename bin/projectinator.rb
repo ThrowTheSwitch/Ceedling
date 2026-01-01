@@ -51,8 +51,7 @@ class Projectinator
       config = load_and_log( _filepath, "from working directory", silent )
       return _filepath, config
 
-    # If no user provided filepath and the default filepath does not exist,
-    # we have a big problem
+    # If no user-provided filepath and the default filepath does not exist, we have a big problem
     else
       raise "No project filepath provided and default #{DEFAULT_PROJECT_FILEPATH} not found"
     end
@@ -221,11 +220,11 @@ class Projectinator
 
       # Log what the heck we loaded
       if !silent
-        msg  = "Loaded #{'(empty) ' if config.empty?}project configuration #{method}.\n"
-        msg += " > Using: #{filepath}\n"
-        msg += " > Working directory: #{Dir.pwd()}"
-
-        @loginator.log( msg, Verbosity::NORMAL, LogLabels::CONSTRUCT )
+        @loginator.lazy( Verbosity::NORMAL, LogLabels::CONSTRUCT ) do 
+          "Loaded #{'(empty) ' if config.empty?}project configuration #{method}.\n" +
+          " > Using: #{filepath}\n" +
+          " > Working directory: #{Dir.pwd()}"
+        end
       end
 
       return config
