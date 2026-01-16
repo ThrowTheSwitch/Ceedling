@@ -1,10 +1,17 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 require 'strscan'
 require 'stringio'
 
 class CExtractinator
-  DEFAULT_CHUNK_SIZE = (16 * 1024) # 16 KB -- enough for most functions
-  DEFAULT_MAX_FUNCTION_LENGTH = (5 * 1024 * 1024) # 5 MB safety limit
-  DEFAULT_MAX_SIGNATURE_LENGTH = 1000 # 1000 character safety limit
+  DEFAULT_CHUNK_SIZE = (16 * 1024)                # 16 KB -- enough for most functions
+  DEFAULT_MAX_FUNCTION_LENGTH = (5 * 1024 * 1024) # 5 MB mega-length safety limit
+  DEFAULT_MAX_SIGNATURE_LENGTH = 1000             # 1000 character safety limit
 
   # Data class representing an extracted C function
   ExtractedFunction = Struct.new(
@@ -15,7 +22,7 @@ class CExtractinator
     :line_count,      # Total number of lines in code_block
     keyword_init: true
   ) do
-    # Constructor to set unassigned fields to nil
+    # Constructor to set unassigned fields to nil for convenience
     def initialize(name: nil, signature: nil, body: nil, code_block: nil, line_count: 0)
       super
     end
@@ -57,6 +64,11 @@ class CExtractinator
   def extract_functions
     functions = []
     
+    # Scan through the IO buffer in memory-limited chunks.
+    # Increase the total memeory scanned in chunks (up to a sane limit) looking for a complete function.
+    # Once a complete function is found, move ahead in th IO buffer to a position just after the 
+    # discovered function and begin chunking and scanning again.
+
     @io.rewind
     until @io.eof?
       func = extract_next_function(@io)

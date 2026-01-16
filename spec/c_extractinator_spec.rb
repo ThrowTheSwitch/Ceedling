@@ -48,7 +48,8 @@ describe CExtractinator do
 
     it "should extract multiple simple functions" do
       file_contents = <<~CONTENTS
-      int a_function(int a, int b) {
+      int
+      a_function(int a, int b) {
         int c = a + b;
         c += 5;
         return c;
@@ -56,7 +57,7 @@ describe CExtractinator do
 
       void BFUNCTION(void) { int a = 1 + 1; }
 
-        uint16_t*  C_Function (void)
+        uint16_t*  C_Function ( void )
       {
         return &global_var;
       }
@@ -68,10 +69,10 @@ describe CExtractinator do
       expect( funcs.length ).to eq 3
 
       expect( funcs[0].name ).to eq 'a_function'
-      expect( funcs[0].signature ).to eq 'int a_function(int a, int b)'
+      expect( funcs[0].signature ).to eq "int\na_function(int a, int b)"
       expect( funcs[0].body ).to eq "{\n  int c = a + b;\n  c += 5;\n  return c;\n}"
-      expect( funcs[0].code_block ).to eq "int a_function(int a, int b) {\n  int c = a + b;\n  c += 5;\n  return c;\n}"
-      expect( funcs[0].line_count ).to eq 5
+      expect( funcs[0].code_block ).to eq "int\na_function(int a, int b) {\n  int c = a + b;\n  c += 5;\n  return c;\n}"
+      expect( funcs[0].line_count ).to eq 6
 
       expect( funcs[1].name ).to eq 'BFUNCTION'
       expect( funcs[1].signature ).to eq 'void BFUNCTION(void)'
@@ -80,9 +81,9 @@ describe CExtractinator do
       expect( funcs[1].line_count ).to eq 1
 
       expect( funcs[2].name ).to eq 'C_Function'
-      expect( funcs[2].signature ).to eq 'uint16_t*  C_Function (void)'
+      expect( funcs[2].signature ).to eq 'uint16_t*  C_Function ( void )'
       expect( funcs[2].body ).to eq "{\n  return &global_var;\n}"
-      expect( funcs[2].code_block ).to eq "uint16_t*  C_Function (void)\n{\n  return &global_var;\n}"
+      expect( funcs[2].code_block ).to eq "uint16_t*  C_Function ( void )\n{\n  return &global_var;\n}"
       expect( funcs[2].line_count ).to eq 4
     end
 
@@ -281,35 +282,120 @@ describe CExtractinator do
       expect( funcs[4].line_count ).to eq 13
     end
 
-    it "should fail to extract a function longer than max length" do
+    it "should extract a lengthy function from complex code with various C constructs" do
       file_contents = <<~CONTENTS
-      void a_function(void) {
-        int a = 1 + 1;
+      #include <stdio.h>
+      #include <stdlib.h>
+      
+      #define MAX_SIZE 100
+      #define PROCESS(x) do { process_data(x); } while(0)
+      
+      // Global variables
+      static int global_counter = 0;
+      const char* global_message = "Hello, World!";
+      
+      // Forward declarations
+      void helper_function(int value);
+      int calculate_result(int a, int b);
+      
+      /* 
+       * This is a complex function that demonstrates
+       * various C language constructs
+       */
+      int complex_function(int param1, const char* param2, void* param3) {
+        // Local variable declarations
+        int result = 0;
+        int array[MAX_SIZE] = {0};
+        struct {
+          int x;
+          int y;
+          char name[50];
+        } local_struct = {
+          .x = 10,
+          .y = 20,
+          .name = "test"
+        };
+        
+        // String with special characters
+        const char* message = "This string has { braces } and (parens) and \"quotes\"";
+        
+        // Conditional logic
+        if (param1 > 0) {
+          for (int i = 0; i < param1; i++) {
+            array[i] = i * 2;
+            
+            // Nested conditionals
+            if (array[i] > 50) {
+              switch (array[i]) {
+                case 52: {
+                  result += 1;
+                  break;
+                }
+                case 54: {
+                  result += 2;
+                  break;
+                }
+                default: {
+                  result += array[i];
+                }
+              }
+            } else {
+              while (array[i] < 25) {
+                array[i]++;
+                result--;
+              }
+            }
+          }
+        } else {
+          // Negative parameter handling
+          result = -1;
+        }
+        
+        // Function calls with various argument types
+        helper_function(result);
+        int temp = calculate_result(param1, result);
+        
+        // Pointer operations
+        if (param3 != NULL) {
+          int* ptr = (int*)param3;
+          *ptr = temp;
+        }
+        
+        // Multi-line macro usage
+        PROCESS(result);
+        
+        // Comment with braces: { } should not break extraction
+        /* Another comment with braces { } */
+        
+        // Final calculations
+        result = temp + local_struct.x + local_struct.y;
+        
+        // Return statement
+        return result;
       }
+      
+      // Another function after the complex one
+      void simple_function(void) {
+        printf("Simple\\n");
+      }
+      
       CONTENTS
 
-      extractinator = CExtractinator.from_string(content: file_contents, chunk_size: 10, max_function_length: 20)
-      
-      expect { extractinator.extract_functions() }.to raise_error(RuntimeError, /`a_function\(\)` exceeds maximum length/)
+      funcs = extract_from.call(file_contents)
+
+      expect( funcs.length ).to eq 2
+
+      # Note: For sake of space, `body` and `code_block` are not tested.
+
+      expect( funcs[0].name ).to eq 'complex_function'
+      expect( funcs[0].signature ).to eq 'int complex_function(int param1, const char* param2, void* param3)'
+      expect( funcs[0].line_count ).to eq 71
+
+      expect( funcs[1].name ).to eq 'simple_function'
+      expect( funcs[1].signature ).to eq 'void simple_function(void)'
+      expect( funcs[1].line_count ).to eq 3
     end
 
-    it "should fail to extract a signature longer than max length" do
-      file_contents = <<~CONTENTS
-      void a_function(void) {
-        int a = 1 + 1;
-      }
-      CONTENTS
-
-      extractinator = CExtractinator.from_string(
-        content: file_contents,
-        chunk_size: 10,
-        max_function_length: 20,
-        max_signature_length: 10
-      )
-      
-      expect { extractinator.extract_functions() }.to raise_error(RuntimeError, /signature exceeds maximum/)
-    end
-    
     it "should extract multiple simple functions longer than buffer chunk size" do
       file_contents = <<~CONTENTS
       int a_function(int a, int b) {
@@ -351,6 +437,35 @@ describe CExtractinator do
       expect( funcs[2].line_count ).to eq 4
     end
 
+    it "should fail to extract a function longer than max length" do
+      file_contents = <<~CONTENTS
+      void a_function(void) {
+        int a = 1 + 1;
+      }
+      CONTENTS
+
+      extractinator = CExtractinator.from_string(content: file_contents, chunk_size: 10, max_function_length: 20)
+      
+      expect { extractinator.extract_functions() }.to raise_error(RuntimeError, /`a_function\(\)` exceeds maximum length/)
+    end
+
+    it "should fail to extract a signature longer than max length" do
+      file_contents = <<~CONTENTS
+      void a_function(void) {
+        int a = 1 + 1;
+      }
+      CONTENTS
+
+      extractinator = CExtractinator.from_string(
+        content: file_contents,
+        chunk_size: 10,
+        max_function_length: 20,
+        max_signature_length: 10
+      )
+      
+      expect { extractinator.extract_functions() }.to raise_error(RuntimeError, /signature exceeds maximum/)
+    end
+    
   end
 
 end
