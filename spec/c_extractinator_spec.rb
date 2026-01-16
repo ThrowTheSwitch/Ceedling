@@ -14,8 +14,8 @@ describe CExtractinator do
     # Helper method to create extractinator and extract functions from a string
     let(:extract_from) do
       ->(content) do
-        extractinator = CExtractinator.from_string(content)
-        extractinator.extract_functions()
+        extractinator = CExtractinator.from_string(content: content)
+        return extractinator.extract_functions()
       end
     end
 
@@ -280,6 +280,77 @@ describe CExtractinator do
       expect( funcs[4].body ).to eq "{\n  {\n    int local_scope = 1;\n    {\n      int deeper_scope = 2;\n      if (condition) {\n        {\n          int deepest = 3;\n        }\n      }\n    }\n  }\n}"
       expect( funcs[4].line_count ).to eq 13
     end
+
+    it "should fail to extract a function longer than max length" do
+      file_contents = <<~CONTENTS
+      void a_function(void) {
+        int a = 1 + 1;
+      }
+      CONTENTS
+
+      extractinator = CExtractinator.from_string(content: file_contents, chunk_size: 10, max_function_length: 20)
+      
+      expect { extractinator.extract_functions() }.to raise_error(RuntimeError, /`a_function\(\)` exceeds maximum length/)
+    end
+
+    it "should fail to extract a signature longer than max length" do
+      file_contents = <<~CONTENTS
+      void a_function(void) {
+        int a = 1 + 1;
+      }
+      CONTENTS
+
+      extractinator = CExtractinator.from_string(
+        content: file_contents,
+        chunk_size: 10,
+        max_function_length: 20,
+        max_signature_length: 10
+      )
+      
+      expect { extractinator.extract_functions() }.to raise_error(RuntimeError, /signature exceeds maximum/)
+    end
+    
+    it "should extract multiple simple functions longer than buffer chunk size" do
+      file_contents = <<~CONTENTS
+      int a_function(int a, int b) {
+        int c = a + b;
+        c += 5;
+        return c;
+      }
+
+      void BFUNCTION(void) { int a = 1 + 1; }
+
+        uint16_t*  C_Function (void)
+      {
+        return &global_var;
+      }
+      
+      CONTENTS
+
+      extractinator = CExtractinator.from_string(content: file_contents, chunk_size: 10)
+      funcs = extractinator.extract_functions()
+
+      expect( funcs.length ).to eq 3
+
+      expect( funcs[0].name ).to eq 'a_function'
+      expect( funcs[0].signature ).to eq 'int a_function(int a, int b)'
+      expect( funcs[0].body ).to eq "{\n  int c = a + b;\n  c += 5;\n  return c;\n}"
+      expect( funcs[0].code_block ).to eq "int a_function(int a, int b) {\n  int c = a + b;\n  c += 5;\n  return c;\n}"
+      expect( funcs[0].line_count ).to eq 5
+
+      expect( funcs[1].name ).to eq 'BFUNCTION'
+      expect( funcs[1].signature ).to eq 'void BFUNCTION(void)'
+      expect( funcs[1].body ).to eq "{ int a = 1 + 1; }"
+      expect( funcs[1].code_block ).to eq "void BFUNCTION(void) { int a = 1 + 1; }"
+      expect( funcs[1].line_count ).to eq 1
+
+      expect( funcs[2].name ).to eq 'C_Function'
+      expect( funcs[2].signature ).to eq 'uint16_t*  C_Function (void)'
+      expect( funcs[2].body ).to eq "{\n  return &global_var;\n}"
+      expect( funcs[2].code_block ).to eq "uint16_t*  C_Function (void)\n{\n  return &global_var;\n}"
+      expect( funcs[2].line_count ).to eq 4
+    end
+
   end
 
 end

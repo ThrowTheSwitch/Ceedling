@@ -2,9 +2,10 @@ require 'strscan'
 require 'stringio'
 
 class CExtractinator
-  CHUNK_SIZE = 256 * 1024 # 256 KB - enough for most functions
-  MAX_FUNCTION_SIZE = 5 * 1024 * 1024 # 5 MB safety limit
-  
+  DEFAULT_CHUNK_SIZE = (16 * 1024) # 16 KB -- enough for most functions
+  DEFAULT_MAX_FUNCTION_LENGTH = (5 * 1024 * 1024) # 5 MB safety limit
+  DEFAULT_MAX_SIGNATURE_LENGTH = 1000 # 1000 character safety limit
+
   # Data class representing an extracted C function
   ExtractedFunction = Struct.new(
     :name,            # Function name only (e.g., "foo")
@@ -13,21 +14,44 @@ class CExtractinator
     :code_block,      # Complete function text (signature + body)
     :line_count,      # Total number of lines in code_block
     keyword_init: true
-  )
+  ) do
+    # Constructor to set unassigned fields to nil
+    def initialize(name: nil, signature: nil, body: nil, code_block: nil, line_count: 0)
+      super
+    end
+  end
   
   # Factory method for file-based extraction
   def self.from_file(filepath)
-    new(File.open(filepath, 'r'), File.size(filepath))
+    return new(
+      io: File.open(filepath, 'r'),
+      chunk_size: DEFAULT_CHUNK_SIZE,
+      max_function_length: DEFAULT_MAX_FUNCTION_LENGTH,
+      max_signature_length: DEFAULT_MAX_SIGNATURE_LENGTH
+    )
   end
   
   # Factory method for string-based extraction (testing)
-  def self.from_string(content)
-    new(StringIO.new(content), content.bytesize)
+  def self.from_string(
+    content:,
+    # Exposed for testing purposes
+    chunk_size: DEFAULT_CHUNK_SIZE,
+    max_function_length: DEFAULT_MAX_FUNCTION_LENGTH,
+    max_signature_length: DEFAULT_MAX_SIGNATURE_LENGTH
+  )
+    return new(
+      io: StringIO.new(content),
+      chunk_size: chunk_size,
+      max_function_length: max_function_length,
+      max_signature_length: max_signature_length
+    )
   end
   
-  def initialize(io, size)
+  def initialize(io:, chunk_size:, max_function_length:, max_signature_length:)
     @io = io
-    @file_size = size
+    @chunk_size = chunk_size
+    @max_function_length = max_function_length
+    @max_signature_length = max_signature_length
   end
   
   def extract_functions
@@ -54,8 +78,8 @@ class CExtractinator
     # Read chunks until we find a complete function
     loop do
       # Read next chunk
-      chunk = io.read(CHUNK_SIZE)
-      break unless chunk  # EOF
+      chunk = io.read(@chunk_size)
+      break unless chunk # EOF
       
       buffer << chunk
       
@@ -63,20 +87,24 @@ class CExtractinator
       scanner = StringScanner.new(buffer)
       
       skip_deadspace(scanner)
-      next if scanner.eos?  # Only whitespace/comments, need more
+
+      # Reached end of string having found no function -- skip to next chunk
+      next if scanner.eos?
       
       # Try to find and extract complete function
-      if func = try_extract_function(scanner)
-        # Rewind file to immediately after this function so next call starts at the right place
+      success, func = try_extract_function(scanner)
+      if success
+        # Rewind IO buffer to immediately after this function so next call starts at the right place
         io.seek(chunk_start_pos + scanner.pos)
         
         return func
       end
       
-      # No complete function yet - need more data
-      # Safety check: don't let buffer grow indefinitely
-      if buffer.length > MAX_FUNCTION_SIZE
-        raise "Function exceeds maximum size at position #{chunk_start_pos}"
+      # No complete function yet -- need more data
+      # Safety check -- don't let buffer grow indefinitely
+      if buffer.length > @max_function_length
+        _name = func.name ? "`#{func.name}()` " : ''
+        raise "Function #{_name}exceeds maximum length of #{@max_function_length} characters"
       end
     end
     
@@ -84,29 +112,48 @@ class CExtractinator
     nil
   end
   
+  # Try to extract a complete function from the scanner
+  # Returns [success, function_data] where:
+  #   - success: boolean indicating if extraction was successful
+  #   - function_data: ExtractedFunction with as much info as available (may be partial on failure)
   def try_extract_function(scanner)
     start_pos = scanner.pos
     
     # Look for function signature
     signature = extract_signature(scanner)
-    return nil unless signature
+    return [false, ExtractedFunction.new] unless signature
     
     skip_deadspace(scanner)
-    return nil unless scanner.peek(1) == '{'
+    unless scanner.peek(1) == '{'
+      return [false, ExtractedFunction.new(
+        name: extract_function_name(signature),
+        signature: signature
+      )]
+    end
     
     # Extract function body
     body_start = scanner.pos
-    return nil unless extract_balanced_braces(scanner)
+    unless extract_balanced_braces(scanner)
+      return [false, ExtractedFunction.new(
+        name: extract_function_name(signature),
+        signature: signature,
+        code_block: scanner.string[start_pos...scanner.pos]
+      )]
+    end
     
+    # Extract full function definition
     code_block = scanner.string[start_pos...scanner.pos]
     
-    ExtractedFunction.new(
+    # Fill out function data class
+    func = ExtractedFunction.new(
       name: extract_function_name(signature),
       signature: signature,
       body: scanner.string[body_start...scanner.pos],
       code_block: code_block,
       line_count: code_block.count("\n") + 1
     )
+    
+    return [true, func]
   end
   
   def extract_function_name(signature)
@@ -133,6 +180,13 @@ class CExtractinator
     name&.gsub(/[()]/, '')
   end
   
+
+  # Extract a function signature from the scanner
+  # A valid signature must:
+  #   1. Contain balanced parentheses (for parameter list)
+  #   2. Be followed by an opening brace '{' (function definition)
+  #   3. Not be followed by a semicolon (which would indicate a declaration)
+  # Returns the signature string if valid, nil otherwise
   def extract_signature(scanner)
     sig_start = scanner.pos
     paren_depth = 0
@@ -149,30 +203,44 @@ class CExtractinator
       when ')'
         paren_depth -= 1
         scanner.getch
+        # When we close all parentheses, check what follows
         if paren_depth == 0 && found_paren
           skip_deadspace(scanner)
           next_char = scanner.peek(1)
+          # Valid function definition -- return the signature
           return scanner.string[sig_start...scanner.pos].strip if next_char == '{'
+          # Function declaration (not definition) -- skip it
           return nil if next_char == ';'
         end
       when ';', '{'
+        # Found terminator before completing signature -- not a valid function
         return nil
       when '"', "'"
+        # Skip string literals that might contain special characters
         skip_c_string(scanner, char)
       when '/'
+        # Skip comments that might contain special characters
         skip_comment(scanner) if scanner.peek(2) =~ %r{^(/[/*])}
       else
         scanner.getch
       end
       
-      # Don't scan too far for signature
-      return nil if scanner.pos - sig_start > 10000
+      # Safety check -- Don't scan indefinitely for a signature
+      if scanner.pos - sig_start > @max_signature_length
+        raise "Function signature exceeds maximum length of #{@max_signature_length} characters"
+      end
     end
     
-    nil  # Incomplete signature
+    # Reached end of input without completing signature
+    return nil
   end
   
+  # Extract a balanced block of braces from the scanner
+  # Handles nested braces, string literals, and comments that might contain braces
+  # Returns true if a complete balanced block was found, false otherwise
+  # Side effect: Advances scanner position past the closing brace on success
   def extract_balanced_braces(scanner)
+    # Verify we're starting at an opening brace
     return false unless scanner.getch == '{'
     
     depth = 1
@@ -182,30 +250,37 @@ class CExtractinator
       
       case char
       when '{'
+        # Found nested opening brace -- increase depth
         depth += 1
         scanner.getch
       when '}'
+        # Found closing brace -- decrease depth
         depth -= 1
         scanner.getch
+        # When depth reaches 0, we've found the matching closing brace
         return true if depth == 0
       when '"', "'"
+        # Skip string literals that might contain braces
         skip_c_string(scanner, char)
       when '/'
+        # Skip comments that might contain braces
         if scanner.peek(2) =~ %r{^(/[/*])}
           skip_comment(scanner)
         else
           scanner.getch
         end
       else
+        # Regular character -- just advance
         scanner.getch
       end
     end
     
-    false  # Incomplete braces
+    # Reached end of input without finding matching closing brace
+    false
   end
   
   def skip_c_string(scanner, quote)
-    scanner.getch  # Opening quote
+    scanner.getch # Opening quote
     
     until scanner.eos?
       if scanner.scan(/\\/)
