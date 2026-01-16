@@ -283,10 +283,11 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     # :build_root must be set by user
     :use_mocks => true,
     :use_exceptions => false,
-    :compile_threads => 1,
-    :test_threads => 1,
+    :use_partials => false,
     :use_test_preprocessor => :none,
     :use_deep_preprocessor => :none,
+    :compile_threads => 1,
+    :test_threads => 1,
     :test_file_prefix => 'test_',
     :release_build => false,
     :use_backtrace => :simple
