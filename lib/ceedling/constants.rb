@@ -119,6 +119,8 @@ DEFAULT_CEEDLING_LOGFILE = 'ceedling.log'
 
 BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
 
+PARTIALS_HEADER_FILE = 'partials.h'
+
 INPUT_CONFIGURATION_CACHE_FILE = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
 DEFINES_DEPENDENCY_CACHE_FILE  = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files
 
@@ -147,7 +149,7 @@ NULL_FILE_PATH = '/dev/null'
 TESTS_BASE_PATH   = TEST_ROOT_NAME
 RELEASE_BASE_PATH = RELEASE_ROOT_NAME
 
-VENDORS_FILES = %w(unity UnityHelper cmock CException).freeze
+VENDORS_FILES = %w(unity UnityHelper cmock CException ceedling).freeze
 
 # Ruby Here
 UNITY_TEST_RESULTS_TEMPLATE = <<~UNITY_TEST_RESULTS
