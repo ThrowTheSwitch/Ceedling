@@ -91,7 +91,7 @@ class FilePathUtils
     return path
   end
 
-  ######### instance methods ##########
+  ######### Instance methods ##########
 
   ### release ###
   def form_release_build_cache_path(filepath)
