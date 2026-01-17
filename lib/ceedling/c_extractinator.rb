@@ -7,6 +7,7 @@
 
 require 'strscan'
 require 'stringio'
+require 'ceedling/exceptions'
 
 class CExtractinator
   DEFAULT_CHUNK_SIZE = (16 * 1024)                # 16 KB -- enough for most functions
@@ -116,7 +117,7 @@ class CExtractinator
       # Safety check -- don't let buffer grow indefinitely
       if buffer.length > @max_function_length
         _name = func.name ? "`#{func.name}()` " : ''
-        raise "Function #{_name}exceeds maximum length of #{@max_function_length} characters"
+        raise CeedlingException.new("Function #{_name}exceeds maximum length of #{@max_function_length} characters")
       end
     end
     
@@ -239,7 +240,7 @@ class CExtractinator
       
       # Safety check -- Don't scan indefinitely for a signature
       if scanner.pos - sig_start > @max_signature_length
-        raise "Function signature exceeds maximum length of #{@max_signature_length} characters"
+        raise CeedlingException.new("Function signature exceeds maximum length of #{@max_signature_length} characters")
       end
     end
     
