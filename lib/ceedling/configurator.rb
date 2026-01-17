@@ -67,6 +67,22 @@ class Configurator
   end
 
 
+  def set_partials_derived_config(config)
+    return if (!config[:project][:use_partials])
+
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+      @reportinator.generate_progress( 'Processing Partials configuration' )
+    end
+
+    if (config[:project][:use_partials])
+      # If partials enabled, enable mocking
+      config[:project][:use_mocks] = true
+      # If partials enabled, enable test preprocessor
+      config[:project][:use_test_preprocessor] = :all
+    end
+  end
+
+
   # The default tools (eg. DEFAULT_TOOLS_TEST) are merged into default config hash
   def merge_tools_defaults(config, default_config)
     @loginator.lazy( Verbosity::OBNOXIOUS ) do 
@@ -249,6 +265,9 @@ class Configurator
     end
 
     cmock[:includes].uniq!
+
+    # Add mocking prefix symbol for all test compilation
+    cmock[:defines] << "CMOCK_MOCK_PREFIX=#{cmock[:mock_prefix]}"
 
     @loginator.lazy( Verbosity::DEBUG ) do
       "CMock configuration >> #{cmock}"

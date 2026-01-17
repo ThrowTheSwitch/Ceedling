@@ -229,21 +229,6 @@ class ConfiguratorBuilder
     }
   end
 
-  def set_partials_ceedling_features(in_hash)
-    dependencies = {}
-
-    if (in_hash[:project_use_partials])
-      dependencies = {
-        # If partials enabled, enable mocking
-        :project_use_mocks => true,
-        # If partials enabled, enable test preprocessor
-        :project_use_test_preprocessor => :all
-      }
-    end    
-
-    return dependencies
-  end
-
   def set_test_preprocessor_accessors(in_hash)
     accessors = {}
 
