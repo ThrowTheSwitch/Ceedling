@@ -120,6 +120,7 @@ DEFAULT_CEEDLING_LOGFILE = 'ceedling.log'
 BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
 
 PARTIALS_HEADER_FILE = 'partials.h'
+PARTIAL_FILENAME_PREFIX = 'partial_'
 
 INPUT_CONFIGURATION_CACHE_FILE = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
 DEFINES_DEPENDENCY_CACHE_FILE  = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files
