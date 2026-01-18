@@ -53,6 +53,9 @@ class TestInvoker
           name = key.to_s
           build_path = File.join( @configurator.project_build_root, context.to_s, 'out', name )
           mocks_path = File.join( @configurator.cmock_mock_path, name )
+          partials_path = File.join( @configurator.project_test_partials_path, name )
+
+          # Create build, results, and mock/partial paths
 
           preprocess_includes_path = File.join( @configurator.project_test_preprocess_includes_path, name )
           preprocess_files_path    = File.join( @configurator.project_test_preprocess_files_path, name )
@@ -69,6 +72,7 @@ class TestInvoker
           paths[:build] = build_path
           paths[:results] = results_path
           paths[:mocks] = mocks_path if @configurator.project_use_mocks
+          paths[:partials] = partials_path if @configurator.project_use_partials
           if @configurator.project_use_test_preprocessor != :none
             paths[:preprocess_incudes] = preprocess_includes_path
             paths[:preprocess_files] = preprocess_files_path
@@ -85,7 +89,7 @@ class TestInvoker
 
       # Collect in-test build directives, #include statements, and test cases from test files.
       # (Actions depend on preprocessing configuration)
-      @batchinator.build_step("Collecting Test Context") do
+      @batchinator.build_step("Collecting Essential Test Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
 
@@ -122,7 +126,7 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
 
-          search_paths       = @helper.search_paths( filepath, details[:name] )
+          search_paths       = @helper.search_paths( filepath, details[:paths] )
 
           compile_flags      = @helper.flags( context:context, operation:OPERATION_COMPILE_SYM, filepath:filepath )
           preprocess_flags   = @helper.preprocess_flags( context:context, compile_flags:compile_flags, filepath:filepath )
@@ -152,7 +156,7 @@ class TestInvoker
       end
 
       # Collect include statements & mocks from test files
-      @batchinator.build_step("Collecting Test Context") do
+      @batchinator.build_step("Collecting More Test Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           arg_hash = {
             filepath:      details[:filepath],
@@ -174,14 +178,14 @@ class TestInvoker
       end if @configurator.project_use_test_preprocessor_tests
 
       # Determine Runners & Mocks For All Tests
-      @batchinator.build_step("Determining Files to be Generated", heading: false) do
+      @batchinator.build_step("Determining Files to Be Generated", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
           runner_filepath = @file_path_utils.form_runner_filepath_from_test( details[:filepath] )
           
           mocks = {}
           mocks_list = @configurator.project_use_mocks ? @context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
           mocks_list.each do |name|
-            source = @helper.find_header_input_for_mock( name, details[:search_paths] )
+            source = @helper.find_header_input_for_mock( name, details[:paths] )
             preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
             mocks[name.to_sym] = {
               :name => name,
@@ -197,6 +201,8 @@ class TestInvoker
             }
             details[:mocks] = mocks
             details[:mock_list] = mocks_list
+            # TODO: Fill this out with Partials lookup
+            details[:partials] = ['ecmsi_bar']
 
             # Trigger pre_test plugin hook after having assembled all testing context
             @plugin_manager.pre_test( details[:filepath] )
@@ -284,7 +290,7 @@ class TestInvoker
       } if @configurator.project_use_test_preprocessor_tests
 
       # Collect test case names
-      @batchinator.build_step("Collecting Test Context") {
+      @batchinator.build_step("Collecting More Test Context") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
 
           msg = @reportinator.generate_module_progress(
@@ -318,8 +324,10 @@ class TestInvoker
       @batchinator.build_step("Determining Artifacts to Be Built", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
           # Source files referenced by conventions or specified by build directives in a test file
-          test_sources       = @helper.extract_sources( details[:filepath] )
-          test_core          = test_sources + @helper.form_mock_filenames( details[:mock_list] )
+          test_sources       =  @helper.extract_sources( details[:filepath] )
+          test_core          =  test_sources + 
+                                @helper.form_mock_filenames( details[:mock_list] ) +
+                                @helper.form_partials_filenames( details[:partials] ) 
 
           # When we have a mock and an include for the same file, the mock wins
           @helper.remove_mock_original_headers( test_core, details[:mock_list] )

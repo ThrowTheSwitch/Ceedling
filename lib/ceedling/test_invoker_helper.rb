@@ -73,20 +73,21 @@ class TestInvokerHelper
     end
   end
 
-  def search_paths(filepath, subdir)
-    paths = []
+  def search_paths(filepath, paths)
+    _paths = []
 
     # Start with mock path to ensure any CMock-reworked header files are encountered first
-    paths << File.join( @configurator.cmock_mock_path, subdir ) if @configurator.project_use_mocks
-    paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
-    paths += @include_pathinator.collect_test_include_paths()
-    paths += @configurator.collection_paths_support
-    paths += @configurator.collection_paths_include
-    paths += @configurator.collection_paths_libraries
-    paths += @configurator.collection_paths_vendor
-    paths += @configurator.collection_paths_test_toolchain_include
+    _paths << paths[:mocks] if paths[:mocks]
+    _paths << paths[:partials] if paths[:partials]
+    _paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
+    _paths += @include_pathinator.collect_test_include_paths()
+    _paths += @configurator.collection_paths_support
+    _paths += @configurator.collection_paths_include
+    _paths += @configurator.collection_paths_libraries
+    _paths += @configurator.collection_paths_vendor
+    _paths += @configurator.collection_paths_test_toolchain_include
     
-    return paths.uniq
+    return _paths.uniq
   end
 
   def framework_defines()
@@ -241,15 +242,25 @@ class TestInvokerHelper
     return @test_context_extractor.lookup_include_paths_list(test_filepath)
   end
 
-  # TODO: Use search_paths to find/match header file from which to generate mock
-  # Today, this is just a pass-through wrapper
-  def find_header_input_for_mock(mock, search_paths)
+  def find_header_input_for_mock(mock, paths)
+    _mock = mock.to_str()
+    if _mock.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
+      return @file_path_utils.form_partial_header_filename(
+        paths[:partials],
+        _mock.delete_prefix( @configurator.cmock_mock_prefix )
+      )
+    end
+
     return @file_finder.find_header_input_for_mock( mock )
   end
 
   # Transform list of mock names into filenames with source extension
   def form_mock_filenames(mocklist)
     return mocklist.map {|mock| mock + @configurator.extension_source}
+  end
+
+  def form_partials_filenames(partials)
+    return partials.map { |partial| @file_path_utils.form_partial_implementation_filename(partial) }
   end
 
   def remove_mock_original_headers( filelist, mocklist )
