@@ -177,6 +177,14 @@ class FilePathUtils
     return list.map{ |file| File.join(path, File.basename(file).ext(@configurator.extension_source)) }
   end
 
+  def form_partial_header_filename(path, partial)
+    return File.join(path, partial + @configurator.extension_header)
+  end
+
+  def form_partial_implementation_filename(partial)
+    return PARTIAL_FILENAME_PREFIX + partial + '_impl' + @configurator.extension_source
+  end
+
   def form_test_dependencies_filelist(files)
     list = @file_wrapper.instantiate_file_list(files)
     return list.pathmap("#{@configurator.project_test_dependencies_path}/%n#{@configurator.extension_dependencies}")

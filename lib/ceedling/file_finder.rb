@@ -75,12 +75,22 @@ class FileFinder
           filepath)
 
     # Generated mocks
-    elsif (!release) and (source_file =~ /^#{@configurator.cmock_mock_prefix}/)
+    elsif (!release) and (source_file.start_with?( @configurator.cmock_mock_prefix ))
       _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
-          @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '**/*') ),
+          @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, ('**/*' + EXTENSION_CORE_SOURCE)) ),
+          complain,
+          filepath)
+
+    # Generated partials
+    elsif (!release) and (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
+      _source_file = source_file + EXTENSION_CORE_SOURCE
+      found_file =
+        @file_finder_helper.find_file_in_collection(
+          _source_file,
+          @file_wrapper.directory_listing( File.join(@configurator.project_test_partials_path, ('**/*' + EXTENSION_CORE_SOURCE)) ),
           complain,
           filepath)
 
