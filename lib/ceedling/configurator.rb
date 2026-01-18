@@ -77,7 +77,7 @@ class Configurator
     if (config[:project][:use_partials])
       # If partials enabled, enable mocking
       config[:project][:use_mocks] = true
-      # If partials enabled, enable test preprocessor
+      # If partials enabled, enable full test preprocessing
       config[:project][:use_test_preprocessor] = :all
     end
   end
