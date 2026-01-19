@@ -156,7 +156,9 @@ class Generator
     command =
       @tool_executor.build_command_line(
         arg_hash[:tool],
+        # Extra arguments
         arg_hash[:flags],
+        # Argument replacement
         arg_hash[:source],
         arg_hash[:object],
         arg_hash[:list],
@@ -219,7 +221,9 @@ class Generator
     command =
       @tool_executor.build_command_line( 
         arg_hash[:tool],
+        # Extra arguments
         arg_hash[:flags],
+        # Argument replacement
         arg_hash[:source],
         arg_hash[:object],
         arg_hash[:search_paths],
@@ -260,7 +264,9 @@ class Generator
     command =
       @tool_executor.build_command_line(
         arg_hash[:tool],
+        # Extra arguments
         arg_hash[:flags],
+        # Argument replacement
         arg_hash[:objects],
         arg_hash[:executable],
         arg_hash[:map],
@@ -301,8 +307,9 @@ class Generator
     command = 
       @tool_executor.build_command_line(
         arg_hash[:tool],
-        # Apply additional test case filters 
+        # Extra arguments: Additional test case filters 
         @test_runner_manager.collect_cmdline_args(),
+        # Argument replacement
         arg_hash[:executable]
       )
 

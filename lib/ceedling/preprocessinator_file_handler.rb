@@ -24,7 +24,9 @@ class PreprocessinatorFileHandler
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_full_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -44,7 +46,9 @@ class PreprocessinatorFileHandler
     # Run GCC with directives-only preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_directives_only_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -164,7 +168,9 @@ class PreprocessinatorFileHandler
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_full_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -181,7 +187,9 @@ class PreprocessinatorFileHandler
     # Run GCC with directives-only preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_directives_only_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
