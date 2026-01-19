@@ -277,7 +277,7 @@ class TestContextExtractor
     test_cases = unity_test_runner_generator.test_cases
     test_cases = test_cases.map {|test_case| "#{test_case[:line_number]}:#{test_case[:test]}()" }
 
-    debug_log_list( "Test cases found ", filepath, test_cases )
+    debug_log_list( "Test cases found", filepath, test_cases )
   end
 
   def extract_build_directive_source_files(line)
@@ -362,17 +362,8 @@ class TestContextExtractor
   end
 
   def debug_log_list(message, filepath, list)
-    msg = "#{message} in #{filepath}:"
-    if list.empty?
-      msg += " <none>"
-    else
-      msg += "\n"
-      list.each do |item|
-        msg += " - #{item}\n"
-      end
-    end
-
-    @loginator.log( "#{msg}\n\n", Verbosity::DEBUG )
+    header = "#{message} in #{filepath}"
+    @loginator.log_list( list, header, Verbosity::DEBUG )
   end
 
 end

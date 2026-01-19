@@ -57,20 +57,10 @@ class Preprocessinator
         @loginator.log( msg, Verbosity::NORMAL )
       
         # Note: It's possible empty YAML content returns nil
-        includes = @yaml_wrapper.load( includes_list_filepath )
+        includes = @yaml_wrapper.load( includes_list_filepath ) || []
 
-        msg = "Loaded existing #include list from #{includes_list_filepath}:"
-
-        if includes.nil? or includes.empty?
-          # Ensure includes defaults to emtpy array to prevent external iteration problems
-          includes = []
-          msg += ' <empty>'
-        else
-          includes.each { |include| msg += "\n - #{include}" }
-        end
-
-        @loginator.log( msg, Verbosity::DEBUG )
-        @loginator.log( '', Verbosity::DEBUG )
+        header = "Loaded existing #include list from #{includes_list_filepath}"
+        @loginator.log_list( includes, header, Verbosity::DEBUG )
 
       # Full preprocessing-based #include extraction with saving to YAML file
       else
@@ -83,18 +73,8 @@ class Preprocessinator
           deep:          deep
           )
 
-        msg = "Extracted #include list from #{filepath}:"
-
-        if includes.nil? or includes.empty?
-          # Ensure includes defaults to emtpy array to prevent external iteration problems
-          includes = []
-          msg += ' <empty>'
-        else
-          includes.each { |include| msg += "\n - #{include}" }
-        end
-
-        @loginator.log( msg, Verbosity::DEBUG )
-        @loginator.log( '', Verbosity::DEBUG )
+        header = "Extracted #include list from #{filepath}"
+        @loginator.log_list( includes, header, Verbosity::DEBUG )
       
         @includes_handler.write_includes_list( includes_list_filepath, includes )
       end
