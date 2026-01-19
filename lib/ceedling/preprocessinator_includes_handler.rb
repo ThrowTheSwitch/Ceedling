@@ -49,7 +49,7 @@ class PreprocessinatorIncludesHandler
   ##      should provide the tools to intervene. 
   ##
 
-  def extract_includes(filepath:, test:, flags:, include_paths:, defines:, deep: false)
+  def extract_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:, deep: false)
     msg = @reportinator.generate_module_progress(
       operation: "Extracting shallow #include statements via preprocessor from",
       module_name: test,
@@ -60,10 +60,11 @@ class PreprocessinatorIncludesHandler
     # 1. Extract shallow includes with preprocessor (preferred)
     shallow_success, shallow = 
       extract_shallow_includes_preprocessor(
-        test:     test,
-        filepath: filepath,
-        flags:    flags,
-        defines:  defines
+        test:         test,
+        filepath:     filepath,
+        flags:        flags,
+        defines:      defines,
+        search_paths: vendor_paths
         )
 
     msg = @reportinator.generate_module_progress(
@@ -139,7 +140,7 @@ class PreprocessinatorIncludesHandler
   ### Private ###
   private
 
-  def extract_shallow_includes_preprocessor(test:, filepath:, flags:, defines:)
+  def extract_shallow_includes_preprocessor(test:, filepath:, flags:, defines:, search_paths:)
     ##
     ## Preprocessor Make Rule Handling
     ## ===============================
@@ -206,7 +207,7 @@ class PreprocessinatorIncludesHandler
         filepath,
         defines,
         flags,
-        'build/vendor/ceedling'
+        search_paths
       )
 
     # Assume possible errors so we have best shot at extracting results from preprocessing.

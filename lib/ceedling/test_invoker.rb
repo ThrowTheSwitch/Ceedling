@@ -158,11 +158,13 @@ class TestInvoker
       # Collect include statements & mocks from test files
       @batchinator.build_step("Collecting More Test Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:preprocess_flags],
             include_paths: details[:search_paths],
+            vendor_paths:  vendor_paths,
             defines:       details[:preprocess_defines]
           }
 
@@ -223,6 +225,7 @@ class TestInvoker
 
       # Preprocess Header Files
       @batchinator.build_step("Preprocessing for Mocks") {
+        vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
         @batchinator.exec(workload: :compile, things: mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
@@ -232,6 +235,7 @@ class TestInvoker
             test:          testable[:name],
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
+            vendor_paths:  vendor_paths,
             defines:       testable[:preprocess_defines]
           }
 
@@ -262,12 +266,14 @@ class TestInvoker
       # Preprocess test files
       @batchinator.build_step("Preprocessing Test Files") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
 
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:preprocess_flags],
             include_paths: details[:search_paths],
+            vendor_paths:  vendor_paths,
             defines:       details[:preprocess_defines]
           }
 
