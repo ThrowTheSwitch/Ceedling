@@ -52,7 +52,7 @@ class FileFinder
 
     found_file = nil
 
-    # Strip off file extension
+    # Extract filename without file extension
     source_file = File.basename(filepath).ext('')
 
     # We only collect files that already exist when we start up.
@@ -65,7 +65,8 @@ class FileFinder
     #       If we use .ext() below we'll clobber the dotted portion of the filename
 
     # Generated test runners
-    if (!release) and (source_file =~ /^#{@configurator.project_test_file_prefix}.+#{@configurator.test_runner_file_suffix}$/)
+    if (!release) and
+       (source_file =~ /^#{@configurator.project_test_file_prefix}.+#{@configurator.test_runner_file_suffix}$/)
       _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(
@@ -75,22 +76,30 @@ class FileFinder
           filepath)
 
     # Generated mocks
-    elsif (!release) and (source_file.start_with?( @configurator.cmock_mock_prefix ))
+    elsif (!release) and 
+          (source_file.start_with?( @configurator.cmock_mock_prefix ))
       _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
-          @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, ('**/*' + EXTENSION_CORE_SOURCE)) ),
+          @file_wrapper.directory_listing(
+            File.join(@configurator.cmock_mock_path,
+            ('**/*' + EXTENSION_CORE_SOURCE))
+          ),
           complain,
           filepath)
 
     # Generated partials
-    elsif (!release) and (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
+    elsif (!release) and 
+          (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
       _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
-          @file_wrapper.directory_listing( File.join(@configurator.project_test_partials_path, ('**/*' + EXTENSION_CORE_SOURCE)) ),
+          @file_wrapper.directory_listing(
+            File.join(@configurator.project_test_partials_path,
+            ('**/*' + EXTENSION_CORE_SOURCE))
+          ),
           complain,
           filepath)
 
