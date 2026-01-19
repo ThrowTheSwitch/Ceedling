@@ -200,12 +200,14 @@ class PreprocessinatorIncludesHandler
     command = 
       @tool_executor.build_command_line(
         @configurator.tools_test_shallow_includes_preprocessor,
-        [], # No extra command line paramaters
+        # No additional arguments
+        [],
+        # Argument replacement
         filepath,
         defines,
         flags,
         'build/vendor/ceedling'
-        )
+      )
 
     # Assume possible errors so we have best shot at extracting results from preprocessing.
     # Full code compilation will catch any breaking code errors
@@ -297,7 +299,9 @@ class PreprocessinatorIncludesHandler
     command = 
       @tool_executor.build_command_line(
         @configurator.tools_test_nested_includes_preprocessor,
-        [], # No extra command line paramaters
+        # No additional arguments
+        [],
+        # Argument replacement
         filepath,
         include_paths,
         defines,

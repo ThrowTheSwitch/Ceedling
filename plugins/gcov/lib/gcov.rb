@@ -189,7 +189,9 @@ class Gcov < Plugin
         name     = filename.ext('')
         command  = @tool_executor.build_command_line(
                      TOOLS_GCOV_SUMMARY,
-                     [], # No additional arguments
+                     # No additional arguments
+                     [],
+                     # Argument replacement
                      filename, # .c source file that should have been compiled with coverage
                      File.join(GCOV_BUILD_OUTPUT_PATH, test) # <build>/gcov/out/<test name> for coverage data files
                    )
