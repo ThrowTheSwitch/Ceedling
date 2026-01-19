@@ -51,21 +51,13 @@ class PreprocessinatorIncludesHandler
 
   def extract_includes(filepath:, test:, flags:, include_paths:, defines:, deep: false)
     msg = @reportinator.generate_module_progress(
-      operation: "Extracting #include statements via preprocessor from",
+      operation: "Extracting shallow #include statements via preprocessor from",
       module_name: test,
       filename: File.basename(filepath)
       )
-    @loginator.log(msg, Verbosity::NORMAL)
+    @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-    # Extract shallow includes with fallback regex
-    fallback = extract_shallow_includes_regex(
-      test:     test,
-      filepath: filepath,
-      flags:    flags,
-      defines:  defines
-      )
-
-    # Extract shallow includes with preprocessor
+    # 1. Extract shallow includes with preprocessor (preferred)
     shallow_success, shallow = 
       extract_shallow_includes_preprocessor(
         test:     test,
@@ -73,7 +65,39 @@ class PreprocessinatorIncludesHandler
         flags:    flags,
         defines:  defines
         )
-    shallow = fallback unless shallow_success
+
+    msg = @reportinator.generate_module_progress(
+      operation: "Extracting shallow #include statements via regex from",
+      module_name: test,
+      filename: File.basename( filepath )
+      )
+    @loginator.log(msg, Verbosity::OBNOXIOUS)
+
+    # 2. Extract shallow includes via simple regex (fallback insurance) and used later by `common_includes()`
+    fallback = extract_shallow_includes_regex(
+      test:     test,
+      filepath: filepath,
+      flags:    flags,
+      defines:  defines
+      )
+
+    # Synthesize shallow include results from two methods
+    msg = if shallow_success
+      # Leave shallow results as they are
+      "Preprocessor shallow includes extraction succeeded."
+    else
+      # Assign fallback results to shallow if shallow extraction failed
+      shallow = fallback
+      "Preprocessor shallow includes extraction failed with regex fallback results used instead"
+    end
+    @loginator.log(msg, Verbosity::DEBUG)
+
+    msg = @reportinator.generate_module_progress(
+      operation: "Extracting nested #include statements via preprocessor from",
+      module_name: test,
+      filename: File.basename( filepath )
+      )
+    @loginator.log(msg, Verbosity::OBNOXIOUS)
 
     # Extract nested includes but optionally act in fallback mode
     nested = extract_nested_includes(
@@ -85,12 +109,21 @@ class PreprocessinatorIncludesHandler
       shallow:       shallow.empty?
       )
 
-    # Combine shallow and nested include knowledge of mocks
-    mocks = combine_mocks(shallow, nested)
+    @loginator.log(
+      @reportinator.generate_progress("Synthesizing and filtering shallow and nested #include statements"),
+      Verbosity::OBNOXIOUS
+    )
+
+    # Extract single list of sanitized mocks from shallow and nested lists
+    mocks = extract_mocks(shallow, nested)
 
     # Redefine shallow and nested results without any mocks
     shallow = remove_mocks( shallow )
     nested  = remove_mocks( nested )
+
+    @loginator.log_list(shallow, 'Shallow #includes', Verbosity::DEBUG)
+    @loginator.log_list(nested, 'Nested #includes', Verbosity::DEBUG)
+    @loginator.log_list(mocks, 'Mock #includes', Verbosity::DEBUG)
 
     # Return
     #  - Includes common to shallow and nested results, with paths from nested
@@ -167,10 +200,10 @@ class PreprocessinatorIncludesHandler
     command = 
       @tool_executor.build_command_line(
         @configurator.tools_test_shallow_includes_preprocessor,
-        [], # No extra arguments
-        flags,
+        [], # No extra command line paramaters
         filepath,
         defines,
+        flags,
         'build/vendor/ceedling'
         )
 
@@ -201,13 +234,6 @@ class PreprocessinatorIncludesHandler
   end
 
   def extract_shallow_includes_regex(test:, filepath:, flags:, defines:)
-    msg = @reportinator.generate_module_progress(
-      operation: "Using fallback regex #include extraction for",
-      module_name: test,
-      filename: File.basename( filepath )
-      )
-    @loginator.log(msg, Verbosity::NORMAL)
-
     # Use abilities of @test_context_extractor to extract the #includes via regex on the file
     includes = []
     @file_wrapper.open( filepath, 'r' ) do |file|
@@ -271,10 +297,11 @@ class PreprocessinatorIncludesHandler
     command = 
       @tool_executor.build_command_line(
         @configurator.tools_test_nested_includes_preprocessor,
-        flags,
+        [], # No extra command line paramaters
         filepath,
         include_paths,
-        defines
+        defines,
+        flags
       )
 
     # Let the preprocessor do as much as possible
@@ -303,7 +330,7 @@ class PreprocessinatorIncludesHandler
     return includes.uniq
   end
 
-  def combine_mocks(*lists)
+  def extract_mocks(*lists)
     # Handle mocks
     #  - Ensure no build filepaths in mock listings
     #  - Do not return mocks if mocking is disabled
@@ -312,15 +339,16 @@ class PreprocessinatorIncludesHandler
     # Bail out early if mocks are not enabled
     return [] if !@configurator.project_use_mocks
 
-    # Use some greediness to ensure we get all possible mocks
-    lists.each { |list| mocks |= extract_mocks( list ) }
+    # Process each list of includes
+    lists.each do |list| 
+      list.each do |include|
+        # Add only mocks and without any build paths
+        _include = File.basename(include)
+        mocks << _include if _include.start_with?( @configurator.cmock_mock_prefix )
+      end
+    end
 
-    return mocks
-  end
-
-  # Return a list of mock .h files with no paths
-  def extract_mocks(includes)
-    return includes.select { |include| File.basename(include).start_with?( @configurator.cmock_mock_prefix ) }
+    return mocks.uniq()
   end
 
   # Return list of includes with any mocks removed
@@ -358,7 +386,9 @@ class PreprocessinatorIncludesHandler
     basenames = if deep
       ( _nested.keys.to_set.union( _shallow.keys.to_set ) )
     else
-      ( _nested.keys.to_set.intersection( _shallow.keys.to_set ) ).intersection( explicit ) #intersection of both arrays PLUS MUST BE IN EXPLICIT call list
+      # Intersection of both arrays plus filtering against explicit includes.
+      # This removes any includes unearthed from deep in the code (e.g. system or host includes)
+      ( _nested.keys.to_set.intersection( _shallow.keys.to_set ) ).intersection( explicit )
     end
 
     # Iterate through the basenames and return the fullest version of each
