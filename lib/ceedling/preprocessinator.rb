@@ -34,7 +34,7 @@ class Preprocessinator
   end
 
 
-  def preprocess_includes(filepath:, test:, flags:, include_paths:, defines:, deep: false)
+  def preprocess_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:, deep: false)
     includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
     # Get or create a mutex for this specific cache file
@@ -69,6 +69,7 @@ class Preprocessinator
           test:          test,
           flags:         flags,
           include_paths: include_paths,
+          vendor_paths:  vendor_paths,
           defines:       defines,
           deep:          deep
           )
@@ -84,7 +85,7 @@ class Preprocessinator
   end
 
 
-  def preprocess_mockable_header_file(filepath:, test:, flags:, include_paths:, defines:)
+  def preprocess_mockable_header_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     # Check if we're using deep define processing for mocks
@@ -107,6 +108,7 @@ class Preprocessinator
       test:           test,
       flags:          flags,
       include_paths:  include_paths,
+      vendor_paths:   vendor_paths,
       defines:        defines,
       deep:           preprocess_deep     
     }
@@ -147,7 +149,7 @@ class Preprocessinator
   end
 
 
-  def preprocess_test_file(filepath:, test:, flags:, include_paths:, defines:)
+  def preprocess_test_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     # Check if we're using deep define processing for mocks
@@ -170,6 +172,7 @@ class Preprocessinator
       test:          test,
       flags:         flags,
       include_paths: include_paths,
+      vendor_paths:  vendor_paths,
       defines:       defines,
       deep:          preprocess_deep      
     }
@@ -209,7 +212,7 @@ class Preprocessinator
   ### Private ###
   private
 
-  def preprocess_file_common(filepath:, test:, flags:, include_paths:, defines:, deep: false)
+  def preprocess_file_common(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:, deep: false)
     msg = @reportinator.generate_module_progress(
       operation: "Preprocessing",
       module_name: test,
@@ -224,8 +227,10 @@ class Preprocessinator
       test:          test,
       flags:         flags,
       include_paths: include_paths,
+      vendor_paths:  vendor_paths,
       defines:       defines,
-      deep:          deep) 
+      deep:          deep
+    ) 
 
     return includes
   end
