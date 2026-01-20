@@ -93,23 +93,35 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
 
+          contexts = []
+
           if @configurator.project_use_test_preprocessor_tests
+            # Extracting other context will happen in later steps after preprocessing.
+            contexts << :build_directive_include_paths
+
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for include path build directive macros" )
             @loginator.log( msg )
-
-            # Just build directive macro using simple text scanning.
-            # Other context collected in later steps with help of preprocessing.
-            @file_wrapper.open( filepath, 'r' ) do |input|
-              @context_extractor.collect_simple_context( filepath, input, :build_directive_include_paths )
-            end
           else
+            # Extract context without preprocessing.
+            contexts << :build_directive_include_paths
+            contexts << :build_directive_source_files
+            contexts << :includes
+            contexts << :test_runner_details
+
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
             @loginator.log( msg )
+          end
 
-            # Collect everything using simple text scanning (no preprocessing involved).
-            @file_wrapper.open( filepath, 'r' ) do |input|
-              @context_extractor.collect_simple_context( filepath, input, :all )
-            end
+          if @configurator.project_use_partials
+            contexts << :partials_configuration
+
+            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for partials directive macros" )
+            @loginator.log( msg )
+          end
+
+          # Collect test context using text scanning (no preprocessing involved here)
+          @file_wrapper.open( filepath, 'r' ) do |input|
+            @context_extractor.collect_simple_context( filepath, input, *contexts )
           end
 
         end
