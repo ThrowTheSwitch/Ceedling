@@ -70,11 +70,21 @@ end
 
 class PATTERNS
   GLOB = /[\*\?\{\}\[\]]/
+
   RUBY_STRING_REPLACEMENT = /#\{.+\}/
   TOOL_EXECUTOR_ARGUMENT_REPLACEMENT = /(\$\{(\d+)\})/
+
   TEST_STDOUT_STATISTICS  = /\n-+\s*(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
+
+  INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+\"\s*([\w\.\-]+)\s*\"/
+
   TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
   TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
+
+  TEST_PARTIAL_PUBLIC_MODULE  = /#\s*include\s+TEST_PARTIAL_PUBLIC_MODULE\s*\(\s*(.+)\s*\)/
+  TEST_PARTIAL_PRIVATE_MODULE = /#\s*include\s+TEST_PARTIAL_PRIVATE_MODULE\s*\(\s*(.+)\s*\)/
+  MOCK_PARTIAL_PUBLIC_MODULE  = /#\s*include\s+MOCK_PARTIAL_PUBLIC_MODULE\s*\(\s*(.+)\s*\)/
+  MOCK_PARTIAL_PRIVATE_MODULE = /#\s*include\s+MOCK_PARTIAL_PRIVATE_MODULE\s*\(\s*(.+)\s*\)/
 end
 
 GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'

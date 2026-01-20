@@ -36,22 +36,22 @@ class TestContextExtractor
       :build_directive_include_paths,
       :build_directive_source_files,
       :includes,
-      :test_runner_details
+      :test_runner_details,
+      :partials_configuration
     ]
 
     # Code error check--bad context symbol argument
     args.each do |context|
-      next if context == :all
       msg = "Unrecognized test context for collection :#{context}"
       raise CeedlingException.new( msg ) if !all_options.include?( context )
     end
 
-    # Handle the :all shortcut to redefine list to include all contexts
-    args = all_options if args.include?( :all )
-
     include_paths = []
     source_extras = []
     includes = []
+    partials_config = []
+
+    # This function reads through the file line by line and extracts relevant information for the given context.
 
     @parsing_parcels.code_lines( input ) do |line|
       if args.include?( :build_directive_include_paths )
@@ -68,11 +68,17 @@ class TestContextExtractor
         # Scan for contents of #include directives
         includes += _extract_includes( line )
       end
+
+      if args.include?( :partials_configuration )
+        # Scan for Partials directive macros
+        partials_config += _extract_partials_config( line )
+      end
     end
 
-    collect_build_directive_include_paths( filepath, include_paths ) if args.include?( :build_directive_include_paths )
-    collect_build_directive_source_files( filepath, source_extras ) if args.include?( :build_directive_source_files )
-    collect_includes( filepath, includes ) if args.include?( :includes )
+    collect_build_directive_include_paths( filepath, include_paths ) if !include_paths.empty?
+    collect_build_directive_source_files( filepath, source_extras ) if !source_extras.empty?
+    collect_includes( filepath, includes ) if !includes.empty?
+    # collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
 
     # Different code processing pattern for test runner
     if args.include?( :test_runner_details )
@@ -308,10 +314,29 @@ class TestContextExtractor
     includes = []
 
     # Look for #include statements
-    results = line.match(/#\s*include\s+\"\s*([\w\.\-]+)\s*\"/)
+    results = line.match(PATTERNS::INCLUDE_DIRECTIVE_FILENAME)
     includes << results[1] if !results.nil?
 
     return includes
+  end
+
+  def _extract_partials_config(line)
+    configs = []
+
+    # Look for #include partials config directives
+    results = line.match(PATTERNS::TEST_PARTIAL_PUBLIC_MODULE)
+    configs << {:test_public => results[1]} if !results.nil?
+
+    results = line.match(PATTERNS::TEST_PARTIAL_PRIVATE_MODULE)
+    configs << {:test_private => results[1]} if !results.nil?
+
+    results = line.match(PATTERNS::MOCK_PARTIAL_PUBLIC_MODULE)
+    configs << {:mock_public => results[1]} if !results.nil?
+
+    results = line.match(PATTERNS::MOCK_PARTIAL_PRIVATE_MODULE)
+    configs << {:mock_private => results[1]} if !results.nil?    
+
+    return configs
   end
 
   ##
