@@ -220,8 +220,8 @@ class CExtractinator
         if paren_depth == 0 && found_paren
           skip_deadspace(scanner)
           next_char = scanner.peek(1)
-          # Valid function definition -- return the signature
-          return scanner.string[sig_start...scanner.pos].strip if next_char == '{'
+          # Valid function definition -- return the signature minus newlines and leading/trailing whitespace
+          return scanner.string[sig_start...scanner.pos].gsub(/\n/,' ').strip if next_char == '{'
           # Function declaration (not definition) -- skip it
           return nil if next_char == ';'
         end

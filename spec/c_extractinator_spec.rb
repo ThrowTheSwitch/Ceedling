@@ -69,7 +69,7 @@ describe CExtractinator do
       expect( funcs.length ).to eq 3
 
       expect( funcs[0].name ).to eq 'a_function'
-      expect( funcs[0].signature ).to eq "int\na_function(int a, int b)"
+      expect( funcs[0].signature ).to eq "int a_function(int a, int b)"
       expect( funcs[0].body ).to eq "{\n  int c = a + b;\n  c += 5;\n  return c;\n}"
       expect( funcs[0].code_block ).to eq "int\na_function(int a, int b) {\n  int c = a + b;\n  c += 5;\n  return c;\n}"
       expect( funcs[0].line_count ).to eq 6
