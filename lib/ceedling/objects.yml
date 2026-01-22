@@ -246,6 +246,16 @@ generator_mocks:
   compose:
     - configurator
 
+generator_partials:
+  compose:
+    - file_path_utils
+    - file_wrapper
+
+batchinator:
+  compose:
+    - batchinator_helper
+    - task_invoker
+
 dependinator:
   compose:
     - configurator

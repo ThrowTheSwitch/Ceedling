@@ -35,6 +35,62 @@ class Generator
     @backtrace = @generator_test_results_backtrace
   end
 
+  def generate_partial_interface(context:, test:, signatures:, output_path:)
+    arg_hash = {
+      :header_file => input_filepath,
+      :test => test,
+      :context => context,
+      :output_path => output_path }
+    
+    @plugin_manager.pre_mock_generate( arg_hash )
+
+    begin  
+      # Generate mock
+      msg = @reportinator.generate_module_progress(
+        operation: "Generating mock for",
+        module_name: test,
+        filename: File.basename(input_filepath)
+      )
+      @loginator.log( msg )
+
+      cmock = @generator_mocks.manufacture( config )
+      cmock.setup_mocks( arg_hash[:header_file] )
+    rescue StandardError => ex
+      # Re-raise execption but decorate it with CMock to better identify it
+      raise( ex, "CMock >> #{ex.message}", ex.backtrace )
+    ensure
+      @plugin_manager.post_mock_generate( arg_hash )
+    end
+  end
+
+  def generate_partial_implementation(context:, config:, test:, functions:, output_path:)
+    arg_hash = {
+      :header_file => input_filepath,
+      :test => test,
+      :context => context,
+      :output_path => output_path }
+    
+    @plugin_manager.pre_mock_generate( arg_hash )
+
+    begin  
+      # Generate mock
+      msg = @reportinator.generate_module_progress(
+        operation: "Generating mock for",
+        module_name: test,
+        filename: File.basename(input_filepath)
+      )
+      @loginator.log( msg )
+
+      cmock = @generator_mocks.manufacture( config )
+      cmock.setup_mocks( arg_hash[:header_file] )
+    rescue StandardError => ex
+      # Re-raise execption but decorate it with CMock to better identify it
+      raise( ex, "CMock >> #{ex.message}", ex.backtrace )
+    ensure
+      @plugin_manager.post_mock_generate( arg_hash )
+    end
+  end
+
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
     arg_hash = {
       :header_file => input_filepath,

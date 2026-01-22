@@ -325,16 +325,28 @@ class TestContextExtractor
 
     # Look for #include partials config directives
     results = line.match(PATTERNS::TEST_PARTIAL_PUBLIC_MODULE)
-    configs << {:test_public => results[1]} if !results.nil?
+    if !results.nil?
+      configs << {:test_public => results[1]}
+      return configs
+    end
 
     results = line.match(PATTERNS::TEST_PARTIAL_PRIVATE_MODULE)
-    configs << {:test_private => results[1]} if !results.nil?
+    if !results.nil?
+      configs << {:test_private => results[1]}
+      return configs
+    end
 
     results = line.match(PATTERNS::MOCK_PARTIAL_PUBLIC_MODULE)
-    configs << {:mock_public => results[1]} if !results.nil?
+    if !results.nil?
+      configs << {:mock_public => results[1]}
+      return configs
+    end
 
     results = line.match(PATTERNS::MOCK_PARTIAL_PRIVATE_MODULE)
-    configs << {:mock_private => results[1]} if !results.nil?    
+    if !results.nil?
+      configs << {:mock_private => results[1]}
+      return configs
+    end
 
     return configs
   end
