@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'rake' # for ext() method
+require 'ceedling/file_wrapper'
 
 class PreprocessinatorFileHandler
 
@@ -100,7 +101,7 @@ class PreprocessinatorFileHandler
     #       They're created for sake of completeness and just in case...
     # ----------------------------------------------------
     # abc-XYZ.h --> _ABC_XYZ_H_
-    guardname = '_' + filename.gsub(/\W/, '_').upcase + '_'
+    guardname = FileWrapper.generate_include_guard( filename )
 
     forward_guards = [
       "#ifndef #{guardname} // Ceedling-generated include guard",
