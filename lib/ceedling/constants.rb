@@ -99,8 +99,10 @@ GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support']
 
 EXTENSION_WIN_EXE     = '.exe'
 EXTENSION_NONWIN_EXE  = '.out'
+
 # Vendor frameworks, generated mocks, generated runners are always .c files
-EXTENSION_CORE_SOURCE = '.c' 
+EXTENSION_CORE_HEADER = '.h'
+EXTENSION_CORE_SOURCE = '.c'
 
 PREPROCESS_SYM = :preprocess
 
