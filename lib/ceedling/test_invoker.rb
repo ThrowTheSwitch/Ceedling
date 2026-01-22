@@ -224,6 +224,44 @@ class TestInvoker
         end
       end
 
+      # Preprocess Header & Source Files
+      @batchinator.build_step("Preprocessing for Partials") {
+        vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
+        @batchinator.exec(workload: :compile, things: mocks) do |mock|
+          details = mock[:details]
+          testable = mock[:testable]
+
+          arg_hash = {
+            filepath:      details[:source],
+            test:          testable[:name],
+            flags:         testable[:preprocess_flags],
+            include_paths: testable[:search_paths],
+            vendor_paths:  vendor_paths,
+            defines:       testable[:preprocess_defines]
+          }
+
+          @preprocessinator.preprocess_mockable_header_file( **arg_hash )
+        end
+      } if @configurator.project_use_partials
+
+      # Generate partials for all tests
+      @batchinator.build_step("Generating Partials") {
+        @batchinator.exec(workload: :compile, things: mocks) do |mock| 
+          details = mock[:details]
+          testable = mock[:testable]
+
+          arg_hash = {
+            context:        context,
+            mock:           mock[:name],
+            test:           testable[:name],
+            input_filepath: details[:input],
+            output_path:    testable[:paths][:partials]
+          }
+
+          @generator.generate_partial(**arg_hash)
+        end
+      } if @configurator.project_use_partials
+      
       # Create inverted/flattened mock lookup list to take advantage of threading
       # (Iterating each testable and mock list instead would limit the number of simultaneous mocking threads)
       mocks = []
@@ -376,6 +414,7 @@ class TestInvoker
               details[:paths][:build],
               @helper.fetch_shallow_source_includes( details[:filepath] ))
 
+          # TODO: Remove any source file objects partials are standing in for
           # Redefine test_objects, removing any problematic object file that would otherwise get linked into the test executable
           test_objects = (test_objects.uniq - test_no_link_objects)
 

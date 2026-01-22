@@ -260,7 +260,7 @@ class TestInvokerHelper
   end
 
   def form_partials_filenames(partials)
-    return partials.map { |partial| @file_path_utils.form_partial_implementation_filename(partial) }
+    return partials.map { |partial| @file_path_utils.form_partial_implementation_source_filename(partial) }
   end
 
   def remove_mock_original_headers( filelist, mocklist )
