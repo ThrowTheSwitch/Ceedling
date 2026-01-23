@@ -240,8 +240,8 @@ class TestInvoker
         @testables.each do |_, details|
           details[:partials].each do |_, configs|
             configs.each do |config|
-              partials_headers << {:filepath => config[:header], :testable => details} if config[:header]
-              partials_sources << {:filepath => config[:source], :testable => details} if config[:source]
+              partials_headers << {:config => config[:header], :testable => details} if config[:header][:filepath]
+              partials_sources << {:config => config[:source], :testable => details} if config[:source][:filepath]
             end
           end
         end
@@ -250,9 +250,10 @@ class TestInvoker
       # Preprocess Header Files
       @batchinator.build_step("Preprocessing Header Files for Partials") {
         @batchinator.exec(workload: :compile, things: partials_headers) do |details|
+          config = details[:config]
           testable = details[:testable]
           arg_hash = {
-            filepath:      details[:filepath],
+            filepath:      config[:filepath],
             test:          testable[:name],
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
@@ -260,16 +261,17 @@ class TestInvoker
             defines:       testable[:preprocess_defines]
           }
 
-          @preprocessinator.preprocess_partial_header_file( **arg_hash )
+          config[:preprocessed_filepath], config[:includes] = @preprocessinator.preprocess_partial_header_file( **arg_hash )
         end
       } if @configurator.project_use_partials
 
       # Preprocess Source Files
       @batchinator.build_step("Preprocessing Source Files for Partials") {
         @batchinator.exec(workload: :compile, things: partials_sources) do |details|
+          config = details[:config]
           testable = details[:testable]
           arg_hash = {
-            filepath:      details[:filepath],
+            filepath:      config[:filepath],
             test:          testable[:name],
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
@@ -277,27 +279,31 @@ class TestInvoker
             defines:       testable[:preprocess_defines]
           }
 
-          @preprocessinator.preprocess_partial_source_file( **arg_hash )
+          config[:preprocessed_filepath], config[:includes] = @preprocessinator.preprocess_partial_source_file( **arg_hash )
         end
       } if @configurator.project_use_partials
       
-      # # Generate partials for all tests
-      # @batchinator.build_step("Partials") {
-      #   @batchinator.exec(workload: :compile, things: mocks) do |mock| 
-      #     details = mock[:details]
-      #     testable = mock[:testable]
+      # Generate partials for all tests
+      @batchinator.build_step("Partials") {
+        # For each type of partial:
+        #  1. Extract functions & signatures
+        #  2. Run generator with extracted functions & signatures
 
-      #     arg_hash = {
-      #       context:        context,
-      #       mock:           mock[:name],
-      #       test:           testable[:name],
-      #       input_filepath: details[:input],
-      #       output_path:    testable[:paths][:partials]
-      #     }
+        @batchinator.exec(workload: :compile, things: mocks) do |mock| 
+          details = mock[:details]
+          testable = mock[:testable]
 
-      #     @generator.generate_partial(**arg_hash)
-      #   end
-      # } if @configurator.project_use_partials
+          arg_hash = {
+            context:        context,
+            mock:           mock[:name],
+            test:           testable[:name],
+            input_filepath: details[:input],
+            output_path:    testable[:paths][:partials]
+          }
+
+          @generator.generate_partial(**arg_hash)
+        end
+      } if @configurator.project_use_partials
       
       # Create inverted/flattened mock lookup list to take advantage of threading
       # (Iterating each testable and mock list instead would limit the number of simultaneous mocking threads)
@@ -312,7 +318,9 @@ class TestInvoker
 
       # Preprocess Header Files
       @batchinator.build_step("Preprocessing for Mocks") {
-        @batchinator.exec(workload: :compile, things: mocks) do |mock|
+        # Suppress preprocessing for partials headers as they have already been preprocessed
+        _mocks = mocks.reject {|mock| mock[:name].include?( PARTIAL_FILENAME_PREFIX )}
+        @batchinator.exec(workload: :compile, things: _mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
 
