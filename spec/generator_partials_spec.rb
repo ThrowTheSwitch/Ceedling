@@ -58,8 +58,8 @@ describe GeneratorPartials do
       allow(@generator).to receive(:generate_source)
       
       # Define test data
-      funcs = [
-        @generator.manufacture_function_struct(
+      defns = [
+        @generator.manufacture_function_definition_struct(
           signature: 'void initialize(void)',
           code_block: "void initialize(void) {\n  // implementation\n}"
         )
@@ -68,7 +68,7 @@ describe GeneratorPartials do
       
       # Execute
       @generator.generate_implementation(
-        functions: funcs,
+        definitions: defns,
         name: name,
         includes: includes,
         output_path: output_path
@@ -79,7 +79,7 @@ describe GeneratorPartials do
         header_file_handle,
         header_filename,
         includes,
-        funcs
+        defns
       )
       
       # Verify generate_source was called with correct parameters
@@ -87,7 +87,7 @@ describe GeneratorPartials do
       expect(@generator).to have_received(:generate_source).with(
         source_file_handle,
         [header_filename] + includes,
-        funcs
+        defns
       )
       
       # Verify file path utilities were called
@@ -123,17 +123,16 @@ describe GeneratorPartials do
       allow(@generator).to receive(:generate_header)
       
       # Define test data
-      funcs = [
-        @generator.manufacture_function_struct(
-          signature: 'void initialize(void)',
-          code_block: "<not used>"
+      decls = [
+        @generator.manufacture_function_declaration_struct(
+          signature: 'void initialize(void)'
         )
       ]
       includes = ['types.h', 'config.h']
       
       # Execute
       @generator.generate_interface(
-        functions: funcs,
+        declarations: decls,
         name: name,
         includes: includes,
         output_path: output_path
@@ -144,7 +143,7 @@ describe GeneratorPartials do
         file_handle,
         header_filename,
         includes,
-        funcs
+        decls
       )
     end
   end
@@ -202,19 +201,17 @@ describe GeneratorPartials do
     
       CONTENTS
 
-      funcs = []
+      decls = []
 
-      funcs << @generator.manufacture_function_struct(
-        signature: 'void foobarbaz(int x, int y)',
-        code_block: "<this field left intentionally blank>"
+      decls << @generator.manufacture_function_declaration_struct(
+        signature: 'void foobarbaz(int x, int y)'
       )
 
-      funcs << @generator.manufacture_function_struct(
-        signature: 'int razzleDazzle(void* ptr)',
-        code_block: "<this field left intentionally blank>"
+      decls << @generator.manufacture_function_declaration_struct(
+        signature: 'int razzleDazzle(void* ptr)'
       )
 
-      @generator.generate_header(buf, 'Apples-and-Bananas', ['Eeny.h', 'Meeny.h'], funcs)
+      @generator.generate_header(buf, 'Apples-and-Bananas', ['Eeny.h', 'Meeny.h'], decls)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -253,14 +250,14 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      funcs = []
+      defns = []
 
-      funcs << @generator.manufacture_function_struct(
+      defns << @generator.manufacture_function_definition_struct(
         signature: 'void foobar(int x, int y)',
         code_block: "void foobar(int x, int y) {\n  int z = x+y;\n}"
       )
 
-      @generator.generate_source(buf, [], funcs)
+      @generator.generate_source(buf, [], defns)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -284,23 +281,23 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      funcs = []
+      defns = []
 
-      funcs << @generator.manufacture_function_struct(
+      defns << @generator.manufacture_function_definition_struct(
         line_num: 9,
         source_filepath: '../foo/bar/fubar.c',
         signature: 'void foobarbaz(int x, int y)',
         code_block: "void foobarbaz(int x, int y) {\n  int z = x+y;\n}"
       )
 
-      funcs << @generator.manufacture_function_struct(
+      defns << @generator.manufacture_function_definition_struct(
         line_num: 123,
         source_filepath: 'src/code/ABC.c',
         signature: 'int razzleDazzle(void* ptr)',
         code_block: "int\nrazzleDazzle(void* ptr)\n{\n  global_var = ptr;\n  return 42;\n}"
       )
 
-      @generator.generate_source(buf, [], funcs)
+      @generator.generate_source(buf, [], defns)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
