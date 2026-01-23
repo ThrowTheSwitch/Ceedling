@@ -21,6 +21,7 @@ class TestInvoker
               :batchinator,
               :preprocessinator,
               :task_invoker,
+              :partializer,
               :generator,
               :test_context_extractor,
               :file_path_utils,
@@ -211,9 +212,9 @@ class TestInvoker
           end
 
           # Partials
-          partials = {}
+          partials = []
           if @configurator.project_use_partials
-            partials[test] = @helper.assemble_partials_config( filepath: details[:filepath] )
+            partials = @helper.assemble_partials_config( filepath: details[:filepath] )
           end
 
           # Assemble results within safety of mutex
@@ -238,11 +239,9 @@ class TestInvoker
       partials_sources = []
       if @configurator.project_use_partials
         @testables.each do |_, details|
-          details[:partials].each do |_, configs|
-            configs.each do |config|
-              partials_headers << {:config => config[:header], :testable => details} if config[:header][:filepath]
-              partials_sources << {:config => config[:source], :testable => details} if config[:source][:filepath]
-            end
+          details[:partials].each do |config|
+            partials_headers << {:config => config[:header], :testable => details} if config[:header][:filepath]
+            partials_sources << {:config => config[:source], :testable => details} if config[:source][:filepath]
           end
         end
       end
@@ -287,21 +286,32 @@ class TestInvoker
       @batchinator.build_step("Partials") {
         # For each type of partial:
         #  1. Extract functions & signatures
+        #    a. Sort as public and private
+        #    b. Remove decorators (extern, static, inline)
         #  2. Run generator with extracted functions & signatures
 
-        @batchinator.exec(workload: :compile, things: mocks) do |mock| 
-          details = mock[:details]
-          testable = mock[:testable]
+        test_public_configs = @helper.collect_testable_partials_configs( @testables, :test_public )
+        test_private_configs = @helper.collect_testable_partials_configs( @testables, :test_private )
+        mock_public_configs = @helper.collect_testable_partials_configs( @testables, :mock_public )
+        mock_private_configs = @helper.collect_testable_partials_configs( @testables, :mock_private )
 
-          arg_hash = {
-            context:        context,
-            mock:           mock[:name],
-            test:           testable[:name],
-            input_filepath: details[:input],
-            output_path:    testable[:paths][:partials]
-          }
+        @batchinator.exec(workload: :compile, things: test_public_configs) do |partial| 
+          config = partial[:config]
+          testable = partial[:testable]
 
-          @generator.generate_partial(**arg_hash)
+          funcs = @partializer.extract_public_functions(
+            header_filepath: config[:header][:preprocessed_filepath],
+            source_filepath: config[:source][:preprocessed_filepath]
+          )
+          # arg_hash = {
+          #   context:        context,
+          #   mock:           mock[:name],
+          #   test:           testable[:name],
+          #   input_filepath: details[:input],
+          #   output_path:    testable[:paths][:partials]
+          # }
+
+          # @generator.generate_partial(**arg_hash)
         end
       } if @configurator.project_use_partials
       
@@ -319,7 +329,7 @@ class TestInvoker
       # Preprocess Header Files
       @batchinator.build_step("Preprocessing for Mocks") {
         # Suppress preprocessing for partials headers as they have already been preprocessed
-        _mocks = mocks.reject {|mock| mock[:name].include?( PARTIAL_FILENAME_PREFIX )}
+        _mocks = mocks.reject {|mock| mock[:name].to_s.include?( PARTIAL_FILENAME_PREFIX )}
         @batchinator.exec(workload: :compile, things: _mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
