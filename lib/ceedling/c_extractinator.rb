@@ -62,7 +62,7 @@ class CExtractinator
     @max_signature_length = max_signature_length
   end
   
-  def extract_functions
+  def extract_functions()
     functions = []
     
     # Scan through the IO buffer in memory-limited chunks.

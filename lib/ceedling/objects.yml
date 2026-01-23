@@ -322,6 +322,7 @@ test_invoker:
     - loginator
     - preprocessinator
     - task_invoker
+    - partializer
     - generator
     - test_context_extractor
     - file_path_utils

@@ -226,6 +226,18 @@ class TestInvokerHelper
     return configs
   end
 
+  def collect_testable_partials_configs(testables, type)
+    configs = []
+    testables.each do |_, details|
+      details[:partials].each do |config|
+        if config[:type] == type
+          configs << {:config => config, :testable => details}
+        end
+      end
+    end
+
+    return configs
+  end
 
   def collect_test_framework_sources(mocks)
     sources = []
