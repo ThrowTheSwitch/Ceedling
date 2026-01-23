@@ -109,11 +109,6 @@ class PreprocessinatorFileHandler
       ''
     ]
 
-    # Insert Ceedling notice
-    # ----------------------------------------------------
-    comment = "// CEEDLING NOTICE: This generated file only to be consumed by CMock"
-    _contents += [comment, '']
-
     # Add guards to beginning of file contents
     _contents += forward_guards
 
@@ -224,16 +219,8 @@ class PreprocessinatorFileHandler
   end
 
 
-  def assemble_preprocessed_test_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
+  def assemble_preprocessed_source_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
     _contents = []
-
-    # Insert Ceedling notice
-    # ----------------------------------------------------
-    comment = "// CEEDLING NOTICE: This generated file only to be consumed for test runner creation"
-    _contents += [comment, '']
-
-    # Blank line
-    _contents << ''
 
     # Reinsert #include statements into stripped down file
     includes.each{ |include| _contents << "#include \"#{include}\"" }

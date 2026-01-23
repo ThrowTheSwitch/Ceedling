@@ -21,6 +21,7 @@ class TestContextExtractor
     @source_includes     = {} # List of C files #include'd in a test file
     @source_extras       = {} # C source files outside of header convention added to test build by TEST_SOURCE_FILE()
     @test_runner_details = {} # Test case lists & Unity runner generator instances
+    @partials_config     = {} # Partials configuration by test name
     @mocks               = {} # List of mocks by name without header file extension
     @include_paths       = {} # Additional search paths added to a test build via TEST_INCLUDE_PATH()
     
@@ -78,7 +79,7 @@ class TestContextExtractor
     collect_build_directive_include_paths( filepath, include_paths ) if !include_paths.empty?
     collect_build_directive_source_files( filepath, source_extras ) if !source_extras.empty?
     collect_includes( filepath, includes ) if !includes.empty?
-    # collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
+    collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
 
     # Different code processing pattern for test runner
     if args.include?( :test_runner_details )
@@ -186,6 +187,14 @@ class TestContextExtractor
     return val
   end
 
+  def lookup_partials_config(filepath)
+    val = nil
+    @lock.synchronize do
+      val = @partials_config[form_file_key( filepath )] || []
+    end
+    return val
+  end
+
   def lookup_all_include_paths
     val = nil
     @lock.synchronize do
@@ -264,8 +273,15 @@ class TestContextExtractor
   end
 
   def collect_includes(filepath, includes)
-    ingest_includes( filepath, includes.uniq )
+    includes.uniq!
+    ingest_includes( filepath, includes )
     debug_log_list( "#includes found", filepath, includes )
+  end
+
+  def collect_partials_configuration(filepath, partials_config)
+    partials_config.uniq!
+    ingest_partials_configuration(filepath, partials_config)
+    debug_log_list( "Partials conifgurations found", filepath, partials_config )
   end
 
   def _collect_test_runner_details(filepath, test_content, input_content=nil)
@@ -389,6 +405,16 @@ class TestContextExtractor
       }
     end
   end
+
+  def ingest_partials_configuration(filepath, partials_config)
+    return if partials_config.empty?
+    
+    key = form_file_key( filepath )
+
+    @lock.synchronize do
+      @partials_config[key] = partials_config
+    end
+  end 
 
   ##
   ## Utility methods
