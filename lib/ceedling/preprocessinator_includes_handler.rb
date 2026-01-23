@@ -321,6 +321,7 @@ class PreprocessinatorIncludesHandler
     includes = []
 
     # Extract entries from #include listing
+    # TODO: Handle the header file extension more smartly
     matches = list.scan(/(\.*\s+([^\s]+\.h))/)
     if shallow
       # First level of includes in preprocessor output
@@ -330,7 +331,8 @@ class PreprocessinatorIncludesHandler
       includes = matches.map {|v| v[1] }.compact
     end
 
-    includes.flatten! # Regex results can be nested arrays becuase of paren captures
+    # Regex results can be nested arrays becuase of paren captures
+    includes.flatten!
 
     return includes.uniq
   end

@@ -21,6 +21,7 @@ class TestInvokerHelper
               :file_finder,
               :file_path_utils,
               :file_wrapper,
+              :partializer,
               :generator,
               :test_runner_manager
 
@@ -188,6 +189,35 @@ class TestInvokerHelper
     return preprocessing_flags
   end
 
+  def assemble_partials_config(filepath:)
+    _configs = @test_context_extractor.lookup_partials_config(filepath)
+
+    configs = []
+    return [] if _configs.empty?
+
+    _configs.each do |config|
+      _module = config.values.first
+      type = config.keys.first
+
+      source = nil
+      # Only non-mock partials involve processing source files
+      if @partializer.test_partial?( type )
+        source = @file_finder.find_source_file( _module, :ignore )
+      end
+
+      configs << {
+        :module => _module,
+        :type => type,
+        # All partial types involve processing header files
+        :header => @file_finder.find_header_file( _module, :ignore ),
+        :source => source
+      }
+    end
+
+    return configs
+  end
+
+
   def collect_test_framework_sources(mocks)
     sources = []
 
@@ -260,6 +290,7 @@ class TestInvokerHelper
   end
 
   def form_partials_filenames(partials)
+    puts(partials)
     return partials.map { |partial| @file_path_utils.form_partial_implementation_source_filename(partial) }
   end
 

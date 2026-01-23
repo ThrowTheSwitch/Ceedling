@@ -303,6 +303,8 @@ preprocessinator_extractor:
   compose:
     - parsing_parcels
 
+partializer:
+
 batchinator:
   compose:
     - configurator
@@ -341,6 +343,7 @@ test_invoker_helper:
     - file_finder
     - file_path_utils
     - file_wrapper
+    - partializer
     - generator
     - test_runner_manager
 

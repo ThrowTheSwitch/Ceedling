@@ -184,6 +184,11 @@ class FileFinder
   end
 
 
+  def find_header_file(filepath, complain = :error)
+    header_file = File.basename(filepath).ext(@configurator.extension_header)
+    return @file_finder_helper.find_file_in_collection(header_file, @configurator.collection_all_headers, complain, filepath)
+  end
+
   def find_source_file(filepath, complain = :error)
     source_file = File.basename(filepath).ext(@configurator.extension_source)
     return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_source, complain, filepath)

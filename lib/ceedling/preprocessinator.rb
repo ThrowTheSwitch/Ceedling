@@ -84,6 +84,46 @@ class Preprocessinator
     return includes
   end
 
+  def preprocess_partial_header_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
+
+    arg_hash = {
+      filepath:       filepath,
+      test:           test,
+      flags:          flags,
+      include_paths:  include_paths,
+      vendor_paths:   vendor_paths,
+      defines:        defines,
+      deep:           false
+    }
+
+    # Extract includes & log progress and details   
+    includes = preprocess_file_common( **arg_hash )
+
+    arg_hash = {
+      source_filepath:       filepath,
+      test:                  test,
+      flags:                 flags,
+      include_paths:         include_paths,
+      defines:               defines,
+      extras:                false
+    }
+
+    contents, extras = @file_handler.collect_header_file_contents( **arg_hash )
+
+    arg_hash = {
+      filename:              File.basename( filepath ),
+      preprocessed_filepath: preprocessed_filepath,
+      contents:              contents,
+      extras:                extras,
+      includes:              includes                       
+    }
+
+    # Create a reconstituted header file from preprocessing expansion and preserving any extras
+    @file_handler.assemble_preprocessed_header_file( **arg_hash )
+
+    return preprocessed_filepath
+  end
 
   def preprocess_mockable_header_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
@@ -148,6 +188,48 @@ class Preprocessinator
     return preprocessed_filepath
   end
 
+  def preprocess_partial_source_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
+
+    arg_hash = {
+      filepath:      filepath,
+      test:          test,
+      flags:         flags,
+      include_paths: include_paths,
+      vendor_paths:  vendor_paths,
+      defines:       defines,
+      deep:          false
+    }
+
+    # Extract includes & log progress and info
+    includes = preprocess_file_common( **arg_hash )
+
+    # Convert any full paths to basenames in place
+    includes.map! { |include| File.basename(include) }
+
+    arg_hash = {
+      source_filepath:       filepath,
+      test:                  test,
+      flags:                 flags,
+      include_paths:         include_paths,
+      defines:               defines      
+    }
+
+    contents, _ = @file_handler.collect_test_file_contents( **arg_hash )
+
+    arg_hash = {
+      filename:              File.basename( filepath ),
+      preprocessed_filepath: preprocessed_filepath,
+      contents:              contents,
+      extras:                [],
+      includes:              includes                       
+    }
+
+    # Create a reconstituted test file from preprocessing expansion and preserving any extras
+    @file_handler.assemble_preprocessed_source_file( **arg_hash )
+
+    return preprocessed_filepath
+  end
 
   def preprocess_test_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
@@ -180,6 +262,9 @@ class Preprocessinator
     # Extract includes & log progress and info
     includes = preprocess_file_common( **arg_hash )
 
+    # Convert any full paths to basenames in place
+    includes.map! { |include| File.basename(include) }
+
     arg_hash = {
       source_filepath:       filepath,
       test:                  test,
@@ -201,9 +286,9 @@ class Preprocessinator
     }
 
     # Create a reconstituted test file from preprocessing expansion and preserving any extras
-    @file_handler.assemble_preprocessed_test_file( **arg_hash )
+    @file_handler.assemble_preprocessed_source_file( **arg_hash )
 
-    # Trigger pre_mock_preprocessing plugin hook
+    # Trigger post_test_preprocess plugin hook
     @plugin_manager.post_test_preprocess( plugin_arg_hash )
 
     return preprocessed_filepath
