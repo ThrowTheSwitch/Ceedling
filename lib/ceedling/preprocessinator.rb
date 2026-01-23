@@ -100,6 +100,9 @@ class Preprocessinator
     # Extract includes & log progress and details   
     includes = preprocess_file_common( **arg_hash )
 
+    # Convert any full paths to basenames in place
+    includes.map! { |include| File.basename(include) }
+
     arg_hash = {
       source_filepath:       filepath,
       test:                  test,
@@ -122,7 +125,7 @@ class Preprocessinator
     # Create a reconstituted header file from preprocessing expansion and preserving any extras
     @file_handler.assemble_preprocessed_header_file( **arg_hash )
 
-    return preprocessed_filepath
+    return preprocessed_filepath, includes
   end
 
   def preprocess_mockable_header_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
@@ -228,7 +231,7 @@ class Preprocessinator
     # Create a reconstituted test file from preprocessing expansion and preserving any extras
     @file_handler.assemble_preprocessed_source_file( **arg_hash )
 
-    return preprocessed_filepath
+    return preprocessed_filepath, includes
   end
 
   def preprocess_test_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)

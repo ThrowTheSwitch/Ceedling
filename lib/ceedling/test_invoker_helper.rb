@@ -209,8 +209,17 @@ class TestInvokerHelper
         :module => _module,
         :type => type,
         # All partial types involve processing header files
-        :header => @file_finder.find_header_file( _module, :ignore ),
-        :source => source
+        :header => {
+          :filepath => @file_finder.find_header_file( _module, :ignore ),
+          :preprocessed_filepath => nil,
+          :includes => []
+        },
+        # Non-mock partials involve processing source files
+        :source => {
+          :filepath => source,
+          :preprocessed_filepath => nil,
+          :includes => []
+        }
       }
     end
 
