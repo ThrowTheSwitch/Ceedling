@@ -304,9 +304,9 @@ class TestInvoker
           testable = partial[:testable]
 
           impl, interface = @partializer.extract_functions(
-            *config[:type],
             header_filepath: config[:header][:preprocessed_filepath],
-            source_filepath: config[:source][:preprocessed_filepath]
+            source_filepath: config[:source][:preprocessed_filepath],
+            types: config[:type],
           )
 
           # arg_hash = {
