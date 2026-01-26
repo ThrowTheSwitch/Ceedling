@@ -18,6 +18,7 @@ class Generator
               :generator_mocks,
               :generator_test_results,
               :generator_test_results_backtrace,
+              :generator_partials,
               :test_context_extractor,
               :tool_executor,
               :file_finder,
@@ -35,60 +36,40 @@ class Generator
     @backtrace = @generator_test_results_backtrace
   end
 
-  def generate_partial_interface(context:, test:, signatures:, output_path:)
+  def generate_partial_interface(test:, name:, declarations:, includes:, input_filepath:, output_path:)
+    msg = @reportinator.generate_module_progress(
+      operation: "Generating partial interface for",
+      module_name: test,
+      filename: name # Partial module name, not filename
+    )
+    @loginator.log( msg )
+
     arg_hash = {
-      :header_file => input_filepath,
-      :test => test,
-      :context => context,
-      :output_path => output_path }
-    
-    @plugin_manager.pre_mock_generate( arg_hash )
+      :declarations => declarations,
+      :name => name,
+      :includes => includes,
+      :output_path => output_path
+    }
 
-    begin  
-      # Generate mock
-      msg = @reportinator.generate_module_progress(
-        operation: "Generating mock for",
-        module_name: test,
-        filename: File.basename(input_filepath)
-      )
-      @loginator.log( msg )
-
-      cmock = @generator_mocks.manufacture( config )
-      cmock.setup_mocks( arg_hash[:header_file] )
-    rescue StandardError => ex
-      # Re-raise execption but decorate it with CMock to better identify it
-      raise( ex, "CMock >> #{ex.message}", ex.backtrace )
-    ensure
-      @plugin_manager.post_mock_generate( arg_hash )
-    end
+    @generator_partials.generate_interface( **arg_hash )
   end
 
-  def generate_partial_implementation(context:, config:, test:, functions:, output_path:)
+  def generate_partial_implementation(test:, name:, definitions:, includes:, input_filepath:, output_path:)
+    msg = @reportinator.generate_module_progress(
+      operation: "Generating partial implementation for",
+      module_name: test,
+      filename: name # Partial module name, not filename
+    )
+    @loginator.log( msg )
+
     arg_hash = {
-      :header_file => input_filepath,
-      :test => test,
-      :context => context,
-      :output_path => output_path }
-    
-    @plugin_manager.pre_mock_generate( arg_hash )
+      :definitions => definitions,
+      :name => name,
+      :includes => includes,
+      :output_path => output_path
+    }
 
-    begin  
-      # Generate mock
-      msg = @reportinator.generate_module_progress(
-        operation: "Generating mock for",
-        module_name: test,
-        filename: File.basename(input_filepath)
-      )
-      @loginator.log( msg )
-
-      cmock = @generator_mocks.manufacture( config )
-      cmock.setup_mocks( arg_hash[:header_file] )
-    rescue StandardError => ex
-      # Re-raise execption but decorate it with CMock to better identify it
-      raise( ex, "CMock >> #{ex.message}", ex.backtrace )
-    ensure
-      @plugin_manager.post_mock_generate( arg_hash )
-    end
+    @generator_partials.generate_implementation( **arg_hash )
   end
 
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
