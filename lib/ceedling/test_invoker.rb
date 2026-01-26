@@ -202,12 +202,23 @@ class TestInvoker
           mocks = {}
           mocks_list = @configurator.project_use_mocks ? @context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
           mocks_list.each do |name|
-            source = @helper.find_header_input_for_mock( name, details[:paths] )
-            preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
+            source = nil
+            input = nil
+
+            # Handle mock partial vs. (optionally preprocessed) project header
+            if @helper.is_mock_partial?( name )
+              source = @helper.gnerate_header_input_for_mock_partial( name, details[:paths] )
+              input = source
+            else
+              source = @helper.find_header_input_for_mock( name )
+              preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
+              input = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
+            end
+
             mocks[name.to_sym] = {
               :name => name,
               :source => source,
-              :input => (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
+              :input => input
             }
           end
 
@@ -284,17 +295,11 @@ class TestInvoker
       
       # Generate partials for all tests
       @batchinator.build_step("Partials") {
-        # For each test + partial config:
-        #  1. Extract impl + interface
-        #    a. Sort as public and private
-        #    b. Remove decorators (extern, static, inline)
-        #  2. Run generator for impl + interface
-
         # Collect partials for parallel processing
         partials = []
         @testables.each do |_, details|
           next if details[:partials].empty?
-          details[:partials].each do |_module, config|
+          details[:partials].each do |_, config|
             partials << {:config => config, :testable => details}
           end
         end
@@ -309,15 +314,27 @@ class TestInvoker
             types: config[:type],
           )
 
-          # arg_hash = {
-          #   context:        context,
-          #   mock:           mock[:name],
-          #   test:           testable[:name],
-          #   input_filepath: details[:input],
-          #   output_path:    testable[:paths][:partials]
-          # }
+          arg_hash = {
+            test:           testable[:name],
+            name:           config[:module],
+            definitions:    impl,
+            includes:       config[:source][:includes],
+            input_filepath: config[:source][:filepath],
+            output_path:    testable[:paths][:partials]
+          }
 
-          @generator.generate_partial(**arg_hash)
+          @generator.generate_partial_implementation(**arg_hash) if !impl.empty?
+
+          arg_hash = {
+            test:           testable[:name],
+            name:           config[:module],
+            declarations:   interface,
+            includes:       config[:header][:includes],
+            input_filepath: config[:header][:filepath],
+            output_path:    testable[:paths][:partials]
+          }
+
+          @generator.generate_partial_interface(**arg_hash) if !interface.empty?
         end
       } if @configurator.project_use_partials
       

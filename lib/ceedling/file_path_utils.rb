@@ -177,8 +177,12 @@ class FilePathUtils
     return list.map{ |file| File.join(path, File.basename(file).ext(@configurator.extension_source)) }
   end
 
-  def form_partial_header_filename(path, _module)
-    return File.join(path, File.basename(_module).ext(EXTENSION_CORE_HEADER))
+  def form_partial_interface_header_filepath(path, filename)
+    return File.join(path, filename.ext(EXTENSION_CORE_HEADER))
+  end
+
+  def form_partial_interface_header_filename(_module)
+    return PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
   end
 
   def form_partial_implementation_header_filename(_module)

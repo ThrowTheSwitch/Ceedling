@@ -203,6 +203,7 @@ class TestInvokerHelper
       if not configs.has_key?( _module )
         configs[_module] = {
           :module => _module,
+          :partial_name => nil,
           :type => [],
           :header => {
             :filepath => nil,
@@ -223,16 +224,24 @@ class TestInvokerHelper
       _module = config.values.first
       type = config.keys.first
 
+      _suffix = ''
+
       case type
       when :test_public
         configs[_module][:type] << type
+        _suffix = '_impl'
       when :test_private
         configs[_module][:type] += [type, :test_public]
+        _suffix = '_impl'
       when :mock_public
         configs[_module][:type] << type
+        _suffix = '_interface'
       when :mock_private
         configs[_module][:type] << type
+        _suffix = '_interface'
       end
+
+      config[_module][:partial_name] = PARTIAL_FILENAME_PREFIX + _module + _suffix
     end
 
     # Housekeeping and validation
@@ -316,16 +325,21 @@ class TestInvokerHelper
     return @test_context_extractor.lookup_include_paths_list(test_filepath)
   end
 
-  def find_header_input_for_mock(mock, paths)
-    _mock = mock.to_str()
-    if _mock.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
-      return @file_path_utils.form_partial_header_filename(
-        paths[:partials],
-        _mock.delete_prefix( @configurator.cmock_mock_prefix )
-      )
-    end
-
+  def find_header_input_for_mock(mock)
     return @file_finder.find_header_input_for_mock( mock )
+  end
+
+  def is_mock_partial?(mock)
+    _mock = mock.to_str()
+    return _mock.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
+  end
+
+  def gnerate_header_input_for_mock_partial(mock, paths)
+    _mock = mock.to_str()
+    return @file_path_utils.form_partial_interface_header_filepath(
+      paths[:partials],
+      _mock.delete_prefix( @configurator.cmock_mock_prefix )
+    )
   end
 
   # Transform list of mock names into filenames with source extension
