@@ -19,8 +19,11 @@ class GeneratorPartials
     header_filepath = File.join(output_path, header)
     source_filepath = File.join(output_path, source)
 
+    # Ensure no include of the original module header
+    includes.delete_if { |include| include.ext() == name }
+
     @file_wrapper.open(header_filepath, 'w') do |file|
-      generate_header(file, header, includes, definitions)
+      generate_header(file, header, [], definitions)
     end
 
     @file_wrapper.open(source_filepath, 'w') do |file|
@@ -31,6 +34,9 @@ class GeneratorPartials
   def generate_interface(declarations:, name:, includes:, output_path:)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = File.join(output_path, header)
+
+    # Ensure no include of the original module header
+    includes.delete_if { |include| include.ext() == name }
 
     @file_wrapper.open(filepath, 'w') do |file|
       generate_header(file, header, includes, declarations)
