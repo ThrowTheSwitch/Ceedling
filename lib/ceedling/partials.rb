@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+module Partials
   # Data class representing a C function signature
   FunctionDeclaration = Struct.new(
     :signature,       # FunctionDefinition signature (e.g., "int foo(void)")
@@ -32,9 +33,7 @@
     end
   end
 
-  constructor :file_wrapper, :file_path_utils
-
-  def manufacture_function_declaration_struct(line_num: nil, source_filepath: nil, signature:)
+  def self.manufacture_function_declaration_struct(line_num: nil, source_filepath: nil, signature:)
     return FunctionDeclaration.new(
       signature: signature,
       source_filepath: source_filepath,
@@ -42,7 +41,7 @@
     )
   end
 
-  def manufacture_function_definition_struct(line_num: nil, source_filepath: nil, signature:, code_block:)
+  def self.manufacture_function_definition_struct(line_num: nil, source_filepath: nil, signature:, code_block:)
     return FunctionDefinition.new(
       signature: signature,
       code_block: code_block,
@@ -50,3 +49,4 @@
       line_num: line_num
     )
   end
+end
