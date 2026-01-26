@@ -30,6 +30,7 @@ class CExtractinator
   end
   
   # Factory method for file-based extraction
+  # TODO: Handle file exceptions
   def self.from_file(filepath)
     return new(
       io: File.open(filepath, 'r'),
