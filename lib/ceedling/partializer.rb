@@ -6,19 +6,35 @@
 # =========================================================================
 
 require 'ceedling/c_extractinator'
+require 'ceedling/partials'
 
 class Partializer
 
-  def test_partial?(type)
-    return !(type.to_s.include?('mock'))
+  PRIVATE_KEYWORDS = ['static', 'inline', '__inline', '__inline__']
+
+  constructor :partializer_helper
+
+  def setup()
+    # Alias
+    @helper = @partializer_helper
   end
 
-  def extract_functions(header_filepath:, source_filepath:, **types)
-    extractinator = CExtractinator.from_file(header_filepath)
-    header_funcs = extractinator.extract_functions()
+  # Returns FunctionDefinition[], FunctionDeclaration[] for consumption by `GeneratorPartials`
+  # TODO: Refactor for unit testing
+  # TODO: Handle source paths and line numbers for coverage reporting
+  def extract_functions(header_filepath:, source_filepath:, types:)
+    header_funcs = []
+    source_funcs = []
 
-    extractinator = CExtractinator.from_file(source_filepath)
-    source_funcs = extractinator.extract_functions()
+    if header_filepath
+      # ExtractedFunction[]
+      header_funcs = CExtractinator.from_file(header_filepath).extract_functions()
+    end
+
+    if source_filepath
+      # ExtractedFunction[]
+      source_funcs = CExtractinator.from_file(source_filepath).extract_functions()
+    end
     
     impl = []
     interface = []
@@ -26,20 +42,86 @@ class Partializer
     types.each do |type|
       case type
       when :test_public
-        impl += filter_public_funcs(header_funcs)
-        impl += filter_public_funcs(source_funcs)
+        impl += filter_public_funcs_impl(header_funcs)
+        impl += filter_public_funcs_impl(source_funcs)
       when :test_private
-        impl += filter_private_funcs(header_funcs)
-        impl += filter_private_funcs(source_funcs)
+        impl += filter_private_funcs_impl(header_funcs)
+        impl += filter_private_funcs_impl(source_funcs)
       when :mock_public
-        interface += filter_public_funcs(source_funcs)
+        interface += filter_public_funcs_interface(header_funcs)
+        interface += filter_public_funcs_interface(source_funcs)
       when :mock_private
-        interface += filter_private_funcs(source_funcs)
+        interface += filter_private_funcs_interface(header_funcs)
+        interface += filter_private_funcs_interface(source_funcs)
       end
     end
 
     return impl, interface
   end
 
+  # TODO: Refactor for common code
+  def filter_public_funcs_impl(funcs)
+    _funcs = []
+
+    funcs.each do |func|
+      decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
+      if @helper.is_function_public?(decorators)
+        _funcs << Partials.manufacture_function_definition_struct(
+          signature: signature,
+          # TODO: Handle preserving whitespace between signature and body
+          code_block: signature + "\n" + func.body
+        )
+      end
+    end
+
+    return _funcs
+  end
+
+  def filter_private_funcs_impl(funcs)
+    _funcs = []
+
+    funcs.each do |func|
+      decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
+      if @helper.is_function_private?(decorators)
+        _funcs << Partials.manufacture_function_definition_struct(
+          signature: signature,
+          # TODO: Handle preserving whitespace between signature and body
+          code_block: signature + "\n" + func.body
+        )
+      end
+    end
+    
+    return _funcs    
+  end
+
+  def filter_public_funcs_interface(funcs)
+    _funcs = []
+
+    funcs.each do |func|
+      decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
+      if @helper.is_function_public?(decorators)
+        _funcs << Partials.manufacture_function_declaration_struct(
+          signature: signature,
+        )
+      end
+    end
+
+    return _funcs
+  end
+
+  def filter_private_funcs_interface(funcs)
+    _funcs = []
+
+    funcs.each do |func|
+      decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
+      if @helper.is_function_private?(decorators)
+        _funcs << Partials.manufacture_function_declaration_struct(
+          signature: signature,
+        )
+      end
+    end
+
+    return _funcs
+  end
 
 end
