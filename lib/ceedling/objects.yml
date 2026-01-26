@@ -208,6 +208,7 @@ generator:
     - configurator
     - generator_helper
     - preprocessinator
+    - generator_partials
     - generator_mocks
     - generator_test_results
     - test_context_extractor
@@ -303,7 +304,13 @@ preprocessinator_extractor:
   compose:
     - parsing_parcels
 
+partializer_helper:
+
 partializer:
+  compose:
+    - partializer_helper
+
+partializer_helper:
 
 batchinator:
   compose:
