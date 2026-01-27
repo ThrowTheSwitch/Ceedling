@@ -7,6 +7,7 @@
 
 require 'ceedling/c_extractinator'
 require 'ceedling/partials'
+require 'ceedling/constants'
 
 class Partializer
 
@@ -17,6 +18,23 @@ class Partializer
   def setup()
     # Alias
     @helper = @partializer_helper
+  end
+
+  def remap_includes(includes:, remapping:)
+    _includes = []
+
+    includes.each do |include|
+      _include = include.ext('')
+      # Look up the include as a module name in the mapping
+      if remapping[_include]
+        # Replace the include with the generated partial header
+        _includes << remapping[_include] + EXTENSION_CORE_HEADER
+      else
+        _includes << include
+      end
+    end
+
+    return _includes
   end
 
   # Returns FunctionDefinition[], FunctionDeclaration[] for consumption by `GeneratorPartials`
