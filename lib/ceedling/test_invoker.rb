@@ -225,7 +225,7 @@ class TestInvoker
           # Partials
           partials = {}
           if @configurator.project_use_partials
-            partials = @helper.assemble_partials_config( filepath: details[:filepath] )
+            partials_configs = @helper.assemble_partials_config( filepath: details[:filepath] )
           end
 
           # Assemble results within safety of mutex
@@ -236,7 +236,10 @@ class TestInvoker
             }
             details[:mocks] = mocks
             details[:mock_list] = mocks_list
-            details[:partials] = partials
+            details[:partials] = {
+              :configs => partials_configs,
+              :compilations => []
+            }
 
             # Trigger pre_test plugin hook after having assembled all testing context
             @plugin_manager.pre_test( details[:filepath] )
@@ -250,7 +253,8 @@ class TestInvoker
       partials_sources = []
       if @configurator.project_use_partials
         @testables.each do |_, details|
-          details[:partials].each do |_module, config|
+          puts(details[:partials])
+          details[:partials][:configs].each do |_, config|
             partials_headers << {:config => config[:header], :testable => details} if config[:header][:filepath]
             partials_sources << {:config => config[:source], :testable => details} if config[:source][:filepath]
           end
@@ -302,12 +306,12 @@ class TestInvoker
           next if details[:partials].empty?
 
           # Assemble includes remapping
-          details[:partials].each do |_, config|
+          details[:partials][:configs].each do |_, config|
             includes_remapping[config[:module]] = config[:partial_name]
           end
 
           # Create "flattened" partials configuration list for parallel processing
-          details[:partials].each do |_, config|
+          details[:partials][:configs].each do |_, config|
             partials << {:config => config, :testable => details, :includes_remapping => includes_remapping}
           end
         end
@@ -332,7 +336,7 @@ class TestInvoker
             output_path:    testable[:paths][:partials]
           }
 
-          @generator.generate_partial_implementation(**arg_hash) if !impl.empty?
+          testable[:partials][:compilations] << @generator.generate_partial_implementation(**arg_hash) if !impl.empty?
 
           arg_hash = {
             test:           testable[:name],
@@ -468,7 +472,8 @@ class TestInvoker
           # Source files referenced by conventions or specified by build directives in a test file
           test_sources       =  @helper.extract_sources( details[:filepath] )
           test_core          =  test_sources + 
-                                @helper.form_mock_filenames( details[:mock_list] )
+                                @helper.form_mock_filenames( details[:mock_list] ) +
+                                details[:partials][:compilations]
 
           # When we have a mock and an include for the same file, the mock wins
           @helper.remove_mock_original_headers( test_core, details[:mock_list] )
