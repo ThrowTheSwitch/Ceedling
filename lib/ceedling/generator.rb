@@ -51,7 +51,7 @@ class Generator
       :output_path => output_path
     }
 
-    @generator_partials.generate_interface( **arg_hash )
+    return @generator_partials.generate_interface( **arg_hash )
   end
 
   def generate_partial_implementation(test:, name:, definitions:, includes:, input_filepath:, output_path:)
@@ -69,7 +69,7 @@ class Generator
       :output_path => output_path
     }
 
-    @generator_partials.generate_implementation( **arg_hash )
+    return @generator_partials.generate_implementation( **arg_hash )
   end
 
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:)

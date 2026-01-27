@@ -297,16 +297,25 @@ class TestInvoker
       @batchinator.build_step("Partials") {
         # Collect partials for parallel processing
         partials = []
+        includes_remapping = {}
         @testables.each do |_, details|
           next if details[:partials].empty?
+
+          # Assemble includes remapping
           details[:partials].each do |_, config|
-            partials << {:config => config, :testable => details}
+            includes_remapping[config[:module]] = config[:partial_name]
+          end
+
+          # Create "flattened" partials configuration list for parallel processing
+          details[:partials].each do |_, config|
+            partials << {:config => config, :testable => details, :includes_remapping => includes_remapping}
           end
         end
 
         @batchinator.exec(workload: :compile, things: partials) do |partial| 
           config = partial[:config]
           testable = partial[:testable]
+          remapping = partial[:includes_remapping]
 
           impl, interface = @partializer.extract_functions(
             header_filepath: config[:header][:preprocessed_filepath],
@@ -318,7 +327,7 @@ class TestInvoker
             test:           testable[:name],
             name:           config[:module],
             definitions:    impl,
-            includes:       config[:source][:includes],
+            includes:       @partializer.remap_includes(includes: config[:source][:includes], remapping: remapping),
             input_filepath: config[:source][:filepath],
             output_path:    testable[:paths][:partials]
           }
@@ -329,7 +338,7 @@ class TestInvoker
             test:           testable[:name],
             name:           config[:module],
             declarations:   interface,
-            includes:       config[:header][:includes],
+            includes:       @partializer.remap_includes(includes: config[:header][:includes], remapping: remapping),
             input_filepath: config[:header][:filepath],
             output_path:    testable[:paths][:partials]
           }
@@ -459,7 +468,7 @@ class TestInvoker
           # Source files referenced by conventions or specified by build directives in a test file
           test_sources       =  @helper.extract_sources( details[:filepath] )
           test_core          =  test_sources + 
-                                @helper.form_mock_filenames( details[:mock_list] ) 
+                                @helper.form_mock_filenames( details[:mock_list] )
 
           # When we have a mock and an include for the same file, the mock wins
           @helper.remove_mock_original_headers( test_core, details[:mock_list] )

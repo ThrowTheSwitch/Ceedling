@@ -27,20 +27,26 @@ class GeneratorPartials
     end
 
     @file_wrapper.open(source_filepath, 'w') do |file|
-      generate_source(file, ([header] + includes), definitions)
+      generate_source(file, includes, definitions)
     end
+
+    return source_filepath
   end
 
   def generate_interface(declarations:, name:, includes:, output_path:)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = File.join(output_path, header)
 
-    # Ensure no include of the original module header
-    includes.delete_if { |include| include.ext() == name }
+    puts(includes)
+
+    # Ensure no include of the header we're generating
+    includes.delete_if { |include| include == header }
 
     @file_wrapper.open(filepath, 'w') do |file|
       generate_header(file, header, includes, declarations)
     end
+
+    return filepath
   end
 
   # Publicly exposed for testing

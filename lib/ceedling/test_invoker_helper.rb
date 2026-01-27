@@ -241,7 +241,7 @@ class TestInvokerHelper
         _suffix = '_interface'
       end
 
-      config[_module][:partial_name] = PARTIAL_FILENAME_PREFIX + _module + _suffix
+      configs[_module][:partial_name] = PARTIAL_FILENAME_PREFIX + _module + _suffix
     end
 
     # Housekeeping and validation
