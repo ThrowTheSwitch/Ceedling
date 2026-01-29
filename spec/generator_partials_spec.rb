@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/generator_partials'
+require 'ceedling/partials'
 require 'stringio'
 
 describe GeneratorPartials do
@@ -59,18 +60,20 @@ describe GeneratorPartials do
       
       # Define test data
       defns = [
-        @generator.manufacture_function_definition_struct(
+        Partials.manufacture_function_definition_struct(
           signature: 'void initialize(void)',
           code_block: "void initialize(void) {\n  // implementation\n}"
         )
       ]
-      includes = ['types.h', 'config.h']
+      source_includes = ['types.h', 'config.h']
+      header_includes = ['stdint.h', 'stdbool.h']
       
       # Execute
-      @generator.generate_implementation(
+      result = @generator.generate_implementation(
         definitions: defns,
         name: name,
-        includes: includes,
+        source_includes: source_includes,
+        header_includes: header_includes,
         output_path: output_path
       )
       
@@ -78,15 +81,14 @@ describe GeneratorPartials do
       expect(@generator).to have_received(:generate_header).with(
         header_file_handle,
         header_filename,
-        includes,
+        header_includes,
         defns
       )
       
       # Verify generate_source was called with correct parameters
-      # Note: generate_source receives header_filename prepended to includes
       expect(@generator).to have_received(:generate_source).with(
         source_file_handle,
-        [header_filename] + includes,
+        source_includes,
         defns
       )
       
@@ -97,6 +99,9 @@ describe GeneratorPartials do
       # Verify file operations
       expect(@file_wrapper).to have_received(:open).with(expected_header_filepath, 'w')
       expect(@file_wrapper).to have_received(:open).with(expected_source_filepath, 'w')
+      
+      # Verify return value is the source filepath
+      expect(result).to eq(expected_source_filepath)
     end
   end
 
@@ -124,14 +129,14 @@ describe GeneratorPartials do
       
       # Define test data
       decls = [
-        @generator.manufacture_function_declaration_struct(
+        Partials.manufacture_function_declaration_struct(
           signature: 'void initialize(void)'
         )
       ]
       includes = ['types.h', 'config.h']
       
       # Execute
-      @generator.generate_interface(
+      result = @generator.generate_interface(
         declarations: decls,
         name: name,
         includes: includes,
@@ -145,6 +150,15 @@ describe GeneratorPartials do
         includes,
         decls
       )
+      
+      # Verify file path utilities were called
+      expect(@file_path_utils).to have_received(:form_partial_interface_header_filename).with(name)
+      
+      # Verify file operations
+      expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'w')
+      
+      # Verify return value is the header filepath
+      expect(result).to eq(expected_filepath)
     end
   end
 
@@ -157,7 +171,6 @@ describe GeneratorPartials do
       // Ceeding generated file
       #ifndef __FOO_BAR_H__
       #define __FOO_BAR_H__
-
 
       #endif // __FOO_BAR_H__
     
@@ -203,11 +216,11 @@ describe GeneratorPartials do
 
       decls = []
 
-      decls << @generator.manufacture_function_declaration_struct(
+      decls << Partials.manufacture_function_declaration_struct(
         signature: 'void foobarbaz(int x, int y)'
       )
 
-      decls << @generator.manufacture_function_declaration_struct(
+      decls << Partials.manufacture_function_declaration_struct(
         signature: 'int razzleDazzle(void* ptr)'
       )
 
@@ -243,7 +256,6 @@ describe GeneratorPartials do
       file_contents = <<~CONTENTS
       // Ceeding generated file
 
-
       void foobar(int x, int y) {
         int z = x+y;
       }
@@ -252,7 +264,7 @@ describe GeneratorPartials do
 
       defns = []
 
-      defns << @generator.manufacture_function_definition_struct(
+      defns << Partials.manufacture_function_definition_struct(
         signature: 'void foobar(int x, int y)',
         code_block: "void foobar(int x, int y) {\n  int z = x+y;\n}"
       )
@@ -264,7 +276,6 @@ describe GeneratorPartials do
     it "should generate a source file with functions and #line directives" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
-
 
       #line 9 "../foo/bar/fubar.c"
       void foobarbaz(int x, int y) {
@@ -283,14 +294,14 @@ describe GeneratorPartials do
 
       defns = []
 
-      defns << @generator.manufacture_function_definition_struct(
+      defns << Partials.manufacture_function_definition_struct(
         line_num: 9,
         source_filepath: '../foo/bar/fubar.c',
         signature: 'void foobarbaz(int x, int y)',
         code_block: "void foobarbaz(int x, int y) {\n  int z = x+y;\n}"
       )
 
-      defns << @generator.manufacture_function_definition_struct(
+      defns << Partials.manufacture_function_definition_struct(
         line_num: 123,
         source_filepath: 'src/code/ABC.c',
         signature: 'int razzleDazzle(void* ptr)',
