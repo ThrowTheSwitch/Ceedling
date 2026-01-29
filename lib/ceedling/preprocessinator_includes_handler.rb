@@ -50,10 +50,12 @@ class PreprocessinatorIncludesHandler
   ##
 
   def extract_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:, deep: false)
+    filename = File.basename(filepath)
+
     msg = @reportinator.generate_module_progress(
       operation: "Extracting shallow #include statements via preprocessor from",
       module_name: test,
-      filename: File.basename(filepath)
+      filename: filename
       )
     @loginator.log(msg, Verbosity::OBNOXIOUS)
 
@@ -70,7 +72,7 @@ class PreprocessinatorIncludesHandler
     msg = @reportinator.generate_module_progress(
       operation: "Extracting shallow #include statements via regex from",
       module_name: test,
-      filename: File.basename( filepath )
+      filename: filename
       )
     @loginator.log(msg, Verbosity::OBNOXIOUS)
 
@@ -126,10 +128,21 @@ class PreprocessinatorIncludesHandler
     @loginator.log_list(nested, 'Nested #includes', Verbosity::DEBUG)
     @loginator.log_list(mocks, 'Mock #includes', Verbosity::DEBUG)
 
-    # Return
-    #  - Includes common to shallow and nested results, with paths from nested
+    # Synthesis
+    #  - Final result contains includes common to shallow and nested results, with paths from nested
     #  - Add mocks back in (may be empty if mocking not enabled)
-    return common_includes(shallow:shallow, nested:nested, explicit:fallback, deep:deep) + mocks
+    common = common_includes(shallow:shallow, nested:nested, explicit:fallback, deep:deep) + mocks
+
+    # Remove any filepath in the common list that is identical to the filepath being processed
+    # We want to prevent an includes list containing an unnecessary self-reference
+    # Normalize paths for comparison to handle variations (relative vs absolute, different separators, etc.)
+    normalized_filepath = File.expand_path(filepath)
+    common.reject! do |include|
+      normalized_include = File.expand_path(include)
+      normalized_include == normalized_filepath
+    end
+      
+    return common
   end
 
   # Write to disk a yaml representation of a list of includes
