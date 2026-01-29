@@ -318,18 +318,25 @@ class TestInvoker
             types: config[:type],
           )
 
+          puts("#{testable[:name]} source includes:")
+          puts(config[:source][:includes])
+
+          puts("#{testable[:name]} header includes:")
+          puts(config[:header][:includes])
+
           arg_hash = {
             test:             testable[:name],
             name:             config[:module],
             definitions:      impl,
-            source_includes:  @partializer.remap_implementation_includes(
+            header_includes:  @partializer.remap_implementation_header_includes(
                                 name: config[:module],
                                 includes: (config[:source][:includes] + config[:header][:includes]),
                                 partials: testable[:partials]
                               ),
-            header_includes:  @partializer.sanitize_includes( 
+            source_includes:  @partializer.remap_implementation_source_includes(
                                 name: config[:module],
-                                includes: config[:source][:includes]
+                                includes: (config[:source][:includes] + config[:header][:includes]),
+                                partials: testable[:partials]
                               ),
             input_filepath:   config[:source][:filepath],
             output_path:      testable[:paths][:partials]

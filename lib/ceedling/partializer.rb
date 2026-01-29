@@ -25,25 +25,47 @@ class Partializer
     _includes = includes.reject {|include| include.ext() == name}
     return _includes.uniq()
   end
-    
-  def remap_implementation_includes(name:, includes:, partials:)
-    _includes = []
+
+  def remap_implementation_header_includes(name:, includes:, partials:)
+    _includes = includes.clone()
+
+    partials.each do |_, details|
+      details.each do |_module, config|
+        if includes.any? { |include| include.ext() == _module }
+          if config[:type].intersect?([:mock_public, :mock_private])
+            # Remove the original module header if it will be mockable interface
+            _includes.delete_if { |include| include.ext() == _module }
+          end
+        end
+      end
+    end
+
+    # Ensure original module header is not in the list and remove any duplicates
+    return sanitize_includes(name: name, includes: _includes)
+  end
+
+  def remap_implementation_source_includes(name:, includes:, partials:)
+    _includes = includes.clone()
 
     # Add implementation header
     _includes << @file_path_utils.form_partial_implementation_header_filename(name)
 
     partials.each do |_, details|
       details.each do |_module, config|
-        # Only generate new includes for original includes present
-        next if !includes.any? { |include| include.ext() == _module }
-
-        if config[:type].intersect?([:mock_public, :mock_private])
-          _includes << @file_path_utils.form_partial_interface_header_filename(_module)
+        # Remap mockable interface headers for implementation
+        if includes.any? { |include| include.ext() == _module }
+          if config[:type].intersect?([:mock_public, :mock_private])
+            # Insert mockable interface header from remapping of module name
+            _includes << @file_path_utils.form_partial_interface_header_filename(_module)
+            # Remove the original module header remapped to mockable interface
+            _includes.delete_if { |include| include.ext() == _module }
+          end
         end
       end
     end
 
-    return _includes.uniq()
+    # Ensure original module header is not in the list and remove any duplicates
+    return sanitize_includes(name: name, includes: _includes)
   end
 
   # Returns FunctionDefinition[], FunctionDeclaration[] for consumption by `GeneratorPartials`
