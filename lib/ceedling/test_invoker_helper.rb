@@ -203,7 +203,6 @@ class TestInvokerHelper
       if not configs.has_key?( _module )
         configs[_module] = {
           :module => _module,
-          :partial_name => nil,
           :type => [],
           :header => {
             :filepath => nil,
@@ -224,24 +223,16 @@ class TestInvokerHelper
       _module = config.values.first
       type = config.keys.first
 
-      _suffix = ''
-
       case type
       when :test_public
         configs[_module][:type] << type
-        _suffix = '_impl'
       when :test_private
         configs[_module][:type] += [type, :test_public]
-        _suffix = '_impl'
       when :mock_public
         configs[_module][:type] << type
-        _suffix = '_interface'
       when :mock_private
         configs[_module][:type] << type
-        _suffix = '_interface'
       end
-
-      configs[_module][:partial_name] = PARTIAL_FILENAME_PREFIX + _module + _suffix
     end
 
     # Housekeeping and validation

@@ -309,6 +309,7 @@ partializer_helper:
 partializer:
   compose:
     - partializer_helper
+    - file_path_utils
 
 partializer_helper:
 

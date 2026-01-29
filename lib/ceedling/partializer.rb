@@ -13,28 +13,36 @@ class Partializer
 
   PRIVATE_KEYWORDS = ['static', 'inline', '__inline', '__inline__']
 
-  constructor :partializer_helper
+  constructor :partializer_helper, :file_path_utils
 
   def setup()
     # Alias
     @helper = @partializer_helper
   end
 
-  def remap_includes(includes:, remapping:)
+  # Ensure no original headers for the module being paritalized
+  def sanitize_includes(name:, includes:)    
+    return includes.reject {|include| include.ext() == name}
+  end
+    
+  def remap_implementation_includes(name:, includes:, partials:)
     _includes = []
 
-    includes.each do |include|
-      _include = include.ext('')
-      # Look up the include as a module name in the mapping
-      if remapping[_include]
-        # Replace the include with the generated partial header
-        _includes << remapping[_include] + EXTENSION_CORE_HEADER
-      else
-        _includes << include
+    # Add implementation header
+    _includes << @file_path_utils.form_partial_implementation_header_filename(name)
+
+    partials.each do |_, details|
+      details.each do |_module, config|
+        # Only generate new includes for original includes present
+        next if !includes.any? { |include| include.ext() == _module }
+
+        if config[:type].intersect?([:mock_public, :mock_private])
+          _includes << @file_path_utils.form_partial_interface_header_filename(_module)
+        end
       end
     end
 
-    return _includes
+    return _includes.uniq()
   end
 
   # Returns FunctionDefinition[], FunctionDeclaration[] for consumption by `GeneratorPartials`
