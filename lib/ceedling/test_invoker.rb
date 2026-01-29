@@ -319,16 +319,20 @@ class TestInvoker
           )
 
           arg_hash = {
-            test:           testable[:name],
-            name:           config[:module],
-            definitions:    impl,
-            includes:       @partializer.remap_implementation_includes(
-                              name: config[:module],
-                              includes: config[:source][:includes],
-                              partials: testable[:partials]
-                            ),
-            input_filepath: config[:source][:filepath],
-            output_path:    testable[:paths][:partials]
+            test:             testable[:name],
+            name:             config[:module],
+            definitions:      impl,
+            source_includes:  @partializer.remap_implementation_includes(
+                                name: config[:module],
+                                includes: (config[:source][:includes] + config[:header][:includes]),
+                                partials: testable[:partials]
+                              ),
+            header_includes:  @partializer.sanitize_includes( 
+                                name: config[:module],
+                                includes: config[:source][:includes]
+                              ),
+            input_filepath:   config[:source][:filepath],
+            output_path:      testable[:paths][:partials]
           }
           testable[:partials][:compilations] << @generator.generate_partial_implementation(**arg_hash) if !impl.empty?
 
@@ -336,7 +340,10 @@ class TestInvoker
             test:           testable[:name],
             name:           config[:module],
             declarations:   interface,
-            includes:       @partializer.sanitize_includes( name: config[:module], includes: config[:header][:includes] ),
+            includes:       @partializer.sanitize_includes( 
+                              name: config[:module],
+                              includes: (config[:source][:includes] + config[:header][:includes])
+                            ),
             input_filepath: config[:header][:filepath],
             output_path:    testable[:paths][:partials]
           }
