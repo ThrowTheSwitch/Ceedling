@@ -22,7 +22,8 @@ class Partializer
 
   # Ensure no original headers for the module being paritalized
   def sanitize_includes(name:, includes:)    
-    return includes.reject {|include| include.ext() == name}
+    _includes = includes.reject {|include| include.ext() == name}
+    return _includes.uniq()
   end
     
   def remap_implementation_includes(name:, includes:, partials:)

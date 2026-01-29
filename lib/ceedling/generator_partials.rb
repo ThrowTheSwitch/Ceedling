@@ -12,22 +12,19 @@ class GeneratorPartials
 
   constructor :file_wrapper, :file_path_utils
 
-  def generate_implementation(definitions:, name:, includes:, output_path:)
+  def generate_implementation(definitions:, name:, source_includes:, header_includes:, output_path:)
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
 
     header_filepath = File.join(output_path, header)
     source_filepath = File.join(output_path, source)
 
-    # Ensure no include of the original module header
-    includes.delete_if { |include| include.ext() == name }
-
     @file_wrapper.open(header_filepath, 'w') do |file|
-      generate_header(file, header, [], definitions)
+      generate_header(file, header, header_includes, definitions)
     end
 
     @file_wrapper.open(source_filepath, 'w') do |file|
-      generate_source(file, includes, definitions)
+      generate_source(file, source_includes, definitions)
     end
 
     return source_filepath
@@ -36,11 +33,6 @@ class GeneratorPartials
   def generate_interface(declarations:, name:, includes:, output_path:)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = File.join(output_path, header)
-
-    puts(includes)
-
-    # Ensure no include of the header we're generating
-    includes.delete_if { |include| include == header }
 
     @file_wrapper.open(filepath, 'w') do |file|
       generate_header(file, header, includes, declarations)
