@@ -53,7 +53,7 @@ class GeneratorPartials
       io << "#include \"#{header}\"\n"  
     end
 
-    io << "\n"
+    io << "\n" if !headers.empty?
 
     declarations.each do |decl|
       io << decl.signature
@@ -70,7 +70,7 @@ class GeneratorPartials
       io << "#include \"#{header}\"\n"  
     end
 
-    io << "\n"
+    io << "\n" if !headers.empty?
 
     definitions.each do |defn|
       if defn.line_num and defn.source_filepath
