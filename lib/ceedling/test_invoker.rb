@@ -253,7 +253,6 @@ class TestInvoker
       partials_sources = []
       if @configurator.project_use_partials
         @testables.each do |_, details|
-          puts(details[:partials])
           details[:partials][:configs].each do |_, config|
             partials_headers << {:config => config[:header], :testable => details} if config[:header][:filepath]
             partials_sources << {:config => config[:source], :testable => details} if config[:source][:filepath]
@@ -301,25 +300,17 @@ class TestInvoker
       @batchinator.build_step("Partials") {
         # Collect partials for parallel processing
         partials = []
-        includes_remapping = {}
         @testables.each do |_, details|
           next if details[:partials].empty?
-
-          # Assemble includes remapping
-          details[:partials][:configs].each do |_, config|
-            includes_remapping[config[:module]] = config[:partial_name]
-          end
-
           # Create "flattened" partials configuration list for parallel processing
           details[:partials][:configs].each do |_, config|
-            partials << {:config => config, :testable => details, :includes_remapping => includes_remapping}
+            partials << {:config => config, :testable => details}
           end
         end
 
         @batchinator.exec(workload: :compile, things: partials) do |partial| 
           config = partial[:config]
           testable = partial[:testable]
-          remapping = partial[:includes_remapping]
 
           impl, interface = @partializer.extract_functions(
             header_filepath: config[:header][:preprocessed_filepath],
@@ -331,18 +322,21 @@ class TestInvoker
             test:           testable[:name],
             name:           config[:module],
             definitions:    impl,
-            includes:       @partializer.remap_includes(includes: config[:source][:includes], remapping: remapping),
+            includes:       @partializer.remap_implementation_includes(
+                              name: config[:module],
+                              includes: config[:source][:includes],
+                              partials: testable[:partials]
+                            ),
             input_filepath: config[:source][:filepath],
             output_path:    testable[:paths][:partials]
           }
-
           testable[:partials][:compilations] << @generator.generate_partial_implementation(**arg_hash) if !impl.empty?
 
           arg_hash = {
             test:           testable[:name],
             name:           config[:module],
             declarations:   interface,
-            includes:       @partializer.remap_includes(includes: config[:header][:includes], remapping: remapping),
+            includes:       @partializer.sanitize_includes( name: config[:module], includes: config[:header][:includes] ),
             input_filepath: config[:header][:filepath],
             output_path:    testable[:paths][:partials]
           }
