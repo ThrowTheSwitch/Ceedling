@@ -42,7 +42,8 @@ jobs:
         with:
           submodules: recursive
 
-      # Setup Ruby to run test & build steps on multiple ruby versions
+      # Set up Ruby to run test & build steps on multiple ruby versions
+      # This action install Ruby and the Bundler gem using the version captured in Gemfile.lock
       - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
@@ -50,13 +51,10 @@ jobs:
 
       # Install Gem Dependencies
       - name: Install Gem Dependencies
+        # Ensure local installation to prevent system directory permission problems
         run: |
+          bundle config set --local path 'vendor/bundle'
           bundle install
-
-      # # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
-      # - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
-      #   run: |
-      #     gem install rubocop -v 0.57.2
 
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
@@ -126,40 +124,25 @@ jobs:
       matrix:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
-      # Use a cache for our tools to speed up testing
-      - uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/vendor/bundle
-          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby }}-
-
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # Setup Ruby to run test & build steps on multiple ruby versions
+      # Set up Ruby to run test & build steps on multiple ruby versions
+      # This action install Ruby and the Bundler gem using the version captured in Gemfile.lock
       - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          
-      # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
-      - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
-        shell: bash
-        # Set bundle install path to avoid permission issues
+
+      # Install Gem Dependencies
+      - name: Install Gem Dependencies
+        # Ensure local installation to prevent system directory permission problems
         run: |
-          gem install rubocop -v 0.57.2
-          gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
-          bundle config set --local path '${{ github.workspace }}/vendor/bundle'
-          bundle update
-          bundle install --path vendor/bundle
-        env:
-          # Set gem paths to area with appropriate write permissions
-          GEM_HOME: ${{ github.workspace }}/.gem
-          GEM_PATH: ${{ github.workspace }}/.gem
+          bundle config set --local path 'vendor/bundle'
+          bundle install
 
       # Install GCovr for Gcov plugin test
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
