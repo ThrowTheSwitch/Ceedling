@@ -51,8 +51,7 @@ jobs:
       # Install Gem Dependencies
       - name: Install Gem Dependencies
         run: |
-          bundle config set --local path 'vendor/bundle'
-          bundle install --verbose
+          bundle install
 
       # # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       # - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
@@ -82,7 +81,7 @@ jobs:
       # Run Tests
       - name: Run All Self Tests
         run: |
-          bundle exec rake ci
+          rake ci
 
       # Build & Install Ceedling Gem
       - name: Build and Install Ceedling Gem
