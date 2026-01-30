@@ -40,9 +40,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/vendor/bundle
-          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby }}-
 
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
@@ -65,10 +65,6 @@ jobs:
           bundle config set --local path '${{ github.workspace }}/vendor/bundle'
           bundle update
           bundle install
-        env:
-          # Set gem paths to area with appropriate write permissions
-          GEM_HOME: ${{ github.workspace }}/.gem
-          GEM_PATH: ${{ github.workspace }}/.gem
 
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
@@ -93,7 +89,7 @@ jobs:
       # Run Tests
       - name: Run All Self Tests
         run: |
-          rake ci
+          bundle exec rake ci
 
       # Build & Install Ceedling Gem
       - name: Build and Install Ceedling Gem
@@ -141,10 +137,10 @@ jobs:
       # Use a cache for our tools to speed up testing
       - uses: actions/cache@v4
         with:
-          path: vendor/bundle
-          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          path: ${{ github.workspace }}/vendor/bundle
+          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby }}-
 
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
@@ -165,6 +161,7 @@ jobs:
         run: |
           gem install rubocop -v 0.57.2
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
+          bundle config set --local path '${{ github.workspace }}/vendor/bundle'
           bundle update
           bundle install --path vendor/bundle
         env:
@@ -185,7 +182,7 @@ jobs:
       # Run Tests
       - name: Run All Self Tests
         run: |
-          rake ci
+          bundle exec rake ci
 
       # Build & Install Gem
       - name:  Build and Install Ceedling Gem
