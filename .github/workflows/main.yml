@@ -52,8 +52,8 @@ jobs:
       - name: Install Gem Dependencies
         run: |
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
-          bundle update
-          bundle install
+          bundle config set --local path 'vendor/bundle'
+          bundle install --verbose
 
       # # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       # - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
