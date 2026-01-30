@@ -54,6 +54,10 @@ jobs:
           # Use 'none' to let the action decide the cleanest way to handle Bundler for the specific Ruby version
           bundler: none
 
+      # Ensure gems are installed (redundant with bundler-cache but ensures proper setup)
+      - name: Install Gem Dependencies
+        run: bundle install
+
       # # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       # - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
       #   run: |
