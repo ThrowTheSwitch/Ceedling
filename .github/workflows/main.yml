@@ -55,16 +55,13 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+          # Runs `bundle install` using bundler version from Gemfile.lock and caches the gems
+          bundler-cache: true
           
       # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
-        # Set bundle install path to avoid permission issues
         run: |
           gem install rubocop -v 0.57.2
-          gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
-          bundle config set --local path '${{ github.workspace }}/vendor/bundle'
-          bundle update
-          bundle install
 
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
