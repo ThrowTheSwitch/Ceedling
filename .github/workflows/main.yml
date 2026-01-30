@@ -39,7 +39,7 @@ jobs:
       # Use a cache for our tools to speed up testing
       - uses: actions/cache@v4
         with:
-          path: vendor/bundle
+          path: ${{ github.workspace }}/vendor/bundle
           key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
             bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
@@ -63,11 +63,7 @@ jobs:
           gem install rubocop -v 0.57.2
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
           bundle update
-          bundle install --path vendor/bundle
-        env:
-          # Set gem paths to area with appropriate write permissions
-          GEM_HOME: ${{ github.workspace }}/.gem
-          GEM_PATH: ${{ github.workspace }}/.gem
+          bundle install --path ${{ github.workspace }}/vendor/bundle
 
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
