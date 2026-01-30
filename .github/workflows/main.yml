@@ -49,7 +49,11 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           # Runs `bundle install` using bundler version from Gemfile.lock and caches the gems
           bundler-cache: true
-          
+
+      - name: Disable bundler deployment mode
+        # Allows bundler to find gems correctly
+        run: bundle config set --local deployment false
+
       # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
         run: |
