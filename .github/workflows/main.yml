@@ -54,7 +54,6 @@ jobs:
       - name: Install Gem Dependencies
         # Ensure local installation to prevent system directory permission problems
         run: |
-          bundle config set --local path 'vendor/bundle'
           bundle install
 
       # Install gdb for backtrace feature testing
@@ -157,7 +156,7 @@ jobs:
       # Run Tests
       - name: Run All Self Tests
         run: |
-          bundle exec rake ci
+          rake ci
 
       # Build & Install Gem
       - name:  Build and Install Ceedling Gem
