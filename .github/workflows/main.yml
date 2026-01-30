@@ -54,14 +54,10 @@ jobs:
           # Use 'none' to let the action decide the cleanest way to handle Bundler for the specific Ruby version
           bundler: none
 
-      - name: Disable bundler deployment mode
-        # Allows bundler to find gems correctly
-        run: bundle config set --local deployment false
-
-      # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
-      - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
-        run: |
-          gem install rubocop -v 0.57.2
+      # # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
+      # - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
+      #   run: |
+      #     gem install rubocop -v 0.57.2
 
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
