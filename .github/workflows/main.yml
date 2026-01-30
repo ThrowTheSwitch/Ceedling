@@ -58,11 +58,16 @@ jobs:
           
       # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
+        # Set bundle install path to avoid permission issues
         run: |
           gem install rubocop -v 0.57.2
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
           bundle update
-          bundle install
+          bundle install --path vendor/bundle
+        env:
+          # Set gem paths to area with appropriate write permissions
+          GEM_HOME: ${{ github.workspace }}/.gem
+          GEM_PATH: ${{ github.workspace }}/.gem
 
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
@@ -155,11 +160,16 @@ jobs:
       # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
         shell: bash
+        # Set bundle install path to avoid permission issues
         run: |
           gem install rubocop -v 0.57.2
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
           bundle update
-          bundle install
+          bundle install --path vendor/bundle
+        env:
+          # Set gem paths to area with appropriate write permissions
+          GEM_HOME: ${{ github.workspace }}/.gem
+          GEM_PATH: ${{ github.workspace }}/.gem
 
       # Install GCovr for Gcov plugin test
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
