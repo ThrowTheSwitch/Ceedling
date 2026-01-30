@@ -62,8 +62,13 @@ jobs:
         run: |
           gem install rubocop -v 0.57.2
           gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
+          bundle config set --local path '${{ github.workspace }}/vendor/bundle'
           bundle update
-          bundle install --path ${{ github.workspace }}/vendor/bundle
+          bundle install
+        env:
+          # Set gem paths to area with appropriate write permissions
+          GEM_HOME: ${{ github.workspace }}/.gem
+          GEM_PATH: ${{ github.workspace }}/.gem
 
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
