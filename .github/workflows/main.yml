@@ -43,7 +43,7 @@ jobs:
           submodules: recursive
 
       # Setup Ruby to run test & build steps on multiple ruby versions
-      - name: Setup Ruby with Version Matrix
+      - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -52,9 +52,9 @@ jobs:
           # Forces RubyGems to update to resolve bundler version mismatch in some 3.x versions of Ruby
           rubygems: latest
 
-      # Ensure gems are installed (redundant with bundler-cache but ensures proper setup)
-      - name: Install Gem Dependencies
-        run: bundle install
+      # # Ensure gems are installed (redundant with bundler-cache but ensures proper setup)
+      # - name: Install Gem Dependencies
+      #   run: bundle install
 
       # # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       # - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
@@ -144,7 +144,7 @@ jobs:
           submodules: recursive
 
       # Setup Ruby to run test & build steps on multiple ruby versions
-      - name: Setup Ruby with Version Matrix
+      - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
