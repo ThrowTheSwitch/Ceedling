@@ -50,9 +50,9 @@ jobs:
           # Runs `bundle install` using bundler version from Gemfile.lock and caches the gems
           bundler-cache: true
 
-      # # Ensure gems are installed (redundant with bundler-cache but ensures proper setup)
-      # - name: Install Gem Dependencies
-      #   run: bundle install
+      # Ensure gems are installed (redundant with bundler-cache but ensures proper setup)
+      - name: Install Gem Dependencies
+        run: bundle install
 
       # # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       # - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
