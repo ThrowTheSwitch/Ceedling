@@ -34,7 +34,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
+        # TODO: Add 3.4 with resolution of bundler permission issue
+        ruby: ['3.0', '3.1', '3.2', '3.3']
     steps:
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
@@ -141,7 +142,6 @@ jobs:
       - name: Install Gem Dependencies
         # Ensure local installation to prevent system directory permission problems
         run: |
-          bundle config set --local path 'vendor/bundle'
           bundle install
 
       # Install GCovr for Gcov plugin test
