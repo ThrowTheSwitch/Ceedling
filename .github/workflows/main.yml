@@ -49,6 +49,8 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           # Runs `bundle install` using bundler version from Gemfile.lock and caches the gems
           bundler-cache: true
+          # Forces RubyGems to update to resolve bundler version mismatch in some 3.x versions of Ruby
+          rubygems: latest
 
       - name: Disable bundler deployment mode
         # Allows bundler to find gems correctly
