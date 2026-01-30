@@ -396,6 +396,7 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: mocks) do |mock| 
           details = mock[:details]
           testable = mock[:testable]
+          # Handle subdirectories for mocks (e.g. `#include "path/mock_file.h`)
           output_subpath = @file_wrapper.dirname( mock[:name].to_s )
           output_path = testable[:paths][:mocks] + (output_subpath.empty? ? '' : "/#{output_subpath}")
 
