@@ -350,10 +350,10 @@ class PreprocessinatorIncludesHandler
     return includes.uniq
   end
 
+  # Extract mocks from each list of includes:
+  #  - Ensure no mock generation build directory paths in mock listings.
+  #  - But, preserve subdirectory paths of include directives (e.g. `#include "subdir/mock_file.h"`)
   def extract_mocks(*lists)
-    # Handle mocks
-    #  - Ensure no build filepaths in mock listings
-    #  - Do not return mocks if mocking is disabled
     mocks = []
 
     # Bail out early if mocks are not enabled
@@ -362,9 +362,18 @@ class PreprocessinatorIncludesHandler
     # Process each list of includes
     lists.each do |list| 
       list.each do |include|
-        # Add only mocks and without any build paths
+        # Add only mocks and without any mock generation build path
         _include = File.basename(include)
-        mocks << _include if _include.start_with?( @configurator.cmock_mock_prefix )
+        # Only process a mock include
+        next if !_include.start_with?( @configurator.cmock_mock_prefix )
+        
+        # Omit mock generation build path from the include directive
+        if include.include?( @configurator.cmock_mock_path )
+          mocks << _include 
+        # Otherwise, preserve the subdirectory path of the include directive
+        else
+          mocks << include
+        end
       end
     end
 
