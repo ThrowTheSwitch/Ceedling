@@ -55,7 +55,14 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          
+
+      # Workaround: fix Ruby toolcache gem dir permissions (Bundler exit 38)
+      # Issue: https://github.com/rubygems/rubygems/issues/7983
+      - name: Fix Ruby toolcache gem directory permissions
+        if: runner.os == 'Linux'
+        run: |
+          sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
+
       # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
         run: |
@@ -136,9 +143,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: vendor/bundle
-          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
 
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
@@ -151,7 +158,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          
+
       # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
       - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
         shell: bash
@@ -284,4 +291,3 @@ jobs:
           asset_path: ./ceedling-${{ env.ceedling_tag }}.gem
           asset_name: ceedling-${{ env.ceedling_build }}.gem
           asset_content_type: test/x-gemfile
-
