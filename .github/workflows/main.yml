@@ -35,8 +35,16 @@ jobs:
       fail-fast: false
       matrix:
         # TODO: Add 3.4 with resolution of bundler permission issue
-        ruby: ['3.0', '3.1', '3.2', '3.3']
+        ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
+      # Use a cache for our tools to speed up testing
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
+
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
         uses: actions/checkout@v4
@@ -49,6 +57,12 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+
+      # Workaround: Fix Ruby toolcache Gem directory permissions (Bundler exit 38)
+      # Issue: https://github.com/rubygems/rubygems/issues/7983
+      - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
+        run: |
+          sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
 
       # Install Gem Dependencies
       - name: Install Gem Dependencies
@@ -124,6 +138,14 @@ jobs:
       matrix:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
+      # Use a cache for our tools to speed up testing
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
+
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
         uses: actions/checkout@v4
