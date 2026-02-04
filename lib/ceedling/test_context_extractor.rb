@@ -21,6 +21,7 @@ class TestContextExtractor
     @source_includes     = {} # List of C files #include'd in a test file
     @source_extras       = {} # C source files outside of header convention added to test build by TEST_SOURCE_FILE()
     @test_runner_details = {} # Test case lists & Unity runner generator instances
+    @partials_config     = {} # Partials configuration by test name
     @mocks               = {} # List of mocks by name without header file extension
     @include_paths       = {} # Additional search paths added to a test build via TEST_INCLUDE_PATH()
     
@@ -36,22 +37,22 @@ class TestContextExtractor
       :build_directive_include_paths,
       :build_directive_source_files,
       :includes,
-      :test_runner_details
+      :test_runner_details,
+      :partials_configuration
     ]
 
     # Code error check--bad context symbol argument
     args.each do |context|
-      next if context == :all
       msg = "Unrecognized test context for collection :#{context}"
       raise CeedlingException.new( msg ) if !all_options.include?( context )
     end
 
-    # Handle the :all shortcut to redefine list to include all contexts
-    args = all_options if args.include?( :all )
-
     include_paths = []
     source_extras = []
     includes = []
+    partials_config = []
+
+    # This function reads through the file line by line and extracts relevant information for the given context.
 
     @parsing_parcels.code_lines( input ) do |line|
       if args.include?( :build_directive_include_paths )
@@ -68,11 +69,17 @@ class TestContextExtractor
         # Scan for contents of #include directives
         includes += _extract_includes( line )
       end
+
+      if args.include?( :partials_configuration )
+        # Scan for Partials directive macros
+        partials_config += _extract_partials_config( line )
+      end
     end
 
-    collect_build_directive_include_paths( filepath, include_paths ) if args.include?( :build_directive_include_paths )
-    collect_build_directive_source_files( filepath, source_extras ) if args.include?( :build_directive_source_files )
-    collect_includes( filepath, includes ) if args.include?( :includes )
+    collect_build_directive_include_paths( filepath, include_paths ) if !include_paths.empty?
+    collect_build_directive_source_files( filepath, source_extras ) if !source_extras.empty?
+    collect_includes( filepath, includes ) if !includes.empty?
+    collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
 
     # Different code processing pattern for test runner
     if args.include?( :test_runner_details )
@@ -180,6 +187,14 @@ class TestContextExtractor
     return val
   end
 
+  def lookup_partials_config(filepath)
+    val = nil
+    @lock.synchronize do
+      val = @partials_config[form_file_key( filepath )] || []
+    end
+    return val
+  end
+
   def lookup_all_include_paths
     val = nil
     @lock.synchronize do
@@ -258,8 +273,15 @@ class TestContextExtractor
   end
 
   def collect_includes(filepath, includes)
-    ingest_includes( filepath, includes.uniq )
+    includes.uniq!
+    ingest_includes( filepath, includes )
     debug_log_list( "#includes found", filepath, includes )
+  end
+
+  def collect_partials_configuration(filepath, partials_config)
+    partials_config.uniq!
+    ingest_partials_configuration(filepath, partials_config)
+    debug_log_list( "Partials conifgurations found", filepath, partials_config )
   end
 
   def _collect_test_runner_details(filepath, test_content, input_content=nil)
@@ -277,7 +299,7 @@ class TestContextExtractor
     test_cases = unity_test_runner_generator.test_cases
     test_cases = test_cases.map {|test_case| "#{test_case[:line_number]}:#{test_case[:test]}()" }
 
-    debug_log_list( "Test cases found ", filepath, test_cases )
+    debug_log_list( "Test cases found", filepath, test_cases )
   end
 
   def extract_build_directive_source_files(line)
@@ -308,10 +330,41 @@ class TestContextExtractor
     includes = []
 
     # Look for #include statements
-    results = line.match(/#\s*include\s+\"\s*([\w\.\-]+)\s*\"/)
+    results = line.match(PATTERNS::INCLUDE_DIRECTIVE_FILENAME)
     includes << results[1] if !results.nil?
 
     return includes
+  end
+
+  def _extract_partials_config(line)
+    configs = []
+
+    # Look for #include partials config directives
+    results = line.match(PATTERNS::TEST_PARTIAL_PUBLIC_MODULE)
+    if !results.nil?
+      configs << {:test_public => results[1]}
+      return configs
+    end
+
+    results = line.match(PATTERNS::TEST_PARTIAL_PRIVATE_MODULE)
+    if !results.nil?
+      configs << {:test_private => results[1]}
+      return configs
+    end
+
+    results = line.match(PATTERNS::MOCK_PARTIAL_PUBLIC_MODULE)
+    if !results.nil?
+      configs << {:mock_public => results[1]}
+      return configs
+    end
+
+    results = line.match(PATTERNS::MOCK_PARTIAL_PRIVATE_MODULE)
+    if !results.nil?
+      configs << {:mock_private => results[1]}
+      return configs
+    end
+
+    return configs
   end
 
   ##
@@ -353,6 +406,16 @@ class TestContextExtractor
     end
   end
 
+  def ingest_partials_configuration(filepath, partials_config)
+    return if partials_config.empty?
+    
+    key = form_file_key( filepath )
+
+    @lock.synchronize do
+      @partials_config[key] = partials_config
+    end
+  end 
+
   ##
   ## Utility methods
   ##
@@ -362,17 +425,8 @@ class TestContextExtractor
   end
 
   def debug_log_list(message, filepath, list)
-    msg = "#{message} in #{filepath}:"
-    if list.empty?
-      msg += " <none>"
-    else
-      msg += "\n"
-      list.each do |item|
-        msg += " - #{item}\n"
-      end
-    end
-
-    @loginator.log( "#{msg}\n\n", Verbosity::DEBUG )
+    header = "#{message} in #{filepath}"
+    @loginator.log_list( list, header, Verbosity::DEBUG )
   end
 
 end

@@ -208,6 +208,7 @@ generator:
     - configurator
     - generator_helper
     - preprocessinator
+    - generator_partials
     - generator_mocks
     - generator_test_results
     - test_context_extractor
@@ -245,6 +246,16 @@ generator_test_results_sanity_checker:
 generator_mocks:
   compose:
     - configurator
+
+generator_partials:
+  compose:
+    - file_path_utils
+    - file_wrapper
+
+batchinator:
+  compose:
+    - batchinator_helper
+    - task_invoker
 
 dependinator:
   compose:
@@ -293,6 +304,15 @@ preprocessinator_extractor:
   compose:
     - parsing_parcels
 
+partializer_helper:
+
+partializer:
+  compose:
+    - partializer_helper
+    - file_path_utils
+
+partializer_helper:
+
 batchinator:
   compose:
     - configurator
@@ -310,6 +330,7 @@ test_invoker:
     - loginator
     - preprocessinator
     - task_invoker
+    - partializer
     - generator
     - test_context_extractor
     - file_path_utils
@@ -331,6 +352,7 @@ test_invoker_helper:
     - file_finder
     - file_path_utils
     - file_wrapper
+    - partializer
     - generator
     - test_runner_manager
 

@@ -21,6 +21,7 @@ class TestInvokerHelper
               :file_finder,
               :file_path_utils,
               :file_wrapper,
+              :partializer,
               :generator,
               :test_runner_manager
 
@@ -73,20 +74,21 @@ class TestInvokerHelper
     end
   end
 
-  def search_paths(filepath, subdir)
-    paths = []
+  def search_paths(filepath, paths)
+    _paths = []
 
     # Start with mock path to ensure any CMock-reworked header files are encountered first
-    paths << File.join( @configurator.cmock_mock_path, subdir ) if @configurator.project_use_mocks
-    paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
-    paths += @include_pathinator.collect_test_include_paths()
-    paths += @configurator.collection_paths_support
-    paths += @configurator.collection_paths_include
-    paths += @configurator.collection_paths_libraries
-    paths += @configurator.collection_paths_vendor
-    paths += @configurator.collection_paths_test_toolchain_include
+    _paths << paths[:mocks] if paths[:mocks]
+    _paths << paths[:partials] if paths[:partials]
+    _paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
+    _paths += @include_pathinator.collect_test_include_paths()
+    _paths += @configurator.collection_paths_support
+    _paths += @configurator.collection_paths_include
+    _paths += @configurator.collection_paths_libraries
+    _paths += @configurator.collection_paths_vendor
+    _paths += @configurator.collection_paths_test_toolchain_include
     
-    return paths.uniq
+    return _paths.uniq
   end
 
   def framework_defines()
@@ -187,6 +189,79 @@ class TestInvokerHelper
     return preprocessing_flags
   end
 
+  # TODO: Move this to partializer?
+  def assemble_partials_config(filepath:)
+    _configs = @test_context_extractor.lookup_partials_config(filepath)
+
+    configs = {}
+    return {} if _configs.empty?
+
+    # Create data structures for each module
+    _configs.each do |config|
+      _module = config.values.first
+
+      if not configs.has_key?( _module )
+        configs[_module] = {
+          :module => _module,
+          :type => [],
+          :header => {
+            :filepath => nil,
+            :preprocessed_filepath => nil,
+            :includes => []
+          },
+          :source => {
+            :filepath => nil,
+            :preprocessed_filepath => nil,
+            :includes => []
+          }
+        }
+      end
+    end
+
+    # Collect partial types for each module
+    _configs.each do |config|
+      _module = config.values.first
+      type = config.keys.first
+
+      case type
+      when :test_public
+        configs[_module][:type] << type
+      when :test_private
+        configs[_module][:type] += [type, :test_public]
+      when :mock_public
+        configs[_module][:type] << type
+      when :mock_private
+        configs[_module][:type] << type
+      end
+    end
+
+    # Housekeeping and validation
+    configs.each do |_module, config|
+      config[:type].uniq!
+
+      if config[:type].include?(:test_public) and config[:type].include?(:mock_publuc)
+        raise CeedlingException.new("Partial for module '#{_module}' cannot both test and mock public functions")
+      end
+
+      if config[:type].include?(:test_private) and config[:type].include?(:mock_private)
+        raise CeedlingException.new("Partial for module '#{_module}' cannot both test and mock private functions")
+      end
+    end
+
+    # Collect header and source files needed for each partial configuration
+    configs.each do |_module, config|
+      # Every partial type involves processing header files
+      config[:header][:filepath] = @file_finder.find_header_file( _module, :ignore )
+
+      # Test partial types involve processing source files
+      if config[:type].include?( :test_public ) or config[:type].include?( :test_private )
+        config[:source][:filepath] = @file_finder.find_source_file( _module, :ignore )
+      end
+    end
+
+    return configs
+  end
+
   def collect_test_framework_sources(mocks)
     sources = []
 
@@ -241,15 +316,31 @@ class TestInvokerHelper
     return @test_context_extractor.lookup_include_paths_list(test_filepath)
   end
 
-  # TODO: Use search_paths to find/match header file from which to generate mock
-  # Today, this is just a pass-through wrapper
-  def find_header_input_for_mock(mock, search_paths)
+  def find_header_input_for_mock(mock)
     return @file_finder.find_header_input_for_mock( mock )
+  end
+
+  def is_mock_partial?(mock)
+    _mock = mock.to_str()
+    return _mock.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
+  end
+
+  def gnerate_header_input_for_mock_partial(mock, paths)
+    _mock = mock.to_str()
+    return @file_path_utils.form_partial_interface_header_filepath(
+      paths[:partials],
+      _mock.delete_prefix( @configurator.cmock_mock_prefix )
+    )
   end
 
   # Transform list of mock names into filenames with source extension
   def form_mock_filenames(mocklist)
     return mocklist.map {|mock| mock + @configurator.extension_source}
+  end
+
+  def form_partials_filenames(partials)
+    puts(partials)
+    return partials.map { |partial| @file_path_utils.form_partial_implementation_source_filename(partial) }
   end
 
   def remove_mock_original_headers( filelist, mocklist )
