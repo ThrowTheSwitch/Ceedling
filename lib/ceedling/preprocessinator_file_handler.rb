@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'rake' # for ext() method
+require 'ceedling/file_wrapper'
 
 class PreprocessinatorFileHandler
 
@@ -24,7 +25,9 @@ class PreprocessinatorFileHandler
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_full_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -44,7 +47,9 @@ class PreprocessinatorFileHandler
     # Run GCC with directives-only preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_directives_only_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -96,18 +101,13 @@ class PreprocessinatorFileHandler
     #       They're created for sake of completeness and just in case...
     # ----------------------------------------------------
     # abc-XYZ.h --> _ABC_XYZ_H_
-    guardname = '_' + filename.gsub(/\W/, '_').upcase + '_'
+    guardname = FileWrapper.generate_include_guard( filename )
 
     forward_guards = [
       "#ifndef #{guardname} // Ceedling-generated include guard",
       "#define #{guardname}",
       ''
     ]
-
-    # Insert Ceedling notice
-    # ----------------------------------------------------
-    comment = "// CEEDLING NOTICE: This generated file only to be consumed by CMock"
-    _contents += [comment, '']
 
     # Add guards to beginning of file contents
     _contents += forward_guards
@@ -164,7 +164,9 @@ class PreprocessinatorFileHandler
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_full_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -181,7 +183,9 @@ class PreprocessinatorFileHandler
     # Run GCC with directives-only preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_directives_only_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -215,16 +219,8 @@ class PreprocessinatorFileHandler
   end
 
 
-  def assemble_preprocessed_test_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
+  def assemble_preprocessed_source_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
     _contents = []
-
-    # Insert Ceedling notice
-    # ----------------------------------------------------
-    comment = "// CEEDLING NOTICE: This generated file only to be consumed for test runner creation"
-    _contents += [comment, '']
-
-    # Blank line
-    _contents << ''
 
     # Reinsert #include statements into stripped down file
     includes.each{ |include| _contents << "#include \"#{include}\"" }
