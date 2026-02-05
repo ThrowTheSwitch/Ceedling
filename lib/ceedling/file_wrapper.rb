@@ -14,6 +14,13 @@ require 'ceedling/constants'
 
 class FileWrapper
 
+  def self.generate_include_guard(name)
+    # abc-XYZ.h --> _ABC_XYZ_H_
+    base = File.basename(name, '.*') # Remove any extension
+    guard = '__' + base.gsub(/\W/, '_').upcase + '_H__'
+    return guard
+  end
+
   def get_expanded_path(path)
     return File.expand_path(path)
   end
