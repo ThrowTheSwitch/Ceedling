@@ -7,7 +7,6 @@
 
 require 'rake' # .ext()
 require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
-require 'ceedling/c_extractinator'
 require 'ceedling/partials'
 require 'ceedling/constants'
 
@@ -128,39 +127,23 @@ class Partializer
   end
 
   # Returns FunctionDefinition[], FunctionDeclaration[] for consumption by `GeneratorPartials`
-  # TODO: Refactor for unit testing
   # TODO: Handle source paths and line numbers for coverage reporting
-  def extract_functions(header_filepath:, source_filepath:, types:)
-    header_funcs = []
-    source_funcs = []
-
-    if header_filepath
-      # ExtractedFunction[]
-      header_funcs = CExtractinator.from_file(header_filepath).extract_functions()
-    end
-
-    if source_filepath
-      # ExtractedFunction[]
-      source_funcs = CExtractinator.from_file(source_filepath).extract_functions()
-    end
-    
+  def extract_functions(header_filepath:, source_filepath:, types:)    
     impl = []
     interface = []
+
+    funcs = @helper.extract_module_functions(header: header_filepath, source: source_filepath)
 
     types.each do |type|
       case type
       when Partials::TEST_PUBLIC
-        impl += filter_public_funcs_impl(header_funcs)
-        impl += filter_public_funcs_impl(source_funcs)
+        impl += filter_and_transform(funcs, :public, :implementation)
       when Partials::TEST_PRIVATE
-        impl += filter_private_funcs_impl(header_funcs)
-        impl += filter_private_funcs_impl(source_funcs)
+        impl += filter_and_transform(funcs, :private, :implementation)
       when Partials::MOCK_PUBLIC
-        interface += filter_public_funcs_interface(header_funcs)
-        interface += filter_public_funcs_interface(source_funcs)
+        interface += filter_and_transform(funcs, :public, :interface)
       when Partials::MOCK_PRIVATE
-        interface += filter_private_funcs_interface(header_funcs)
-        interface += filter_private_funcs_interface(source_funcs)
+        interface += filter_and_transform(funcs, :private, :interface)
       else
         raise CeedlingException.new("Invalid Partial type `:#{type}`")
       end
@@ -169,69 +152,48 @@ class Partializer
     return impl, interface
   end
 
-  # TODO: Refactor for common code
-  def filter_public_funcs_impl(funcs)
-    _funcs = []
+  private
 
-    funcs.each do |func|
+  # Filter functions by visibility and transform to appropriate output type
+  def filter_and_transform(funcs, visibility, output_type)
+    funcs.filter_map do |func|
       decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
-      if @helper.is_function_public?(decorators)
-        _funcs << Partials.manufacture_function_definition(
-          signature: signature,
-          # TODO: Handle preserving whitespace between signature and body
-          code_block: signature + "\n" + func.body
-        )
-      end
+      
+      next unless matches_visibility?(decorators, visibility)
+      
+      transform_function(func, signature, output_type)
     end
-
-    return _funcs
   end
 
-  def filter_private_funcs_impl(funcs)
-    _funcs = []
-
-    funcs.each do |func|
-      decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
-      if @helper.is_function_private?(decorators)
-        _funcs << Partials.manufacture_function_definition(
-          signature: signature,
-          # TODO: Handle preserving whitespace between signature and body
-          code_block: signature + "\n" + func.body
-        )
-      end
+  # Check if function matches the desired visibility
+  # TODO: Move to the helper, superseding distinct `is_function_public?` and `is_function_private?` functions
+  def matches_visibility?(decorators, visibility)
+    case visibility
+    when :public
+      @helper.is_function_public?(decorators)
+    when :private
+      @helper.is_function_private?(decorators)
+    else
+      raise ArgumentError, "Invalid visibility: #{visibility}"
     end
-    
-    return _funcs    
   end
 
-  def filter_public_funcs_interface(funcs)
-    _funcs = []
-
-    funcs.each do |func|
-      decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
-      if @helper.is_function_public?(decorators)
-        _funcs << Partials.manufacture_function_declaration(
-          signature: signature,
-        )
-      end
+  # Transform function to appropriate output format
+  def transform_function(func, signature, output_type)
+    case output_type
+    when :implementation
+      Partials.manufacture_function_definition(
+        signature: signature,
+        # TODO: Handle preserving whitespace between signature and body
+        code_block: signature + "\n" + func.body
+      )
+    when :interface
+      Partials.manufacture_function_declaration(
+        signature: signature
+      )
+    else
+      raise ArgumentError, "Invalid output_type: #{output_type}"
     end
-
-    return _funcs
-  end
-
-  def filter_private_funcs_interface(funcs)
-    _funcs = []
-
-    funcs.each do |func|
-      decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
-      if @helper.is_function_private?(decorators)
-        _funcs << Partials.manufacture_function_declaration(
-          signature: signature,
-        )
-      end
-    end
-
-    return _funcs
   end
 
 end
