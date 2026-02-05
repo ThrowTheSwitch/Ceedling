@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
+require 'ceedling/partials'
 require 'ceedling/file_path_utils'
 require 'ceedling/generator_test_runner' # From lib/ not vendor/unity/auto
 require 'ceedling/encodinator'
@@ -342,25 +343,25 @@ class TestContextExtractor
     # Look for #include partials config directives
     results = line.match(PATTERNS::TEST_PARTIAL_PUBLIC_MODULE)
     if !results.nil?
-      configs << {:test_public => results[1]}
+      configs << {Partials::TEST_PUBLIC => results[1]}
       return configs
     end
 
     results = line.match(PATTERNS::TEST_PARTIAL_PRIVATE_MODULE)
     if !results.nil?
-      configs << {:test_private => results[1]}
+      configs << {Partials::TEST_PRIVATE => results[1]}
       return configs
     end
 
     results = line.match(PATTERNS::MOCK_PARTIAL_PUBLIC_MODULE)
     if !results.nil?
-      configs << {:mock_public => results[1]}
+      configs << {Partials::MOCK_PUBLIC => results[1]}
       return configs
     end
 
     results = line.match(PATTERNS::MOCK_PARTIAL_PRIVATE_MODULE)
     if !results.nil?
-      configs << {:mock_private => results[1]}
+      configs << {Partials::MOCK_PRIVATE => results[1]}
       return configs
     end
 
