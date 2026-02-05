@@ -310,6 +310,7 @@ partializer:
   compose:
     - partializer_helper
     - file_path_utils
+    - file_finder
 
 partializer_helper:
 
