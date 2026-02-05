@@ -223,7 +223,7 @@ class TestInvoker
           end
 
           # Partials
-          partials = {}
+          partials_configs = {}
           if @configurator.project_use_partials
             partials_configs = @helper.assemble_partials_config( filepath: details[:filepath] )
           end
@@ -254,8 +254,8 @@ class TestInvoker
       if @configurator.project_use_partials
         @testables.each do |_, details|
           details[:partials][:configs].each do |_, config|
-            partials_headers << {:config => config[:header], :testable => details} if config[:header][:filepath]
-            partials_sources << {:config => config[:source], :testable => details} if config[:source][:filepath]
+            partials_headers << {:config => config.header, :testable => details} if config.header.filepath
+            partials_sources << {:config => config.source, :testable => details} if config.source.filepath
           end
         end
       end
@@ -266,7 +266,7 @@ class TestInvoker
           config = details[:config]
           testable = details[:testable]
           arg_hash = {
-            filepath:      config[:filepath],
+            filepath:      config.filepath,
             test:          testable[:name],
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
@@ -274,7 +274,7 @@ class TestInvoker
             defines:       testable[:preprocess_defines]
           }
 
-          config[:preprocessed_filepath], config[:includes] = @preprocessinator.preprocess_partial_header_file( **arg_hash )
+          config.preprocessed_filepath, config.includes = @preprocessinator.preprocess_partial_header_file( **arg_hash )
         end
       } if @configurator.project_use_partials
 
@@ -284,7 +284,7 @@ class TestInvoker
           config = details[:config]
           testable = details[:testable]
           arg_hash = {
-            filepath:      config[:filepath],
+            filepath:      config.filepath,
             test:          testable[:name],
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
@@ -292,7 +292,7 @@ class TestInvoker
             defines:       testable[:preprocess_defines]
           }
 
-          config[:preprocessed_filepath], config[:includes] = @preprocessinator.preprocess_partial_source_file( **arg_hash )
+          config.preprocessed_filepath, config.includes = @preprocessinator.preprocess_partial_source_file( **arg_hash )
         end
       } if @configurator.project_use_partials
       
@@ -313,45 +313,39 @@ class TestInvoker
           testable = partial[:testable]
 
           impl, interface = @partializer.extract_functions(
-            header_filepath: config[:header][:preprocessed_filepath],
-            source_filepath: config[:source][:preprocessed_filepath],
-            types: config[:type],
+            header_filepath: config.header.preprocessed_filepath,
+            source_filepath: config.source.preprocessed_filepath,
+            types: config.types,
           )
-
-          puts("#{testable[:name]} source includes:")
-          puts(config[:source][:includes])
-
-          puts("#{testable[:name]} header includes:")
-          puts(config[:header][:includes])
 
           arg_hash = {
             test:             testable[:name],
             name:             config[:module],
             definitions:      impl,
             header_includes:  @partializer.remap_implementation_header_includes(
-                                name: config[:module],
-                                includes: (config[:source][:includes] + config[:header][:includes]),
+                                name: config.module,
+                                includes: (config.source.includes + config.header.includes),
                                 partials: testable[:partials]
                               ),
             source_includes:  @partializer.remap_implementation_source_includes(
-                                name: config[:module],
-                                includes: (config[:source][:includes] + config[:header][:includes]),
+                                name: config.module,
+                                includes: (config.source.includes + config.header.includes),
                                 partials: testable[:partials]
                               ),
-            input_filepath:   config[:source][:filepath],
+            input_filepath:   config.source.filepath,
             output_path:      testable[:paths][:partials]
           }
           testable[:partials][:compilations] << @generator.generate_partial_implementation(**arg_hash) if !impl.empty?
 
           arg_hash = {
             test:           testable[:name],
-            name:           config[:module],
+            name:           config.module,
             declarations:   interface,
             includes:       @partializer.sanitize_includes( 
-                              name: config[:module],
-                              includes: (config[:source][:includes] + config[:header][:includes])
+                              name: config.module,
+                              includes: (config.source.includes + config.header.includes)
                             ),
-            input_filepath: config[:header][:filepath],
+            input_filepath: config.header.filepath,
             output_path:    testable[:paths][:partials]
           }
 
