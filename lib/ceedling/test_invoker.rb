@@ -325,12 +325,14 @@ class TestInvoker
             header_includes:  @partializer.remap_implementation_header_includes(
                                 name: config.module,
                                 includes: (config.source.includes + config.header.includes),
-                                partials: testable[:partials]
+                                # All partials configurations to remap includes for partials to be generated
+                                partials: testable[:partials][:configs]
                               ),
             source_includes:  @partializer.remap_implementation_source_includes(
                                 name: config.module,
                                 includes: (config.source.includes + config.header.includes),
-                                partials: testable[:partials]
+                                # All partials configurations to remap includes for partials to be generated
+                                partials: testable[:partials][:configs]
                               ),
             input_filepath:   config.source.filepath,
             output_path:      testable[:paths][:partials]

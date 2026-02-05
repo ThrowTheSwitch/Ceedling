@@ -26,6 +26,8 @@ class Partializer
     configs = {}
     return {} if test_context_configs.empty?
 
+    # Each entry in `test_context_configs` is a single key/value pair of module name and partial type
+
     # Create data structures for each module
     test_context_configs.each do |context_config|
       # Get the partial module name (no filename extension)
@@ -39,7 +41,6 @@ class Partializer
 
     # Collect from test context the partial types associated with each module to be partialized
     test_context_configs.each do |context_config|
-      # Each entry is a single key/value pair of module name and partial type
       _module = context_config.values.first
       type = context_config.keys.first
 
@@ -95,11 +96,9 @@ class Partializer
   def remap_implementation_header_includes(name:, includes:, partials:)
     _includes = includes.clone()
 
-    partials.each do |_, details|
-      details.each do |_module, _|
-        # Remove any includes for modules that are being paritalized
-        _includes.delete_if { |include| include.ext() == _module }
-      end
+    partials.each do |_module, _|
+      # Remove any includes for modules that are being paritalized
+      _includes.delete_if { |include| include.ext() == _module }
     end
 
     # Ensure original module header is not in the list and remove any duplicates
@@ -112,16 +111,14 @@ class Partializer
     # Add implementation header
     _includes << @file_path_utils.form_partial_implementation_header_filename(name)
 
-    partials.each do |_, details|
-      details.each do |_module, config|
-        # Remap mockable interface headers that will be injected into generated partial implementation
-        if includes.any? { |include| include.ext() == _module }
-          if config.types.intersect?([Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE])
-            # Insert mockable interface header from remapping of module name
-            _includes << @file_path_utils.form_partial_interface_header_filename(_module)
-            # Remove the original module header now that it's remapped to mockable interface
-            _includes.delete_if { |include| include.ext() == _module }
-          end
+    partials.each do |_module, config|
+      # Remap mockable interface headers that will be injected into generated partial implementation
+      if includes.any? { |include| include.ext() == _module }
+        if config.types.intersect?([Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE])
+          # Insert mockable interface header from remapping of module name
+          _includes << @file_path_utils.form_partial_interface_header_filename(_module)
+          # Remove the original module header now that it's remapped to mockable interface
+          _includes.delete_if { |include| include.ext() == _module }
         end
       end
     end
