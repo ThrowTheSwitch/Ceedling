@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/c_extractinator'
+
 class PartializerHelper
 
   PRIVATE_KEYWORDS = ['static', 'inline', '__inline', '__inline__']
@@ -23,6 +25,21 @@ class PartializerHelper
 
   def is_function_public?(decorators)
     return !is_function_private?(decorators)
+  end
+
+  def extract_module_functions(header:, source:)
+    header_funcs = []
+    source_funcs = []
+
+    if header # filepath
+      header_funcs = CExtractinator.from_file(header).extract_functions()
+    end
+
+    if source # filepath
+      source_funcs = CExtractinator.from_file(source).extract_functions()
+    end    
+
+    return header_funcs + source_funcs
   end
 
   # Extracts decorators from a C function signature and returns shortened signature
