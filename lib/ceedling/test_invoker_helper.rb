@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
+require 'ceedling/partials'
 
 class TestInvokerHelper
 
@@ -189,77 +190,9 @@ class TestInvokerHelper
     return preprocessing_flags
   end
 
-  # TODO: Move this to partializer?
   def assemble_partials_config(filepath:)
-    _configs = @test_context_extractor.lookup_partials_config(filepath)
-
-    configs = {}
-    return {} if _configs.empty?
-
-    # Create data structures for each module
-    _configs.each do |config|
-      _module = config.values.first
-
-      if not configs.has_key?( _module )
-        configs[_module] = {
-          :module => _module,
-          :type => [],
-          :header => {
-            :filepath => nil,
-            :preprocessed_filepath => nil,
-            :includes => []
-          },
-          :source => {
-            :filepath => nil,
-            :preprocessed_filepath => nil,
-            :includes => []
-          }
-        }
-      end
-    end
-
-    # Collect partial types for each module
-    _configs.each do |config|
-      _module = config.values.first
-      type = config.keys.first
-
-      case type
-      when :test_public
-        configs[_module][:type] << type
-      when :test_private
-        configs[_module][:type] += [type, :test_public]
-      when :mock_public
-        configs[_module][:type] << type
-      when :mock_private
-        configs[_module][:type] << type
-      end
-    end
-
-    # Housekeeping and validation
-    configs.each do |_module, config|
-      config[:type].uniq!
-
-      if config[:type].include?(:test_public) and config[:type].include?(:mock_publuc)
-        raise CeedlingException.new("Partial for module '#{_module}' cannot both test and mock public functions")
-      end
-
-      if config[:type].include?(:test_private) and config[:type].include?(:mock_private)
-        raise CeedlingException.new("Partial for module '#{_module}' cannot both test and mock private functions")
-      end
-    end
-
-    # Collect header and source files needed for each partial configuration
-    configs.each do |_module, config|
-      # Every partial type involves processing header files
-      config[:header][:filepath] = @file_finder.find_header_file( _module, :ignore )
-
-      # Test partial types involve processing source files
-      if config[:type].include?( :test_public ) or config[:type].include?( :test_private )
-        config[:source][:filepath] = @file_finder.find_source_file( _module, :ignore )
-      end
-    end
-
-    return configs
+    configs = @test_context_extractor.lookup_partials_config( filepath )
+    return @partializer.assemble_configs( test_context_configs: configs )
   end
 
   def collect_test_framework_sources(mocks)
