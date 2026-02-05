@@ -60,7 +60,7 @@ describe GeneratorPartials do
       
       # Define test data
       defns = [
-        Partials.manufacture_function_definition_struct(
+        Partials.manufacture_function_definition(
           signature: 'void initialize(void)',
           code_block: "void initialize(void) {\n  // implementation\n}"
         )
@@ -129,7 +129,7 @@ describe GeneratorPartials do
       
       # Define test data
       decls = [
-        Partials.manufacture_function_declaration_struct(
+        Partials.manufacture_function_declaration(
           signature: 'void initialize(void)'
         )
       ]
@@ -216,11 +216,11 @@ describe GeneratorPartials do
 
       decls = []
 
-      decls << Partials.manufacture_function_declaration_struct(
+      decls << Partials.manufacture_function_declaration(
         signature: 'void foobarbaz(int x, int y)'
       )
 
-      decls << Partials.manufacture_function_declaration_struct(
+      decls << Partials.manufacture_function_declaration(
         signature: 'int razzleDazzle(void* ptr)'
       )
 
@@ -264,7 +264,7 @@ describe GeneratorPartials do
 
       defns = []
 
-      defns << Partials.manufacture_function_definition_struct(
+      defns << Partials.manufacture_function_definition(
         signature: 'void foobar(int x, int y)',
         code_block: "void foobar(int x, int y) {\n  int z = x+y;\n}"
       )
@@ -294,14 +294,14 @@ describe GeneratorPartials do
 
       defns = []
 
-      defns << Partials.manufacture_function_definition_struct(
+      defns << Partials.manufacture_function_definition(
         line_num: 9,
         source_filepath: '../foo/bar/fubar.c',
         signature: 'void foobarbaz(int x, int y)',
         code_block: "void foobarbaz(int x, int y) {\n  int z = x+y;\n}"
       )
 
-      defns << Partials.manufacture_function_definition_struct(
+      defns << Partials.manufacture_function_definition(
         line_num: 123,
         source_filepath: 'src/code/ABC.c',
         signature: 'int razzleDazzle(void* ptr)',
