@@ -164,6 +164,8 @@ class Partializer
       when Partials::MOCK_PRIVATE
         interface += filter_private_funcs_interface(header_funcs)
         interface += filter_private_funcs_interface(source_funcs)
+      else
+        raise CeedlingException.new("Invalid Partial type `:#{type}`")
       end
     end
 
