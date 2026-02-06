@@ -24,7 +24,7 @@ class PartializerUtils
     end
   end
 
-  # Transform function to appropriate output format
+  # Transform function to appropriate output format `FunctionDefinition` or `FunctionDeclaration`
   def transform_function(func, signature, output_type)
     case output_type
     when :impl

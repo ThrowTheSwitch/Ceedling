@@ -17,7 +17,7 @@ describe PartializerHelper do
     @partializer_parser = double( "PartializerParser" )
     @file_finder = double( "FileFinder" )
 
-    @partializer = described_class.new(
+    @helper = described_class.new(
       {
         :partializer_utils => @partializer_utils,
         :partializer_parser => @partializer_parser,
@@ -30,7 +30,7 @@ describe PartializerHelper do
     it "returns empty hash when test_context_configs is empty" do
       test_context_configs = []
       
-      result = @partializer.manufacture_partial_configs(test_context_configs)
+      result = @helper.manufacture_partial_configs(test_context_configs)
       
       expect(result).to eq({})
     end
@@ -40,7 +40,7 @@ describe PartializerHelper do
         { Partials::TEST_PUBLIC => 'module1' }
       ]
       
-      result = @partializer.manufacture_partial_configs(test_context_configs)
+      result = @helper.manufacture_partial_configs(test_context_configs)
       
       expect(result).to have_key('module1')
       expect(result['module1'].module).to eq('module1')
@@ -54,7 +54,7 @@ describe PartializerHelper do
         { Partials::TEST_PRIVATE => 'module3' }
       ]
       
-      result = @partializer.manufacture_partial_configs(test_context_configs)
+      result = @helper.manufacture_partial_configs(test_context_configs)
       
       expect(result).to have_key('module1')
       expect(result).to have_key('module2')
@@ -72,7 +72,7 @@ describe PartializerHelper do
         { Partials::TEST_PRIVATE => 'module1' }
       ]
       
-      result = @partializer.manufacture_partial_configs(test_context_configs)
+      result = @helper.manufacture_partial_configs(test_context_configs)
       
       expect(result).to have_key('module1')
       expect(result['module1'].module).to eq('module1')
@@ -85,7 +85,7 @@ describe PartializerHelper do
       test_context_configs = []
       configs = {}
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs).to eq({})
     end
@@ -98,7 +98,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to eq([Partials::TEST_PUBLIC])
     end
@@ -111,7 +111,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to contain_exactly(Partials::TEST_PRIVATE, Partials::TEST_PUBLIC)
     end
@@ -124,7 +124,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to eq([Partials::MOCK_PUBLIC])
     end
@@ -137,7 +137,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to eq([Partials::MOCK_PRIVATE])
     end
@@ -151,7 +151,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to contain_exactly(Partials::TEST_PUBLIC, Partials::MOCK_PRIVATE)
     end
@@ -168,7 +168,7 @@ describe PartializerHelper do
         'module3' => OpenStruct.new(module: 'module3', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to eq([Partials::TEST_PUBLIC])
       expect(configs['module2'].types).to eq([Partials::MOCK_PRIVATE])
@@ -185,7 +185,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to contain_exactly(Partials::TEST_PUBLIC, Partials::MOCK_PRIVATE)
       expect(configs['module1'].types.count(Partials::TEST_PUBLIC)).to eq(1)
@@ -200,7 +200,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to contain_exactly(Partials::TEST_PUBLIC, Partials::TEST_PRIVATE)
       expect(configs['module1'].types.count(Partials::TEST_PUBLIC)).to eq(1)
@@ -217,7 +217,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to contain_exactly(
         Partials::TEST_PUBLIC,
@@ -242,7 +242,7 @@ describe PartializerHelper do
         'module3' => OpenStruct.new(module: 'module3', types: [])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to contain_exactly(
         Partials::TEST_PUBLIC,
@@ -264,7 +264,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [Partials::TEST_PUBLIC])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to contain_exactly(Partials::TEST_PUBLIC, Partials::MOCK_PRIVATE)
     end
@@ -277,7 +277,7 @@ describe PartializerHelper do
         'module1' => OpenStruct.new(module: 'module1', types: [Partials::TEST_PUBLIC])
       }
       
-      @partializer.config_collect_partial_types(test_context_configs, configs)
+      @helper.config_collect_partial_types(test_context_configs, configs)
       
       expect(configs['module1'].types).to contain_exactly(Partials::TEST_PUBLIC, Partials::TEST_PRIVATE)
       expect(configs['module1'].types.count(Partials::TEST_PUBLIC)).to eq(1)
@@ -289,7 +289,7 @@ describe PartializerHelper do
       configs = {}
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.not_to raise_error
     end
 
@@ -299,7 +299,7 @@ describe PartializerHelper do
       }
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.not_to raise_error
     end
 
@@ -309,7 +309,7 @@ describe PartializerHelper do
       }
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.not_to raise_error
     end
 
@@ -319,7 +319,7 @@ describe PartializerHelper do
       }
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.not_to raise_error
     end
 
@@ -329,7 +329,7 @@ describe PartializerHelper do
       }
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.not_to raise_error
     end
 
@@ -342,7 +342,7 @@ describe PartializerHelper do
       }
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.to raise_error(CeedlingException, /cannot both test and mock public functions/)
     end
 
@@ -355,7 +355,7 @@ describe PartializerHelper do
       }
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.to raise_error(CeedlingException, /cannot both test and mock private functions/)
     end
 
@@ -368,7 +368,7 @@ describe PartializerHelper do
       }
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.not_to raise_error
     end
 
@@ -381,7 +381,7 @@ describe PartializerHelper do
       }
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.not_to raise_error
     end
 
@@ -392,7 +392,7 @@ describe PartializerHelper do
       }
       
       expect {
-        @partializer.validate_partial_configs(configs)
+        @helper.validate_partial_configs(configs)
       }.not_to raise_error
     end
   end
@@ -401,7 +401,7 @@ describe PartializerHelper do
     it "does nothing when configs is empty" do
       configs = {}
       
-      @partializer.config_populate_filepaths(configs)
+      @helper.config_populate_filepaths(configs)
       
       expect(configs).to eq({})
     end
@@ -419,7 +419,7 @@ describe PartializerHelper do
       allow(@file_finder).to receive(:find_header_file).with('module1', :ignore).and_return('/path/to/module1.h')
       allow(@file_finder).to receive(:find_source_file).with('module1', :ignore).and_return('/path/to/module1.c')
       
-      @partializer.config_populate_filepaths(configs)
+      @helper.config_populate_filepaths(configs)
       
       expect(configs['module1'].header.filepath).to eq('/path/to/module1.h')
       expect(configs['module1'].source.filepath).to eq('/path/to/module1.c')
@@ -438,7 +438,7 @@ describe PartializerHelper do
       allow(@file_finder).to receive(:find_header_file).with('module1', :ignore).and_return('/path/to/module1.h')
       allow(@file_finder).to receive(:find_source_file).with('module1', :ignore).and_return('/path/to/module1.c')
       
-      @partializer.config_populate_filepaths(configs)
+      @helper.config_populate_filepaths(configs)
       
       expect(configs['module1'].header.filepath).to eq('/path/to/module1.h')
       expect(configs['module1'].source.filepath).to eq('/path/to/module1.c')
@@ -457,7 +457,7 @@ describe PartializerHelper do
       allow(@file_finder).to receive(:find_header_file).with('module1', :ignore).and_return('/path/to/module1.h')
       allow(@file_finder).to receive(:find_source_file).with('module1', :ignore).and_return('/path/to/module1.c')
       
-      @partializer.config_populate_filepaths(configs)
+      @helper.config_populate_filepaths(configs)
       
       expect(configs['module1'].header.filepath).to eq('/path/to/module1.h')
       expect(configs['module1'].source.filepath).to eq('/path/to/module1.c')
@@ -475,8 +475,8 @@ describe PartializerHelper do
       
       allow(@file_finder).to receive(:find_header_file).with('module1', :ignore).and_return('/path/to/module1.h')
       expect(@file_finder).not_to receive(:find_source_file)
-            
-      @partializer.config_populate_filepaths(configs)
+
+      @helper.config_populate_filepaths(configs)
       
       expect(configs['module1'].header.filepath).to eq('/path/to/module1.h')
       expect(configs['module1'].source.filepath).to be_nil
@@ -495,7 +495,7 @@ describe PartializerHelper do
       allow(@file_finder).to receive(:find_header_file).with('module1', :ignore).and_return('/path/to/module1.h')
       expect(@file_finder).not_to receive(:find_source_file)
 
-      @partializer.config_populate_filepaths(configs)
+      @helper.config_populate_filepaths(configs)
       
       expect(configs['module1'].header.filepath).to eq('/path/to/module1.h')
       expect(configs['module1'].source.filepath).to be_nil
@@ -522,7 +522,7 @@ describe PartializerHelper do
       allow(@file_finder).to receive(:find_header_file).with('module2', :ignore).and_return('/path/to/module2.h')
       allow(@file_finder).to receive(:find_source_file).with('module2', :ignore).and_return('/path/to/module2.c')
       
-      @partializer.config_populate_filepaths(configs)
+      @helper.config_populate_filepaths(configs)
       
       expect(configs['module1'].header.filepath).to eq('/path/to/module1.h')
       expect(configs['module1'].source.filepath).to eq('/path/to/module1.c')
@@ -531,4 +531,297 @@ describe PartializerHelper do
     end
   end
 
+  context "#extract_module_functions" do
+    before(:each) do
+      @mock_extractinator = double('CExtractinator')
+      allow(CExtractinator).to receive(:from_file).and_return(@mock_extractinator)
+    end
+
+    it "returns empty array when both filepaths are nil" do
+      result = @helper.extract_module_functions(
+        header_filepath: nil,
+        source_filepath: nil
+      )
+
+      expect(CExtractinator).not_to receive(:from_file).with(nil)
+
+      expect(result).to eq([])
+    end
+
+    it "extracts functions from header file only" do
+      header_funcs = [
+        double('func1', name: 'func1', signature: 'void func1(void)'),
+        double('func2', name: 'func2', signature: 'int func2(int x)')
+      ]
+      
+      expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
+      expect(@mock_extractinator).to receive(:extract_functions).and_return(header_funcs)
+      
+      result = @helper.extract_module_functions(
+        header_filepath: '/path/to/header.h',
+        source_filepath: nil
+      )
+      
+      expect(result).to eq(header_funcs)
+    end
+
+    it "extracts functions from source file only" do
+      source_funcs = [
+        double('func1', name: 'func1', signature: 'static void func1(void)'),
+        double('func2', name: 'func2', signature: 'static int func2(int x)')
+      ]
+      
+      expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
+      expect(@mock_extractinator).to receive(:extract_functions).and_return(source_funcs)
+      
+      result = @helper.extract_module_functions(
+        header_filepath: nil,
+        source_filepath: '/path/to/source.c'
+      )
+      
+      expect(result).to eq(source_funcs)
+    end
+
+    it "extracts and combines functions from both header and source files" do
+      header_funcs = [
+        double('func1', name: 'func1', signature: 'void func1(void)'),
+        double('func2', name: 'func2', signature: 'int func2(int x)')
+      ]
+      source_funcs = [
+        double('func3', name: 'func3', signature: 'static void func3(void)'),
+        double('func4', name: 'func4', signature: 'static int func4(int x)')
+      ]
+      
+      header_extractinator = double('header_extractinator')
+      source_extractinator = double('source_extractinator')
+      
+      expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(header_extractinator)
+      expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(source_extractinator)
+      expect(header_extractinator).to receive(:extract_functions).and_return(header_funcs)
+      expect(source_extractinator).to receive(:extract_functions).and_return(source_funcs)
+      
+      result = @helper.extract_module_functions(
+        header_filepath: '/path/to/header.h',
+        source_filepath: '/path/to/source.c'
+      )
+      
+      expect(result).to eq(header_funcs + source_funcs)
+    end
+
+    it "returns empty array when header file has no functions" do
+      expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
+      expect(@mock_extractinator).to receive(:extract_functions).and_return([])
+      
+      result = @helper.extract_module_functions(
+        header_filepath: '/path/to/header.h',
+        source_filepath: nil
+      )
+      
+      expect(result).to eq([])
+    end
+
+    it "returns empty array when source file has no functions" do
+      expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
+      expect(@mock_extractinator).to receive(:extract_functions).and_return([])
+      
+      result = @helper.extract_module_functions(
+        header_filepath: nil,
+        source_filepath: '/path/to/source.c'
+      )
+      
+      expect(result).to eq([])
+    end
+  end
+
+  context "#filter_and_transform" do
+    before(:each) do
+      @mock_func1 = double('func1',
+        name: 'publicFunc',
+        signature: 'void publicFunc(void)'
+      )
+      @mock_func2 = double('func2',
+        name: 'staticFunc',
+        signature: 'static void staticFunc(void)'
+      )
+      @mock_func3 = double('func3',
+        name: 'inlineFunc',
+        signature: 'inline int inlineFunc(int x)'
+      )
+    end
+
+    it "returns empty array when functions list is empty" do
+      result = @helper.filter_and_transform([], :public, :impl)
+      
+      expect(result).to eq([])
+    end
+
+    it "filters out functions that don't match visibility" do
+      funcs = [@mock_func1, @mock_func2]
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func1.signature, @mock_func1.name)
+        .and_return([[], 'void publicFunc(void)'])
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func2.signature, @mock_func2.name)
+        .and_return([['static'], 'void staticFunc(void)'])
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with([], :public)
+        .and_return(true)
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(['static'], :public)
+        .and_return(false)
+      
+      mock_transformed = double('transformed_func')
+      allow(@partializer_utils).to receive(:transform_function)
+        .with(@mock_func1, 'void publicFunc(void)', :impl)
+        .and_return(mock_transformed)
+      
+      result = @helper.filter_and_transform(funcs, :public, :impl)
+      
+      expect(result).to eq([mock_transformed])
+    end
+
+    it "transforms matching functions to implementation type" do
+      funcs = [@mock_func1]
+      
+      decorators = []
+      signature = 'void publicFunc(void)'
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func1.signature, @mock_func1.name)
+        .and_return([decorators, signature])
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(decorators, :public)
+        .and_return(true)
+      
+      mock_impl = double('FunctionDefinition')
+      expect(@partializer_utils).to receive(:transform_function)
+        .with(@mock_func1, signature, :impl)
+        .and_return(mock_impl)
+      
+      result = @helper.filter_and_transform(funcs, :public, :impl)
+      
+      expect(result).to eq([mock_impl])
+    end
+
+    it "transforms matching functions to interface type" do
+      funcs = [@mock_func1]
+      
+      decorators = []
+      signature = 'void publicFunc(void)'
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func1.signature, @mock_func1.name)
+        .and_return([decorators, signature])
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(decorators, :public)
+        .and_return(true)
+      
+      mock_interface = double('FunctionDeclaration')
+      expect(@partializer_utils).to receive(:transform_function)
+        .with(@mock_func1, signature, :interface)
+        .and_return(mock_interface)
+      
+      result = @helper.filter_and_transform(funcs, :public, :interface)
+      
+      expect(result).to eq([mock_interface])
+    end
+
+    it "filters private functions when visibility is :private" do
+      funcs = [@mock_func1, @mock_func2]
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func1.signature, @mock_func1.name)
+        .and_return([[], 'void publicFunc(void)'])
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func2.signature, @mock_func2.name)
+        .and_return([['static'], 'void staticFunc(void)'])
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with([], :private)
+        .and_return(false)
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(['static'], :private)
+        .and_return(true)
+      
+      mock_transformed = double('transformed_func')
+      allow(@partializer_utils).to receive(:transform_function)
+        .with(@mock_func2, 'void staticFunc(void)', :impl)
+        .and_return(mock_transformed)
+      
+      result = @helper.filter_and_transform(funcs, :private, :impl)
+      
+      expect(result).to eq([mock_transformed])
+    end
+
+    it "processes multiple matching functions" do
+      funcs = [@mock_func1, @mock_func2, @mock_func3]
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func1.signature, @mock_func1.name)
+        .and_return([[], 'void publicFunc(void)'])
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func2.signature, @mock_func2.name)
+        .and_return([['static'], 'void staticFunc(void)'])
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func3.signature, @mock_func3.name)
+        .and_return([['inline'], 'int inlineFunc(int x)'])
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with([], :public)
+        .and_return(true)
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(['static'], :public)
+        .and_return(false)
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(['inline'], :public)
+        .and_return(true)
+      
+      mock_transformed1 = double('transformed_func1')
+      mock_transformed3 = double('transformed_func3')
+      
+      allow(@partializer_utils).to receive(:transform_function)
+        .with(@mock_func1, 'void publicFunc(void)', :impl)
+        .and_return(mock_transformed1)
+      
+      allow(@partializer_utils).to receive(:transform_function)
+        .with(@mock_func3, 'int inlineFunc(int x)', :impl)
+        .and_return(mock_transformed3)
+      
+      result = @helper.filter_and_transform(funcs, :public, :impl)
+      
+      expect(result).to eq([mock_transformed1, mock_transformed3])
+    end
+
+    it "returns empty array when no functions match visibility" do
+      funcs = [@mock_func1, @mock_func2]
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func1.signature, @mock_func1.name)
+        .and_return([[], 'void publicFunc(void)'])
+      
+      allow(@partializer_parser).to receive(:parse_signature_decorators)
+        .with(@mock_func2.signature, @mock_func2.name)
+        .and_return([[], 'void staticFunc(void)'])
+      
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with([], :private)
+        .and_return(false)
+      
+      result = @helper.filter_and_transform(funcs, :private, :impl)
+      
+      expect(result).to eq([])
+    end
+  end
 end
