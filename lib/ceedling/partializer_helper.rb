@@ -16,27 +16,39 @@ class PartializerHelper
 
   MODIFIER_KEYWORDS = ['extern', 'const', 'volatile', 'restrict']
 
-  def is_function_private?(decorators)
-    # Check if any decorator matches any private keyword (case-insensitive)
-    return decorators.any? do |decorator|
-      PRIVATE_KEYWORDS.any? { |keyword| decorator.downcase == keyword.downcase }
+  # Check if function decorators match the desired visibility
+  def matches_visibility?(decorators, visibility)
+    case visibility
+    when :public
+      return !is_function_private?(decorators)
+    when :private
+      return is_function_private?(decorators)
+    else
+      case visibility
+      when Symbol
+        visibility = " :#{visibility}"
+      when NilClass, nil
+        visibility = ': nil'
+      when String
+        visibility = ": \"#{visibility}\""
+      else
+        visibility = ": #{visibility}"
+      end
+
+      raise ArgumentError, "Invalid visibility#{visibility}"
     end
   end
 
-  def is_function_public?(decorators)
-    return !is_function_private?(decorators)
-  end
-
-  def extract_module_functions(header:, source:)
+  def extract_module_functions(header_filepath:, source_filepath:)
     header_funcs = []
     source_funcs = []
 
-    if header # filepath
-      header_funcs = CExtractinator.from_file(header).extract_functions()
+    if header_filepath
+      header_funcs = CExtractinator.from_file(header_filepath).extract_functions()
     end
 
-    if source # filepath
-      source_funcs = CExtractinator.from_file(source).extract_functions()
+    if source_filepath
+      source_funcs = CExtractinator.from_file(source_filepath).extract_functions()
     end    
 
     return header_funcs + source_funcs
@@ -103,4 +115,15 @@ class PartializerHelper
     
     return decorators, shortened_signature
   end
+
+  private
+
+  # Does any decorator in a list matche any private keyword (case-insensitive)
+  def is_function_private?(decorators)
+    return decorators.any? do |decorator|
+      PRIVATE_KEYWORDS.any? { |keyword| decorator.downcase == keyword.downcase }
+    end
+  end
+
+
 end

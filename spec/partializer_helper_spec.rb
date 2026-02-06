@@ -14,50 +14,119 @@ describe PartializerHelper do
     @partializer_helper = described_class.new
   end
 
-  context "#is_function_private?" do
-    it "returns true when decorators contain 'static'" do
-      result = @partializer_helper.is_function_private?(['static'])
-      expect(result).to be true
+  context "#matches_visibility?" do
+    context ":private visibility" do
+      it "returns false when decorators array is empty" do
+        result = @partializer_helper.matches_visibility?([], :private)
+        expect(result).to be false
+      end
+
+      it "returns true when decorators contain 'static'" do
+        result = @partializer_helper.matches_visibility?(['static'], :private)
+        expect(result).to be true
+      end
+
+      it "returns true when decorators contain 'inline'" do
+        result = @partializer_helper.matches_visibility?(['inline'], :private)
+        expect(result).to be true
+      end
+
+      it "returns true when decorators contain '__inline'" do
+        result = @partializer_helper.matches_visibility?(['__inline'], :private)
+        expect(result).to be true
+      end
+
+      it "returns true when decorators contain '__inline__'" do
+        result = @partializer_helper.matches_visibility?(['__inline__'], :private)
+        expect(result).to be true
+      end
+
+      it "returns true when decorators contain multiple private keywords" do
+        result = @partializer_helper.matches_visibility?(['static', 'inline'], :private)
+        expect(result).to be true
+      end
+
+      it "returns false when decorators contain only 'extern'" do
+        result = @partializer_helper.matches_visibility?(['extern'], :private)
+        expect(result).to be false
+      end
+
+      it "returns false when decorators contain only 'const'" do
+        result = @partializer_helper.matches_visibility?(['const'], :private)
+        expect(result).to be false
+      end
+
+      it "returns true when mixed with non-private decorators" do
+        result = @partializer_helper.matches_visibility?(['extern', 'static', 'const'], :private)
+        expect(result).to be true
+      end
     end
 
-    it "returns true when decorators contain 'inline'" do
-      result = @partializer_helper.is_function_private?(['inline'])
-      expect(result).to be true
+    context ":public visibility" do
+      it "returns true when decorators array is empty" do
+        result = @partializer_helper.matches_visibility?([], :public)
+        expect(result).to be true
+      end
+
+      it "returns false when decorators contain 'static'" do
+        result = @partializer_helper.matches_visibility?(['static'], :public)
+        expect(result).to be false
+      end
+
+      it "returns false when decorators contain 'inline'" do
+        result = @partializer_helper.matches_visibility?(['inline'], :public)
+        expect(result).to be false
+      end
+
+      it "returns false when decorators contain '__inline'" do
+        result = @partializer_helper.matches_visibility?(['__inline'], :public)
+        expect(result).to be false
+      end
+
+      it "returns false when decorators contain '__inline__'" do
+        result = @partializer_helper.matches_visibility?(['__inline__'], :public)
+        expect(result).to be false
+      end
+
+      it "returns false when decorators contain multiple private keywords" do
+        result = @partializer_helper.matches_visibility?(['static', 'inline'], :public)
+        expect(result).to be false
+      end
+
+      it "returns true when decorators contain only 'extern'" do
+        result = @partializer_helper.matches_visibility?(['extern'], :public)
+        expect(result).to be true
+      end
+
+      it "returns true when decorators contain only 'const'" do
+        result = @partializer_helper.matches_visibility?(['const'], :public)
+        expect(result).to be true
+      end
+
+      it "returns false when mixed with private decorators" do
+        result = @partializer_helper.matches_visibility?(['extern', 'static', 'const'], :public)
+        expect(result).to be false
+      end
     end
 
-    it "returns true when decorators contain '__inline'" do
-      result = @partializer_helper.is_function_private?(['__inline'])
-      expect(result).to be true
-    end
+    context "when `visibility` parameter is invalid" do
+      it "raises for invalid symbol" do
+        expect {
+          @partializer_helper.matches_visibility?(['static'], :invalid)
+        }.to raise_error(ArgumentError, /Invalid visibility.*:invalid/)
+      end
 
-    it "returns true when decorators contain '__inline__'" do
-      result = @partializer_helper.is_function_private?(['__inline__'])
-      expect(result).to be true
-    end
+      it "raises for nil" do
+        expect {
+          @partializer_helper.matches_visibility?(['static'], nil)
+        }.to raise_error(ArgumentError, /Invalid visibility.*nil/)
+      end
 
-    it "returns true when decorators contain multiple private keywords" do
-      result = @partializer_helper.is_function_private?(['static', 'inline'])
-      expect(result).to be true
-    end
-
-    it "returns false when decorators contain only 'extern'" do
-      result = @partializer_helper.is_function_private?(['extern'])
-      expect(result).to be false
-    end
-
-    it "returns false when decorators contain only 'const'" do
-      result = @partializer_helper.is_function_private?(['const'])
-      expect(result).to be false
-    end
-
-    it "returns false when decorators array is empty" do
-      result = @partializer_helper.is_function_private?([])
-      expect(result).to be false
-    end
-
-    it "returns true when mixed with non-private decorators" do
-      result = @partializer_helper.is_function_private?(['extern', 'static', 'const'])
-      expect(result).to be true
+      it "raises for string" do
+        expect {
+          @partializer_helper.matches_visibility?(['static'], "public")
+        }.to raise_error(ArgumentError, /Invalid visibility.*"public"/)
+      end
     end
   end
 
