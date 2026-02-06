@@ -40,19 +40,20 @@ class Partializer
 
   # Ensure no original headers for the module being paritalized
   def sanitize_includes(name:, includes:)    
-    _includes = includes.reject {|include| include.ext().downcase() == name.downcase()}
+    _includes = remove_matching_includes(includes: includes, modules: [name])
     return _includes.uniq()
   end
 
   def remap_implementation_header_includes(name:, includes:, partials:)
     _includes = includes.clone()
 
-    partials.each do |_module, _|
-      # Remove any includes for modules that are being paritalized
-      _includes.delete_if { |include| include.ext().downcase() == _module.downcase() }
-    end
+    # Get list of all partialized module names
+    partialized_modules = partials.keys
+    
+    # Remove includes for all partialized modules
+    _includes = remove_matching_includes(includes: _includes, modules: partialized_modules)
 
-    # Ensure original module header is not in the list and remove any duplicates
+    # Ensure original module header is not in the list and also remove any duplicate includes
     return sanitize_includes(name: name, includes: _includes)
   end
 
@@ -62,17 +63,22 @@ class Partializer
     # Add implementation header
     _includes << @file_path_utils.form_partial_implementation_header_filename(name)
 
+    mockable_modules = []
+
     partials.each do |_module, config|
       # Remap mockable interface headers that will be injected into generated partial implementation
       if includes.any? { |include| include.ext().downcase() == _module.downcase() }
         if config.types.intersect?([Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE])
           # Insert mockable interface header from remapping of module name
           _includes << @file_path_utils.form_partial_interface_header_filename(_module)
-          # Remove the original module header now that it's remapped to mockable interface
-          _includes.delete_if { |include| include.ext().downcase() == _module.downcase() }
+          # Remember the module for later removal of original header
+          mockable_modules << _module
         end
       end
     end
+
+    # Remove the original module header now that it's remapped to mockable interface
+    _includes = remove_matching_includes(includes: _includes, modules: mockable_modules)
 
     # Ensure original module header is not in the list and remove any duplicates
     return sanitize_includes(name: name, includes: _includes)
@@ -107,4 +113,17 @@ class Partializer
     return impl, interface
   end
 
+  private
+
+  # Remove includes that match the given module names (case-insensitive)
+  # Returns a new array with matching includes removed
+  def remove_matching_includes(includes:, modules:)
+    # Normalize module names to lowercase for comparison
+    normalized_modules = modules.map(&:downcase)
+    
+    # Filter out includes whose extension (without dot) matches any module name
+    return includes.reject do |include|
+      normalized_modules.include?(include.ext().downcase())
+    end
+  end  
 end
