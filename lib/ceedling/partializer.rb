@@ -6,7 +6,6 @@
 # =========================================================================
 
 require 'rake' # .ext()
-require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
 require 'ceedling/partials'
 require 'ceedling/partializer_runtime'
 require 'ceedling/constants'

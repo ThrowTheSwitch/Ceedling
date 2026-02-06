@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/c_extractinator'
+require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
 
 class PartializerHelper
 
@@ -23,6 +24,8 @@ class PartializerHelper
     test_context_configs.each do |context_config|
       _module = context_config.values.first
       
+      # Build up a hash that contains a complete list of all modules to be partialized
+      # Skip unnecessary duplication
       unless configs.has_key?(_module)
         configs[_module] = Partials.manufacture_config(module_name: _module)
       end
@@ -37,6 +40,8 @@ class PartializerHelper
       type = context_config.keys.first
       
       case type
+      # To support simplicity of partials generation, enforce the logical coherence of public and private tests.
+      # If private functions are to be exposed for test cases, they are merely added to public functions to be tested.
       when Partials::TEST_PRIVATE
         configs[_module].types += [type, Partials::TEST_PUBLIC]
       else
@@ -65,7 +70,7 @@ class PartializerHelper
       # Every partial type involves processing header files
       config.header.filepath = @file_finder.find_header_file(_module, :ignore)
       
-      # Test partial types involve processing source files
+      # Only test partial types involve processing source files
       if config.types.intersect?([Partials::TEST_PUBLIC, Partials::TEST_PRIVATE])
         config.source.filepath = @file_finder.find_source_file(_module, :ignore)
       end
