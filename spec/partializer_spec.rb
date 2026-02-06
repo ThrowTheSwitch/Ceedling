@@ -546,4 +546,260 @@ describe Partializer do
     end
   end
 
+    context "#extract_functions" do
+    it "returns empty arrays when no functions are extracted" do
+      header_filepath = '/path/to/module.h'
+      source_filepath = '/path/to/module.c'
+      types = []
+      
+      allow(@partializer_helper).to receive(:extract_module_functions)
+        .with(header_filepath: header_filepath, source_filepath: source_filepath)
+        .and_return([])
+      
+      impl, interface = @partializer.extract_functions(
+        header_filepath: header_filepath,
+        source_filepath: source_filepath,
+        types: types
+      )
+      
+      expect(impl).to eq([])
+      expect(interface).to eq([])
+    end
+
+    it "extracts public functions for TEST_PUBLIC type" do
+      header_filepath = '/path/to/module.h'
+      source_filepath = '/path/to/module.c'
+      types = [Partials::TEST_PUBLIC]
+      
+      mock_functions = [
+        { name: 'public_func', visibility: :public },
+        { name: 'private_func', visibility: :private }
+      ]
+      
+      filtered_impl = [{ name: 'public_func', type: :impl }]
+      
+      allow(@partializer_helper).to receive(:extract_module_functions)
+        .with(header_filepath: header_filepath, source_filepath: source_filepath)
+        .and_return(mock_functions)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :public, :impl)
+        .and_return(filtered_impl)
+      
+      impl, interface = @partializer.extract_functions(
+        header_filepath: header_filepath,
+        source_filepath: source_filepath,
+        types: types
+      )
+      
+      expect(impl).to eq(filtered_impl)
+      expect(interface).to eq([])
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :public, :impl)
+    end
+
+    it "extracts private functions for TEST_PRIVATE type" do
+      header_filepath = '/path/to/module.h'
+      source_filepath = '/path/to/module.c'
+      types = [Partials::TEST_PRIVATE]
+      
+      mock_functions = [
+        { name: 'public_func', visibility: :public },
+        { name: 'private_func', visibility: :private }
+      ]
+      
+      filtered_impl = [{ name: 'private_func', type: :impl }]
+      
+      allow(@partializer_helper).to receive(:extract_module_functions)
+        .with(header_filepath: header_filepath, source_filepath: source_filepath)
+        .and_return(mock_functions)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :private, :impl)
+        .and_return(filtered_impl)
+      
+      impl, interface = @partializer.extract_functions(
+        header_filepath: header_filepath,
+        source_filepath: source_filepath,
+        types: types
+      )
+      
+      expect(impl).to eq(filtered_impl)
+      expect(interface).to eq([])
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :private, :impl)
+    end
+
+    it "extracts public interface for MOCK_PUBLIC type" do
+      header_filepath = '/path/to/module.h'
+      source_filepath = '/path/to/module.c'
+      types = [Partials::MOCK_PUBLIC]
+      
+      mock_functions = [
+        { name: 'public_func', visibility: :public },
+        { name: 'private_func', visibility: :private }
+      ]
+      
+      filtered_interface = [{ name: 'public_func', type: :interface }]
+      
+      allow(@partializer_helper).to receive(:extract_module_functions)
+        .with(header_filepath: header_filepath, source_filepath: source_filepath)
+        .and_return(mock_functions)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :public, :interface)
+        .and_return(filtered_interface)
+      
+      impl, interface = @partializer.extract_functions(
+        header_filepath: header_filepath,
+        source_filepath: source_filepath,
+        types: types
+      )
+      
+      expect(impl).to eq([])
+      expect(interface).to eq(filtered_interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :public, :interface)
+    end
+
+    it "extracts private interface for MOCK_PRIVATE type" do
+      header_filepath = '/path/to/module.h'
+      source_filepath = '/path/to/module.c'
+      types = [Partials::MOCK_PRIVATE]
+      
+      mock_functions = [
+        { name: 'public_func', visibility: :public },
+        { name: 'private_func', visibility: :private }
+      ]
+      
+      filtered_interface = [{ name: 'private_func', type: :interface }]
+      
+      allow(@partializer_helper).to receive(:extract_module_functions)
+        .with(header_filepath: header_filepath, source_filepath: source_filepath)
+        .and_return(mock_functions)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :private, :interface)
+        .and_return(filtered_interface)
+      
+      impl, interface = @partializer.extract_functions(
+        header_filepath: header_filepath,
+        source_filepath: source_filepath,
+        types: types
+      )
+      
+      expect(impl).to eq([])
+      expect(interface).to eq(filtered_interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :private, :interface)
+    end
+
+    it "extracts both public and private functions for multiple TEST types" do
+      header_filepath = '/path/to/module.h'
+      source_filepath = '/path/to/module.c'
+      types = [Partials::TEST_PUBLIC, Partials::TEST_PRIVATE]
+      
+      mock_functions = [
+        { name: 'public_func', visibility: :public },
+        { name: 'private_func', visibility: :private }
+      ]
+      
+      filtered_public_impl = [{ name: 'public_func', type: :impl }]
+      filtered_private_impl = [{ name: 'private_func', type: :impl }]
+      
+      allow(@partializer_helper).to receive(:extract_module_functions)
+        .with(header_filepath: header_filepath, source_filepath: source_filepath)
+        .and_return(mock_functions)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :public, :impl)
+        .and_return(filtered_public_impl)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :private, :impl)
+        .and_return(filtered_private_impl)
+      
+      impl, interface = @partializer.extract_functions(
+        header_filepath: header_filepath,
+        source_filepath: source_filepath,
+        types: types
+      )
+      
+      expect(impl).to eq(filtered_public_impl + filtered_private_impl)
+      expect(interface).to eq([])
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :public, :impl)
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :private, :impl)
+    end
+
+    it "extracts both public and private interfaces for multiple MOCK types" do
+      header_filepath = '/path/to/module.h'
+      source_filepath = '/path/to/module.c'
+      types = [Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE]
+      
+      mock_functions = [
+        { name: 'public_func', visibility: :public },
+        { name: 'private_func', visibility: :private }
+      ]
+      
+      filtered_public_interface = [{ name: 'public_func', type: :interface }]
+      filtered_private_interface = [{ name: 'private_func', type: :interface }]
+      
+      allow(@partializer_helper).to receive(:extract_module_functions)
+        .with(header_filepath: header_filepath, source_filepath: source_filepath)
+        .and_return(mock_functions)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :public, :interface)
+        .and_return(filtered_public_interface)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :private, :interface)
+        .and_return(filtered_private_interface)
+      
+      impl, interface = @partializer.extract_functions(
+        header_filepath: header_filepath,
+        source_filepath: source_filepath,
+        types: types
+      )
+      
+      expect(impl).to eq([])
+      expect(interface).to eq(filtered_public_interface + filtered_private_interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :public, :interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :private, :interface)
+    end
+
+    it "extracts mixed TEST and MOCK types" do
+      header_filepath = '/path/to/module.h'
+      source_filepath = '/path/to/module.c'
+      types = [Partials::TEST_PUBLIC, Partials::MOCK_PRIVATE]
+      
+      mock_functions = [
+        { name: 'public_func', visibility: :public },
+        { name: 'private_func', visibility: :private }
+      ]
+      
+      filtered_public_impl = [{ name: 'public_func', type: :impl }]
+      filtered_private_interface = [{ name: 'private_func', type: :interface }]
+      
+      allow(@partializer_helper).to receive(:extract_module_functions)
+        .with(header_filepath: header_filepath, source_filepath: source_filepath)
+        .and_return(mock_functions)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :public, :impl)
+        .and_return(filtered_public_impl)
+      
+      allow(@partializer_helper).to receive(:filter_and_transform)
+        .with(mock_functions, :private, :interface)
+        .and_return(filtered_private_interface)
+      
+      impl, interface = @partializer.extract_functions(
+        header_filepath: header_filepath,
+        source_filepath: source_filepath,
+        types: types
+      )
+      
+      expect(impl).to eq(filtered_public_impl)
+      expect(interface).to eq(filtered_private_interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :public, :impl)
+      expect(@partializer_helper).to have_received(:filter_and_transform).with(mock_functions, :private, :interface)
+    end
+  end
+
 end
