@@ -21,67 +21,20 @@ class Partializer
   end
 
   def assemble_configs(test_context_configs:)
-    configs = {}
     return {} if test_context_configs.empty?
 
-    # Each entry in `test_context_configs` is a single key/value pair of module name and partial type
-
-    # Create data structures for each module
-    test_context_configs.each do |context_config|
-      # Get the partial module name (no filename extension)
-      _module = context_config.values.first
-
-      # Instantiate the partial configuration if it doesn't exist yet
-      unless configs.has_key?(_module)
-        configs[_module] = Partials.manufacture_config(module_name: _module)
-      end
-    end
-
-    # Collect from test context the partial types associated with each module to be partialized
-    test_context_configs.each do |context_config|
-      _module = context_config.values.first
-      type = context_config.keys.first
-
-      # Gather all the types associated with a module.
-      # Sanitization happens in a later step.
-      case type
-      # Private test partials logically necessitate a configuration to public as well.
-      # Add public test partials to ensure proper processing later.
-      when Partials::TEST_PRIVATE
-        configs[_module].types += [type, Partials::TEST_PUBLIC]
-      # For all other partial types, simply add to the list
-      else
-        configs[_module].types << type
-      end
-    end
-
-    # Housekeeping and validation of the final set of partial configurations we are building up
-    configs.each do |_module, config|
-      # Ensure no duplicate partial types for a given module
-      config.types.uniq!
-
-      # Basic collision validation
-      if config.types.overlap?([Partials::TEST_PUBLIC, Partials::MOCK_PUBLIC])
-        raise CeedlingException.new("Partial for module '#{_module}' cannot both test and mock public functions")
-      end
-
-      # Basic collision validation
-      if config.types.overlap?([Partials::TEST_PRIVATE, Partials::MOCK_PRIVATE])
-        raise CeedlingException.new("Partial for module '#{_module}' cannot both test and mock private functions")
-      end
-    end
-
-    # Collect header and source files needed for each partial configuration
-    configs.each do |_module, config|
-      # Every partial type involves processing header files
-      config.header.filepath = @file_finder.find_header_file(_module, :ignore)
-
-      # Test partial types involve processing source files
-      if config.types.intersect?([Partials::TEST_PUBLIC, Partials::TEST_PRIVATE])
-        config.source.filepath = @file_finder.find_source_file(_module, :ignore)
-      end
-    end
-
+    # Delegate config creation to helper
+    configs = @helper.manufacture_partial_configs(test_context_configs)
+    
+    # Delegate type collection and processing to helper
+    @helper.config_collect_partial_types(test_context_configs, configs)
+    
+    # Delegate validation to helper
+    @helper.validate_partial_configs(configs)
+    
+    # Delegate file finding to helper
+    @helper.config_populate_filepaths(configs, @file_finder)
+    
     return configs
   end
 
