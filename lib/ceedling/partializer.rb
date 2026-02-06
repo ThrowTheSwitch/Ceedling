@@ -12,7 +12,7 @@ require 'ceedling/constants'
 
 class Partializer
 
-  constructor :partializer_helper, :file_path_utils
+  constructor :partializer_helper, :file_path_utils, :loginator
 
   def setup()
     # Alias
@@ -111,6 +111,24 @@ class Partializer
     end
 
     return impl, interface
+  end
+
+  def log_extracted_functions(test:, module_name:, impl:, interface:)
+    # Get function signatures
+    _impl = impl.map { |func| "`#{func.signature}`" }
+    _interface = interface.map { |func| "`#{func.signature}`" }
+    
+    @loginator.log_list(
+      _impl,
+      "Extracted mockable functions for #{test}::#{module_name}",
+      Verbosity::OBNOXIOUS
+    )
+    
+    @loginator.log_list(
+      _interface,
+      "Extracted testable functions for #{test}::#{module_name}",
+      Verbosity::OBNOXIOUS
+    )
   end
 
   private

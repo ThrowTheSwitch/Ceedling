@@ -318,6 +318,13 @@ class TestInvoker
             types: config.types,
           )
 
+          @partializer.log_extracted_functions(
+            test:           testable[:name],
+            module_name:    config.module,
+            impl:           impl,
+            interface:      interface
+          )
+
           arg_hash = {
             test:             testable[:name],
             name:             config[:module],

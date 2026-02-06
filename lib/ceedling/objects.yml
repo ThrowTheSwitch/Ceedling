@@ -318,6 +318,7 @@ partializer:
   compose:
     - partializer_helper
     - file_path_utils
+    - loginator
 
 batchinator:
   compose:
