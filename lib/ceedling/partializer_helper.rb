@@ -9,7 +9,7 @@ require 'ceedling/c_extractinator'
 
 class PartializerHelper
 
-  constructor :partializer_parser, :partializer_utils
+  constructor :partializer_parser, :partializer_utils, :file_finder
 
   def setup()
     # Aliases
@@ -60,14 +60,14 @@ class PartializerHelper
     end
   end
 
-  def config_populate_filepaths(configs, file_finder)
+  def config_populate_filepaths(configs)
     configs.each do |_module, config|
       # Every partial type involves processing header files
-      config.header.filepath = file_finder.find_header_file(_module, :ignore)
+      config.header.filepath = @file_finder.find_header_file(_module, :ignore)
       
       # Test partial types involve processing source files
       if config.types.intersect?([Partials::TEST_PUBLIC, Partials::TEST_PRIVATE])
-        config.source.filepath = file_finder.find_source_file(_module, :ignore)
+        config.source.filepath = @file_finder.find_source_file(_module, :ignore)
       end
     end
   end
