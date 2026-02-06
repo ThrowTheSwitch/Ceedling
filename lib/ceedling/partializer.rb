@@ -87,7 +87,7 @@ class Partializer
 
   # Ensure no original headers for the module being paritalized
   def sanitize_includes(name:, includes:)    
-    _includes = includes.reject {|include| include.ext() == name}
+    _includes = includes.reject {|include| include.ext().downcase() == name.downcase()}
     return _includes.uniq()
   end
 
@@ -96,7 +96,7 @@ class Partializer
 
     partials.each do |_module, _|
       # Remove any includes for modules that are being paritalized
-      _includes.delete_if { |include| include.ext() == _module }
+      _includes.delete_if { |include| include.ext().downcase() == _module.downcase() }
     end
 
     # Ensure original module header is not in the list and remove any duplicates
@@ -111,12 +111,12 @@ class Partializer
 
     partials.each do |_module, config|
       # Remap mockable interface headers that will be injected into generated partial implementation
-      if includes.any? { |include| include.ext() == _module }
+      if includes.any? { |include| include.ext().downcase() == _module.downcase() }
         if config.types.intersect?([Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE])
           # Insert mockable interface header from remapping of module name
           _includes << @file_path_utils.form_partial_interface_header_filename(_module)
           # Remove the original module header now that it's remapped to mockable interface
-          _includes.delete_if { |include| include.ext() == _module }
+          _includes.delete_if { |include| include.ext().downcase() == _module.downcase() }
         end
       end
     end
