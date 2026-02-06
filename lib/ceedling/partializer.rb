@@ -132,20 +132,23 @@ class Partializer
     impl = []
     interface = []
 
-    funcs = @helper.extract_module_functions(header: header_filepath, source: source_filepath)
+    funcs = @helper.extract_module_functions(
+      header_filepath: header_filepath,
+      source_filepath: source_filepath
+    )
 
     types.each do |type|
       case type
       when Partials::TEST_PUBLIC
-        impl += filter_and_transform(funcs, :public, :implementation)
+        impl += filter_and_transform(funcs, :public, :impl)
       when Partials::TEST_PRIVATE
-        impl += filter_and_transform(funcs, :private, :implementation)
+        impl += filter_and_transform(funcs, :private, :impl)
       when Partials::MOCK_PUBLIC
         interface += filter_and_transform(funcs, :public, :interface)
       when Partials::MOCK_PRIVATE
         interface += filter_and_transform(funcs, :private, :interface)
       else
-        raise CeedlingException.new("Invalid Partial type `:#{type}`")
+        raise ArgumentError, "Invalid Partial type `:#{type}`"
       end
     end
 
@@ -159,29 +162,16 @@ class Partializer
     funcs.filter_map do |func|
       decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
       
-      next unless matches_visibility?(decorators, visibility)
+      next unless @helper.matches_visibility?(decorators, visibility)
       
       transform_function(func, signature, output_type)
-    end
-  end
-
-  # Check if function matches the desired visibility
-  # TODO: Move to the helper, superseding distinct `is_function_public?` and `is_function_private?` functions
-  def matches_visibility?(decorators, visibility)
-    case visibility
-    when :public
-      @helper.is_function_public?(decorators)
-    when :private
-      @helper.is_function_private?(decorators)
-    else
-      raise ArgumentError, "Invalid visibility: #{visibility}"
     end
   end
 
   # Transform function to appropriate output format
   def transform_function(func, signature, output_type)
     case output_type
-    when :implementation
+    when :impl
       Partials.manufacture_function_definition(
         signature: signature,
         # TODO: Handle preserving whitespace between signature and body
