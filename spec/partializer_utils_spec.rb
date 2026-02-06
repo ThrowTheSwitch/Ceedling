@@ -119,4 +119,47 @@ describe PartializerUtils do
     end
   end
 
+  context "#transform_function" do
+    let(:mock_func) do
+      double('function',
+        name: 'testFunc',
+        signature: 'void testFunc(int x)',
+        body: "{\n  return x * 2;\n}"
+      )
+    end
+
+    context "when output_type is :impl" do
+      it "returns a FunctionDefinition with signature and code block" do
+        signature = 'void testFunc(int x)'
+        
+        result = @utils.transform_function(mock_func, signature, :impl)
+        
+        expect(result).to be_a(Partials::FunctionDefinition)
+        expect(result.signature).to eq(signature)
+        expect(result.code_block).to eq("void testFunc(int x)\n{\n  return x * 2;\n}")
+      end
+    end
+
+    context "when output_type is :interface" do
+      it "returns a FunctionDeclaration with only signature" do
+        signature = 'void testFunc(int x)'
+        
+        result = @utils.transform_function(mock_func, signature, :interface)
+        
+        expect(result).to be_a(Partials::FunctionDeclaration)
+        expect(result.signature).to eq(signature)
+        expect(result).not_to respond_to(:code_block)
+      end
+    end
+
+    context "when output_type is invalid" do
+      it "raises exception for unknown output type" do
+        signature = 'void testFunc(void)'
+        
+        expect {
+          @utils.transform_function(mock_func, signature, :unknown)
+        }.to raise_error(ArgumentError, /unknown/i)
+      end
+    end
+  end
 end
