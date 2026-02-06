@@ -8,11 +8,10 @@
 require 'rake' # .ext()
 require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
 require 'ceedling/partials'
+require 'ceedling/partializer_runtime'
 require 'ceedling/constants'
 
 class Partializer
-
-  PRIVATE_KEYWORDS = ['static', 'inline', '__inline', '__inline__']
 
   constructor :partializer_helper, :file_path_utils, :file_finder
 
@@ -140,50 +139,19 @@ class Partializer
     types.each do |type|
       case type
       when Partials::TEST_PUBLIC
-        impl += filter_and_transform(funcs, :public, :impl)
+        impl += @helper.filter_and_transform(funcs, :public, :impl)
       when Partials::TEST_PRIVATE
-        impl += filter_and_transform(funcs, :private, :impl)
+        impl += @helper.filter_and_transform(funcs, :private, :impl)
       when Partials::MOCK_PUBLIC
-        interface += filter_and_transform(funcs, :public, :interface)
+        interface += @helper.filter_and_transform(funcs, :public, :interface)
       when Partials::MOCK_PRIVATE
-        interface += filter_and_transform(funcs, :private, :interface)
+        interface += @helper.filter_and_transform(funcs, :private, :interface)
       else
-        raise ArgumentError, "Invalid Partial type `:#{type}`"
+        PartializerRuntime.raise_on_option(type)
       end
     end
 
     return impl, interface
-  end
-
-  private
-
-  # Filter functions by visibility and transform to appropriate output type
-  def filter_and_transform(funcs, visibility, output_type)
-    funcs.filter_map do |func|
-      decorators, signature = @helper.parse_signature_decorators(func.signature, func.name)
-      
-      next unless @helper.matches_visibility?(decorators, visibility)
-      
-      transform_function(func, signature, output_type)
-    end
-  end
-
-  # Transform function to appropriate output format
-  def transform_function(func, signature, output_type)
-    case output_type
-    when :impl
-      Partials.manufacture_function_definition(
-        signature: signature,
-        # TODO: Handle preserving whitespace between signature and body
-        code_block: signature + "\n" + func.body
-      )
-    when :interface
-      Partials.manufacture_function_declaration(
-        signature: signature
-      )
-    else
-      raise ArgumentError, "Invalid output_type: #{output_type}"
-    end
   end
 
 end
