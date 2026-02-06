@@ -14,11 +14,13 @@ describe Partializer do
   before(:each) do
     @partializer_helper = double( "PartializerHelper" )
     @file_path_utils = double( "FilePathUtils" )
+    @loginator = double( "Loginator" )
 
     @partializer = described_class.new(
       {
         :partializer_helper => @partializer_helper,
         :file_path_utils => @file_path_utils,
+        :loginator => @loginator
       }
     )
   end
