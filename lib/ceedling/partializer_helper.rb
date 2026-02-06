@@ -92,7 +92,8 @@ class PartializerHelper
     return header_funcs + source_funcs
   end
 
-  # Filter functions by visibility and transform to appropriate output type (implementation or interface)
+  # 1. Filter functions by visibility (:private | :public)
+  # 2. Transform functions to appropriate container (:impl | :interface) → `FunctionDefinition[]` or `FunctionDeclaration[]`
   def filter_and_transform(funcs, visibility, output_type)
     funcs.filter_map do |func|
       decorators, signature = @parser.parse_signature_decorators(func.signature, func.name)
