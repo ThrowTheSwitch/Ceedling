@@ -312,12 +312,12 @@ partializer_helper:
   compose:
     - partializer_utils
     - partializer_parser
+    - file_finder
 
 partializer:
   compose:
     - partializer_helper
     - file_path_utils
-    - file_finder
 
 batchinator:
   compose:

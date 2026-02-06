@@ -13,7 +13,7 @@ require 'ceedling/constants'
 
 class Partializer
 
-  constructor :partializer_helper, :file_path_utils, :file_finder
+  constructor :partializer_helper, :file_path_utils
 
   def setup()
     # Alias
@@ -21,6 +21,7 @@ class Partializer
   end
 
   def assemble_configs(test_context_configs:)
+    # A list of single entry hashes associating a module name with a Partial type
     return {} if test_context_configs.empty?
 
     # Delegate config creation to helper
@@ -33,7 +34,7 @@ class Partializer
     @helper.validate_partial_configs(configs)
     
     # Delegate file finding to helper
-    @helper.config_populate_filepaths(configs, @file_finder)
+    @helper.config_populate_filepaths(configs)
     
     return configs
   end

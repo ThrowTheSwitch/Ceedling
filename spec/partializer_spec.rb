@@ -14,15 +14,57 @@ describe Partializer do
   before(:each) do
     @partializer_helper = double( "PartializerHelper" )
     @file_path_utils = double( "FilePathUtils" )
-    @file_finder = double( "FileFinder" )
 
     @partializer = described_class.new(
       {
         :partializer_helper => @partializer_helper,
         :file_path_utils => @file_path_utils,
-        :file_finder => @file_finder
       }
     )
+  end
+
+  context "#assemble_configs" do
+    it "returns empty hash when test_context_configs is empty" do
+      test_context_configs = []
+      
+      result = @partializer.assemble_configs(test_context_configs: test_context_configs)
+      
+      expect(result).to eq({})
+    end
+
+    it "delegates config assembly to helper methods in correct sequence" do
+      test_context_configs = [
+        { Partials::TEST_PUBLIC => 'module1' },
+        { Partials::MOCK_PRIVATE => 'module2' }
+      ]
+      
+      mock_configs = {
+        'module1' => OpenStruct.new(module: 'module1', types: [Partials::TEST_PUBLIC]),
+        'module2' => OpenStruct.new(module: 'module2', types: [Partials::MOCK_PRIVATE])
+      }
+      
+      # Set up expectations for helper method calls
+      expect(@partializer_helper).to receive(:manufacture_partial_configs)
+        .with(test_context_configs)
+        .and_return(mock_configs)
+        .ordered
+      
+      expect(@partializer_helper).to receive(:config_collect_partial_types)
+        .with(test_context_configs, mock_configs)
+        .ordered
+      
+      expect(@partializer_helper).to receive(:validate_partial_configs)
+        .with(mock_configs)
+        .ordered
+      
+      expect(@partializer_helper).to receive(:config_populate_filepaths)
+        .with(mock_configs)
+        .ordered
+      
+      result = @partializer.assemble_configs(test_context_configs: test_context_configs)
+      
+      expect(result).to eq(mock_configs)
+    end
   end
 
   context "#sanitize_includes" do
