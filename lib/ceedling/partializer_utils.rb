@@ -30,8 +30,9 @@ class PartializerUtils
     when :impl
       Partials.manufacture_function_definition(
         signature: signature,
-        # TODO: Handle preserving whitespace between signature and body
-        code_block: signature + "\n" + func.body
+        # Extract code block as beginning with the signature to end of original code block.
+        # This omits any decorators before signature in original code_block and preserves original function indentation and newlines.
+        code_block: extract_code_block(func.code_block, signature)
       )
     when :interface
       Partials.manufacture_function_declaration(
@@ -49,6 +50,20 @@ class PartializerUtils
     return decorators.any? do |decorator|
       PRIVATE_KEYWORDS.any? { |keyword| decorator.downcase == keyword.downcase }
     end
+  end
+
+  # Extract code block starting from signature to end of original, omitting any decorators before signature.
+  # Preserves original function indentation and newlines.
+  def extract_code_block(code_block, signature)
+    start_index = code_block.index(signature)
+    
+    # Handle case where signature is not found in code_block
+    if start_index.nil?
+      raise ArgumentError, "Signature '#{signature}' not found in code block"
+    end
+    
+    # Return code block minus any decorators before signature
+    return code_block[start_index..-1]
   end
 
 end
