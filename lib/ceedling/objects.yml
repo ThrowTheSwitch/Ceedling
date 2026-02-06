@@ -304,15 +304,20 @@ preprocessinator_extractor:
   compose:
     - parsing_parcels
 
+partializer_parser:
+
+partializer_utils:
+
 partializer_helper:
+  compose:
+    - partializer_utils
+    - partializer_parser
 
 partializer:
   compose:
     - partializer_helper
     - file_path_utils
     - file_finder
-
-partializer_helper:
 
 batchinator:
   compose:
