@@ -12,7 +12,7 @@ class GeneratorPartials
 
   constructor :file_wrapper, :file_path_utils
 
-  def generate_implementation(definitions:, name:, source_includes:, header_includes:, output_path:)
+  def generate_implementation(definitions:, header_variables:, name:, source_includes:, header_includes:, output_path:)
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
 
@@ -20,7 +20,7 @@ class GeneratorPartials
     source_filepath = File.join(output_path, source)
 
     @file_wrapper.open(header_filepath, 'w') do |file|
-      generate_header(file, header, header_includes, definitions)
+      generate_header(file, header, header_includes, definitions, header_variables)
     end
 
     @file_wrapper.open(source_filepath, 'w') do |file|
@@ -35,25 +35,31 @@ class GeneratorPartials
     filepath = File.join(output_path, header)
 
     @file_wrapper.open(filepath, 'w') do |file|
-      generate_header(file, header, includes, declarations)
+      generate_header(file, header, includes, declarations, [])
     end
 
     return filepath
   end
 
   # Publicly exposed for testing
-  def generate_header(io, name, headers, declarations)
+  def generate_header(io, name, includes, declarations, header_variables)
     guard = FileWrapper.generate_include_guard( name )
 
     io << "// Ceeding generated file\n"
     io << "#ifndef #{guard}\n"
     io << "#define #{guard}\n\n"
 
-    headers.each do |header|
-      io << "#include \"#{header}\"\n"  
+    includes.each do |include|
+      io << "#include \"#{include}\"\n"  
     end
 
-    io << "\n" if !headers.empty?
+    io << "\n" if !includes.empty?
+
+    header_variables.each do |line|
+      io << "#{line}\n"  
+    end
+
+    io << "\n" if !header_variables.empty?
 
     declarations.each do |decl|
       io << decl.signature
@@ -64,13 +70,13 @@ class GeneratorPartials
   end
 
   # Publicly exposed for testing
-  def generate_source(io, headers, definitions)
+  def generate_source(io, includes, definitions)
     io << "// Ceeding generated file\n\n"
-    headers.each do |header|
-      io << "#include \"#{header}\"\n"  
+    includes.each do |include|
+      io << "#include \"#{include}\"\n"  
     end
 
-    io << "\n" if !headers.empty?
+    io << "\n" if !includes.empty?
 
     definitions.each do |defn|
       if defn.line_num and defn.source_filepath

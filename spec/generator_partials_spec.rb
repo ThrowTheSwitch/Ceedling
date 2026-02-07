@@ -67,10 +67,12 @@ describe GeneratorPartials do
       ]
       source_includes = ['types.h', 'config.h']
       header_includes = ['stdint.h', 'stdbool.h']
+      header_variables = ['extern uint8_t my_var;']
       
       # Execute
       result = @generator.generate_implementation(
         definitions: defns,
+        header_variables: header_variables,
         name: name,
         source_includes: source_includes,
         header_includes: header_includes,
@@ -82,7 +84,8 @@ describe GeneratorPartials do
         header_file_handle,
         header_filename,
         header_includes,
-        defns
+        defns,
+        header_variables
       )
       
       # Verify generate_source was called with correct parameters
@@ -148,7 +151,8 @@ describe GeneratorPartials do
         file_handle,
         header_filename,
         includes,
-        decls
+        decls,
+        []
       )
       
       # Verify file path utilities were called
@@ -176,11 +180,11 @@ describe GeneratorPartials do
     
       CONTENTS
 
-      @generator.generate_header(buf, 'foo_bar', [], [])
+      @generator.generate_header(buf, 'foo_bar', [], [], [])
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should generate a header file with #include statements but no function signatures" do
+    it "should generate a header file with #include statements but nothing else" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
       #ifndef __APPLES_AND_BANANAS_H__
@@ -193,11 +197,32 @@ describe GeneratorPartials do
     
       CONTENTS
 
-      @generator.generate_header(buf, 'Apples-and-Bananas', ['foo.h', 'bar.h'], [])
+      @generator.generate_header(buf, 'Apples-and-Bananas', ['foo.h', 'bar.h'], [], [])
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should generate a header file with #include statements and function signatures" do
+    it "should generate a header file with variable declarations but nothing else" do
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+      #ifndef __PB_AND_J_H__
+      #define __PB_AND_J_H__
+
+      extern unsigned int slices_of_bread;
+      extern char[10] crumbs;
+
+      #endif // __PB_AND_J_H__
+    
+      CONTENTS
+
+      variables = [
+        'extern unsigned int slices_of_bread;',
+        'extern char[10] crumbs;'
+      ]
+      @generator.generate_header(buf, 'pb-and-j', [], [], variables)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should generate a header file with #include statements, variable declarations, and function signatures" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
       #ifndef __APPLES_AND_BANANAS_H__
@@ -205,6 +230,9 @@ describe GeneratorPartials do
 
       #include "Eeny.h"
       #include "Meeny.h"
+
+      extern signed long int apples;
+      extern double bananas;
 
       void foobarbaz(int x, int y);
 
@@ -224,7 +252,12 @@ describe GeneratorPartials do
         signature: 'int razzleDazzle(void* ptr)'
       )
 
-      @generator.generate_header(buf, 'Apples-and-Bananas', ['Eeny.h', 'Meeny.h'], decls)
+      variables = [
+        'extern signed long int apples;',
+        'extern double bananas;'
+      ]
+
+      @generator.generate_header(buf, 'Apples-and-Bananas', ['Eeny.h', 'Meeny.h'], decls, variables)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
