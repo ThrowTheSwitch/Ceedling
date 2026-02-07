@@ -312,7 +312,7 @@ class TestInvoker
           config = partial[:config]
           testable = partial[:testable]
 
-          impl, interface = @partializer.extract_functions(
+          impl, interface = @partializer.extract_contents(
             header_filepath: config.header.preprocessed_filepath,
             source_filepath: config.source.preprocessed_filepath,
             types: config.types,

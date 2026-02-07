@@ -10,23 +10,26 @@ require 'ceedling/c_extractinator'
 
 describe CExtractinator do
 
-  context "#extract_functions" do
-    # Helper method to create extractinator and extract functions from a string
+  context "#extract_contents" do
+    # Helper method to create CExtractinator and extract contents from a string as CModule
     let(:extract_from) do
       ->(content) do
         extractinator = CExtractinator.from_string(content: content)
-        return extractinator.extract_functions()
+        # Return CModule struct
+        return extractinator.extract_contents()
       end
     end
 
     it "should extract nothing from blank input" do
-      funcs = extract_from.call('')
-      expect( funcs.length ).to eq 0
+      contents = extract_from.call('')
+      expect( contents.funcs.length ).to eq 0
+      expect( contents.vars.length ).to eq 0
     end
 
     it "should extract nothing from whitespace" do
-      funcs = extract_from.call("                   \n\n\r\n         \t\n\n\n\n")
-      expect( funcs.length ).to eq 0
+      contents = extract_from.call("                   \n\n\r\n         \t\n\n\n\n")
+      expect( contents.funcs.length ).to eq 0
+      expect( contents.vars.length ).to eq 0
     end
 
     it "should extract a simple function" do
@@ -36,14 +39,16 @@ describe CExtractinator do
       }
       CONTENTS
 
-      funcs = extract_from.call(file_contents)
+      contents = extract_from.call(file_contents)
 
-      expect( funcs.length ).to eq 1
-      expect( funcs[0].name ).to eq 'a_function'
-      expect( funcs[0].signature ).to eq 'void a_function(void)'
-      expect( funcs[0].body ).to eq "{\n  int a = 1 + 1;\n}"
-      expect( funcs[0].code_block ).to eq file_contents.strip()
-      expect( funcs[0].line_count ).to eq 3
+      expect( contents.vars.length ).to eq 0
+
+      expect( contents.funcs.length ).to eq 1
+      expect( contents.funcs[0].name ).to eq 'a_function'
+      expect( contents.funcs[0].signature ).to eq 'void a_function(void)'
+      expect( contents.funcs[0].body ).to eq "{\n  int a = 1 + 1;\n}"
+      expect( contents.funcs[0].code_block ).to eq file_contents.strip()
+      expect( contents.funcs[0].line_count ).to eq 3
     end
 
     it "should extract multiple simple functions" do
@@ -64,30 +69,31 @@ describe CExtractinator do
       
       CONTENTS
 
-      funcs = extract_from.call(file_contents)
+      contents = extract_from.call(file_contents)
 
-      expect( funcs.length ).to eq 3
+      expect( contents.vars.length ).to eq 0
+      expect( contents.funcs.length ).to eq 3
 
-      expect( funcs[0].name ).to eq 'a_function'
-      expect( funcs[0].signature ).to eq "int a_function(int a, int b)"
-      expect( funcs[0].body ).to eq "{\n  int c = a + b;\n  c += 5;\n  return c;\n}"
-      expect( funcs[0].code_block ).to eq "int\na_function(int a, int b) {\n  int c = a + b;\n  c += 5;\n  return c;\n}"
-      expect( funcs[0].line_count ).to eq 6
+      expect( contents.funcs[0].name ).to eq 'a_function'
+      expect( contents.funcs[0].signature ).to eq "int a_function(int a, int b)"
+      expect( contents.funcs[0].body ).to eq "{\n  int c = a + b;\n  c += 5;\n  return c;\n}"
+      expect( contents.funcs[0].code_block ).to eq "int\na_function(int a, int b) {\n  int c = a + b;\n  c += 5;\n  return c;\n}"
+      expect( contents.funcs[0].line_count ).to eq 6
 
-      expect( funcs[1].name ).to eq 'BFUNCTION'
-      expect( funcs[1].signature ).to eq 'void BFUNCTION(void)'
-      expect( funcs[1].body ).to eq "{ int a = 1 + 1; }"
-      expect( funcs[1].code_block ).to eq "void BFUNCTION(void) { int a = 1 + 1; }"
-      expect( funcs[1].line_count ).to eq 1
+      expect( contents.funcs[1].name ).to eq 'BFUNCTION'
+      expect( contents.funcs[1].signature ).to eq 'void BFUNCTION(void)'
+      expect( contents.funcs[1].body ).to eq "{ int a = 1 + 1; }"
+      expect( contents.funcs[1].code_block ).to eq "void BFUNCTION(void) { int a = 1 + 1; }"
+      expect( contents.funcs[1].line_count ).to eq 1
 
-      expect( funcs[2].name ).to eq 'C_Function'
-      expect( funcs[2].signature ).to eq 'uint16_t*  C_Function ( void )'
-      expect( funcs[2].body ).to eq "{\n  return &global_var;\n}"
-      expect( funcs[2].code_block ).to eq "uint16_t*  C_Function ( void )\n{\n  return &global_var;\n}"
-      expect( funcs[2].line_count ).to eq 4
+      expect( contents.funcs[2].name ).to eq 'C_Function'
+      expect( contents.funcs[2].signature ).to eq 'uint16_t*  C_Function ( void )'
+      expect( contents.funcs[2].body ).to eq "{\n  return &global_var;\n}"
+      expect( contents.funcs[2].code_block ).to eq "uint16_t*  C_Function ( void )\n{\n  return &global_var;\n}"
+      expect( contents.funcs[2].line_count ).to eq 4
     end
 
-    it "should extract functions while ignoring module variables and preprocessor directives" do
+    it "should extract functions and module variables while ignoring preprocessor directives" do
       file_contents = <<~CONTENTS
 
       #include <stdint.h>
@@ -111,21 +117,27 @@ describe CExtractinator do
       
       CONTENTS
 
-      funcs = extract_from.call(file_contents)
+      contents = extract_from.call(file_contents)
 
-      expect( funcs.length ).to eq 2
+      expect( contents.vars.length ).to eq 4
+      expect( contents.vars[0] ).to eq 'int global_var;'
+      expect( contents.vars[1] ).to eq 'static const char* ptr = "hello";'
+      expect( contents.vars[2] ).to eq 'struct foo { int x; } instance;'
+      expect( contents.vars[3] ).to eq 'int array[] = {1, 2, 3};'
 
-      expect( funcs[0].name ).to eq 'a_function'
-      expect( funcs[0].signature ).to eq 'void a_function(void)'
-      expect( funcs[0].body ).to eq "{ int a = 1 + 1; }"
-      expect( funcs[0].code_block ).to eq "void a_function(void) { int a = 1 + 1; }"
-      expect( funcs[0].line_count ).to eq 1
+      expect( contents.funcs.length ).to eq 2
 
-      expect( funcs[1].name ).to eq 'b_function'
-      expect( funcs[1].signature ).to eq 'void b_function(void)'
-      expect( funcs[1].body ).to eq "{ int a = 1 + 1; }"
-      expect( funcs[1].code_block ).to eq "void b_function(void) { int a = 1 + 1; }"
-      expect( funcs[1].line_count ).to eq 1
+      expect( contents.funcs[0].name ).to eq 'a_function'
+      expect( contents.funcs[0].signature ).to eq 'void a_function(void)'
+      expect( contents.funcs[0].body ).to eq "{ int a = 1 + 1; }"
+      expect( contents.funcs[0].code_block ).to eq "void a_function(void) { int a = 1 + 1; }"
+      expect( contents.funcs[0].line_count ).to eq 1
+
+      expect( contents.funcs[1].name ).to eq 'b_function'
+      expect( contents.funcs[1].signature ).to eq 'void b_function(void)'
+      expect( contents.funcs[1].body ).to eq "{ int a = 1 + 1; }"
+      expect( contents.funcs[1].code_block ).to eq "void b_function(void) { int a = 1 + 1; }"
+      expect( contents.funcs[1].line_count ).to eq 1
     end
 
     it "should ignore commented out functions and handle comments with braces" do
@@ -169,24 +181,25 @@ describe CExtractinator do
 
       CONTENTS
 
-      funcs = extract_from.call(file_contents)
+      contents = extract_from.call(file_contents)
 
-      expect( funcs.length ).to eq 3
+      expect( contents.vars.length ).to eq 0
+      expect( contents.funcs.length ).to eq 3
 
-      expect( funcs[0].name ).to eq 'real_function_a'
-      expect( funcs[0].signature ).to eq 'void real_function_a(void)'
-      expect( funcs[0].body ).to eq "{\n  int a = 1;\n  // Comment with braces: { } should not break extraction\n  int b = 2;\n}"
-      expect( funcs[0].line_count ).to eq 5
+      expect( contents.funcs[0].name ).to eq 'real_function_a'
+      expect( contents.funcs[0].signature ).to eq 'void real_function_a(void)'
+      expect( contents.funcs[0].body ).to eq "{\n  int a = 1;\n  // Comment with braces: { } should not break extraction\n  int b = 2;\n}"
+      expect( contents.funcs[0].line_count ).to eq 5
 
-      expect( funcs[1].name ).to eq 'real_function_b'
-      expect( funcs[1].signature ).to eq 'void real_function_b(void)'
-      expect( funcs[1].body ).to eq "{\n  /* Inline comment with braces { } */\n  return;\n}"
-      expect( funcs[1].line_count ).to eq 4
+      expect( contents.funcs[1].name ).to eq 'real_function_b'
+      expect( contents.funcs[1].signature ).to eq 'void real_function_b(void)'
+      expect( contents.funcs[1].body ).to eq "{\n  /* Inline comment with braces { } */\n  return;\n}"
+      expect( contents.funcs[1].line_count ).to eq 4
 
-      expect( funcs[2].name ).to eq 'real_function_c'
-      expect( funcs[2].signature ).to eq 'void real_function_c(void)'
-      expect( funcs[2].body ).to eq "{ \n  // Single line comment with opening brace {\n  int x = 1;\n  /* Multi-line comment with closing brace } */\n  int y = 2;\n}"
-      expect( funcs[2].line_count ).to eq 6
+      expect( contents.funcs[2].name ).to eq 'real_function_c'
+      expect( contents.funcs[2].signature ).to eq 'void real_function_c(void)'
+      expect( contents.funcs[2].body ).to eq "{ \n  // Single line comment with opening brace {\n  int x = 1;\n  /* Multi-line comment with closing brace } */\n  int y = 2;\n}"
+      expect( contents.funcs[2].line_count ).to eq 6
     end
 
     it "should extract functions with nested braces from control flow and initializers" do
@@ -252,37 +265,38 @@ describe CExtractinator do
 
       CONTENTS
 
-      funcs = extract_from.call(file_contents)
+      contents = extract_from.call(file_contents)
 
-      expect( funcs.length ).to eq 5
+      expect( contents.vars.length ).to eq 0
+      expect( contents.funcs.length ).to eq 5
 
-      expect( funcs[0].name ).to eq 'function_with_if_else'
-      expect( funcs[0].signature ).to eq 'void function_with_if_else(int x)'
-      expect( funcs[0].body ).to eq "{\n  if (x > 0) {\n    do_something();\n  } else {\n    do_something_else();\n  }\n}"
-      expect( funcs[0].line_count ).to eq 7
+      expect( contents.funcs[0].name ).to eq 'function_with_if_else'
+      expect( contents.funcs[0].signature ).to eq 'void function_with_if_else(int x)'
+      expect( contents.funcs[0].body ).to eq "{\n  if (x > 0) {\n    do_something();\n  } else {\n    do_something_else();\n  }\n}"
+      expect( contents.funcs[0].line_count ).to eq 7
 
-      expect( funcs[1].name ).to eq 'function_with_loops'
-      expect( funcs[1].signature ).to eq 'void function_with_loops(void)'
-      expect( funcs[1].body ).to eq "{\n  for (int i = 0; i < 10; i++) {\n    while (condition) {\n      do_work();\n    }\n  }\n}"
-      expect( funcs[1].line_count ).to eq 7
+      expect( contents.funcs[1].name ).to eq 'function_with_loops'
+      expect( contents.funcs[1].signature ).to eq 'void function_with_loops(void)'
+      expect( contents.funcs[1].body ).to eq "{\n  for (int i = 0; i < 10; i++) {\n    while (condition) {\n      do_work();\n    }\n  }\n}"
+      expect( contents.funcs[1].line_count ).to eq 7
 
-      expect( funcs[2].name ).to eq 'function_with_switch'
-      expect( funcs[2].signature ).to eq 'void function_with_switch(int value)'
-      expect( funcs[2].body ).to eq "{\n  switch (value) {\n    case 1: {\n      handle_case_1();\n      break;\n    }\n    case 2: {\n      handle_case_2();\n      break;\n    }\n    default: {\n      handle_default();\n    }\n  }\n}"
-      expect( funcs[2].line_count ).to eq 15
+      expect( contents.funcs[2].name ).to eq 'function_with_switch'
+      expect( contents.funcs[2].signature ).to eq 'void function_with_switch(int value)'
+      expect( contents.funcs[2].body ).to eq "{\n  switch (value) {\n    case 1: {\n      handle_case_1();\n      break;\n    }\n    case 2: {\n      handle_case_2();\n      break;\n    }\n    default: {\n      handle_default();\n    }\n  }\n}"
+      expect( contents.funcs[2].line_count ).to eq 15
 
-      expect( funcs[3].name ).to eq 'function_with_struct_init'
-      expect( funcs[3].signature ).to eq 'void function_with_struct_init(void)'
-      expect( funcs[3].body ).to eq "{\n  struct point {\n    int x;\n    int y;\n  } p = {\n    .x = 10,\n    .y = 20\n  };\n  \n  int array[] = {1, 2, 3, {4, 5, 6}};\n}"
-      expect( funcs[3].line_count ).to eq 11
+      expect( contents.funcs[3].name ).to eq 'function_with_struct_init'
+      expect( contents.funcs[3].signature ).to eq 'void function_with_struct_init(void)'
+      expect( contents.funcs[3].body ).to eq "{\n  struct point {\n    int x;\n    int y;\n  } p = {\n    .x = 10,\n    .y = 20\n  };\n  \n  int array[] = {1, 2, 3, {4, 5, 6}};\n}"
+      expect( contents.funcs[3].line_count ).to eq 11
 
-      expect( funcs[4].name ).to eq 'function_with_nested_blocks'
-      expect( funcs[4].signature ).to eq 'void function_with_nested_blocks(void)'
-      expect( funcs[4].body ).to eq "{\n  {\n    int local_scope = 1;\n    {\n      int deeper_scope = 2;\n      if (condition) {\n        {\n          int deepest = 3;\n        }\n      }\n    }\n  }\n}"
-      expect( funcs[4].line_count ).to eq 13
+      expect( contents.funcs[4].name ).to eq 'function_with_nested_blocks'
+      expect( contents.funcs[4].signature ).to eq 'void function_with_nested_blocks(void)'
+      expect( contents.funcs[4].body ).to eq "{\n  {\n    int local_scope = 1;\n    {\n      int deeper_scope = 2;\n      if (condition) {\n        {\n          int deepest = 3;\n        }\n      }\n    }\n  }\n}"
+      expect( contents.funcs[4].line_count ).to eq 13
     end
 
-    it "should extract a lengthy function from complex code with various C constructs" do
+    it "should extract a lengthy function and variable declarations from complex code with various C constructs" do
       file_contents = <<~CONTENTS
       #include <stdio.h>
       #include <stdlib.h>
@@ -381,19 +395,23 @@ describe CExtractinator do
       
       CONTENTS
 
-      funcs = extract_from.call(file_contents)
+      contents = extract_from.call(file_contents)
 
-      expect( funcs.length ).to eq 2
+      expect( contents.vars.length ).to eq 2
+      expect( contents.vars[0] ).to eq 'static int global_counter = 0;'
+      expect( contents.vars[1] ).to eq 'const char* global_message = "Hello, World!";'
+
+      expect( contents.funcs.length ).to eq 2
 
       # Note: For sake of space, `body` and `code_block` are not tested.
 
-      expect( funcs[0].name ).to eq 'complex_function'
-      expect( funcs[0].signature ).to eq 'int complex_function(int param1, const char* param2, void* param3)'
-      expect( funcs[0].line_count ).to eq 71
+      expect( contents.funcs[0].name ).to eq 'complex_function'
+      expect( contents.funcs[0].signature ).to eq 'int complex_function(int param1, const char* param2, void* param3)'
+      expect( contents.funcs[0].line_count ).to eq 71
 
-      expect( funcs[1].name ).to eq 'simple_function'
-      expect( funcs[1].signature ).to eq 'void simple_function(void)'
-      expect( funcs[1].line_count ).to eq 3
+      expect( contents.funcs[1].name ).to eq 'simple_function'
+      expect( contents.funcs[1].signature ).to eq 'void simple_function(void)'
+      expect( contents.funcs[1].line_count ).to eq 3
     end
 
     it "should extract multiple simple functions longer than buffer chunk size" do
@@ -414,27 +432,27 @@ describe CExtractinator do
       CONTENTS
 
       extractinator = CExtractinator.from_string(content: file_contents, chunk_size: 10)
-      funcs = extractinator.extract_functions()
+      contents = extractinator.extract_contents()
 
-      expect( funcs.length ).to eq 3
+      expect( contents.funcs.length ).to eq 3
 
-      expect( funcs[0].name ).to eq 'a_function'
-      expect( funcs[0].signature ).to eq 'int a_function(int a, int b)'
-      expect( funcs[0].body ).to eq "{\n  int c = a + b;\n  c += 5;\n  return c;\n}"
-      expect( funcs[0].code_block ).to eq "int a_function(int a, int b) {\n  int c = a + b;\n  c += 5;\n  return c;\n}"
-      expect( funcs[0].line_count ).to eq 5
+      expect( contents.funcs[0].name ).to eq 'a_function'
+      expect( contents.funcs[0].signature ).to eq 'int a_function(int a, int b)'
+      expect( contents.funcs[0].body ).to eq "{\n  int c = a + b;\n  c += 5;\n  return c;\n}"
+      expect( contents.funcs[0].code_block ).to eq "int a_function(int a, int b) {\n  int c = a + b;\n  c += 5;\n  return c;\n}"
+      expect( contents.funcs[0].line_count ).to eq 5
 
-      expect( funcs[1].name ).to eq 'BFUNCTION'
-      expect( funcs[1].signature ).to eq 'void BFUNCTION(void)'
-      expect( funcs[1].body ).to eq "{ int a = 1 + 1; }"
-      expect( funcs[1].code_block ).to eq "void BFUNCTION(void) { int a = 1 + 1; }"
-      expect( funcs[1].line_count ).to eq 1
+      expect( contents.funcs[1].name ).to eq 'BFUNCTION'
+      expect( contents.funcs[1].signature ).to eq 'void BFUNCTION(void)'
+      expect( contents.funcs[1].body ).to eq "{ int a = 1 + 1; }"
+      expect( contents.funcs[1].code_block ).to eq "void BFUNCTION(void) { int a = 1 + 1; }"
+      expect( contents.funcs[1].line_count ).to eq 1
 
-      expect( funcs[2].name ).to eq 'C_Function'
-      expect( funcs[2].signature ).to eq 'uint16_t*  C_Function (void)'
-      expect( funcs[2].body ).to eq "{\n  return &global_var;\n}"
-      expect( funcs[2].code_block ).to eq "uint16_t*  C_Function (void)\n{\n  return &global_var;\n}"
-      expect( funcs[2].line_count ).to eq 4
+      expect( contents.funcs[2].name ).to eq 'C_Function'
+      expect( contents.funcs[2].signature ).to eq 'uint16_t*  C_Function (void)'
+      expect( contents.funcs[2].body ).to eq "{\n  return &global_var;\n}"
+      expect( contents.funcs[2].code_block ).to eq "uint16_t*  C_Function (void)\n{\n  return &global_var;\n}"
+      expect( contents.funcs[2].line_count ).to eq 4
     end
 
     it "should fail to extract a function longer than max length" do
@@ -446,7 +464,7 @@ describe CExtractinator do
 
       extractinator = CExtractinator.from_string(content: file_contents, chunk_size: 10, max_function_length: 20)
       
-      expect { extractinator.extract_functions() }.to raise_error(RuntimeError, /`a_function\(\)` exceeds maximum length/)
+      expect { extractinator.extract_contents() }.to raise_error(RuntimeError, /`a_function\(\)` exceeds maximum length/)
     end
 
     it "should fail to extract a signature longer than max length" do
@@ -463,7 +481,7 @@ describe CExtractinator do
         max_signature_length: 10
       )
       
-      expect { extractinator.extract_functions() }.to raise_error(RuntimeError, /signature exceeds maximum/)
+      expect { extractinator.extract_contents() }.to raise_error(RuntimeError, /signature exceeds maximum/)
     end
     
   end
