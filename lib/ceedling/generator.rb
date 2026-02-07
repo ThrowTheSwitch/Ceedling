@@ -54,7 +54,16 @@ class Generator
     return @generator_partials.generate_interface( **arg_hash )
   end
 
-  def generate_partial_implementation(test:, name:, definitions:, source_includes:, header_includes:, input_filepath:, output_path:)
+  def generate_partial_implementation(
+      test:, 
+      name:, 
+      definitions:, 
+      source_includes:, 
+      header_includes:, 
+      input_filepath:,
+      output_path:
+    )
+
     msg = @reportinator.generate_module_progress(
       operation: "Generating partial implementation for",
       module_name: test,
@@ -67,6 +76,7 @@ class Generator
       :name => name,
       :source_includes => source_includes,
       :header_includes => header_includes,
+      :header_variables => [],
       :output_path => output_path
     }
 
