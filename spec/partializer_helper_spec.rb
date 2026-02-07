@@ -555,7 +555,7 @@ describe PartializerHelper do
       ]
       
       expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_functions).and_return(header_funcs)
+      expect(@mock_extractinator).to receive(:extract_contents).and_return(header_funcs)
       
       result = @helper.extract_module_functions(
         header_filepath: '/path/to/header.h',
@@ -572,7 +572,7 @@ describe PartializerHelper do
       ]
       
       expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_functions).and_return(source_funcs)
+      expect(@mock_extractinator).to receive(:extract_contents).and_return(source_funcs)
       
       result = @helper.extract_module_functions(
         header_filepath: nil,
@@ -597,8 +597,8 @@ describe PartializerHelper do
       
       expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(header_extractinator)
       expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(source_extractinator)
-      expect(header_extractinator).to receive(:extract_functions).and_return(header_funcs)
-      expect(source_extractinator).to receive(:extract_functions).and_return(source_funcs)
+      expect(header_extractinator).to receive(:extract_contents).and_return(header_funcs)
+      expect(source_extractinator).to receive(:extract_contents).and_return(source_funcs)
       
       result = @helper.extract_module_functions(
         header_filepath: '/path/to/header.h',
@@ -610,7 +610,7 @@ describe PartializerHelper do
 
     it "returns empty array when header file has no functions" do
       expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_functions).and_return([])
+      expect(@mock_extractinator).to receive(:extract_contents).and_return([])
       
       result = @helper.extract_module_functions(
         header_filepath: '/path/to/header.h',
@@ -622,7 +622,7 @@ describe PartializerHelper do
 
     it "returns empty array when source file has no functions" do
       expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_functions).and_return([])
+      expect(@mock_extractinator).to receive(:extract_contents).and_return([])
       
       result = @helper.extract_module_functions(
         header_filepath: nil,
