@@ -120,17 +120,33 @@ class Partializer
     
     @loginator.log_list(
       _impl,
-      "Extracted mockable functions for #{test}::#{module_name}",
+      "Extracted mockable functions for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
     
     @loginator.log_list(
       _interface,
-      "Extracted testable functions for #{test}::#{module_name}",
+      "Extracted testable functions for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
   end
 
+  def log_implementation_includes(test:, module_name:, label:, includes:)    
+    @loginator.log_list(
+      includes,
+      "#{label} includes to inject for testable Partial #{test}::#{module_name}",
+      Verbosity::OBNOXIOUS
+    )
+  end
+
+   def log_interface_includes(test:, module_name:, includes:)    
+    @loginator.log_list(
+      includes,
+      "Includes to inject for mockable Partial #{test}::#{module_name}",
+      Verbosity::OBNOXIOUS
+    )
+  end
+ 
   private
 
   # Remove includes that match the given module names (case-insensitive)

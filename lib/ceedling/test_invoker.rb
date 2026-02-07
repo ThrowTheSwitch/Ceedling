@@ -344,7 +344,23 @@ class TestInvoker
             input_filepath:   config.source.filepath,
             output_path:      testable[:paths][:partials]
           }
-          testable[:partials][:compilations] << @generator.generate_partial_implementation(**arg_hash) if !impl.empty?
+
+          if !impl.empty?
+            @partializer.log_implementation_includes(
+              label:          'Source',
+              test:           testable[:name],
+              module_name:    config.module,
+              includes:       arg_hash[:source_includes]
+            )
+            @partializer.log_implementation_includes(
+              label:          'Header',
+              test:           testable[:name],
+              module_name:    config.module,
+              includes:       arg_hash[:header_includes]
+            )
+
+            testable[:partials][:compilations] << @generator.generate_partial_implementation(**arg_hash)
+          end
 
           arg_hash = {
             test:           testable[:name],
@@ -358,7 +374,14 @@ class TestInvoker
             output_path:    testable[:paths][:partials]
           }
 
-          @generator.generate_partial_interface(**arg_hash) if !interface.empty?
+          if !interface.empty?
+            @partializer.log_interface_includes(
+              test:           testable[:name],
+              module_name:    config.module,
+              includes:       arg_hash[:includes]
+            )
+            @generator.generate_partial_interface(**arg_hash)
+          end
         end
       } if @configurator.project_use_partials
       
