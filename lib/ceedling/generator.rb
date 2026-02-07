@@ -18,6 +18,7 @@ class Generator
               :generator_mocks,
               :generator_test_results,
               :generator_test_results_backtrace,
+              :generator_partials,
               :test_context_extractor,
               :tool_executor,
               :file_finder,
@@ -33,6 +34,53 @@ class Generator
     # Aliases
     @helper = @generator_helper
     @backtrace = @generator_test_results_backtrace
+  end
+
+  def generate_partial_interface(test:, name:, declarations:, includes:, input_filepath:, output_path:)
+    msg = @reportinator.generate_module_progress(
+      operation: "Generating partial interface for",
+      module_name: test,
+      filename: name # Partial module name, not filename
+    )
+    @loginator.log( msg )
+
+    arg_hash = {
+      :declarations => declarations,
+      :name => name,
+      :includes => includes,
+      :output_path => output_path
+    }
+
+    return @generator_partials.generate_interface( **arg_hash )
+  end
+
+  def generate_partial_implementation(
+      test:, 
+      name:, 
+      definitions:, 
+      source_includes:, 
+      header_includes:, 
+      input_filepath:,
+      output_path:
+    )
+
+    msg = @reportinator.generate_module_progress(
+      operation: "Generating partial implementation for",
+      module_name: test,
+      filename: name # Partial module name, not filename
+    )
+    @loginator.log( msg )
+
+    arg_hash = {
+      :definitions => definitions,
+      :name => name,
+      :source_includes => source_includes,
+      :header_includes => header_includes,
+      :header_variables => [],
+      :output_path => output_path
+    }
+
+    return @generator_partials.generate_implementation( **arg_hash )
   end
 
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
@@ -156,7 +204,9 @@ class Generator
     command =
       @tool_executor.build_command_line(
         arg_hash[:tool],
+        # Extra arguments
         arg_hash[:flags],
+        # Argument replacement
         arg_hash[:source],
         arg_hash[:object],
         arg_hash[:list],
@@ -219,7 +269,9 @@ class Generator
     command =
       @tool_executor.build_command_line( 
         arg_hash[:tool],
+        # Extra arguments
         arg_hash[:flags],
+        # Argument replacement
         arg_hash[:source],
         arg_hash[:object],
         arg_hash[:search_paths],
@@ -260,7 +312,9 @@ class Generator
     command =
       @tool_executor.build_command_line(
         arg_hash[:tool],
+        # Extra arguments
         arg_hash[:flags],
+        # Argument replacement
         arg_hash[:objects],
         arg_hash[:executable],
         arg_hash[:map],
@@ -301,8 +355,9 @@ class Generator
     command = 
       @tool_executor.build_command_line(
         arg_hash[:tool],
-        # Apply additional test case filters 
+        # Extra arguments: Additional test case filters 
         @test_runner_manager.collect_cmdline_args(),
+        # Argument replacement
         arg_hash[:executable]
       )
 
