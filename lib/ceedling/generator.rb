@@ -57,7 +57,8 @@ class Generator
   def generate_partial_implementation(
       test:, 
       name:, 
-      definitions:, 
+      function_defns:,
+      variable_decls:, 
       source_includes:, 
       header_includes:, 
       input_filepath:,
@@ -72,11 +73,11 @@ class Generator
     @loginator.log( msg )
 
     arg_hash = {
-      :definitions => definitions,
+      :definitions => function_defns,
       :name => name,
       :source_includes => source_includes,
       :header_includes => header_includes,
-      :header_variables => [],
+      :header_variables => variable_decls,
       :output_path => output_path
     }
 

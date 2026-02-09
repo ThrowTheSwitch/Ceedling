@@ -8,6 +8,7 @@
 require 'rake' # .ext()
 require 'ceedling/partials'
 require 'ceedling/partializer_runtime'
+require 'ceedling/c_extractinator'
 require 'ceedling/constants'
 
 class Partializer
@@ -84,33 +85,48 @@ class Partializer
     return sanitize_includes(name: name, includes: _includes)
   end
 
+  def extract_module_contents(header_filepath:, source_filepath:)
+    # Array for CModule structs
+    contents = [CExtractinator::CModule.new()]
+
+    if header_filepath
+      contents << CExtractinator.from_file(header_filepath).extract_contents()
+    end
+
+    if source_filepath
+      contents << CExtractinator.from_file(source_filepath).extract_contents()
+    end    
+
+    return contents.reduce(&:+)
+  end
+
   # Returns FunctionDefinition[], FunctionDeclaration[] for consumption by `GeneratorPartials`
   # TODO: Handle source paths and line numbers for coverage reporting
-  def extract_functions(header_filepath:, source_filepath:, types:)    
+  def reconstruct_functions(contents:, types:)    
     impl = []
     interface = []
-
-    funcs = @helper.extract_module_functions(
-      header_filepath: header_filepath,
-      source_filepath: source_filepath
-    )
 
     types.each do |type|
       case type
       when Partials::TEST_PUBLIC
-        impl += @helper.filter_and_transform(funcs, :public, :impl)
+        impl += @helper.filter_and_transform_funcs(contents.funcs, :public, :impl)
       when Partials::TEST_PRIVATE
-        impl += @helper.filter_and_transform(funcs, :private, :impl)
+        impl += @helper.filter_and_transform_funcs(contents.funcs, :private, :impl)
       when Partials::MOCK_PUBLIC
-        interface += @helper.filter_and_transform(funcs, :public, :interface)
+        interface += @helper.filter_and_transform_funcs(contents.funcs, :public, :interface)
       when Partials::MOCK_PRIVATE
-        interface += @helper.filter_and_transform(funcs, :private, :interface)
+        interface += @helper.filter_and_transform_funcs(contents.funcs, :private, :interface)
       else
         PartializerRuntime.raise_on_option(type)
       end
     end
 
     return impl, interface
+  end
+
+  def reconstruct_variables(contents:, types:)
+    # TODO: Implement
+    return []
   end
 
   def log_extracted_functions(test:, module_name:, impl:, interface:)
@@ -120,13 +136,21 @@ class Partializer
     
     @loginator.log_list(
       _impl,
-      "Extracted mockable functions for Partial #{test}::#{module_name}",
+      "Mockable functions for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
     
     @loginator.log_list(
       _interface,
-      "Extracted testable functions for Partial #{test}::#{module_name}",
+      "Testable functions for Partial #{test}::#{module_name}",
+      Verbosity::OBNOXIOUS
+    )
+  end
+
+  def log_extracted_variable_decls(test:, module_name:, decls:)
+    @loginator.log_list(
+      decls,
+      "Variable declarations for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
   end

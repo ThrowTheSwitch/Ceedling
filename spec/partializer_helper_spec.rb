@@ -531,109 +531,7 @@ describe PartializerHelper do
     end
   end
 
-  context "#extract_module_functions" do
-    before(:each) do
-      @mock_extractinator = double('CExtractinator')
-      allow(CExtractinator).to receive(:from_file).and_return(@mock_extractinator)
-    end
-
-    it "returns empty array when both filepaths are nil" do
-      result = @helper.extract_module_functions(
-        header_filepath: nil,
-        source_filepath: nil
-      )
-
-      expect(CExtractinator).not_to receive(:from_file).with(nil)
-
-      expect(result).to eq([])
-    end
-
-    it "extracts functions from header file only" do
-      header_funcs = [
-        double('func1', name: 'func1', signature: 'void func1(void)'),
-        double('func2', name: 'func2', signature: 'int func2(int x)')
-      ]
-      
-      expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_contents).and_return(header_funcs)
-      
-      result = @helper.extract_module_functions(
-        header_filepath: '/path/to/header.h',
-        source_filepath: nil
-      )
-      
-      expect(result).to eq(header_funcs)
-    end
-
-    it "extracts functions from source file only" do
-      source_funcs = [
-        double('func1', name: 'func1', signature: 'static void func1(void)'),
-        double('func2', name: 'func2', signature: 'static int func2(int x)')
-      ]
-      
-      expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_contents).and_return(source_funcs)
-      
-      result = @helper.extract_module_functions(
-        header_filepath: nil,
-        source_filepath: '/path/to/source.c'
-      )
-      
-      expect(result).to eq(source_funcs)
-    end
-
-    it "extracts and combines functions from both header and source files" do
-      header_funcs = [
-        double('func1', name: 'func1', signature: 'void func1(void)'),
-        double('func2', name: 'func2', signature: 'int func2(int x)')
-      ]
-      source_funcs = [
-        double('func3', name: 'func3', signature: 'static void func3(void)'),
-        double('func4', name: 'func4', signature: 'static int func4(int x)')
-      ]
-      
-      header_extractinator = double('header_extractinator')
-      source_extractinator = double('source_extractinator')
-      
-      expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(header_extractinator)
-      expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(source_extractinator)
-      expect(header_extractinator).to receive(:extract_contents).and_return(header_funcs)
-      expect(source_extractinator).to receive(:extract_contents).and_return(source_funcs)
-      
-      result = @helper.extract_module_functions(
-        header_filepath: '/path/to/header.h',
-        source_filepath: '/path/to/source.c'
-      )
-      
-      expect(result).to eq(header_funcs + source_funcs)
-    end
-
-    it "returns empty array when header file has no functions" do
-      expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_contents).and_return([])
-      
-      result = @helper.extract_module_functions(
-        header_filepath: '/path/to/header.h',
-        source_filepath: nil
-      )
-      
-      expect(result).to eq([])
-    end
-
-    it "returns empty array when source file has no functions" do
-      expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_contents).and_return([])
-      
-      result = @helper.extract_module_functions(
-        header_filepath: nil,
-        source_filepath: '/path/to/source.c'
-      )
-      
-      expect(result).to eq([])
-    end
-  end
-
-  context "#filter_and_transform" do
+  context "#filter_and_transform_funcs" do
     before(:each) do
       @mock_func1 = double('func1',
         name: 'publicFunc',
@@ -650,7 +548,7 @@ describe PartializerHelper do
     end
 
     it "returns empty array when functions list is empty" do
-      result = @helper.filter_and_transform([], :public, :impl)
+      result = @helper.filter_and_transform_funcs([], :public, :impl)
       
       expect(result).to eq([])
     end
@@ -679,7 +577,7 @@ describe PartializerHelper do
         .with(@mock_func1, 'void publicFunc(void)', :impl)
         .and_return(mock_transformed)
       
-      result = @helper.filter_and_transform(funcs, :public, :impl)
+      result = @helper.filter_and_transform_funcs(funcs, :public, :impl)
       
       expect(result).to eq([mock_transformed])
     end
@@ -703,7 +601,7 @@ describe PartializerHelper do
         .with(@mock_func1, signature, :impl)
         .and_return(mock_impl)
       
-      result = @helper.filter_and_transform(funcs, :public, :impl)
+      result = @helper.filter_and_transform_funcs(funcs, :public, :impl)
       
       expect(result).to eq([mock_impl])
     end
@@ -727,7 +625,7 @@ describe PartializerHelper do
         .with(@mock_func1, signature, :interface)
         .and_return(mock_interface)
       
-      result = @helper.filter_and_transform(funcs, :public, :interface)
+      result = @helper.filter_and_transform_funcs(funcs, :public, :interface)
       
       expect(result).to eq([mock_interface])
     end
@@ -756,7 +654,7 @@ describe PartializerHelper do
         .with(@mock_func2, 'void staticFunc(void)', :impl)
         .and_return(mock_transformed)
       
-      result = @helper.filter_and_transform(funcs, :private, :impl)
+      result = @helper.filter_and_transform_funcs(funcs, :private, :impl)
       
       expect(result).to eq([mock_transformed])
     end
@@ -799,7 +697,7 @@ describe PartializerHelper do
         .with(@mock_func3, 'int inlineFunc(int x)', :impl)
         .and_return(mock_transformed3)
       
-      result = @helper.filter_and_transform(funcs, :public, :impl)
+      result = @helper.filter_and_transform_funcs(funcs, :public, :impl)
       
       expect(result).to eq([mock_transformed1, mock_transformed3])
     end
@@ -819,7 +717,7 @@ describe PartializerHelper do
         .with([], :private)
         .and_return(false)
       
-      result = @helper.filter_and_transform(funcs, :private, :impl)
+      result = @helper.filter_and_transform_funcs(funcs, :private, :impl)
       
       expect(result).to eq([])
     end

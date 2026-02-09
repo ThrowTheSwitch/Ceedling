@@ -312,11 +312,12 @@ class TestInvoker
           config = partial[:config]
           testable = partial[:testable]
 
-          impl, interface = @partializer.extract_contents(
+          module_contents = @partializer.extract_module_contents(
             header_filepath: config.header.preprocessed_filepath,
-            source_filepath: config.source.preprocessed_filepath,
-            types: config.types,
+            source_filepath: config.source.preprocessed_filepath
           )
+
+          impl, interface = @partializer.reconstruct_functions(contents: module_contents, types: config.types)
 
           @partializer.log_extracted_functions(
             test:           testable[:name],
@@ -325,10 +326,19 @@ class TestInvoker
             interface:      interface
           )
 
+          vars = @partializer.reconstruct_variables(contents: module_contents, types: config.types)
+
+          @partializer.log_extracted_variable_decls(
+            test:           testable[:name],
+            module_name:    config.module,
+            decls:          vars
+          )
+
           arg_hash = {
             test:             testable[:name],
             name:             config[:module],
-            definitions:      impl,
+            function_defns:   impl,
+            variable_decls:   vars,
             header_includes:  @partializer.remap_implementation_header_includes(
                                 name: config.module,
                                 includes: (config.source.includes + config.header.includes),
