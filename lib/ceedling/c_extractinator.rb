@@ -109,11 +109,11 @@ class CExtractinator
     end
     
     # Second pass: Extract all variables
-    @io.rewind
-    until @io.eof?
-      var = extract_next_variable(@io)
-      variables << var if var
-    end
+    # @io.rewind
+    # until @io.eof?
+    #   var = extract_next_variable(@io)
+    #   variables << var if var
+    # end
     
     return CModule.new(funcs: functions, vars: variables)
   ensure
@@ -122,168 +122,60 @@ class CExtractinator
   
   private
   
-  # def extract_next_item(io)
-  #   buffer = ""
-  #   chunk_start_pos = io.pos
-    
-  #   # Read chunks until we find a complete function or variable
-  #   loop do
-  #     # Read next chunk
-  #     chunk = io.read(@chunk_size)
-  #     break unless chunk # EOF
-      
-  #     buffer << chunk
-      
-  #     # Try to extract an item from buffer
-  #     scanner = StringScanner.new(buffer)
-      
-  #     skip_deadspace(scanner)
-
-  #     # Reached end of string having found nothing -- skip to next chunk
-  #     next if scanner.eos?
-      
-  #     # Try to find and extract complete function
-  #     success, func = try_extract_function(scanner)
-  #     if success
-  #       # Rewind IO buffer to immediately after this function so next call starts at the right place
-  #       io.seek(chunk_start_pos + scanner.pos)
-  #       return [func, nil]
-  #     end
-      
-  #     # Try to extract variable declaration
-  #     var = try_extract_variable(scanner)
-  #     if var
-  #       io.seek(chunk_start_pos + scanner.pos)
-  #       return [nil, var]
-  #     end
-      
-  #     # No complete item yet -- need more data
-  #     # Safety check -- don't let buffer grow indefinitely
-  #     if buffer.length > @max_function_length
-  #       _name = func&.name ? "`#{func.name}()` " : ''
-  #       raise CeedlingException.new("Function #{_name}exceeds maximum length of #{@max_function_length} characters")
-  #     end
-  #   end
-    
-  #   # Reached EOF without finding complete item
-  #   [nil, nil]
-  # end
-
   def extract_next_function(io)
     buffer = ""
     chunk_start_pos = io.pos
     
-    # Read chunks until we find a complete function or hit limits
+    # Read chunks until we find a complete function
     loop do
+      # Read next chunk
       chunk = io.read(@chunk_size)
       break unless chunk # EOF
       
       buffer << chunk
+      
+      # Try to extract a function from buffer
       scanner = StringScanner.new(buffer)
       
       skip_deadspace(scanner)
 
-      if scanner.eos?
-        # Nothing but deadspace in this chunk, continue to next
-        next
-      end      
-
+      # Reached end of string having found no function -- skip to next chunk
+      next if scanner.eos?
+      
       # Try to find and extract complete function
       success, func = try_extract_function(scanner)
-
-      # Safety check -- don't let buffer grow indefinitely
-      if buffer.length >= @max_function_length
-        _name = func&.name ? "`#{func.name}()` " : ''
-        raise CeedlingException.new("Function #{_name}exceeds maximum length of #{@max_function_length} characters")
-      end
-      
       if success
-        # Found a complete function        
-        # Advance IO and return the function
+        # Rewind IO buffer to immediately after this function so next call starts at the right place
         io.seek(chunk_start_pos + scanner.pos)
+        
         return func
       end
       
-      # Not a complete function - check if we should skip or keep trying
-      if func.signature
-        # Found something with a signature but it's not a complete function
-        # (e.g., forward declaration) - skip past it and continue looking
-        io.seek(chunk_start_pos + scanner.pos)
-        chunk_start_pos = io.pos
-        buffer = ""
-        next
-      elsif scanner.pos > 0
-        # Didn't find a function signature, but scanner advanced
-        # (e.g., variable declaration, preprocessor directive)
-        # Skip past what we found and continue looking
-        io.seek(chunk_start_pos + scanner.pos)
-        chunk_start_pos = io.pos
-        buffer = ""
-        next
-      else
-        # Scanner didn't advance at all -- we're stuck.
-        # Found something that looks like it could be a function, but we don't have enough data yet.        
-        # Continue to next chunk to get more data
-        next
+      # No complete function yet -- need more data
+      # Safety check -- don't let buffer grow indefinitely
+      if buffer.length > @max_function_length
+        _name = func.name ? "`#{func.name}()` " : ''
+        raise CeedlingException.new("Function #{_name}exceeds maximum length of #{@max_function_length} characters")
       end
     end
     
-    nil # EOF without finding complete function
-  end
-
-  def extract_next_variable(io)
-    buffer = ""
-    chunk_start_pos = io.pos
-    
-    # Read chunks until we find a complete variable declaration
-    loop do
-      chunk = io.read(@chunk_size)
-      break unless chunk # EOF
-      
-      buffer << chunk
-      scanner = StringScanner.new(buffer)
-      
-      skip_deadspace(scanner)
-      next if scanner.eos?
-      
-      # Try to extract variable declaration
-      var = try_extract_variable(scanner)
-      if var
-        io.seek(chunk_start_pos + scanner.pos)
-        return var
-      end
-      
-      # Safety check - variables shouldn't be too long
-      if buffer.length > 10000
-        # Skip this potential variable and move forward
-        io.seek(chunk_start_pos + 1)
-        return nil
-      end
-    end
-    
-    nil # EOF without finding complete variable
+    # Reached EOF without finding complete function
+    nil
   end
 
   # Try to extract a complete function from the scanner
   # Returns [success, function_data] where:
   #   - success: boolean indicating if extraction was successful
-  #   - function: CFunction with as much info as available (may be partial on failure)
+  #   - function_data: CFunction with as much info as available (may be partial on failure)
   def try_extract_function(scanner)
     start_pos = scanner.pos
     
     # Look for function signature
     signature = extract_signature(scanner)
-    
-    # If no signature found, this is not a function
     return [false, CFunction.new] unless signature
     
     skip_deadspace(scanner)
-    
-    # Check what follows the signature
-    next_char = scanner.peek(1)
-    
-    if next_char != '{'
-      # No opening brace - this is a forward declaration or something else
+    unless scanner.peek(1) == '{'
       return [false, CFunction.new(
         name: parse_function_name(signature),
         signature: signature
@@ -293,7 +185,6 @@ class CExtractinator
     # Extract function body
     body_start = scanner.pos
     unless extract_balanced_braces(scanner)
-      # Failed to extract balanced braces
       return [false, CFunction.new(
         name: parse_function_name(signature),
         signature: signature,
@@ -314,109 +205,6 @@ class CExtractinator
     )
     
     return [true, func]
-  end
-
-  def try_extract_variable(scanner)
-    start_pos = scanner.pos
-    brace_depth = 0
-    paren_depth = 0
-    found_paren = false
-    in_string = false
-    string_char = nil
-    
-    until scanner.eos?
-      char = scanner.peek(1)
-      
-      # Handle string literals
-      if in_string
-        if char == '\\'
-          scanner.getch
-          scanner.getch unless scanner.eos?
-          next
-        elsif char == string_char
-          scanner.getch
-          in_string = false
-          string_char = nil
-          next
-        else
-          scanner.getch
-          next
-        end
-      end
-      
-      case char
-      when '"', "'"
-        in_string = true
-        string_char = char
-        scanner.getch
-      when '/'
-        if scanner.peek(2) =~ %r{^(/[/*])}
-          skip_comment(scanner)
-        else
-          scanner.getch
-        end
-      when '('
-        found_paren = true
-        paren_depth += 1
-        scanner.getch
-      when ')'
-        paren_depth -= 1
-        scanner.getch
-        # If we have balanced parens at top level, check what follows
-        if paren_depth == 0 && found_paren && brace_depth == 0
-          saved_pos = scanner.pos
-          skip_deadspace(scanner)
-          next_char = scanner.peek(1)
-          
-          if next_char == '{'
-            # This is a function definition - skip past it entirely
-            scanner.pos = saved_pos
-            if extract_balanced_braces(scanner)
-              # Successfully skipped function, continue looking for variables
-              scanner.pos = start_pos
-              return nil
-            end
-            # Failed to extract balanced braces - malformed code
-            scanner.pos = start_pos
-            return nil
-          elsif next_char == ';'
-            # This is a function forward declaration - skip it
-            scanner.getch # consume the semicolon
-            scanner.pos = start_pos
-            return nil
-          end
-          
-          # Not a function - restore position and continue
-          scanner.pos = saved_pos
-        end
-      when '{'
-        brace_depth += 1
-        scanner.getch
-      when '}'
-        brace_depth -= 1
-        scanner.getch
-        # When we close all braces, continue scanning for semicolon
-        # (struct definitions may have variable names after the closing brace)
-      when ';'
-        if brace_depth == 0 && paren_depth == 0
-          scanner.getch
-          return scanner.string[start_pos...scanner.pos].strip
-        else
-          scanner.getch
-        end
-      else
-        scanner.getch
-      end
-      
-      # Don't scan too far
-      if scanner.pos - start_pos > 10000
-        scanner.pos = start_pos
-        return nil
-      end
-    end
-    
-    scanner.pos = start_pos
-    nil
   end
 
   def parse_function_name(signature)
@@ -613,7 +401,76 @@ class CExtractinator
     true
   end
   
-  # Deadspace = Whitespace, comments, and preprocessor directives
+  # Skip module-level variable declarations (declarations ending with semicolon)
+  # This distinguishes between:
+  #   - "int foo;" (variable - skip)
+  #   - "int foo() {" (function - don't skip)
+  def skip_variable_declaration(scanner)
+    start_pos = scanner.pos
+    paren_depth = 0
+    found_paren = false
+    
+    until scanner.eos?
+      char = scanner.peek(1)
+      
+      case char
+      when '('
+        found_paren = true
+        paren_depth += 1
+        scanner.getch
+      when ')'
+        paren_depth -= 1
+        scanner.getch
+        # If we close all parens and next is '{', this is a function, not a variable
+        if paren_depth == 0 && found_paren
+          skip_deadspace(scanner)
+          if scanner.peek(1) == '{'
+            # This is a function, rewind and return false
+            scanner.pos = start_pos
+            return false
+          end
+        end
+      when ';'
+        # Found semicolon - this is a variable declaration, consume it and return true
+        scanner.getch
+        return true
+      when '{'
+        # Found opening brace without proper function signature - could be:
+        # - struct/union/enum definition
+        # - array initialization
+        # Either way, skip the entire braced block
+        if extract_balanced_braces(scanner)
+          # After the braces, there might be a semicolon (e.g., "struct foo {...};")
+          skip_deadspace(scanner)
+          scanner.getch if scanner.peek(1) == ';'
+          return true
+        else
+          # Incomplete braces, rewind
+          scanner.pos = start_pos
+          return false
+        end
+      when '"', "'"
+        skip_c_string(scanner, char)
+      when '/'
+        if scanner.peek(2) =~ %r{^(/[/*])}
+          skip_comment(scanner)
+        else
+          scanner.getch
+        end
+      else
+        scanner.getch
+      end
+      
+      # Don't scan too far
+      return false if scanner.pos - start_pos > 10000
+    end
+    
+    # Incomplete declaration, rewind
+    scanner.pos = start_pos
+    false
+  end
+  
+  # Deadspace = Whitespace, comments, preprocessor directives, and variable declarations
   def skip_deadspace(scanner)
     loop do
       initial = scanner.pos
@@ -626,6 +483,9 @@ class CExtractinator
       
       # Skip preprocessor directives
       skip_preprocessor_directive(scanner) if scanner.check(/#/)
+      
+      # Skip variable declarations
+      skip_variable_declaration(scanner) if scanner.check(/\w/)
       
       # If nothing was skipped, we're done
       break if scanner.pos == initial
