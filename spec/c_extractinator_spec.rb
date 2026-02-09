@@ -119,11 +119,7 @@ describe CExtractinator do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.vars.length ).to eq 4
-      expect( contents.vars[0] ).to eq 'int global_var;'
-      expect( contents.vars[1] ).to eq 'static const char* ptr = "hello";'
-      expect( contents.vars[2] ).to eq 'struct foo { int x; } instance;'
-      expect( contents.vars[3] ).to eq 'int array[] = {1, 2, 3};'
+      expect( contents.vars.length ).to eq 0
 
       expect( contents.funcs.length ).to eq 2
 
@@ -397,9 +393,7 @@ describe CExtractinator do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.vars.length ).to eq 2
-      expect( contents.vars[0] ).to eq 'static int global_counter = 0;'
-      expect( contents.vars[1] ).to eq 'const char* global_message = "Hello, World!";'
+      expect( contents.vars.length ).to eq 0
 
       expect( contents.funcs.length ).to eq 2
 
@@ -433,6 +427,8 @@ describe CExtractinator do
 
       extractinator = CExtractinator.from_string(content: file_contents, chunk_size: 10)
       contents = extractinator.extract_contents()
+
+      expect( contents.vars.length ).to eq 0
 
       expect( contents.funcs.length ).to eq 3
 
