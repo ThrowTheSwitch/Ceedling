@@ -29,8 +29,8 @@ class CExtractinator
     # Returns a new CModule with combined `vars` and `funcs` arrays
     def +(other)
       CModule.new(
-        vars: self.vars + other.vars,
-        funcs: self.funcs + other.funcs
+        vars: (self.vars + other.vars),
+        funcs: (self.funcs + other.funcs)
       )
     end
   end

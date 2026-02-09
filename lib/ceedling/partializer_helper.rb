@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/c_extractinator'
+require 'ceedling/exceptions'
 require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
 
 class PartializerHelper
@@ -77,24 +77,24 @@ class PartializerHelper
     end
   end
 
-  def extract_module_functions(header_filepath:, source_filepath:)
-    header_funcs = []
-    source_funcs = []
+  def extract_module_contents(header_filepath:, source_filepath:)
+    header_contents = []
+    source_contents = []
 
     if header_filepath
-      header_funcs = CExtractinator.from_file(header_filepath).extract_contents()
+      header_contents = CExtractinator.from_file(header_filepath).extract_contents()
     end
 
     if source_filepath
-      source_funcs = CExtractinator.from_file(source_filepath).extract_contents()
+      source_contents = CExtractinator.from_file(source_filepath).extract_contents()
     end    
 
-    return header_funcs + source_funcs
+    return header_contents + source_contents
   end
 
   # 1. Filter functions by visibility (:private | :public)
   # 2. Transform functions to appropriate container (:impl | :interface) → `FunctionDefinition[]` or `FunctionDeclaration[]`
-  def filter_and_transform(funcs, visibility, output_type)
+  def filter_and_transform_funcs(funcs, visibility, output_type)
     funcs.filter_map do |func|
       # List of decorators seperated from signature (begining with return type)
       decorators, signature = @parser.parse_signature_decorators(func.signature, func.name)
