@@ -8,7 +8,7 @@
 require 'rake' # .ext()
 require 'ceedling/partials'
 require 'ceedling/partializer_runtime'
-require 'ceedling/c_extractinator'
+require 'ceedling/c_extractor'
 require 'ceedling/constants'
 
 class Partializer
@@ -87,14 +87,14 @@ class Partializer
 
   def extract_module_contents(header_filepath:, source_filepath:)
     # Array for CModule structs
-    contents = [CExtractinator::CModule.new()]
+    contents = [CExtractor::CModule.new()]
 
     if header_filepath
-      contents << CExtractinator.from_file(header_filepath).extract_contents()
+      contents << CExtractor.from_file(header_filepath).extract_contents()
     end
 
     if source_filepath
-      contents << CExtractinator.from_file(source_filepath).extract_contents()
+      contents << CExtractor.from_file(source_filepath).extract_contents()
     end    
 
     return contents.reduce(&:+)

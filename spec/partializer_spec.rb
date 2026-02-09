@@ -592,8 +592,8 @@ describe Partializer do
 
   context "#extract_module_contents" do
     before(:each) do
-      @mock_extractinator = double('CExtractinator')
-      allow(CExtractinator).to receive(:from_file).and_return(@mock_extractinator)
+      @mock_extractinator = double('CExtractor')
+      allow(CExtractor).to receive(:from_file).and_return(@mock_extractinator)
     end
 
     it "returns empty CModule when both filepaths are nil" do
@@ -602,14 +602,14 @@ describe Partializer do
         source_filepath: nil
       )
 
-      expect(CExtractinator).not_to receive(:from_file).with(nil)
+      expect(CExtractor).not_to receive(:from_file).with(nil)
 
       expect(result.funcs).to eq([])
       expect(result.vars).to eq([])
     end
 
     it "extracts contents from header file only" do
-      header_contents = CExtractinator::CModule.new(
+      header_contents = CExtractor::CModule.new(
         funcs: [
           double('func1', name: 'func1', signature: 'void func1(void)'),
           double('func2', name: 'func2', signature: 'int func2(int x)')
@@ -617,7 +617,7 @@ describe Partializer do
         vars: []
       )
       
-      expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
+      expect(CExtractor).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
       expect(@mock_extractinator).to receive(:extract_contents).and_return(header_contents)
       
       result = @partializer.extract_module_contents(
@@ -629,7 +629,7 @@ describe Partializer do
     end
 
     it "extracts contents from source file only" do
-      source_contents = CExtractinator::CModule.new(
+      source_contents = CExtractor::CModule.new(
         funcs: [
           double('func1', name: 'func1', signature: 'static void func1(void)'),
           double('func2', name: 'func2', signature: 'static int func2(int x)')
@@ -637,7 +637,7 @@ describe Partializer do
         vars: []
       )
       
-      expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
+      expect(CExtractor).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
       expect(@mock_extractinator).to receive(:extract_contents).and_return(source_contents)
       
       result = @partializer.extract_module_contents(
@@ -649,14 +649,14 @@ describe Partializer do
     end
 
     it "extracts and combines contents from both header and source files" do
-      header_contents = CExtractinator::CModule.new(
+      header_contents = CExtractor::CModule.new(
         funcs: [
           double('func1', name: 'func1', signature: 'void func1(void)'),
           double('func2', name: 'func2', signature: 'int func2(int x)')
         ],
         vars: [double('var1', name: 'header_var')]
       )
-      source_contents = CExtractinator::CModule.new(
+      source_contents = CExtractor::CModule.new(
         funcs: [
           double('func3', name: 'func3', signature: 'static void func3(void)'),
           double('func4', name: 'func4', signature: 'static int func4(int x)')
@@ -667,8 +667,8 @@ describe Partializer do
       header_extractinator = double('header_extractinator')
       source_extractinator = double('source_extractinator')
       
-      expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(header_extractinator)
-      expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(source_extractinator)
+      expect(CExtractor).to receive(:from_file).with('/path/to/header.h').and_return(header_extractinator)
+      expect(CExtractor).to receive(:from_file).with('/path/to/source.c').and_return(source_extractinator)
       expect(header_extractinator).to receive(:extract_contents).and_return(header_contents)
       expect(source_extractinator).to receive(:extract_contents).and_return(source_contents)
       
@@ -682,9 +682,9 @@ describe Partializer do
     end
 
     it "returns empty CModule when header file has no contents" do
-      empty_contents = CExtractinator::CModule.new(funcs: [], vars: [])
+      empty_contents = CExtractor::CModule.new(funcs: [], vars: [])
       
-      expect(CExtractinator).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
+      expect(CExtractor).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
       expect(@mock_extractinator).to receive(:extract_contents).and_return(empty_contents)
       
       result = @partializer.extract_module_contents(
@@ -697,9 +697,9 @@ describe Partializer do
     end
 
     it "returns empty CModule when source file has no contents" do
-      empty_contents = CExtractinator::CModule.new(funcs: [], vars: [])
+      empty_contents = CExtractor::CModule.new(funcs: [], vars: [])
       
-      expect(CExtractinator).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
+      expect(CExtractor).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
       expect(@mock_extractinator).to receive(:extract_contents).and_return(empty_contents)
       
       result = @partializer.extract_module_contents(
@@ -714,7 +714,7 @@ describe Partializer do
 
   context "#reconstruct_functions" do
     it "returns empty arrays when no functions are provided" do
-      contents = CExtractinator::CModule.new(funcs: [], vars: [])
+      contents = CExtractor::CModule.new(funcs: [], vars: [])
       types = []
       
       impl, interface = @partializer.reconstruct_functions(
@@ -731,7 +731,7 @@ describe Partializer do
         double('func1', name: 'public_func'),
         double('func2', name: 'private_func')
       ]
-      contents = CExtractinator::CModule.new(funcs: mock_funcs, vars: [])
+      contents = CExtractor::CModule.new(funcs: mock_funcs, vars: [])
       types = [Partials::TEST_PUBLIC]
       
       filtered_impl = [{ name: 'public_func', type: :impl }]
@@ -755,7 +755,7 @@ describe Partializer do
         double('func1', name: 'public_func'),
         double('func2', name: 'private_func')
       ]
-      contents = CExtractinator::CModule.new(funcs: mock_funcs, vars: [])
+      contents = CExtractor::CModule.new(funcs: mock_funcs, vars: [])
       types = [Partials::TEST_PRIVATE]
       
       filtered_impl = [{ name: 'private_func', type: :impl }]
@@ -779,7 +779,7 @@ describe Partializer do
         double('func1', name: 'public_func'),
         double('func2', name: 'private_func')
       ]
-      contents = CExtractinator::CModule.new(funcs: mock_funcs, vars: [])
+      contents = CExtractor::CModule.new(funcs: mock_funcs, vars: [])
       types = [Partials::MOCK_PUBLIC]
       
       filtered_interface = [{ name: 'public_func', type: :interface }]
@@ -803,7 +803,7 @@ describe Partializer do
         double('func1', name: 'public_func'),
         double('func2', name: 'private_func')
       ]
-      contents = CExtractinator::CModule.new(funcs: mock_funcs, vars: [])
+      contents = CExtractor::CModule.new(funcs: mock_funcs, vars: [])
       types = [Partials::MOCK_PRIVATE]
       
       filtered_interface = [{ name: 'private_func', type: :interface }]
@@ -827,7 +827,7 @@ describe Partializer do
         double('func1', name: 'public_func'),
         double('func2', name: 'private_func')
       ]
-      contents = CExtractinator::CModule.new(funcs: mock_funcs, vars: [])
+      contents = CExtractor::CModule.new(funcs: mock_funcs, vars: [])
       types = [Partials::TEST_PUBLIC, Partials::TEST_PRIVATE]
       
       filtered_public_impl = [{ name: 'public_func', type: :impl }]
@@ -857,7 +857,7 @@ describe Partializer do
         double('func1', name: 'public_func'),
         double('func2', name: 'private_func')
       ]
-      contents = CExtractinator::CModule.new(funcs: mock_funcs, vars: [])
+      contents = CExtractor::CModule.new(funcs: mock_funcs, vars: [])
       types = [Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE]
       
       filtered_public_interface = [{ name: 'public_func', type: :interface }]
@@ -887,7 +887,7 @@ describe Partializer do
         double('func1', name: 'public_func'),
         double('func2', name: 'private_func')
       ]
-      contents = CExtractinator::CModule.new(funcs: mock_funcs, vars: [])
+      contents = CExtractor::CModule.new(funcs: mock_funcs, vars: [])
       types = [Partials::TEST_PUBLIC, Partials::MOCK_PRIVATE]
       
       filtered_public_impl = [{ name: 'public_func', type: :impl }]
@@ -917,7 +917,7 @@ describe Partializer do
         double('func1', name: 'public_func'),
         double('func2', name: 'private_func')
       ]
-      contents = CExtractinator::CModule.new(funcs: mock_funcs, vars: [])
+      contents = CExtractor::CModule.new(funcs: mock_funcs, vars: [])
       types = []
       
       impl, interface = @partializer.reconstruct_functions(
@@ -931,7 +931,7 @@ describe Partializer do
 
     it "raises error for invalid partial type" do
       mock_funcs = [double('func1', name: 'public_func')]
-      contents = CExtractinator::CModule.new(funcs: mock_funcs, vars: [])
+      contents = CExtractor::CModule.new(funcs: mock_funcs, vars: [])
       types = [:invalid_type]
       
       expect {
