@@ -6,15 +6,15 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/c_extractinator'
+require 'ceedling/c_extractor'
 
-describe CExtractinator do
+describe CExtractor do
 
   context "#extract_contents" do
-    # Helper method to create CExtractinator and extract contents from a string as CModule
+    # Helper method to create CExtractor and extract contents from a string as CModule
     let(:extract_from) do
       ->(content) do
-        extractinator = CExtractinator.from_string(content: content)
+        extractinator = CExtractor.from_string(content: content)
         # Return CModule struct
         return extractinator.extract_contents()
       end
@@ -425,7 +425,7 @@ describe CExtractinator do
       
       CONTENTS
 
-      extractinator = CExtractinator.from_string(content: file_contents, chunk_size: 10)
+      extractinator = CExtractor.from_string(content: file_contents, chunk_size: 10)
       contents = extractinator.extract_contents()
 
       expect( contents.vars.length ).to eq 0
@@ -458,7 +458,7 @@ describe CExtractinator do
       }
       CONTENTS
 
-      extractinator = CExtractinator.from_string(content: file_contents, chunk_size: 10, max_function_length: 20)
+      extractinator = CExtractor.from_string(content: file_contents, chunk_size: 10, max_function_length: 20)
       
       expect { extractinator.extract_contents() }.to raise_error(RuntimeError, /`a_function\(\)` exceeds maximum length/)
     end
@@ -470,7 +470,7 @@ describe CExtractinator do
       }
       CONTENTS
 
-      extractinator = CExtractinator.from_string(
+      extractinator = CExtractor.from_string(
         content: file_contents,
         chunk_size: 10,
         max_function_length: 20,

@@ -82,11 +82,11 @@ class PartializerHelper
     source_contents = []
 
     if header_filepath
-      header_contents = CExtractinator.from_file(header_filepath).extract_contents()
+      header_contents = CExtractor.from_file(header_filepath).extract_contents()
     end
 
     if source_filepath
-      source_contents = CExtractinator.from_file(source_filepath).extract_contents()
+      source_contents = CExtractor.from_file(source_filepath).extract_contents()
     end    
 
     return header_contents + source_contents

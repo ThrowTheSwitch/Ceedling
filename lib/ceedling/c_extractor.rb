@@ -9,7 +9,7 @@ require 'strscan'
 require 'stringio'
 require 'ceedling/exceptions'
 
-class CExtractinator
+class CExtractor
   DEFAULT_CHUNK_SIZE = (16 * 1024)                # 16 KB -- enough for most functions
   DEFAULT_MAX_FUNCTION_LENGTH = (5 * 1024 * 1024) # 5 MB mega-length safety limit
   DEFAULT_MAX_SIGNATURE_LENGTH = 1000             # 1000 character safety limit
