@@ -87,7 +87,7 @@ describe CExtractor do
       expect( contents.funcs[1].line_count ).to eq 1
 
       expect( contents.funcs[2].name ).to eq 'C_Function'
-      expect( contents.funcs[2].signature ).to eq 'uint16_t*  C_Function ( void )'
+      expect( contents.funcs[2].signature ).to eq 'uint16_t* C_Function ( void )'
       expect( contents.funcs[2].body ).to eq "{\n  return &global_var;\n}"
       expect( contents.funcs[2].code_block ).to eq "uint16_t*  C_Function ( void )\n{\n  return &global_var;\n}"
       expect( contents.funcs[2].line_count ).to eq 4
@@ -447,7 +447,7 @@ describe CExtractor do
       expect( contents.funcs[1].line_count ).to eq 1
 
       expect( contents.funcs[2].name ).to eq 'C_Function'
-      expect( contents.funcs[2].signature ).to eq 'uint16_t*  C_Function (void)'
+      expect( contents.funcs[2].signature ).to eq 'uint16_t* C_Function (void)'
       expect( contents.funcs[2].body ).to eq "{\n  return &global_var;\n}"
       expect( contents.funcs[2].code_block ).to eq "uint16_t*  C_Function (void)\n{\n  return &global_var;\n}"
       expect( contents.funcs[2].line_count ).to eq 4
@@ -476,7 +476,7 @@ describe CExtractor do
         content: file_contents,
         chunk_size: 10,
         max_function_length: 20,
-        max_signature_length: 10
+        max_line_length: 10
       )
       
       expect { extractinator.extract_contents() }.to raise_error(RuntimeError, /signature exceeds maximum/)
