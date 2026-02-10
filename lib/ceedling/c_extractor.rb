@@ -104,14 +104,22 @@ class CExtractor
     # First pass: Extract all functions
     @io.rewind
     until @io.eof?
-      func = extract_next_function(@io)
+      func = extract_next_feature(
+        io: @io,
+        max_length: @max_function_length,
+        extractor: method(:try_extract_function)
+      )
       functions << func if func
     end
     
     # Second pass: Extract all variables
     # @io.rewind
     # until @io.eof?
-    #   var = extract_next_variable(@io)
+    #   var = extract_next_feature(
+    #     io: @io,
+    #     max_length: @max_variable_length,
+    #     extractor: method(:try_extract_variable)
+    #   )
     #   variables << var if var
     # end
     
@@ -122,44 +130,55 @@ class CExtractor
   
   private
   
-  def extract_next_function(io)
+  # Generic chunked buffer extraction routine
+  # Reads IO in chunks, building a buffer until the provided extractor successfully extracts a feature
+  # 
+  # Parameters:
+  #   io: IO object to read from
+  #   max_length: Maximum buffer size before raising an error
+  #   extractor: Method/Proc that takes a StringScanner and returns [success, extracted_data]
+  #              The extractor should advance the scanner position past the extracted feature on success
+  # 
+  # Returns: The extracted data on success, nil if EOF reached without finding a complete feature
+  # 
+  # Side effects: Advances IO position to immediately after the extracted feature
+  def extract_next_feature(io:, max_length:, extractor:)
     buffer = ""
     chunk_start_pos = io.pos
     
-    # Read chunks until we find a complete function
+    # Read chunks until we find a complete feature
     loop do
       # Read next chunk
       chunk = io.read(@chunk_size)
       break unless chunk # EOF
       
       buffer << chunk
-      
-      # Try to extract a function from buffer
+
+      # Try to extract a feature from buffer
       scanner = StringScanner.new(buffer)
-      
+
       skip_deadspace(scanner)
 
-      # Reached end of string having found no function -- skip to next chunk
+      # Reached end of string having found no feature -- skip to next chunk
       next if scanner.eos?
       
-      # Try to find and extract complete function
-      success, func = try_extract_function(scanner)
+      # Try to find and extract complete feature using provided extractor
+      success, feature = extractor.call(scanner)
       if success
-        # Rewind IO buffer to immediately after this function so next call starts at the right place
+        # Rewind IO buffer to immediately after this feature so next call starts at the right place
         io.seek(chunk_start_pos + scanner.pos)
         
-        return func
+        return feature
       end
       
-      # No complete function yet -- need more data
+      # No complete feature yet -- need more data
       # Safety check -- don't let buffer grow indefinitely
-      if buffer.length > @max_function_length
-        _name = func.name ? "`#{func.name}()` " : ''
-        raise CeedlingException.new("Function #{_name}exceeds maximum length of #{@max_function_length} characters")
+      if buffer.length > max_length
+        raise CeedlingException.new("Feature exceeds maximum length of #{max_length} characters")
       end
     end
     
-    # Reached EOF without finding complete function
+    # Reached EOF without finding complete feature
     nil
   end
 
@@ -356,8 +375,25 @@ class CExtractor
     # Reached end of input without finding matching closing brace
     false
   end
-  
+ 
+  # Skip a C string or character literal
+  # Handles escape sequences to avoid false termination on escaped quotes
+  # 
+  # Parameters:
+  #   scanner: StringScanner positioned at the opening quote
+  #   quote: The quote character (either '"' for strings or "'" for characters)
+  # 
+  # Returns: Number of bytes skipped (including opening and closing quotes)
+  # 
+  # Side effects: Advances scanner position past the closing quote (or to end of string if unterminated)
+  # 
+  # Examples:
+  #   "hello"       -> skips 7 bytes
+  #   'a'           -> skips 3 bytes
+  #   "say \"hi\""  -> skips 11 bytes (handles escaped quotes)
+  #   "path\\file"  -> skips 11 bytes (handles escaped backslashes)
   def skip_c_string(scanner, quote)
+    start_pos = scanner.pos
     scanner.getch # Opening quote
     
     until scanner.eos?
@@ -367,11 +403,62 @@ class CExtractor
         break
       end
     end
+    
+    return (scanner.pos - start_pos)
+  end
+
+  # Skip "deadspace" - non-code elements that should be ignored during extraction
+  # Deadspace includes:
+  #   - Whitespace (spaces, tabs, newlines, carriage returns)
+  #   - Comments (both single-line // and multi-line /* */)
+  #   - Preprocessor directives (lines starting with #, including multi-line directives)
+  #
+  # NOTE: C extraction is not implemented as a full C parser and/or preprocessor
+  # We assume that the file to be processed is either relatively simple or has already been 
+  # preprocessed to remove complex preprocessor directives, etc. Certain complex blocks
+  # cannot be processed by this method.
+  # 
+  # This method repeatedly scans for and skips these elements until no more are found,
+  # ensuring all consecutive deadspace is consumed in a single call.
+  # 
+  # Parameters:
+  #   scanner: StringScanner positioned at potential deadspace
+  # 
+  # Returns: Number of bytes skipped
+  # 
+  # Side effects: Advances scanner position past all consecutive deadspace
+  # 
+  # Examples:
+  #   "   \n// comment\n#define FOO\ncode" -> skips to "code"
+  #   "/* block */  \t\ncode"              -> skips to "code"
+  #   "code"                               -> skips 0 bytes (no deadspace)
+  def skip_deadspace(scanner)
+    start_pos = scanner.pos
+
+    loop do
+      initial = scanner.pos
+      
+      # Skip whitespace
+      scanner.skip(/\s+/)
+      
+      # Skip comments
+      skip_comment(scanner) if scanner.check(%r{/[/*]})
+      
+      # Skip preprocessor directives
+      skip_preprocessor_directive(scanner) if scanner.check(/#/)
+      
+      # If nothing was skipped, we're done
+      break if scanner.pos == initial
+    end
+
+    return (scanner.pos - start_pos)
   end
   
   def skip_comment(scanner)
+    # Single line comment
     if scanner.scan(%r{//})
       scanner.skip_until(/\n/) || scanner.terminate
+    # Multiline comment
     elsif scanner.scan(%r{/\*})
       scanner.skip_until(%r{\*/}) || scanner.terminate
     end
@@ -405,90 +492,68 @@ class CExtractor
   # This distinguishes between:
   #   - "int foo;" (variable - skip)
   #   - "int foo() {" (function - don't skip)
-  def skip_variable_declaration(scanner)
-    start_pos = scanner.pos
-    paren_depth = 0
-    found_paren = false
+  # def skip_variable_declaration(scanner)
+  #   start_pos = scanner.pos
+  #   paren_depth = 0
+  #   found_paren = false
     
-    until scanner.eos?
-      char = scanner.peek(1)
+  #   until scanner.eos?
+  #     char = scanner.peek(1)
       
-      case char
-      when '('
-        found_paren = true
-        paren_depth += 1
-        scanner.getch
-      when ')'
-        paren_depth -= 1
-        scanner.getch
-        # If we close all parens and next is '{', this is a function, not a variable
-        if paren_depth == 0 && found_paren
-          skip_deadspace(scanner)
-          if scanner.peek(1) == '{'
-            # This is a function, rewind and return false
-            scanner.pos = start_pos
-            return false
-          end
-        end
-      when ';'
-        # Found semicolon - this is a variable declaration, consume it and return true
-        scanner.getch
-        return true
-      when '{'
-        # Found opening brace without proper function signature - could be:
-        # - struct/union/enum definition
-        # - array initialization
-        # Either way, skip the entire braced block
-        if extract_balanced_braces(scanner)
-          # After the braces, there might be a semicolon (e.g., "struct foo {...};")
-          skip_deadspace(scanner)
-          scanner.getch if scanner.peek(1) == ';'
-          return true
-        else
-          # Incomplete braces, rewind
-          scanner.pos = start_pos
-          return false
-        end
-      when '"', "'"
-        skip_c_string(scanner, char)
-      when '/'
-        if scanner.peek(2) =~ %r{^(/[/*])}
-          skip_comment(scanner)
-        else
-          scanner.getch
-        end
-      else
-        scanner.getch
-      end
+  #     case char
+  #     when '('
+  #       found_paren = true
+  #       paren_depth += 1
+  #       scanner.getch
+  #     when ')'
+  #       paren_depth -= 1
+  #       scanner.getch
+  #       # If we close all parens and next is '{', this is a function, not a variable
+  #       if paren_depth == 0 && found_paren
+  #         skip_deadspace(scanner)
+  #         if scanner.peek(1) == '{'
+  #           # This is a function, rewind and return false
+  #           scanner.pos = start_pos
+  #           return false
+  #         end
+  #       end
+  #     when ';'
+  #       # Found semicolon - this is a variable declaration, consume it and return true
+  #       scanner.getch
+  #       return true
+  #     when '{'
+  #       # Found opening brace without proper function signature - could be:
+  #       # - struct/union/enum definition
+  #       # - array initialization
+  #       # Either way, skip the entire braced block
+  #       if extract_balanced_braces(scanner)
+  #         # After the braces, there might be a semicolon (e.g., "struct foo {...};")
+  #         skip_deadspace(scanner)
+  #         scanner.getch if scanner.peek(1) == ';'
+  #         return true
+  #       else
+  #         # Incomplete braces, rewind
+  #         scanner.pos = start_pos
+  #         return false
+  #       end
+  #     when '"', "'"
+  #       skip_c_string(scanner, char)
+  #     when '/'
+  #       if scanner.peek(2) =~ %r{^(/[/*])}
+  #         skip_comment(scanner)
+  #       else
+  #         scanner.getch
+  #       end
+  #     else
+  #       scanner.getch
+  #     end
       
-      # Don't scan too far
-      return false if scanner.pos - start_pos > 10000
-    end
+  #     # Don't scan too far
+  #     return false if scanner.pos - start_pos > 10000
+  #   end
     
-    # Incomplete declaration, rewind
-    scanner.pos = start_pos
-    false
-  end
-  
-  # Deadspace = Whitespace, comments, preprocessor directives, and variable declarations
-  def skip_deadspace(scanner)
-    loop do
-      initial = scanner.pos
-      
-      # Skip whitespace
-      scanner.skip(/\s+/)
-      
-      # Skip comments
-      skip_comment(scanner) if scanner.check(%r{/[/*]})
-      
-      # Skip preprocessor directives
-      skip_preprocessor_directive(scanner) if scanner.check(/#/)
-      
-      # Skip variable declarations
-      skip_variable_declaration(scanner) if scanner.check(/\w/)
-      
-      # If nothing was skipped, we're done
-      break if scanner.pos == initial
-    end
-  end
+  #   # Incomplete declaration, rewind
+  #   scanner.pos = start_pos
+  #   false
+  # end  
 end
