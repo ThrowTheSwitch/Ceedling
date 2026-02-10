@@ -12,7 +12,7 @@ require 'ceedling/exceptions'
 class CExtractor
   DEFAULT_CHUNK_SIZE = (16 * 1024)                # 16 KB -- enough for most functions
   DEFAULT_MAX_FUNCTION_LENGTH = (5 * 1024 * 1024) # 5 MB mega-length safety limit
-  DEFAULT_MAX_SIGNATURE_LENGTH = 1000             # 1000 character safety limit
+  DEFAULT_MAX_LINE_LENGTH = 1000                  # 1000 character safety limit
 
   # Data class representing all extracted content of C module
   CModule = Struct.new(
@@ -50,7 +50,24 @@ class CExtractor
     end
   end
   
-  # Factory method for file-based extraction
+  # Factory method for file-based C extraction
+  #
+  # Creates a CExtractor instance configured to read from a file on disk.
+  # Uses default settings for chunk size, maximum function length, and maximum line length.
+  #
+  # Line length is the character count for logical lines -- function signature, variable declarations.
+  #
+  # Parameters:
+  #   filepath: String path to the C source file to extract from
+  #
+  # Returns: CExtractor instance ready to extract C code features
+  #
+  # Raises:
+  #   CeedlingException: If file cannot be opened (permissions, doesn't exist, etc.)
+  #
+  # Example:
+  #   extractor = CExtractor.from_file("src/module.c")
+  #   module_contents = extractor.extract_contents()
   def self.from_file(filepath)
     
     begin
@@ -65,31 +82,57 @@ class CExtractor
       io: file,
       chunk_size: DEFAULT_CHUNK_SIZE,
       max_function_length: DEFAULT_MAX_FUNCTION_LENGTH,
-      max_signature_length: DEFAULT_MAX_SIGNATURE_LENGTH
+      max_line_length: DEFAULT_MAX_LINE_LENGTH
     )
   end
   
-  # Factory method for string-based extraction (testing)
+  # Factory method for string-based C extraction
+  #
+  # Creates a CExtractor instance configured to read from an in-memory string.
+  # Primarily used for testing, but can also be used when C code is already in memory.
+  # Allows customization of extraction parameters for testing edge cases.
+  #
+  # Line length is the character count for logical lines -- function signature, variable declarations.
+  #
+  # Parameters:
+  #   content: String containing C source code to extract from
+  #   chunk_size: (Optional) Size of chunks to read at a time (default: 16 KB)
+  #   max_function_length: (Optional) Maximum allowed function size (default: 5 MB)
+  #   max_line_length: (Optional) Maximum allowed line length (default: 1000 chars)
+  #
+  # Returns: CExtractor instance ready to extract C code features
+  #
+  # Example:
+  #   code = "int foo(void) { return 42; }"
+  #   extractor = CExtractor.from_string(content: code)
+  #   module_contents = extractor.extract_contents()
+  #
+  # Testing example:
+  #   extractor = CExtractor.from_string(
+  #     content: test_code,
+  #     chunk_size: 10,  # Small chunks to test chunking logic
+  #     max_function_length: 100
+  #   )
   def self.from_string(
     content:,
     # Exposed for testing purposes
     chunk_size: DEFAULT_CHUNK_SIZE,
     max_function_length: DEFAULT_MAX_FUNCTION_LENGTH,
-    max_signature_length: DEFAULT_MAX_SIGNATURE_LENGTH
+    max_line_length: DEFAULT_MAX_LINE_LENGTH
   )
     return new(
       io: StringIO.new(content),
       chunk_size: chunk_size,
       max_function_length: max_function_length,
-      max_signature_length: max_signature_length
+      max_line_length: max_line_length
     )
   end
   
-  def initialize(io:, chunk_size:, max_function_length:, max_signature_length:)
+  def initialize(io:, chunk_size:, max_function_length:, max_line_length:)
     @io = io
     @chunk_size = chunk_size
     @max_function_length = max_function_length
-    @max_signature_length = max_signature_length
+    @max_line_length = max_line_length
   end
   
   def extract_contents()
@@ -146,40 +189,61 @@ class CExtractor
     buffer = ""
     chunk_start_pos = io.pos
     
-    # Read chunks until we find a complete feature
+    # Incrementally attempt feature extraction.
+    # Return on successful finding a complete feature.
+    # Otherwise, the search follows this order:
+    #  1. Exit the method with failure (nil) if we reach end of IO or exceeds maximum buffer length.
+    #  2. Advance in attempting to extract a feature in the current buffer.
+    #  3. If we find nothing, expand the buffer with another chunk.
+    #  4. Go back to (1)
     loop do
       # Read next chunk
       chunk = io.read(@chunk_size)
+
+      # Break out of the loop if we've reached the end of IO
       break unless chunk # EOF
       
+      # Expand the buffer with the new chunk
       buffer << chunk
 
-      # Try to extract a feature from buffer
-      scanner = StringScanner.new(buffer)
-
-      skip_deadspace(scanner)
-
-      # Reached end of string having found no feature -- skip to next chunk
-      next if scanner.eos?
-      
-      # Try to find and extract complete feature using provided extractor
-      success, feature = extractor.call(scanner)
-      if success
-        # Rewind IO buffer to immediately after this feature so next call starts at the right place
-        io.seek(chunk_start_pos + scanner.pos)
-        
-        return feature
-      end
-      
-      # No complete feature yet -- need more data
       # Safety check -- don't let buffer grow indefinitely
       if buffer.length > max_length
-        raise CeedlingException.new("Feature exceeds maximum length of #{max_length} characters")
+        raise CeedlingException.new("Feature extraction exceeded maximum length of #{max_length} characters")
+      end
+
+      # Create a new scanner for the current buffer
+      scanner = StringScanner.new(buffer)
+
+      # Initialize last_scanner_pos to current position
+      last_scanner_pos = scanner.pos
+
+      # Attempt to find and extract complete feature using provided extractor
+      loop do
+        # Skip any deadspace
+        skip_deadspace(scanner)
+
+        # If reached end of string having found no feature -- exit loop to containing loop to grow buffer
+        break if scanner.eos?
+
+        # Update last_scanner_pos to current position
+        last_scanner_pos = scanner.pos
+
+        # Try extract complete feature using provided extractor
+        success, feature = extractor.call(scanner)
+
+        if success
+          # Rewind IO buffer to position after this feature for next extraction attempt
+          io.seek(chunk_start_pos + scanner.pos)
+          return feature
+        end
+
+        # If we haven't advanced (i.e. found nothing), break out of the loop to expand the buffer with another chunk
+        break if scanner.pos == last_scanner_pos
       end
     end
     
-    # Reached EOF without finding complete feature
-    nil
+    # Reached IO EOF without finding complete feature
+    return nil
   end
 
   # Try to extract a complete function from the scanner
@@ -190,10 +254,11 @@ class CExtractor
     start_pos = scanner.pos
     
     # Look for function signature
-    signature = extract_signature(scanner)
+    signature = extract_function_signature(scanner)
     return [false, CFunction.new] unless signature
     
     skip_deadspace(scanner)
+
     unless scanner.peek(1) == '{'
       return [false, CFunction.new(
         name: parse_function_name(signature),
@@ -202,8 +267,7 @@ class CExtractor
     end
     
     # Extract function body
-    body_start = scanner.pos
-    success, _ = extract_balanced_braces(scanner)
+    success, braced_body = extract_balanced_braces(scanner)
     unless success
       return [false, CFunction.new(
         name: parse_function_name(signature),
@@ -219,7 +283,7 @@ class CExtractor
     func = CFunction.new(
       name: parse_function_name(signature),
       signature: signature,
-      body: scanner.string[body_start...scanner.pos],
+      body: braced_body,
       code_block: code_block,
       line_count: code_block.count("\n") + 1
     )
@@ -252,24 +316,53 @@ class CExtractor
   end
   
   # Extract a function signature from the scanner
-  # A valid signature must:
+  # 
+  # A valid function signature must:
   #   1. Contain balanced parentheses (for parameter list)
   #   2. Be followed by an opening brace '{' (function definition)
-  #   3. Not be followed by a semicolon (which would indicate a declaration)
-  # Returns the signature string if valid, nil otherwise
-  def extract_signature(scanner)
+  #   3. NOT be followed by a semicolon (which indicates a declaration, not a definition)
+  # 
+  # This method handles complex signatures including:
+  #   - Simple functions: "int foo(void)"
+  #   - Function pointers in return type: "int (*getFunction(void))(int, int)"
+  #   - Function pointers in parameters: "void process(int (*callback)(void))"
+  #   - Nested parentheses: "int foo((int)(x), (int)(y))"
+  # 
+  # The key insight is that we need to find the OUTERMOST balanced parentheses that represent
+  # the function's parameter list, not just any balanced parentheses.
+  # 
+  # Parameters:
+  #   scanner: StringScanner positioned at the start of a potential function signature
+  # 
+  # Returns:
+  #   - The signature string (cleaned and normalized) if this is a function definition
+  #   - nil if this is not a function definition (declaration, struct, etc.)
+  # 
+  # Side effects:
+  #   - On success (function definition): Advances scanner to the opening brace '{'
+  #   - On failure (declaration): Advances scanner past the semicolon ';'
+  #   - On failure (other): Resets scanner to starting position
+  # 
+  # Examples:
+  #   "int foo(void) {"                          -> returns "int foo(void)", scanner at '{'
+  #   "int foo(void);"                           -> returns nil, scanner after ';'
+  #   "struct foo {"                             -> returns nil, scanner at start
+  #   "int foo(int x,\n  int y) {"               -> returns "int foo(int x, int y)", scanner at '{'
+  #   "int (*getFunction(void))(int, int) {"     -> returns "int (*getFunction(void))(int, int)", scanner at '{'
+  #   "void process(int (*callback)(void)) {"    -> returns "void process(int (*callback)(void))", scanner at '{'
+  def extract_function_signature(scanner)
     start_pos = scanner.pos
     paren_depth = 0
-    found_parens = false
     in_string = false
     string_char = nil
+    signature_candidates = []  # Track positions where paren_depth returns to 0
     
     until scanner.eos?
       char = scanner.peek(1)
       
       # Safety check
-      if scanner.pos - start_pos > @max_signature_length
-        raise CeedlingException.new("Function signature exceeds maximum length of #{@max_signature_length} characters")
+      if scanner.pos - start_pos > @max_line_length
+        raise CeedlingException.new("Function signature exceeds maximum length of #{@max_line_length} characters")
       end
 
       # Handle string literals
@@ -301,27 +394,47 @@ class CExtractor
           scanner.getch
         end
       when '('
-        found_parens = true
         paren_depth += 1
         scanner.getch
       when ')'
         paren_depth -= 1
         scanner.getch
-        if paren_depth == 0 && found_parens
-          # Found balanced parentheses - this could be a function signature
-          signature = scanner.string[start_pos...scanner.pos].strip
-          # Return signature as single line with no original line breaks
-          return signature.gsub(/\r\n|\r|\n/, ' ')
+        
+        # When we return to depth 0, this could be the end of the function's parameter list
+        if paren_depth == 0
+          signature_candidates << scanner.pos
+        elsif paren_depth < 0
+          # Unbalanced parentheses - not a valid function signature
+          scanner.pos = start_pos
+          return nil
         end
       when '{'
-        # Hit opening brace before finding balanced parens
-        # This is NOT a function (e.g., struct definition)
-        scanner.pos = start_pos
-        return nil
+        # Found opening brace - check if any of our candidates is valid
+        if signature_candidates.empty?
+          # No balanced parens found before brace - not a function
+          scanner.pos = start_pos
+          return nil
+        end
+        
+        # The last candidate (outermost closing paren) should be the function parameter list
+        signature_end_pos = signature_candidates.last
+        
+        # Extract and clean the signature
+        signature = scanner.string[start_pos...signature_end_pos].strip
+        signature.gsub!(/\r\n|\r|\n|\t/, ' ')
+        signature.gsub!(/\s+/, ' ')
+        
+        return signature
       when ';'
-        # Hit semicolon before finding balanced parens
-        # This is NOT a function
-        scanner.pos = start_pos
+        # Found semicolon - this is a declaration, not a definition
+        if signature_candidates.any?
+          # Skip past the semicolon
+          scanner.getch
+        else
+          # No balanced parens found - reset position
+          puts('B')
+          scanner.pos = start_pos
+        end
         return nil
       else
         scanner.getch
