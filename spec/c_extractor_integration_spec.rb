@@ -459,8 +459,8 @@ describe CExtractor do
       CONTENTS
 
       extractinator = CExtractor.from_string(content: file_contents, chunk_size: 10, max_function_length: 20)
-      
-      expect { extractinator.extract_contents() }.to raise_error(RuntimeError, /`a_function\(\)` exceeds maximum length/)
+      # TODO: Test for function name extraction after implementing generic handling of feature summaries
+      expect { extractinator.extract_contents() }.to raise_error(RuntimeError, /Feature exceeds maximum length/)
     end
 
     it "should fail to extract a signature longer than max length" do
