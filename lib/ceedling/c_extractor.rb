@@ -203,7 +203,8 @@ class CExtractor
     
     # Extract function body
     body_start = scanner.pos
-    unless extract_balanced_braces(scanner)
+    success, _ = extract_balanced_braces(scanner)
+    unless success
       return [false, CFunction.new(
         name: parse_function_name(signature),
         signature: signature,
@@ -334,11 +335,26 @@ class CExtractor
   
   # Extract a balanced block of braces from the scanner
   # Handles nested braces, string literals, and comments that might contain braces
-  # Returns true if a complete balanced block was found, false otherwise
-  # Side effect: Advances scanner position past the closing brace on success
+  # 
+  # Parameters:
+  #   scanner: StringScanner positioned at the opening brace
+  # 
+  # Returns: [success, extracted_block] where:
+  #   - success: boolean indicating if a complete balanced block was found
+  #   - extracted_block: string containing the complete block including braces (nil on failure)
+  # 
+  # Side effects: Advances scanner position past the closing brace on success
+  # 
+  # Examples:
+  #   "{ code }"           -> [true, "{ code }"]
+  #   "{ a { b } c }"      -> [true, "{ a { b } c }"]
+  #   "{ incomplete"       -> [false, nil]
+  #   "not a brace"        -> [false, nil]
   def extract_balanced_braces(scanner)
+    start_pos = scanner.pos
+    
     # Verify we're starting at an opening brace
-    return false unless scanner.getch == '{'
+    return [false, nil] unless scanner.getch == '{'
     
     depth = 1
     
@@ -355,7 +371,10 @@ class CExtractor
         depth -= 1
         scanner.getch
         # When depth reaches 0, we've found the matching closing brace
-        return true if depth == 0
+        if depth == 0
+          extracted_block = scanner.string[start_pos...scanner.pos]
+          return [true, extracted_block]
+        end
       when '"', "'"
         # Skip string literals that might contain braces
         skip_c_string(scanner, char)
@@ -373,9 +392,9 @@ class CExtractor
     end
     
     # Reached end of input without finding matching closing brace
-    false
+    [false, nil]
   end
- 
+
   # Skip a C string or character literal
   # Handles escape sequences to avoid false termination on escaped quotes
   # 

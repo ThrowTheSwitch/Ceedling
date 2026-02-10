@@ -18,9 +18,9 @@ describe CExtractor do
     # Helper to access private method
     let(:skip_c_string) do
       ->(content, quote) do
-        extractor_obj = CExtractor.from_string(content: "", chunk_size: 10)
+        extractor = CExtractor.from_string(content: "", chunk_size: 10)
         scanner = StringScanner.new(content)
-        bytes_skipped = extractor_obj.send(:skip_c_string, scanner, quote)
+        bytes_skipped = extractor.send(:skip_c_string, scanner, quote)
         return [bytes_skipped, scanner.pos, scanner.rest]
       end
     end
@@ -549,9 +549,9 @@ describe CExtractor do
     # Helper to access private method
     let(:skip_deadspace) do
       ->(content) do
-        extractor_obj = CExtractor.from_string(content: "", chunk_size: 10)
+        extractor = CExtractor.from_string(content: "", chunk_size: 10)
         scanner = StringScanner.new(content)
-        bytes_skipped = extractor_obj.send(:skip_deadspace, scanner)
+        bytes_skipped = extractor.send(:skip_deadspace, scanner)
         return [bytes_skipped, scanner.pos, scanner.rest]
       end
     end
@@ -1264,7 +1264,7 @@ describe CExtractor do
         expect(io.pos).to be < large_content.length
       end
 
-      it "handles rapid successive extractions efficiently" do
+      it "handles rapid successive extractions" do
         content = "A B C D E F G H I J"
         io = StringIO.new(content)
         extractor = create_pattern_extractor.call(/\w/)
@@ -1277,6 +1277,686 @@ describe CExtractor do
         end
         
         expect(results).to eq(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"])
+      end
+    end
+  end
+
+  ###
+  ### extract_balanced_braces()
+  ###
+
+  describe "#extract_balanced_braces (private method testing)" do
+    # Helper to access private method
+    let(:extract_braces) do
+      ->(content) do
+        extractor = CExtractor.from_string(content: "", chunk_size: 10)
+        scanner = StringScanner.new(content)
+        success, block = extractor.send(:extract_balanced_braces, scanner)
+        return [success, block, scanner.pos, scanner.rest]
+      end
+    end
+
+    context "simple balanced braces" do
+      it "extracts single-level braces" do
+        content = "{ code }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code }")
+        expect(pos).to eq(8)
+        expect(rest).to eq("")
+      end
+
+      it "extracts empty braces" do
+        content = "{}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{}")
+        expect(pos).to eq(2)
+        expect(rest).to eq("")
+      end
+
+      it "extracts braces with content after" do
+        content = "{ code } more"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code }")
+        expect(pos).to eq(8)
+        expect(rest).to eq(" more")
+      end
+
+      it "extracts braces with whitespace" do
+        content = "{   \n\t  }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{   \n\t  }")
+        expect(pos).to eq(9)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "nested braces" do
+      it "extracts one level of nesting" do
+        content = "{ outer { inner } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ outer { inner } }")
+        expect(pos).to eq(19)
+        expect(rest).to eq("")
+      end
+
+      it "extracts two levels of nesting" do
+        content = "{ a { b { c } } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ a { b { c } } }")
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "extracts multiple nested blocks at same level" do
+        content = "{ { a } { b } { c } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ { a } { b } { c } }")
+        expect(pos).to eq(21)
+        expect(rest).to eq("")
+      end
+
+      it "extracts deeply nested braces" do
+        content = "{ { { { { deep } } } } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ { { { { deep } } } } }")
+        expect(pos).to eq(24)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "braces in strings" do
+      it "ignores braces in double-quoted strings" do
+        content = '{ "string with brace }" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "string with brace }" }')
+        expect(pos).to eq(25)
+        expect(rest).to eq("")
+      end
+
+      it "ignores braces in single-quoted strings" do
+        content = "{ 'char {' }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ 'char {' }")
+        expect(pos).to eq(12)
+        expect(rest).to eq("")
+      end
+
+      it "handles escaped quotes in strings with braces" do
+        content = '{ "string with \\" and { brace" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "string with \\" and { brace" }')
+        expect(pos).to eq(32)
+        expect(rest).to eq("")
+      end
+
+      it "handles multiple strings with braces" do
+        content = '{ "first { }" "second } " }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "first { }" "second } " }')
+        expect(pos).to eq(27)
+        expect(rest).to eq("")
+      end
+
+      it "handles empty strings" do
+        content = '{ "" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "" }')
+        expect(pos).to eq(6)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "braces in comments" do
+      it "ignores braces in line comments" do
+        content = "{ code // comment with { brace\n}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code // comment with { brace\n}")
+        expect(pos).to eq(32)
+        expect(rest).to eq("")
+      end
+
+      it "ignores braces in block comments" do
+        content = "{ code /* comment with { brace */ }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code /* comment with { brace */ }")
+        expect(pos).to eq(35)
+        expect(rest).to eq("")
+      end
+
+      it "handles multiple comments with braces" do
+        content = "{ /* { */ code // }\n}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ /* { */ code // }\n}")
+        expect(pos).to eq(21)
+        expect(rest).to eq("")
+      end
+
+      it "handles nested block comments with braces" do
+        content = "{ /* outer { /* inner } */ */ }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ /* outer { /* inner } */ */ }")
+        expect(pos).to eq(31)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "real C code patterns" do
+      it "extracts simple function body" do
+        content = "{ return 0; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ return 0; }")
+        expect(pos).to eq(13)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function body with nested blocks" do
+        content = "{ if (x) { do_something(); } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ if (x) { do_something(); } }")
+        expect(pos).to eq(30)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function body with multiple statements" do
+        content = <<~CODE.chomp
+          {
+            int x = 5;
+            printf("value: %d", x);
+            return x;
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts struct initialization" do
+        content = '{ .field1 = 10, .field2 = "test" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ .field1 = 10, .field2 = "test" }')
+        expect(pos).to eq(34)
+        expect(rest).to eq("")
+      end
+
+      it "extracts array initialization" do
+        content = "{ 1, 2, 3, 4, 5 }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ 1, 2, 3, 4, 5 }")
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "extracts switch statement" do
+        content = <<~CODE.chomp
+          {
+            switch (x) {
+              case 1: { action1(); break; }
+              case 2: { action2(); break; }
+              default: { action_default(); }
+            }
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts do-while loop" do
+        content = "{ do { process(); } while (condition); }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ do { process(); } while (condition); }")
+        expect(pos).to eq(40)
+        expect(rest).to eq("")
+      end
+
+      it "extracts nested if-else blocks" do
+        content = <<~CODE.chomp
+          {
+            if (a) {
+              if (b) { x(); }
+              else { y(); }
+            } else {
+              z();
+            }
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "failure cases" do
+      it "fails when not starting at opening brace" do
+        content = "not a brace"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(1) # Advanced by one character (the 'n')
+        expect(rest).to eq("ot a brace")
+      end
+
+      it "fails on unbalanced braces (missing closing)" do
+        content = "{ incomplete"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(12) # At end of string
+        expect(rest).to eq("")
+      end
+
+      it "fails on unbalanced braces (extra closing)" do
+        content = "{ code } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code }")
+        expect(pos).to eq(8)
+        expect(rest).to eq(" }")
+      end
+
+      it "fails on unbalanced nested braces" do
+        content = "{ outer { inner }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "fails on empty content" do
+        content = ""
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("")
+      end
+
+      it "fails when starting with closing brace" do
+        content = "} wrong"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(1)
+        expect(rest).to eq(" wrong")
+      end
+    end
+
+    context "edge cases with strings and comments" do
+      it "handles string with escaped backslash before quote" do
+        content = '{ "path\\\\file" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "path\\\\file" }')
+        expect(pos).to eq(16)
+        expect(rest).to eq("")
+      end
+
+      it "handles string with escaped newline" do
+        content = '{ "line1\\nline2" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "line1\\nline2" }')
+        expect(pos).to eq(18)
+        expect(rest).to eq("")
+      end
+
+      it "handles character literal with closing brace" do
+        content = "{ char c = '}'; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ char c = '}'; }")
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "handles character literal with opening brace" do
+        content = "{ char c = '{'; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ char c = '{'; }")
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "handles escaped single quote in character literal" do
+        content = "{ char c = '\\''; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ char c = '\\''; }")
+        expect(pos).to eq(18)
+        expect(rest).to eq("")
+      end
+
+      it "handles comment at end of line with brace" do
+        content = "{ code; // comment }\n}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code; // comment }\n}")
+        expect(pos).to eq(22)
+        expect(rest).to eq("")
+      end
+
+      it "handles block comment spanning multiple lines with braces" do
+        content = <<~CODE.chomp
+          {
+            /* This is a comment
+               with { braces } in it
+               spanning lines */
+            code;
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "handles unterminated string (malformed C)" do
+        # NOTE: This tests behavior with malformed C code
+        content = '{ "unterminated }'
+        success, block, _, _ = extract_braces.call(content)
+        
+        # The extractor should fail because the closing brace is inside an unterminated string
+        expect(success).to be false
+        expect(block).to be_nil
+      end
+
+      it "handles unterminated comment (malformed C)" do
+        # NOTE: This tests behavior with malformed C code
+        content = "{ /* unterminated }"
+        success, block, _, _ = extract_braces.call(content)
+        
+        # The extractor should fail because the closing brace is inside an unterminated comment
+        expect(success).to be false
+        expect(block).to be_nil
+      end
+    end
+
+    context "complex real-world patterns" do
+      it "extracts function with macro usage" do
+        content = <<~CODE.chomp
+          {
+            MACRO_CALL(arg1, arg2);
+            if (CHECK_FLAG(x)) {
+              DO_SOMETHING();
+            }
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with string containing comment-like text" do
+        content = '{ printf("/* not a comment */"); }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ printf("/* not a comment */"); }')
+        expect(pos).to eq(34)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with comment containing string-like text" do
+        content = '{ /* "not a string" */ code; }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ /* "not a string" */ code; }')
+        expect(pos).to eq(30)
+        expect(rest).to eq("")
+      end
+
+      it "extracts nested struct and array initializers" do
+        content = <<~CODE.chomp
+          {
+            struct data d = {
+              .array = { 1, 2, 3 },
+              .nested = { { 4, 5 }, { 6, 7 } }
+            };
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with ternary operator and braces" do
+        content = "{ result = condition ? { .a = 1 } : { .b = 2 }; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ result = condition ? { .a = 1 } : { .b = 2 }; }")
+        expect(pos).to eq(49)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with compound literal" do
+        content = "{ func((struct point){ .x = 10, .y = 20 }); }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ func((struct point){ .x = 10, .y = 20 }); }")
+        expect(pos).to eq(45)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with designated initializers and nested braces" do
+        content = <<~CODE.chomp
+          {
+            struct config cfg = {
+              [0] = { .name = "first", .value = { 1, 2 } },
+              [1] = { .name = "second", .value = { 3, 4 } }
+            };
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "scanner position management" do
+      it "leaves scanner at correct position after successful extraction" do
+        content = "{ first }{ second }{third}"
+        extractor = CExtractor.from_string(content: "", chunk_size: 10)
+        scanner = StringScanner.new(content)
+        
+        success1, block1 = extractor.send(:extract_balanced_braces, scanner)
+
+        expect(success1).to be true
+        expect(block1).to eq("{ first }")
+
+        success2, block2 = extractor.send(:extract_balanced_braces, scanner)
+        
+        expect(success2).to be true
+        expect(block2).to eq("{ second }")
+
+        success3, block3 = extractor.send(:extract_balanced_braces, scanner)
+        
+        expect(success3).to be true
+        expect(block3).to eq("{third}")
+
+        expect(scanner.eos?).to be true
+      end
+
+      it "leaves scanner at correct position after failed extraction" do
+        content = "not_brace { valid }"
+        extractor = CExtractor.from_string(content: "", chunk_size: 10)
+        scanner = StringScanner.new(content)
+        
+        success1, block1 = extractor.send(:extract_balanced_braces, scanner)
+        
+        expect(success1).to be false
+        expect(block1).to be_nil
+        expect(scanner.pos).to eq(1) # Advanced by one character
+        
+        # Skip to the valid brace
+        scanner.scan(/[^{]*/)
+        success2, block2 = extractor.send(:extract_balanced_braces, scanner)
+        
+        expect(success2).to be true
+        expect(block2).to eq("{ valid }")
+      end
+
+      it "handles scanner at end of string" do
+        content = "{ code }"
+        extractor = CExtractor.from_string(content: "", chunk_size: 10)
+        scanner = StringScanner.new(content)
+        
+        # Extract the only block
+        extractor.send(:extract_balanced_braces, scanner)
+        
+        # Try to extract again at end of string
+        success, block = extractor.send(:extract_balanced_braces, scanner)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(scanner.eos?).to be true
+      end
+    end
+
+    context "performance considerations" do
+      it "handles very long brace blocks" do
+        # Create a large but balanced brace block
+        inner_content = "int x = 0;\n" * 100
+        content = "{\n#{inner_content}}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+     it "handles deeply nested braces" do
+        # Create 50 levels of nesting
+        opening = "{ " * 50
+        closing = " }" * 50
+        content = opening + "core" + closing
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "handles many sequential brace blocks" do
+        # Create 100 sequential blocks
+        blocks = (1..100).map { |i| "{ block#{i} }" }.join(" ")
+        extractor = CExtractor.from_string(content: "", chunk_size: 10)
+        scanner = StringScanner.new(blocks)
+        
+        count = 0
+        while !scanner.eos?
+          scanner.scan(/\s*/)
+          break if scanner.eos?
+          success, _ = extractor.send(:extract_balanced_braces, scanner)
+          break unless success
+          count += 1
+        end
+        
+        expect(count).to eq(100)
+      end
+
+      it "handles large strings within braces" do
+        large_string = "x" * 1000
+        content = "{ char* str = \"#{large_string}\"; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "handles large comments within braces" do
+        large_comment = "comment text " * 100
+        content = "{ /* #{large_comment} */ code; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
       end
     end
   end
