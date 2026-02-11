@@ -8,6 +8,11 @@
 require 'spec_helper'
 require 'ceedling/c_extractor'
 
+##
+## These integration tests exercise the composition of all CExtractor* objects
+## in extracting features from C source code.
+## Other unit tests exhaustively exerise individual methods, including of CExtractor itself.
+##
 describe CExtractor do
 
   context "#extract_contents" do

@@ -6,21 +6,21 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/c_extractor'
+require 'ceedling/c_extractor/c_extractor_code_text'
 require 'stringio'
 
-describe CExtractor do
+describe CExtractorCodeText do
 
   ###
   ### skip_c_string()
   ###
-  describe "#skip_c_string (private method testing)" do
+  describe "#skip_c_string" do
     # Helper to access private method
     let(:skip_c_string) do
       ->(content, quote) do
-        extractor = CExtractor.from_string(content: "", chunk_size: 10)
         scanner = StringScanner.new(content)
-        bytes_skipped = extractor.send(:skip_c_string, scanner, quote)
+        code_text = CExtractorCodeText.new
+        bytes_skipped = code_text.skip_c_string( scanner, quote )
         return [bytes_skipped, scanner.pos, scanner.rest]
       end
     end
@@ -545,13 +545,13 @@ describe CExtractor do
   ###
   ### skip_deadspace()
   ###
-  describe "#skip_deadspace (private method testing)" do
+  describe "#skip_deadspace" do
     # Helper to access private method
     let(:skip_deadspace) do
       ->(content) do
-        extractor = CExtractor.from_string(content: "", chunk_size: 10)
         scanner = StringScanner.new(content)
-        bytes_skipped = extractor.send(:skip_deadspace, scanner)
+        code_text = CExtractorCodeText.new()
+        bytes_skipped = code_text.skip_deadspace( scanner )
         return [bytes_skipped, scanner.pos, scanner.rest]
       end
     end
@@ -998,321 +998,17 @@ describe CExtractor do
     end
   end
 
-
-  ###
-  ### extract_next_feature()
-  ###
-  describe "#extract_next_feature (private method testing)" do
-    # Helper to create a simple extractor that looks for a specific pattern
-    # NOTE: `scanner.scan()` expects pattern to match from the current position
-    let(:create_pattern_extractor) do
-      ->(pattern) do
-        ->(scanner) do
-          if scanner.scan(pattern)
-            matched = scanner.matched
-            return [true, matched]
-          end
-          return [false, nil]
-        end
-      end
-    end
-
-    # Helper to access private method
-    let(:extract_feature) do
-      ->(io, max_length, extractor, chunk_size=10) do
-        extractor_obj = CExtractor.from_string(content: "", chunk_size: chunk_size)
-        extractor_obj.send(:extract_next_feature, io: io, max_length: max_length, extractor: extractor)
-      end
-    end
-
-     context "basic extraction" do
-      it "extracts a simple pattern within first chunk" do
-        content = "HELLO // comment"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/HELLO/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("HELLO")
-        expect(io.pos).to eq(5) # Position after "HELLO"
-      end
-
-      it "returns nil when pattern is not found before EOF" do
-        content = "// no content in these chunks"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/NOTFOUND/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to be_nil
-        expect(io.eof?).to be true
-      end
-
-      it "advances scanner position on success" do
-        content = "PREFIX:DATA:SUFFIX"
-        io = StringIO.new(content)
-        
-        extractor = ->(scanner) do
-          # Look for pattern like "PREFIX:DATA:"
-          if scanner.scan(/PREFIX:(\w+):/)
-            return [true, scanner[1]] # Return just the captured DATA part
-          end
-          [false, nil]
-        end
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("DATA")
-        expect(io.pos).to eq(12) # After "PREFIX:DATA:"
-      end    end
-
-    context "multiple extractions" do
-      it "extracts multiple features sequentially from same IO" do
-        content = "FIRST SECOND THIRD"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/\w+/)
-        
-        result1 = extract_feature.call(io, 1000, extractor)
-        result2 = extract_feature.call(io, 1000, extractor)
-        result3 = extract_feature.call(io, 1000, extractor)
-        result4 = extract_feature.call(io, 1000, extractor)
-        
-        expect(result1).to eq("FIRST")
-        expect(result2).to eq("SECOND")
-        expect(result3).to eq("THIRD")
-        expect(result4).to be_nil
-      end
-
-      it "positions IO correctly after each extraction" do
-        content = "AAA BBB CCC"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/\w+/)
-        
-        extract_feature.call(io, 1000, extractor)
-        pos_after_first = io.pos
-        
-        extract_feature.call(io, 1000, extractor)
-        pos_after_second = io.pos
-        
-        expect(pos_after_first).to eq(3) # After "AAA"
-        expect(pos_after_second).to eq(7) # After "AAA BBB"
-      end
-    end
-
-    context "whitespace and deadspace handling" do
-      it "skips whitespace before pattern" do
-        content = "   \n\t  PATTERN"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/PATTERN/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("PATTERN")
-      end
-
-      it "skips comments before pattern" do
-        content = "// comment\n/* block */PATTERN"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/PATTERN/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("PATTERN")
-      end
-
-      it "skips preprocessor directives before pattern" do
-        content = "#include <stdio.h>\n#define FOO 123\nPATTERN"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/PATTERN/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("PATTERN")
-      end
-    end
-
-    context "IO access and buffer usage" do
-      it "extracts pattern that spans multiple chunks" do
-        content = "/*pre*/ LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG_PATTERN /*post*/"
-        io = StringIO.new(content)
-        # Chunk size is 10, so "LONG_PATTERN" will span chunks
-        extractor = create_pattern_extractor.call(/L(O)+NG_PATTERN/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG_PATTERN")
-      end
-
-      it "grows buffer across many chunks until pattern is found" do
-        # Create content where pattern appears after several chunks
-        content = "\t" * 100 + "TARGET"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/TARGET/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("TARGET")
-      end
-
-      it "raises error when buffer exceeds max_length" do
-        content = "x" * 200 # Long string
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/NOTFOUND/)
-        
-        expect {
-          extract_feature.call(io, 100, extractor)
-        }.to raise_error(CeedlingException, /exceeded maximum length/)
-      end
-
-      it "extracts multiple features from same chunk" do
-        # Other test cases deal with growing the internal buffer with multiple chunk reads from IO.
-        # This test case ensures we can extract multiple features from the same large chunk.
-
-        content = "FIRST" + (' ' * 500) + "SECOND" + (' ' * 500) + "THIRD"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/\w+/)
-
-        extractor_obj = CExtractor.from_string(content: "", chunk_size: 2000)
-
-        result1 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
-        result2 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
-        result3 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
-        result4 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
-               
-        expect(result1).to eq("FIRST")
-        expect(result2).to eq("SECOND")
-        expect(result3).to eq("THIRD")
-        expect(result4).to be_nil
-      end
-    end
-
-    context "edge cases" do
-      it "handles empty IO" do
-        io = StringIO.new("")
-        extractor = create_pattern_extractor.call(/ANYTHING/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to be_nil
-      end
-
-      it "handles IO with only whitespace and comments" do
-        content = "   \n\t  // comment\n/* block */  \n"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/PATTERN/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to be_nil
-      end
-
-      it "handles pattern at very end of IO" do
-        content = "/*prefix*/ PATTERN"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/PATTERN/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("PATTERN")
-        expect(io.eof?).to be true
-      end
-
-      it "handles pattern at very beginning of IO" do
-        content = "PATTERN /*suffix*/"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/PATTERN/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("PATTERN")
-        expect(io.pos).to eq(7)
-      end
-
-      it "allows extraction when pattern exactly matches chunk size" do
-        content = "FOUND"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/FOUND/)
-        
-        result = extract_feature.call(io, 100, extractor, 5)
-        
-        expect(result).to eq("FOUND")
-      end
-
-      it "allows extraction when exactly at max_length" do
-        content = "\n" * 95 + "FOUND" # 100 characters
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/FOUND/)
-        
-        result = extract_feature.call(io, 100, extractor)
-        
-        expect(result).to eq("FOUND")
-      end
-
-      it "handles pattern split exactly at chunk boundary" do
-        # With chunk_size=10, "/*012345*/" fills first chunk exactly
-        content = "/*012345*/PATTERN"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/PATTERN/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("PATTERN")
-      end
-
-      it "handles comment spanning chunk boundaries" do
-        content = "/* comment across\nchunk boundary */PATTERN"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/PATTERN/)
-        
-        result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("PATTERN")
-      end
-    end
-
-    context "performance and safety" do
-      it "stops reading when max_length is reached" do
-        # Create content larger than max_length
-        large_content = "x" * 500
-        io = StringIO.new(large_content)
-        extractor = create_pattern_extractor.call(/NOTFOUND/)
-        
-        expect {
-          extract_feature.call(io, 200, extractor)
-        }.to raise_error(CeedlingException, /exceeded maximum length/)
-        
-        # IO should not have read entire content
-        expect(io.pos).to be < large_content.length
-      end
-
-      it "handles rapid successive extractions" do
-        content = "A B C D E F G H I J"
-        io = StringIO.new(content)
-        extractor = create_pattern_extractor.call(/\w/)
-        
-        results = []
-        10.times do
-          result = extract_feature.call(io, 1000, extractor)
-          break unless result
-          results << result
-        end
-        
-        expect(results).to eq(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"])
-      end
-    end
-  end
-
   ###
   ### extract_balanced_braces()
   ###
 
-  describe "#extract_balanced_braces (private method testing)" do
+  describe "#extract_balanced_braces" do
     # Helper to access private method
     let(:extract_braces) do
       ->(content) do
-        extractor = CExtractor.from_string(content: "", chunk_size: 10)
         scanner = StringScanner.new(content)
-        success, block = extractor.send(:extract_balanced_braces, scanner)
+        code_text = CExtractorCodeText.new()
+        success, block = code_text.extract_balanced_braces( scanner )
         return [success, block, scanner.pos, scanner.rest]
       end
     end
@@ -1857,20 +1553,20 @@ describe CExtractor do
     context "scanner position management" do
       it "leaves scanner at correct position after successful extraction" do
         content = "{ first }{ second }{third}"
-        extractor = CExtractor.from_string(content: "", chunk_size: 10)
         scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
         
-        success1, block1 = extractor.send(:extract_balanced_braces, scanner)
+        success1, block1 = code_text.extract_balanced_braces( scanner )
 
         expect(success1).to be true
         expect(block1).to eq("{ first }")
 
-        success2, block2 = extractor.send(:extract_balanced_braces, scanner)
+        success2, block2 = code_text.extract_balanced_braces( scanner )
         
         expect(success2).to be true
         expect(block2).to eq("{ second }")
 
-        success3, block3 = extractor.send(:extract_balanced_braces, scanner)
+        success3, block3 = code_text.extract_balanced_braces( scanner )
         
         expect(success3).to be true
         expect(block3).to eq("{third}")
@@ -1880,10 +1576,10 @@ describe CExtractor do
 
       it "leaves scanner at correct position after failed extraction" do
         content = "not_brace { valid }"
-        extractor = CExtractor.from_string(content: "", chunk_size: 10)
         scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
         
-        success1, block1 = extractor.send(:extract_balanced_braces, scanner)
+        success1, block1 = code_text.extract_balanced_braces( scanner )
         
         expect(success1).to be false
         expect(block1).to be_nil
@@ -1891,7 +1587,7 @@ describe CExtractor do
         
         # Skip to the valid brace
         scanner.scan(/[^{]*/)
-        success2, block2 = extractor.send(:extract_balanced_braces, scanner)
+        success2, block2 = code_text.extract_balanced_braces( scanner )
         
         expect(success2).to be true
         expect(block2).to eq("{ valid }")
@@ -1899,14 +1595,14 @@ describe CExtractor do
 
       it "handles scanner at end of string" do
         content = "{ code }"
-        extractor = CExtractor.from_string(content: "", chunk_size: 10)
         scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
         
         # Extract the only block
-        extractor.send(:extract_balanced_braces, scanner)
+        code_text.extract_balanced_braces( scanner )
         
         # Try to extract again at end of string
-        success, block = extractor.send(:extract_balanced_braces, scanner)
+        success, block = code_text.extract_balanced_braces( scanner )
         
         expect(success).to be false
         expect(block).to be_nil
@@ -1943,14 +1639,14 @@ describe CExtractor do
       it "handles many sequential brace blocks" do
         # Create 100 sequential blocks
         blocks = (1..100).map { |i| "{ block#{i} }" }.join(" ")
-        extractor = CExtractor.from_string(content: "", chunk_size: 10)
         scanner = StringScanner.new(blocks)
+        code_text = CExtractorCodeText.new()
         
         count = 0
         while !scanner.eos?
           scanner.scan(/\s*/)
           break if scanner.eos?
-          success, _ = extractor.send(:extract_balanced_braces, scanner)
+          success, _ = code_text.extract_balanced_braces( scanner )
           break unless success
           count += 1
         end
@@ -1978,603 +1674,6 @@ describe CExtractor do
         expect(block).to eq(content)
         expect(pos).to eq(content.length)
         expect(rest).to eq("")
-      end
-    end
-  end
-
-  ###
-  ### extract_function_signature()
-  ###
-
-  describe "#extract_function_signature (private method testing)" do
-    # Helper to access private method
-    let(:extract_signature) do
-      ->(content) do
-        extractor = CExtractor.from_string(content: "", chunk_size: 10)
-        scanner = StringScanner.new(content)
-        signature = extractor.send(:extract_function_signature, scanner)
-        return [signature, scanner.pos, scanner.rest]
-      end
-    end
-
-    context "simple function signatures" do
-      it "extracts void function signature with void parameters" do
-        content = "void foo(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void foo(void)")
-        expect(pos).to eq(14)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts void function signature with no parameters" do
-        content = "void foo(){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void foo()")
-        expect(pos).to eq(10)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts void function signature with no parameters and brace after newline" do
-        content = "void foo()\n{"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void foo()")
-        expect(pos).to eq(11)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts int function signature with no parameters and whitespace between signature and function body brace" do
-        content = "int bar(void)    {"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int bar(void)")
-        expect(pos).to eq(17)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts signature followed by line comment" do
-        content = "void foo(void) // comment\n{"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void foo(void)")
-        expect(pos).to eq(26)
-        expect(rest).to eq("{")
-      end
-      
-      it "extracts function signature with single parameter and comment between signature and function body brace" do
-        content = "int add(int x)/* */{ int a;"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int add(int x)")
-        expect(pos).to eq(19)
-        expect(rest).to eq("{ int a;")
-      end
-
-      it "extracts function signature with multiple parameters" do
-        content = "int multiply(int a, int b){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int multiply(int a, int b)")
-        expect(pos).to eq(26)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function signature returning pointer" do
-        content = "char* getString(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("char* getString(void)")
-        expect(pos).to eq(21)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function signature with pointer parameter" do
-        content = "void process(int* ptr){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void process(int* ptr)")
-        expect(pos).to eq(22)
-        expect(rest).to eq("{")
-      end
-
-      it "does not extract signature from declaration" do
-        content = "void process(int* ptr);"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq(nil)
-        expect(pos).to eq(23)
-        expect(rest).to eq("")
-      end
-
-      it "does not extract signature from declaration with whitespace" do
-        content = "void process(int* ptr)     ;"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq(nil)
-        expect(pos).to eq(28)
-        expect(rest).to eq("")
-      end
-
-      it "does not extract signature from declaration with comment" do
-        content = "void process(int* ptr)/***/;"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq(nil)
-        expect(pos).to eq(28)
-        expect(rest).to eq("")
-      end
-
-      it "does not extract signature from declaration with newline" do
-        content = "void process(int* ptr)\n;"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq(nil)
-        expect(pos).to eq(24)
-        expect(rest).to eq("")
-      end
-    end
-
-    context "function signatures with whitespace variations" do
-      it "extracts signature with extra spaces" do
-        content = "int    foo   (  int   x  ){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int foo ( int x )")
-        expect(pos).to eq(26)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts clean signature from one with tabs" do
-        content = "int\tfoo\t(\tint\tx\t){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int foo ( int x )")
-        expect(pos).to eq(17)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts clean signature from one with newlines" do
-        content = "int\nfoo\n(\nint x\n){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int foo ( int x )")
-        expect(pos).to eq(17)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts clean signature from one with mixed whitespace" do
-        content = "int \t\n foo \t\n ( \t\n int x \t\n ){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int foo ( int x )")
-        expect(pos).to eq(29)
-        expect(rest).to eq("{")
-      end
-    end
-
-    context "complex return types" do
-      it "extracts function returning struct" do
-        content = "struct point getPoint(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("struct point getPoint(void)")
-        expect(pos).to eq(27)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function returning pointer to struct" do
-        content = "struct node* getNode(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("struct node* getNode(void)")
-        expect(pos).to eq(26)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function returning const pointer" do
-        content = "const char* getMessage(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("const char* getMessage(void)")
-        expect(pos).to eq(28)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function returning pointer to const" do
-        content = "char* const getBuffer(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("char* const getBuffer(void)")
-        expect(pos).to eq(27)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function returning unsigned type" do
-        content = "unsigned int getValue(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("unsigned int getValue(void)")
-        expect(pos).to eq(27)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function returning long long" do
-        content = "long long getBigValue(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("long long getBigValue(void)")
-        expect(pos).to eq(27)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function returning enum" do
-        content = "enum status getStatus(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("enum status getStatus(void)")
-        expect(pos).to eq(27)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function returning typedef'd type" do
-        content = "size_t getSize(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("size_t getSize(void)")
-        expect(pos).to eq(20)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function returning double pointer" do
-        content = "char** getStringArray(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("char** getStringArray(void)")
-        expect(pos).to eq(27)
-        expect(rest).to eq("{")
-      end
-    end
-
-    context "complex parameter types" do
-      it "extracts function with array parameter" do
-        content = "void process(int arr[]){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void process(int arr[])")
-        expect(pos).to eq(23)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with sized array parameter" do
-        content = "void process(int arr[10]){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void process(int arr[10])")
-        expect(pos).to eq(25)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with const parameter" do
-        content = "void print(const char* str){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void print(const char* str)")
-        expect(pos).to eq(27)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with struct parameter" do
-        content = "void update(struct data d){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void update(struct data d)")
-        expect(pos).to eq(26)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with pointer to struct parameter" do
-        content = "void modify(struct node* n){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void modify(struct node* n)")
-        expect(pos).to eq(27)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with multiple complex parameters" do
-        content = "int compare(const char* s1, const char* s2, size_t len){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int compare(const char* s1, const char* s2, size_t len)")
-        expect(pos).to eq(55)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with function pointer parameter" do
-        content = "void callback(void (*func)(int)){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void callback(void (*func)(int))")
-        expect(pos).to eq(32)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with complex function pointer parameter" do
-        content = "void register(int (*compare)(const void*, const void*)){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void register(int (*compare)(const void*, const void*))")
-        expect(pos).to eq(55)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with double pointer parameter" do
-        content = "void allocate(char** buffer){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void allocate(char** buffer)")
-        expect(pos).to eq(28)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with enum parameter" do
-        content = "void setState(enum state s){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void setState(enum state s)")
-        expect(pos).to eq(27)
-        expect(rest).to eq("{")
-      end
-    end
-
-    context "function signatures with storage class specifiers" do
-      it "extracts static function" do
-        content = "static int helper(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("static int helper(void)")
-        expect(pos).to eq(23)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts inline function" do
-        content = "inline int fast(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("inline int fast(void)")
-        expect(pos).to eq(21)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts extern function" do
-        content = "extern void external(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("extern void external(void)")
-        expect(pos).to eq(26)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts static inline function" do
-        content = "static inline int optimize(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("static inline int optimize(void)")
-        expect(pos).to eq(32)
-        expect(rest).to eq("{")
-      end
-    end
-
-    context "function signatures with qualifiers" do
-      it "extracts function with const qualifier" do
-        content = "const int getValue(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("const int getValue(void)")
-        expect(pos).to eq(24)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with volatile qualifier" do
-        content = "volatile int getRegister(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("volatile int getRegister(void)")
-        expect(pos).to eq(30)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with restrict qualifier" do
-        content = "void copy(char* restrict dest, const char* restrict src){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void copy(char* restrict dest, const char* restrict src)")
-        expect(pos).to eq(56)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with multiple qualifiers" do
-        content = "static const volatile int getSpecial(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("static const volatile int getSpecial(void)")
-        expect(pos).to eq(42)
-        expect(rest).to eq("{")
-      end
-    end
-
-    context "function signatures with variadic parameters" do
-      it "extracts function with variadic parameters" do
-        content = "int printf(const char* format, ...){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int printf(const char* format, ...)")
-        expect(pos).to eq(35)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with only variadic parameters" do
-        content = "void log(...){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void log(...)")
-        expect(pos).to eq(13)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts function with multiple parameters and variadic" do
-        content = "int sprintf(char* buffer, const char* format, ...){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int sprintf(char* buffer, const char* format, ...)")
-        expect(pos).to eq(50)
-        expect(rest).to eq("{")
-      end
-    end
-
-    context "function signatures with nested parentheses" do
-      it "extracts signature with function pointer return type" do
-        content = "int (*getFunction(void))(int, int){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int (*getFunction(void))(int, int)")
-        expect(pos).to eq(34)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts signature with complex function pointer parameter" do
-        content = "void sort(int* array, int (*compare)(int, int)){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void sort(int* array, int (*compare)(int, int))")
-        expect(pos).to eq(47)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts signature with multiple function pointer parameters" do
-        content = "void process(void (*init)(void), void (*cleanup)(void)){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void process(void (*init)(void), void (*cleanup)(void))")
-        expect(pos).to eq(55)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts signature with nested function pointers" do
-        content = "void register(void (*callback)(int (*)(void))){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void register(void (*callback)(int (*)(void)))")
-        expect(pos).to eq(46)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts signature with array of function pointers" do
-        content = "void dispatch(void (*handlers[])(int)){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void dispatch(void (*handlers[])(int))")
-        expect(pos).to eq(38)
-        expect(rest).to eq("{")
-      end
-    end
-
-    context "function signatures with strings and comments" do
-      it "extracts signature with string in default parameter (C++ style, but testing robustness)" do
-        content = 'void log(const char* msg = "default"){'
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq('void log(const char* msg = "default")')
-        expect(pos).to eq(37)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts signature with parentheses in string" do
-        content = 'void print(const char* format = "value: (%d)"){'
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq('void print(const char* format = "value: (%d)")')
-        expect(pos).to eq(46)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts signature with character literal containing parenthesis" do
-        content = "void process(char c = ')'){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void process(char c = ')')")
-        expect(pos).to eq(26)
-        expect(rest).to eq("{")
-      end
-    end
-
-    context "edge cases and boundary conditions" do
-      it "extracts very long signature" do
-        params = (1..50).map { |i| "int param#{i}" }.join(", ")
-        content = "void longFunction(#{params})"
-        signature, pos, rest = extract_signature.call(content + '{}')
-        
-        expect(signature).to eq(content)
-        expect(pos).to eq(content.length)
-        expect(rest).to eq("{}")
-      end
-
-      it "extracts signature with deeply nested parentheses" do
-        content = "void complex(int (*(*(*f)(int))(int))(int)){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void complex(int (*(*(*f)(int))(int))(int))")
-        expect(pos).to eq(43)
-        expect(rest).to eq("{")
-      end
-    end
-
-    context "real-world C function patterns" do
-      it "extracts main function signature" do
-        content = "int main(int argc, char* argv[]){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int main(int argc, char* argv[])")
-        expect(pos).to eq(32)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts signal handler signature" do
-        content = "void signal_handler(int signum){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void signal_handler(int signum)")
-        expect(pos).to eq(31)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts qsort compare function signature" do
-        content = "int compare(const void* a, const void* b){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("int compare(const void* a, const void* b)")
-        expect(pos).to eq(41)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts pthread function signature" do
-        content = "void* thread_function(void* arg){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void* thread_function(void* arg)")
-        expect(pos).to eq(32)
-        expect(rest).to eq("{")
-      end
-
-      it "extracts interrupt handler signature" do
-        content = "void __attribute__((interrupt)) ISR_Handler(void){"
-        signature, pos, rest = extract_signature.call(content)
-        
-        expect(signature).to eq("void __attribute__((interrupt)) ISR_Handler(void)")
-        expect(pos).to eq(49)
-        expect(rest).to eq("{")
       end
     end
   end
