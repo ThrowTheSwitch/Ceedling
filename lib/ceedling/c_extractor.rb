@@ -362,7 +362,7 @@ class CExtractor
       
       # Safety check
       if scanner.pos - start_pos > @max_line_length
-        raise CeedlingException.new("Function signature exceeds maximum length of #{@max_line_length} characters")
+        raise CeedlingException.new("Function signature extraction exceeds maximum length of #{@max_line_length} characters")
       end
 
       # Handle string literals

@@ -1161,7 +1161,7 @@ describe CExtractor do
         
         expect {
           extract_feature.call(io, 100, extractor)
-        }.to raise_error(CeedlingException, /exceeds maximum length/)
+        }.to raise_error(CeedlingException, /exceeded maximum length/)
       end
     end
 
@@ -1258,7 +1258,7 @@ describe CExtractor do
         
         expect {
           extract_feature.call(io, 200, extractor)
-        }.to raise_error(CeedlingException, /exceeds maximum length/)
+        }.to raise_error(CeedlingException, /exceeded maximum length/)
         
         # IO should not have read entire content
         expect(io.pos).to be < large_content.length
