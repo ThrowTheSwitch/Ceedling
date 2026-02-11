@@ -113,7 +113,7 @@ describe CExtractorFunctions do
         content = "void process(int* ptr);"
         signature, pos, rest = extract_signature.call(content)
         
-        expect(signature).to eq(nil)
+        expect(signature).to be_nil
         expect(pos).to eq(23)
         expect(rest).to eq("")
       end
@@ -122,7 +122,7 @@ describe CExtractorFunctions do
         content = "void process(int* ptr)     ;"
         signature, pos, rest = extract_signature.call(content)
         
-        expect(signature).to eq(nil)
+        expect(signature).to be_nil
         expect(pos).to eq(28)
         expect(rest).to eq("")
       end
@@ -131,7 +131,7 @@ describe CExtractorFunctions do
         content = "void process(int* ptr)/***/;"
         signature, pos, rest = extract_signature.call(content)
         
-        expect(signature).to eq(nil)
+        expect(signature).to be_nil
         expect(pos).to eq(28)
         expect(rest).to eq("")
       end
@@ -140,7 +140,7 @@ describe CExtractorFunctions do
         content = "void process(int* ptr)\n;"
         signature, pos, rest = extract_signature.call(content)
         
-        expect(signature).to eq(nil)
+        expect(signature).to be_nil
         expect(pos).to eq(24)
         expect(rest).to eq("")
       end
@@ -609,4 +609,671 @@ describe CExtractorFunctions do
     end
   end
 
+  ###
+  ### extract_function_name()
+  ###
+
+  describe "#extract_function_name (private method testing)" do
+    # Helper to access private method
+    let(:parse_name) do
+      ->(signature) do
+        functions = CExtractorFunctions.new( CExtractorCodeText.new(), 1000 )
+        name = functions.send( :extract_function_name, signature )
+        return name
+      end
+    end
+
+    context "simple function names" do
+      it "extracts name from void function with void parameters" do
+        signature = "void foo(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("foo")
+      end
+
+      it "extracts name from int function with no parameters" do
+        signature = "int bar()"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("bar")
+      end
+
+      it "extracts name from function with single parameter" do
+        signature = "int add(int x)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("add")
+      end
+
+      it "extracts name from function with multiple parameters" do
+        signature = "int multiply(int a, int b)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("multiply")
+      end
+
+      it "extracts name from function returning pointer" do
+        signature = "char* getString(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getString")
+      end
+
+      it "extracts name from function with pointer parameter" do
+        signature = "void process(int* ptr)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("process")
+      end
+    end
+
+    context "function names with whitespace variations" do
+      it "extracts name with extra spaces before parenthesis" do
+        signature = "int foo   (int x)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("foo")
+      end
+
+      it "extracts name with tabs before parenthesis" do
+        signature = "int\tfoo\t(int x)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("foo")
+      end
+
+      it "extracts name with newlines before parenthesis" do
+        signature = "int\nfoo\n(int x)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("foo")
+      end
+
+      it "extracts name with mixed whitespace" do
+        signature = "int \t\n foo \t\n (int x)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("foo")
+      end
+    end
+
+    context "complex return types" do
+      it "extracts name from function returning struct" do
+        signature = "struct point getPoint(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getPoint")
+      end
+
+      it "extracts name from function returning pointer to struct" do
+        signature = "struct node* getNode(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getNode")
+      end
+
+      it "extracts name from function returning const pointer" do
+        signature = "const char* getMessage(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getMessage")
+      end
+
+      it "extracts name from function returning pointer to const" do
+        signature = "char* const getBuffer(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getBuffer")
+      end
+
+      it "extracts name from function returning unsigned type" do
+        signature = "unsigned int getValue(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getValue")
+      end
+
+      it "extracts name from function returning long long" do
+        signature = "long long getBigValue(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getBigValue")
+      end
+
+      it "extracts name from function returning enum" do
+        signature = "enum status getStatus(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getStatus")
+      end
+
+      it "extracts name from function returning typedef'd type" do
+        signature = "size_t getSize(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getSize")
+      end
+
+      it "extracts name from function returning double pointer" do
+        signature = "char** getStringArray(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getStringArray")
+      end
+    end
+
+    context "function names with storage class specifiers" do
+      it "extracts name from static function" do
+        signature = "static int helper(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("helper")
+      end
+
+      it "extracts name from inline function" do
+        signature = "inline int fast(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("fast")
+      end
+
+      it "extracts name from extern function" do
+        signature = "extern void external(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("external")
+      end
+
+      it "extracts name from static inline function" do
+        signature = "static inline int optimize(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("optimize")
+      end
+    end
+
+    context "function names with qualifiers" do
+      it "extracts name from function with const qualifier" do
+        signature = "const int getValue(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getValue")
+      end
+
+      it "extracts name from function with volatile qualifier" do
+        signature = "volatile int getRegister(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getRegister")
+      end
+
+      it "extracts name from function with multiple qualifiers" do
+        signature = "static const volatile int getSpecial(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getSpecial")
+      end
+    end
+
+    context "function names with nested parentheses" do
+      it "extracts name from function pointer return type" do
+        signature = "int (*getFunction(void))(int, int)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getFunction")
+      end
+
+      it "extracts name from function with function pointer parameter" do
+        signature = "void sort(int* array, int (*compare)(int, int))"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("sort")
+      end
+
+      it "extracts name from function with multiple function pointer parameters" do
+        signature = "void process(void (*init)(void), void (*cleanup)(void))"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("process")
+      end
+
+      it "extracts name from function with nested function pointers" do
+        signature = "void register(void (*callback)(int (*)(void)))"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("register")
+      end
+
+      it "extracts name from function with array of function pointers" do
+        signature = "void dispatch(void (*handlers[])(int))"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("dispatch")
+      end
+    end
+
+    context "function names with underscores and naming conventions" do
+      it "extracts name with leading underscore" do
+        signature = "void _internal(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("_internal")
+      end
+
+      it "extracts name with double leading underscore" do
+        signature = "void __private(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("__private")
+      end
+
+      it "extracts name with trailing underscore" do
+        signature = "void function_(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("function_")
+      end
+
+      it "extracts name with multiple underscores" do
+        signature = "void my_long_function_name(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("my_long_function_name")
+      end
+
+      it "extracts camelCase name" do
+        signature = "void myFunctionName(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("myFunctionName")
+      end
+
+      it "extracts PascalCase name" do
+        signature = "void MyFunctionName(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("MyFunctionName")
+      end
+
+      it "extracts UPPER_CASE name" do
+        signature = "void MY_FUNCTION(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("MY_FUNCTION")
+      end
+    end
+
+    context "function names with numbers" do
+      it "extracts name with trailing number" do
+        signature = "void function1(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("function1")
+      end
+
+      it "extracts name with embedded numbers" do
+        signature = "void func2tion3(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("func2tion3")
+      end
+
+      it "extracts name with multiple numbers" do
+        signature = "void test123(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("test123")
+      end
+    end
+
+    context "real-world C function patterns" do
+      it "extracts name from main function" do
+        signature = "int main(int argc, char* argv[])"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("main")
+      end
+
+      it "extracts name from signal handler" do
+        signature = "void signal_handler(int signum)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("signal_handler")
+      end
+
+      it "extracts name from qsort compare function" do
+        signature = "int compare(const void* a, const void* b)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("compare")
+      end
+
+      it "extracts name from pthread function" do
+        signature = "void* thread_function(void* arg)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("thread_function")
+      end
+
+      it "extracts name from interrupt handler with attributes" do
+        signature = "void __attribute__((interrupt)) ISR_Handler(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("ISR_Handler")
+      end
+
+      it "extracts name from constructor function" do
+        signature = "void __attribute__((constructor)) init_module(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("init_module")
+      end
+
+      it "extracts name from destructor function" do
+        signature = "void __attribute__((destructor)) cleanup_module(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("cleanup_module")
+      end
+    end
+
+    context "edge cases" do
+      it "extracts name from very long signature" do
+        params = (1..50).map { |i| "int param#{i}" }.join(", ")
+        signature = "void longFunctionName(#{params})"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("longFunctionName")
+      end
+
+      it "extracts name with deeply nested parentheses in parameters" do
+        signature = "void complex(int (*(*f)(int (*)(void)))(void))"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("complex")
+      end
+
+      it "extracts name from function with array parameters with sizes" do
+        signature = "void matrix(int arr[10][20][30])"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("matrix")
+      end
+
+      it "extracts name from function with variadic parameters" do
+        signature = "int printf(const char* format, ...)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("printf")
+      end
+
+      it "extracts name from function with restrict qualifier" do
+        signature = "void copy(char* restrict dest, const char* restrict src)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("copy")
+      end
+
+      it "extracts name from function with _Noreturn specifier" do
+        signature = "_Noreturn void exit_program(int code)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("exit_program")
+      end
+
+      it "extracts name from function with __declspec" do
+        signature = "__declspec(dllexport) void exported_function(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("exported_function")
+      end
+
+      it "extracts name from function with multiple pointer levels" do
+        signature = "void*** getTriplePointer(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getTriplePointer")
+      end
+
+      it "extracts name from function with const pointer to const" do
+        signature = "const char* const getConstString(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getConstString")
+      end
+
+      it "extracts name from function with volatile pointer" do
+        signature = "volatile int* getVolatilePtr(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getVolatilePtr")
+      end
+
+      it "extracts name from function with struct tag and pointer" do
+        signature = "struct my_struct* create_struct(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("create_struct")
+      end
+
+      it "extracts name from function with union return type" do
+        signature = "union data getData(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getData")
+      end
+
+      it "extracts name from function with typedef'd struct" do
+        signature = "MyStruct_t createMyStruct(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("createMyStruct")
+      end
+
+      it "extracts name from function with anonymous struct parameter" do
+        signature = "void process(struct { int x; int y; } point)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("process")
+      end
+
+      it "extracts name from function with bit field in struct parameter" do
+        signature = "void setBits(struct flags { unsigned int a:1; unsigned int b:1; } f)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("setBits")
+      end
+
+      it "extracts name from function with complex spacing around asterisks" do
+        signature = "char * * * getMultiPointer(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getMultiPointer")
+      end
+
+      it "extracts name from function with register storage class" do
+        signature = "register int fastFunction(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("fastFunction")
+      end
+
+      it "extracts name from function with auto storage class" do
+        signature = "auto void localFunction(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("localFunction")
+      end
+
+      it "extracts name from function with _Thread_local specifier" do
+        signature = "_Thread_local int getThreadLocal(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getThreadLocal")
+      end
+
+      it "extracts name from function with _Atomic qualifier" do
+        signature = "_Atomic int getAtomic(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getAtomic")
+      end
+
+      it "extracts name from function with _Bool return type" do
+        signature = "_Bool isValid(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("isValid")
+      end
+
+      it "extracts name from function with _Complex type" do
+        signature = "double _Complex getComplex(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getComplex")
+      end
+
+      it "extracts name from function with _Imaginary type" do
+        signature = "double _Imaginary getImaginary(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getImaginary")
+      end
+
+      it "extracts name from function with GCC __attribute__ before name" do
+        signature = "void __attribute__((always_inline)) inlineFunc(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("inlineFunc")
+      end
+
+      it "extracts name from function with multiple __attribute__ specifiers" do
+        signature = "void __attribute__((noreturn)) __attribute__((cold)) exitFunc(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("exitFunc")
+      end
+
+      it "extracts name from function with __asm__ label" do
+        signature = "void myFunction(void) __asm__(\"_myFunction\")"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("myFunction")
+      end
+
+      it "extracts name from function with Windows calling convention" do
+        signature = "void __stdcall WindowsFunc(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("WindowsFunc")
+      end
+
+      it "extracts name from function with __cdecl calling convention" do
+        signature = "void __cdecl CFunc(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("CFunc")
+      end
+
+      it "extracts name from function with __fastcall calling convention" do
+        signature = "void __fastcall FastFunc(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("FastFunc")
+      end
+
+      it "extracts name from function with mixed qualifiers and specifiers" do
+        signature = "static inline const volatile unsigned long long int complexFunc(void)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("complexFunc")
+      end
+
+      it "extracts name from function with array of pointers parameter" do
+        signature = "void processArray(int* arr[10])"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("processArray")
+      end
+
+      it "extracts name from function with pointer to array parameter" do
+        signature = "void processPointerToArray(int (*arr)[10])"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("processPointerToArray")
+      end
+
+      it "extracts name from function with array of function pointers" do
+        signature = "void dispatch(void (*handlers[10])(int))"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("dispatch")
+      end
+
+      it "extracts name from function returning pointer to array" do
+        signature = "int (*getArray(void))[10]"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("getArray")
+      end
+
+      it "extracts name from function with VLA parameter" do
+        signature = "void processVLA(int n, int arr[n])"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("processVLA")
+      end
+
+      it "extracts name from function with static array parameter" do
+        signature = "void processStatic(int arr[static 10])"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("processStatic")
+      end
+
+      it "extracts name from function with restrict and const" do
+        signature = "void copy(char* restrict const dest, const char* restrict src)"
+        name = parse_name.call(signature)
+        
+        expect(name).to eq("copy")
+      end
+    end
+
+    context "malformed or unusual signatures" do
+      it "returns nil for empty signature" do
+        signature = ""
+        name = parse_name.call(signature)
+        
+        expect(name).to be_nil
+      end
+
+      it "returns nil for signature with no parentheses" do
+        signature = "void foo"
+        name = parse_name.call(signature)
+        
+        expect(name).to be_nil
+      end
+
+      it "returns nil for signature with only return type" do
+        signature = "int"
+        name = parse_name.call(signature)
+        
+        expect(name).to be_nil
+      end
+
+      it "returns nil for signature with only opening parenthesis" do
+        signature = "void foo("
+        name = parse_name.call(signature)
+        
+        expect(name).to be_nil
+      end
+
+      it "return nil for signature with unbalanced parentheses" do
+        signature = "void foo(int x"
+        name = parse_name.call(signature)
+        
+        expect(name).to be_nil
+      end
+    end
+  end
 end

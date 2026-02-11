@@ -45,7 +45,7 @@ class CExtractorFunctions
 
     unless scanner.peek(1) == '{'
       return [false, CFunction.new(
-        name: parse_function_name(signature),
+        name: extract_function_name(signature),
         signature: signature
       )]
     end
@@ -54,7 +54,7 @@ class CExtractorFunctions
     success, braced_body = @code_text.extract_balanced_braces(scanner)
     unless success
       return [false, CFunction.new(
-        name: parse_function_name(signature),
+        name: extract_function_name(signature),
         signature: signature,
         code_block: scanner.string[start_pos...scanner.pos]
       )]
@@ -65,7 +65,7 @@ class CExtractorFunctions
     
     # Fill out function data class
     func = CFunction.new(
-      name: parse_function_name(signature),
+      name: extract_function_name(signature),
       signature: signature,
       body: braced_body,
       code_block: code_block,
@@ -77,30 +77,66 @@ class CExtractorFunctions
 
   private
 
-  def parse_function_name(signature)
-    # Find the opening parenthesis
-    paren_pos = signature.index('(')
-    return nil unless paren_pos
+  def extract_function_name(signature)
+    # Verify balanced parentheses first
+    paren_depth = 0
+    signature.each_char do |char|
+      case char
+      when '('
+        paren_depth += 1
+      when ')'
+        paren_depth -= 1
+        return nil if paren_depth < 0  # Unbalanced - closing before opening
+      end
+    end
     
-    # Extract everything before the parenthesis
-    before_paren = signature[0...paren_pos]
+    # If parentheses aren't balanced, return nil
+    return nil unless paren_depth == 0
     
-    # Split by whitespace and special characters, get the last token
-    # This handles cases like:
-    #   "int foo" -> "foo"
-    #   "static void* bar" -> "bar"
-    #   "unsigned long long baz" -> "baz"
-    #   "int (*func_ptr)" -> "func_ptr" (function pointer)
-    tokens = before_paren.split(/[\s*]+/)
+    # Strategy: Find the main parameter list by looking for the pattern:
+    # identifier followed by '(' that represents the function's parameter list
     
-    # Get the last non-empty token
-    name = tokens.reverse.find { |t| !t.empty? }
+    # First, handle function pointer return types: int (*name(params))(params)
+    # Pattern: (*identifier(...))
+    if signature =~ /\(\s*\*\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/
+      return $1
+    end
     
-    # Handle function pointers: remove parentheses
-    # e.g., "(*func_ptr)" -> "func_ptr"
-    name&.gsub(/[()]/, '')
+    # Handle attributes and other constructs with double parentheses
+    # Pattern: __attribute__((...)). We need to skip these and find the actual function name
+    # Remove all __attribute__((...)) and similar patterns
+    cleaned = signature.dup
+    
+    # Remove __attribute__((...)) patterns and similar decorators
+    loop do
+      before = cleaned.dup
+      # Match __word__((...)) patterns (like __attribute__((interrupt)))
+      cleaned.gsub!(/\b__\w+__\s*\(\([^)]*\)\)/, '')
+      # Match __word__(...) patterns (like __declspec(dllexport))
+      cleaned.gsub!(/\b__\w+__\s*\([^)]*\)/, '')
+      # Match __declspec(...) patterns
+      cleaned.gsub!(/\b__declspec\s*\([^)]*\)/, '')
+      # Match specific C11/C23 specifiers (not general _word pattern)
+      cleaned.gsub!(/\b_Noreturn\b/, '')
+      cleaned.gsub!(/\b_Thread_local\b/, '')
+      cleaned.gsub!(/\b_Atomic\b/, '')
+      cleaned.gsub!(/\b_Bool\b/, '')
+      cleaned.gsub!(/\b_Complex\b/, '')
+      cleaned.gsub!(/\b_Imaginary\b/, '')
+      break if cleaned == before  # No more changes
+    end
+    
+    # Now find the function name in the cleaned signature
+    # Look for: identifier followed by '('
+    # The identifier should be preceded by whitespace or * (for pointer returns)
+    if cleaned =~ /(?:^|[\s*])([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/
+      return $1
+    end
+    
+    # Fallback: no valid function name found
+    nil
   end
-  
+
   # Extract a function signature from the scanner
   # 
   # A valid function signature must:
