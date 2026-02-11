@@ -1131,7 +1131,7 @@ describe CExtractor do
       end
     end
 
-    context "buffer growth and limits" do
+    context "IO access and buffer usage" do
       it "extracts pattern that spans multiple chunks" do
         content = "/*pre*/ LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG_PATTERN /*post*/"
         io = StringIO.new(content)
@@ -1162,6 +1162,27 @@ describe CExtractor do
         expect {
           extract_feature.call(io, 100, extractor)
         }.to raise_error(CeedlingException, /exceeded maximum length/)
+      end
+
+      it "extracts multiple features from same chunk" do
+        # Other test cases deal with growing the internal buffer with multiple chunk reads from IO.
+        # This test case ensures we can extract multiple features from the same large chunk.
+
+        content = "FIRST" + (' ' * 500) + "SECOND" + (' ' * 500) + "THIRD"
+        io = StringIO.new(content)
+        extractor = create_pattern_extractor.call(/\w+/)
+
+        extractor_obj = CExtractor.from_string(content: "", chunk_size: 2000)
+
+        result1 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
+        result2 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
+        result3 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
+        result4 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
+               
+        expect(result1).to eq("FIRST")
+        expect(result2).to eq("SECOND")
+        expect(result3).to eq("THIRD")
+        expect(result4).to be_nil
       end
     end
 
