@@ -7,7 +7,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/partializer'
+require 'ceedling/partials/partializer'
 require 'ostruct'
 
 describe Partializer do

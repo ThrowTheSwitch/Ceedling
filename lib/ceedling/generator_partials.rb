@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/file_wrapper'
-require 'ceedling/partials'
+require 'ceedling/partials/partials'
 
 class GeneratorPartials
 

@@ -7,7 +7,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/partializer_parser'
+require 'ceedling/partials/partializer_parser'
 
 describe PartializerParser do
   before(:each) do

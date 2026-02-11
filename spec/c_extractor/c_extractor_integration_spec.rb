@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/c_extractor'
+require 'ceedling/c_extractor/c_extractor'
 
 ##
 ## These integration tests exercise the composition of all CExtractor* objects

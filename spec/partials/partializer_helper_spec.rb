@@ -7,8 +7,8 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/partializer_helper'
-require 'ceedling/partials'
+require 'ceedling/partials/partializer_helper'
+require 'ceedling/partials/partials'
 require 'ostruct'
 
 describe PartializerHelper do

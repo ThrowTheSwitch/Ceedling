@@ -131,7 +131,7 @@ DEFAULT_CEEDLING_LOGFILE = 'ceedling.log'
 
 BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
 
-PARTIALS_HEADER_FILE = 'partials.h'
+PARTIALS_HEADER_FILEPATH = 'partials/partials.h'
 PARTIAL_FILENAME_PREFIX = 'ceedling_partial_'
 
 INPUT_CONFIGURATION_CACHE_FILE = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump

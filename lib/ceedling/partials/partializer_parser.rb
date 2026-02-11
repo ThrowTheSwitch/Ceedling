@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/partializer_constants'
+require 'ceedling/partials/partializer_constants'
 
 class PartializerParser
   include PartializerConstants

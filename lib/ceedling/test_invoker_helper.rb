@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
-require 'ceedling/partials'
+require 'ceedling/partials/partials'
 
 class TestInvokerHelper
 
