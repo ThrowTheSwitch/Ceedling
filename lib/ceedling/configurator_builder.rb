@@ -133,6 +133,7 @@ class ConfiguratorBuilder
       [:project_build_vendor_unity_path,        File.join(project_build_vendor_root, 'unity', 'src'),       true ],
       [:project_build_vendor_cmock_path,        File.join(project_build_vendor_root, 'cmock', 'src'),       in_hash[:project_use_mocks] ],
       [:project_build_vendor_cexception_path,   File.join(project_build_vendor_root, 'c_exception', 'lib'), in_hash[:project_use_exceptions] ],
+      [:project_build_vendor_ceedling_path,     File.join(project_build_vendor_root, 'ceedling'),           in_hash[:project_use_partials] ],
 
       [:project_release_artifacts_path,         File.join(project_build_artifacts_root, RELEASE_BASE_PATH), in_hash[:project_release_build] ],
       [:project_release_build_cache_path,       File.join(project_build_release_root, 'cache'),             in_hash[:project_release_build] ],
@@ -143,6 +144,8 @@ class ConfiguratorBuilder
 
       [:project_test_preprocess_includes_path,  File.join(project_build_tests_root, 'preprocess/includes'), (in_hash[:project_use_test_preprocessor] != :none) ],
       [:project_test_preprocess_files_path,     File.join(project_build_tests_root, 'preprocess/files'),    (in_hash[:project_use_test_preprocessor] != :none) ],
+
+      [:project_test_partials_path,             File.join(project_build_tests_root, 'partials'),            in_hash[:project_use_partials] ],
     ]
 
     out_hash[:project_build_paths] = []
@@ -226,7 +229,6 @@ class ConfiguratorBuilder
     }
   end
 
-
   def set_test_preprocessor_accessors(in_hash)
     accessors = {}
 
@@ -288,6 +290,7 @@ class ConfiguratorBuilder
   def collect_source_include_vendor_paths(in_hash)
     extra_paths = []
     extra_paths <<  in_hash[:project_build_vendor_cexception_path] if (in_hash[:project_use_exceptions])
+    extra_paths <<  in_hash[:project_build_vendor_ceedling_path] if (in_hash[:project_use_partials])
 
     return {
       :collection_paths_source_include_vendor =>
@@ -551,6 +554,7 @@ class ConfiguratorBuilder
     vendor_paths << in_hash[:project_build_vendor_unity_path]
     vendor_paths << in_hash[:project_build_vendor_cmock_path]       if (in_hash[:project_use_mocks])
     vendor_paths << in_hash[:project_build_vendor_cexception_path]  if (in_hash[:project_use_exceptions])
+    vendor_paths << in_hash[:project_build_vendor_ceedling_path]    if (in_hash[:project_use_partials])
 
     return vendor_paths
   end
