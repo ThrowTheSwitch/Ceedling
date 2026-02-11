@@ -460,9 +460,13 @@ describe CExtractor do
       }
       CONTENTS
 
-      extractinator = CExtractor.from_string(content: file_contents, chunk_size: 10, max_function_length: 20)
+      extractinator = CExtractor.from_string(
+        content: file_contents,
+        chunk_size: 200,
+        max_function_length: 20
+      )
       # TODO: Test for function name extraction after implementing generic handling of feature summaries
-      expect { extractinator.extract_contents() }.to raise_error(RuntimeError, /Feature exceeds maximum length/)
+      expect { extractinator.extract_contents() }.to raise_error(CeedlingException, /Feature extraction exceeded maximum length/)
     end
 
     it "should fail to extract a signature longer than max length" do
@@ -475,11 +479,10 @@ describe CExtractor do
       extractinator = CExtractor.from_string(
         content: file_contents,
         chunk_size: 10,
-        max_function_length: 20,
         max_line_length: 10
       )
       
-      expect { extractinator.extract_contents() }.to raise_error(RuntimeError, /signature exceeds maximum/)
+      expect { extractinator.extract_contents() }.to raise_error(CeedlingException, /signature extraction exceeds maximum/)
     end
     
   end
