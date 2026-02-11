@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
-require 'ceedling/partials'
+require 'ceedling/partials/partials'
 require 'ceedling/file_path_utils'
 require 'ceedling/generator_test_runner' # From lib/ not vendor/unity/auto
 require 'ceedling/encodinator'

@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/generator_partials'
-require 'ceedling/partials'
+require 'ceedling/partials/partials'
 require 'stringio'
 
 describe GeneratorPartials do

@@ -148,7 +148,6 @@ plugin_reportinator_helper:
     - file_wrapper
 
 verbosinator:
-  # compose: configurator
 
 file_finder:
   compose:

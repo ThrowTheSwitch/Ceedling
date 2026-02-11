@@ -6,8 +6,8 @@
 # =========================================================================
 
 require 'rake' # .ext()
-require 'ceedling/partials'
-require 'ceedling/partializer_runtime'
+require 'ceedling/partials/partials'
+require 'ceedling/partials/partializer_runtime'
 require 'ceedling/c_extractor/c_extractor'
 require 'ceedling/constants'
 
