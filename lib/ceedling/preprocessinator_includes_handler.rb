@@ -49,15 +49,34 @@ class PreprocessinatorIncludesHandler
   ##      should provide the tools to intervene. 
   ##
 
-  def extract_includes(filepath:, test:, flags:, include_paths:, defines:, deep: false)
-    msg = @reportinator.generate_module_progress(
-      operation: "Extracting #include statements via preprocessor from",
-      module_name: test,
-      filename: File.basename(filepath)
-      )
-    @loginator.log(msg, Verbosity::NORMAL)
+  def extract_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:, deep: false)
+    filename = File.basename(filepath)
 
-    # Extract shallow includes with fallback regex
+    msg = @reportinator.generate_module_progress(
+      operation: "Extracting shallow #include statements via preprocessor from",
+      module_name: test,
+      filename: filename
+      )
+    @loginator.log(msg, Verbosity::OBNOXIOUS)
+
+    # 1. Extract shallow includes with preprocessor (preferred)
+    shallow_success, shallow = 
+      extract_shallow_includes_preprocessor(
+        test:         test,
+        filepath:     filepath,
+        flags:        flags,
+        defines:      defines,
+        search_paths: vendor_paths
+        )
+
+    msg = @reportinator.generate_module_progress(
+      operation: "Extracting shallow #include statements via regex from",
+      module_name: test,
+      filename: filename
+      )
+    @loginator.log(msg, Verbosity::OBNOXIOUS)
+
+    # 2. Extract shallow includes via simple regex (fallback insurance) and used later by `common_includes()`
     fallback = extract_shallow_includes_regex(
       test:     test,
       filepath: filepath,
@@ -65,15 +84,23 @@ class PreprocessinatorIncludesHandler
       defines:  defines
       )
 
-    # Extract shallow includes with preprocessor
-    shallow_success, shallow = 
-      extract_shallow_includes_preprocessor(
-        test:     test,
-        filepath: filepath,
-        flags:    flags,
-        defines:  defines
-        )
-    shallow = fallback unless shallow_success
+    # Synthesize shallow include results from two methods
+    msg = if shallow_success
+      # Leave shallow results as they are
+      "Preprocessor shallow includes extraction succeeded."
+    else
+      # Assign fallback results to shallow if shallow extraction failed
+      shallow = fallback
+      "Preprocessor shallow includes extraction failed with regex fallback results used instead"
+    end
+    @loginator.log(msg, Verbosity::DEBUG)
+
+    msg = @reportinator.generate_module_progress(
+      operation: "Extracting nested #include statements via preprocessor from",
+      module_name: test,
+      filename: File.basename( filepath )
+      )
+    @loginator.log(msg, Verbosity::OBNOXIOUS)
 
     # Extract nested includes but optionally act in fallback mode
     nested = extract_nested_includes(
@@ -85,17 +112,37 @@ class PreprocessinatorIncludesHandler
       shallow:       shallow.empty?
       )
 
-    # Combine shallow and nested include knowledge of mocks
-    mocks = combine_mocks(shallow, nested)
+    @loginator.log(
+      @reportinator.generate_progress("Synthesizing and filtering shallow and nested #include statements"),
+      Verbosity::OBNOXIOUS
+    )
+
+    # Extract single list of sanitized mocks from shallow and nested lists
+    mocks = extract_mocks(shallow, nested)
 
     # Redefine shallow and nested results without any mocks
     shallow = remove_mocks( shallow )
     nested  = remove_mocks( nested )
 
-    # Return
-    #  - Includes common to shallow and nested results, with paths from nested
+    @loginator.log_list(shallow, 'Shallow #includes', Verbosity::DEBUG)
+    @loginator.log_list(nested, 'Nested #includes', Verbosity::DEBUG)
+    @loginator.log_list(mocks, 'Mock #includes', Verbosity::DEBUG)
+
+    # Synthesis
+    #  - Final result contains includes common to shallow and nested results, with paths from nested
     #  - Add mocks back in (may be empty if mocking not enabled)
-    return common_includes(shallow:shallow, nested:nested, explicit:fallback, deep:deep) + mocks
+    common = common_includes(shallow:shallow, nested:nested, explicit:fallback, deep:deep) + mocks
+
+    # Remove any filepath in the common list that is identical to the filepath being processed
+    # We want to prevent an includes list containing an unnecessary self-reference
+    # Normalize paths for comparison to handle variations (relative vs absolute, different separators, etc.)
+    normalized_filepath = File.expand_path(filepath)
+    common.reject! do |include|
+      normalized_include = File.expand_path(include)
+      normalized_include == normalized_filepath
+    end
+      
+    return common
   end
 
   # Write to disk a yaml representation of a list of includes
@@ -106,7 +153,7 @@ class PreprocessinatorIncludesHandler
   ### Private ###
   private
 
-  def extract_shallow_includes_preprocessor(test:, filepath:, flags:, defines:)
+  def extract_shallow_includes_preprocessor(test:, filepath:, flags:, defines:, search_paths:)
     ##
     ## Preprocessor Make Rule Handling
     ## ===============================
@@ -167,10 +214,14 @@ class PreprocessinatorIncludesHandler
     command = 
       @tool_executor.build_command_line(
         @configurator.tools_test_shallow_includes_preprocessor,
-        flags,
+        # No additional arguments
+        [],
+        # Argument replacement
         filepath,
-        defines
-        )
+        defines,
+        flags,
+        search_paths
+      )
 
     # Assume possible errors so we have best shot at extracting results from preprocessing.
     # Full code compilation will catch any breaking code errors
@@ -199,13 +250,6 @@ class PreprocessinatorIncludesHandler
   end
 
   def extract_shallow_includes_regex(test:, filepath:, flags:, defines:)
-    msg = @reportinator.generate_module_progress(
-      operation: "Using fallback regex #include extraction for",
-      module_name: test,
-      filename: File.basename( filepath )
-      )
-    @loginator.log(msg, Verbosity::NORMAL)
-
     # Use abilities of @test_context_extractor to extract the #includes via regex on the file
     includes = []
     @file_wrapper.open( filepath, 'r' ) do |file|
@@ -269,10 +313,13 @@ class PreprocessinatorIncludesHandler
     command = 
       @tool_executor.build_command_line(
         @configurator.tools_test_nested_includes_preprocessor,
-        flags,
+        # No additional arguments
+        [],
+        # Argument replacement
         filepath,
         include_paths,
-        defines
+        defines,
+        flags
       )
 
     # Let the preprocessor do as much as possible
@@ -287,6 +334,7 @@ class PreprocessinatorIncludesHandler
     includes = []
 
     # Extract entries from #include listing
+    # TODO: Handle the header file extension more smartly
     matches = list.scan(/(\.*\s+([^\s]+\.h))/)
     if shallow
       # First level of includes in preprocessor output
@@ -296,29 +344,40 @@ class PreprocessinatorIncludesHandler
       includes = matches.map {|v| v[1] }.compact
     end
 
-    includes.flatten! # Regex results can be nested arrays becuase of paren captures
+    # Regex results can be nested arrays becuase of paren captures
+    includes.flatten!
 
     return includes.uniq
   end
 
-  def combine_mocks(*lists)
-    # Handle mocks
-    #  - Ensure no build filepaths in mock listings
-    #  - Do not return mocks if mocking is disabled
+  # Extract mocks from each list of includes:
+  #  - Ensure no mock generation build directory paths in mock listings.
+  #  - But, preserve subdirectory paths of include directives (e.g. `#include "subdir/mock_file.h"`)
+  def extract_mocks(*lists)
     mocks = []
 
     # Bail out early if mocks are not enabled
     return [] if !@configurator.project_use_mocks
 
-    # Use some greediness to ensure we get all possible mocks
-    lists.each { |list| mocks |= extract_mocks( list ) }
+    # Process each list of includes
+    lists.each do |list| 
+      list.each do |include|
+        # Add only mocks and without any mock generation build path
+        _include = File.basename(include)
+        # Only process a mock include
+        next if !_include.start_with?( @configurator.cmock_mock_prefix )
+        
+        # Omit mock generation build path from the include directive
+        if include.include?( @configurator.cmock_mock_path )
+          mocks << _include 
+        # Otherwise, preserve the subdirectory path of the include directive
+        else
+          mocks << include
+        end
+      end
+    end
 
-    return mocks
-  end
-
-  # Return a list of mock .h files with no paths
-  def extract_mocks(includes)
-    return includes.select { |include| File.basename(include).start_with?( @configurator.cmock_mock_prefix ) }
+    return mocks.uniq()
   end
 
   # Return list of includes with any mocks removed
@@ -356,7 +415,9 @@ class PreprocessinatorIncludesHandler
     basenames = if deep
       ( _nested.keys.to_set.union( _shallow.keys.to_set ) )
     else
-      ( _nested.keys.to_set.intersection( _shallow.keys.to_set ) ).intersection( explicit ) #intersection of both arrays PLUS MUST BE IN EXPLICIT call list
+      # Intersection of both arrays plus filtering against explicit includes.
+      # This removes any includes unearthed from deep in the code (e.g. system or host includes)
+      ( _nested.keys.to_set.intersection( _shallow.keys.to_set ) ).intersection( explicit )
     end
 
     # Iterate through the basenames and return the fullest version of each
