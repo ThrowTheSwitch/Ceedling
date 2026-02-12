@@ -10,6 +10,7 @@ require 'stringio'
 require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ceedling/c_extractor/c_extractor_functions'
+require 'ceedling/c_extractor/c_extractor_variables'
 
 class CExtractor
   DEFAULT_CHUNK_SIZE = (16 * 1024)                # 16 KB -- enough for most functions
@@ -123,6 +124,7 @@ class CExtractor
 
     # Composition / dependency injection
     @code_text = CExtractorCodeText.new()
+    @variables = CExtractorVariables.new(@max_line_length)
     @functions = CExtractorFunctions.new(@code_text, @max_line_length)
   end
   
@@ -151,8 +153,8 @@ class CExtractor
     # until @io.eof?
     #   var = extract_next_feature(
     #     io: @io,
-    #     max_length: @max_variable_length,
-    #     extractor: method(:try_extract_variable)
+    #     max_length: @max_line_length,
+    #     extractor: @variables.method(:try_extract_variable_declaration)
     #   )
     #   variables << var if var
     # end
@@ -237,72 +239,4 @@ class CExtractor
     return nil
   end
 
-  # Skip module-level variable declarations (declarations ending with semicolon)
-  # This distinguishes between:
-  #   - "int foo;" (variable - skip)
-  #   - "int foo() {" (function - don't skip)
-  # def skip_variable_declaration(scanner)
-  #   start_pos = scanner.pos
-  #   paren_depth = 0
-  #   found_paren = false
-    
-  #   until scanner.eos?
-  #     char = scanner.peek(1)
-      
-  #     case char
-  #     when '('
-  #       found_paren = true
-  #       paren_depth += 1
-  #       scanner.getch
-  #     when ')'
-  #       paren_depth -= 1
-  #       scanner.getch
-  #       # If we close all parens and next is '{', this is a function, not a variable
-  #       if paren_depth == 0 && found_paren
-  #         @code_text.skip_deadspace(scanner)
-  #         if scanner.peek(1) == '{'
-  #           # This is a function, rewind and return false
-  #           scanner.pos = start_pos
-  #           return false
-  #         end
-  #       end
-  #     when ';'
-  #       # Found semicolon - this is a variable declaration, consume it and return true
-  #       scanner.getch
-  #       return true
-  #     when '{'
-  #       # Found opening brace without proper function signature - could be:
-  #       # - struct/union/enum definition
-  #       # - array initialization
-  #       # Either way, skip the entire braced block
-  #       if @code_text.extract_balanced_braces(scanner)
-  #         # After the braces, there might be a semicolon (e.g., "struct foo {...};")
-  #         @code_text.skip_deadspace(scanner)
-  #         scanner.getch if scanner.peek(1) == ';'
-  #         return true
-  #       else
-  #         # Incomplete braces, rewind
-  #         scanner.pos = start_pos
-  #         return false
-  #       end
-  #     when '"', "'"
-  #       skip_c_string(scanner, char)
-  #     when '/'
-  #       if scanner.peek(2) =~ %r{^(/[/*])}
-  #         skip_comment(scanner)
-  #       else
-  #         scanner.getch
-  #       end
-  #     else
-  #       scanner.getch
-  #     end
-      
-  #     # Don't scan too far
-  #     return false if scanner.pos - start_pos > 10000
-  #   end
-    
-  #   # Incomplete declaration, rewind
-  #   scanner.pos = start_pos
-  #   false
-  # end  
 end
