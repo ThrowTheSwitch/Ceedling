@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ceedling/c_extractor/c_extractor_functions'
+require 'ceedling/c_extractor/c_extractor_variables'
 require 'stringio'
 
 describe CExtractorFunctions do
@@ -21,7 +22,10 @@ describe CExtractorFunctions do
     let(:extract_signature) do
       ->(content, max_line_length=1000) do
         scanner = StringScanner.new(content)
-        functions = CExtractorFunctions.new( CExtractorCodeText.new(), max_line_length )
+        functions = CExtractorFunctions.new(
+          CExtractorCodeText.new(),
+          max_line_length
+        )
         signature = functions.send( :extract_function_signature, scanner )
         return [signature, scanner.pos, scanner.rest]
       end
@@ -617,7 +621,10 @@ describe CExtractorFunctions do
     # Helper to access private method
     let(:parse_name) do
       ->(signature) do
-        functions = CExtractorFunctions.new( CExtractorCodeText.new(), 1000 )
+        functions = CExtractorFunctions.new(
+          CExtractorCodeText.new(),
+          1000
+        )
         name = functions.send( :extract_function_name, signature )
         return name
       end
@@ -1276,4 +1283,1350 @@ describe CExtractorFunctions do
       end
     end
   end
+
+  ###
+  ### skip_declarations()
+  ###
+
+  describe "#skip_declarations (private method testing)" do
+    # Helper to access private method
+    let(:skip_declarations) do
+      ->(content) do
+        scanner = StringScanner.new(content)
+        functions = CExtractorFunctions.new(
+          CExtractorCodeText.new(),
+          1000
+        )
+        functions.send(:skip_declarations, scanner)
+        return [scanner.pos, scanner.rest]
+      end
+    end
+
+    context "variable declarations" do
+      it "skips simple variable declaration" do
+        content = "int x = 5;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(11)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips multiple variable declarations" do
+        content = "int x = 5;\nchar c = 'a';\nfloat f = 3.14;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(41)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips variable declaration with initializer" do
+        content = "int arr[] = {1, 2, 3};\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(23)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips pointer variable declaration" do
+        content = "char* ptr = NULL;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(18)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips const variable declaration" do
+        content = "const int MAX = 100;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(21)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips static variable declaration" do
+        content = "static int counter = 0;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(24)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips extern variable declaration" do
+        content = "extern int global_var;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(23)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips volatile variable declaration" do
+        content = "volatile int reg = 0;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(22)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips array declaration with size" do
+        content = "int buffer[256];\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(17)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips multi-dimensional array declaration" do
+        content = "int matrix[10][20];\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(20)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips function pointer variable declaration" do
+        content = "void (*callback)(int) = NULL;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(30)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips complex function pointer declaration" do
+        content = "int (*compare)(const void*, const void*);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(42)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips variable declaration with struct type" do
+        content = "struct point p = {0, 0};\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(25)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips variable declaration with union type" do
+        content = "union data d;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(14)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips variable declaration with enum type" do
+        content = "enum color c = RED;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(20)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips variable declaration with typedef'd type" do
+        content = "size_t length = 0;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(19)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips multiple variables in one declaration" do
+        content = "int x = 1, y = 2, z = 3;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(25)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips variable with complex initializer" do
+        content = "struct point p = {.x = 1, .y = 2};\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(35)
+        expect(rest).to eq("void foo(void) {}")
+      end
+    end
+
+    context "function forward declarations" do
+      it "skips simple function forward declaration" do
+        content = "void helper(void);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(19)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips function forward declaration with parameters" do
+        content = "int add(int a, int b);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(23)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips multiple function forward declarations" do
+        content = "void init(void);\nvoid cleanup(void);\nvoid process(void);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(57)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips static function forward declaration" do
+        content = "static void helper(void);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(26)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips inline function forward declaration" do
+        content = "inline int fast(void);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(23)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips extern function forward declaration" do
+        content = "extern void external_func(void);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(33)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips function forward declaration with attributes" do
+        content = "void __attribute__((noreturn)) exit_func(void);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(48)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips function forward declaration with pointer return" do
+        content = "char* getString(void);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(23)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips function forward declaration with struct return" do
+        content = "struct point getPoint(void);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(29)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips function forward declaration with function pointer parameter" do
+        content = "void callback(void (*func)(int));\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(34)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips function forward declaration with array parameter" do
+        content = "void process(int arr[10]);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(27)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips function forward declaration with variadic parameters" do
+        content = "int printf(const char* fmt, ...);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(34)
+        expect(rest).to eq("void foo(void) {}")
+      end
+    end
+
+    context "struct/union/enum definitions" do
+      it "skips simple struct definition" do
+        content = "struct point { int x; int y; };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(32)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips struct definition with variable" do
+        content = "struct point { int x; int y; } p;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(34)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips nested struct definition" do
+        content = "struct outer { struct inner { int x; } in; };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(46)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips union definition" do
+        content = "union data { int i; float f; };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(32)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips enum definition" do
+        content = "enum color { RED, GREEN, BLUE };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(33)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips struct definition with typedef" do
+        content = "typedef struct { int x; int y; } point_t;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(42)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips enum definition with typedef" do
+        content = "typedef enum { RED, GREEN, BLUE } color_t;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(43)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips struct with function pointer members" do
+        content = "struct ops { void (*init)(void); void (*cleanup)(void); };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(59)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips struct with array members" do
+        content = "struct buffer { char data[256]; int size; };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(45)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips struct with nested anonymous union" do
+        content = "struct data { union { int i; float f; }; };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(44)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips struct with bit fields" do
+        content = "struct flags { unsigned int a:1; unsigned int b:2; };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(54)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips enum with explicit values" do
+        content = "enum status { OK = 0, ERROR = -1, PENDING = 1 };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(49)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips multiple struct definitions" do
+        content = "struct a { int x; }; struct b { int y; }; struct c { int z; };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(63)
+        expect(rest).to eq("void foo(void) {}")
+      end
+    end
+
+    context "typedef declarations" do
+      it "skips simple typedef" do
+        content = "typedef int my_int;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(20)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips typedef with pointer" do
+        content = "typedef char* string;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(22)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips typedef with function pointer" do
+        content = "typedef void (*callback_t)(int);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(33)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips typedef with array" do
+        content = "typedef int array_t[10];\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(25)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips typedef with struct" do
+        content = "typedef struct point { int x; int y; } point_t;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(48)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips typedef with union" do
+        content = "typedef union data { int i; float f; } data_t;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(47)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips typedef with enum" do
+        content = "typedef enum { A, B, C } abc_t;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(32)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips multiple typedefs" do
+        content = "typedef int int32_t;\ntypedef char* string_t;\ntypedef void (*func_t)(void);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(75)
+        expect(rest).to eq("void foo(void) {}")
+      end
+    end
+
+    context "comments" do
+      it "skips single-line comment before declaration" do
+        content = "// This is a comment\nint x = 5;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(32)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips multi-line comment before declaration" do
+        content = "/* This is a\n   multi-line comment */\nint x = 5;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(49)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips comment between declarations" do
+        content = "int x = 5;\n// Comment\nint y = 10;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(34)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips comment with semicolons inside" do
+        content = "/* Comment with ; semicolons ; */\nint x = 5;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(45)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips comment with braces inside" do
+        content = "/* Comment with { braces } */\nint x = 5;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(41)
+        expect(rest).to eq("void foo(void) {}")
+      end
+    end
+
+    context "mixed declarations" do
+      it "skips variables and function declarations mixed" do
+        content = "int x = 5;\nvoid helper(void);\nchar c = 'a';\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(44)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips declarations with comments interspersed" do
+        content = "int x = 5;\n// Comment\nvoid helper(void);\n/* Another comment */\nchar c = 'a';\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(77)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips declarations with preprocessor directives" do
+        content = "#define MAX 100\nint x = MAX;\n#ifdef DEBUG\nvoid debug(void);\n#endif\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(67)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips struct definition followed by variable declaration" do
+        content = "struct point { int x; int y; };\nstruct point p = {0, 0};\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(57)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips typedef followed by variable using that type" do
+        content = "typedef int my_int;\nmy_int value = 42;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(39)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips enum definition followed by variable" do
+        content = "enum color { RED, GREEN, BLUE };\nenum color c = RED;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(53)
+        expect(rest).to eq("void foo(void) {}")
+      end
+    end
+
+    context "complex initializers" do
+      it "skips array initializer with nested braces" do
+        content = "int matrix[2][2] = {{1, 2}, {3, 4}};\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(37)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips struct initializer with nested braces" do
+        content = "struct data d = { .x = {1, 2}, .y = {3, 4} };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(46)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips array of structs initializer" do
+        content = "struct point points[] = { {1, 2}, {3, 4}, {5, 6} };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(52)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips union initializer" do
+        content = "union data d = { .i = 42 };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(28)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      # TODO: Fix
+      # it "skips compound literal initializer" do
+      #   content = "struct point* p = &(struct point){.x = 1, .y = 2};\nvoid foo(void) {}"
+      #   pos, rest = skip_declarations.call(content)
+        
+      #   expect(pos).to eq(51)
+      #   expect(rest).to eq("void foo(void) {}")
+      # end
+
+      it "skips designated initializer with array" do
+        content = "int arr[10] = { [0] = 1, [5] = 2, [9] = 3 };\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(45)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips string literal initializer" do
+        content = "char str[] = \"Hello, World!\";\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(30)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips string literal with escaped characters" do
+        content = "char str[] = \"Line 1\\nLine 2\\tTab\";\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(36)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips string literal with semicolons inside" do
+        content = "char str[] = \"Statement; Another;\";\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(36)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips string literal with braces inside" do
+        content = "char str[] = \"{ braces } here\";\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(32)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips character literal initializer" do
+        content = "char c = 'a';\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(14)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips character literal with escape sequence" do
+        content = "char c = '\\n';\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(15)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips function call in initializer" do
+        content = "int x = calculate(1, 2, 3);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(28)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips cast in initializer" do
+        content = "int x = (int)3.14;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(19)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips sizeof in initializer" do
+        content = "size_t size = sizeof(int);\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(27)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips ternary operator in initializer" do
+        content = "int x = (a > b) ? a : b;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(25)
+        expect(rest).to eq("void foo(void) {}")
+      end
+
+      it "skips complex expression with parentheses" do
+        content = "int result = ((a + b) * (c - d)) / e;\nvoid foo(void) {}"
+        pos, rest = skip_declarations.call(content)
+        
+        expect(pos).to eq(38)
+        expect(rest).to eq("void foo(void) {}")
+      end
+    end
+  end
+
+  ###
+  ### try_extract_function()
+  ###
+
+  describe "#try_extract_function" do
+    # Helper to access private method and extract function from content
+    let(:try_extract) do
+      ->(content) do
+        scanner = StringScanner.new(content)
+        functions = CExtractorFunctions.new(
+          CExtractorCodeText.new(),
+          1000
+        )
+        success, func = functions.try_extract_function( scanner )
+        return [success, func, scanner.pos, scanner.rest]
+      end
+    end
+
+    context "successful function extraction" do
+      it "extracts simple void function" do
+        content = "void foo(void) { int a = 1; }"
+        success, func, pos, rest = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("foo")
+        expect(func.signature).to eq("void foo(void)")
+        expect(func.body).to eq("{ int a = 1; }")
+        expect(func.code_block).to eq(content)
+        expect(func.line_count).to eq(1)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with return value" do
+        content = "int add(int a, int b) { return a + b; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("add")
+        expect(func.signature).to eq("int add(int a, int b)")
+        expect(func.body).to eq("{ return a + b; }")
+        expect(func.code_block).to eq(content)
+        expect(func.line_count).to eq(1)
+      end
+
+      it "extracts multi-line function" do
+        content = <<~CONTENT
+        void process(void) {
+          int x = 1;
+          int y = 2;
+          return x + y;
+        }
+        CONTENT
+        
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("process")
+        expect(func.signature).to eq("void process(void)")
+        expect(func.body).to eq("{\n  int x = 1;\n  int y = 2;\n  return x + y;\n}")
+        expect(func.code_block).to eq(content.strip())
+        expect(func.line_count).to eq(5)
+      end
+
+      it "extracts function with nested braces" do
+        content = "void nested(void) { if (x) { do_something(); } }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("nested")
+        expect(func.signature).to eq("void nested(void)")
+        expect(func.code_block).to eq(content)
+        expect(func.body).to eq("{ if (x) { do_something(); } }")
+      end
+
+      it "extracts function with complex parameters" do
+        content = "void callback(void (*func)(int), int* data) { func(*data); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("callback")
+        expect(func.signature).to eq("void callback(void (*func)(int), int* data)")
+        expect(func.body).to eq("{ func(*data); }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with pointer return type" do
+        content = "char* getString(void) { return \"hello\"; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("getString")
+        expect(func.signature).to eq("char* getString(void)")
+        expect(func.body).to eq("{ return \"hello\"; }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with struct return type" do
+        content = "struct point getPoint(void) { struct point p = {0, 0}; return p; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("getPoint")
+        expect(func.signature).to eq("struct point getPoint(void)")
+        expect(func.body).to eq("{ struct point p = {0, 0}; return p; }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts static function" do
+        content = "static int helper(void) { return 42; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("helper")
+        expect(func.signature).to eq("static int helper(void)")
+        expect(func.body).to eq("{ return 42; }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts inline function" do
+        content = "inline int fast(void) { return 1; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("fast")
+        expect(func.signature).to eq("inline int fast(void)")
+        expect(func.body).to eq("{ return 1; }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with attributes" do
+        content = "void __attribute__((interrupt)) ISR(void) { handle_interrupt(); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("ISR")
+        expect(func.signature).to eq("void __attribute__((interrupt)) ISR(void)")
+        expect(func.body).to eq("{ handle_interrupt(); }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with whitespace before opening brace" do
+        content = "void foo(void)   \n\t  { return; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("foo")
+        expect(func.signature).to eq("void foo(void)")
+        expect(func.body).to eq("{ return; }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with array parameters" do
+        content = "void process(int arr[10]) { arr[0] = 1; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("process")
+        expect(func.signature).to eq("void process(int arr[10])")
+        expect(func.body).to eq("{ arr[0] = 1; }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with variadic parameters" do
+        content = "int printf(const char* fmt, ...) { return 0; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("printf")
+        expect(func.signature).to eq("int printf(const char* fmt, ...)")
+        expect(func.body).to eq("{ return 0; }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with const parameters" do
+        content = "void print(const char* str) { puts(str); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("print")
+        expect(func.signature).to eq("void print(const char* str)")
+        expect(func.body).to eq("{ puts(str); }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with volatile parameters" do
+        content = "int read(volatile int* reg) { return *reg; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("read")
+        expect(func.signature).to eq("int read(volatile int* reg)")
+        expect(func.body).to eq("{ return *reg; }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with restrict qualifier" do
+        content = "void copy(char* restrict dst, const char* restrict src) { strcpy(dst, src); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("copy")
+        expect(func.signature).to eq("void copy(char* restrict dst, const char* restrict src)")
+        expect(func.body).to eq("{ strcpy(dst, src); }")
+        expect(func.code_block).to eq(content)
+      end
+
+      it "extracts function with deeply nested braces" do
+        content = "void deep(void) { if (a) { while (b) { for (;;) { break; } } } }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("deep")
+        expect(func.body).to eq("{ if (a) { while (b) { for (;;) { break; } } } }")
+      end
+
+      it "extracts function with string literals containing braces" do
+        content = 'void print(void) { printf("{ } braces"); }'
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("print")
+        expect(func.body).to eq('{ printf("{ } braces"); }')
+      end
+
+      it "extracts function with character literals containing braces" do
+        content = "void check(void) { char c = '{'; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("check")
+        expect(func.body).to eq("{ char c = '{'; }")
+      end
+
+      it "extracts function with comments containing braces" do
+        content = "void func(void) { /* { comment } */ int x = 1; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("func")
+        expect(func.body).to eq("{ /* { comment } */ int x = 1; }")
+      end
+
+      it "extracts function with line comments containing braces" do
+        content = "void func(void) { // { comment }\nint x = 1; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("func")
+        expect(func.body).to eq("{ // { comment }\nint x = 1; }")
+      end
+
+      it "extracts function with struct initialization" do
+        content = "void init(void) { struct point p = {1, 2}; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("init")
+        expect(func.body).to eq("{ struct point p = {1, 2}; }")
+      end
+
+      it "extracts function with array initialization" do
+        content = "void setup(void) { int arr[] = {1, 2, 3}; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("setup")
+        expect(func.body).to eq("{ int arr[] = {1, 2, 3}; }")
+      end
+
+      it "extracts function with compound literal" do
+        content = "void use(void) { process((struct point){1, 2}); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("use")
+        expect(func.body).to eq("{ process((struct point){1, 2}); }")
+      end
+
+      it "extracts function with designated initializers" do
+        content = "void init(void) { struct point p = {.x = 1, .y = 2}; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("init")
+        expect(func.body).to eq("{ struct point p = {.x = 1, .y = 2}; }")
+      end
+    end
+
+    context "function extraction with various body styles" do
+      it "extracts function with empty body" do
+        content = "void empty(void) {}"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("empty")
+        expect(func.body).to eq("{}")
+        expect(func.line_count).to eq(1)
+      end
+
+      it "extracts function with only whitespace in body" do
+        content = "void whitespace(void) {   \n\t  }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("whitespace")
+        expect(func.body).to eq("{   \n\t  }")
+      end
+
+      it "extracts function with single statement" do
+        content = "void single(void) { return; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("single")
+        expect(func.body).to eq("{ return; }")
+      end
+
+      it "extracts function with multiple statements" do
+        content = "void multi(void) { int a = 1; int b = 2; return; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("multi")
+        expect(func.body).to eq("{ int a = 1; int b = 2; return; }")
+      end
+
+      it "extracts function with switch statement" do
+        content = "void switcher(int x) { switch(x) { case 1: break; default: break; } }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("switcher")
+        expect(func.body).to eq("{ switch(x) { case 1: break; default: break; } }")
+      end
+
+      it "extracts function with do-while loop" do
+        content = "void loop(void) { do { work(); } while(condition); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("loop")
+        expect(func.body).to eq("{ do { work(); } while(condition); }")
+      end
+
+      it "extracts function with for loop" do
+        content = "void iterate(void) { for(int i = 0; i < 10; i++) { process(i); } }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("iterate")
+        expect(func.body).to eq("{ for(int i = 0; i < 10; i++) { process(i); } }")
+      end
+
+      it "extracts function with while loop" do
+        content = "void wait(void) { while(ready()) { check(); } }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("wait")
+        expect(func.body).to eq("{ while(ready()) { check(); } }")
+      end
+
+      it "extracts function with if-else chain" do
+        content = "void decide(int x) { if(x > 0) { pos(); } else if(x < 0) { neg(); } else { zero(); } }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("decide")
+        expect(func.body).to eq("{ if(x > 0) { pos(); } else if(x < 0) { neg(); } else { zero(); } }")
+      end
+
+      it "extracts function with ternary operator" do
+        content = "int max(int a, int b) { return a > b ? a : b; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("max")
+        expect(func.body).to eq("{ return a > b ? a : b; }")
+      end
+
+      it "extracts function with goto statement" do
+        content = "void jump(void) { goto label; label: return; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("jump")
+        expect(func.body).to eq("{ goto label; label: return; }")
+      end
+
+      it "extracts function with labeled statement" do
+        content = "void labeled(void) { start: process(); goto start; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("labeled")
+        expect(func.body).to eq("{ start: process(); goto start; }")
+      end
+    end
+
+    context "function extraction with preprocessor directives in body" do
+      it "extracts function with #ifdef in body" do
+        content = "void conditional(void) { #ifdef DEBUG\nlog();\n#endif\n }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("conditional")
+        expect(func.body).to eq("{ #ifdef DEBUG\nlog();\n#endif\n }")
+      end
+
+      it "extracts function with #define in body" do
+        content = "void macro(void) { #define LOCAL 1\nint x = LOCAL; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("macro")
+        expect(func.body).to eq("{ #define LOCAL 1\nint x = LOCAL; }")
+      end
+
+      it "extracts function with #include in body" do
+        content = "void include(void) { #include \"local.h\"\nuse_local(); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("include")
+        expect(func.body).to eq("{ #include \"local.h\"\nuse_local(); }")
+      end
+
+      it "extracts function with #pragma in body" do
+        content = "void pragma(void) { #pragma pack(1)\nstruct s { int x; }; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("pragma")
+        expect(func.body).to eq("{ #pragma pack(1)\nstruct s { int x; }; }")
+      end
+
+      it "extracts function with #error in body" do
+        content = "void error(void) { #error \"Not implemented\"\n }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("error")
+        expect(func.body).to eq("{ #error \"Not implemented\"\n }")
+      end
+
+      it "extracts function with #warning in body" do
+        content = "void warning(void) { #warning \"Deprecated\"\nold_api(); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("warning")
+        expect(func.body).to eq("{ #warning \"Deprecated\"\nold_api(); }")
+      end
+
+      it "extracts function with multi-line macro in body" do
+        content = "void multiline(void) { #define MACRO(x) \\\n  do { \\\n    work(x); \\\n  } while(0)\nMACRO(1); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("multiline")
+      end
+    end
+
+    context "function extraction with special characters and literals" do
+      it "extracts function with escaped quotes in string" do
+        content = 'void quotes(void) { printf("He said \"hello\""); }'
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("quotes")
+        expect(func.body).to eq('{ printf("He said \"hello\""); }')
+      end
+
+      it "extracts function with escaped backslash in string" do
+        content = 'void backslash(void) { printf("path\\\\file"); }'
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("backslash")
+        expect(func.body).to eq('{ printf("path\\\\file"); }')
+      end
+
+      it "extracts function with newline in string" do
+        content = 'void newline(void) { printf("line1\\nline2"); }'
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("newline")
+        expect(func.body).to eq('{ printf("line1\\nline2"); }')
+      end
+
+      it "extracts function with tab in string" do
+        content = 'void tab(void) { printf("col1\\tcol2"); }'
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("tab")
+        expect(func.body).to eq('{ printf("col1\\tcol2"); }')
+      end
+
+      it "extracts function with hex escape in string" do
+        content = 'void hex(void) { char c = "\\x41"; }'
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("hex")
+        expect(func.body).to eq('{ char c = "\\x41"; }')
+      end
+
+      it "extracts function with octal escape in string" do
+        content = 'void octal(void) { char c = "\\101"; }'
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("octal")
+        expect(func.body).to eq('{ char c = "\\101"; }')
+      end
+
+      it "extracts function with raw string literal (C++11)" do
+        content = 'void raw(void) { const char* s = R"(raw { } string)"; }'
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("raw")
+        expect(func.body).to eq('{ const char* s = R"(raw { } string)"; }')
+      end
+
+      it "extracts function with multi-line string literal" do
+        content = "void multiline(void) { printf(\"line1\"\n\"line2\"); }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("multiline")
+        expect(func.body).to eq("{ printf(\"line1\"\n\"line2\"); }")
+      end
+
+      it "extracts function with character literal" do
+        content = "void character(void) { char c = 'A'; }"
+        success, func, _, _ = try_extract.call(content)
+        
+        expect(success).to be true
+        expect(func.name).to eq("character")
+        expect(func.body).to eq("{ char c = 'A'; }")
+      end
+    end
+
+    context "extracting multiple functions from same content" do
+      it "extracts two simple functions in sequence" do
+        content = "void first(void) { int a = 1; }\nvoid second(void) { int b = 2; }"
+        scanner = StringScanner.new(content)
+        functions = CExtractorFunctions.new(
+          CExtractorCodeText.new(),
+          1000
+        )
+        
+        success1, func1 = functions.try_extract_function(scanner)
+        expect(success1).to be true
+        expect(func1.name).to eq("first")
+        expect(func1.body).to eq("{ int a = 1; }")
+                
+        success2, func2 = functions.try_extract_function(scanner)
+        expect(success2).to be true
+        expect(func2.name).to eq("second")
+        expect(func2.body).to eq("{ int b = 2; }")
+        
+        expect(scanner.eos?).to be true
+      end
+
+      it "extracts three functions with different signatures" do
+        content = <<~CONTENT
+        int add(int a, int b) { return a + b; }
+
+        void print(const char* msg) { printf("%s", msg); }
+
+        static inline bool check(void) { return true; }
+
+        CONTENT
+        
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
+        functions = CExtractorFunctions.new( code_text, 1000 )
+        
+        success1, func1 = functions.try_extract_function(scanner)
+        expect(success1).to be true
+        expect(func1.name).to eq("add")
+        expect(func1.signature).to eq("int add(int a, int b)")
+                
+        success2, func2 = functions.try_extract_function(scanner)
+        expect(success2).to be true
+        expect(func2.name).to eq("print")
+        expect(func2.signature).to eq("void print(const char* msg)")
+                
+        success3, func3 = functions.try_extract_function(scanner)
+        expect(success3).to be true
+        expect(func3.name).to eq("check")
+        expect(func3.signature).to eq("static inline bool check(void)")
+
+        code_text.skip_deadspace(scanner)
+
+        expect(scanner.eos?).to be true
+      end
+
+      it "extracts functions separated by comments" do
+        content = <<~CONTENT
+        void first(void) { work(); }
+        // Comment between functions
+        void second(void) { more_work(); }
+        /* Multi-line comment
+         * between functions
+         */
+        void third(void) { final_work(); }
+        CONTENT
+        
+        scanner = StringScanner.new(content)
+        functions = CExtractorFunctions.new(
+          CExtractorCodeText.new(),
+          1000
+        )
+        
+        success1, func1 = functions.try_extract_function(scanner)
+        expect(success1).to be true
+        expect(func1.name).to eq("first")
+                
+        success2, func2 = functions.try_extract_function(scanner)
+        expect(success2).to be true
+        expect(func2.name).to eq("second")
+                
+        success3, func3 = functions.try_extract_function(scanner)
+        expect(success3).to be true
+        expect(func3.name).to eq("third")
+      end
+    end
+
+    context "extracting functions from code also containing declarations" do
+      it "extracts three simple functions in sequence" do
+        content = <<~CONTENT
+
+        int global_var;                    // Simple variable
+        static const char* ptr = "hello";  // Initialized variable
+        struct foo { int x; } instance;    // Struct with brackets
+        int array[] = {1, 2, 3};           // Array initialization with braces
+
+        void first(void) { work(); }
+
+        void second(void) { more_work(); }
+
+        void third(void) { final_work(); }
+        CONTENT
+        scanner = StringScanner.new(content)
+        functions = CExtractorFunctions.new(
+          CExtractorCodeText.new(),
+          1000
+        )
+        
+        success1, func1 = functions.try_extract_function(scanner)
+        expect(success1).to be true
+        expect(func1.name).to eq("first")
+        expect(func1.signature).to eq("void first(void)")
+        expect(func1.body).to eq("{ work(); }")
+        expect(func1.code_block).to eq("void first(void) { work(); }")
+                
+        success2, func2 = functions.try_extract_function(scanner)
+        expect(success2).to be true
+        expect(func2.name).to eq("second")
+        expect(func2.signature).to eq("void second(void)")
+        expect(func2.body).to eq("{ more_work(); }")
+        expect(func2.code_block).to eq("void second(void) { more_work(); }")
+        
+        success3, func3 = functions.try_extract_function(scanner)
+        expect(success3).to be true
+        expect(func3.name).to eq("third")
+        expect(func3.signature).to eq("void third(void)")
+        expect(func3.body).to eq("{ final_work(); }")
+        expect(func3.code_block).to eq("void third(void) { final_work(); }")
+      end
+    end
+  end
+
 end
