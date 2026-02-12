@@ -34,9 +34,12 @@ class CExtractorFunctions
   # Returns [success, function_data] where:
   #  - success: boolean indicating if extraction was successful
   #  - function_data: CFunction with as much info as available (may be partial on failure)
-  def try_extract_function(scanner)
+  def try_extract_function(scanner)   
+    # Skip any declaration before the function
+    skip_declarations(scanner)
+
     start_pos = scanner.pos
-    
+
     # Look for function signature
     signature = extract_function_signature(scanner)
     return [false, CFunction.new] unless signature
@@ -76,6 +79,137 @@ class CExtractorFunctions
   end
 
   private
+
+  # Skip over various declarations
+  # 
+  # This method advances the scanner past:
+  #   - Variable declarations (e.g., "int x = 5;")
+  #   - Function forward declarations (e.g., "void foo(int x);")
+  #   - Struct/union/enum definitions (e.g., "struct point { int x; int y; };")
+  #   - Typedef declarations (e.g., "typedef struct { int x; } point_t;")
+  #   - Deadspace
+  # 
+  # The method stops when it encounters:
+  #   - A potential function definition (something followed by '{')
+  #   - End of input
+  # 
+  # Parameters:
+  #   scanner: StringScanner positioned at current location
+  # 
+  # Side effects:
+  #   - Advances scanner past all declarations and deadspace
+  #   - Leaves scanner positioned at the start of a potential function definition or at end
+  def skip_declarations(scanner)
+    start_pos = scanner.pos
+    loop do
+      _start_pos = scanner.pos
+      
+      # Skip whitespace, comments, and preprocessor directives
+      @code_text.skip_deadspace(scanner)
+      
+      # Check if we're at end of input
+      break if scanner.eos?
+      
+      # Look ahead to see if this might be a function definition
+      # We need to distinguish between:
+      #   - Function definition: "type name(...) {"
+      #   - Function declaration: "type name(...);"
+      #   - Variable declaration: "type name = value;" or "type name;"
+      #   - Struct/typedef: "struct/typedef ... { ... };"
+      
+      # Try to find the next significant character ('{' or ';')
+      temp_pos = scanner.pos
+      paren_depth = 0
+      brace_depth = 0
+      found_opening_paren = false
+      in_string = false
+      string_char = nil
+      
+      until scanner.eos?
+        char = scanner.peek(1)
+        
+        # Safety check
+        if (scanner.pos - temp_pos) > @max_line_length
+          # Reset and break - let the caller handle this
+          scanner.pos = temp_pos
+          break
+        end
+        
+        # Handle string literals
+        if in_string
+          if char == '\\'
+            scanner.getch
+            scanner.getch unless scanner.eos?
+            next
+          elsif char == string_char
+            scanner.getch
+            in_string = false
+            string_char = nil
+            next
+          else
+            scanner.getch
+            next
+          end
+        end
+        
+        case char
+        when '"', "'"
+          in_string = true
+          string_char = char
+          scanner.getch
+        when '/'
+          if scanner.peek(2) =~ %r{^(/[/*])}
+            @code_text.skip_comment(scanner)
+          else
+            scanner.getch
+          end
+        when '('
+          found_opening_paren = true
+          paren_depth += 1
+          scanner.getch
+        when ')'
+          paren_depth -= 1
+          scanner.getch
+        when '{'
+          # Found opening brace at depth 0
+          if paren_depth == 0 && brace_depth == 0
+            if found_opening_paren
+              # This looks like a function definition - stop skipping
+              scanner.pos = temp_pos
+              return
+            else
+              # Opening brace without preceding parens - this is an initializer or struct
+              # Continue scanning to find the closing brace and semicolon
+              brace_depth += 1
+              scanner.getch
+            end
+          else
+            # Nested brace
+            brace_depth += 1
+            scanner.getch
+          end
+        when '}'
+          brace_depth -= 1
+          scanner.getch
+        when ';'
+          # Found semicolon - check if it's at depth 0
+          if paren_depth == 0 && brace_depth == 0
+            # This is a declaration - skip past the semicolon
+            scanner.getch
+            break  # Continue to next iteration of outer loop
+          else
+            # Semicolon inside parens or braces - keep scanning
+            scanner.getch
+          end
+        else
+          scanner.getch
+        end
+      end
+      
+      # If we didn't advance, we're done
+      break if scanner.pos == _start_pos
+    end
+  end
 
   def extract_function_name(signature)
     # Verify balanced parentheses first

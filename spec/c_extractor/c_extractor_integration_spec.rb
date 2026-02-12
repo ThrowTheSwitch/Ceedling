@@ -104,11 +104,10 @@ describe CExtractor do
       #include <stdint.h>
       #include "foo.h"
 
-      // TODO: Enable when variable declaration extraction is implemented
-      //int global_var;                    // Simple variable
-      //static const char* ptr = "hello";  // Initialized variable
-      //struct foo { int x; } instance;    // Struct with brackets
-      //int array[] = {1, 2, 3};           // Array initialization with braces
+      int global_var;                    // Simple variable
+      static const char* ptr = "hello";  // Initialized variable
+      struct foo { int x; } instance;    // Struct with brackets
+      int array[] = {1, 2, 3};           // Array initialization with braces
 
       void a_function(void) { int a = 1 + 1; }
 
@@ -307,9 +306,8 @@ describe CExtractor do
       #define PROCESS(x) do { process_data(x); } while(0)
       
       // Global variables
-      // TODO: Enable when variable declaration extraction is implemented
-      // static int global_counter = 0;
-      // const char* global_message = "Hello, World!";
+      static int global_counter = 0;
+      const char* global_message = "Hello, World!";
       
       // Forward declarations
       void helper_function(int value);
