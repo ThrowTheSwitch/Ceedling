@@ -91,7 +91,7 @@ class FilePathUtils
     return path
   end
 
-  ######### instance methods ##########
+  ######### Instance methods ##########
 
   ### release ###
   def form_release_build_cache_path(filepath)
@@ -175,6 +175,22 @@ class FilePathUtils
   def form_mocks_source_filelist(path, mocks)
     list = (@file_wrapper.instantiate_file_list(mocks))
     return list.map{ |file| File.join(path, File.basename(file).ext(@configurator.extension_source)) }
+  end
+
+  def form_partial_interface_header_filepath(path, filename)
+    return File.join(path, filename.ext(EXTENSION_CORE_HEADER))
+  end
+
+  def form_partial_interface_header_filename(_module)
+    return PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
+  end
+
+  def form_partial_implementation_header_filename(_module)
+    return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_HEADER
+  end
+
+  def form_partial_implementation_source_filename(_module)
+    return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_SOURCE
   end
 
   def form_test_dependencies_filelist(files)

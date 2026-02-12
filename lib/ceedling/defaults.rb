@@ -82,6 +82,7 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
     '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
     '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
     '-MP'.freeze,            # Create make "phony" rules for each include dependency
+    "-I\"${4}\"".freeze,     # Per-test shallow includes essential search paths (e.g. Ceedling vendor path)
     "-D\"${2}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
     '-nostdinc'.freeze,      # Ignore standard include paths
@@ -283,10 +284,11 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     # :build_root must be set by user
     :use_mocks => true,
     :use_exceptions => false,
-    :compile_threads => 1,
-    :test_threads => 1,
+    :use_partials => false,
     :use_test_preprocessor => :none,
     :use_deep_preprocessor => :none,
+    :compile_threads => 1,
+    :test_threads => 1,
     :test_file_prefix => 'test_',
     :release_build => false,
     :use_backtrace => :simple
