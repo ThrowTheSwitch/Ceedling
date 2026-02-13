@@ -8,7 +8,6 @@
 require 'spec_helper'
 require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ceedling/c_extractor/c_extractor_functions'
-require 'ceedling/c_extractor/c_extractor_variables'
 require 'stringio'
 
 describe CExtractorFunctions do
@@ -20,13 +19,13 @@ describe CExtractorFunctions do
   describe "#extract_function_signature (private method testing)" do
     # Helper to access private method
     let(:extract_signature) do
-      ->(content, max_line_length=1000) do
+      ->(content, type, max_line_length=1000) do
         scanner = StringScanner.new(content)
         functions = CExtractorFunctions.new(
           CExtractorCodeText.new(),
           max_line_length
         )
-        signature = functions.send( :extract_function_signature, scanner )
+        signature = functions.send( :extract_function_signature, scanner, type )
         return [signature, scanner.pos, scanner.rest]
       end
     end
@@ -34,7 +33,7 @@ describe CExtractorFunctions do
     context "simple function signatures" do
       it "extracts void function signature with void parameters" do
         content = "void foo(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void foo(void)")
         expect(pos).to eq(14)
@@ -43,7 +42,7 @@ describe CExtractorFunctions do
 
       it "extracts void function signature with no parameters" do
         content = "void foo(){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void foo()")
         expect(pos).to eq(10)
@@ -52,7 +51,7 @@ describe CExtractorFunctions do
 
       it "extracts void function signature with no parameters and brace after newline" do
         content = "void foo()\n{"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void foo()")
         expect(pos).to eq(11)
@@ -61,7 +60,7 @@ describe CExtractorFunctions do
 
       it "extracts int function signature with no parameters and whitespace between signature and function body brace" do
         content = "int bar(void)    {"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int bar(void)")
         expect(pos).to eq(17)
@@ -70,7 +69,7 @@ describe CExtractorFunctions do
 
       it "extracts signature followed by line comment" do
         content = "void foo(void) // comment\n{"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void foo(void)")
         expect(pos).to eq(26)
@@ -79,7 +78,7 @@ describe CExtractorFunctions do
       
       it "extracts function signature with single parameter and comment between signature and function body brace" do
         content = "int add(int x)/* */{ int a;"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int add(int x)")
         expect(pos).to eq(19)
@@ -88,7 +87,7 @@ describe CExtractorFunctions do
 
       it "extracts function signature with multiple parameters" do
         content = "int multiply(int a, int b){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int multiply(int a, int b)")
         expect(pos).to eq(26)
@@ -97,7 +96,7 @@ describe CExtractorFunctions do
 
       it "extracts function signature returning pointer" do
         content = "char* getString(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("char* getString(void)")
         expect(pos).to eq(21)
@@ -106,54 +105,56 @@ describe CExtractorFunctions do
 
       it "extracts function signature with pointer parameter" do
         content = "void process(int* ptr){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void process(int* ptr)")
         expect(pos).to eq(22)
         expect(rest).to eq("{")
       end
+    end
 
+    context "function declarations" do    
       it "does not extract signature from declaration" do
         content = "void process(int* ptr);"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to be_nil
-        expect(pos).to eq(23)
-        expect(rest).to eq("")
+        expect(pos).to eq(0)
+        expect(rest).to eq("void process(int* ptr);")
       end
 
       it "does not extract signature from declaration with whitespace" do
         content = "void process(int* ptr)     ;"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to be_nil
-        expect(pos).to eq(28)
-        expect(rest).to eq("")
+        expect(pos).to eq(0)
+        expect(rest).to eq("void process(int* ptr)     ;")
       end
 
       it "does not extract signature from declaration with comment" do
         content = "void process(int* ptr)/***/;"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to be_nil
-        expect(pos).to eq(28)
-        expect(rest).to eq("")
+        expect(pos).to eq(0)
+        expect(rest).to eq("void process(int* ptr)/***/;")
       end
 
       it "does not extract signature from declaration with newline" do
         content = "void process(int* ptr)\n;"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to be_nil
-        expect(pos).to eq(24)
-        expect(rest).to eq("")
+        expect(pos).to eq(0)
+        expect(rest).to eq("void process(int* ptr)\n;")
       end
     end
 
     context "function signatures with whitespace variations" do
       it "extracts signature with extra spaces" do
         content = "int    foo   (  int   x  ){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int foo ( int x )")
         expect(pos).to eq(26)
@@ -162,7 +163,7 @@ describe CExtractorFunctions do
 
       it "extracts clean signature from one with tabs" do
         content = "int\tfoo\t(\tint\tx\t){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int foo ( int x )")
         expect(pos).to eq(17)
@@ -171,7 +172,7 @@ describe CExtractorFunctions do
 
       it "extracts clean signature from one with newlines" do
         content = "int\nfoo\n(\nint x\n){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int foo ( int x )")
         expect(pos).to eq(17)
@@ -180,7 +181,7 @@ describe CExtractorFunctions do
 
       it "extracts clean signature from one with mixed whitespace" do
         content = "int \t\n foo \t\n ( \t\n int x \t\n ){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int foo ( int x )")
         expect(pos).to eq(29)
@@ -191,7 +192,7 @@ describe CExtractorFunctions do
     context "complex return types" do
       it "extracts function returning struct" do
         content = "struct point getPoint(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("struct point getPoint(void)")
         expect(pos).to eq(27)
@@ -200,7 +201,7 @@ describe CExtractorFunctions do
 
       it "extracts function returning pointer to struct" do
         content = "struct node* getNode(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("struct node* getNode(void)")
         expect(pos).to eq(26)
@@ -209,7 +210,7 @@ describe CExtractorFunctions do
 
       it "extracts function returning const pointer" do
         content = "const char* getMessage(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("const char* getMessage(void)")
         expect(pos).to eq(28)
@@ -218,7 +219,7 @@ describe CExtractorFunctions do
 
       it "extracts function returning pointer to const" do
         content = "char* const getBuffer(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("char* const getBuffer(void)")
         expect(pos).to eq(27)
@@ -227,7 +228,7 @@ describe CExtractorFunctions do
 
       it "extracts function returning unsigned type" do
         content = "unsigned int getValue(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("unsigned int getValue(void)")
         expect(pos).to eq(27)
@@ -236,7 +237,7 @@ describe CExtractorFunctions do
 
       it "extracts function returning long long" do
         content = "long long getBigValue(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("long long getBigValue(void)")
         expect(pos).to eq(27)
@@ -245,7 +246,7 @@ describe CExtractorFunctions do
 
       it "extracts function returning enum" do
         content = "enum status getStatus(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("enum status getStatus(void)")
         expect(pos).to eq(27)
@@ -254,7 +255,7 @@ describe CExtractorFunctions do
 
       it "extracts function returning typedef'd type" do
         content = "size_t getSize(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("size_t getSize(void)")
         expect(pos).to eq(20)
@@ -263,7 +264,7 @@ describe CExtractorFunctions do
 
       it "extracts function returning double pointer" do
         content = "char** getStringArray(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("char** getStringArray(void)")
         expect(pos).to eq(27)
@@ -274,7 +275,7 @@ describe CExtractorFunctions do
     context "complex parameter types" do
       it "extracts function with array parameter" do
         content = "void process(int arr[]){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void process(int arr[])")
         expect(pos).to eq(23)
@@ -283,7 +284,7 @@ describe CExtractorFunctions do
 
       it "extracts function with sized array parameter" do
         content = "void process(int arr[10]){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void process(int arr[10])")
         expect(pos).to eq(25)
@@ -292,7 +293,7 @@ describe CExtractorFunctions do
 
       it "extracts function with const parameter" do
         content = "void print(const char* str){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void print(const char* str)")
         expect(pos).to eq(27)
@@ -301,7 +302,7 @@ describe CExtractorFunctions do
 
       it "extracts function with struct parameter" do
         content = "void update(struct data d){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void update(struct data d)")
         expect(pos).to eq(26)
@@ -310,7 +311,7 @@ describe CExtractorFunctions do
 
       it "extracts function with pointer to struct parameter" do
         content = "void modify(struct node* n){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void modify(struct node* n)")
         expect(pos).to eq(27)
@@ -319,7 +320,7 @@ describe CExtractorFunctions do
 
       it "extracts function with multiple complex parameters" do
         content = "int compare(const char* s1, const char* s2, size_t len){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int compare(const char* s1, const char* s2, size_t len)")
         expect(pos).to eq(55)
@@ -328,7 +329,7 @@ describe CExtractorFunctions do
 
       it "extracts function with function pointer parameter" do
         content = "void callback(void (*func)(int)){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void callback(void (*func)(int))")
         expect(pos).to eq(32)
@@ -337,7 +338,7 @@ describe CExtractorFunctions do
 
       it "extracts function with complex function pointer parameter" do
         content = "void register(int (*compare)(const void*, const void*)){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void register(int (*compare)(const void*, const void*))")
         expect(pos).to eq(55)
@@ -346,7 +347,7 @@ describe CExtractorFunctions do
 
       it "extracts function with double pointer parameter" do
         content = "void allocate(char** buffer){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void allocate(char** buffer)")
         expect(pos).to eq(28)
@@ -355,7 +356,7 @@ describe CExtractorFunctions do
 
       it "extracts function with enum parameter" do
         content = "void setState(enum state s){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void setState(enum state s)")
         expect(pos).to eq(27)
@@ -366,7 +367,7 @@ describe CExtractorFunctions do
     context "function signatures with storage class specifiers" do
       it "extracts static function" do
         content = "static int helper(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("static int helper(void)")
         expect(pos).to eq(23)
@@ -375,7 +376,7 @@ describe CExtractorFunctions do
 
       it "extracts inline function" do
         content = "inline int fast(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("inline int fast(void)")
         expect(pos).to eq(21)
@@ -384,7 +385,7 @@ describe CExtractorFunctions do
 
       it "extracts extern function" do
         content = "extern void external(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("extern void external(void)")
         expect(pos).to eq(26)
@@ -393,7 +394,7 @@ describe CExtractorFunctions do
 
       it "extracts static inline function" do
         content = "static inline int optimize(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("static inline int optimize(void)")
         expect(pos).to eq(32)
@@ -404,7 +405,7 @@ describe CExtractorFunctions do
     context "function signatures with qualifiers" do
       it "extracts function with const qualifier" do
         content = "const int getValue(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("const int getValue(void)")
         expect(pos).to eq(24)
@@ -413,7 +414,7 @@ describe CExtractorFunctions do
 
       it "extracts function with volatile qualifier" do
         content = "volatile int getRegister(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("volatile int getRegister(void)")
         expect(pos).to eq(30)
@@ -422,7 +423,7 @@ describe CExtractorFunctions do
 
       it "extracts function with restrict qualifier" do
         content = "void copy(char* restrict dest, const char* restrict src){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void copy(char* restrict dest, const char* restrict src)")
         expect(pos).to eq(56)
@@ -431,7 +432,7 @@ describe CExtractorFunctions do
 
       it "extracts function with multiple qualifiers" do
         content = "static const volatile int getSpecial(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("static const volatile int getSpecial(void)")
         expect(pos).to eq(42)
@@ -442,7 +443,7 @@ describe CExtractorFunctions do
     context "function signatures with variadic parameters" do
       it "extracts function with variadic parameters" do
         content = "int printf(const char* format, ...){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int printf(const char* format, ...)")
         expect(pos).to eq(35)
@@ -451,7 +452,7 @@ describe CExtractorFunctions do
 
       it "extracts function with only variadic parameters" do
         content = "void log(...){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void log(...)")
         expect(pos).to eq(13)
@@ -460,7 +461,7 @@ describe CExtractorFunctions do
 
       it "extracts function with multiple parameters and variadic" do
         content = "int sprintf(char* buffer, const char* format, ...){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int sprintf(char* buffer, const char* format, ...)")
         expect(pos).to eq(50)
@@ -471,7 +472,7 @@ describe CExtractorFunctions do
     context "function signatures with nested parentheses" do
       it "extracts signature with function pointer return type" do
         content = "int (*getFunction(void))(int, int){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int (*getFunction(void))(int, int)")
         expect(pos).to eq(34)
@@ -480,7 +481,7 @@ describe CExtractorFunctions do
 
       it "extracts signature with complex function pointer parameter" do
         content = "void sort(int* array, int (*compare)(int, int)){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void sort(int* array, int (*compare)(int, int))")
         expect(pos).to eq(47)
@@ -489,7 +490,7 @@ describe CExtractorFunctions do
 
       it "extracts signature with multiple function pointer parameters" do
         content = "void process(void (*init)(void), void (*cleanup)(void)){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void process(void (*init)(void), void (*cleanup)(void))")
         expect(pos).to eq(55)
@@ -498,7 +499,7 @@ describe CExtractorFunctions do
 
       it "extracts signature with nested function pointers" do
         content = "void register(void (*callback)(int (*)(void))){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void register(void (*callback)(int (*)(void)))")
         expect(pos).to eq(46)
@@ -507,7 +508,7 @@ describe CExtractorFunctions do
 
       it "extracts signature with array of function pointers" do
         content = "void dispatch(void (*handlers[])(int)){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void dispatch(void (*handlers[])(int))")
         expect(pos).to eq(38)
@@ -518,7 +519,7 @@ describe CExtractorFunctions do
     context "function signatures with strings and comments" do
       it "extracts signature with string in default parameter (C++ style, but testing robustness)" do
         content = 'void log(const char* msg = "default"){'
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq('void log(const char* msg = "default")')
         expect(pos).to eq(37)
@@ -527,7 +528,7 @@ describe CExtractorFunctions do
 
       it "extracts signature with parentheses in string" do
         content = 'void print(const char* format = "value: (%d)"){'
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq('void print(const char* format = "value: (%d)")')
         expect(pos).to eq(46)
@@ -536,7 +537,7 @@ describe CExtractorFunctions do
 
       it "extracts signature with character literal containing parenthesis" do
         content = "void process(char c = ')'){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void process(char c = ')')")
         expect(pos).to eq(26)
@@ -548,7 +549,7 @@ describe CExtractorFunctions do
       it "extracts very long signature" do
         params = (1..50).map { |i| "int param#{i}" }.join(", ")
         content = "void longFunction(#{params})"
-        signature, pos, rest = extract_signature.call(content + '{}')
+        signature, pos, rest = extract_signature.call(content + '{}', :definition)
         
         expect(signature).to eq(content)
         expect(pos).to eq(content.length)
@@ -557,7 +558,7 @@ describe CExtractorFunctions do
 
       it "extracts signature with deeply nested parentheses" do
         content = "void complex(int (*(*(*f)(int))(int))(int)){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void complex(int (*(*(*f)(int))(int))(int))")
         expect(pos).to eq(43)
@@ -568,7 +569,7 @@ describe CExtractorFunctions do
     context "real-world C function patterns" do
       it "extracts main function signature" do
         content = "int main(int argc, char* argv[]){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int main(int argc, char* argv[])")
         expect(pos).to eq(32)
@@ -577,7 +578,7 @@ describe CExtractorFunctions do
 
       it "extracts signal handler signature" do
         content = "void signal_handler(int signum){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void signal_handler(int signum)")
         expect(pos).to eq(31)
@@ -586,7 +587,7 @@ describe CExtractorFunctions do
 
       it "extracts qsort compare function signature" do
         content = "int compare(const void* a, const void* b){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("int compare(const void* a, const void* b)")
         expect(pos).to eq(41)
@@ -595,7 +596,7 @@ describe CExtractorFunctions do
 
       it "extracts pthread function signature" do
         content = "void* thread_function(void* arg){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void* thread_function(void* arg)")
         expect(pos).to eq(32)
@@ -604,7 +605,7 @@ describe CExtractorFunctions do
 
       it "extracts interrupt handler signature" do
         content = "void __attribute__((interrupt)) ISR_Handler(void){"
-        signature, pos, rest = extract_signature.call(content)
+        signature, pos, rest = extract_signature.call(content, :definition)
         
         expect(signature).to eq("void __attribute__((interrupt)) ISR_Handler(void)")
         expect(pos).to eq(49)
@@ -1285,676 +1286,10 @@ describe CExtractorFunctions do
   end
 
   ###
-  ### skip_declarations()
+  ### try_extract_function_definition()
   ###
 
-  describe "#skip_declarations (private method testing)" do
-    # Helper to access private method
-    let(:skip_declarations) do
-      ->(content) do
-        scanner = StringScanner.new(content)
-        functions = CExtractorFunctions.new(
-          CExtractorCodeText.new(),
-          1000
-        )
-        functions.send(:skip_declarations, scanner)
-        return [scanner.pos, scanner.rest]
-      end
-    end
-
-    context "variable declarations" do
-      it "skips simple variable declaration" do
-        content = "int x = 5;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(11)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips multiple variable declarations" do
-        content = "int x = 5;\nchar c = 'a';\nfloat f = 3.14;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(41)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips variable declaration with initializer" do
-        content = "int arr[] = {1, 2, 3};\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(23)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips pointer variable declaration" do
-        content = "char* ptr = NULL;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(18)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips const variable declaration" do
-        content = "const int MAX = 100;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(21)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips static variable declaration" do
-        content = "static int counter = 0;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(24)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips extern variable declaration" do
-        content = "extern int global_var;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(23)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips volatile variable declaration" do
-        content = "volatile int reg = 0;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(22)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips array declaration with size" do
-        content = "int buffer[256];\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(17)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips multi-dimensional array declaration" do
-        content = "int matrix[10][20];\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(20)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips function pointer variable declaration" do
-        content = "void (*callback)(int) = NULL;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(30)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips complex function pointer declaration" do
-        content = "int (*compare)(const void*, const void*);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(42)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips variable declaration with struct type" do
-        content = "struct point p = {0, 0};\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(25)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips variable declaration with union type" do
-        content = "union data d;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(14)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips variable declaration with enum type" do
-        content = "enum color c = RED;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(20)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips variable declaration with typedef'd type" do
-        content = "size_t length = 0;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(19)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips multiple variables in one declaration" do
-        content = "int x = 1, y = 2, z = 3;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(25)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips variable with complex initializer" do
-        content = "struct point p = {.x = 1, .y = 2};\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(35)
-        expect(rest).to eq("void foo(void) {}")
-      end
-    end
-
-    context "function forward declarations" do
-      it "skips simple function forward declaration" do
-        content = "void helper(void);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(19)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips function forward declaration with parameters" do
-        content = "int add(int a, int b);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(23)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips multiple function forward declarations" do
-        content = "void init(void);\nvoid cleanup(void);\nvoid process(void);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(57)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips static function forward declaration" do
-        content = "static void helper(void);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(26)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips inline function forward declaration" do
-        content = "inline int fast(void);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(23)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips extern function forward declaration" do
-        content = "extern void external_func(void);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(33)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips function forward declaration with attributes" do
-        content = "void __attribute__((noreturn)) exit_func(void);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(48)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips function forward declaration with pointer return" do
-        content = "char* getString(void);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(23)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips function forward declaration with struct return" do
-        content = "struct point getPoint(void);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(29)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips function forward declaration with function pointer parameter" do
-        content = "void callback(void (*func)(int));\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(34)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips function forward declaration with array parameter" do
-        content = "void process(int arr[10]);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(27)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips function forward declaration with variadic parameters" do
-        content = "int printf(const char* fmt, ...);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(34)
-        expect(rest).to eq("void foo(void) {}")
-      end
-    end
-
-    context "struct/union/enum definitions" do
-      it "skips simple struct definition" do
-        content = "struct point { int x; int y; };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(32)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips struct definition with variable" do
-        content = "struct point { int x; int y; } p;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(34)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips nested struct definition" do
-        content = "struct outer { struct inner { int x; } in; };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(46)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips union definition" do
-        content = "union data { int i; float f; };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(32)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips enum definition" do
-        content = "enum color { RED, GREEN, BLUE };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(33)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips struct definition with typedef" do
-        content = "typedef struct { int x; int y; } point_t;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(42)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips enum definition with typedef" do
-        content = "typedef enum { RED, GREEN, BLUE } color_t;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(43)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips struct with function pointer members" do
-        content = "struct ops { void (*init)(void); void (*cleanup)(void); };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(59)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips struct with array members" do
-        content = "struct buffer { char data[256]; int size; };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(45)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips struct with nested anonymous union" do
-        content = "struct data { union { int i; float f; }; };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(44)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips struct with bit fields" do
-        content = "struct flags { unsigned int a:1; unsigned int b:2; };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(54)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips enum with explicit values" do
-        content = "enum status { OK = 0, ERROR = -1, PENDING = 1 };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(49)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips multiple struct definitions" do
-        content = "struct a { int x; }; struct b { int y; }; struct c { int z; };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(63)
-        expect(rest).to eq("void foo(void) {}")
-      end
-    end
-
-    context "typedef declarations" do
-      it "skips simple typedef" do
-        content = "typedef int my_int;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(20)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips typedef with pointer" do
-        content = "typedef char* string;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(22)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips typedef with function pointer" do
-        content = "typedef void (*callback_t)(int);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(33)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips typedef with array" do
-        content = "typedef int array_t[10];\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(25)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips typedef with struct" do
-        content = "typedef struct point { int x; int y; } point_t;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(48)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips typedef with union" do
-        content = "typedef union data { int i; float f; } data_t;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(47)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips typedef with enum" do
-        content = "typedef enum { A, B, C } abc_t;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(32)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips multiple typedefs" do
-        content = "typedef int int32_t;\ntypedef char* string_t;\ntypedef void (*func_t)(void);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(75)
-        expect(rest).to eq("void foo(void) {}")
-      end
-    end
-
-    context "comments" do
-      it "skips single-line comment before declaration" do
-        content = "// This is a comment\nint x = 5;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(32)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips multi-line comment before declaration" do
-        content = "/* This is a\n   multi-line comment */\nint x = 5;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(49)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips comment between declarations" do
-        content = "int x = 5;\n// Comment\nint y = 10;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(34)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips comment with semicolons inside" do
-        content = "/* Comment with ; semicolons ; */\nint x = 5;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(45)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips comment with braces inside" do
-        content = "/* Comment with { braces } */\nint x = 5;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(41)
-        expect(rest).to eq("void foo(void) {}")
-      end
-    end
-
-    context "mixed declarations" do
-      it "skips variables and function declarations mixed" do
-        content = "int x = 5;\nvoid helper(void);\nchar c = 'a';\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(44)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips declarations with comments interspersed" do
-        content = "int x = 5;\n// Comment\nvoid helper(void);\n/* Another comment */\nchar c = 'a';\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(77)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips declarations with preprocessor directives" do
-        content = "#define MAX 100\nint x = MAX;\n#ifdef DEBUG\nvoid debug(void);\n#endif\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(67)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips struct definition followed by variable declaration" do
-        content = "struct point { int x; int y; };\nstruct point p = {0, 0};\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(57)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips typedef followed by variable using that type" do
-        content = "typedef int my_int;\nmy_int value = 42;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(39)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips enum definition followed by variable" do
-        content = "enum color { RED, GREEN, BLUE };\nenum color c = RED;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(53)
-        expect(rest).to eq("void foo(void) {}")
-      end
-    end
-
-    context "complex initializers" do
-      it "skips array initializer with nested braces" do
-        content = "int matrix[2][2] = {{1, 2}, {3, 4}};\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(37)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips struct initializer with nested braces" do
-        content = "struct data d = { .x = {1, 2}, .y = {3, 4} };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(46)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips array of structs initializer" do
-        content = "struct point points[] = { {1, 2}, {3, 4}, {5, 6} };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(52)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips union initializer" do
-        content = "union data d = { .i = 42 };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(28)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      # TODO: Fix
-      # it "skips compound literal initializer" do
-      #   content = "struct point* p = &(struct point){.x = 1, .y = 2};\nvoid foo(void) {}"
-      #   pos, rest = skip_declarations.call(content)
-        
-      #   expect(pos).to eq(51)
-      #   expect(rest).to eq("void foo(void) {}")
-      # end
-
-      it "skips designated initializer with array" do
-        content = "int arr[10] = { [0] = 1, [5] = 2, [9] = 3 };\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(45)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips string literal initializer" do
-        content = "char str[] = \"Hello, World!\";\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(30)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips string literal with escaped characters" do
-        content = "char str[] = \"Line 1\\nLine 2\\tTab\";\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(36)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips string literal with semicolons inside" do
-        content = "char str[] = \"Statement; Another;\";\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(36)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips string literal with braces inside" do
-        content = "char str[] = \"{ braces } here\";\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(32)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips character literal initializer" do
-        content = "char c = 'a';\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(14)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips character literal with escape sequence" do
-        content = "char c = '\\n';\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(15)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips function call in initializer" do
-        content = "int x = calculate(1, 2, 3);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(28)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips cast in initializer" do
-        content = "int x = (int)3.14;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(19)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips sizeof in initializer" do
-        content = "size_t size = sizeof(int);\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(27)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips ternary operator in initializer" do
-        content = "int x = (a > b) ? a : b;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(25)
-        expect(rest).to eq("void foo(void) {}")
-      end
-
-      it "skips complex expression with parentheses" do
-        content = "int result = ((a + b) * (c - d)) / e;\nvoid foo(void) {}"
-        pos, rest = skip_declarations.call(content)
-        
-        expect(pos).to eq(38)
-        expect(rest).to eq("void foo(void) {}")
-      end
-    end
-  end
-
-  ###
-  ### try_extract_function()
-  ###
-
-  describe "#try_extract_function" do
+  describe "#try_extract_function_definition" do
     # Helper to access private method and extract function from content
     let(:try_extract) do
       ->(content) do
@@ -1963,7 +1298,7 @@ describe CExtractorFunctions do
           CExtractorCodeText.new(),
           1000
         )
-        success, func = functions.try_extract_function( scanner )
+        success, func = functions.try_extract_function_definition( scanner )
         return [success, func, scanner.pos, scanner.rest]
       end
     end
@@ -2506,12 +1841,12 @@ describe CExtractorFunctions do
           1000
         )
         
-        success1, func1 = functions.try_extract_function(scanner)
+        success1, func1 = functions.try_extract_function_definition(scanner)
         expect(success1).to be true
         expect(func1.name).to eq("first")
         expect(func1.body).to eq("{ int a = 1; }")
                 
-        success2, func2 = functions.try_extract_function(scanner)
+        success2, func2 = functions.try_extract_function_definition(scanner)
         expect(success2).to be true
         expect(func2.name).to eq("second")
         expect(func2.body).to eq("{ int b = 2; }")
@@ -2533,17 +1868,17 @@ describe CExtractorFunctions do
         code_text = CExtractorCodeText.new()
         functions = CExtractorFunctions.new( code_text, 1000 )
         
-        success1, func1 = functions.try_extract_function(scanner)
+        success1, func1 = functions.try_extract_function_definition(scanner)
         expect(success1).to be true
         expect(func1.name).to eq("add")
         expect(func1.signature).to eq("int add(int a, int b)")
                 
-        success2, func2 = functions.try_extract_function(scanner)
+        success2, func2 = functions.try_extract_function_definition(scanner)
         expect(success2).to be true
         expect(func2.name).to eq("print")
         expect(func2.signature).to eq("void print(const char* msg)")
                 
-        success3, func3 = functions.try_extract_function(scanner)
+        success3, func3 = functions.try_extract_function_definition(scanner)
         expect(success3).to be true
         expect(func3.name).to eq("check")
         expect(func3.signature).to eq("static inline bool check(void)")
@@ -2570,61 +1905,17 @@ describe CExtractorFunctions do
           1000
         )
         
-        success1, func1 = functions.try_extract_function(scanner)
+        success1, func1 = functions.try_extract_function_definition(scanner)
         expect(success1).to be true
         expect(func1.name).to eq("first")
                 
-        success2, func2 = functions.try_extract_function(scanner)
+        success2, func2 = functions.try_extract_function_definition(scanner)
         expect(success2).to be true
         expect(func2.name).to eq("second")
                 
-        success3, func3 = functions.try_extract_function(scanner)
+        success3, func3 = functions.try_extract_function_definition(scanner)
         expect(success3).to be true
         expect(func3.name).to eq("third")
-      end
-    end
-
-    context "extracting functions from code also containing declarations" do
-      it "extracts three simple functions in sequence" do
-        content = <<~CONTENT
-
-        int global_var;                    // Simple variable
-        static const char* ptr = "hello";  // Initialized variable
-        struct foo { int x; } instance;    // Struct with brackets
-        int array[] = {1, 2, 3};           // Array initialization with braces
-
-        void first(void) { work(); }
-
-        void second(void) { more_work(); }
-
-        void third(void) { final_work(); }
-        CONTENT
-        scanner = StringScanner.new(content)
-        functions = CExtractorFunctions.new(
-          CExtractorCodeText.new(),
-          1000
-        )
-        
-        success1, func1 = functions.try_extract_function(scanner)
-        expect(success1).to be true
-        expect(func1.name).to eq("first")
-        expect(func1.signature).to eq("void first(void)")
-        expect(func1.body).to eq("{ work(); }")
-        expect(func1.code_block).to eq("void first(void) { work(); }")
-                
-        success2, func2 = functions.try_extract_function(scanner)
-        expect(success2).to be true
-        expect(func2.name).to eq("second")
-        expect(func2.signature).to eq("void second(void)")
-        expect(func2.body).to eq("{ more_work(); }")
-        expect(func2.code_block).to eq("void second(void) { more_work(); }")
-        
-        success3, func3 = functions.try_extract_function(scanner)
-        expect(success3).to be true
-        expect(func3.name).to eq("third")
-        expect(func3.signature).to eq("void third(void)")
-        expect(func3.body).to eq("{ final_work(); }")
-        expect(func3.code_block).to eq("void third(void) { final_work(); }")
       end
     end
   end
