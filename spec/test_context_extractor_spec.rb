@@ -10,6 +10,8 @@ require 'ceedling/test_context_extractor'
 require 'ceedling/parsing_parcels'
 require 'ceedling/exceptions'
 
+# TODO: Add test cases for Partials handling
+
 describe TestContextExtractor do
   before(:each) do
     # Mock injected dependencies
@@ -20,6 +22,7 @@ describe TestContextExtractor do
     
     # Ignore all logging calls
     allow(loginator).to receive(:log)
+    allow(loginator).to receive(:log_list)
 
     # Provide configurations
     mock_prefix = 'mock_'

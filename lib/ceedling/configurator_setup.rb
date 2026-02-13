@@ -87,6 +87,12 @@ class ConfiguratorSetup
       File.join( ceedling_lib_path, BACKTRACE_GDB_SCRIPT_FILE ),
       flattened_config[:project_build_tests_root]
     ) if flattened_config[:project_use_backtrace] == :gdb
+
+    # Copy supporting partials code into build/vendor directory structure
+    @file_wrapper.cp_r(
+      File.join( ceedling_lib_path, PARTIALS_HEADER_FILEPATH ),
+      flattened_config[:project_build_vendor_ceedling_path]
+    ) if flattened_config[:project_use_partials]
   end
 
   def build_project_collections(flattened_config)

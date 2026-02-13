@@ -211,7 +211,9 @@ class Dependencies < Plugin
       steps <<
       @ceedling[:tool_executor].build_command_line(
         TOOLS_DEPS_ZIP,
+        # No additional arguments
         [],
+        # Argument replacement
         blob[:fetch][:source]
       )
 
@@ -219,7 +221,9 @@ class Dependencies < Plugin
       steps <<
       @ceedling[:tool_executor].build_command_line(
         TOOLS_DEPS_TARGZIP,
+        # No additional arguments
         [],
+        # Argument replacement
         blob[:fetch][:source]
       )
 
@@ -232,7 +236,9 @@ class Dependencies < Plugin
         steps <<
         @ceedling[:tool_executor].build_command_line(
           TOOLS_DEPS_GIT_CLONE,
+          # No additional arguments
           [],
+          # Argument replacement
           branch,
           '', # No depth
           blob[:fetch][:source]
@@ -242,7 +248,9 @@ class Dependencies < Plugin
         steps <<
         @ceedling[:tool_executor].build_command_line(
           TOOLS_DEPS_GIT_CHECKOUT,
+          # No additional arguments
           [],
+          # Argument replacement
           blob[:fetch][:hash]
         )
       else
@@ -250,7 +258,9 @@ class Dependencies < Plugin
         steps <<
         @ceedling[:tool_executor].build_command_line(
           TOOLS_DEPS_GIT_CLONE,
+          # No additional arguments
           [],
+          # Argument replacement
           branch,
           '--depth 1',
           blob[:fetch][:source]
@@ -264,7 +274,9 @@ class Dependencies < Plugin
       steps <<
       @ceedling[:tool_executor].build_command_line(
         TOOLS_DEPS_SUBVERSION,
+        # No additional arguments
         [],
+        # Argument replacement
         revision,
         blob[:fetch][:source]
       )
