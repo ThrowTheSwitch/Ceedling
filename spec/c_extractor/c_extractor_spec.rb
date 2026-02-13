@@ -62,7 +62,7 @@ describe CExtractor do
         result = extract_feature.call(io, 1000, extractor)
         
         expect(result).to be_nil
-        expect(io.eof?).to be true
+        expect(io.pos).to eq(0)
       end
 
       it "advances scanner position on success" do
