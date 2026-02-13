@@ -13,6 +13,9 @@ module PartializerConstants
   # Common type keywords that are part of return type, not decorators
   TYPE_KEYWORDS = ['unsigned', 'signed', 'long', 'short', 'struct', 'union', 'enum'].freeze
   
+  # C type qualifiers
+  TYPE_QUALIFIER_KEYWORDS = ['const', 'volatile', 'restrict'].freeze
+
   # C function modifier keywords
-  MODIFIER_KEYWORDS = ['extern', 'const', 'volatile', 'restrict'].freeze
+  MODIFIER_KEYWORDS = (['extern'] + TYPE_QUALIFIER_KEYWORDS).freeze
 end

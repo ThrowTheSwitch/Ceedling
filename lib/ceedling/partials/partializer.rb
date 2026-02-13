@@ -8,10 +8,12 @@
 require 'rake' # .ext()
 require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_runtime'
+require 'ceedling/partials/partializer_constants'
 require 'ceedling/c_extractor/c_extractor'
 require 'ceedling/constants'
 
 class Partializer
+  include PartializerConstants
 
   constructor :partializer_helper, :file_path_utils, :loginator
 
@@ -109,13 +111,13 @@ class Partializer
     types.each do |type|
       case type
       when Partials::TEST_PUBLIC
-        impl += @helper.filter_and_transform_funcs(contents.funcs, :public, :impl)
+        impl += @helper.filter_and_transform_funcs(contents.function_definitions, :public, :impl)
       when Partials::TEST_PRIVATE
-        impl += @helper.filter_and_transform_funcs(contents.funcs, :private, :impl)
+        impl += @helper.filter_and_transform_funcs(contents.function_definitions, :private, :impl)
       when Partials::MOCK_PUBLIC
-        interface += @helper.filter_and_transform_funcs(contents.funcs, :public, :interface)
+        interface += @helper.filter_and_transform_funcs(contents.function_definitions, :public, :interface)
       when Partials::MOCK_PRIVATE
-        interface += @helper.filter_and_transform_funcs(contents.funcs, :private, :interface)
+        interface += @helper.filter_and_transform_funcs(contents.function_definitions, :private, :interface)
       else
         PartializerRuntime.raise_on_option(type)
       end
@@ -124,9 +126,29 @@ class Partializer
     return impl, interface
   end
 
-  def reconstruct_variables(contents:, types:)
-    # TODO: Implement
-    return []
+  def reconstruct_variables(variables:)
+    # Remove all keywords from type contained in PRIVATE_KEYWORDS and TYPE_QUALIFIER_KEYWORDS
+    return variables.map do |declaration|
+      # Skip empty string
+      next declaration if declaration.empty?
+
+      # Split on assignment operator to preserve keywords in initialization values
+      parts = declaration.split('=', 2)
+      
+      # Remove keywords only from the declaration part (before '=')
+      cleaned_declaration = parts[0].dup
+      (PRIVATE_KEYWORDS + TYPE_QUALIFIER_KEYWORDS).each do |keyword|
+        cleaned_declaration.gsub!(/\b#{Regexp.escape(keyword)}\b/, '')
+      end
+      cleaned_declaration = cleaned_declaration.strip.squeeze(' ')
+      
+      # Rejoin with initialization value if it exists
+      if parts.length > 1
+        cleaned_declaration += (' = ' + parts[1].strip.squeeze(' '))
+      end
+
+      cleaned_declaration
+    end     
   end
 
   def log_extracted_functions(test:, module_name:, impl:, interface:)
