@@ -10,6 +10,10 @@ require 'fileutils'
 # Add Unity and CMock's Ruby code paths to $LOAD_PATH for runner generation and mocking
 $LOAD_PATH.unshift( File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'unity/auto') )
 $LOAD_PATH.unshift( File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'cmock/lib') )
+# Add all subdirectories beneath ceedling_lib_path to $LOAD_PATH to support DIY construction
+Dir.glob(File.join(CEEDLING_APPCFG[:ceedling_lib_path], '**/')).each do |dir|
+  $LOAD_PATH.unshift(dir)
+end
 
 require 'rake'
 
@@ -29,8 +33,7 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
 
   return if duration.empty?
 
-  @ceedling[:loginator].log() # Blank line
-  @ceedling[:loginator].log( "Ceedling #{run} completed in #{duration}", Verbosity::NORMAL)
+  @ceedling[:loginator].log( "\nCeedling #{run} completed in #{duration}", Verbosity::NORMAL)
 end
 
 start_time = nil # Outside scope of exception handling
