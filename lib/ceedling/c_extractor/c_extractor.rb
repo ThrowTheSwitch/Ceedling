@@ -10,7 +10,7 @@ require 'stringio'
 require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ceedling/c_extractor/c_extractor_functions'
-require 'ceedling/c_extractor/c_extractor_variables'
+require 'ceedling/c_extractor/c_extractor_declarations'
 
 class CExtractor
   DEFAULT_CHUNK_SIZE = (16 * 1024)                # 16 KB -- enough for most functions
@@ -69,7 +69,7 @@ class CExtractor
     return new(
       io: file,
       chunk_size: DEFAULT_CHUNK_SIZE,
-      max_function_length: DEFAULT_MAX_FUNCTION_LENGTH,
+      max_buffer_length: DEFAULT_MAX_FUNCTION_LENGTH,
       max_line_length: DEFAULT_MAX_LINE_LENGTH
     )
   end
@@ -85,7 +85,7 @@ class CExtractor
   # Parameters:
   #   content: String containing C source code to extract from
   #   chunk_size: (Optional) Size of chunks to read at a time (default: 16 KB)
-  #   max_function_length: (Optional) Maximum allowed function size (default: 5 MB)
+  #   max_buffer_length: (Optional) Maximum allowed function size (default: 5 MB)
   #   max_line_length: (Optional) Maximum allowed line length (default: 1000 chars)
   #
   # Returns: CExtractor instance ready to extract C code features
@@ -99,32 +99,32 @@ class CExtractor
   #   extractor = CExtractor.from_string(
   #     content: test_code,
   #     chunk_size: 10,  # Small chunks to test chunking logic
-  #     max_function_length: 100
+  #     max_buffer_length: 100
   #   )
   def self.from_string(
     content:,
     # Exposed for testing purposes
     chunk_size: DEFAULT_CHUNK_SIZE,
-    max_function_length: DEFAULT_MAX_FUNCTION_LENGTH,
+    max_buffer_length: DEFAULT_MAX_FUNCTION_LENGTH,
     max_line_length: DEFAULT_MAX_LINE_LENGTH
   )
     return new(
       io: StringIO.new(content),
       chunk_size: chunk_size,
-      max_function_length: max_function_length,
+      max_buffer_length: max_buffer_length,
       max_line_length: max_line_length
     )
   end
   
-  def initialize(io:, chunk_size:, max_function_length:, max_line_length:)
+  def initialize(io:, chunk_size:, max_buffer_length:, max_line_length:)
     @io = io
     @chunk_size = chunk_size
-    @max_function_length = max_function_length
+    @max_buffer_length = max_buffer_length
     @max_line_length = max_line_length
 
     # Composition / dependency injection
     @code_text = CExtractorCodeText.new()
-    @variables = CExtractorVariables.new(@max_line_length)
+    @declarations = CExtractorDeclarations.new(@max_line_length)
     @functions = CExtractorFunctions.new(@code_text, @max_line_length)
   end
   
@@ -137,27 +137,35 @@ class CExtractor
     # Once a complete function is found, move ahead in the IO buffer to a position just after the 
     # discovered function and begin chunking and scanning again.
 
-    # First pass: Extract all functions
+    # Ensure we're at the start of buffer
     @io.rewind
+
     until @io.eof?
+      # First pass: Extract a function (most unique feature)
       func = extract_next_feature(
         io: @io,
-        max_length: @max_function_length,
-        extractor: @functions.method(:try_extract_function)
+        max_length: @max_buffer_length,
+        extractor: @functions.method(:try_extract_function_definition)
       )
-      functions << func if func
+      if func
+        functions << func
+        next
+      end
+
+      # Second pass: Extract variable declarations
+      var = extract_next_feature(
+        io: @io,
+        max_length: @max_buffer_length,
+        extractor: @declarations.method(:try_extract_variable)
+      )
+      if var
+        variables << var
+        next
+      end
+      
+      # If no features found, end the loop and return the accumulated results.
+      break
     end
-    
-    # Second pass: Extract all variables
-    # @io.rewind
-    # until @io.eof?
-    #   var = extract_next_feature(
-    #     io: @io,
-    #     max_length: @max_line_length,
-    #     extractor: @variables.method(:try_extract_variable_declaration)
-    #   )
-    #   variables << var if var
-    # end
     
     return CModule.new(funcs: functions, vars: variables)
   ensure
@@ -192,7 +200,7 @@ class CExtractor
     loop do
       # Read next chunk
       chunk = io.read(@chunk_size)
-
+      
       # Break out of the loop if we've reached the end of IO
       break unless chunk # EOF
       
@@ -207,36 +215,24 @@ class CExtractor
       # Create a new scanner for the current buffer
       scanner = StringScanner.new(buffer)
 
-      # Initialize last_scanner_pos to current position
-      last_scanner_pos = scanner.pos
+      # Skip any deadspace
+      @code_text.skip_deadspace(scanner)
 
-      # Attempt to find and extract complete feature using provided extractor
-      loop do
-        # Skip any deadspace
-        @code_text.skip_deadspace(scanner)
+      # If reached end of string having found no feature -- restart loop to containing loop to grow buffer
+      next if scanner.eos?
 
-        # If reached end of string having found no feature -- exit loop to containing loop to grow buffer
-        break if scanner.eos?
+      # Try extract complete feature using provided extractor
+      success, feature = extractor.call(scanner)
 
-        # Update last_scanner_pos to current position
-        last_scanner_pos = scanner.pos
-
-        # Try extract complete feature using provided extractor
-        success, feature = extractor.call(scanner)
-
-        if success
-          # Rewind IO buffer to position after this feature for next extraction attempt
-          io.seek(chunk_start_pos + scanner.pos)
-          return feature
-        end
-
-        # If we haven't advanced (i.e. found nothing), break out of the loop to expand the buffer with another chunk
-        break if scanner.pos == last_scanner_pos
+      if success
+        # Rewind IO buffer to position after this feature for next extraction attempt
+        io.seek(chunk_start_pos + scanner.pos)
+        return feature
       end
     end
     
-    # Reached IO EOF without finding complete feature
+    # Reached IO EOF without finding complete feature -- rewind IO buffer for next extraction attempt
+    io.seek(chunk_start_pos)
     return nil
   end
-
 end
