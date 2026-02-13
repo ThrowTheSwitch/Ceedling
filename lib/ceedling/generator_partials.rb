@@ -12,7 +12,7 @@ class GeneratorPartials
 
   constructor :file_wrapper, :file_path_utils
 
-  def generate_implementation(definitions:, header_variables:, name:, source_includes:, header_includes:, output_path:)
+  def generate_implementation(definitions:, variable_declarations:, name:, source_includes:, header_includes:, output_path:)
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
 
@@ -20,11 +20,11 @@ class GeneratorPartials
     source_filepath = File.join(output_path, source)
 
     @file_wrapper.open(header_filepath, 'w') do |file|
-      generate_header(file, header, header_includes, definitions, header_variables)
+      generate_header(file, header, header_includes, definitions, variable_declarations)
     end
 
     @file_wrapper.open(source_filepath, 'w') do |file|
-      generate_source(file, source_includes, definitions)
+      generate_source(file, source_includes, definitions, variable_declarations)
     end
 
     return source_filepath
@@ -41,8 +41,9 @@ class GeneratorPartials
     return filepath
   end
 
-  # Publicly exposed for testing
-  def generate_header(io, name, includes, declarations, header_variables)
+  private
+
+  def generate_header(io, name, includes, declarations, variable_declarations)
     guard = FileWrapper.generate_include_guard( name )
 
     io << "// Ceeding generated file\n"
@@ -55,11 +56,11 @@ class GeneratorPartials
 
     io << "\n" if !includes.empty?
 
-    header_variables.each do |line|
-      io << "#{line}\n"  
+    variable_declarations.each do |line|
+      io << "extern #{line}\n"
     end
 
-    io << "\n" if !header_variables.empty?
+    io << "\n" if !variable_declarations.empty?
 
     declarations.each do |decl|
       io << decl.signature
@@ -69,14 +70,19 @@ class GeneratorPartials
     io << "#endif // #{guard}\n\n"
   end
 
-  # Publicly exposed for testing
-  def generate_source(io, includes, definitions)
+  def generate_source(io, includes, definitions, variable_declarations)
     io << "// Ceeding generated file\n\n"
     includes.each do |include|
       io << "#include \"#{include}\"\n"  
     end
 
     io << "\n" if !includes.empty?
+
+    variable_declarations.each do |decl|
+      io << decl + "\n"
+    end
+
+    io << "\n" if !variable_declarations.empty?
 
     definitions.each do |defn|
       if defn.line_num and defn.source_filepath
