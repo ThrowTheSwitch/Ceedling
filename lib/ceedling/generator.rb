@@ -77,7 +77,7 @@ class Generator
       :name => name,
       :source_includes => source_includes,
       :header_includes => header_includes,
-      :header_variables => variable_decls,
+      :variable_declarations => variable_decls,
       :output_path => output_path
     }
 

@@ -326,7 +326,7 @@ class TestInvoker
             interface:      interface
           )
 
-          vars = @partializer.reconstruct_variables(contents: module_contents, types: config.types)
+          vars = @partializer.reconstruct_variables(variables: module_contents.variables)
 
           @partializer.log_extracted_variable_decls(
             test:           testable[:name],
