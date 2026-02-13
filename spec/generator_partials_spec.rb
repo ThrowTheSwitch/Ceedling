@@ -67,12 +67,12 @@ describe GeneratorPartials do
       ]
       source_includes = ['types.h', 'config.h']
       header_includes = ['stdint.h', 'stdbool.h']
-      header_variables = ['extern uint8_t my_var;']
+      variable_declarations = ['uint8_t my_var;']
       
       # Execute
       result = @generator.generate_implementation(
         definitions: defns,
-        header_variables: header_variables,
+        variable_declarations: variable_declarations,
         name: name,
         source_includes: source_includes,
         header_includes: header_includes,
@@ -85,14 +85,15 @@ describe GeneratorPartials do
         header_filename,
         header_includes,
         defns,
-        header_variables
+        variable_declarations
       )
       
       # Verify generate_source was called with correct parameters
       expect(@generator).to have_received(:generate_source).with(
         source_file_handle,
         source_includes,
-        defns
+        defns,
+        variable_declarations
       )
       
       # Verify file path utilities were called
@@ -166,7 +167,7 @@ describe GeneratorPartials do
     end
   end
 
-  context "#generate_header" do
+  context "#generate_header (private method)" do
     # Define common StringIO buffer
     let(:buf) { StringIO.new() }
 
@@ -180,7 +181,7 @@ describe GeneratorPartials do
     
       CONTENTS
 
-      @generator.generate_header(buf, 'foo_bar', [], [], [])
+      @generator.send(:generate_header, buf, 'foo_bar', [], [], [])
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -197,7 +198,7 @@ describe GeneratorPartials do
     
       CONTENTS
 
-      @generator.generate_header(buf, 'Apples-and-Bananas', ['foo.h', 'bar.h'], [], [])
+      @generator.send(:generate_header, buf, 'Apples-and-Bananas', ['foo.h', 'bar.h'], [], [])
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -215,10 +216,10 @@ describe GeneratorPartials do
       CONTENTS
 
       variables = [
-        'extern unsigned int slices_of_bread;',
-        'extern char[10] crumbs;'
+        'unsigned int slices_of_bread;',
+        'char[10] crumbs;'
       ]
-      @generator.generate_header(buf, 'pb-and-j', [], [], variables)
+      @generator.send(:generate_header, buf, 'pb-and-j', [], [], variables)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -253,22 +254,22 @@ describe GeneratorPartials do
       )
 
       variables = [
-        'extern signed long int apples;',
-        'extern double bananas;'
+        'signed long int apples;',
+        'double bananas;'
       ]
 
-      @generator.generate_header(buf, 'Apples-and-Bananas', ['Eeny.h', 'Meeny.h'], decls, variables)
+      @generator.send(:generate_header, buf, 'Apples-and-Bananas', ['Eeny.h', 'Meeny.h'], decls, variables)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
   end
 
-  context "#generate_source" do
+  context "#generate_source (private method)" do
     # Define common StringIO buffer
     let(:buf) { StringIO.new() }
 
     it "should generate a nearly empty source file" do
-      @generator.generate_source(buf, [], [])
+      @generator.send(:generate_source, buf, [], [], [])
       expect( buf.string.strip() ).to eq '// Ceeding generated file'
     end
 
@@ -281,7 +282,7 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      @generator.generate_source(buf, ['foo.h', 'bar.h'], [])
+      @generator.send(:generate_source, buf, ['foo.h', 'bar.h'], [], [])
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -302,7 +303,43 @@ describe GeneratorPartials do
         code_block: "void foobar(int x, int y) {\n  int z = x+y;\n}"
       )
 
-      @generator.generate_source(buf, [], defns)
+      @generator.send(:generate_source, buf, [], defns, [])
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should generate a source file with include directives, variable declarations, and functions" do
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+
+      #include "foobar.h"
+      #include "baz.h"
+
+      int abc = 123;
+      char[] str = "Hello, World!";
+
+      void foobar(int x, int y) {
+        int z = x+y;
+      }
+
+      CONTENTS
+
+      defns = []
+
+      defns << Partials.manufacture_function_definition(
+        signature: 'void foobar(int x, int y)',
+        code_block: "void foobar(int x, int y) {\n  int z = x+y;\n}"
+      )
+
+      @generator.send(
+        :generate_source,
+        buf,
+        ['foobar.h', 'baz.h'],
+        defns,
+        [
+          'int abc = 123;',
+          'char[] str = "Hello, World!";'
+        ]
+      )
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -341,7 +378,7 @@ describe GeneratorPartials do
         code_block: "int\nrazzleDazzle(void* ptr)\n{\n  global_var = ptr;\n  return 42;\n}"
       )
 
-      @generator.generate_source(buf, [], defns)
+      @generator.send(:generate_source, buf, [], defns, [])
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
