@@ -13,6 +13,40 @@ class CExtractorDeclarations
     @max_line_length = max_line_length
   end
 
+  # Attempts to extract a complete variable declaration from the scanner
+  #
+  # Scans forward from the current scanner position looking for a complete C variable
+  # declaration terminated by a semicolon. Handles complex declaration syntax including:
+  #   - Simple variables: `int x;`
+  #   - Pointers: `char* ptr;`, `int** buffer;`
+  #   - Arrays: `int arr[10];`, `char matrix[3][4];`
+  #   - Initializers: `int x = 5;`, `int arr[] = {1, 2, 3};`
+  #   - String literals: `char* str = "hello";`
+  #   - Qualifiers: `const int MAX;`, `static volatile int flag;`
+  #   - Function pointers: `void (*callback)(int);`
+  #   - Complex nested structures with balanced parentheses, brackets, and braces
+  #
+  # The extraction process:
+  #   1. Tracks nesting depth of (), [], and {} to handle complex declarations
+  #   2. Properly handles string literals (both " and ') including escape sequences
+  #   3. Skips comments (both // line comments and /* block comments */)
+  #   4. Stops at the first semicolon found at depth 0 (outside all nesting)
+  #   5. Validates the extracted text looks like a valid declaration
+  #   6. Normalizes whitespace in the final declaration string
+  #
+  # Parameters:
+  #   scanner: StringScanner positioned at potential start of variable declaration
+  #
+  # Returns: Array of [success, declaration]
+  #   - success: Boolean indicating if a valid declaration was found
+  #   - declaration: String containing the complete declaration (nil if not found)
+  #
+  # Side effects:
+  #   On success: Advances scanner position past the semicolon
+  #   On failure: Resets scanner position to starting position
+  #
+  # Safety:
+  #   Enforces max_line_length limit to prevent infinite loops on malformed input
   def try_extract_variable(scanner)
     start_pos = scanner.pos
 
@@ -123,7 +157,7 @@ class CExtractorDeclarations
           declaration = declaration.strip
           declaration.gsub!(/\r\n|\r|\n|\t/, ' ')
           declaration.gsub!(/\s+/, ' ')
-          
+
           # Verify this looks like a valid declaration
           # Must have at least a type and identifier
           # Can end with: word character, ], ), }, or " (for string initializers)

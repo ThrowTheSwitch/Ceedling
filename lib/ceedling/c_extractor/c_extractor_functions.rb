@@ -5,12 +5,10 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/exceptions'
-
 class CExtractorFunctions
 
   # Data class representing an extracted C function
-  CFunction = Struct.new(
+  CFunctionDefinition = Struct.new(
     :name,            # Function name only (e.g., "foo")
     :signature,       # Function signature (e.g., "int foo(void)")
     :body,            # Function body including containing braces
@@ -43,18 +41,18 @@ class CExtractorFunctions
   # Try to extract a complete function from the scanner
   # Returns [success, function_data] where:
   #  - success: boolean indicating if extraction was successful
-  #  - function_data: CFunction with as much info as available (may be partial on failure)
+  #  - function_data: CFunctionDefinition with as much info as available (may be partial on failure)
   def try_extract_function_definition(scanner)
     start_pos = scanner.pos
 
     # Look for function signature
     signature = extract_function_signature(scanner, :definition)
-    return [false, CFunction.new] unless signature
+    return [false, CFunctionDefinition.new] unless signature
     
     @code_text.skip_deadspace(scanner)
 
     unless scanner.peek(1) == '{'
-      return [false, CFunction.new(
+      return [false, CFunctionDefinition.new(
         name: extract_function_name(signature),
         signature: signature
       )]
@@ -63,7 +61,7 @@ class CExtractorFunctions
     # Extract function body
     success, braced_body = @code_text.extract_balanced_braces(scanner)
     unless success
-      return [false, CFunction.new(
+      return [false, CFunctionDefinition.new(
         name: extract_function_name(signature),
         signature: signature,
         code_block: scanner.string[start_pos...scanner.pos]
@@ -74,7 +72,7 @@ class CExtractorFunctions
     code_block = scanner.string[start_pos...scanner.pos]
     
     # Fill out function data class
-    func = CFunction.new(
+    func = CFunctionDefinition.new(
       name: extract_function_name(signature),
       signature: signature,
       body: braced_body,
@@ -88,53 +86,56 @@ class CExtractorFunctions
   private
 
   # Extract a function signature from the scanner
-  # 
-  # A valid function signature must:
-  #   1. Contain balanced parentheses (for parameter list)
-  #   2. Be followed by an opening brace '{' (function definition)
-  #   3. NOT be followed by a semicolon (which indicates a declaration, not a definition)
-  # 
-  # This method handles complex signatures including:
-  #   - Simple functions: "int foo(void)"
-  #   - Function pointers in return type: "int (*getFunction(void))(int, int)"
-  #   - Function pointers in parameters: "void process(int (*callback)(void))"
-  #   - Nested parentheses: "int foo((int)(x), (int)(y))"
-  # 
-  # The key insight is that we need to find the OUTERMOST balanced parentheses that represent
-  # the function's parameter list, not just any balanced parentheses.
-  # 
-  # Parameters:
-  #   scanner: StringScanner positioned at the start of a potential function signature
-  # 
-  # Returns:
-  #   - Tuple of [boolean, String] with boolean indicating success and String containing the signature
-  #   - The signature string is cleaned and normalized; nil if this is not a function signature (declaration, struct, etc.)
-  # 
-  # Side effects:
-  #   - On success (function definition): Advances scanner to the opening brace '{'
-  #   - On success (function declaration): Advances scanner beyond the semicolon ';'
-  #   - On failure (other): Resets scanner to starting position
-  # 
-  # Examples:
-  #   "int foo(void) {"                          -> returns "int foo(void)", scanner at '{'
-  #   "int foo(void);"                           -> returns nil, scanner after ';'
-  #   "struct foo {"                             -> returns nil, scanner at start
-  #   "int foo(int x,\n  int y) {"               -> returns "int foo(int x, int y)", scanner at '{'
-  #   "int (*getFunction(void))(int, int) {"     -> returns "int (*getFunction(void))(int, int)", scanner at '{'
-  #   "void process(int (*callback)(void)) {"    -> returns "void process(int (*callback)(void))", scanner at '{'
+  #
+  # This method attempts to extract either a function declaration or definition signature
+  # from the current scanner position. It distinguishes between functions and variables by
+  # analyzing the structure of the extracted code.
+  #
+  # @param scanner [StringScanner] The scanner positioned at potential function start
+  # @param type [Symbol] Either :declaration or :definition
+  #   - :declaration expects pattern: type name(...);
+  #   - :definition expects pattern: type name(...) { ... }
+  #
+  # @return The extracted and cleaned signature string, or nil if:
+  #   - No valid signature found
+  #   - Unbalanced parentheses detected
+  #   - Variable declaration detected (not a function)
+  #   - Type mismatch (e.g., semicolon found when expecting definition)
+  #
+  # Variable declarations are rejected based on these patterns:
+  #   - Simple variables: int x;
+  #   - Arrays: int arr[10];
+  #   - Function pointers: int (*ptr)(int);
+  #   - Initialized variables: int x = 42;
+  #
+  # The method handles:
+  #   - String literals (both single and double quoted)
+  #   - C-style comments (// and /* */)
+  #   - Nested parentheses in function parameters
+  #   - Whitespace and newlines
+  #
+  # On failure, the scanner position is reset to the starting position.
+  # On success, the scanner is positioned after the signature:
+  #  - After ';' for declarations
+  #  - Before '{' for definitions)
+  #
+  # Safety:
+  #   Enforces max_line_length limit to prevent infinite loops on malformed input
   def extract_function_signature(scanner, type)
     start_pos = scanner.pos
     paren_depth = 0
     in_string = false
     string_char = nil
     signature_candidates = []  # Track positions where paren_depth returns to 0
+    found_opening_paren = false  # Track if we've seen an opening paren
     
     until scanner.eos?
       char = scanner.peek(1)
 
       # Safety check
       if (scanner.pos - start_pos) > @max_line_length
-        raise CeedlingException.new("Function signature extraction exceeds maximum length of #{@max_line_length} characters")
+        scanner.pos = start_pos
+        return nil
       end
 
       # Handle string literals
@@ -167,6 +168,7 @@ class CExtractorFunctions
         end
       when '('
         paren_depth += 1
+        found_opening_paren = true
         scanner.getch
       when ')'
         paren_depth -= 1
@@ -204,14 +206,63 @@ class CExtractorFunctions
         # Found semicolon - this is a declaration, not a definition
 
         if type == :declaration
+          # Before accepting this as a function declaration, verify it has parentheses
+          # and doesn't look like a variable declaration
+          unless found_opening_paren
+            # No parentheses found - this is a variable declaration
+            scanner.pos = start_pos
+            return nil
+          end
+          
           scanner.getch
           signature = scanner.string[start_pos...scanner.pos]
-          return clean_signature(signature)
+
+          # Validate this looks like a function declaration, not a variable
+          # Function declarations should have: type name(...) ;
+          # NOT: type (*name)(...) ; (function pointer variable)
+          # NOT: type name[...] ; (array variable)
+          # NOT: type name = ... ; (variable with initializer)
+          cleaned = clean_declaration(signature)
+          
+          # Check if this looks like a function declaration
+          # Pattern: ends with identifier followed by (...) and semicolon
+          # NOT: contains (*identifier) pattern (function pointer variable)
+          if cleaned =~ /\(\s*\*\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)/
+            # This is a function pointer variable, not a function declaration
+            scanner.pos = start_pos
+            return nil
+          end
+          
+          # Additional check: ensure the pattern is identifier(...); not identifier[...]; or identifier;
+          # Extract the part before the semicolon and check if it ends with )
+          content_before_semicolon = cleaned.gsub(/\s*;$/, '')
+          unless content_before_semicolon.end_with?(')')
+            # Doesn't end with closing paren - likely a variable declaration
+            scanner.pos = start_pos
+            return nil
+          end
+          
+          return cleaned
         else # :definition
           scanner.pos = start_pos
           return nil
         end
-
+      when '['
+        # Found opening bracket - this could be an array declaration
+        # If we haven't found any opening parenthesis yet, this is likely a variable
+        unless found_opening_paren
+          scanner.pos = start_pos
+          return nil
+        end
+        scanner.getch
+      when '='
+        # Found assignment operator - this is a variable with initializer
+        # Only reject if we're at depth 0 (not inside function parameters)
+        if paren_depth == 0
+          scanner.pos = start_pos
+          return nil
+        end
+        scanner.getch
       else
         scanner.getch
       end      
@@ -219,13 +270,28 @@ class CExtractorFunctions
     
     # Reached end without finding complete signature
     scanner.pos = start_pos
-    nil
+    return nil
   end
 
   def clean_signature(signature)
-    _signature = signature.gsub(/\r\n|\r|\n|\t/, ' ')
+    # Remove C-style line comments (in multiline signatures)
+    _signature = signature.gsub(/\/\/.*$/, '')
+    # Remove newlines and tabs
+    _signature.gsub!(/\r\n|\r|\n|\t/, ' ')
+    # Remove C-style block comments
+    _signature.gsub!(/\/\*.*?\*\//m, '')
+    # Collapse consecutive whitespace
     _signature.gsub!(/\s+/, ' ')
-    return _signature.strip()
+    # Tidy up leadinga and trailing whitespace
+    _signature.strip!()
+    return _signature
+  end
+
+  def clean_declaration(declaration)
+    _declaration = clean_signature(declaration)
+    # Removes any whitespace before final semicolon
+    _declaration.gsub!(/\s*;$/, ';')
+    return _declaration
   end
 
   def extract_function_name(signature)

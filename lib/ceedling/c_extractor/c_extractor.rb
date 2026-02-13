@@ -19,21 +19,23 @@ class CExtractor
 
   # Data class representing all extracted content of C module
   CModule = Struct.new(
-    :vars,       # Array of strings containing module-level variable declarations
-    :funcs,      # Array of CFunction structs
+    :variables,             # Array of strings containing module-level variable declarations
+    :function_definitions,  # Array of CFunctionDefinition definition structs
+    :function_declarations, # Array of function delcaration strings
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to empty arrays for convenience
-    def initialize(vars: [], funcs: [])
+    def initialize(variables: [], function_definitions: [], function_declarations: [])
       super
     end
 
     # Concatenate two CModule instances
-    # Returns a new CModule with combined `vars` and `funcs` arrays
+    # Returns a new CModule with combined arrays
     def +(other)
       CModule.new(
-        vars: (self.vars + other.vars),
-        funcs: (self.funcs + other.funcs)
+        variables: (self.variables + other.variables),
+        function_definitions: (self.function_definitions + other.function_definitions),
+        function_declarations: (self.function_declarations + other.function_declarations)
       )
     end
   end
@@ -128,14 +130,31 @@ class CExtractor
     @functions = CExtractorFunctions.new(@code_text, @max_line_length)
   end
   
+  # Extracts all C code features from the configured IO source
+  #
+  # Performs a complete scan of the C source code, extracting features.
+  # The extraction process handles:
+  #   - Multi-pass feature detection
+  #   - Comments and preprocessor directives (skipped as deadspace)
+  #   - Chunked reading for memory efficiency with large files
+  #
+  # The extraction prioritizes functions over variables since function definitions
+  # are more structurally unique and easier to identify. This follows the pattern 
+  # of real language parsers. If no feature extraction succeeds, the extraction 
+  # process terminates.
+  #
+  # Returns: CModule struct containing all features extracted.
+  #
+  # Raises:
+  #   CeedlingException: If a feature exceeds max_buffer_length during extraction
+  #
+  # Side effects:
+  #   - Rewinds IO to start before beginning extraction
+  #   - Closes the IO object when extraction completes or an error occurs
   def extract_contents()
-    functions = []
+    function_definitions = []
+    function_declarations = []
     variables = []
-    
-    # Scan through the IO buffer in memory-limited chunks.
-    # Increase the total memory scanned in chunks (up to a sane limit) looking for a complete function.
-    # Once a complete function is found, move ahead in the IO buffer to a position just after the 
-    # discovered function and begin chunking and scanning again.
 
     # Ensure we're at the start of buffer
     @io.rewind
@@ -148,7 +167,20 @@ class CExtractor
         extractor: @functions.method(:try_extract_function_definition)
       )
       if func
-        functions << func
+        function_definitions << func
+        # Avoid the final `break` that ends all feature search
+        next
+      end
+
+      # First pass: Extract a function forward declaration (next most unique feature)
+      func = extract_next_feature(
+        io: @io,
+        max_length: @max_buffer_length,
+        extractor: @functions.method(:try_extract_function_declaration)
+      )
+      if func
+        function_declarations << func
+        # Avoid the final `break` that ends all feature search
         next
       end
 
@@ -160,6 +192,7 @@ class CExtractor
       )
       if var
         variables << var
+        # Avoid the final `break` that ends all feature search
         next
       end
       
@@ -167,7 +200,11 @@ class CExtractor
       break
     end
     
-    return CModule.new(funcs: functions, vars: variables)
+    return CModule.new(
+      function_definitions: function_definitions,
+      function_declarations: function_declarations,
+      variables: variables
+    )
   ensure
     @io.close
   end
@@ -185,18 +222,25 @@ class CExtractor
   # 
   # Returns: The extracted data on success, nil if EOF reached without finding a complete feature
   # 
-  # Side effects: Advances IO position to immediately after the extracted feature
+  # Side effects:
+  #  On success: Advance IO position to immediately after the extracted feature.
+  #  On failure: Rewind IO position to the start of the current buffer.
   def extract_next_feature(io:, max_length:, extractor:)
     buffer = ""
     chunk_start_pos = io.pos
     
-    # Incrementally attempt feature extraction.
-    # Return on successful finding a complete feature.
-    # Otherwise, the search follows this order:
-    #  1. Exit the method with failure (nil) if we reach end of IO or exceeds maximum buffer length.
-    #  2. Advance in attempting to extract a feature in the current buffer.
-    #  3. If we find nothing, expand the buffer with another chunk.
-    #  4. Go back to (1)
+    # Incrementally attempt feature extraction with repeated attempts and a growing buffer.
+    # 
+    # Return on successful finding of a complete feature.
+    # Exit the method with failure (nil) and rewind IO:
+    #  1. If we reach end of IO.
+    #  2. Exceed maximum buffer length.
+    #  3. Find no feature.
+    #
+    # Loop:
+    #  1. Advance in attempting to extract a feature in the current buffer.
+    #  2. If we find nothing, expand the buffer with another chunk.
+    #  3. Go back to (1).
     loop do
       # Read next chunk
       chunk = io.read(@chunk_size)
@@ -225,6 +269,11 @@ class CExtractor
       success, feature = extractor.call(scanner)
 
       if success
+        # Consume any trailing semicolons that may follow the extracted feature.
+        # This handles cases like "int a;;" or "void foo() {};" where legal but 
+        # unnecessary semicolons could break subsequent feature extraction.
+        @code_text.skip_semicolons(scanner)
+
         # Rewind IO buffer to position after this feature for next extraction attempt
         io.seek(chunk_start_pos + scanner.pos)
         return feature

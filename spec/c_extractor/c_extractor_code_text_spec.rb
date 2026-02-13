@@ -543,6 +543,376 @@ describe CExtractorCodeText do
   end
 
   ###
+  ### skip_semicolons()
+  ###
+  describe "#skip_semicolons" do
+    let(:skip_semicolons) do
+      ->(content) do
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
+        code_text.skip_semicolons( scanner )
+        return [scanner.pos, scanner.rest]
+      end
+    end
+
+    context "single semicolon handling" do
+      it "skips single semicolon" do
+        content = ";code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolon with trailing space" do
+        content = "; code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq(" code")
+      end
+
+      it "skips semicolon at end of input" do
+        content = ";"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "multiple consecutive semicolons" do
+      it "skips two consecutive semicolons" do
+        content = ";;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("code")
+      end
+
+      it "skips three consecutive semicolons" do
+        content = ";;;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(3)
+        expect(rest).to eq("code")
+      end
+
+      it "skips many consecutive semicolons" do
+        content = ";;;;;;;;;;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(10)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "semicolons with whitespace" do
+      it "skips semicolons separated by spaces" do
+        content = "; ; ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(5)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons separated by tabs" do
+        content = ";\t;\t;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(5)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons separated by newlines" do
+        content = ";\n;\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(5)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with mixed whitespace" do
+        content = "; \t\n ; \r\n ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(11)
+        expect(rest).to eq("code")
+      end
+
+      it "skips leading whitespace before first semicolon" do
+        content = "  \t;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(4)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "semicolons with comments" do
+      it "skips semicolons separated by line comments" do
+        content = "; // comment\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons separated by block comments" do
+        content = "; /* comment */ ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(17)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with multi-line block comments" do
+        content = ";\n/* comment\n   spanning\n   lines */\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(38)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with multiple comments" do
+        content = "; // first\n; /* second */ ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(27)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "semicolons with preprocessor directives" do
+      it "skips semicolons separated by #define" do
+        content = ";\n#define FOO\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(15)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons separated by #include" do
+        content = ";\n#include <stdio.h>\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(22)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with multi-line preprocessor directive" do
+        content = ";\n#define MACRO \\\n  value\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(27)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with multiple directives" do
+        content = ";\n#define A\n#define B\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(23)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "mixed deadspace between semicolons" do
+      it "skips semicolons with whitespace, comments, and directives" do
+        content = "; \n// comment\n  /* block */\n  #define FOO\n  ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(45)
+        expect(rest).to eq("code")
+      end
+
+      it "skips complex mix of deadspace and semicolons" do
+        content = ";\t// first\n;\n/* second */\n#define X\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(37)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "stopping at non-semicolon content" do
+      it "stops at identifier" do
+        content = ";code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq("code")
+      end
+
+      it "stops at number" do
+        content = ";;123"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("123")
+      end
+
+      it "stops at opening brace" do
+        content = "; ; {"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(3)
+        expect(rest).to eq(" {")
+      end
+
+      it "stops at closing brace" do
+        content = ";;}"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("}")
+      end
+
+      it "stops at comma" do
+        content = "; , next"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq(" , next")
+      end
+
+      it "stops at operator" do
+        content = ";;++"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("++")
+      end
+    end
+
+    context "no semicolons present" do
+      it "does not advance when no semicolons" do
+        content = "code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("code")
+      end
+
+      it "does not advance with only whitespace" do
+        content = "  \t\ncode"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("  \t\ncode")
+      end
+
+      it "does not advance with only comments" do
+        content = "// comment\ncode"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("// comment\ncode")
+      end
+
+      it "does not advance with only preprocessor" do
+        content = "#define FOO\ncode"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("#define FOO\ncode")
+      end
+    end
+
+    context "edge cases" do
+      it "handles empty string" do
+        content = ""
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("")
+      end
+
+      it "handles only semicolons" do
+        content = ";;;;;"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(5)
+        expect(rest).to eq("")
+      end
+
+      it "handles only semicolons and whitespace" do
+        content = "; ; ; "
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(6)
+        expect(rest).to eq("")
+      end
+
+      it "handles semicolons with unterminated comment" do
+        content = "; /* unterminated"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "handles semicolons ending with preprocessor directive" do
+        content = ";\n#define FOO"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(13)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "real-world C code patterns" do
+      it "skips null statements in for loop" do
+        content = ";;) {"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq(") {")
+      end
+
+      it "skips multiple null statements" do
+        content = ";;;\nreturn 0;"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(3)
+        expect(rest).to eq("\nreturn 0;")
+      end
+
+      it "handles semicolons from macro expansion pattern" do
+        content = "; // from MACRO_CALL()\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(24)
+        expect(rest).to eq("code")
+      end
+
+      it "skips null statements in switch case" do
+        content = ";case 2:"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq("case 2:")
+      end
+
+      it "skips multiple null statements between switch cases" do
+        content = ";;;\ncase 3:"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(3)
+        expect(rest).to eq("\ncase 3:")
+      end
+
+      it "skips null statements after break in switch" do
+        content = ";;default:"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("default:")
+      end
+    end
+  end
+
+  ###
   ### skip_deadspace()
   ###
   describe "#skip_deadspace" do

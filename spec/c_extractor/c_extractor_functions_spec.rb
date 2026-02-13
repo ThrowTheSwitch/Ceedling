@@ -30,7 +30,7 @@ describe CExtractorFunctions do
       end
     end
 
-    context "simple function signatures" do
+    context "simple signatures from function definitions" do
       it "extracts void function signature with void parameters" do
         content = "void foo(void){"
         signature, pos, rest = extract_signature.call(content, :definition)
@@ -113,7 +113,7 @@ describe CExtractorFunctions do
       end
     end
 
-    context "function declarations" do    
+    context "function declarations" do
       it "does not extract signature from declaration" do
         content = "void process(int* ptr);"
         signature, pos, rest = extract_signature.call(content, :definition)
@@ -148,6 +148,179 @@ describe CExtractorFunctions do
         expect(signature).to be_nil
         expect(pos).to eq(0)
         expect(rest).to eq("void process(int* ptr)\n;")
+      end
+
+      it "does extract declaration" do
+        content = "void process(int* ptr);"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to eq("void process(int* ptr);")
+        expect(pos).to eq(23)
+        expect(rest).to eq("")
+      end
+
+      it "does extract declaration with whitespace" do
+        content = "void process(int* ptr)     ;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to eq("void process(int* ptr);")
+        expect(pos).to eq(28)
+        expect(rest).to eq("")
+      end
+
+      it "does extract declaration with comment" do
+        content = "void process(int* ptr)/***/;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to eq("void process(int* ptr);")
+        expect(pos).to eq(28)
+        expect(rest).to eq("")
+      end
+
+      it "does extract declaration with newline" do
+        content = "void process(int* ptr)\n;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to eq("void process(int* ptr);")
+        expect(pos).to eq(24)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "rejecting variable declarations when extracting function declarations" do
+      it "rejects simple variable declaration" do
+        content = "int x;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("int x;")
+      end
+
+      it "rejects pointer variable declaration" do
+        content = "int* ptr;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("int* ptr;")
+      end
+
+      it "rejects array variable declaration" do
+        content = "int arr[10];"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("int arr[10];")
+      end
+
+      it "rejects function pointer variable declaration" do
+        content = "int (*func_ptr)(int, int);"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("int (*func_ptr)(int, int);")
+      end
+
+      it "rejects const variable declaration" do
+        content = "const int MAX_VALUE;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("const int MAX_VALUE;")
+      end
+
+      it "rejects static variable declaration" do
+        content = "static int counter;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("static int counter;")
+      end
+
+      it "rejects struct variable declaration" do
+        content = "struct point p;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("struct point p;")
+      end
+
+      it "rejects variable with initializer" do
+        content = "int value = 42;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("int value = 42;")
+      end
+
+      it "rejects array with initializer" do
+        content = "int arr[] = {1, 2, 3};"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("int arr[] = {1, 2, 3};")
+      end
+
+      it "rejects string variable declaration" do
+        content = 'char str[] = "hello";'
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq('char str[] = "hello";')
+      end
+
+      it "rejects extern variable declaration" do
+        content = "extern int global_var;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("extern int global_var;")
+      end
+
+      it "rejects volatile variable declaration" do
+        content = "volatile int flag;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("volatile int flag;")
+      end
+
+      it "rejects typedef'd type variable declaration" do
+        content = "size_t length;"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("size_t length;")
+      end
+
+      it "rejects multi-dimensional array declaration" do
+        content = "int matrix[3][4];"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("int matrix[3][4];")
+      end
+
+      it "rejects pointer to array declaration" do
+        content = "int (*ptr)[10];"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+        
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("int (*ptr)[10];")
       end
     end
 
@@ -1916,6 +2089,352 @@ describe CExtractorFunctions do
         success3, func3 = functions.try_extract_function_definition(scanner)
         expect(success3).to be true
         expect(func3.name).to eq("third")
+      end
+    end
+  end
+
+  describe "#clean_signature" do
+    let(:functions) do
+      CExtractorFunctions.new(
+        CExtractorCodeText.new(),
+        1000
+      )
+    end
+
+    it "removes carriage return and newline" do
+      signature = "void foo(int a,\r\nint b)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a, int b)")
+    end
+
+    it "removes standalone carriage return" do
+      signature = "void foo(int a,\rint b)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a, int b)")
+    end
+
+    it "removes standalone newline" do
+      signature = "void foo(int a,\nint b)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a, int b)")
+    end
+
+    it "removes tabs" do
+      signature = "void\tfoo(int\ta,\tint\tb)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a, int b)")
+    end
+
+    it "collapses multiple spaces into single space" do
+      signature = "void    foo(int     a,   int    b)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a, int b)")
+    end
+
+    it "removes C-style block comments" do
+      signature = "void /* comment */ foo(int a)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a)")
+    end
+
+    it "removes multi-line C-style block comments" do
+      signature = "void /* multi\nline\ncomment */ foo(int a)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a)")
+    end
+
+    it "removes multiple C-style block comments" do
+      signature = "void /* comment1 */ foo /* comment2 */ (int a)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo (int a)")
+    end
+
+    it "strips leading whitespace" do
+      signature = "   void foo(int a)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a)")
+    end
+
+    it "strips trailing whitespace" do
+      signature = "void foo(int a)   "
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a)")
+    end
+
+    it "strips leading and trailing whitespace" do
+      signature = "   void foo(int a)   "
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a)")
+    end
+
+    it "handles empty signature" do
+      signature = ""
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("")
+    end
+
+    it "handles signature with only whitespace" do
+      signature = "   \t\n\r\n   "
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("")
+    end
+
+    it "handles signature with only comments" do
+      signature = "/* comment */"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("")
+    end
+
+    it "preserves single spaces between tokens" do
+      signature = "void foo(int a, int b)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a, int b)")
+    end
+
+    it "handles complex signature with all whitespace types" do
+      signature = "void\t\r\nfoo(\nint\ta,\r\nint   b\t)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo( int a, int b )")
+    end
+
+    it "handles signature with nested comments" do
+      signature = "void /* outer /* inner */ outer */ foo(int a)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void outer */ foo(int a)")
+    end
+
+    it "handles signature with comment containing special characters" do
+      signature = "void /* comment with {braces} and (parens) */ foo(int a)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int a)")
+    end
+
+    it "handles signature with pointer types" do
+      signature = "void  *  foo(int  *  a,  char  **  b)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void * foo(int * a, char ** b)")
+    end
+
+    it "handles signature with const qualifiers" do
+      signature = "const  void  *  foo(const  int  *  a)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("const void * foo(const int * a)")
+    end
+
+    it "handles signature with function pointer parameters" do
+      signature = "void  foo(void  (*callback)(int),  int  *  data)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(void (*callback)(int), int * data)")
+    end
+
+    it "handles signature with array parameters" do
+      signature = "void  foo(int  arr[10],  char  matrix[5][5])"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(int arr[10], char matrix[5][5])")
+    end
+
+    it "handles signature with variadic parameters" do
+      signature = "int  printf(const  char  *  fmt,  ...)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("int printf(const char * fmt, ...)")
+    end
+
+    it "handles signature with struct parameters" do
+      signature = "void  foo(struct  point  p,  struct  rect  *  r)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(struct point p, struct rect * r)")
+    end
+
+    it "handles signature with enum parameters" do
+      signature = "void  foo(enum  color  c,  enum  size  *  s)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(enum color c, enum size * s)")
+    end
+
+    it "handles signature with union parameters" do
+      signature = "void  foo(union  data  d,  union  value  *  v)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(union data d, union value * v)")
+    end
+
+    it "handles signature with typedef'd types" do
+      signature = "void  foo(uint32_t  value,  size_t  *  size)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void foo(uint32_t value, size_t * size)")
+    end
+
+    it "handles signature with storage class specifiers" do
+      signature = "static  inline  void  foo(register  int  x)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("static inline void foo(register int x)")
+    end
+
+    it "handles signature with attributes" do
+      signature = "void  __attribute__((interrupt))  ISR(void)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void __attribute__((interrupt)) ISR(void)")
+    end
+
+    it "handles signature with multiple attributes" do
+      signature = "__attribute__((noreturn))  void  __attribute__((cold))  fatal(void)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("__attribute__((noreturn)) void __attribute__((cold)) fatal(void)")
+    end
+
+    it "handles signature with restrict qualifier" do
+      signature = "void  memcpy(void  *  restrict  dst,  const  void  *  restrict  src)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void memcpy(void * restrict dst, const void * restrict src)")
+    end
+
+    it "handles signature with volatile qualifier" do
+      signature = "int  read(volatile  int  *  reg)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("int read(volatile int * reg)")
+    end
+
+    it "handles signature with _Atomic qualifier" do
+      signature = "void  atomic_store(_Atomic  int  *  ptr,  int  value)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void atomic_store(_Atomic int * ptr, int value)")
+    end
+
+    it "handles signature with complex return type" do
+      signature = "const  struct  point  *  get_point(void)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("const struct point * get_point(void)")
+    end
+
+    it "handles signature with function pointer return type" do
+      signature = "void  (*get_callback(void))(int)"
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("void (*get_callback(void))(int)")
+    end
+
+    it "handles real-world complex signature" do
+      signature = <<~SIG.chomp
+        static inline const struct device *
+        /* Get device pointer */
+        get_device(
+          const char * name, // Device name
+          size_t len
+        )
+      SIG
+      result = functions.send(:clean_signature, signature)
+      expect(result).to eq("static inline const struct device * get_device( const char * name, size_t len )")
+    end
+  end
+
+  describe "#clean_declaration" do
+    # NOTE: These test cases do not duplicate `clean_signature()` test coverage.
+    #       `clean_declaration()` calls `clean_signature()` internally.
+    let(:functions) do
+      CExtractorFunctions.new(
+        CExtractorCodeText.new(),
+        1000
+      )
+    end
+
+    context "whitespace handling before final semicolon" do
+      it "removes single space before semicolon" do
+        declaration = "void foo(void) ;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo(void);")
+      end
+
+      it "removes multiple spaces before semicolon" do
+        declaration = "void foo(void)     ;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo(void);")
+      end
+
+      it "removes tab before semicolon" do
+        declaration = "void foo(void)\t;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo(void);")
+      end
+
+      it "removes newline before semicolon" do
+        declaration = "void foo(void)\n;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo(void);")
+      end
+
+      it "removes carriage return and newline before semicolon" do
+        declaration = "void foo(void)\r\n;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo(void);")
+      end
+
+      it "removes mixed whitespace before semicolon" do
+        declaration = "void foo(void) \t\n\r\n  ;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo(void);")
+      end
+
+      it "preserves declaration with no space before semicolon" do
+        declaration = "void foo(void);"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo(void);")
+      end
+
+      it "handles declaration with parameters and whitespace before semicolon" do
+        declaration = "int add(int a, int b)   ;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("int add(int a, int b);")
+      end
+    end
+
+    context "combined cleaning operations" do
+      it "cleans internal whitespace and removes space before semicolon" do
+        declaration = "void   foo(int    a,   int   b)  ;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo(int a, int b);")
+      end
+
+      it "removes comments and whitespace before semicolon" do
+        declaration = "void foo(void) /* comment */  ;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo(void);")
+      end
+
+      it "handles multiline declaration with whitespace before semicolon" do
+        declaration = "void foo(\n  int a,\n  int b\n)  ;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo( int a, int b );")
+      end
+
+      it "handles declaration with tabs, newlines, and space before semicolon" do
+        declaration = "void\tfoo(\nint\ta\n)\t\n ;"
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("void foo( int a );")
+      end
+
+      it "handles complex real-world declaration" do
+        declaration = <<~DECL.chomp
+          extern const struct device *
+          /* Get device */
+          get_device(
+            const char * name,
+            size_t len
+          )   ;
+        DECL
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("extern const struct device * get_device( const char * name, size_t len );")
+      end
+    end
+
+    context "edge cases" do
+      it "handles empty declaration" do
+        declaration = ""
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq("")
+      end
+
+      it "preserves semicolons within string literals in parameters" do
+        declaration = 'void log(const char* msg = "error ;")  ;'
+        result = functions.send(:clean_declaration, declaration)
+        expect(result).to eq('void log(const char* msg = "error ;");')
       end
     end
   end
