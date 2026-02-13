@@ -98,7 +98,7 @@ describe CExtractor do
       expect( contents.funcs[2].line_count ).to eq 4
     end
 
-    it "should extract functions and module variables while ignoring preprocessor directives" do
+    it "should extract functions and module variables while ignoring deadspace text" do
       file_contents = <<~CONTENTS
 
       #include <stdint.h>
@@ -124,7 +124,12 @@ describe CExtractor do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.vars.length ).to eq 0
+      expect( contents.vars.length ).to eq 4
+
+      expect( contents.vars[0] ).to eq 'int global_var;'
+      expect( contents.vars[1] ).to eq 'static const char* ptr = "hello";'
+      expect( contents.vars[2] ).to eq 'struct foo { int x; } instance;'
+      expect( contents.vars[3] ).to eq 'int array[] = {1, 2, 3};'
 
       expect( contents.funcs.length ).to eq 2
 
@@ -310,8 +315,8 @@ describe CExtractor do
       const char* global_message = "Hello, World!";
       
       // Forward declarations
-      void helper_function(int value);
-      int calculate_result(int a, int b);
+      // void helper_function(int value);
+      // int calculate_result(int a, int b);
       
       /* 
        * This is a complex function that demonstrates
@@ -398,7 +403,10 @@ describe CExtractor do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.vars.length ).to eq 0
+      expect( contents.vars.length ).to eq 2
+      
+      expect( contents.vars[0] ).to eq 'static int global_counter = 0;'
+      expect( contents.vars[1] ).to eq 'const char* global_message = "Hello, World!";'
 
       expect( contents.funcs.length ).to eq 2
 
@@ -456,7 +464,7 @@ describe CExtractor do
       expect( contents.funcs[2].line_count ).to eq 4
     end
 
-    it "should fail to extract a function longer than max length" do
+    it "should fail to extract a function longer than max buffer length" do
       file_contents = <<~CONTENTS
       void a_function(void) {
         int a = 1 + 1;
@@ -465,8 +473,8 @@ describe CExtractor do
 
       extractinator = CExtractor.from_string(
         content: file_contents,
-        chunk_size: 200,
-        max_function_length: 20
+        chunk_size: 10,
+        max_buffer_length: 20
       )
       # TODO: Test for function name extraction after implementing generic handling of feature summaries
       expect { extractinator.extract_contents() }.to raise_error(CeedlingException, /Feature extraction exceeded maximum length/)
