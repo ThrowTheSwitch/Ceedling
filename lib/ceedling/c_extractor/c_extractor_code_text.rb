@@ -100,6 +100,51 @@ class CExtractorCodeText
     return (scanner.pos - start_pos)
   end
 
+  # Skip consecutive semicolons and any intervening deadspace
+  # 
+  # This method handles cases where multiple semicolons appear in sequence,
+  # potentially separated by whitespace, comments, or preprocessor directives.
+  # This is valid C syntax (null statements) and can occur due to:
+  #   - Macro expansions
+  #   - Code generation
+  #   - Coding mistakes that don't cause compilation errors
+  # 
+  # The method repeatedly:
+  #   1. Skips any deadspace (whitespace, comments, preprocessor directives)
+  #   2. Checks for a semicolon
+  #   3. If found, consumes it and continues
+  #   4. If not found, restores position and exits
+  # 
+  # Parameters:
+  #   scanner: StringScanner positioned at potential semicolons/deadspace
+  # 
+  # Returns: Nothing (void method)
+  # 
+  # Side effects: Advances scanner position past all consecutive semicolons and deadspace
+  # 
+  # Examples:
+  #   ";;;"                    -> skips all three semicolons
+  #   "; ; ;"                  -> skips semicolons and spaces
+  #   "; /* comment */ ;"      -> skips semicolons and comment
+  #   "; code"                 -> skips first semicolon, stops at "code"
+  #   "code"                   -> skips nothing
+  def skip_semicolons(scanner)
+    while !scanner.eos?
+      start_pos = scanner.pos
+      skip_deadspace(scanner)
+      break if scanner.eos?
+      
+      # If we find a semicolon, consume it and continue
+      if scanner.scan(/;/)
+        next
+      else
+        # Not a semicolon, restore position and break
+        scanner.pos = start_pos
+        break
+      end
+    end
+  end
+
   # Skip "deadspace" - non-code elements that should be ignored during extraction
   # Deadspace includes:
   #   - Whitespace (spaces, tabs, newlines, carriage returns)

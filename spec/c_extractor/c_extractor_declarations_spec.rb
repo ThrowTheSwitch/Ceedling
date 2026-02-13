@@ -495,6 +495,5 @@ describe CExtractorDeclarations do
         expect(rest).to eq("")
       end
     end
-
   end
 end
