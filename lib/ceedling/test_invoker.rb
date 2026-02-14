@@ -326,7 +326,7 @@ class TestInvoker
             interface:      interface
           )
 
-          vars = @partializer.reconstruct_variables(variables: module_contents.variables)
+          source_variables, header_variables = @partializer.reconstruct_variables(variables: module_contents.variables)
 
           @partializer.log_extracted_variable_decls(
             test:           testable[:name],
@@ -338,7 +338,8 @@ class TestInvoker
             test:             testable[:name],
             name:             config[:module],
             function_defns:   impl,
-            variable_decls:   vars,
+            header_variables: header_variables,
+            source_variables: source_variables,
             header_includes:  @partializer.remap_implementation_header_includes(
                                 name: config.module,
                                 includes: (config.source.includes + config.header.includes),

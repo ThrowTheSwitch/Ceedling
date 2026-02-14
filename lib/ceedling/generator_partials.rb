@@ -12,7 +12,15 @@ class GeneratorPartials
 
   constructor :file_wrapper, :file_path_utils
 
-  def generate_implementation(definitions:, variable_declarations:, name:, source_includes:, header_includes:, output_path:)
+  def generate_implementation(
+      name:, 
+      definitions:,
+      source_includes:,
+      header_includes:,
+      header_variables:,
+      source_variables:,
+      output_path:
+    )
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
 
@@ -20,11 +28,11 @@ class GeneratorPartials
     source_filepath = File.join(output_path, source)
 
     @file_wrapper.open(header_filepath, 'w') do |file|
-      generate_header(file, header, header_includes, definitions, variable_declarations)
+      generate_header(file, header, header_includes, definitions, header_variables)
     end
 
     @file_wrapper.open(source_filepath, 'w') do |file|
-      generate_source(file, source_includes, definitions, variable_declarations)
+      generate_source(file, source_includes, definitions, source_variables)
     end
 
     return source_filepath
@@ -57,7 +65,7 @@ class GeneratorPartials
     io << "\n" if !includes.empty?
 
     variable_declarations.each do |line|
-      io << "extern #{line}\n"
+      io << "#{line}\n"
     end
 
     io << "\n" if !variable_declarations.empty?

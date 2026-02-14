@@ -58,9 +58,10 @@ class Generator
       test:, 
       name:, 
       function_defns:,
-      variable_decls:, 
       source_includes:, 
       header_includes:, 
+      header_variables:,
+      source_variables:,
       input_filepath:,
       output_path:
     )
@@ -77,7 +78,8 @@ class Generator
       :name => name,
       :source_includes => source_includes,
       :header_includes => header_includes,
-      :variable_declarations => variable_decls,
+      :header_variables => header_variables,
+      :source_variables => source_variables,
       :output_path => output_path
     }
 
