@@ -67,15 +67,17 @@ describe GeneratorPartials do
       ]
       source_includes = ['types.h', 'config.h']
       header_includes = ['stdint.h', 'stdbool.h']
-      variable_declarations = ['uint8_t my_var;']
+      source_variables = ['uint8_t my_var;']
+      header_variables = ['extern uint8_t my_var;']
       
       # Execute
       result = @generator.generate_implementation(
-        definitions: defns,
-        variable_declarations: variable_declarations,
         name: name,
+        definitions: defns,
         source_includes: source_includes,
         header_includes: header_includes,
+        source_variables: source_variables,
+        header_variables: header_variables,
         output_path: output_path
       )
       
@@ -85,7 +87,7 @@ describe GeneratorPartials do
         header_filename,
         header_includes,
         defns,
-        variable_declarations
+        header_variables
       )
       
       # Verify generate_source was called with correct parameters
@@ -93,7 +95,7 @@ describe GeneratorPartials do
         source_file_handle,
         source_includes,
         defns,
-        variable_declarations
+        source_variables
       )
       
       # Verify file path utilities were called
@@ -209,14 +211,14 @@ describe GeneratorPartials do
       #define __PB_AND_J_H__
 
       extern unsigned int slices_of_bread;
-      extern char[10] crumbs;
+      char[10] crumbs;
 
       #endif // __PB_AND_J_H__
     
       CONTENTS
 
       variables = [
-        'unsigned int slices_of_bread;',
+        'extern unsigned int slices_of_bread;',
         'char[10] crumbs;'
       ]
       @generator.send(:generate_header, buf, 'pb-and-j', [], [], variables)
@@ -232,7 +234,7 @@ describe GeneratorPartials do
       #include "Eeny.h"
       #include "Meeny.h"
 
-      extern signed long int apples;
+      signed long int apples;
       extern double bananas;
 
       void foobarbaz(int x, int y);
@@ -255,7 +257,7 @@ describe GeneratorPartials do
 
       variables = [
         'signed long int apples;',
-        'double bananas;'
+        'extern double bananas;'
       ]
 
       @generator.send(:generate_header, buf, 'Apples-and-Bananas', ['Eeny.h', 'Meeny.h'], decls, variables)

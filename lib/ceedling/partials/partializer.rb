@@ -128,9 +128,9 @@ class Partializer
 
   def reconstruct_variables(variables:)
     # Remove all keywords from type contained in PRIVATE_KEYWORDS and TYPE_QUALIFIER_KEYWORDS
-    return variables.map do |declaration|
+    variables = variables.filter_map do |declaration|
       # Skip empty string
-      next declaration if declaration.empty?
+      next nil if declaration.strip.empty?
 
       # Split on assignment operator to preserve keywords in initialization values
       parts = declaration.split('=', 2)
@@ -148,7 +148,13 @@ class Partializer
       end
 
       cleaned_declaration
-    end     
+    end
+
+    extern_variables = variables.map do |declaration|
+      "extern #{declaration}"
+    end
+
+    return variables, extern_variables
   end
 
   def log_extracted_functions(test:, module_name:, impl:, interface:)

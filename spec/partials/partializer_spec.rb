@@ -973,105 +973,118 @@ describe Partializer do
 
   context "#reconstruct_variables" do
     it "returns empty array when no variables are provided" do
-      result = @partializer.reconstruct_variables(variables: [])
+      source, header = @partializer.reconstruct_variables(variables: [])
       
-      expect(result).to eq([])
+      expect(source).to eq([])
+      expect(header).to eq([])
     end
 
     it "returns variable unchanged when no keywords present" do
       variables = ['int counter;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int counter;'])
+      expect(source).to eq(['int counter;'])
+      expect(header).to eq(['extern int counter;'])
     end
 
     it "removes static keyword from variable declaration" do
       variables = ['static int counter;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int counter;'])
+      expect(source).to eq(['int counter;'])
+      expect(header).to eq(['extern int counter;'])
     end
 
     it "removes const keyword from variable declaration" do
       variables = ['const int MAX_VALUE;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int MAX_VALUE;'])
+      expect(source).to eq(['int MAX_VALUE;'])
+      expect(header).to eq(['extern int MAX_VALUE;'])
     end
 
     it "removes volatile keyword from variable declaration" do
       variables = ['volatile int status;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int status;'])
+      expect(source).to eq(['int status;'])
+      expect(header).to eq(['extern int status;'])
     end
 
     it "removes multiple keywords from single declaration" do
       variables = ['static const int MAX_VALUE;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int MAX_VALUE;'])
+      expect(source).to eq(['int MAX_VALUE;'])
+      expect(header).to eq(['extern int MAX_VALUE;'])
     end
 
     it "removes all type qualifiers from declaration" do
       variables = ['static const volatile int flags;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int flags;'])
+      expect(source).to eq(['int flags;'])
+      expect(header).to eq(['extern int flags;'])
     end
 
     it "preserves variable names containing keyword substrings" do
       variables = ['int my_static_var;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int my_static_var;'])
+      expect(source).to eq(['int my_static_var;'])
+      expect(header).to eq(['extern int my_static_var;'])
     end
 
     it "handles pointer declarations" do
       variables = ['static int* ptr;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int* ptr;'])
+      expect(source).to eq(['int* ptr;'])
+      expect(header).to eq(['extern int* ptr;'])
     end
 
     it "handles array declarations" do
       variables = ['static int array[10];']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int array[10];'])
+      expect(source).to eq(['int array[10];'])
+      expect(header).to eq(['extern int array[10];'])
     end
 
     it "handles complex pointer declarations" do
       variables = ['const char* const ptr;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['char* ptr;'])
+      expect(source).to eq(['char* ptr;'])
+      expect(header).to eq(['extern char* ptr;'])
     end
 
     it "normalizes multiple spaces to single space" do
       variables = ['static  const   int    value;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int value;'])
+      expect(source).to eq(['int value;'])
+      expect(header).to eq(['extern int value;'])
     end
 
     it "removes leading and trailing whitespace" do
       variables = ['  static int counter;  ']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int counter;'])
+      expect(source).to eq(['int counter;'])
+      expect(header).to eq(['extern int counter;'])
     end
 
     it "processes multiple variable declarations" do
@@ -1081,122 +1094,138 @@ describe Partializer do
         'volatile bool flag;'
       ]
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq([
+      expect(source).to eq([
         'int counter;',
         'float pi;',
         'bool flag;'
+      ])
+      expect(header).to eq([
+        'extern int counter;',
+        'extern float pi;',
+        'extern bool flag;'
       ])
     end
 
     it "handles struct declarations with keywords" do
       variables = ['static struct Point position;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['struct Point position;'])
+      expect(source).to eq(['struct Point position;'])
+      expect(header).to eq(['extern struct Point position;'])
     end
 
     it "handles typedef declarations with keywords" do
       variables = ['static MyType_t instance;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['MyType_t instance;'])
+      expect(source).to eq(['MyType_t instance;'])
+      expect(header).to eq(['extern MyType_t instance;'])
     end
 
     it "handles unsigned types with keywords" do
       variables = ['static unsigned int count;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['unsigned int count;'])
+      expect(source).to eq(['unsigned int count;'])
+      expect(header).to eq(['extern unsigned int count;'])
     end
 
     it "handles long types with keywords" do
       variables = ['static long long int big_number;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['long long int big_number;'])
+      expect(source).to eq(['long long int big_number;'])
+      expect(header).to eq(['extern long long int big_number;'])
     end
 
     it "handles function pointer declarations" do
       variables = ['static void (*callback)(int);']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['void (*callback)(int);'])
+      expect(source).to eq(['void (*callback)(int);'])
+      expect(header).to eq(['extern void (*callback)(int);'])
     end
 
     it "preserves initialization values" do
       variables = ['static int counter = 0;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int counter = 0;'])
+      expect(source).to eq(['int counter = 0;'])
+      expect(header).to eq(['extern int counter = 0;'])
     end
 
     it "handles complex initialization with keywords" do
       variables = ['static const int values[] = {1, 2, 3};']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int values[] = {1, 2, 3};'])
+      expect(source).to eq(['int values[] = {1, 2, 3};'])
+      expect(header).to eq(['extern int values[] = {1, 2, 3};'])
     end
 
     it "handles keywords in middle of declaration" do
       variables = ['int static counter;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int counter;'])
+      expect(source).to eq(['int counter;'])
+      expect(header).to eq(['extern int counter;'])
     end
 
     it "handles multiple const keywords" do
       variables = ['const int* const ptr;']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq(['int* ptr;'])
+      expect(source).to eq(['int* ptr;'])
+      expect(header).to eq(['extern int* ptr;'])
     end
 
     it "does not remove keywords from string literals" do
       variables = ['char* str = "static const";']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      # Note: This test documents current behavior - the method doesn't 
-      # handle string literals specially, but since we're removing whole
-      # words with word boundaries, it shouldn't match inside strings
-      expect(result).to eq(['char* str = "static const";'])
+      expect(source).to eq(['char* str = "static const";'])
+      expect(header).to eq(['extern char* str = "static const";'])
     end
 
     it "handles empty string in variables array" do
       variables = ['']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq([''])
+      expect(source).to eq([])
+      expect(header).to eq([])
     end
 
     it "handles whitespace-only string in variables array" do
       variables = ['   ']
       
-      result = @partializer.reconstruct_variables(variables: variables)
+      source, header = @partializer.reconstruct_variables(variables: variables)
       
-      expect(result).to eq([''])
+      expect(source).to eq([])
+      expect(header).to eq([])
     end
 
     it "preserves original array and returns new array" do
       original_variables = ['static int counter;']
       
-      result = @partializer.reconstruct_variables(variables: original_variables)
+      source, header = @partializer.reconstruct_variables(variables: original_variables)
       
       expect(original_variables).to eq(['static int counter;'])
-      expect(result).to eq(['int counter;'])
-      expect(result).not_to equal(original_variables)
+      expect(source).to eq(['int counter;'])
+      expect(source).not_to equal(original_variables)
+      expect(header).to eq(['extern int counter;'])
+      expect(header).not_to equal(original_variables)
     end
   end
 
