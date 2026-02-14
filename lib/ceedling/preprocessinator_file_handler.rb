@@ -239,11 +239,11 @@ class PreprocessinatorFileHandler
     # Write file, doing some prettyifying along the way
     # ----------------------------------------------------    
     _contents = _contents.join("\n")
-    _contents.gsub!( /^\s*;/, '' )           # Drop blank lines with semicolons left over from macro expansion + trailing semicolon
-    _contents.gsub!( /\)\s+\{/, ")\n{" )     # Collapse any unnecessary white space between closing argument paren and opening function bracket
-    _contents.gsub!( /\{(\n){2,}/, "{\n" )   # Collapse any unnecessary white space between opening function bracket and code
-    _contents.gsub!( /(\n){2,}\}/, "\n}" )   # Collapse any unnecessary white space between code and closing function bracket
-    _contents.gsub!( /(\h*\n){3,}/, "\n\n" ) # Collapse repeated blank lines
+    _contents.gsub!( /^\s*;/, '' )            # Drop blank lines with semicolons left over from macro expansion + trailing semicolon
+    _contents.gsub!( /\)(\n){2,}\{/, ")\n{" ) # Collapse any unnecessary newlines between closing paren and opening function bracket
+    _contents.gsub!( /\{(\n){2,}/, "{\n" )    # Collapse any unnecessary newlines between opening function bracket and code
+    _contents.gsub!( /(\n){2,}\}/, "\n}" )    # Collapse any unnecessary newlines between code and closing function bracket
+    _contents.gsub!( /(\h*\n){3,}/, "\n\n" )  # Collapse repeated blank lines
 
     # Write contents of final preprocessed file
     @file_wrapper.write( preprocessed_filepath, _contents )
