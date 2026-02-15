@@ -65,6 +65,9 @@ class Setupinator
     # Merge any needed runtime settings into user configuration
     @configurator.merge_ceedling_runtime_config( config_hash, CEEDLING_RUNTIME_CONFIG.deep_clone )
 
+    # Set configuration settings derived from enabling partials
+    @configurator.set_partials_derived_config( config_hash )
+
     ##
     ## 2. Handle basic configuration
     ##
