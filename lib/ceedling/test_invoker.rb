@@ -329,9 +329,16 @@ class TestInvoker
           source_variables, header_variables = @partializer.reconstruct_variables(variables: module_contents.variables)
 
           @partializer.log_extracted_variable_decls(
+            label:          'Header',
             test:           testable[:name],
             module_name:    config.module,
-            decls:          vars
+            decls:          header_variables
+          )
+          @partializer.log_extracted_variable_decls(
+            label:          'Source',
+            test:           testable[:name],
+            module_name:    config.module,
+            decls:          source_variables
           )
 
           arg_hash = {
