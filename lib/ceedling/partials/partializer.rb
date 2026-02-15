@@ -175,10 +175,10 @@ class Partializer
     )
   end
 
-  def log_extracted_variable_decls(test:, module_name:, decls:)
+  def log_extracted_variable_decls(test:, module_name:, label:, decls:)
     @loginator.log_list(
       decls,
-      "Variable declarations for Partial #{test}::#{module_name}",
+      "#{label} variable declarations for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
   end
