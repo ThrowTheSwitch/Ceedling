@@ -17,6 +17,7 @@ describe UserInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("header.h")
       expect("#{include_obj}").to eq('#include "header.h"')
+      expect(include_obj).to eq('header.h')
     end
 
     it "creates a UserInclude with a path but does not provide path in string expansion" do
@@ -25,6 +26,7 @@ describe UserInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("path/to/header.h")
       expect("#{include_obj}").to eq('#include "header.h"')
+      expect(include_obj).to eq('header.h')
     end
 
     it "creates a UserInclude with a path and used path in string expansion" do
@@ -33,6 +35,7 @@ describe UserInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("path/to/header.h")
       expect("#{include_obj}").to eq('#include "path/to/header.h"')
+      expect(include_obj).to eq('path/to/header.h')
     end
   end
 
@@ -43,6 +46,7 @@ describe UserInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("header.h")
       expect("#{include_obj}").to eq('#include "header.h"')
+      expect(include_obj).to eq('header.h')
     end
 
     it "creates a UserInclude removing quotes and whitespace" do
@@ -51,6 +55,7 @@ describe UserInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("header.h")
       expect("#{include_obj}").to eq('#include "header.h"')
+      expect(include_obj).to eq('header.h')
     end
 
     it "creates a UserInclude from a system include" do
@@ -59,6 +64,7 @@ describe UserInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("header.h")
       expect("#{include_obj}").to eq('#include "header.h"')
+      expect(include_obj).to eq('header.h')
     end
   end
 
@@ -71,12 +77,14 @@ describe UserInclude do
       include_obj = UserInclude.new("my header.h")
       
       expect("#{include_obj}").to eq('#include "my header.h"')
+      expect(include_obj).to eq('my header.h')
     end
 
     it "handles include with special characters" do
       include_obj = UserInclude.new("header-v1.2.h")
       
       expect("#{include_obj}").to eq('#include "header-v1.2.h"')
+      expect(include_obj).to eq('header-v1.2.h')
     end
   end
 end
@@ -89,6 +97,7 @@ describe SystemInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("header.h")
       expect("#{include_obj}").to eq('#include <header.h>')
+      expect(include_obj).to eq('header.h')
     end
 
     it "creates a SystemInclude with a path but does not provide path in string expansion" do
@@ -97,6 +106,7 @@ describe SystemInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("path/to/header.h")
       expect("#{include_obj}").to eq('#include <header.h>')
+      expect(include_obj).to eq('header.h')
     end
 
     it "creates a SystemInclude with a path and used path in string expansion" do
@@ -105,6 +115,7 @@ describe SystemInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("path/to/header.h")
       expect("#{include_obj}").to eq('#include <path/to/header.h>')
+      expect(include_obj).to eq('path/to/header.h')
     end
   end
 
@@ -115,6 +126,7 @@ describe SystemInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("header.h")
       expect("#{include_obj}").to eq('#include <header.h>')
+      expect(include_obj).to eq('header.h')
     end
 
     it "creates a SystemInclude removing quotes and whitespace" do
@@ -123,6 +135,7 @@ describe SystemInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("header.h")
       expect("#{include_obj}").to eq('#include <header.h>')
+      expect(include_obj).to eq('header.h')
     end
 
     it "creates a SystemInclude from a user include" do
@@ -131,6 +144,7 @@ describe SystemInclude do
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("header.h")
       expect("#{include_obj}").to eq('#include <header.h>')
+      expect(include_obj).to eq('header.h')
     end
   end
 
@@ -143,12 +157,14 @@ describe SystemInclude do
       include_obj = SystemInclude.new("my header.h")
       
       expect("#{include_obj}").to eq('#include <my header.h>')
+      expect(include_obj).to eq('my header.h')
     end
 
     it "handles include with special characters" do
       include_obj = SystemInclude.new("<header-v1.2.h>")
       
       expect("#{include_obj}").to eq("#include <header-v1.2.h>")
+      expect(include_obj).to eq('header-v1.2.h')
     end
   end
 end
