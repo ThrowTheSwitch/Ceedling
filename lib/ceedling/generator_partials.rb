@@ -79,12 +79,12 @@ class GeneratorPartials
   end
 
   def generate_source(io, includes, definitions, variable_declarations)
-    io << "// Ceeding generated file\n\n"
+    io << "// Ceeding generated file\n"
     includes.each do |include|
       io << "#include \"#{include}\"\n"  
     end
 
-    io << "\n" if !includes.empty?
+    io << "\n"
 
     variable_declarations.each do |decl|
       io << decl + "\n"
