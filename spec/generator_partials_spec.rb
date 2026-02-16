@@ -278,7 +278,6 @@ describe GeneratorPartials do
     it "should generate a source file with #include directives" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
-
       #include "foo.h"
       #include "bar.h"
 
@@ -312,7 +311,6 @@ describe GeneratorPartials do
     it "should generate a source file with include directives, variable declarations, and functions" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
-
       #include "foobar.h"
       #include "baz.h"
 
@@ -348,7 +346,7 @@ describe GeneratorPartials do
     it "should generate a source file with functions and #line directives" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
-
+      
       #line 9 "../foo/bar/fubar.c"
       void foobarbaz(int x, int y) {
         int z = x+y;
