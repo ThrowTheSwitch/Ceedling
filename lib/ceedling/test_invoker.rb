@@ -21,6 +21,7 @@ class TestInvoker
               :batchinator,
               :preprocessinator,
               :task_invoker,
+              :partializer,
               :generator,
               :test_context_extractor,
               :file_path_utils,
@@ -53,6 +54,9 @@ class TestInvoker
           name = key.to_s
           build_path = File.join( @configurator.project_build_root, context.to_s, 'out', name )
           mocks_path = File.join( @configurator.cmock_mock_path, name )
+          partials_path = File.join( @configurator.project_test_partials_path, name )
+
+          # Create build, results, and mock/partial paths
 
           preprocess_includes_path = File.join( @configurator.project_test_preprocess_includes_path, name )
           preprocess_files_path    = File.join( @configurator.project_test_preprocess_files_path, name )
@@ -69,6 +73,7 @@ class TestInvoker
           paths[:build] = build_path
           paths[:results] = results_path
           paths[:mocks] = mocks_path if @configurator.project_use_mocks
+          paths[:partials] = partials_path if @configurator.project_use_partials
           if @configurator.project_use_test_preprocessor != :none
             paths[:preprocess_incudes] = preprocess_includes_path
             paths[:preprocess_files] = preprocess_files_path
@@ -85,27 +90,39 @@ class TestInvoker
 
       # Collect in-test build directives, #include statements, and test cases from test files.
       # (Actions depend on preprocessing configuration)
-      @batchinator.build_step("Collecting Test Context") do
+      @batchinator.build_step("Collecting Essential Test Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
 
+          contexts = []
+
           if @configurator.project_use_test_preprocessor_tests
+            # Extracting other context will happen in later steps after preprocessing.
+            contexts << :build_directive_include_paths
+
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for include path build directive macros" )
             @loginator.log( msg )
-
-            # Just build directive macro using simple text scanning.
-            # Other context collected in later steps with help of preprocessing.
-            @file_wrapper.open( filepath, 'r' ) do |input|
-              @context_extractor.collect_simple_context( filepath, input, :build_directive_include_paths )
-            end
           else
+            # Extract context without preprocessing.
+            contexts << :build_directive_include_paths
+            contexts << :build_directive_source_files
+            contexts << :includes
+            contexts << :test_runner_details
+
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
             @loginator.log( msg )
+          end
 
-            # Collect everything using simple text scanning (no preprocessing involved).
-            @file_wrapper.open( filepath, 'r' ) do |input|
-              @context_extractor.collect_simple_context( filepath, input, :all )
-            end
+          if @configurator.project_use_partials
+            contexts << :partials_configuration
+
+            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for partials directive macros" )
+            @loginator.log( msg )
+          end
+
+          # Collect test context using text scanning (no preprocessing involved here)
+          @file_wrapper.open( filepath, 'r' ) do |input|
+            @context_extractor.collect_simple_context( filepath, input, *contexts )
           end
 
         end
@@ -122,7 +139,7 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
 
-          search_paths       = @helper.search_paths( filepath, details[:name] )
+          search_paths       = @helper.search_paths( filepath, details[:paths] )
 
           compile_flags      = @helper.flags( context:context, operation:OPERATION_COMPILE_SYM, filepath:filepath )
           preprocess_flags   = @helper.preprocess_flags( context:context, compile_flags:compile_flags, filepath:filepath )
@@ -152,13 +169,15 @@ class TestInvoker
       end
 
       # Collect include statements & mocks from test files
-      @batchinator.build_step("Collecting Test Context") do
+      @batchinator.build_step("Collecting More Test Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:preprocess_flags],
             include_paths: details[:search_paths],
+            vendor_paths:  vendor_paths,
             defines:       details[:preprocess_defines]
           }
 
@@ -173,23 +192,43 @@ class TestInvoker
         end
       end if @configurator.project_use_test_preprocessor_tests
 
-      # Determine Runners & Mocks For All Tests
-      @batchinator.build_step("Determining Files to be Generated", heading: false) do
+      # Determine Runners, Mocks & Partials for All Tests
+      @batchinator.build_step("Determining Files to Be Generated", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
+          # Runners
           runner_filepath = @file_path_utils.form_runner_filepath_from_test( details[:filepath] )
           
+          # Mocks
           mocks = {}
           mocks_list = @configurator.project_use_mocks ? @context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
           mocks_list.each do |name|
-            source = @helper.find_header_input_for_mock( name, details[:search_paths] )
-            preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
+            source = nil
+            input = nil
+
+            # Handle mock partial vs. (optionally preprocessed) project header
+            if @helper.is_mock_partial?( name )
+              source = @helper.gnerate_header_input_for_mock_partial( name, details[:paths] )
+              input = source
+            else
+              source = @helper.find_header_input_for_mock( name )
+              preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
+              input = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
+            end
+
             mocks[name.to_sym] = {
               :name => name,
               :source => source,
-              :input => (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
+              :input => input
             }
           end
 
+          # Partials
+          partials_configs = {}
+          if @configurator.project_use_partials
+            partials_configs = @helper.assemble_partials_config( filepath: details[:filepath] )
+          end
+
+          # Assemble results within safety of mutex
           @lock.synchronize do
             details[:runner] = {
               :output_filepath => runner_filepath,
@@ -197,6 +236,10 @@ class TestInvoker
             }
             details[:mocks] = mocks
             details[:mock_list] = mocks_list
+            details[:partials] = {
+              :configs => partials_configs,
+              :compilations => []
+            }
 
             # Trigger pre_test plugin hook after having assembled all testing context
             @plugin_manager.pre_test( details[:filepath] )
@@ -204,6 +247,162 @@ class TestInvoker
         end
       end
 
+      # Create inverted/flattened partials header & source files lookup list to take advantage of parallel preprocessing
+      # (Iterating each testable and partials list instead would limit the number of simultaneous preprocessing threads)
+      partials_headers = []
+      partials_sources = []
+      if @configurator.project_use_partials
+        @testables.each do |_, details|
+          details[:partials][:configs].each do |_, config|
+            partials_headers << {:config => config.header, :testable => details} if config.header.filepath
+            partials_sources << {:config => config.source, :testable => details} if config.source.filepath
+          end
+        end
+      end
+
+      # Preprocess Header Files
+      @batchinator.build_step("Preprocessing Header Files for Partials") {
+        @batchinator.exec(workload: :compile, things: partials_headers) do |details|
+          config = details[:config]
+          testable = details[:testable]
+          arg_hash = {
+            filepath:      config.filepath,
+            test:          testable[:name],
+            flags:         testable[:preprocess_flags],
+            include_paths: testable[:search_paths],
+            vendor_paths:  [],
+            defines:       testable[:preprocess_defines]
+          }
+
+          config.preprocessed_filepath, config.includes = @preprocessinator.preprocess_partial_header_file( **arg_hash )
+        end
+      } if @configurator.project_use_partials
+
+      # Preprocess Source Files
+      @batchinator.build_step("Preprocessing Source Files for Partials") {
+        @batchinator.exec(workload: :compile, things: partials_sources) do |details|
+          config = details[:config]
+          testable = details[:testable]
+          arg_hash = {
+            filepath:      config.filepath,
+            test:          testable[:name],
+            flags:         testable[:preprocess_flags],
+            include_paths: testable[:search_paths],
+            vendor_paths:  [],
+            defines:       testable[:preprocess_defines]
+          }
+
+          config.preprocessed_filepath, config.includes = @preprocessinator.preprocess_partial_source_file( **arg_hash )
+        end
+      } if @configurator.project_use_partials
+      
+      # Generate partials for all tests
+      @batchinator.build_step("Partials") {
+        # Collect partials for parallel processing
+        partials = []
+        @testables.each do |_, details|
+          next if details[:partials].empty?
+          # Create "flattened" partials configuration list for parallel processing
+          details[:partials][:configs].each do |_, config|
+            partials << {:config => config, :testable => details}
+          end
+        end
+
+        @batchinator.exec(workload: :compile, things: partials) do |partial| 
+          config = partial[:config]
+          testable = partial[:testable]
+
+          module_contents = @partializer.extract_module_contents(
+            header_filepath: config.header.preprocessed_filepath,
+            source_filepath: config.source.preprocessed_filepath
+          )
+
+          impl, interface = @partializer.reconstruct_functions(contents: module_contents, types: config.types)
+
+          @partializer.log_extracted_functions(
+            test:           testable[:name],
+            module_name:    config.module,
+            impl:           impl,
+            interface:      interface
+          )
+
+          source_variables, header_variables = @partializer.reconstruct_variables(variables: module_contents.variables)
+
+          @partializer.log_extracted_variable_decls(
+            label:          'Header',
+            test:           testable[:name],
+            module_name:    config.module,
+            decls:          header_variables
+          )
+          @partializer.log_extracted_variable_decls(
+            label:          'Source',
+            test:           testable[:name],
+            module_name:    config.module,
+            decls:          source_variables
+          )
+
+          arg_hash = {
+            test:             testable[:name],
+            name:             config[:module],
+            function_defns:   impl,
+            header_variables: header_variables,
+            source_variables: source_variables,
+            header_includes:  @partializer.remap_implementation_header_includes(
+                                name: config.module,
+                                includes: (config.source.includes + config.header.includes),
+                                # All partials configurations to remap includes for partials to be generated
+                                partials: testable[:partials][:configs]
+                              ),
+            source_includes:  @partializer.remap_implementation_source_includes(
+                                name: config.module,
+                                includes: (config.source.includes + config.header.includes),
+                                # All partials configurations to remap includes for partials to be generated
+                                partials: testable[:partials][:configs]
+                              ),
+            input_filepath:   config.source.filepath,
+            output_path:      testable[:paths][:partials]
+          }
+
+          if !impl.empty?
+            @partializer.log_implementation_includes(
+              label:          'Source',
+              test:           testable[:name],
+              module_name:    config.module,
+              includes:       arg_hash[:source_includes]
+            )
+            @partializer.log_implementation_includes(
+              label:          'Header',
+              test:           testable[:name],
+              module_name:    config.module,
+              includes:       arg_hash[:header_includes]
+            )
+
+            testable[:partials][:compilations] << @generator.generate_partial_implementation(**arg_hash)
+          end
+
+          arg_hash = {
+            test:           testable[:name],
+            name:           config.module,
+            declarations:   interface,
+            includes:       @partializer.sanitize_includes( 
+                              name: config.module,
+                              includes: (config.source.includes + config.header.includes)
+                            ),
+            input_filepath: config.header.filepath,
+            output_path:    testable[:paths][:partials]
+          }
+
+          if !interface.empty?
+            @partializer.log_interface_includes(
+              test:           testable[:name],
+              module_name:    config.module,
+              includes:       arg_hash[:includes]
+            )
+            @generator.generate_partial_interface(**arg_hash)
+          end
+        end
+      } if @configurator.project_use_partials
+      
       # Create inverted/flattened mock lookup list to take advantage of threading
       # (Iterating each testable and mock list instead would limit the number of simultaneous mocking threads)
       mocks = []
@@ -217,7 +416,9 @@ class TestInvoker
 
       # Preprocess Header Files
       @batchinator.build_step("Preprocessing for Mocks") {
-        @batchinator.exec(workload: :compile, things: mocks) do |mock|
+        # Suppress preprocessing for partials headers as they have already been preprocessed
+        _mocks = mocks.reject {|mock| mock[:name].to_s.include?( PARTIAL_FILENAME_PREFIX )}
+        @batchinator.exec(workload: :compile, things: _mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
 
@@ -226,6 +427,7 @@ class TestInvoker
             test:          testable[:name],
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
+            vendor_paths:  [],
             defines:       testable[:preprocess_defines]
           }
 
@@ -238,6 +440,7 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: mocks) do |mock| 
           details = mock[:details]
           testable = mock[:testable]
+          # Handle subdirectories for mocks (e.g. `#include "path/mock_file.h`)
           output_subpath = @file_wrapper.dirname( mock[:name].to_s )
           output_path = testable[:paths][:mocks] + (output_subpath.empty? ? '' : "/#{output_subpath}")
 
@@ -256,12 +459,14 @@ class TestInvoker
       # Preprocess test files
       @batchinator.build_step("Preprocessing Test Files") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
 
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:preprocess_flags],
             include_paths: details[:search_paths],
+            vendor_paths:  vendor_paths,
             defines:       details[:preprocess_defines]
           }
 
@@ -284,7 +489,7 @@ class TestInvoker
       } if @configurator.project_use_test_preprocessor_tests
 
       # Collect test case names
-      @batchinator.build_step("Collecting Test Context") {
+      @batchinator.build_step("Collecting More Test Context") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
 
           msg = @reportinator.generate_module_progress(
@@ -318,8 +523,10 @@ class TestInvoker
       @batchinator.build_step("Determining Artifacts to Be Built", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
           # Source files referenced by conventions or specified by build directives in a test file
-          test_sources       = @helper.extract_sources( details[:filepath] )
-          test_core          = test_sources + @helper.form_mock_filenames( details[:mock_list] )
+          test_sources       =  @helper.extract_sources( details[:filepath] )
+          test_core          =  test_sources + 
+                                @helper.form_mock_filenames( details[:mock_list] ) +
+                                details[:partials][:compilations]
 
           # When we have a mock and an include for the same file, the mock wins
           @helper.remove_mock_original_headers( test_core, details[:mock_list] )
@@ -350,6 +557,7 @@ class TestInvoker
               details[:paths][:build],
               @helper.fetch_shallow_source_includes( details[:filepath] ))
 
+          # TODO: Remove any source file objects partials are standing in for
           # Redefine test_objects, removing any problematic object file that would otherwise get linked into the test executable
           test_objects = (test_objects.uniq - test_no_link_objects)
 

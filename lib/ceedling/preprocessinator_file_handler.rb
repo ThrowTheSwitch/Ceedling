@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'rake' # for ext() method
+require 'ceedling/file_wrapper'
 
 class PreprocessinatorFileHandler
 
@@ -24,7 +25,9 @@ class PreprocessinatorFileHandler
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_full_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -44,7 +47,9 @@ class PreprocessinatorFileHandler
     # Run GCC with directives-only preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_directives_only_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -96,18 +101,13 @@ class PreprocessinatorFileHandler
     #       They're created for sake of completeness and just in case...
     # ----------------------------------------------------
     # abc-XYZ.h --> _ABC_XYZ_H_
-    guardname = '_' + filename.gsub(/\W/, '_').upcase + '_'
+    guardname = FileWrapper.generate_include_guard( filename )
 
     forward_guards = [
       "#ifndef #{guardname} // Ceedling-generated include guard",
       "#define #{guardname}",
       ''
     ]
-
-    # Insert Ceedling notice
-    # ----------------------------------------------------
-    comment = "// CEEDLING NOTICE: This generated file only to be consumed by CMock"
-    _contents += [comment, '']
 
     # Add guards to beginning of file contents
     _contents += forward_guards
@@ -164,7 +164,9 @@ class PreprocessinatorFileHandler
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_full_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -181,7 +183,9 @@ class PreprocessinatorFileHandler
     # Run GCC with directives-only preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_directives_only_preprocessor,
+      # Additional arguments
       flags,
+      # Argument replacement
       source_filepath,
       preprocessed_filepath,
       defines,
@@ -215,16 +219,8 @@ class PreprocessinatorFileHandler
   end
 
 
-  def assemble_preprocessed_test_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
+  def assemble_preprocessed_source_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
     _contents = []
-
-    # Insert Ceedling notice
-    # ----------------------------------------------------
-    comment = "// CEEDLING NOTICE: This generated file only to be consumed for test runner creation"
-    _contents += [comment, '']
-
-    # Blank line
-    _contents << ''
 
     # Reinsert #include statements into stripped down file
     includes.each{ |include| _contents << "#include \"#{include}\"" }
@@ -243,11 +239,11 @@ class PreprocessinatorFileHandler
     # Write file, doing some prettyifying along the way
     # ----------------------------------------------------    
     _contents = _contents.join("\n")
-    _contents.gsub!( /^\s*;/, '' )           # Drop blank lines with semicolons left over from macro expansion + trailing semicolon
-    _contents.gsub!( /\)\s+\{/, ")\n{" )     # Collapse any unnecessary white space between closing argument paren and opening function bracket
-    _contents.gsub!( /\{(\n){2,}/, "{\n" )   # Collapse any unnecessary white space between opening function bracket and code
-    _contents.gsub!( /(\n){2,}\}/, "\n}" )   # Collapse any unnecessary white space between code and closing function bracket
-    _contents.gsub!( /(\h*\n){3,}/, "\n\n" ) # Collapse repeated blank lines
+    _contents.gsub!( /^\s*;/, '' )            # Drop blank lines with semicolons left over from macro expansion + trailing semicolon
+    _contents.gsub!( /\)(\n){2,}\{/, ")\n{" ) # Collapse any unnecessary newlines between closing paren and opening function bracket
+    _contents.gsub!( /\{(\n){2,}/, "{\n" )    # Collapse any unnecessary newlines between opening function bracket and code
+    _contents.gsub!( /(\n){2,}\}/, "\n}" )    # Collapse any unnecessary newlines between code and closing function bracket
+    _contents.gsub!( /(\h*\n){3,}/, "\n\n" )  # Collapse repeated blank lines
 
     # Write contents of final preprocessed file
     @file_wrapper.write( preprocessed_filepath, _contents )
