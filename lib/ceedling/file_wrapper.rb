@@ -108,6 +108,12 @@ class FileWrapper
     FileUtils.touch(filepath, **options)
   end
 
+  def write_blank_file(filepath)
+    File.open(filepath, 'w') do |file|
+      file.write("// Ceedling intentionally blank file\n\n")
+    end
+  end
+
   def write(filepath, contents, flags='w')
     File.open(filepath, flags) do |file|
       file.write(contents)

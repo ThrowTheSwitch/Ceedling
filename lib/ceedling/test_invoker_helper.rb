@@ -12,6 +12,7 @@ class TestInvokerHelper
 
   constructor :configurator,
               :loginator,
+              :reportinator,
               :batchinator,
               :task_invoker,
               :test_context_extractor,
@@ -35,12 +36,22 @@ class TestInvokerHelper
     @include_pathinator.augment_environment_header_files( headers )
   end
 
-  def extract_include_directives(arg_hash)
-    # Run test file through preprocessor to parse out include statements and then collect header files, mocks, etc.
-    includes = @preprocessinator.preprocess_includes( **arg_hash )
+  def generate_test_includes_standins(test, includes, fallback, path)
+    _includes = (includes + fallback).uniq()
 
-    # Store the include statements we found
-    @test_context_extractor.ingest_includes( arg_hash[:filepath], includes )
+    mocks = Includes.filter(_includes, /^#{@configurator.cmock_mock_prefix}/)
+    partials = Includes.filter(_includes, /^#{PARTIAL_FILENAME_PREFIX}/)
+
+    (mocks + partials).each do |include|
+      filepath = File.join(path, include.filename)
+      msg = @reportinator.generate_module_progress(
+        operation: 'Generating stand-in header for',
+        module_name: test,
+        filename: include.filename
+      )
+      @loginator.log( msg, Verbosity::DEBUG )
+      @file_wrapper.write_blank_file(filepath)
+    end
   end
 
   def validate_build_directive_source_files(test:, filepath:)
@@ -229,12 +240,12 @@ class TestInvokerHelper
     # Get all #include .h files from test file so we can find any source files by convention
     includes = @test_context_extractor.lookup_full_header_includes_list(test_filepath)
     includes.each do |include|
-      _basename = File.basename(include)
+      _basename = include.filename
       next if _basename == UNITY_H_FILE                # Ignore Unity in this list
       next if _basename.start_with?(CMOCK_MOCK_PREFIX) # Ignore mocks in this list
       next if _support_headers.include?(_basename)     # Ignore any sources in our support files list
 
-      sources << @file_finder.find_build_input_file(filepath: include, complain: :ignore, context: TEST_SYM)
+      sources << @file_finder.find_build_input_file(filepath: include.filename, complain: :ignore, context: TEST_SYM)
     end
 
     # Remove any nil or duplicate entries in list

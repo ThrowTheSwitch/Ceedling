@@ -30,7 +30,7 @@ describe PreprocessinatorIncludesHandler do
   end
 
   #TODO REWRITE TESTS FOR THIS MODULE:
-  # context 'invoke_shallow_includes_list' do
+  # context 'invoke_simple_includes_list' do
   #   it 'should invoke the rake task which will build included files' do
   #     # create test state/variables
   #     # mocks/stubs/expected calls
@@ -38,7 +38,7 @@ describe PreprocessinatorIncludesHandler do
   #     expect(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).with('some_source_file.c').and_return(inc_list_double)
   #     expect(@task_invoker).to receive(:invoke_test_shallow_include_lists).with( [inc_list_double] )
   #     # execute method
-  #     subject.invoke_shallow_includes_list('some_source_file.c')
+  #     subject.invoke_simple_includes_list('some_source_file.c')
   #     # validate results
   #   end
   # end
@@ -235,7 +235,7 @@ describe PreprocessinatorIncludesHandler do
   #   end
   # end
 
-  # context 'extract_includes' do
+  # context 'full_extract_includes' do
   #   it 'should correctly filter auto link deep dependencies with mocks' do
   #     # create test state/variables
   #     # mocks/stubs/expected calls
@@ -268,7 +268,7 @@ describe PreprocessinatorIncludesHandler do
   #         @@@@source/dependency.h
   #     }})
   #     # execute method
-  #     results = subject.extract_includes("test_dummy.c")
+  #     results = subject.full_extract_includes("test_dummy.c")
   #     # validate results
   #     expect(results).to eq [
   #       'assets/example_file.h',
@@ -276,13 +276,13 @@ describe PreprocessinatorIncludesHandler do
   #   end
   # end
 
-  # context 'invoke_shallow_includes_list' do
+  # context 'invoke_simple_includes_list' do
   #   it 'should invoke the rake task which will build included files' do
   #     # create test state/variables
   #     # mocks/stubs/expected calls
   #     expect(@yaml_wrapper).to receive(:dump).with('some_source_file.c', [])
   #     # execute method
-  #     subject.write_shallow_includes_list('some_source_file.c', [])
+  #     subject.write_simple_includes_list('some_source_file.c', [])
   #     # validate results
   #   end
   # end

@@ -105,7 +105,8 @@ class ConfiguratorBuilder
 
   def cleanup(in_hash)
     # Ensure that include files inserted into test runners have file extensions & proper ones at that
-    in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
+    # TODO: Remove once we know it can be removed
+    # in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
   end
 
 

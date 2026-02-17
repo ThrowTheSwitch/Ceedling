@@ -73,9 +73,9 @@ DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
     ].freeze
   }
 
-DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
+DEFAULT_TEST_SIMPLE_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_shallow_includes_preprocessor'.freeze,
+  :name => 'default_test_simple_includes_preprocessor'.freeze,
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,             # Run only through preprocessor stage with its output
@@ -84,24 +84,6 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
     '-MP'.freeze,            # Create make "phony" rules for each include dependency
     "-I\"${4}\"".freeze,     # Per-test shallow includes essential search paths (e.g. Ceedling vendor path)
     "-D\"${2}\"".freeze,     # Per-test executable defines
-    "-DGNU_COMPILER".freeze, # OSX clang
-    '-nostdinc'.freeze,      # Ignore standard include paths
-    "-x c".freeze,           # Force C language
-    "\"${1}\"".freeze
-    ].freeze
-  }
-
-DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_nested_includes_preprocessor'.freeze,
-  :optional => false.freeze,
-  :arguments => [
-    '-E'.freeze,             # Run only through preprocessor stage with its output
-    '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
-    '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
-    '-H'.freeze,             # Also output #include list with depth
-    "-I\"${2}\"".freeze,     # Per-test executable search paths
-    "-D\"${3}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
     '-nostdinc'.freeze,      # Ignore standard include paths
     "-x c".freeze,           # Force C language
@@ -250,8 +232,7 @@ DEFAULT_TOOLS_TEST_ASSEMBLER = {
 
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
-    :test_shallow_includes_preprocessor      => DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL,
-    :test_nested_includes_preprocessor       => DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL,
+    :test_simple_includes_preprocessor      => DEFAULT_TEST_SIMPLE_INCLUDES_PREPROCESSOR_TOOL,
     :test_file_full_preprocessor             => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
     :test_file_directives_only_preprocessor  => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
     }

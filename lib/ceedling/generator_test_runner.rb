@@ -35,7 +35,7 @@ class GeneratorTestRunner
       runner_filepath,
       @test_cases_internal,
       mock_list.map{ |mock| mock + header_extension },
-      test_file_includes.map{|f| File.basename(f,'.*') + header_extension}
+      test_file_includes.map{|include| include.filename}
     )
   end
 

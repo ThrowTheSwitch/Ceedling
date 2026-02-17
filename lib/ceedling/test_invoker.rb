@@ -77,6 +77,7 @@ class TestInvoker
           if @configurator.project_use_test_preprocessor != :none
             paths[:preprocess_incudes] = preprocess_includes_path
             paths[:preprocess_files] = preprocess_files_path
+            paths[:preprocess_files_standins] = File.join( preprocess_files_path, PREPROCESS_STANDINS_DIR )
             paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
             paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
           end
@@ -94,7 +95,9 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
 
-          contexts = []
+          # Always run regex-based #include extraction
+          # Even with test preprocessing, we'll still use these as a possible fallback.
+          contexts = [:includes]
 
           if @configurator.project_use_test_preprocessor_tests
             # Extracting other context will happen in later steps after preprocessing.
@@ -106,7 +109,6 @@ class TestInvoker
             # Extract context without preprocessing.
             contexts << :build_directive_include_paths
             contexts << :build_directive_source_files
-            contexts << :includes
             contexts << :test_runner_details
 
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
@@ -170,25 +172,55 @@ class TestInvoker
 
       # Collect include statements & mocks from test files
       @batchinator.build_step("Collecting More Test Context") do
+        vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
+
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
-          vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:preprocess_flags],
-            include_paths: details[:search_paths],
+            include_paths: details[:search_paths] + [details[:paths][:preprocess_files_standins]],
             vendor_paths:  vendor_paths,
             defines:       details[:preprocess_defines]
           }
 
           msg = @reportinator.generate_module_progress(
-            operation: 'Preprocessing #include statements for',
+            operation: 'Preparing for full test #include extraction',
+            module_name: arg_hash[:test],
+            filename: File.basename( arg_hash[:filepath] )
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+          fallback_includes = @context_extractor.lookup_full_header_includes_list( details[:filepath] )
+          simple_includes = @preprocessinator.simple_preprocess_file_includes( **arg_hash )
+          @helper.generate_test_includes_standins(
+            details[:name],
+            simple_includes,
+            fallback_includes,
+            details[:paths][:preprocess_files_standins]
+          )
+        end
+
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          arg_hash = {
+            filepath:      details[:filepath],
+            test:          details[:name],
+            flags:         details[:preprocess_flags],
+            include_paths: details[:search_paths] + [details[:paths][:preprocess_files_standins]],
+            vendor_paths:  vendor_paths,
+            defines:       details[:preprocess_defines]
+          }
+
+          msg = @reportinator.generate_module_progress(
+            operation: 'Extracting #includes via preprpocessor for',
             module_name: arg_hash[:test],
             filename: File.basename( arg_hash[:filepath] )
           )
           @loginator.log( msg )
 
-          @helper.extract_include_directives( arg_hash )
+          includes = @preprocessinator.full_preprocess_file_includes( **arg_hash )
+          # Replace includes with better, more complete list
+          @context_extractor.ingest_includes( details[:filepath], includes )
         end
       end if @configurator.project_use_test_preprocessor_tests
 
@@ -340,6 +372,8 @@ class TestInvoker
             module_name:    config.module,
             decls:          source_variables
           )
+
+          puts(config.source.includes + config.header.includes)
 
           arg_hash = {
             test:             testable[:name],
