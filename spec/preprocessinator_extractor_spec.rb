@@ -160,8 +160,63 @@ describe PreprocessinatorExtractor do
 
       expect( @extractor.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
     end
-  end
 
+    it "should extract text of original file from staggered system include expansions" do
+      filepath = "path/system_header_expansion.c"
+      
+      file_contents = [
+        '# 9 "path/system_header_expansion.c" 2',
+        '',
+        'static ',
+        '# 10 "path/system_header_expansion.c" 3 4',
+        '      _Bool ',
+        '# 10 "path/system_header_expansion.c"',
+        '           var1;',
+        '',
+        'static ',
+        '# 12 "path/system_header_expansion.c" 3 4',
+        '      _Bool ',
+        '# 12 "path/system_header_expansion.c"',
+        '           ecs_foo__init_structure(void);',
+        '',
+        'void ecs_foo_init(void) {',
+        '    var1 = ecs_foo__init_structure();',
+        '}',
+        '',
+        'static ',
+        '# 18 "path/system_header_expansion.c" 3 4',
+        '      _Bool ',
+        '# 18 "path/system_header_expansion.c"',
+        '           ecs_foo__init_structure(void) {',
+        '    return ',
+        '# 19 "path/system_header_expansion.c" 3 4',
+        '          1',
+        '# 19 "path/system_header_expansion.c"',
+        '              ;',
+        '}',
+      ]
+
+      expected = [
+        '',
+        'static _Bool var1;',
+        '',
+        'static _Bool ecs_foo__init_structure(void);',
+        '',
+        'void ecs_foo_init(void) {',
+        '    var1 = ecs_foo__init_structure();',
+        '}',
+        '',
+        'static _Bool ecs_foo__init_structure(void) {',
+        '    return 1;',
+        '}',
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+  end
+  
   context "#extract_file_as_string_from_expansion" do
     it "should simply extract text of original file from preprocessed expansion" do
       filepath = "path/do/WANT.c"
