@@ -13,7 +13,6 @@ class Preprocessinator
               :file_finder,
               :file_path_utils,
               :file_wrapper,
-              :yaml_wrapper,
               :plugin_manager,
               :configurator,
               :test_context_extractor,
@@ -34,7 +33,25 @@ class Preprocessinator
   end
 
 
-  def preprocess_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:, deep: false)
+  # Uses a simple version of preprocessing able to extract a good-enough list of includes
+  def simple_preprocess_file_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+    includes = @includes_handler.simple_extract_includes(
+      filepath:      filepath,
+      test:          test,
+      flags:         flags,
+      include_paths: include_paths,
+      vendor_paths:  vendor_paths,
+      defines:       defines
+      )
+
+    header = "Extracted #include list from #{filepath}"
+    @loginator.log_list( includes, header, Verbosity::DEBUG )
+      
+    return includes
+  end
+
+
+  def full_preprocess_file_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
     # Get or create a mutex for this specific cache file
@@ -54,24 +71,22 @@ class Preprocessinator
           module_name: test,
           filename: File.basename(filepath)
           )
-        @loginator.log( msg, Verbosity::NORMAL )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
       
-        # Note: It's possible empty YAML content returns nil
-        includes = @yaml_wrapper.load( includes_list_filepath ) || []
+        includes = @includes_handler.load_includes_list( includes_list_filepath )
 
         header = "Loaded existing #include list from #{includes_list_filepath}"
         @loginator.log_list( includes, header, Verbosity::DEBUG )
 
       # Full preprocessing-based #include extraction with saving to YAML file
       else
-        includes = @includes_handler.extract_includes(
+        includes = @includes_handler.full_extract_includes(
           filepath:      filepath,
           test:          test,
           flags:         flags,
           include_paths: include_paths,
           vendor_paths:  vendor_paths,
-          defines:       defines,
-          deep:          deep
+          defines:       defines
           )
 
         header = "Extracted #include list from #{filepath}"
@@ -93,15 +108,11 @@ class Preprocessinator
       flags:          flags,
       include_paths:  include_paths,
       vendor_paths:   vendor_paths,
-      defines:        defines,
-      deep:           false
+      defines:        defines
     }
 
     # Extract includes & log progress and details   
     includes = preprocess_file_common( **arg_hash )
-
-    # Convert any full paths to basenames in place
-    includes.map! { |include| File.basename(include) }
 
     arg_hash = {
       source_filepath:       filepath,
@@ -131,9 +142,6 @@ class Preprocessinator
   def preprocess_mockable_header_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
-    # Check if we're using deep define processing for mocks
-    preprocess_deep = !@configurator.project_use_deep_preprocessor.nil? && [:mocks, :all].include?(@configurator.project_use_deep_preprocessor)
-
     plugin_arg_hash = {
       header_file:              filepath,
       preprocessed_header_file: preprocessed_filepath,
@@ -152,8 +160,7 @@ class Preprocessinator
       flags:          flags,
       include_paths:  include_paths,
       vendor_paths:   vendor_paths,
-      defines:        defines,
-      deep:           preprocess_deep     
+      defines:        defines
     }
 
     # Extract includes & log progress and details   
@@ -200,15 +207,11 @@ class Preprocessinator
       flags:         flags,
       include_paths: include_paths,
       vendor_paths:  vendor_paths,
-      defines:       defines,
-      deep:          false
+      defines:       defines
     }
 
     # Extract includes & log progress and info
     includes = preprocess_file_common( **arg_hash )
-
-    # Convert any full paths to basenames in place
-    includes.map! { |include| File.basename(include) }
 
     arg_hash = {
       source_filepath:       filepath,
@@ -218,6 +221,7 @@ class Preprocessinator
       defines:               defines      
     }
 
+    # TODO: Use TBD new method for collecting a fully preprocessed C file
     contents, _ = @file_handler.collect_test_file_contents( **arg_hash )
 
     arg_hash = {
@@ -237,9 +241,6 @@ class Preprocessinator
   def preprocess_test_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
-    # Check if we're using deep define processing for mocks
-    preprocess_deep = !@configurator.project_use_deep_preprocessor.nil? && [:tests, :all].include?(@configurator.project_use_deep_preprocessor)
-
     plugin_arg_hash = {
       test_file:              filepath,
       preprocessed_test_file: preprocessed_filepath,
@@ -258,15 +259,11 @@ class Preprocessinator
       flags:         flags,
       include_paths: include_paths,
       vendor_paths:  vendor_paths,
-      defines:       defines,
-      deep:          preprocess_deep      
+      defines:       defines
     }
 
     # Extract includes & log progress and info
     includes = preprocess_file_common( **arg_hash )
-
-    # Convert any full paths to basenames in place
-    includes.map! { |include| File.basename(include) }
 
     arg_hash = {
       source_filepath:       filepath,
@@ -300,7 +297,7 @@ class Preprocessinator
   ### Private ###
   private
 
-  def preprocess_file_common(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:, deep: false)
+  def preprocess_file_common(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     msg = @reportinator.generate_module_progress(
       operation: "Preprocessing",
       module_name: test,
@@ -310,14 +307,13 @@ class Preprocessinator
     @loginator.log( msg, Verbosity::NORMAL )
 
     # Extract includes
-    includes = preprocess_includes(
+    includes = full_preprocess_file_includes(
       filepath:      filepath,
       test:          test,
       flags:         flags,
       include_paths: include_paths,
       vendor_paths:  vendor_paths,
-      defines:       defines,
-      deep:          deep
+      defines:       defines
     ) 
 
     return includes

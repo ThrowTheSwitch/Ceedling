@@ -59,7 +59,7 @@ class GeneratorPartials
     io << "#define #{guard}\n\n"
 
     includes.each do |include|
-      io << "#include \"#{include}\"\n"  
+      io << "#{include}\n"  
     end
 
     io << "\n" if !includes.empty?
@@ -81,7 +81,7 @@ class GeneratorPartials
   def generate_source(io, includes, definitions, variable_declarations)
     io << "// Ceeding generated file\n"
     includes.each do |include|
-      io << "#include \"#{include}\"\n"  
+      io << "#{include}\n"
     end
 
     io << "\n"

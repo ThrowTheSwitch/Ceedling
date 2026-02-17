@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
+require 'ceedling/includes'
 require 'ceedling/partials/partials'
 require 'ceedling/file_path_utils'
 require 'ceedling/generator_test_runner' # From lib/ not vendor/unity/auto
@@ -220,24 +221,25 @@ class TestContextExtractor
     headers     = []
     sources     = []
 
+    # Processing list of UserInclude and/or SystemInclude
     includes.each do |include|
       # <*.h>
-      if include =~ /#{Regexp.escape(@configurator.extension_header)}$/
+      if include.filename =~ /#{Regexp.escape(@configurator.extension_header)}$/
         # Check if include is a mock with regex match that extracts only mock name (no .h)
-        scan_results = include.scan(/([^\s]*\b#{mock_prefix}.+)#{Regexp.escape(@configurator.extension_header)}/)
+        scan_results = include.filename.scan(/([^\s]*\b#{mock_prefix}.+)#{Regexp.escape(@configurator.extension_header)}/)
         
         if (scan_results.size > 0)
           # Collect mock name
           mocks << scan_results[0][0]
         else
-          # If not a mock or framework file, collect tailored header filename
-          headers << include unless VENDORS_FILES.include?( include.ext('') )
+          # Collect include if not a mock or framework file
+          headers << include unless VENDORS_FILES.include?( include.filename.ext('') )
         end
 
         # Add to .h includes list
         all_headers << include
       # <*.c>
-      elsif include =~ /#{Regexp.escape(@configurator.extension_source)}$/
+      elsif include.filename =~ /#{Regexp.escape(@configurator.extension_source)}$/
         # Add to .c includes list
         sources << include
       end
@@ -330,9 +332,19 @@ class TestContextExtractor
   def _extract_includes(line)
     includes = []
 
-    # Look for #include statements
-    results = line.match(PATTERNS::INCLUDE_DIRECTIVE_FILENAME)
-    includes << results[1] if !results.nil?
+    # Look for user #include statements
+    results = line.match(PATTERNS::USER_INCLUDE_DIRECTIVE_FILENAME)
+    if !results.nil?
+      includes << UserInclude.new(results[1])
+      return includes
+    end
+
+    # Look for system #include statements
+    results = line.match(PATTERNS::SYSTEM_INCLUDE_DIRECTIVE_FILENAME)
+    if !results.nil?
+      includes << SystemInclude.new(results[1])
+      return includes
+    end
 
     return includes
   end

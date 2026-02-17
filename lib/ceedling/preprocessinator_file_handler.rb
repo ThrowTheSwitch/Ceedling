@@ -116,7 +116,7 @@ class PreprocessinatorFileHandler
     _contents << ''
 
     # Reinsert #include statements into stripped down file
-    includes.each{ |include| _contents << "#include \"#{include}\"" }
+    includes.each{ |include| _contents << "#{include}" }
 
     # Blank line
     _contents << ''
@@ -143,17 +143,12 @@ class PreprocessinatorFileHandler
     _contents = _contents.join("\n")
     _contents.gsub!( /(\h*\n){3,}/, "\n\n" )
 
-    # Remove paths from expanded #include directives
-    # ----------------------------------------------------
-    #  - We rely on search paths at compilation rather than explicit #include paths
-    #  - Match (#include ")((path/)+)(file") and reassemble string using first and last matching groups
-    _contents.gsub!( /(#include\s+")(?:(?:[^"\/]+\/)+)([^"\/]*")/, '\1\2' )
-
     # Write contents of final preprocessed file
     @file_wrapper.write( preprocessed_filepath, _contents )
   end
 
 
+  # TODO: Break apart the generic full preproccessor and directives-only preprocessor handling
   def collect_test_file_contents(source_filepath:, test:, flags:, defines:, include_paths:)
     contents = []
     # TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
@@ -223,7 +218,7 @@ class PreprocessinatorFileHandler
     _contents = []
 
     # Reinsert #include statements into stripped down file
-    includes.each{ |include| _contents << "#include \"#{include}\"" }
+    includes.each{ |include| _contents << "#{include}" }
 
     # Blank line
     _contents << ''
@@ -239,7 +234,7 @@ class PreprocessinatorFileHandler
     # Write file, doing some prettyifying along the way
     # ----------------------------------------------------    
     _contents = _contents.join("\n")
-    _contents.gsub!( /^\s*;/, '' )            # Drop blank lines with semicolons left over from macro expansion + trailing semicolon
+    _contents.gsub!( /^\s*;/, '' )            # Drop blank lines with semicolons left over from macro expansion + unnecessary trailing semicolon
     _contents.gsub!( /\)(\n){2,}\{/, ")\n{" ) # Collapse any unnecessary newlines between closing paren and opening function bracket
     _contents.gsub!( /\{(\n){2,}/, "{\n" )    # Collapse any unnecessary newlines between opening function bracket and code
     _contents.gsub!( /(\n){2,}\}/, "\n}" )    # Collapse any unnecessary newlines between code and closing function bracket
