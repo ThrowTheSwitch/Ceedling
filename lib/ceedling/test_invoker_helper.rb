@@ -36,14 +36,23 @@ class TestInvokerHelper
     @include_pathinator.augment_environment_header_files( headers )
   end
 
-  def generate_test_includes_standins(test, includes, fallback, path)
-    _includes = (includes + fallback).uniq()
+  def generate_test_includes_standins(test, includes)
+    mocks = Includes.filter(includes, /^#{@configurator.cmock_mock_prefix}/)
+    partials = Includes.filter(includes, /^#{PARTIAL_FILENAME_PREFIX}/)
 
-    mocks = Includes.filter(_includes, /^#{@configurator.cmock_mock_prefix}/)
-    partials = Includes.filter(_includes, /^#{PARTIAL_FILENAME_PREFIX}/)
+    mocks.each do |include|
+      filepath = @file_path_utils.form_mock_header_filepath(test, include.filename)
+      msg = @reportinator.generate_module_progress(
+        operation: 'Generating stand-in header for',
+        module_name: test,
+        filename: include.filename
+      )
+      @loginator.log( msg, Verbosity::DEBUG )
+      @file_wrapper.write_blank_file(filepath)
+    end
 
-    (mocks + partials).each do |include|
-      filepath = File.join(path, include.filename)
+    partials.each do |include|
+      filepath = @file_path_utils.form_partial_header_filepath(test, include.filename)
       msg = @reportinator.generate_module_progress(
         operation: 'Generating stand-in header for',
         module_name: test,
@@ -269,10 +278,10 @@ class TestInvokerHelper
     return _mock.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
   end
 
-  def gnerate_header_input_for_mock_partial(mock, paths)
+  def gnerate_header_input_for_mock_partial(mock, test)
     _mock = mock.to_str()
-    return @file_path_utils.form_partial_interface_header_filepath(
-      paths[:partials],
+    return @file_path_utils.form_partial_header_filepath(
+      test,
       _mock.delete_prefix( @configurator.cmock_mock_prefix )
     )
   end

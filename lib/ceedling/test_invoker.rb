@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/includes'
 require 'fileutils'
 
 class TestInvoker
@@ -77,7 +78,6 @@ class TestInvoker
           if @configurator.project_use_test_preprocessor != :none
             paths[:preprocess_incudes] = preprocess_includes_path
             paths[:preprocess_files] = preprocess_files_path
-            paths[:preprocess_files_standins] = File.join( preprocess_files_path, PREPROCESS_STANDINS_DIR )
             paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
             paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
           end
@@ -179,7 +179,7 @@ class TestInvoker
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:preprocess_flags],
-            include_paths: details[:search_paths] + [details[:paths][:preprocess_files_standins]],
+            include_paths: details[:search_paths],
             vendor_paths:  vendor_paths,
             defines:       details[:preprocess_defines]
           }
@@ -191,14 +191,9 @@ class TestInvoker
           )
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-          fallback_includes = @context_extractor.lookup_full_header_includes_list( details[:filepath] )
-          simple_includes = @preprocessinator.simple_preprocess_file_includes( **arg_hash )
-          @helper.generate_test_includes_standins(
-            details[:name],
-            simple_includes,
-            fallback_includes,
-            details[:paths][:preprocess_files_standins]
-          )
+          # TODO: Preserve simple_includes to use in next block
+          includes = @preprocessinator.simple_preprocess_file_includes( **arg_hash )
+          @helper.generate_test_includes_standins( details[:name], includes )
         end
 
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
@@ -206,7 +201,7 @@ class TestInvoker
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:preprocess_flags],
-            include_paths: details[:search_paths] + [details[:paths][:preprocess_files_standins]],
+            include_paths: details[:search_paths],
             vendor_paths:  vendor_paths,
             defines:       details[:preprocess_defines]
           }
@@ -218,8 +213,10 @@ class TestInvoker
           )
           @loginator.log( msg )
 
-          includes = @preprocessinator.full_preprocess_file_includes( **arg_hash )
-          # Replace includes with better, more complete list
+          includes = @preprocessinator.simple_preprocess_file_includes( **arg_hash )
+          includes += @preprocessinator.full_preprocess_file_includes( **arg_hash )
+          Includes.sort(includes)
+          # Replace includes with more complete list
           @context_extractor.ingest_includes( details[:filepath], includes )
         end
       end if @configurator.project_use_test_preprocessor_tests
@@ -239,7 +236,7 @@ class TestInvoker
 
             # Handle mock partial vs. (optionally preprocessed) project header
             if @helper.is_mock_partial?( name )
-              source = @helper.gnerate_header_input_for_mock_partial( name, details[:paths] )
+              source = @helper.gnerate_header_input_for_mock_partial( name, details[:name] )
               input = source
             else
               source = @helper.find_header_input_for_mock( name )
@@ -372,8 +369,6 @@ class TestInvoker
             module_name:    config.module,
             decls:          source_variables
           )
-
-          puts(config.source.includes + config.header.includes)
 
           arg_hash = {
             test:             testable[:name],

@@ -172,13 +172,19 @@ class FilePathUtils
     return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{path}/%n#{@configurator.extension_object}")
   end
 
-  def form_mocks_source_filelist(path, mocks)
-    list = (@file_wrapper.instantiate_file_list(mocks))
-    return list.map{ |file| File.join(path, File.basename(file).ext(@configurator.extension_source)) }
+  def form_mock_header_filepath(subdir, filename)
+    # @configurator.cmock_mock_path accessor only exists if mocks are enabled
+    return File.join(@configurator.cmock_mock_path, subdir, filename.ext(EXTENSION_CORE_HEADER))
   end
 
-  def form_partial_interface_header_filepath(path, filename)
-    return File.join(path, filename.ext(EXTENSION_CORE_HEADER))
+  def form_mocks_source_filelist(path, mocks)
+    list = (@file_wrapper.instantiate_file_list(mocks))
+    return list.map{ |file| File.join(path, File.basename(file).ext(EXTENSION_CORE_SOURCE)) }
+  end
+
+  def form_partial_header_filepath(subdir, filename)
+    # @configurator.project_test_partials_path accessor only exists if partials are enabled
+    return File.join(@configurator.project_test_partials_path, subdir, filename.ext(EXTENSION_CORE_HEADER))
   end
 
   def form_partial_interface_header_filename(_module)
