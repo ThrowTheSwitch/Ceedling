@@ -45,7 +45,10 @@ class Partializer
   # Ensure no original headers for the module being paritalized
   def sanitize_includes(name:, includes:)    
     _includes = remove_matching_includes(includes: includes, modules: [name])
-    return _includes.uniq()
+    _includes.uniq!
+    # Cause system includes to be first in the list
+    Includes.sort!(_includes)
+    return _includes
   end
 
   def remap_implementation_header_includes(name:, includes:, partials:)
