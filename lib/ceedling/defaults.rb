@@ -232,7 +232,7 @@ DEFAULT_TOOLS_TEST_ASSEMBLER = {
 
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
-    :test_simple_includes_preprocessor      => DEFAULT_TEST_SIMPLE_INCLUDES_PREPROCESSOR_TOOL,
+    :test_simple_includes_preprocessor       => DEFAULT_TEST_SIMPLE_INCLUDES_PREPROCESSOR_TOOL,
     :test_file_full_preprocessor             => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
     :test_file_directives_only_preprocessor  => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
     }
@@ -267,7 +267,6 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :use_exceptions => false,
     :use_partials => false,
     :use_test_preprocessor => :none,
-    :use_deep_preprocessor => :none,
     :compile_threads => 1,
     :test_threads => 1,
     :test_file_prefix => 'test_',

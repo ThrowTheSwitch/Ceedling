@@ -647,7 +647,6 @@ class Configurator
     blotter &= @configurator_setup.validate_defines( config )
     blotter &= @configurator_setup.validate_flags( config )
     blotter &= @configurator_setup.validate_test_preprocessor( config )
-    blotter &= @configurator_setup.validate_deep_preprocessor( config )
     blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
     blotter &= @configurator_setup.validate_plugins( config )
