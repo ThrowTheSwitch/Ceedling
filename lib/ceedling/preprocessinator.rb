@@ -25,7 +25,7 @@ class Preprocessinator
     @file_assembler = @preprocessinator_file_assembler
 
     # Thread-safe per-file locking for YAML cache operations
-    # Key: includes_list_filepath (String), Value: Mutex
+    # Key: includes list filepath (String), Value: Mutex
     @file_locks = {}
     @file_locks_mutex = Mutex.new
   end
@@ -56,6 +56,64 @@ class Preprocessinator
       defines:       defines
       )
   end
+
+  def store_includes_list(test:, filepath:, includes:)
+    _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
+
+    # Get or create a mutex for this specific cache file
+    file_lock = @file_locks_mutex.synchronize do
+      @file_locks[_filepath] ||= Mutex.new
+    end
+
+    file_lock.synchronize do
+      @includes_handler.write_includes_list( _filepath, includes )
+    end
+  end
+
+  def cached_includes_list?(test:, filepath:)
+    _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
+
+    # Get or create a mutex for this specific cache file
+    file_lock = @file_locks_mutex.synchronize do
+      @file_locks[_filepath] ||= Mutex.new
+    end
+
+    file_lock.synchronize do
+      # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
+      return @file_wrapper.newer?( _filepath, filepath )
+    end
+  end
+
+  def load_includes_list(test:, filepath:)
+    includes = []
+
+    _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
+
+    # Get or create a mutex for this specific cache file
+    file_lock = @file_locks_mutex.synchronize do
+      @file_locks[_filepath] ||= Mutex.new
+    end
+
+    file_lock.synchronize do
+      # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
+      if @file_wrapper.newer?( _filepath, filepath )
+        msg = @reportinator.generate_module_progress(
+          operation: "Loading #include statement listing file for",
+          module_name: test,
+          filename: File.basename(filepath)
+          )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+      
+        includes = @includes_handler.load_includes_list( _filepath )
+
+        header = "Loaded existing #include list from #{_filepath}"
+        @loginator.log_list( includes, header, Verbosity::DEBUG )
+      end
+    end
+
+    return !includes.empty?, includes
+  end
+
 
   def preprocess_partial_header_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
@@ -179,8 +237,7 @@ class Preprocessinator
       defines:               defines      
     }
 
-    # TODO: Use TBD new method for collecting a fully preprocessed C file
-    contents, _ = @file_assembler.collect_test_file_contents( **arg_hash )
+    contents = @file_assembler.collect_source_file_contents( **arg_hash )
 
     arg_hash = {
       filename:              File.basename( filepath ),
@@ -191,12 +248,12 @@ class Preprocessinator
     }
 
     # Create a reconstituted test file from preprocessing expansion and preserving any extras
-    @file_assembler.assemble_preprocessed_source_file( **arg_hash )
+    @file_assembler.assemble_preprocessed_code_file( **arg_hash )
 
     return preprocessed_filepath, includes
   end
 
-  def preprocess_test_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def preprocess_test_file(filepath:, includes:, test:, flags:, include_paths:, vendor_paths:, defines:)
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     plugin_arg_hash = {
@@ -211,17 +268,7 @@ class Preprocessinator
     # Trigger pre_test_preprocess plugin hook
     @plugin_manager.pre_test_preprocess( plugin_arg_hash )
 
-    arg_hash = {
-      filepath:      filepath,
-      test:          test,
-      flags:         flags,
-      include_paths: include_paths,
-      vendor_paths:  vendor_paths,
-      defines:       defines
-    }
-
-    # Extract includes & log progress and info
-    includes = preprocess_file_common( **arg_hash )
+    # NOTE: No call to `preprocess_file_common()` because we already have includes
 
     arg_hash = {
       source_filepath:       filepath,
@@ -244,7 +291,7 @@ class Preprocessinator
     }
 
     # Create a reconstituted test file from preprocessing expansion and preserving any extras
-    @file_assembler.assemble_preprocessed_source_file( **arg_hash )
+    @file_assembler.assemble_preprocessed_code_file( **arg_hash )
 
     # Trigger post_test_preprocess plugin hook
     @plugin_manager.post_test_preprocess( plugin_arg_hash )
@@ -261,69 +308,42 @@ class Preprocessinator
       module_name: test,
       filename: File.basename(filepath)
     )
-
     @loginator.log( msg, Verbosity::NORMAL )
 
-    includes_list_filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
-
-    # Get or create a mutex for this specific cache file
-    file_lock = @file_locks_mutex.synchronize do
-      @file_locks[includes_list_filepath] ||= Mutex.new
-    end
-
     includes = []
+    success, includes = load_includes_list( test: test, filepath: filepath )
 
-    # Wrap the entire check-read-or-extract-write operation in a mutex
-    # This prevents race conditions when multiple threads process the same file
-    file_lock.synchronize do
-      includes = []
-
-      # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
-      if @file_wrapper.newer?( includes_list_filepath, filepath )
-        msg = @reportinator.generate_module_progress(
-          operation: "Loading #include statement listing file for",
-          module_name: test,
-          filename: File.basename(filepath)
-          )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-      
-        includes = @includes_handler.load_includes_list( includes_list_filepath )
-
-        header = "Loaded existing #include list from #{includes_list_filepath}"
-        @loginator.log_list( includes, header, Verbosity::DEBUG )
-
+    if !success
       # Full preprocessing-based #include extraction with saving to YAML file
-      else
-        # Extract user includes
-        includes = @includes_handler.extract_user_includes(
-          filepath:      filepath,
-          test:          test,
-          flags:         flags,
-          include_paths: include_paths,
-          vendor_paths:  vendor_paths,
-          defines:       defines
-          )
-
-        # Add extracted system includes
-        includes += preprocess_system_includes(
-          filepath:      filepath,
-          test:          test,
-          flags:         flags,
-          include_paths: include_paths,
-          vendor_paths:  vendor_paths,
-          defines:       defines
+      # Extract user includes
+      includes = @includes_handler.extract_user_includes(
+        filepath:      filepath,
+        test:          test,
+        flags:         flags,
+        include_paths: include_paths,
+        vendor_paths:  vendor_paths,
+        defines:       defines
         )
 
-        # Sanitize the final list and remove any includes that have been mocked
-        Includes.sanitize!(includes) do |include, all|
-          all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
-        end
+      # Add extracted system includes
+      includes += @includes_handler.extract_system_includes(
+        filepath:      filepath,
+        test:          test,
+        flags:         flags,
+        include_paths: include_paths,
+        vendor_paths:  vendor_paths,
+        defines:       defines
+      )
 
-        header = "Extracted #include list from #{filepath}"
-        @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
-      
-        @includes_handler.write_includes_list( includes_list_filepath, includes )
+      # Sanitize the final list and remove any includes that have been mocked
+      Includes.sanitize!(includes) do |include, all|
+        all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
       end
+
+      header = "Extracted #include list from #{filepath}"
+      @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
+    
+      store_includes_list( filepath: filepath, test: test, includes: includes )
     end
 
     return includes

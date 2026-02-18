@@ -174,6 +174,12 @@ class TestInvoker
         vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
 
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          filepath = details[:filepath]
+          name = details[:name]
+
+          # Skip running the preprocessor if we have good, cachced includes
+          next if @preprocessinator.cached_includes_list?( test: name, filepath: filepath )
+
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
@@ -201,6 +207,16 @@ class TestInvoker
         end
 
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          filepath = details[:filepath]
+          name = details[:name]
+
+          # Skip running the preprocessor if we have good, cachced includes
+          cached, includes = @preprocessinator.load_includes_list( test: name, filepath: filepath )
+          if cached
+            @context_extractor.ingest_includes( filepath, includes )
+            next
+          end
+
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
@@ -213,18 +229,20 @@ class TestInvoker
           msg = @reportinator.generate_module_progress(
             operation: 'Extracting #includes via preprpocessor for',
             module_name: arg_hash[:test],
-            filename: File.basename( arg_hash[:filepath] )
+            filename: File.basename( filepath )
           )
           @loginator.log( msg )
 
           # Get existing list of (user) includes
-          includes = @context_extractor.lookup_full_header_includes_list( details[:filepath] )
+          includes = @context_extractor.lookup_full_header_includes_list( filepath )
           
           # Add system includes
           includes += @preprocessinator.preprocess_system_includes( **arg_hash )
           
           # Update full list of includes
-          @context_extractor.ingest_includes( details[:filepath], includes )
+          @context_extractor.ingest_includes( filepath, includes )
+
+          @preprocessinator.store_includes_list( test: name, filepath: filepath, includes: includes )
         end
       end if @configurator.project_use_test_preprocessor_tests
 
@@ -499,6 +517,8 @@ class TestInvoker
 
           arg_hash = {
             filepath:      details[:filepath],
+            # We already have the full list of includes for each test file
+            includes:      @context_extractor.lookup_full_header_includes_list( details[:filepath] ),
             test:          details[:name],
             flags:         details[:preprocess_flags],
             include_paths: details[:search_paths],
