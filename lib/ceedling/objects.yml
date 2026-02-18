@@ -267,17 +267,13 @@ dependinator:
 preprocessinator:
   compose:
     - preprocessinator_includes_handler
-    - preprocessinator_file_handler
-    - task_invoker
-    - file_finder
+    - preprocessinator_file_assembler
     - file_path_utils
     - file_wrapper
     - plugin_manager
     - configurator
-    - test_context_extractor
     - loginator
     - reportinator
-    - rake_wrapper
 
 preprocessinator_includes_handler:
   compose:
@@ -288,7 +284,7 @@ preprocessinator_includes_handler:
     - loginator
     - reportinator
 
-preprocessinator_file_handler:
+preprocessinator_file_assembler:
   compose:
     - preprocessinator_extractor
     - configurator
