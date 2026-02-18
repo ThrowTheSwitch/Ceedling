@@ -8,7 +8,7 @@
 require 'rake' # for ext() method
 require 'ceedling/file_wrapper'
 
-class PreprocessinatorFileHandler
+class PreprocessinatorFileAssembler
 
   constructor :preprocessinator_extractor, :configurator, :tool_executor, :file_path_utils, :file_wrapper, :loginator
 
