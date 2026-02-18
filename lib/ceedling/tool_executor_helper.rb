@@ -85,11 +85,7 @@ class ToolExecutorHelper
         return # Bail out
       end
 
-      # Slightly less verbose obnoxious logging
-      if !shell_result[:output].empty?
-        output += "> Produced output: "
-        output += shell_result[:output].strip().empty? ? "<empty>\n" : "\n#{shell_result[:output].strip()}\n"
-      end
+      # Slightly less verbose obnoxious logging omits tool execution output
 
       if !shell_result[:exit_code].nil?
         output += "> And terminated with exit code: [#{shell_result[:exit_code]}]\n"
