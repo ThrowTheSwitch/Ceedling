@@ -10,23 +10,19 @@ require 'ceedling/includes'
 class Preprocessinator
 
   constructor :preprocessinator_includes_handler,
-              :preprocessinator_file_handler,
-              :task_invoker,
-              :file_finder,
+              :preprocessinator_file_assembler,
               :file_path_utils,
               :file_wrapper,
               :plugin_manager,
               :configurator,
-              :test_context_extractor,
               :loginator,
-              :reportinator,
-              :rake_wrapper
+              :reportinator
 
 
   def setup
     # Aliases
     @includes_handler = @preprocessinator_includes_handler
-    @file_handler = @preprocessinator_file_handler
+    @file_assembler = @preprocessinator_file_assembler
 
     # Thread-safe per-file locking for YAML cache operations
     # Key: includes_list_filepath (String), Value: Mutex
@@ -35,9 +31,10 @@ class Preprocessinator
   end
 
 
-  # Uses a simple version of preprocessing able to extract a good-enough list of includes
-  def simple_preprocess_file_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
-    includes = @includes_handler.simple_extract_includes(
+  # Extract user includes from a file
+  def preprocess_user_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+    # Pass-through
+    return @includes_handler.extract_user_includes(
       filepath:      filepath,
       test:          test,
       flags:         flags,
@@ -45,16 +42,12 @@ class Preprocessinator
       vendor_paths:  vendor_paths,
       defines:       defines
       )
-
-    header = "Extracted #include list from #{filepath}"
-    @loginator.log_list( includes, header, Verbosity::DEBUG )
-      
-    return includes
   end
 
-
-  def full_preprocess_file_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
-    includes = @includes_handler.full_extract_includes(
+  # Extract system includes from a file
+  def preprocess_system_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+    # Pass-through
+    return @includes_handler.extract_system_includes(
       filepath:      filepath,
       test:          test,
       flags:         flags,
@@ -62,11 +55,6 @@ class Preprocessinator
       vendor_paths:  vendor_paths,
       defines:       defines
       )
-
-    header = "Extracted #include list from #{filepath}"
-    @loginator.log_list( includes, header, Verbosity::DEBUG )
-    
-    return includes
   end
 
   def preprocess_partial_header_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
@@ -93,7 +81,7 @@ class Preprocessinator
       extras:                false
     }
 
-    contents, extras = @file_handler.collect_header_file_contents( **arg_hash )
+    contents, extras = @file_assembler.collect_header_file_contents( **arg_hash )
 
     arg_hash = {
       filename:              File.basename( filepath ),
@@ -104,7 +92,7 @@ class Preprocessinator
     }
 
     # Create a reconstituted header file from preprocessing expansion and preserving any extras
-    @file_handler.assemble_preprocessed_header_file( **arg_hash )
+    @file_assembler.assemble_preprocessed_header_file( **arg_hash )
 
     return preprocessed_filepath, includes
   end
@@ -148,8 +136,8 @@ class Preprocessinator
     # `contents` & `extras` are arrays of text strings to be assembled in generating a new header file.
     # `extras` are macro definitions, pragmas, etc. needed for the special case of mocking `inline` function declarations.
     # `extras` are empty for any cases other than mocking `inline` function declarations
-    #  (We don't want to increase our chances of a badly generated file--extracting extras could fail in complex files.)
-    contents, extras = @file_handler.collect_header_file_contents( **arg_hash )
+    # (We don't want to increase our chances of a badly generated file--extracting extras could fail in complex files.)
+    contents, extras = @file_assembler.collect_header_file_contents( **arg_hash )
 
     arg_hash = {
       filename:              File.basename( filepath ),
@@ -160,7 +148,7 @@ class Preprocessinator
     }
 
     # Create a reconstituted header file from preprocessing expansion and preserving any extras
-    @file_handler.assemble_preprocessed_header_file( **arg_hash )
+    @file_assembler.assemble_preprocessed_header_file( **arg_hash )
 
     # Trigger post_mock_preprocessing plugin hook
     @plugin_manager.post_mock_preprocess( plugin_arg_hash )
@@ -192,7 +180,7 @@ class Preprocessinator
     }
 
     # TODO: Use TBD new method for collecting a fully preprocessed C file
-    contents, _ = @file_handler.collect_test_file_contents( **arg_hash )
+    contents, _ = @file_assembler.collect_test_file_contents( **arg_hash )
 
     arg_hash = {
       filename:              File.basename( filepath ),
@@ -203,7 +191,7 @@ class Preprocessinator
     }
 
     # Create a reconstituted test file from preprocessing expansion and preserving any extras
-    @file_handler.assemble_preprocessed_source_file( **arg_hash )
+    @file_assembler.assemble_preprocessed_source_file( **arg_hash )
 
     return preprocessed_filepath, includes
   end
@@ -245,7 +233,7 @@ class Preprocessinator
 
     # `contents` & `extras` are arrays of text strings to be assembled in generating a new test file.
     # `extras` are test build directives TEST_SOURCE_FILE() and TEST_INCLUDE_PATH().
-    contents, extras = @file_handler.collect_test_file_contents( **arg_hash )
+    contents, extras = @file_assembler.collect_test_file_contents( **arg_hash )
 
     arg_hash = {
       filename:              File.basename( filepath ),
@@ -256,7 +244,7 @@ class Preprocessinator
     }
 
     # Create a reconstituted test file from preprocessing expansion and preserving any extras
-    @file_handler.assemble_preprocessed_source_file( **arg_hash )
+    @file_assembler.assemble_preprocessed_source_file( **arg_hash )
 
     # Trigger post_test_preprocess plugin hook
     @plugin_manager.post_test_preprocess( plugin_arg_hash )
@@ -307,7 +295,7 @@ class Preprocessinator
       # Full preprocessing-based #include extraction with saving to YAML file
       else
         # Extract user includes
-        includes = @includes_handler.simple_extract_includes(
+        includes = @includes_handler.extract_user_includes(
           filepath:      filepath,
           test:          test,
           flags:         flags,
@@ -316,8 +304,8 @@ class Preprocessinator
           defines:       defines
           )
 
-        # Extract system includes
-        includes += full_preprocess_file_includes(
+        # Add extracted system includes
+        includes += preprocess_system_includes(
           filepath:      filepath,
           test:          test,
           flags:         flags,
@@ -332,7 +320,7 @@ class Preprocessinator
         end
 
         header = "Extracted #include list from #{filepath}"
-        @loginator.log_list( includes, header, Verbosity::DEBUG )
+        @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
       
         @includes_handler.write_includes_list( includes_list_filepath, includes )
       end
