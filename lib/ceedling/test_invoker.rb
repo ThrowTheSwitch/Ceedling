@@ -95,9 +95,7 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
 
-          # Always run regex-based #include extraction
-          # Even with test preprocessing, we'll still use these as a possible fallback.
-          contexts = [:includes]
+          contexts = []
 
           if @configurator.project_use_test_preprocessor_tests
             # Extracting other context will happen in later steps after preprocessing.
@@ -110,6 +108,7 @@ class TestInvoker
             contexts << :build_directive_include_paths
             contexts << :build_directive_source_files
             contexts << :test_runner_details
+            contexts << :includes
 
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
             @loginator.log( msg )
@@ -185,14 +184,19 @@ class TestInvoker
           }
 
           msg = @reportinator.generate_module_progress(
-            operation: 'Preparing for full test #include extraction',
+            operation: 'Preparing for test system #include extraction',
             module_name: arg_hash[:test],
             filename: File.basename( arg_hash[:filepath] )
           )
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-          # TODO: Preserve simple_includes to use in next block
-          includes = @preprocessinator.simple_preprocess_file_includes( **arg_hash )
+          # Extract user includes
+          includes = @preprocessinator.preprocess_user_includes( **arg_hash )
+          
+          # Store includes for future use
+          @context_extractor.ingest_includes( details[:filepath], includes )
+          
+          # Create blank mocks and partials to keep preprocessing happy before we generate these files
           @helper.generate_test_includes_standins( details[:name], includes )
         end
 
@@ -213,10 +217,13 @@ class TestInvoker
           )
           @loginator.log( msg )
 
-          includes = @preprocessinator.simple_preprocess_file_includes( **arg_hash )
-          includes += @preprocessinator.full_preprocess_file_includes( **arg_hash )
-          Includes.sort(includes)
-          # Replace includes with more complete list
+          # Get existing list of (user) includes
+          includes = @context_extractor.lookup_full_header_includes_list( details[:filepath] )
+          
+          # Add system includes
+          includes += @preprocessinator.preprocess_system_includes( **arg_hash )
+          
+          # Update full list of includes
           @context_extractor.ingest_includes( details[:filepath], includes )
         end
       end if @configurator.project_use_test_preprocessor_tests
