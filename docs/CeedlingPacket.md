@@ -2789,50 +2789,7 @@ and migrated to the `:test_build` and `:release_build` sections.
    * `:mocks` enables only preprocessing of header files that are to be mocked.
    * `:tests` enables only preprocessing of your test files.
 
-  See also the complementary setting `:use_deep_preprocessor`.
-
   [test-preprocessing]: #preprocessing-behavior-for-tests
-
-  **Default**: `:none`
-
-* `:use_deep_preprocessor`
-
-  This option is an addon to `:use_test_preprocessor`. It is **_only_** 
-  appropriate to enable this setting if you are also using `:use_test_preprocessor`
-  and _only_ if Ceedling’s test preprocessing configuration includes mock generation.
-
-  This setting allows Ceedling to better support limited amd specific situations 
-  where definitions required for test builds might be buried in your source files’ 
-  `#include` chain and not ending up injected into generated mocks.
-
-  At present, when enabled, this setting only injects a far lengthier list of `#include` 
-  directives in your generated mocks. The most common need for this is in 
-  projects with complex source code where CMock’s sophisticated `inline` mocking feature 
-  is enabled.
-
-  Except in rare cases, **_you probably do not need this feature_**. It will add some
-  overhead to your build and you risk oddball problems like doubly-defined symbols
-  and other such problems from using more `#include` directives than are probably needed 
-  in your generated mocks.
-
-  If compilation of your mocks is failing for lack of symbols (because of incomplete
-  `#include` lists in said mocks), you have other options to try besides this setting:
-
-  1. Using `:cmock` ↳ `:includes` (or its variations) to manually inject needed header
-     files into generated mocks.
-  1. Go spelunking through your project to find any `#define`s your source code relies
-     on in a release build that should be duplicated in a test build. If `#include`
-     statements are surrounded by conditional compilation preprocessing statements 
-     without the corresponding triggering conditions in your test build, the 
-     GCC preproccessor Ceedling relies on will not discover all the `#include` 
-     statements in the dependencies chain and thus will not be able to inject them
-     into generated mocks. See Ceeling’s extensive support for adding symbols to your
-     test build in the `:defines` project configuration section.
-
-  Available options:
-
-   * `:none` disables deep preprocessing, leaving normal shallow mode.
-   * `:mocks` enables deep preprocessing of header files that are to be mocked.
 
   **Default**: `:none`
 

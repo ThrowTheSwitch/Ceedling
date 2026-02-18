@@ -469,7 +469,7 @@ module CeedlingTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
-        settings = { :project => { :use_test_preprocessor => :all, :use_deep_preprocessor => :mocks },
+        settings = { :project => { :use_test_preprocessor => :all },
                      :unity => { :use_param_tests => true }
                    }
         @c.merge_project_yml_for_test(settings)

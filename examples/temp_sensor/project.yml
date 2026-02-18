@@ -14,7 +14,6 @@
   # optional features. If you don't need them, keep them turned off for performance
   :use_mocks: TRUE
   :use_test_preprocessor: :all   # options are :none, :mocks, :tests, or :all
-  :use_deep_preprocessor: :none  # options are :none, :mocks, :tests, or :all
   :use_backtrace: :none          # options are :none, :simple, or :gdb
 
 
