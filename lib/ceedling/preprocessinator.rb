@@ -326,7 +326,10 @@ class Preprocessinator
           defines:       defines
         )
 
-        Includes.sort!(includes)
+        # Sanitize the final list and remove any includes that have been mocked
+        Includes.sanitize!(includes) do |include, all|
+          all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
+        end
 
         header = "Extracted #include list from #{filepath}"
         @loginator.log_list( includes, header, Verbosity::DEBUG )
