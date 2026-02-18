@@ -67,6 +67,18 @@ class Includes
   def self.filter(includes, pattern)
     includes.select { |include| include.filename =~ pattern }
   end
+
+  # Sort list so system includes are at the beginning
+  # (Best practice)
+  def self.sort(includes)
+    _includes = includes.clone
+    self.sort!(_includes)
+    return _includes
+  end
+
+  def self.sort!(includes)
+    includes.sort_by! { |include| include.is_a?(SystemInclude) ? 0 : 1 }
+  end
 end
 
 
