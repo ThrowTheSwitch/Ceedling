@@ -35,7 +35,7 @@ class PreprocessinatorIncludesHandler
 
     command = 
       @tool_executor.build_command_line(
-        @configurator.tools_test_simple_includes_preprocessor,
+        @configurator.tools_test_includes_dependencies_preprocessor,
         # No additional arguments
         [],
         # Argument replacement
