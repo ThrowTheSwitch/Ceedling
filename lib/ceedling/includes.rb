@@ -64,8 +64,50 @@ class Includes
     end
   end
 
+  # Class method to extract all matching includes by filename pattern
   def self.filter(includes, pattern)
     includes.select { |include| include.filename =~ pattern }
+  end
+
+  # Class method for non-mutating sanitize
+  #
+  # @param includes [Array<Include>] List of includes to sanitize
+  # @param block [Proc] Optional block passed to reject! for custom filtering
+  # @yield [include] Each include object for custom rejection logic
+  # @return [Array<Include>] New sanitized list
+  # @example Basic usage
+  #   Includes.sanitize(includes)
+  # @example Custom rejection
+  #   Includes.sanitize(includes) { |include, all| ... }
+  def self.sanitize(includes, &block)
+    _includes = includes.clone
+    self.sanitize!(_includes, &block)
+    return _includes
+  end
+
+  # Class method for mutating sanitize
+  #
+  # @param includes [Array<Include>] List of includes to sanitize in place
+  # @param block [Proc] Optional block passed to reject! for custom filtering
+  # @yield [include] Each include object for custom rejection logic
+  # @return [Array<Include>] The modified includes list
+  # @example Basic usage
+  #   Includes.sanitize!(includes)
+  # @example Custom rejection
+  #   Includes.sanitize!(includes) { |include, all| ... }
+  def self.sanitize!(includes, &block)
+    # Remove duplicates
+    includes.uniq!
+
+    # Apply custom rejection with access to full list if block provided
+    if block_given?
+      includes.reject! { |include| block.call(include, includes) }
+    end
+
+    # Ensure system includes come first
+    self.sort!(includes)
+
+    return includes
   end
 
   # Sort list so system includes are at the beginning
@@ -78,6 +120,7 @@ class Includes
 
   def self.sort!(includes)
     includes.sort_by! { |include| include.is_a?(SystemInclude) ? 0 : 1 }
+    return includes
   end
 end
 
