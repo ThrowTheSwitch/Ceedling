@@ -17,9 +17,10 @@ class PreprocessorIncludesParser
 
   # Initialize parser with an IO buffer
   # @param io [IO] An IO object (File, StringIO, etc.) to read from
-  def initialize(io)
+  def initialize(io, max_depth: 1)
     raise ArgumentError, "Expected an IO object, got #{io.class}" unless io.respond_to?(:each_line)
     @io = io
+    @max_depth = max_depth
   end
 
   # Extracts top-level includes from the preprocessor output
@@ -41,7 +42,7 @@ class PreprocessorIncludesParser
         line_number = match[1].to_i
         filepath = match[2]
         flags = match[3] ? match[3].split.map(&:to_i) : []
-        
+
         # Skip special markers like "<built-in>" and "<command-line>"
         next if filepath.start_with?('<')
         
@@ -61,14 +62,14 @@ class PreprocessorIncludesParser
           
           # Only capture includes at nesting level 1 (direct includes from original file)
           # and skip if we've already seen this path
-          if nesting_level == 1 && !seen_paths.include?(filepath)
+          if nesting_level <= @max_depth && !seen_paths.include?(filepath)
             seen_paths.add(filepath)
             
             # Flag 3 indicates a system header
             if flags.include?(3)
               includes << SystemInclude.new(filepath)
-            else
-              includes << UserInclude.new(filepath)
+            # else
+            #   includes << UserInclude.new(filepath)
             end
           end
         # Flag 2 means returning to a previous file
@@ -85,9 +86,9 @@ class PreprocessorIncludesParser
   # Parse preprocessor output from a file (production use)
   # @param filepath [String] Path to the preprocessor output file
   # @return [Array<UserInclude, SystemInclude>]
-  def self.parse_file(filepath)
+  def self.parse_file(filepath, max_depth: 1)
     File.open(filepath, 'r') do |file|
-      parser = new(file)
+      parser = new(file, max_depth: max_depth)
       parser.extract_includes(filepath: filepath)
     end
   end
@@ -95,10 +96,10 @@ class PreprocessorIncludesParser
   # Parse preprocessor output from a string (testing use)
   # @param content [String] Preprocessor output as a string
   # @return [Array<UserInclude, SystemInclude>]
-  def self.parse_string(content, filepath)
+  def self.parse_string(content, filepath, max_depth: 1)
     require 'stringio'
     io = StringIO.new(content)
-    parser = new(io)
+    parser = new(io, max_depth: max_depth)
     parser.extract_includes(filepath: filepath)
   end
 end
