@@ -186,7 +186,7 @@ class PreprocessinatorIncludesHandler
     #   return false, []
     # end
 
-    return true, PreprocessorIncludesParser.parse_file(preprocessed_filepath)
+    return true, PreprocessorIncludesParser.parse_file(preprocessed_filepath, max_depth: 2)
   end
 
   def extract_simple_includes_preprocessor(test:, filepath:, flags:, defines:, search_paths:)
