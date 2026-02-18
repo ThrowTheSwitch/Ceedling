@@ -213,6 +213,8 @@ class TestContextExtractor
 
   # Unlike other ingest() calls, ingest_includes() can be called externally.
   def ingest_includes(filepath, includes)
+    _includes = Includes.sanitize(includes)
+
     mock_prefix = @configurator.cmock_mock_prefix
     file_key    = form_file_key( filepath )
     
@@ -222,7 +224,7 @@ class TestContextExtractor
     sources     = []
 
     # Processing list of UserInclude and/or SystemInclude
-    includes.each do |include|
+    _includes.each do |include|
       # <*.h>
       if include.filename =~ /#{Regexp.escape(@configurator.extension_header)}$/
         # Check if include is a mock with regex match that extracts only mock name (no .h)
