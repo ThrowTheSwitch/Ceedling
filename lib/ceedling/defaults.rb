@@ -73,9 +73,12 @@ DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
     ].freeze
   }
 
-DEFAULT_TEST_SIMPLE_INCLUDES_PREPROCESSOR_TOOL = {
+
+# Extracts include directives as make-style depenedencies.
+# We use this to extract a basic list of (user) includes from files.
+DEFAULT_TEST_INCLUDES_DEPENDENCIES_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_simple_includes_preprocessor'.freeze,
+  :name => 'default_test_includes_dependencies_preprocessor'.freeze,
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,             # Run only through preprocessor stage with its output
@@ -91,6 +94,8 @@ DEFAULT_TEST_SIMPLE_INCLUDES_PREPROCESSOR_TOOL = {
     ].freeze
   }
 
+# Fully expands a given file through the preprocessor
+# Processes #ifdefs, expands macros, etc.
 DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_file_full_preprocessor'.freeze,
@@ -107,6 +112,8 @@ DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
     ].freeze
   }
 
+# Expands a given file through the preprocessor, preserving directives (macros, includes, etc.).
+# Can be used to extract includes (differentiating system and user indludes) and non-code directives.
 DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_file_directives_only_preprocessor'.freeze,
@@ -232,9 +239,12 @@ DEFAULT_TOOLS_TEST_ASSEMBLER = {
 
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
-    :test_simple_includes_preprocessor       => DEFAULT_TEST_SIMPLE_INCLUDES_PREPROCESSOR_TOOL,
-    :test_file_full_preprocessor             => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
-    :test_file_directives_only_preprocessor  => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
+    # Extracts include directives as make-style depenedencies
+    :test_includes_dependencies_preprocessor  => DEFAULT_TEST_INCLUDES_DEPENDENCIES_PREPROCESSOR_TOOL,
+    # Fully expands a given file through the preprocessor
+    :test_file_full_preprocessor              => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
+    # Expands a given file through the preprocessor, preserving directives (macros, includes, etc.)
+    :test_file_directives_only_preprocessor   => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
     }
   }
 
