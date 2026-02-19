@@ -269,6 +269,7 @@ preprocessinator:
     - preprocessinator_includes_handler
     - preprocessinator_file_assembler
     - file_path_utils
+    - tool_executor
     - file_wrapper
     - plugin_manager
     - configurator
@@ -280,6 +281,8 @@ preprocessinator_includes_handler:
     - configurator
     - tool_executor
     - file_path_utils
+    - parsing_parcels
+    - file_wrapper
     - yaml_wrapper
     - loginator
     - reportinator

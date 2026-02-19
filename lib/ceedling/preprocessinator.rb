@@ -12,6 +12,7 @@ class Preprocessinator
   constructor :preprocessinator_includes_handler,
               :preprocessinator_file_assembler,
               :file_path_utils,
+              :tool_executor,
               :file_wrapper,
               :plugin_manager,
               :configurator,
@@ -28,32 +29,69 @@ class Preprocessinator
     # Key: includes list filepath (String), Value: Mutex
     @file_locks = {}
     @file_locks_mutex = Mutex.new
+
+    @directives_only_available = true
   end
 
+  def directives_only_available?
+    return @directives_only_available
+  end
 
   # Extract user includes from a file
-  def preprocess_user_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def preprocess_user_includes(filepath:, test:, search_paths:, flags:, defines:)
     # Pass-through
     return @includes_handler.extract_user_includes(
       filepath:      filepath,
       test:          test,
       flags:         flags,
-      include_paths: include_paths,
-      vendor_paths:  vendor_paths,
+      search_paths:  search_paths,
       defines:       defines
       )
   end
 
+  def generate_directives_only_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( filepath, test )
+
+    # Run GCC with directives-only preprocessor expansion
+    command = @tool_executor.build_command_line(
+      @configurator.tools_test_file_directives_only_preprocessor,
+      # Additional arguments
+      flags,
+      # Argument replacement
+      filepath,
+      preprocessed_filepath,
+      defines,
+      (include_paths + vendor_paths)
+    )
+    command[:options][:boom] = false
+    results = @tool_executor.exec( command )
+
+    # Handle warning from preprocessor saying that clang can't handle directives-only (common with older clang)
+    if results[:output].match /warning[^\n]+-fdirectives-only/
+      msg = "Ceedling will rely on fallback details extraction because your C preprocessor lacks support for directives-only output"
+      @loginator.log( msg, Verbosity::WARNING )
+      @directives_only_available = false
+      return nil
+
+    elsif results[:exit_code] != 0
+      msg = "Ceedling will rely on fallback details extraction because C preprocessing failed for #{filepath}"
+      @loginator.log(msg, Verbosity::WARNING)
+      return nil
+    end
+
+    return preprocessed_filepath
+  end
+
   # Extract system includes from a file
-  def preprocess_system_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def preprocess_system_includes(filepath:, directives_only_filepath:, fallback: false)
+    name = File.basename(filepath)
+
     # Pass-through
     return @includes_handler.extract_system_includes(
-      filepath:      filepath,
-      test:          test,
-      flags:         flags,
-      include_paths: include_paths,
-      vendor_paths:  vendor_paths,
-      defines:       defines
+      name:                   name,
+      filepath:               filepath,
+      preprocessed_filepath:  directives_only_filepath,
+      fallback:               fallback
       )
   end
 
@@ -114,17 +152,27 @@ class Preprocessinator
     return !includes.empty?, includes
   end
 
-
-  def preprocess_partial_header_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def preprocess_partial_header_file(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      flags:,
+      include_paths:,
+      vendor_paths:,
+      defines:
+  )
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     arg_hash = {
-      filepath:       filepath,
-      test:           test,
-      flags:          flags,
-      include_paths:  include_paths,
-      vendor_paths:   vendor_paths,
-      defines:        defines
+      test:                      test,
+      filepath:                  filepath,
+      directives_only_filepath:  directives_only_filepath,
+      fallback:                  fallback,
+      flags:                     flags,
+      include_paths:             include_paths,
+      vendor_paths:              vendor_paths,
+      defines:                   defines
     }
 
     # Extract includes & log progress and details   
@@ -155,7 +203,16 @@ class Preprocessinator
     return preprocessed_filepath, includes
   end
 
-  def preprocess_mockable_header_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def preprocess_mockable_header_file(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      flags:,
+      include_paths:,
+      vendor_paths:,
+      defines:
+  )
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     plugin_arg_hash = {
@@ -171,12 +228,14 @@ class Preprocessinator
     @plugin_manager.pre_mock_preprocess( plugin_arg_hash )
 
     arg_hash = {
-      filepath:       filepath,
-      test:           test,
-      flags:          flags,
-      include_paths:  include_paths,
-      vendor_paths:   vendor_paths,
-      defines:        defines
+      test:                      test,
+      filepath:                  filepath,
+      directives_only_filepath:  directives_only_filepath,
+      fallback:                  fallback,
+      flags:                     flags,
+      include_paths:             include_paths,
+      vendor_paths:              vendor_paths,
+      defines:                   defines
     }
 
     # Extract includes & log progress and details   
@@ -214,16 +273,27 @@ class Preprocessinator
     return preprocessed_filepath
   end
 
-  def preprocess_partial_source_file(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def preprocess_partial_source_file(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      flags:,
+      include_paths:,
+      vendor_paths:,
+      defines:
+  )
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     arg_hash = {
-      filepath:      filepath,
-      test:          test,
-      flags:         flags,
-      include_paths: include_paths,
-      vendor_paths:  vendor_paths,
-      defines:       defines
+      test:                      test,
+      filepath:                  filepath,
+      directives_only_filepath:  directives_only_filepath,
+      fallback:                  fallback,
+      flags:                     flags,
+      include_paths:             include_paths,
+      vendor_paths:              vendor_paths,
+      defines:                   defines
     }
 
     # Extract includes & log progress and info
@@ -302,7 +372,16 @@ class Preprocessinator
   ### Private ###
   private
 
-  def preprocess_file_common(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def preprocess_file_common(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      flags:,
+      include_paths:,
+      vendor_paths:,
+      defines:
+  )
     msg = @reportinator.generate_module_progress(
       operation: "Preprocessing",
       module_name: test,
@@ -320,20 +399,17 @@ class Preprocessinator
         filepath:      filepath,
         test:          test,
         flags:         flags,
-        include_paths: include_paths,
-        vendor_paths:  vendor_paths,
+        search_paths:  vendor_paths,
         defines:       defines
         )
 
       # Add extracted system includes
       includes += @includes_handler.extract_system_includes(
-        filepath:      filepath,
-        test:          test,
-        flags:         flags,
-        include_paths: include_paths,
-        vendor_paths:  vendor_paths,
-        defines:       defines
-      )
+        name:                  test,
+        filepath:              filepath,
+        preprocessed_filepath: directives_only_filepath,
+        fallback:              fallback
+        )
 
       # Sanitize the final list and remove any includes that have been mocked
       Includes.sanitize!(includes) do |include, all|

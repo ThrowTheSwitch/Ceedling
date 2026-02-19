@@ -7,6 +7,7 @@
 
 require 'ceedling/exceptions'
 require 'ceedling/includes'
+require 'ceedling/includes_regex_extractor'
 require 'ceedling/partials/partials'
 require 'ceedling/file_path_utils'
 require 'ceedling/generator_test_runner' # From lib/ not vendor/unity/auto
@@ -100,17 +101,6 @@ class TestContextExtractor
       @file_wrapper.read( test_filepath ),
       input_filepath.nil? ? nil : @file_wrapper.read( input_filepath )
     )
-  end
-
-  # Scan for all includes.
-  # Unlike other extract() calls, extract_includes() is public to be called externally.
-  # `input` must have the interface of IO -- StringIO for testing or File in typical use  
-  def extract_includes(input)
-    includes = []
-
-    @parsing_parcels.code_lines( input ) {|line| includes += _extract_includes( line ) }
-
-    return includes.uniq
   end
 
   # All header includes .h of test file
@@ -253,6 +243,8 @@ class TestContextExtractor
       @header_includes[file_key] = headers
       @source_includes[file_key] = sources
     end
+
+    return _includes
   end
 
   private #################################
@@ -278,9 +270,13 @@ class TestContextExtractor
   end
 
   def collect_includes(filepath, includes)
-    includes.uniq!
-    ingest_includes( filepath, includes )
-    debug_log_list( "#includes found", filepath, includes )
+    # Squeeze out any nil elements
+    includes.compact!
+
+    # `ingest_includes()` does some housekeeping on the list
+    _includes = ingest_includes( filepath, includes )
+
+    debug_log_list( "#includes found", filepath, _includes )
   end
 
   def collect_partials_configuration(filepath, partials_config)
@@ -334,19 +330,8 @@ class TestContextExtractor
   def _extract_includes(line)
     includes = []
 
-    # Look for user #include statements
-    results = line.match(PATTERNS::USER_INCLUDE_DIRECTIVE_FILENAME)
-    if !results.nil?
-      includes << UserInclude.new(results[1])
-      return includes
-    end
-
-    # Look for system #include statements
-    results = line.match(PATTERNS::SYSTEM_INCLUDE_DIRECTIVE_FILENAME)
-    if !results.nil?
-      includes << SystemInclude.new(results[1])
-      return includes
-    end
+    includes << IncludesRegexExtractor.extract_system_include( line )
+    includes << IncludesRegexExtractor.extract_user_include( line )
 
     return includes
   end

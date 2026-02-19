@@ -7,12 +7,13 @@
 
 require 'ceedling/includes'
 require 'ceedling/preprocessinator_includes_extractor'
+require 'ceedling/includes_regex_extractor'
 
 class PreprocessinatorIncludesHandler
 
-  constructor :configurator, :tool_executor, :file_path_utils, :yaml_wrapper, :loginator, :reportinator
+  constructor :configurator, :tool_executor, :file_path_utils, :file_wrapper, :yaml_wrapper, :parsing_parcels, :loginator, :reportinator
 
-  def extract_user_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def extract_user_includes(test:, filepath:, search_paths:, flags:, defines:)
     filename = File.basename(filepath)
 
     msg = @reportinator.generate_module_progress(
@@ -22,17 +23,16 @@ class PreprocessinatorIncludesHandler
     )
     @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-##  - Many errors can occur but may not necessarily prevent usable results.
-
-## Creation:
-##  - This output is created with the -MM -MG -MP command line options.
-##  - No search paths are used towards extracting only the user #include statements of the file.
-##  - Note: This approach can have gaps with complex macros / conditional statements.
-##          Gaps can be minimized with proper defines in the project file.
-##          However, needed / complex macros located in other header files can still gum 
-##          up the works.
-##
-
+    # Creation:
+    #  - This output is created with the -MM -MG -MP command line options.
+    #  - Limited search paths are used towards shallow extracting of only the user #include statements of the file.
+    #    This preprocessor mode assumes any includes discovered outside of a search path will be generated.
+    #
+    # Notes:
+    #  - This approach can have gaps with complex macros / conditional statements.
+    #    Gaps can be minimized with proper defines in the project file. However, needed / complex macros 
+    #    located in other header files can still gum up the works.
+    #  - Many errors can occur but may not necessarily prevent usable results.
     command = 
       @tool_executor.build_command_line(
         @configurator.tools_test_includes_dependencies_preprocessor,
@@ -42,7 +42,7 @@ class PreprocessinatorIncludesHandler
         filepath,
         defines,
         flags,
-        (include_paths + vendor_paths)
+        search_paths
       )
 
     # Assume possible errors so we have best shot at extracting results from preprocessing.
@@ -70,45 +70,39 @@ class PreprocessinatorIncludesHandler
     return includes
   end
 
-  def extract_system_includes(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def extract_system_includes(name:, filepath:, preprocessed_filepath:, fallback: false)
+    includes = []
+
     filename = File.basename(filepath)
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( filepath, test )
 
-    msg = @reportinator.generate_module_progress(
-      operation: "Extracting system #includes via preprocessing from",
-      module_name: test,
-      filename: filename
-    )
-    @loginator.log(msg, Verbosity::OBNOXIOUS)
-
-    # Run GCC with directives-only preprocessor expansion
-    command = 
-      @tool_executor.build_command_line(
-        @configurator.tools_test_file_directives_only_preprocessor,
-        # Additional arguments
-        flags,
-        # Argument replacement
-        filepath,
-        preprocessed_filepath,
-        defines,
-        (include_paths + vendor_paths)
+    if !fallback
+      msg = @reportinator.generate_module_progress(
+        operation: "Extracting system #includes from preprocessed output",
+        module_name: name,
+        filename: filename
       )
+      @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-    # Allow quiet failure. We will process the execution result.
-    command[:options][:boom] = false
-    shell_result = @tool_executor.exec( command )
+      # Get system includes from up to 2 levels of nested headers.
+      # This may extract more system includes than necessary but helps ensure we don't
+      # top-level system includes hidden by nesting include guards.
+      includes = PreprocessinatorSystemIncludesExtractor.extract_includes_from_file( preprocessed_filepath, max_depth: 2 )
+      includes = clean_self_reference(filepath, includes)
+    else
+      msg = @reportinator.generate_module_progress(
+        operation: "Extracting system #includes from original file (fallback)",
+        module_name: name,
+        filename: filename
+      )
+      @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-    if shell_result[:exit_code] != 0
-      msg = "Preprocessor full includes extraction failed."
-      @loginator.log(msg, Verbosity::DEBUG)
-      return []
+      @file_wrapper.open(filepath, 'r') do |input|
+        @parsing_parcels.code_lines( input ) do |line|
+          includes << IncludesRegexExtractor.extract_system_include( line )
+        end
+      end
+      includes.compact!
     end
-
-    # Get system includes from up to 2 levels of nested headers.
-    # This may extract more system includes than necessary but helps ensure we don't
-    # top-level system includes hidden by nesting include guards.
-    includes = PreprocessinatorSystemIncludesExtractor.extract_includes_from_file( preprocessed_filepath, max_depth: 2 )
-    includes = clean_self_reference(filepath, includes)
 
     header = "Extracted system #include list from #{filepath}"
     @loginator.log_list( includes, header, Verbosity::DEBUG )
