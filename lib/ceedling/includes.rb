@@ -23,10 +23,10 @@ class Includes
   #   #   { 'type' => 'user', 'path' => 'module.h' }
   #   # ]
   def self.to_hashes(includes)
-    return includes.map do |inc|
+    return includes.map do |include|
       {
-        'type' => inc.is_a?(UserInclude) ? 'user' : 'system',
-        'path' => inc.filepath
+        'type' => include.is_a?(UserInclude) ? 'user' : 'system',
+        'path' => include.filepath
       }
     end
   end
@@ -67,6 +67,16 @@ class Includes
   # Class method to extract all matching includes by filename pattern
   def self.filter(includes, pattern)
     includes.select { |include| include.filename =~ pattern }
+  end
+
+  # Class method to extract all system includes
+  def self.system(includes)
+    includes.select { |include| include.is_a?(UserInclude) }
+  end
+
+  # Class method to extract all user includes
+  def self.user(includes)
+    includes.select { |include| include.is_a?(SystemInclude) }
   end
 
   # Class method for non-mutating sanitize

@@ -132,9 +132,10 @@ class ConfiguratorBuilder
       [:project_test_dependencies_path,         File.join(project_build_tests_root, 'dependencies'),      true ],
 
       [:project_build_vendor_unity_path,        File.join(project_build_vendor_root, 'unity', 'src'),       true ],
+      # Always include a Ceedling path (even if empty) as we need a search path present for certain preprocessing steps
+      [:project_build_vendor_ceedling_path,     File.join(project_build_vendor_root, 'ceedling'),           true ],
       [:project_build_vendor_cmock_path,        File.join(project_build_vendor_root, 'cmock', 'src'),       in_hash[:project_use_mocks] ],
       [:project_build_vendor_cexception_path,   File.join(project_build_vendor_root, 'c_exception', 'lib'), in_hash[:project_use_exceptions] ],
-      [:project_build_vendor_ceedling_path,     File.join(project_build_vendor_root, 'ceedling'),           in_hash[:project_use_partials] ],
 
       [:project_release_artifacts_path,         File.join(project_build_artifacts_root, RELEASE_BASE_PATH), in_hash[:project_release_build] ],
       [:project_release_build_cache_path,       File.join(project_build_release_root, 'cache'),             in_hash[:project_release_build] ],
