@@ -37,10 +37,10 @@ class Preprocessinator
     return @directives_only_available
   end
 
-  # Extract user includes from a file
-  def preprocess_user_includes(filepath:, test:, search_paths:, flags:, defines:)
+  # Extract bare includes (does not differentiate user/system) from a file
+  def preprocess_bare_includes(filepath:, test:, search_paths:, flags:, defines:)
     # Pass-through
-    return @includes_handler.extract_user_includes(
+    return @includes_handler.extract_bare_includes(
       filepath:      filepath,
       test:          test,
       flags:         flags,
@@ -410,8 +410,8 @@ class Preprocessinator
 
     if !success
       # Full preprocessing-based #include extraction with saving to YAML file
-      # Extract user includes
-      includes = @includes_handler.extract_user_includes(
+      # Extract bare includes
+      bare_includes = @includes_handler.extract_bare_includes(
         filepath:      filepath,
         test:          test,
         flags:         flags,
@@ -420,12 +420,15 @@ class Preprocessinator
         )
 
       # Add extracted system includes
-      includes += @includes_handler.extract_system_includes(
+      system_includes = @includes_handler.extract_system_includes(
         name:                  test,
         filepath:              filepath,
         preprocessed_filepath: directives_only_filepath,
         fallback:              fallback
         )
+
+      # Reconcile includes with overlapping information from imperfect extraction
+      includes = Includes.reconcile( bare: bare_includes, system: system_includes )
 
       # Sanitize the final list and remove any includes that have been mocked
       Includes.sanitize!(includes) do |include, all|

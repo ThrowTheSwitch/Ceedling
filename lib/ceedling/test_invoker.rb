@@ -77,7 +77,8 @@ class TestInvoker
           paths[:mocks] = mocks_path if @configurator.project_use_mocks
           paths[:partials] = partials_path if @configurator.project_use_partials
           if @configurator.project_use_test_preprocessor != :none
-            @testables[key][:preprocess][:user_includes] = []
+            # Temporary list of bare includes (not user/system specialized)
+            @testables[key][:preprocess][:includes] = []
             @testables[key][:preprocess][:directives_only] = {
               :filepath => nil
             }
@@ -203,10 +204,10 @@ class TestInvoker
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
           # Extract user includes
-          includes = @preprocessinator.preprocess_user_includes( **arg_hash )
+          includes = @preprocessinator.preprocess_bare_includes( **arg_hash )
           
-          # Store includes for future use
-          details[:preprocess][:user_includes] = includes
+          # Temporarily store includes for future use
+          details[:preprocess][:includes] = includes
           
           # Create blank mocks and partials to keep preprocessing happy before we generate these files
           @helper.generate_test_includes_standins( name, includes )
@@ -287,12 +288,13 @@ class TestInvoker
             )
           end
 
-          # Get existing list of user includes
-          user_includes = details[:preprocess][:user_includes]
-          
-          all_includes = (system_includes + user_includes)
+          # Get existing list of bare includes
+          bare_includes = details[:preprocess][:includes]
 
-          # Update full list of includes
+          # Reconcile includes with overlapping information from imperfect extraction
+          all_includes = Includes.reconcile( bare: bare_includes, system: system_includes )
+
+          # Update full list of includes (performs santization)
           @context_extractor.ingest_includes( filepath, all_includes )
 
           @preprocessinator.store_includes_list(

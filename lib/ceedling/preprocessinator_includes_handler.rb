@@ -13,11 +13,11 @@ class PreprocessinatorIncludesHandler
 
   constructor :configurator, :tool_executor, :file_path_utils, :file_wrapper, :yaml_wrapper, :parsing_parcels, :loginator, :reportinator
 
-  def extract_user_includes(test:, filepath:, search_paths:, flags:, defines:)
+  def extract_bare_includes(test:, filepath:, search_paths:, flags:, defines:)
     filename = File.basename(filepath)
 
     msg = @reportinator.generate_module_progress(
-      operation: "Extracting user #includes via preprocessing from",
+      operation: "Extracting bare #includes via preprocessing from",
       module_name: test,
       filename: filename
     )
@@ -35,7 +35,7 @@ class PreprocessinatorIncludesHandler
     #  - Many errors can occur but may not necessarily prevent usable results.
     command = 
       @tool_executor.build_command_line(
-        @configurator.tools_test_includes_dependencies_preprocessor,
+        @configurator.tools_test_bare_includes_preprocessor,
         # No additional arguments
         [],
         # Argument replacement
@@ -54,17 +54,17 @@ class PreprocessinatorIncludesHandler
 
     # Do not check exit code for success. In some error conditions we still get usable output.
     # Look for the first line of the make rule output.
-    if not make_rules =~ PreprocessinatorUserIncludesExtractor::MAKE_RULE_MATCHER
+    if not make_rules =~ PreprocessinatorBareIncludesExtractor::MAKE_RULE_MATCHER
       @loginator.lazy( Verbosity::DEBUG ) do
-        "Preprocessor user #include extraction failed: #{shell_result[:output]}"
+        "Preprocessor bare #include extraction failed: #{shell_result[:output]}"
       end
       return []
     end
 
-    includes = PreprocessinatorUserIncludesExtractor.extract_includes( make_rules )
+    includes = PreprocessinatorBareIncludesExtractor.extract_includes( make_rules )
     includes = clean_self_reference(filepath, includes)
 
-    header = "Extracted user #include list from #{filepath}"
+    header = "Extracted bare #include from #{filepath}"
     @loginator.log_list( includes, header, Verbosity::DEBUG )
 
     return includes
@@ -83,10 +83,13 @@ class PreprocessinatorIncludesHandler
       )
       @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-      # Get system includes from up to 2 levels of nested headers.
-      # This may extract more system includes than necessary but helps ensure we don't
-      # top-level system includes hidden by nesting include guards.
-      includes = PreprocessinatorSystemIncludesExtractor.extract_includes_from_file( preprocessed_filepath, max_depth: 2 )
+      # Get system includes from up to 3 levels of nested headers.
+      # This may extract more system includes than necessary but ensures we don't
+      # miss top-level system includes hidden by nesting include guards.
+      # Later santization uses system includes slurped up in the top-level user 
+      # include extraction to identify the actual needed system includes and filter
+      # out any extras.
+      includes = PreprocessinatorSystemIncludesExtractor.extract_includes_from_file( preprocessed_filepath, max_depth: 3 )
       includes = clean_self_reference(filepath, includes)
     else
       msg = @reportinator.generate_module_progress(
