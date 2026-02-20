@@ -66,7 +66,7 @@ class ToolExecutorHelper
     # No logging unless we're at least at Obnoxious
     return if !@verbosinator.should_output?( Verbosity::OBNOXIOUS )
 
-    output =      "> Shell executed command:\n"
+    output =      "> Shell executed...\n"
     output +=     "`#{command_str}`\n"
 
     if !shell_result.empty?
@@ -80,7 +80,7 @@ class ToolExecutorHelper
 
         output +=   "> And terminated with status: #{shell_result[:status]}\n"
 
-        @loginator.log( "\n#{output}\n\n", Verbosity::DEBUG )
+        @loginator.log( "#{output}\n\n", Verbosity::DEBUG )
 
         return # Bail out
       end
@@ -94,6 +94,6 @@ class ToolExecutorHelper
       end
     end
 
-    @loginator.log( "\n#{output}\n\n", Verbosity::OBNOXIOUS )
+    @loginator.log( "#{output}\n\n", Verbosity::OBNOXIOUS )
   end
 end
