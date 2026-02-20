@@ -196,7 +196,7 @@ class TestInvoker
           }
 
           msg = @reportinator.generate_module_progress(
-            operation: 'User #include extraction',
+            operation: 'Extracting user #includes for',
             module_name: name,
             filename: File.basename( filepath )
           )
@@ -222,7 +222,6 @@ class TestInvoker
             test:          details[:name],
             flags:         details[:preprocess_flags],
             include_paths: details[:search_paths],
-            # For user includes preprocessing, we need at least one search path
             vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
             defines:       details[:preprocess_defines]
           }
@@ -275,7 +274,7 @@ class TestInvoker
 
             msg = @reportinator.generate_module_progress(
               operation: 'Extracting system #includes for',
-              module_name: arg_hash[:test],
+              module_name: name,
               filename: File.basename( filepath )
             )
             @loginator.log( msg )
@@ -291,13 +290,16 @@ class TestInvoker
           # Get existing list of user includes
           user_includes = details[:preprocess][:user_includes]
           
-          # Update full list of includes
-          @context_extractor.ingest_includes(
-            filepath,
-            (system_includes + user_includes)
-          )
+          all_includes = (system_includes + user_includes)
 
-          @preprocessinator.store_includes_list( test: name, filepath: filepath, includes: includes )
+          # Update full list of includes
+          @context_extractor.ingest_includes( filepath, all_includes )
+
+          @preprocessinator.store_includes_list(
+            test: name,
+            filepath: filepath,
+            includes: all_includes
+          )
         end
       end if @configurator.project_use_test_preprocessor_tests
 
@@ -391,7 +393,6 @@ class TestInvoker
             test:          name,
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
-            # For user includes preprocessing, we need at least one search path
             vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
             defines:       testable[:preprocess_defines]
           }
@@ -421,7 +422,8 @@ class TestInvoker
             fallback:                  !@preprocessinator.directives_only_available?,
             flags:                     testable[:preprocess_flags],
             include_paths:             testable[:search_paths],
-            vendor_paths:              [],
+            # For user includes preprocessing, we need at least one search path
+            vendor_paths:              [@configurator.project_build_vendor_ceedling_path],
             defines:                   testable[:preprocess_defines]
           }
 
@@ -442,7 +444,6 @@ class TestInvoker
             test:          name,
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
-            # For user includes preprocessing, we need at least one search path
             vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
             defines:       testable[:preprocess_defines]
           }
@@ -472,7 +473,8 @@ class TestInvoker
             fallback:                  !@preprocessinator.directives_only_available?,
             flags:                     testable[:preprocess_flags],
             include_paths:             testable[:search_paths],
-            vendor_paths:              [],
+            # For user includes preprocessing, we need at least one search path
+            vendor_paths:              [@configurator.project_build_vendor_ceedling_path],
             defines:                   testable[:preprocess_defines]
           }
 
@@ -620,7 +622,6 @@ class TestInvoker
             test:          name,
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
-            # For user includes preprocessing, we need at least one search path
             vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
             defines:       testable[:preprocess_defines]
           }
@@ -647,11 +648,12 @@ class TestInvoker
           arg_hash = {
             test:                      testable[:name],
             filepath:                  details[:source],
-            directives_only_filepath:  details[:directives_only_filepath],
+            directives_only_filepath:  mock[:directives_only_filepath],
             fallback:                  !@preprocessinator.directives_only_available?,
             flags:                     testable[:preprocess_flags],
             include_paths:             testable[:search_paths],
-            vendor_paths:              [],
+            # For user includes preprocessing, we need at least one search path
+            vendor_paths:              [@configurator.project_build_vendor_ceedling_path],
             defines:                   testable[:preprocess_defines]
           }
 
@@ -684,18 +686,19 @@ class TestInvoker
       @batchinator.build_step("Preprocessing Test Files") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           arg_hash = {
-            filepath:      details[:filepath],
+            test:                      details[:name],
+            filepath:                  details[:filepath],
+            directives_only_filepath:  details[:preprocess][:directives_only][:filepath],
+            fallback:                  !@preprocessinator.directives_only_available?,
             # We already have the full list of includes for each test file
-            includes:      @context_extractor.lookup_full_header_includes_list( details[:filepath] ),
-            test:          details[:name],
-            flags:         details[:preprocess_flags],
-            include_paths: details[:search_paths],
+            includes:                  @context_extractor.lookup_full_header_includes_list( details[:filepath] ),
+            flags:                     details[:preprocess_flags],
+            include_paths:             details[:search_paths],
             # For user includes preprocessing, we need at least one search path
-            vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
-            defines:       details[:preprocess_defines]
+            vendor_paths:              [@configurator.project_build_vendor_ceedling_path],
+            defines:                   details[:preprocess_defines]
           }
 
-          # TODO: Use directives-only filepath already available here
           filepath = @preprocessinator.preprocess_test_file(**arg_hash)
 
           # Replace default input with preprocessed file

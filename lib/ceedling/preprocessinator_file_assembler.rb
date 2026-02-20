@@ -12,7 +12,16 @@ class PreprocessinatorFileAssembler
 
   constructor :preprocessinator_extractor, :configurator, :tool_executor, :file_path_utils, :file_wrapper, :loginator
 
-  def collect_header_file_contents(source_filepath:, test:, flags:, defines:, include_paths:, extras:)
+  def collect_header_file_contents(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      flags:,
+      defines:,
+      include_paths:,
+      extras:
+    )
     contents = []
 
     # Our extra file content to be preserved
@@ -20,7 +29,7 @@ class PreprocessinatorFileAssembler
     pragmas = []
     macro_defs = []
 
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
 
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
@@ -28,7 +37,7 @@ class PreprocessinatorFileAssembler
       # Additional arguments
       flags,
       # Argument replacement
-      source_filepath,
+      filepath,
       preprocessed_filepath,
       defines,
       include_paths
@@ -36,26 +45,11 @@ class PreprocessinatorFileAssembler
     @tool_executor.exec( command )
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, source_filepath )
+      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, filepath )
     end
 
     # Bail out, skipping directives-only preprocessing if no extras are required
     return contents, (pragmas + macro_defs) if !extras
-
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( source_filepath, test )
-
-    # Run GCC with directives-only preprocessor expansion
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_directives_only_preprocessor,
-      # Additional arguments
-      flags,
-      # Argument replacement
-      source_filepath,
-      preprocessed_filepath,
-      defines,
-      include_paths
-    )
-    results = @tool_executor.exec( command )
 
     # Try to find an #include guard in the first 2k of the file text.
     # An #include guard is one macro from the original file we don't want to preserve if we can help it.
@@ -63,12 +57,10 @@ class PreprocessinatorFileAssembler
     # It's possible preserving the macro from the original file's #include guard could trip something up.
     # Of course, it's also possible some header conditional compilation feature is dependent on it.
     # ¯\_(ツ)_/¯
-    include_guard = @preprocessinator_extractor.extract_include_guard( @file_wrapper.read( source_filepath, 2048 ) )
+    include_guard = @preprocessinator_extractor.extract_include_guard( @file_wrapper.read( filepath, 2048 ) )
 
-    # If we received a warning from preprocessor saying that clang can't handle directives-only (common with older clang)
-    # then we need to attempt to extract the information directly from the source file instead
-    if results[:output].match /warning[^\n]+-fdirectives-only/
-      @file_wrapper.open( source_filepath, 'r' ) do |file|
+    if fallback
+      @file_wrapper.open( filepath, 'r' ) do |file|
         # Get code contents of original source file as a string
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
         _contents = file.read
@@ -78,10 +70,10 @@ class PreprocessinatorFileAssembler
         macro_defs = @preprocessinator_extractor.extract_macro_defs( _contents, include_guard )
       end
     else
-      @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
         # Get code contents of preprocessed directives-only file as a string
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
+        _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, filepath )
 
         # Extract pragmas and macros from 
         pragmas = @preprocessinator_extractor.extract_pragmas( _contents )
@@ -148,13 +140,20 @@ class PreprocessinatorFileAssembler
   end
 
 
-  # TODO: Break apart the generic full preproccessor and directives-only preprocessor handling
-  def collect_test_file_contents(source_filepath:, test:, flags:, defines:, include_paths:)
+  def collect_test_file_contents(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      flags:,
+      defines:,
+      include_paths:
+    )
     contents = []
     # TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
     test_directives = []
 
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
 
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
@@ -162,7 +161,7 @@ class PreprocessinatorFileAssembler
       # Additional arguments
       flags,
       # Argument replacement
-      source_filepath,
+      filepath,
       preprocessed_filepath,
       defines,
       include_paths
@@ -170,28 +169,11 @@ class PreprocessinatorFileAssembler
     @tool_executor.exec( command )
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, source_filepath )
+      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, filepath )
     end
 
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( source_filepath, test )
-
-    # Run GCC with directives-only preprocessor expansion
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_directives_only_preprocessor,
-      # Additional arguments
-      flags,
-      # Argument replacement
-      source_filepath,
-      preprocessed_filepath,
-      defines,
-      include_paths
-    )    
-    results = @tool_executor.exec( command )
-
-    # If we receive a warning saying that clang can't handle directives-only (common with older clang)
-    # then we fall back to using the original source file to detect all TEST_SOURCE_FILE and TEST_INCLUDE_PATH macros
-    if results[:output].match /warning[^\n]+-fdirectives-only/
-      @file_wrapper.open( source_filepath, 'r' ) do |file|
+    if fallback
+      @file_wrapper.open( filepath, 'r' ) do |file|
         # Get code contents of original source file as a string
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
         _contents = file.read
@@ -200,10 +182,10 @@ class PreprocessinatorFileAssembler
         test_directives = @preprocessinator_extractor.extract_test_directive_macro_calls( _contents )
       end
     else
-      @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
         # Get code contents of preprocessed directives-only file as a string
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
+        _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, filepath )
 
         # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
         test_directives = @preprocessinator_extractor.extract_test_directive_macro_calls( _contents )
