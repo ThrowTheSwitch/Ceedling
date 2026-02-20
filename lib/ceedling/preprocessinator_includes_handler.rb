@@ -64,7 +64,7 @@ class PreprocessinatorIncludesHandler
     includes = PreprocessinatorBareIncludesExtractor.extract_includes( make_rules )
     includes = clean_self_reference(filepath, includes)
 
-    header = "Extracted bare #include from #{filepath}"
+    header = "Extracted bare #includes from #{filepath}"
     @loginator.log_list( includes, header, Verbosity::DEBUG )
 
     return includes

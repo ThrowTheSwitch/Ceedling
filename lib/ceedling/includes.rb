@@ -9,7 +9,7 @@ class Includes
   # Class method to convert mixed list of Include objects into an order-preserving list of hashes
   #
   # @param includes [Array<Include>] List of UserInclude and SystemInclude objects
-  # @return [Array<Hash>] Array of hashes, each with 'type' and 'path' keys
+  # @return [Array<Hash>] Array of hashes, each with 'type' and 'filepath' keys
   # @example
   #   includes = [
   #     UserInclude.new("header.h"),
@@ -18,29 +18,37 @@ class Includes
   #   ]
   #   Include.to_hash(includes)
   #   # => [
-  #   #   { 'type' => 'user', 'path' => 'header.h' },
-  #   #   { 'type' => 'system', 'path' => 'stdio.h' },
-  #   #   { 'type' => 'user', 'path' => 'module.h' }
+  #   #   { 'type' => 'user', 'filepath' => 'header.h' },
+  #   #   { 'type' => 'system', 'filepath' => 'stdio.h' },
+  #   #   { 'type' => 'user', 'filepath' => 'module.h' }
   #   # ]
   def self.to_hashes(includes)
     return includes.map do |include|
+      type = 
+        case include
+        when MockInclude then 'mock'
+        when UserInclude then 'user'
+        when SystemInclude then 'system'
+        else raise ArgumentError, "Unknown Include type: #{include.class}"
+        end
+
       {
-        'type' => include.is_a?(UserInclude) ? 'user' : 'system',
-        'path' => include.filepath
+        'type' => type,
+        'filepath' => include.filepath,
       }
     end
   end
 
   # Class method to convert a list of hashes back into Include objects
   #
-  # @param hashes [Array<Hash>] Array of hashes with 'type' and 'path' keys
+  # @param hashes [Array<Hash>] Array of hashes with 'type' and 'filepath' keys
   # @return [Array<Include>] List of UserInclude and SystemInclude objects
   # @raise [ArgumentError] If hash is missing required keys or has invalid type
   # @example
   #   hashes = [
-  #     { 'type' => 'user', 'path' => 'header.h' },
-  #     { 'type' => 'system', 'path' => 'stdio.h' },
-  #     { 'type' => 'user', 'path' => 'module.h' }
+  #     { 'type' => 'user', 'filepath' => 'header.h' },
+  #     { 'type' => 'system', 'filepath' => 'stdio.h' },
+  #     { 'type' => 'user', 'filepath' => 'module.h' }
   #   ]
   #   Include.from_hashes(hashes)
   #   # => [
@@ -51,13 +59,15 @@ class Includes
   def self.from_hashes(hashes)
     return hashes.map do |hash|
       raise ArgumentError, "Hash missing 'type' key" unless hash.key?('type')
-      raise ArgumentError, "Hash missing 'path' key" unless hash.key?('path')
+      raise ArgumentError, "Hash missing 'filepath' key" unless hash.key?('filepath')
       
       case hash['type']
       when 'user'
-        UserInclude.new(hash['path'])
+        UserInclude.new(hash['filepath'])
+      when 'mock'
+        MockInclude.new(hash['filepath'])
       when 'system'
-        SystemInclude.new(hash['path'])
+        SystemInclude.new(hash['filepath'])
       else
         raise ArgumentError, "Invalid include type: #{hash['type']}. Must be 'user' or 'system'"
       end
@@ -117,7 +127,7 @@ class Includes
   # 3. Keep bare includes that have no matching system includes as user includes.
   # 4. If no bare includes exist, return system includes unchanged (should not happen).
   # 5. If no system includes exist, return bare includes unchanged as user includes.
-  def self.reconcile(bare:, system:)
+  def self.reconcile(bare:, system:, mock_prefix:)
     # Validate input types
     unless bare.is_a?(Array) && bare.all? { |include| include.is_a?(Include) }
       raise ArgumentError, "`bare` must be an Array of Include objects"
@@ -145,7 +155,11 @@ class Includes
     end
     
     user_includes = bare_includes.map do |include|
-      UserInclude.new(include.filepath)
+      if include.filename.start_with?(mock_prefix)
+        MockInclude.new(include.filepath)
+      else
+        UserInclude.new(include.filepath)
+      end
     end
 
     # Construct recocniled list of includes with filtered results
@@ -197,6 +211,7 @@ end
 class Include
   attr_reader :filepath
   attr_reader :filename
+  attr_reader :path
 
   # Initialize an Include object from a C include statement or simple filepath.
   #
@@ -205,17 +220,18 @@ class Include
   #  - #include <stdio.h>
   #  - A quoted/bracketed filepath (e.g., '"header.h"' or <stdio.h>')
   #  - A plain filepath (e.g., 'path/to/header.h')
-  # @param full_path [Boolean] (default: false)
+  # @param use_path [Boolean] (default: false)
   #  - If true, use the full filepath in the include directive
   #  - If false, use only the filename
   # @raise [ArgumentError] If the statement is empty or becomes empty after cleaning
-  def initialize(statement, full_path: false)
+  def initialize(statement, use_path: false)
     @filepath = clean(statement)
 
     raise ArgumentError, "Empty include statement" if @filepath.empty?
 
     @filename = File.basename(@filepath)
-    @full_path = full_path
+    @path = File.dirname(@filepath)
+    @use_path = use_path
   end
 
   # Method specialized by subclasses
@@ -247,7 +263,7 @@ class Include
 
   # Returns the configured entry to use in the include directive
   def include()
-    @full_path ? @filepath : @filename
+    @use_path ? @filepath : @filename
   end
 
   private
@@ -276,6 +292,15 @@ class UserInclude < Include
     "#include \"#{include}\""
   end
 end
+
+# MockInclude generates #include "<subdir>/header.h" (with quotes)
+# Specialization to support include directive paths before path are supported everywhere
+class MockInclude < UserInclude
+  def to_s()
+    "#include \"#{filepath}\""
+  end
+end
+
 
 # SystemInclude generates #include <header.h> (with brackets)
 class SystemInclude < Include

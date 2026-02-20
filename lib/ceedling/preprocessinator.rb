@@ -437,7 +437,11 @@ class Preprocessinator
         )
 
       # Reconcile includes with overlapping information from imperfect extraction
-      includes = Includes.reconcile( bare: bare_includes, system: system_includes )
+      includes = Includes.reconcile(
+        bare: bare_includes,
+        system: system_includes,
+        mock_prefix: @configurator.cmock_mock_prefix
+      )
 
       # Sanitize the final list and remove any includes that have been mocked
       Includes.sanitize!(includes) do |include, all|

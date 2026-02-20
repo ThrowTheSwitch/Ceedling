@@ -206,7 +206,6 @@ generator:
   compose:
     - configurator
     - generator_helper
-    - preprocessinator
     - generator_partials
     - generator_mocks
     - generator_test_results
@@ -217,7 +216,6 @@ generator:
     - reportinator
     - loginator
     - plugin_manager
-    - file_wrapper
     - test_runner_manager
     - generator_test_results_backtrace
 
