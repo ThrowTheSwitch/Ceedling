@@ -19,13 +19,11 @@ class TestContextExtractor
 
   def setup
     # Per test-file lookup hashes
-    @all_header_includes = {} # Full list of all headers from test #include statements
-    @header_includes     = {} # List of all headers minus mocks & framework files
+    @header_includes     = {} # Full list of all headers from #include statements
     @source_includes     = {} # List of C files #include'd in a test file
     @source_extras       = {} # C source files outside of header convention added to test build by TEST_SOURCE_FILE()
     @test_runner_details = {} # Test case lists & Unity runner generator instances
     @partials_config     = {} # Partials configuration by test name
-    @mocks               = {} # List of mocks by name without header file extension
     @include_paths       = {} # Additional search paths added to a test build via TEST_INCLUDE_PATH()
     
     # Arrays
@@ -104,16 +102,7 @@ class TestContextExtractor
   end
 
   # All header includes .h of test file
-  def lookup_full_header_includes_list(filepath)
-    val = nil
-    @lock.synchronize do
-      val = @all_header_includes[form_file_key( filepath )] || []
-    end
-    return val
-  end
-
-  # Header includes .h (minus mocks & framework headers) in test file
-  def lookup_header_includes_list(filepath)
+  def lookup_all_header_includes_list(filepath)
     val = nil
     @lock.synchronize do
       val = @header_includes[form_file_key( filepath )] || []
@@ -170,13 +159,16 @@ class TestContextExtractor
     return val
   end
 
-  # Mocks within test file with no file extension
-  def lookup_raw_mock_list(filepath)
-    val = nil
-    @lock.synchronize do
-      val = @mocks[form_file_key( filepath )] || []
-    end
-    return val
+  # Mocks within test file header includes list
+  def lookup_mock_header_includes_list(filepath)
+    includes = lookup_all_header_includes_list(filepath)
+    return includes.select { |include| include.is_a?( MockInclude ) }
+  end
+
+  # Test file header includes list minus mocks
+  def lookup_nonmock_header_includes_list(filepath)
+    includes = lookup_all_header_includes_list(filepath)
+    return includes.reject { |include| include.is_a?( MockInclude ) }
   end
 
   def lookup_partials_config(filepath)
@@ -205,32 +197,17 @@ class TestContextExtractor
   def ingest_includes(filepath, includes)
     _includes = Includes.sanitize(includes)
 
-    mock_prefix = @configurator.cmock_mock_prefix
-    file_key    = form_file_key( filepath )
+    file_key = form_file_key( filepath )
     
-    mocks       = []
-    all_headers = []
-    headers     = []
-    sources     = []
+    headers = []
+    sources = []
 
     # Processing list of UserInclude and/or SystemInclude
     _includes.each do |include|
       # <*.h>
       if include.filename =~ /#{Regexp.escape(@configurator.extension_header)}$/
-        # Check if include is a mock with regex match that extracts only mock name (no .h)
-        scan_results = include.filename.scan(/([^\s]*\b#{mock_prefix}.+)#{Regexp.escape(@configurator.extension_header)}/)
-        
-        if (scan_results.size > 0)
-          # Collect mock name
-          mocks << scan_results[0][0]
-        else
-          # Collect include if not a mock or framework file
-          headers << include unless VENDORS_FILES.include?( include.filename.ext('') )
-        end
-
         # Add to .h includes list
-        all_headers << include
-      # <*.c>
+        headers << include
       elsif include.filename =~ /#{Regexp.escape(@configurator.extension_source)}$/
         # Add to .c includes list
         sources << include
@@ -238,8 +215,6 @@ class TestContextExtractor
     end
 
     @lock.synchronize do
-      @mocks[file_key] = mocks
-      @all_header_includes[file_key] = all_headers
       @header_includes[file_key] = headers
       @source_includes[file_key] = sources
     end

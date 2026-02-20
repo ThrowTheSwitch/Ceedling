@@ -286,7 +286,7 @@ class TestInvoker
           else
             # Otherwise, grab the system includes we already have via regex
             system_includes = Includes.system(
-              @context_extractor.lookup_full_header_includes_list( filepath )
+              @context_extractor.lookup_all_header_includes_list( filepath )
             )
           end
 
@@ -294,7 +294,11 @@ class TestInvoker
           bare_includes = details[:preprocess][:includes]
 
           # Reconcile includes with overlapping information from imperfect extraction
-          all_includes = Includes.reconcile( bare: bare_includes, system: system_includes )
+          all_includes = Includes.reconcile(
+            bare: bare_includes,
+            system: system_includes,
+            mock_prefix: @configurator.cmock_mock_prefix
+          )
 
           header = "Extracted #include list from #{filepath}"
           @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )
@@ -313,28 +317,38 @@ class TestInvoker
       # Determine Runners, Mocks & Partials for All Tests
       @batchinator.build_step("Determining Files to Be Generated", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
+          test = details[:name]
+          filepath = details[:filepath]
+
           # Runners
-          runner_filepath = @file_path_utils.form_runner_filepath_from_test( details[:filepath] )
+          runner_filepath = @file_path_utils.form_runner_filepath_from_test( filepath )
           
           # Mocks
           mocks = {}
-          mocks_list = @configurator.project_use_mocks ? @context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
-          mocks_list.each do |name|
+          _mocks = @context_extractor.lookup_mock_header_includes_list( filepath )
+
+          # Validate mocks in use
+          @helper.validate_mocks_in_use( test: test, mocks: _mocks )
+
+          _mocks.each do |include|
+            name = File.basename(include.filename).ext()
             source = nil
             input = nil
 
             # Handle mock partial vs. (optionally preprocessed) project header
-            if @helper.is_mock_partial?( name )
-              source = @helper.gnerate_header_input_for_mock_partial( name, details[:name] )
+            if @helper.is_mock_partial?( include )
+              source = @helper.gnerate_header_input_for_mock_partial( include, test )
               input = source
             else
-              source = @helper.find_header_input_for_mock( name )
-              preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
+              source = @helper.find_header_input_for_mock( include )
+              preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, test )
               input = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
             end
 
             mocks[name.to_sym] = {
               :name => name,
+              :filepath => include.filepath,
+              :path => include.path,
               :source => source,
               :input => input
             }
@@ -343,24 +357,23 @@ class TestInvoker
           # Partials
           partials_configs = {}
           if @configurator.project_use_partials
-            partials_configs = @helper.assemble_partials_config( filepath: details[:filepath] )
+            partials_configs = @helper.assemble_partials_config( filepath: filepath )
           end
 
           # Assemble results within safety of mutex
           @lock.synchronize do
             details[:runner] = {
               :output_filepath => runner_filepath,
-              :input_filepath => details[:filepath]  # Default of the test file
+              :input_filepath => filepath # Default of the test file
             }
             details[:mocks] = mocks
-            details[:mock_list] = mocks_list
             details[:partials] = {
               :configs => partials_configs,
               :compilations => []
             }
 
             # Trigger pre_test plugin hook after having assembled all testing context
-            @plugin_manager.pre_test( details[:filepath] )
+            @plugin_manager.pre_test( filepath )
           end
         end
       end
@@ -673,9 +686,11 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: mocks) do |mock| 
           details = mock[:details]
           testable = mock[:testable]
-          # Handle subdirectories for mocks (e.g. `#include "path/mock_file.h`)
-          output_subpath = @file_wrapper.dirname( mock[:name].to_s )
-          output_path = testable[:paths][:mocks] + (output_subpath.empty? ? '' : "/#{output_subpath}")
+
+          # Support selective sub directory handling for #include "<subdir/mock_header.h" cases.
+          # TODO: Implement gneric subdirectory handling for include directives
+          output_path = File.join(testable[:paths][:mocks], details[:path])
+          @file_wrapper.mkdir(output_path)
 
           arg_hash = {
             context:        context,
@@ -698,7 +713,7 @@ class TestInvoker
             directives_only_filepath:  details[:preprocess][:directives_only][:filepath],
             fallback:                  !@preprocessinator.directives_only_available?,
             # We already have the full list of includes for each test file
-            includes:                  @context_extractor.lookup_full_header_includes_list( details[:filepath] ),
+            includes:                  @context_extractor.lookup_all_header_includes_list( details[:filepath] ),
             flags:                     details[:preprocess_flags],
             include_paths:             details[:search_paths],
             # For user includes preprocessing, we need at least one search path
@@ -744,8 +759,10 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           arg_hash = {
             context:         context,
-            mock_list:       details[:mock_list],
-            includes_list:   @test_context_extractor.lookup_header_includes_list( details[:filepath] ),
+            # Mock includes
+            mocks:           @test_context_extractor.lookup_mock_header_includes_list( details[:filepath] ),
+            # All other includes
+            includes:        @test_context_extractor.lookup_nonmock_header_includes_list( details[:filepath] ),
             test_filepath:   details[:filepath],
             input_filepath:  details[:runner][:input_filepath],
             runner_filepath: details[:runner][:output_filepath]            
@@ -758,23 +775,32 @@ class TestInvoker
       # Determine objects required for each test
       @batchinator.build_step("Determining Artifacts to Be Built", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
+          filepath = details[:filepath]
+          # Get a list of mock includes
+          mock_list = @context_extractor.lookup_mock_header_includes_list( filepath )
+
           # Source files referenced by conventions or specified by build directives in a test file
-          test_sources       =  @helper.extract_sources( details[:filepath] )
+          test_sources       =  @helper.extract_sources( filepath )
           test_core          =  test_sources + 
-                                @helper.form_mock_filenames( details[:mock_list] ) +
+                                # List of mock includes transformed to simple list of .c files
+                                mock_list.map { |mock| mock.filename.ext( EXTENSION_CORE_SOURCE ) } +
                                 details[:partials][:compilations]
 
           # When we have a mock and an include for the same file, the mock wins
-          @helper.remove_mock_original_headers( test_core, details[:mock_list] )
+          @helper.remove_mock_original_headers(
+            test_core,
+            # List of mock includes as .h filenames
+            mock_list.map { |mock| mock.filename }
+          )
           
           # CMock + Unity + CException
-          test_frameworks    = @helper.collect_test_framework_sources( !details[:mock_list].empty? )
+          test_frameworks    = @helper.collect_test_framework_sources( !details[:mocks].empty? )
           
           # Extra suport source files (e.g. microcontroller startup code needed by simulator)
           test_support       = @configurator.collection_all_support
 
           compilations       =  []
-          compilations       << details[:filepath]
+          compilations       << filepath
           compilations       += test_core
           compilations       << details[:runner][:output_filepath]
           compilations       += test_frameworks
@@ -783,15 +809,15 @@ class TestInvoker
 
           test_objects       = @file_path_utils.form_test_build_objects_filelist( details[:paths][:build], compilations )
 
-          test_executable    = @file_path_utils.form_test_executable_filepath( details[:paths][:build], details[:filepath] )
-          test_pass          = @file_path_utils.form_pass_results_filepath( details[:paths][:results], details[:filepath] )
-          test_fail          = @file_path_utils.form_fail_results_filepath( details[:paths][:results], details[:filepath] )
+          test_executable    = @file_path_utils.form_test_executable_filepath( details[:paths][:build], filepath )
+          test_pass          = @file_path_utils.form_pass_results_filepath( details[:paths][:results], filepath )
+          test_fail          = @file_path_utils.form_fail_results_filepath( details[:paths][:results], filepath )
 
           # Assemble a list of object files from .c files that have been #included in the test file
           test_no_link_objects = 
             @file_path_utils.form_test_build_objects_filelist(
               details[:paths][:build],
-              @helper.fetch_shallow_source_includes( details[:filepath] ))
+              @helper.fetch_shallow_source_includes( filepath ))
 
           # TODO: Remove any source file objects partials are standing in for
           # Redefine test_objects, removing any problematic object file that would otherwise get linked into the test executable

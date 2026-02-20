@@ -7,6 +7,7 @@
 
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/includes'
 require 'ceedling/file_path_utils'
 require 'rake'
 
@@ -14,7 +15,6 @@ class Generator
 
   constructor :configurator,
               :generator_helper,
-              :preprocessinator,
               :generator_mocks,
               :generator_test_results,
               :generator_test_results_backtrace,
@@ -26,7 +26,6 @@ class Generator
               :reportinator,
               :loginator,
               :plugin_manager,
-              :file_wrapper,
               :test_runner_manager
 
 
@@ -125,7 +124,9 @@ class Generator
     end
   end
 
-  def generate_test_runner(context:, mock_list:, includes_list:, test_filepath:, input_filepath:, runner_filepath:)
+  # @param mocks: Array of Mocks to include in the runner
+  # @param includes: Array of Includes without mocks to include in the runner
+  def generate_test_runner(context:, mocks:, includes:, test_filepath:, input_filepath:, runner_filepath:)
     arg_hash = {
       :context => context,
       :test_file => test_filepath,
@@ -148,14 +149,18 @@ class Generator
       raise CeedlingException.new( msg )
     end
 
+    # Further filter others to remove vendor files
+    others = includes.reject do |include|
+      !VENDORS_FILES.include?( include.filename.ext() )
+    end
+
     # Build runner file
     begin
       unity_test_runner_generator.generate(
         module_name: module_name,
         runner_filepath: runner_filepath,
-        mock_list: mock_list,
-        test_file_includes: includes_list,
-        header_extension: @configurator.extension_header
+        mocks: mocks,
+        includes: others
       )
     rescue StandardError => ex
       # Re-raise execption but decorate it to better identify it in Ceedling output

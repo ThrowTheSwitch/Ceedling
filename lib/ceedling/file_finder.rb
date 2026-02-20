@@ -14,15 +14,20 @@ class FileFinder
   constructor :configurator, :file_finder_helper, :cacheinator, :file_path_utils, :file_wrapper, :yaml_wrapper
 
 
-  def find_header_input_for_mock(mock_name)
-    # Mock name => <mock prefix><header filename without extension>
-    # Examples: 'Mockfoo' or 'mock_Bar'
+  def find_header_input_for_mock(mock)
+    # Mock name => <mock prefix><header filename (.h)>
+    # Examples: 'Mockfoo.h' or 'mock_Bar.h'
     # Note: In some rare cases, a mock name may include a dot (ex. Sensor.44) because of versioning file naming convention
     #       Be careful about assuming the end of the name has any sort of file extension
 
-    header = mock_name.sub(/#{@configurator.cmock_mock_prefix}/, '') + @configurator.extension_header
+    header = mock.delete_prefix(@configurator.cmock_mock_prefix)
 
-    found_path = @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_headers, :error, mock_name)
+    found_path = @file_finder_helper.find_file_in_collection(
+      header,
+      @configurator.collection_all_headers,
+      :error,
+      header.ext()
+    )
 
     return found_path
   end
