@@ -95,6 +95,64 @@ class Includes
     return _includes
   end
 
+  # Class method to reconcile bare and system includes returning a list of
+  # reconciled user and system includes.
+  #
+  # Purpose
+  # -------
+  # Bare include preprocessing extracts user and system includes, but there's no way
+  # to explicitly differentiate these. Meanwhile, by necessity, system include 
+  # extraction can identify too many system includes. This class method uses this
+  # knowledge to reconcile the two lists. It accomplishes:
+  #  1. Paring down system includes to the include directives used in original file.
+  #  2. Removing system includes from the bare includes list.
+  #  3. Recreating a list of user & system includes properly distinguished.
+  #
+  # Method
+  # ------
+  # Compares bare includes against system includes and applies the following rules:
+  # 1. If a system include matches a bare include filename, keep the system include
+  #    and remove the matching bare include (system includes take precedence).
+  # 2. Remove any system includes that don't match bare include filenames
+  # 3. Keep bare includes that have no matching system includes as user includes.
+  # 4. If no bare includes exist, return system includes unchanged (should not happen).
+  # 5. If no system includes exist, return bare includes unchanged as user includes.
+  def self.reconcile(bare:, system:)
+    # Validate input types
+    unless bare.is_a?(Array) && bare.all? { |include| include.is_a?(Include) }
+      raise ArgumentError, "`bare` must be an Array of Include objects"
+    end
+  
+    unless system.is_a?(Array) && system.all? { |include| include.is_a?(SystemInclude) }    
+      raise ArgumentError, "`system` must be an Array of SystemInclude objects"
+    end
+
+    return system if bare.empty?
+    return bare if system.empty?
+
+    # Create set of bare include filenames for O(1) lookup
+    bare_filenames = Set.new(bare.map(&:filename))
+    
+    # Keep only system includes that match bare include filenames
+    system_includes = system.select do |include|
+      bare_filenames.include?(include.filename)
+    end
+    
+    # Remove bare includes that have matching system includes
+    matching_filenames = Set.new(system_includes.map(&:filename))
+    bare_includes = bare.reject do |include|
+      matching_filenames.include?(include.filename)
+    end
+    
+    user_includes = bare_includes.map do |include|
+      UserInclude.new(include.filepath)
+    end
+
+    # Construct recocniled list of includes with filtered results
+    # Always system includes first (C best practice)
+    return (system_includes + user_includes)
+  end
+
   # Class method for mutating sanitize
   #
   # @param includes [Array<Include>] List of includes to sanitize in place
@@ -106,7 +164,7 @@ class Includes
   # @example Custom rejection
   #   Includes.sanitize!(includes) { |include, all| ... }
   def self.sanitize!(includes, &block)
-    # Remove duplicates
+    # Remove any duplicates
     includes.uniq!
 
     # Apply custom rejection with access to full list if block provided
@@ -160,9 +218,10 @@ class Include
     @full_path = full_path
   end
 
-  # Abstract method to be implemented by subclasses
+  # Method specialized by subclasses
   def to_s()
-    raise NotImplementedError, "Subclasses must implement to_s()"
+    # Simple string with no additional formatting or #include decoration
+    return @filename
   end
 
   # Equality operator -- compares the include value with a string

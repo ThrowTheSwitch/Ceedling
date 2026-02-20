@@ -74,11 +74,11 @@ DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
   }
 
 
-# Extracts include directives as make-style depenedencies.
-# We use this to extract a basic list of (user) includes from files.
-DEFAULT_TEST_INCLUDES_DEPENDENCIES_PREPROCESSOR_TOOL = {
+# Extracts all dependencies as make-style rules.
+# We use this to extract a bare list includes (user + system) from files.
+DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_includes_dependencies_preprocessor'.freeze,
+  :name => 'default_test_bare_includes_preprocessor'.freeze,
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,             # Run only through preprocessor stage with its output
@@ -240,7 +240,7 @@ DEFAULT_TOOLS_TEST_ASSEMBLER = {
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
     # Extracts include directives as make-style depenedencies
-    :test_includes_dependencies_preprocessor  => DEFAULT_TEST_INCLUDES_DEPENDENCIES_PREPROCESSOR_TOOL,
+    :test_bare_includes_preprocessor  => DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL,
     # Fully expands a given file through the preprocessor
     :test_file_full_preprocessor              => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
     # Expands a given file through the preprocessor, preserving directives (macros, includes, etc.)

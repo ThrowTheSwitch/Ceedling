@@ -209,7 +209,7 @@ end
 ##
 
 # Parse GCC preprocessor make-rule dependencies output to extract user include directives
-class PreprocessinatorUserIncludesExtractor
+class PreprocessinatorBareIncludesExtractor
 
     # Matcher for the first line of the make rule output
     MAKE_RULE_MATCHER = /^\S+\.o:\s+.+$/  # <characters>.o: <characters>
@@ -224,8 +224,8 @@ class PreprocessinatorUserIncludesExtractor
     includes.flatten! # Regex results can be nested arrays becuase of paren captures
     includes.uniq!
 
-    # Convert list of fileapth strings to list of UserInclude objects
-    return includes.map { |_include| UserInclude.new(_include) }
+    # Convert list of fileapth strings to list of bare Include objects
+    return includes.map { |_include| Include.new(_include) }
   end
 end
 
