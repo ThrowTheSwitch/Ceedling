@@ -197,7 +197,7 @@ class TestInvoker
           }
 
           msg = @reportinator.generate_module_progress(
-            operation: 'Extracting user #includes for',
+            operation: 'Extracting bare #includes for',
             module_name: name,
             filename: File.basename( filepath )
           )
@@ -246,6 +246,8 @@ class TestInvoker
           # Skip running the preprocessor if we have good, cachced includes
           cached, includes = @preprocessinator.load_includes_list( test: name, filepath: filepath )
           if cached
+            header = "Loaded #include list for #{filepath}"
+            @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
             @context_extractor.ingest_includes( filepath, includes )
             next
           end
@@ -269,7 +271,7 @@ class TestInvoker
           if !directive_only_filepath.nil?
             # If directive-only preprocessor output is available, extract system includes from it
             arg_hash = {
-              filepath:                 details[:filepath],
+              filepath:                 filepath,
               directives_only_filepath: directive_only_filepath
             }
 
@@ -293,6 +295,9 @@ class TestInvoker
 
           # Reconcile includes with overlapping information from imperfect extraction
           all_includes = Includes.reconcile( bare: bare_includes, system: system_includes )
+
+          header = "Extracted #include list from #{filepath}"
+          @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )
 
           # Update full list of includes (performs santization)
           @context_extractor.ingest_includes( filepath, all_includes )
