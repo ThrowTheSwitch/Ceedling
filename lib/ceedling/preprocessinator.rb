@@ -178,6 +178,9 @@ class Preprocessinator
     # Extract includes & log progress and details   
     includes = preprocess_file_common( **arg_hash )
 
+    header = "Discovered #includes for Partial header from #{filepath}"
+    @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
+    
     arg_hash = {
       test:                      test,
       filepath:                  filepath,
@@ -243,6 +246,9 @@ class Preprocessinator
     # Extract includes & log progress and details   
     includes = preprocess_file_common( **arg_hash )
 
+    header = "Discovered #includes for mockable header from #{filepath}"
+    @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
+
     arg_hash = {
       test:                      test,
       filepath:                  filepath,
@@ -302,6 +308,9 @@ class Preprocessinator
 
     # Extract includes & log progress and info
     includes = preprocess_file_common( **arg_hash )
+
+    header = "Discovered #includes for Partial source from #{filepath}"
+    @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
 
     arg_hash = {
       source_filepath:       filepath,
@@ -434,9 +443,6 @@ class Preprocessinator
       Includes.sanitize!(includes) do |include, all|
         all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
       end
-
-      header = "Extracted #include list from #{filepath}"
-      @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
     
       store_includes_list( filepath: filepath, test: test, includes: includes )
     end
