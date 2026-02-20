@@ -179,12 +179,14 @@ class Preprocessinator
     includes = preprocess_file_common( **arg_hash )
 
     arg_hash = {
-      source_filepath:       filepath,
-      test:                  test,
-      flags:                 flags,
-      include_paths:         include_paths,
-      defines:               defines,
-      extras:                false
+      test:                      test,
+      filepath:                  filepath,
+      directives_only_filepath:  directives_only_filepath,
+      fallback:                  fallback,
+      flags:                     flags,
+      include_paths:             include_paths,
+      defines:                   defines,
+      extras:                    false
     }
 
     contents, extras = @file_assembler.collect_header_file_contents( **arg_hash )
@@ -242,12 +244,14 @@ class Preprocessinator
     includes = preprocess_file_common( **arg_hash )
 
     arg_hash = {
-      source_filepath:       filepath,
-      test:                  test,
-      flags:                 flags,
-      include_paths:         include_paths,
-      defines:               defines,
-      extras:                (@configurator.cmock_treat_inlines == :include)
+      test:                      test,
+      filepath:                  filepath,
+      directives_only_filepath:  directives_only_filepath,
+      fallback:                  fallback,
+      flags:                     flags,
+      include_paths:             include_paths,
+      defines:                   defines,
+      extras:                    (@configurator.cmock_treat_inlines == :include)
     }
 
     # `contents` & `extras` are arrays of text strings to be assembled in generating a new header file.
@@ -323,7 +327,17 @@ class Preprocessinator
     return preprocessed_filepath, includes
   end
 
-  def preprocess_test_file(filepath:, includes:, test:, flags:, include_paths:, vendor_paths:, defines:)
+  def preprocess_test_file(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      includes:,
+      flags:,
+      include_paths:,
+      vendor_paths:,
+      defines:
+    )
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     plugin_arg_hash = {
@@ -341,11 +355,13 @@ class Preprocessinator
     # NOTE: No call to `preprocess_file_common()` because we already have includes
 
     arg_hash = {
-      source_filepath:       filepath,
-      test:                  test,
-      flags:                 flags,
-      include_paths:         include_paths,
-      defines:               defines      
+      test:                      test,
+      filepath:                  filepath,
+      directives_only_filepath:  directives_only_filepath,
+      fallback:                  fallback,
+      flags:                     flags,
+      include_paths:             include_paths,
+      defines:                   defines      
     }
 
     # `contents` & `extras` are arrays of text strings to be assembled in generating a new test file.
