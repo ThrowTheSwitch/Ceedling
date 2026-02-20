@@ -38,9 +38,17 @@ class Loginator
 
     @replace = {
       # Problematic characters pattern => Simple characters
-      /↳/ => '>>',   # Config sub-entry notation
-      /•/ => '*',    # Bulleted lists
-      /➡️/ => '>>',  # Right arrow
+
+      # Config sub-entry notation
+      /↳/ => '>>',
+      # Bulleted lists
+      /•/ => '*',
+      # Triangle
+      /▶️/ => '>',
+      # Right arrow
+      /➡️/ => '->',
+      # Double right arrow
+      /⏩️/ => '>>',
     }
 
     @project_logging = false
