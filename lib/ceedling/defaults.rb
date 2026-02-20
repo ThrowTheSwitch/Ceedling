@@ -82,7 +82,7 @@ DEFAULT_TEST_INCLUDES_DEPENDENCIES_PREPROCESSOR_TOOL = {
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,             # Run only through preprocessor stage with its output
-    '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
+    '-M'.freeze,             # Output make rule of dependencies including system includes
     '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
     '-MP'.freeze,            # Create make "phony" rules for each include dependency
     "-I\"${4}\"".freeze,     # Per-test shallow includes essential search paths (e.g. Ceedling vendor path)
