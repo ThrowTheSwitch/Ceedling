@@ -101,9 +101,9 @@ class TestInvokerHelper
   end
 
   def validate_mocks_in_use(test:, mocks:)
-    if !@configurator.project_use_mocks and mocks.empty?
+    if !@configurator.project_use_mocks and !mocks.empty?
       _mocks = mocks.map { |include| include.filename }
-      msg = "Your project is not configured for mocking, but test file '#{test}' is referencing #{_mocks.join(', ')}"
+      msg = "Your project is not configured for mocking, but test file '#{test}' is referencing [#{_mocks.join(', ')}]"
       raise CeedlingException.new( msg )
     end
   end

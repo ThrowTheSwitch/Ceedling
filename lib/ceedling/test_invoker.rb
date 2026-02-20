@@ -286,7 +286,7 @@ class TestInvoker
           else
             # Otherwise, grab the system includes we already have via regex
             system_includes = Includes.system(
-              @context_extractor.lookup_all_header_includes_list( filepath )
+              @context_extractor.lookup_header_includes_list( filepath )
             )
           end
 
@@ -713,7 +713,7 @@ class TestInvoker
             directives_only_filepath:  details[:preprocess][:directives_only][:filepath],
             fallback:                  !@preprocessinator.directives_only_available?,
             # We already have the full list of includes for each test file
-            includes:                  @context_extractor.lookup_all_header_includes_list( details[:filepath] ),
+            includes:                  @context_extractor.lookup_header_includes_list( details[:filepath] ),
             flags:                     details[:preprocess_flags],
             include_paths:             details[:search_paths],
             # For user includes preprocessing, we need at least one search path

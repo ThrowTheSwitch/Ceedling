@@ -154,6 +154,7 @@ class Includes
       matching_filenames.include?(include.filename)
     end
     
+    # TODO: Centralize MockInclude creation
     user_includes = bare_includes.map do |include|
       if include.filename.start_with?(mock_prefix)
         MockInclude.new(include.filepath)
