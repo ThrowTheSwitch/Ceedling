@@ -306,8 +306,17 @@ class TestContextExtractor
     includes = []
 
     includes << IncludesRegexExtractor.extract_system_include( line )
-    includes << IncludesRegexExtractor.extract_user_include( line )
 
+    # TODO: Centralize MockInclude creation
+    include = IncludesRegexExtractor.extract_user_include( line )
+    if !include.nil?
+      if include.filename.start_with?( @configurator.cmock_mock_prefix )
+        includes << MockInclude.new( include.filepath )
+      else
+        includes << include
+      end      
+    end
+  
     return includes
   end
 
