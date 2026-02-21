@@ -163,10 +163,15 @@ file_finder_helper:
 
 parsing_parcels:
 
+include_factory:
+  compose:
+    - configurator
+
 test_context_extractor:
   compose:
     - configurator
     - file_wrapper
+    - include_factory
     - loginator
     - parsing_parcels
 
@@ -262,10 +267,15 @@ dependinator:
     - rake_wrapper
     - file_wrapper
 
+preprocessinator_system_includes_extractor:
+  compose:
+    - include_factory
+
 preprocessinator:
   compose:
     - preprocessinator_includes_handler
     - preprocessinator_file_assembler
+    - include_factory
     - file_path_utils
     - tool_executor
     - file_wrapper
@@ -277,8 +287,9 @@ preprocessinator:
 preprocessinator_includes_handler:
   compose:
     - configurator
+    - preprocessinator_system_includes_extractor
+    - include_factory
     - tool_executor
-    - file_path_utils
     - parsing_parcels
     - file_wrapper
     - yaml_wrapper
@@ -329,8 +340,8 @@ test_invoker:
     - batchinator
     - reportinator
     - loginator
+    - include_factory
     - preprocessinator
-    - task_invoker
     - partializer
     - generator
     - test_context_extractor

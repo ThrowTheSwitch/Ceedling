@@ -6,8 +6,6 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
-require 'ceedling/includes'
-require 'ceedling/includes_regex_extractor'
 require 'ceedling/partials/partials'
 require 'ceedling/file_path_utils'
 require 'ceedling/generator_test_runner' # From lib/ not vendor/unity/auto
@@ -15,7 +13,7 @@ require 'ceedling/encodinator'
 
 class TestContextExtractor
 
-  constructor :configurator, :file_wrapper, :loginator, :parsing_parcels
+  constructor :configurator, :parsing_parcels, :include_factory, :file_wrapper, :loginator
 
   def setup
     # Per test-file lookup hashes
@@ -305,17 +303,12 @@ class TestContextExtractor
   def _extract_includes(line)
     includes = []
 
-    includes << IncludesRegexExtractor.extract_system_include( line )
+    _include = @include_factory.system_include_from_directive( line )
+    includes << _include if !_include.nil?
 
-    # TODO: Centralize MockInclude creation
-    include = IncludesRegexExtractor.extract_user_include( line )
-    if !include.nil?
-      if include.filename.start_with?( @configurator.cmock_mock_prefix )
-        includes << MockInclude.new( include.filepath )
-      else
-        includes << include
-      end      
-    end
+    # All of the UserInclude types
+    _include = @include_factory.user_include_from_directive( line )
+    includes << _include if !_include.nil?
   
     return includes
   end

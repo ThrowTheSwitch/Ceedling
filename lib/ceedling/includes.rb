@@ -3,7 +3,7 @@
 #   ThrowTheSwitch.org
 #   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
-# =========================================================================
+# ========================================================================='
 
 class Includes
   # Class method to convert mixed list of Include objects into an order-preserving list of hashes
@@ -127,7 +127,7 @@ class Includes
   # 3. Keep bare includes that have no matching system includes as user includes.
   # 4. If no bare includes exist, return system includes unchanged (should not happen).
   # 5. If no system includes exist, return bare includes unchanged as user includes.
-  def self.reconcile(bare:, system:, mock_prefix:)
+  def self.reconcile(bare:, system:, include_factory:)
     # Validate input types
     unless bare.is_a?(Array) && bare.all? { |include| include.is_a?(Include) }
       raise ArgumentError, "`bare` must be an Array of Include objects"
@@ -154,13 +154,8 @@ class Includes
       matching_filenames.include?(include.filename)
     end
     
-    # TODO: Centralize MockInclude creation
     user_includes = bare_includes.map do |include|
-      if include.filename.start_with?(mock_prefix)
-        MockInclude.new(include.filepath)
-      else
-        UserInclude.new(include.filepath)
-      end
+      include_factory.user_include_from_filepath(include.filepath)
     end
 
     # Construct recocniled list of includes with filtered results

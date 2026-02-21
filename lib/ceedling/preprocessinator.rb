@@ -11,6 +11,7 @@ class Preprocessinator
 
   constructor :preprocessinator_includes_handler,
               :preprocessinator_file_assembler,
+              :include_factory,
               :file_path_utils,
               :tool_executor,
               :file_wrapper,
@@ -440,7 +441,7 @@ class Preprocessinator
       includes = Includes.reconcile(
         bare: bare_includes,
         system: system_includes,
-        mock_prefix: @configurator.cmock_mock_prefix
+        include_factory: @include_factory
       )
 
       # Sanitize the final list and remove any includes that have been mocked
