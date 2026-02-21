@@ -9,7 +9,7 @@ require 'ceedling/constants'
 require 'ceedling/encodinator'
 require 'ceedling/parsing_parcels'
 
-class PreprocessinatorExtractor 
+class PreprocessinatorReconstructor 
  
   constructor :parsing_parcels
 

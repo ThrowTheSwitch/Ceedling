@@ -298,14 +298,14 @@ preprocessinator_includes_handler:
 
 preprocessinator_file_assembler:
   compose:
-    - preprocessinator_extractor
+    - preprocessinator_reconstructor
     - configurator
     - tool_executor
     - file_path_utils
     - file_wrapper
     - loginator
 
-preprocessinator_extractor:
+preprocessinator_reconstructor:
   compose:
     - parsing_parcels
 

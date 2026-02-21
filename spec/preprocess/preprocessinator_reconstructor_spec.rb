@@ -6,10 +6,10 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/preprocessinator_extractor'
+require 'ceedling/preprocessinator_reconstructor'
 require 'ceedling/parsing_parcels'
 
-describe PreprocessinatorExtractor do
+describe PreprocessinatorReconstructor do
   before(:each) do
     @parsing_parcels = ParsingParcels.new()
     @extractor = described_class.new(
