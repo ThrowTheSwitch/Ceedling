@@ -70,18 +70,14 @@ class Configurator
   def set_partials_derived_config(config)
     return if !config[:project][:use_partials]
 
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
-      @reportinator.generate_progress( 'Processing Partials configuration' )
-    end
-
-    if (config[:project][:use_partials])
-      # If partials enabled, enable mocking
-      config[:project][:use_mocks] = true
-      # If partials enabled, enable full test preprocessing
-      config[:project][:use_test_preprocessor] = :all
-      # If partials enabled, inject partials name prefix symbols to all test compilation
-      config[:defines][:test] << "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}"
-    end
+    # If partials enabled, enable mocking
+    config[:project][:use_mocks] = true
+    @loginator.log( " > Enabled mocking." )
+    # If partials enabled, enable full test preprocessing
+    config[:project][:use_test_preprocessor] = :all
+    @loginator.log( " > Enabled preprocessing." )
+    # If partials enabled, inject partials name prefix symbols to all test compilation
+    config[:defines][:test] << "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}"
   end
 
 
