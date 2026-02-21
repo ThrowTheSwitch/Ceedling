@@ -77,7 +77,7 @@ class PATTERNS
   TEST_STDOUT_STATISTICS  = /\n-+\s*(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
 
   USER_INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+\"\s*([\/\w\.\-]+)\s*\"/
-  SYSTEM_INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+<\s*([\w\.\-]+)\s*>/
+  SYSTEM_INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+<\s*([\/\w\.\-]+)\s*>/
 
   TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
   TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/

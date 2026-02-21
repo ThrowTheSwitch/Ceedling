@@ -13,22 +13,24 @@ class TestInvoker
 
   attr_reader :sources, :tests, :mocks
 
-  constructor :application,
-              :configurator,
-              :test_invoker_helper,
-              :plugin_manager,
-              :reportinator,
-              :loginator,
-              :batchinator,
-              :preprocessinator,
-              :task_invoker,
-              :partializer,
-              :generator,
-              :test_context_extractor,
-              :file_path_utils,
-              :file_wrapper,
-              :file_finder,
-              :verbosinator
+  constructor(
+    :application,
+    :configurator,
+    :test_invoker_helper,
+    :plugin_manager,
+    :reportinator,
+    :loginator,
+    :batchinator,
+    :include_factory,
+    :preprocessinator,
+    :partializer,
+    :generator,
+    :test_context_extractor,
+    :file_path_utils,
+    :file_wrapper,
+    :file_finder,
+    :verbosinator
+  )
 
   def setup
     # Master data structure for all test activities
@@ -286,7 +288,7 @@ class TestInvoker
           else
             # Otherwise, grab the system includes we already have via regex
             system_includes = Includes.system(
-              @context_extractor.lookup_header_includes_list( filepath )
+              @context_extractor.lookup_all_header_includes_list( filepath )
             )
           end
 
@@ -297,7 +299,7 @@ class TestInvoker
           all_includes = Includes.reconcile(
             bare: bare_includes,
             system: system_includes,
-            mock_prefix: @configurator.cmock_mock_prefix
+            include_factory: @include_factory
           )
 
           header = "Extracted #include list from #{filepath}"
@@ -713,7 +715,7 @@ class TestInvoker
             directives_only_filepath:  details[:preprocess][:directives_only][:filepath],
             fallback:                  !@preprocessinator.directives_only_available?,
             # We already have the full list of includes for each test file
-            includes:                  @context_extractor.lookup_header_includes_list( details[:filepath] ),
+            includes:                  @context_extractor.lookup_all_header_includes_list( details[:filepath] ),
             flags:                     details[:preprocess_flags],
             include_paths:             details[:search_paths],
             # For user includes preprocessing, we need at least one search path

@@ -6,12 +6,26 @@
 # =========================================================================
 
 require 'ceedling/includes'
-require 'ceedling/preprocessinator_includes_extractor'
-require 'ceedling/includes_regex_extractor'
+require 'ceedling/preprocessinator_bare_includes_extractor'
 
 class PreprocessinatorIncludesHandler
 
-  constructor :configurator, :tool_executor, :file_path_utils, :file_wrapper, :yaml_wrapper, :parsing_parcels, :loginator, :reportinator
+  constructor(
+    :configurator,
+    :preprocessinator_system_includes_extractor,
+    :include_factory,
+    :tool_executor,
+    :file_wrapper,
+    :yaml_wrapper,
+    :parsing_parcels,
+    :loginator,
+    :reportinator
+  )
+
+  def setup()
+    # Aliases
+    @system_includes_extractor = @preprocessinator_system_includes_extractor
+  end
 
   def extract_bare_includes(test:, filepath:, search_paths:, flags:, defines:)
     filename = File.basename(filepath)
@@ -21,7 +35,7 @@ class PreprocessinatorIncludesHandler
       module_name: test,
       filename: filename
     )
-    @loginator.log(msg, Verbosity::OBNOXIOUS)
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     # Creation:
     #  - This output is created with the -MM -MG -MP command line options.
@@ -89,7 +103,7 @@ class PreprocessinatorIncludesHandler
       # Later santization uses system includes slurped up in the top-level user 
       # include extraction to identify the actual needed system includes and filter
       # out any extras.
-      includes = PreprocessinatorSystemIncludesExtractor.extract_includes_from_file( preprocessed_filepath, max_depth: 3 )
+      includes = @system_includes_extractor.extract_includes_from_file( preprocessed_filepath, max_depth: 3 )
       includes = clean_self_reference(filepath, includes)
     else
       msg = @reportinator.generate_module_progress(
@@ -97,14 +111,14 @@ class PreprocessinatorIncludesHandler
         module_name: name,
         filename: filename
       )
-      @loginator.log(msg, Verbosity::OBNOXIOUS)
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
 
       @file_wrapper.open(filepath, 'r') do |input|
         @parsing_parcels.code_lines( input ) do |line|
-          includes << IncludesRegexExtractor.extract_system_include( line )
+          _include = @include_factory.system_include_from_directive( line )
+          includes << _include if !_include.nil?
         end
       end
-      includes.compact!
     end
 
     header = "Extracted system #include list from #{filepath}"
@@ -138,77 +152,5 @@ class PreprocessinatorIncludesHandler
     end
     return includes
   end
-
-  # # Extract mocks from each list of includes:
-  # #  - Ensure no mock generation build directory paths in mock listings.
-  # #  - But, preserve subdirectory paths of include directives (e.g. `#include "subdir/mock_file.h"`)
-  # def extract_mocks(*lists)
-  #   mocks = []
-
-  #   # Bail out early if mocks are not enabled
-  #   return [] if !@configurator.project_use_mocks
-
-  #   # Process each list of includes
-  #   lists.each do |list| 
-  #     list.each do |include|
-  #       # Only process a mock include
-  #       next if !include.filename.start_with?( @configurator.cmock_mock_prefix )
-        
-  #       # Omit mock generation build path from the include directive
-  #       if include.filepath.include?( @configurator.cmock_mock_path )
-  #         mocks << UserInclude.new(include.filename) 
-  #       # Otherwise, preserve the subdirectory path of the include directive
-  #       else
-  #         mocks << include
-  #       end
-  #     end
-  #   end
-
-  #   return mocks.uniq()
-  # end
-
-  # # Return list of includes with any mocks removed
-  # def remove_mocks(includes)
-  #   return includes.reject { |include| include.filename.start_with?( @configurator.cmock_mock_prefix ) }
-  # end
-
-  # # Return includes common in both lists with the full paths of the nested list
-  # def common_includes(shallow:, nested:, explicit:)
-  #   return shallow if nested.empty?
-  #   return nested if shallow.empty?
-
-  #   # Notes:
-  #   #  - We want to preserve filepaths whenever possible. Other areas of Ceedling use or discard the 
-  #   #    filepath as needed.
-  #   #  - We generally do not have filepaths in the shallow list--except when the #include is in the 
-  #   #    same directory as the file being processed
-
-  #   # Approach
-  #   #  1. Create hashed lists of shallow and nested for easier matching 
-  #   #  2. Perform appropriate mix of paths
-  #   #    a. A union if performing a deep include list
-  #   #    b. An intersection if performing a shallow include list
-  #   #  3. Pick the "fullest" path from the lists (assumes nested list has deeper paths)
-
-  #   # Hash list for Shallow Search
-  #   _shallow = {}
-  #   shallow.each { |item| _shallow[ File.basename(item) ] = item }
-
-  #   # Hash list for Nested Search
-  #   _nested = {}
-  #   nested.each {|item|  _nested[ File.basename(item) ] = item }
-
-  #   # Determine the filenames to include in our list
-  #   basenames = if deep
-  #     ( _nested.keys.to_set.union( _shallow.keys.to_set ) )
-  #   else
-  #     # Intersection of both arrays plus filtering against explicit includes.
-  #     # This removes any includes unearthed from deep in the code (e.g. system or host includes)
-  #     ( _nested.keys.to_set.intersection( _shallow.keys.to_set ) ).intersection( explicit )
-  #   end
-
-  #   # Iterate through the basenames and return the fullest version of each
-  #   return basenames.map {|v| _nested[v] || _shallow[v] }
-  # end
 
 end
