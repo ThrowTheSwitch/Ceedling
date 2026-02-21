@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/includes'
-require 'ceedling/preprocessinator_bare_includes_extractor'
+require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
 
 class PreprocessinatorIncludesHandler
 
