@@ -37,7 +37,7 @@ class Generator
 
   def generate_partial_interface(test:, name:, declarations:, includes:, input_filepath:, output_path:)
     msg = @reportinator.generate_module_progress(
-      operation: "Generating partial interface for",
+      operation: "Generating Partial mockable interface for",
       module_name: test,
       filename: name # Partial module name, not filename
     )
@@ -66,7 +66,7 @@ class Generator
     )
 
     msg = @reportinator.generate_module_progress(
-      operation: "Generating partial implementation for",
+      operation: "Generating Partial implementation for",
       module_name: test,
       filename: name # Partial module name, not filename
     )
