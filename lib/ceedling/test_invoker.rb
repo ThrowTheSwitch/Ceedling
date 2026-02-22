@@ -103,6 +103,7 @@ class TestInvoker
       @batchinator.build_step("Collecting Essential Test Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
+          filename = File.basename(filepath)
 
           # Always extract includes via regex.
           #  - In non-preprocessing builds, we only use this.
@@ -110,33 +111,38 @@ class TestInvoker
           contexts = [:includes]
 
           if @configurator.project_use_test_preprocessor_tests
+            # :includes (see above)
+            msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #include directives (fallback for preprocessing failures)" )
+            @loginator.log( msg )
+
             # Extracting other context will happen in later steps after preprocessing.
             contexts << :build_directive_include_paths
 
-            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for include path build directive macros" )
+            msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
             @loginator.log( msg )
           else
+            # :includes (see above)
+            msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #include directives" )
+            @loginator.log( msg )
+
             # Extract context without preprocessing.
             contexts << :build_directive_include_paths
             contexts << :build_directive_source_files
             contexts << :test_runner_details
 
-            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
+            msg = @reportinator.generate_progress( "Parsing #{filename} for build directive macros and test case names" )
             @loginator.log( msg )
           end
 
           if @configurator.project_use_partials
             contexts << :partials_configuration
 
-            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for partials directive macros" )
+            msg = @reportinator.generate_progress( "Parsing #{filename} for partials directive macros" )
             @loginator.log( msg )
           end
 
           # Collect test context using text scanning (no preprocessing involved here)
-          @file_wrapper.open( filepath, 'r' ) do |input|
-            @context_extractor.collect_simple_context( filepath, input, *contexts )
-          end
-
+          @context_extractor.collect_simple_context_from_file( filepath, *contexts )
         end
 
         # Validate paths via TEST_INCLUDE_PATH() & augment header file collection from the same
@@ -162,7 +168,7 @@ class TestInvoker
           preprocess_defines = @helper.preprocess_defines( test_defines: compile_defines, filepath:filepath )
 
           msg = @reportinator.generate_module_progress(
-            operation: 'Collecting search paths, flags, and defines',
+            operation: 'Collecting search paths, flags, and defines for',
             module_name: details[:name],
             filename: File.basename( details[:filepath] )
           )
@@ -404,7 +410,7 @@ class TestInvoker
       end
 
       # Preprocess Header Files
-      @batchinator.build_step("Preprocessing Header Files for Partials") {
+      @batchinator.build_step("Preprocessing Header Files for Testing & Mocking Partials") {
         # Generate directive-only preprocessor output
         @batchinator.exec(workload: :compile, things: partials_headers) do |details|
           config = details[:config]
@@ -455,7 +461,7 @@ class TestInvoker
       } if @configurator.project_use_partials
 
       # Preprocess Source Files
-      @batchinator.build_step("Preprocessing Source Files for Partials") {
+      @batchinator.build_step("Preprocessing Source Files for Testing Partials") {
         # Generate directive-only preprocessor output
         @batchinator.exec(workload: :compile, things: partials_sources) do |details|
           config = details[:config]
@@ -632,6 +638,10 @@ class TestInvoker
       @batchinator.build_step("Preprocessing for Mocks") {
         # Suppress preprocessing for partials headers as they have already been preprocessed
         _mocks = mocks.reject {|mock| mock[:name].to_s.include?( PARTIAL_FILENAME_PREFIX )}
+
+        if _mocks.empty?
+          @loginator.log( "No header files remain in collection requiring preproccessing." )
+        end
 
         # Generate directive-only preprocessor output
         @batchinator.exec(workload: :compile, things: _mocks) do |mock|

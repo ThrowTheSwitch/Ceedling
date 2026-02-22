@@ -30,6 +30,12 @@ class TestContextExtractor
     @lock = Mutex.new
   end
 
+  def collect_simple_context_from_file( filepath, *args )
+    @file_wrapper.open( filepath, 'r' ) do |input|
+      collect_simple_context( filepath, input, *args )
+    end
+  end
+
   # `input` must have the interface of IO -- StringIO for testing or File in typical use
   def collect_simple_context( filepath, input, *args )
     all_options = [
@@ -250,7 +256,6 @@ class TestContextExtractor
     # Each hash associates a partial type with module name (no file extension).
     # Note: This processing can yield duplicate includes, but `ingest_includes()` handles duplicates.
     partials_config.each do |config|
-      puts(config)
       # Switch on partial type
       _module = config.values.first
       case config.keys.first
