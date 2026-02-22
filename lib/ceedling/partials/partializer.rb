@@ -169,13 +169,13 @@ class Partializer
     _interface = interface.map { |func| "`#{func.signature}`" }
     
     @loginator.log_list(
-      _impl,
+      _interface,
       "Mockable functions for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
     
     @loginator.log_list(
-      _interface,
+      _impl,
       "Testable functions for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
