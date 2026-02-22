@@ -171,6 +171,7 @@ test_context_extractor:
   compose:
     - configurator
     - file_wrapper
+    - file_path_utils
     - include_factory
     - loginator
     - parsing_parcels

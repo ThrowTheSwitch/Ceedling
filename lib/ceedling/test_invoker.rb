@@ -237,6 +237,7 @@ class TestInvoker
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
           # Generate directive-only preprocessor output for test file to be used multiple times hereafter
+          # TODO: Handle case where directive-only preprocessor output fails
           _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
           details[:preprocess][:directives_only][:filepath] = _filepath
         end
