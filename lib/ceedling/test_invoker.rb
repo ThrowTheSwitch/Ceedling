@@ -720,9 +720,13 @@ class TestInvoker
       # Preprocess test files
       @batchinator.build_step("Preprocessing Test Files") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          filepath = details[:filepath]
+          filename = File.basename(filepath)
+          name = details[:name]
+
           arg_hash = {
-            test:                      details[:name],
-            filepath:                  details[:filepath],
+            test:                      name,
+            filepath:                  filepath,
             directives_only_filepath:  details[:preprocess][:directives_only][:filepath],
             fallback:                  !@preprocessinator.directives_only_available?,
             # We already have the full list of includes for each test file
@@ -734,20 +738,26 @@ class TestInvoker
             defines:                   details[:preprocess_defines]
           }
 
-          filepath = @preprocessinator.preprocess_test_file(**arg_hash)
+          msg = @reportinator.generate_module_progress(
+            operation: 'Preprocessing test file',
+            module_name: name,
+            filename: filename
+          )
+          @loginator.log( msg )
+
+          _filepath = @preprocessinator.preprocess_test_file(**arg_hash)
 
           # Replace default input with preprocessed file
-          @lock.synchronize { details[:runner][:input_filepath] = filepath }
+          @lock.synchronize { details[:runner][:input_filepath] = _filepath }
 
-          # Collect sources added to test build with TEST_SOURCE_FILE() directive macro
-          # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them
-          @file_wrapper.open( filepath, 'r' ) do |input|
-            @context_extractor.collect_simple_context( details[:filepath], input, :build_directive_source_files )
-          end
+          # Collect sources added to test build with TEST_SOURCE_FILE() directive macro from
+          # reconstructed preprocessed test file.
+          # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them.
+          @context_extractor.collect_simple_context_from_file( _filepath, :build_directive_source_files )
 
           # Validate test build directive source file entries via TEST_SOURCE_FILE()
           @testables.each do |_, details|
-            @helper.validate_build_directive_source_files( test:details[:name], filepath:details[:filepath] )
+            @helper.validate_build_directive_source_files( test: name, filepath: details[:filepath] )
           end
         end
       } if @configurator.project_use_test_preprocessor_tests
