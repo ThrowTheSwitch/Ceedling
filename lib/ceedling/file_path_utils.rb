@@ -191,6 +191,10 @@ class FilePathUtils
     return PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
   end
 
+  def form_mock_partial_interface_header_filename(_module)
+    return @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
+  end
+
   def form_partial_implementation_header_filename(_module)
     return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_HEADER
   end

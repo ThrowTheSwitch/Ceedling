@@ -13,7 +13,7 @@ require 'ceedling/encodinator'
 
 class TestContextExtractor
 
-  constructor :configurator, :parsing_parcels, :include_factory, :file_wrapper, :loginator
+  constructor :configurator, :parsing_parcels, :include_factory, :file_path_utils, :file_wrapper, :loginator
 
   def setup
     # Per test-file lookup hashes
@@ -77,7 +77,7 @@ class TestContextExtractor
 
     collect_build_directive_include_paths( filepath, include_paths ) if !include_paths.empty?
     collect_build_directive_source_files( filepath, source_extras ) if !source_extras.empty?
-    collect_includes( filepath, includes ) if !includes.empty?
+    collect_includes( filepath, partials_config, includes ) if (!includes.empty? or !partials_config.empty?)
     collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
 
     # Different code processing pattern for test runner
@@ -242,9 +242,26 @@ class TestContextExtractor
     )
   end
 
-  def collect_includes(filepath, includes)
+  def collect_includes(filepath, partials_config, includes)
     # Squeeze out any nil elements
     includes.compact!
+
+    # `partials_config` is a list of single element hashes.
+    # Each hash associates a partial type with module name (no file extension).
+    # Note: This processing can yield duplicate includes, but `ingest_includes()` handles duplicates.
+    partials_config.each do |config|
+      puts(config)
+      # Switch on partial type
+      _module = config.values.first
+      case config.keys.first
+      when Partials::TEST_PUBLIC, Partials::TEST_PRIVATE
+        filename = @file_path_utils.form_partial_implementation_header_filename( _module )
+        includes << @include_factory.user_include_from_filepath( filename )
+      when Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE
+        filename = @file_path_utils.form_mock_partial_interface_header_filename( _module )
+        includes << @include_factory.user_include_from_filepath( filename )
+      end
+    end
 
     # `ingest_includes()` does some housekeeping on the list
     _includes = ingest_includes( filepath, includes )
