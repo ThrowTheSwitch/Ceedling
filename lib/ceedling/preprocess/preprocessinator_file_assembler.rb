@@ -10,7 +10,15 @@ require 'ceedling/file_wrapper'
 
 class PreprocessinatorFileAssembler
 
-  constructor :preprocessinator_reconstructor, :configurator, :tool_executor, :file_path_utils, :file_wrapper, :loginator
+  constructor(
+    :preprocessinator_reconstructor,
+    :configurator,
+    :tool_executor,
+    :file_path_utils,
+    :file_wrapper,
+    :loginator,
+    :reportinator
+  )
 
   def collect_header_file_contents(
       test:,
@@ -60,6 +68,13 @@ class PreprocessinatorFileAssembler
     include_guard = @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath, 2048 ) )
 
     if fallback
+      msg = @reportinator.generate_module_progress(
+        operation: "Using fallback method to extract pragmas and macros from",
+        module_name: test,
+        filename: File.basename(filepath)
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
       @file_wrapper.open( filepath, 'r' ) do |file|
         # Get code contents of original source file as a string
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
@@ -173,6 +188,13 @@ class PreprocessinatorFileAssembler
     end
 
     if fallback
+      msg = @reportinator.generate_module_progress(
+        operation: "Using fallback method to extract test directive macros from",
+        module_name: test,
+        filename: File.basename(filepath)
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
       @file_wrapper.open( filepath, 'r' ) do |file|
         # Get code contents of original source file as a string
         # TODO: Modify to process line-at-a-time for memory savings & performance boost

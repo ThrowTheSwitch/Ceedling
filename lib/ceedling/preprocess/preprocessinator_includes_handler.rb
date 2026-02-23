@@ -107,11 +107,11 @@ class PreprocessinatorIncludesHandler
       includes = clean_self_reference(filepath, includes)
     else
       msg = @reportinator.generate_module_progress(
-        operation: "Extracting system #includes from original file (fallback)",
+        operation: "Extracting system #includes from original file using fallback method for",
         module_name: name,
         filename: filename
       )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
+      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
       @file_wrapper.open(filepath, 'r') do |input|
         @parsing_parcels.code_lines( input ) do |line|

@@ -186,8 +186,8 @@ class TestInvoker
         end
       end
 
-      # Collect includes from test files
       @batchinator.build_step("Collecting More Test Context") do
+        # Collect includes from test files
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
           name = details[:name]
@@ -223,6 +223,10 @@ class TestInvoker
 
         # Generate directive-only preprocessor output only after stand-ins are present
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          # Bail out if directives-only preprocessing is not available
+          # (Updated internally in @preprocessinator while raising exception handled below)
+          next unless @preprocessinator.directives_only_available?
+
           filepath = details[:filepath]
           name = details[:name]
 
@@ -242,42 +246,55 @@ class TestInvoker
           )
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-          # Generate directive-only preprocessor output for test file to be used multiple times hereafter
-          # TODO: Handle case where directive-only preprocessor output fails
-          _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+          _filepath = nil
+
+          begin
+            # Generate directive-only preprocessor output for test file to be used multiple times hereafter
+            _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+          rescue => ex
+            msg = "Using fallback methods to extract #includes and other directives: #{ex.message}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+            # Entirely stop trying to generate directive-only output
+            next
+          end
+
+          if _filepath.nil?
+            msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+          end
+
           details[:preprocess][:directives_only][:filepath] = _filepath
         end
 
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
+          filename = File.basename( filepath )
           name = details[:name]
 
           # Skip running the preprocessor if we have good, cachced includes
           cached, includes = @preprocessinator.load_includes_list( test: name, filepath: filepath )
           if cached
-            header = "Loaded #include list for #{filepath}"
-            @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
             @context_extractor.ingest_includes( filepath, includes )
             next
           end
 
           # Skip using preprocessed input if directive-only preprocessor output is not available
           # The includes we already extracted with regex are all that we have
-          if !@preprocessinator.directives_only_available?
+          unless @preprocessinator.directives_only_available?
             # We already have all the includes we will extract via regex
             msg = @reportinator.generate_module_progress(
-              operation: 'Using fallback text-only system includes extraction',
+              operation: 'Using fallback text-only system includes extraction for',
               module_name: name,
-              filename: File.basename( filepath )
+              filename: filename
             )
-            @loginator.log( msg, Verbosity::OBNOXIOUS )
+            @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
             next
           end
 
           directive_only_filepath = details[:preprocess][:directives_only][:filepath]
           system_includes = []
 
-          if !directive_only_filepath.nil?
+          unless directive_only_filepath.nil?
             # If directive-only preprocessor output is available, extract system includes from it
             arg_hash = {
               filepath:                 filepath,
@@ -287,7 +304,7 @@ class TestInvoker
             msg = @reportinator.generate_module_progress(
               operation: 'Extracting system #includes for',
               module_name: name,
-              filename: File.basename( filepath )
+              filename: filename
             )
             @loginator.log( msg )
 
@@ -411,7 +428,7 @@ class TestInvoker
 
       # Preprocess Header Files
       @batchinator.build_step("Preprocessing Header Files for Testing & Mocking Partials") {
-        # Generate directive-only preprocessor output
+        # Generate directive-only preprocessor output (only if directive-only preprocessor is working))
         @batchinator.exec(workload: :compile, things: partials_headers) do |details|
           config = details[:config]
           testable = details[:testable]
@@ -434,21 +451,26 @@ class TestInvoker
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
           _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-          details[:directives_only_filepath] = _filepath
 
-          # Break-glass just in case (should never happen given earlier steps)
-          break if _filepath.nil?
+          if _filepath.nil?
+            msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+          end
+
+          details[:directives_only_filepath] = _filepath
         end if @preprocessinator.directives_only_available?
 
         # Preprocess and assemble header files
         @batchinator.exec(workload: :compile, things: partials_headers) do |details|
           config = details[:config]
           testable = details[:testable]
+          directives_only_filepath = details[:directives_only_filepath]
+
           arg_hash = {
             test:                      testable[:name],
             filepath:                  config.filepath,
-            directives_only_filepath:  details[:directives_only_filepath],
-            fallback:                  !@preprocessinator.directives_only_available?,
+            directives_only_filepath:  directives_only_filepath,
+            fallback:                  (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
             flags:                     testable[:preprocess_flags],
             include_paths:             testable[:search_paths],
             # For user includes preprocessing, we need at least one search path
@@ -462,7 +484,7 @@ class TestInvoker
 
       # Preprocess Source Files
       @batchinator.build_step("Preprocessing Source Files for Testing Partials") {
-        # Generate directive-only preprocessor output
+        # Generate directive-only preprocessor output (only if directive-only preprocessor is working)
         @batchinator.exec(workload: :compile, things: partials_sources) do |details|
           config = details[:config]
           testable = details[:testable]
@@ -485,21 +507,26 @@ class TestInvoker
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
           _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-          details[:directives_only_filepath] = _filepath
 
-          # Break-glass just in case (should never happen given earlier steps)
-          break if _filepath.nil?
+          if _filepath.nil?
+            msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+          end
+
+          details[:directives_only_filepath] = _filepath
         end if @preprocessinator.directives_only_available?
 
         # Preprocess and assemble source files
         @batchinator.exec(workload: :compile, things: partials_sources) do |details|
           config = details[:config]
           testable = details[:testable]
+          directives_only_filepath = details[:directives_only_filepath]
+
           arg_hash = {
             test:                      testable[:name],
             filepath:                  config.filepath,
-            directives_only_filepath:  details[:directives_only_filepath],
-            fallback:                  !@preprocessinator.directives_only_available?,
+            directives_only_filepath:  directives_only_filepath,
+            fallback:                  (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
             flags:                     testable[:preprocess_flags],
             include_paths:             testable[:search_paths],
             # For user includes preprocessing, we need at least one search path
@@ -643,7 +670,7 @@ class TestInvoker
           @loginator.log( "No header files remain in collection requiring preproccessing." )
         end
 
-        # Generate directive-only preprocessor output
+        # Generate directive-only preprocessor output (only if directive-only preprocessor is working)
         @batchinator.exec(workload: :compile, things: _mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
@@ -667,22 +694,26 @@ class TestInvoker
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
           _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-          mock[:directives_only_filepath] = _filepath
 
-          # Break-glass just in case (should never happen given earlier steps)
-          break if _filepath.nil?
+          if _filepath.nil?
+            msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+          end
+
+          mock[:directives_only_filepath] = _filepath
         end if @preprocessinator.directives_only_available?
 
         # Preprocess and assembe header files to be mocked
         @batchinator.exec(workload: :compile, things: _mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
+          directives_only_filepath = mock[:directives_only_filepath]
 
           arg_hash = {
             test:                      testable[:name],
             filepath:                  details[:source],
-            directives_only_filepath:  mock[:directives_only_filepath],
-            fallback:                  !@preprocessinator.directives_only_available?,
+            directives_only_filepath:  directives_only_filepath,
+            fallback:                  (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
             flags:                     testable[:preprocess_flags],
             include_paths:             testable[:search_paths],
             # For user includes preprocessing, we need at least one search path
@@ -700,8 +731,7 @@ class TestInvoker
           details = mock[:details]
           testable = mock[:testable]
 
-          # Support selective sub directory handling for #include "<subdir/mock_header.h" cases.
-          # TODO: Implement gneric subdirectory handling for include directives
+          # Support selective sub directory handling for #include "<subdir>/mock_header.h" cases.
           output_path = File.join(testable[:paths][:mocks], details[:path])
           @file_wrapper.mkdir(output_path)
 
@@ -723,12 +753,13 @@ class TestInvoker
           filepath = details[:filepath]
           filename = File.basename(filepath)
           name = details[:name]
+          directives_only_filepath = details[:preprocess][:directives_only][:filepath]
 
           arg_hash = {
             test:                      name,
             filepath:                  filepath,
-            directives_only_filepath:  details[:preprocess][:directives_only][:filepath],
-            fallback:                  !@preprocessinator.directives_only_available?,
+            directives_only_filepath:  directives_only_filepath,
+            fallback:                  (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
             # We already have the full list of includes for each test file
             includes:                  @context_extractor.lookup_all_header_includes_list( details[:filepath] ),
             flags:                     details[:preprocess_flags],
