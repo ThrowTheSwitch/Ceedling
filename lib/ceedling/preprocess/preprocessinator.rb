@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/includes'
+require 'ceedling/exceptions'
 
 class Preprocessinator
 
@@ -19,7 +20,6 @@ class Preprocessinator
               :configurator,
               :loginator,
               :reportinator
-
 
   def setup
     # Aliases
@@ -69,14 +69,13 @@ class Preprocessinator
 
     # Handle warning from preprocessor saying that clang can't handle directives-only (common with older clang)
     if results[:output].match /warning[^\n]+-fdirectives-only/
-      msg = "Ceedling will rely on fallback details extraction because your C preprocessor lacks support for directives-only output"
-      @loginator.log( msg, Verbosity::WARNING )
+      msg = "Your C preprocessor lacks support for directives-only output that Ceedling relies upon."
       @directives_only_available = false
-      return nil
+      raise CeedlingException.new( msg )
+    end
 
-    elsif results[:exit_code] != 0
-      msg = "Ceedling will rely on fallback details extraction because C preprocessing failed for #{filepath}"
-      @loginator.log(msg, Verbosity::WARNING)
+    # Preprocessor did not succeed
+    if results[:exit_code] != 0
       return nil
     end
 
