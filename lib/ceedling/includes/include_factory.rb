@@ -6,7 +6,7 @@
 # ========================================================================='
 
 require 'ceedling/constants'
-require 'ceedling/includes'
+require 'ceedling/includes/includes'
 
 class IncludeFactory
 

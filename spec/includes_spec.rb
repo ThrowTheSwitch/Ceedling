@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/includes'
+require 'ceedling/includes/includes'
 
 
 describe UserInclude do

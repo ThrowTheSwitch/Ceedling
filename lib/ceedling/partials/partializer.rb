@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'rake' # .ext()
-require 'ceedling/includes'
+require 'ceedling/includes/includes'
 require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_runtime'
 require 'ceedling/partials/partializer_constants'
