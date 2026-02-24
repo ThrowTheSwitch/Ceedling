@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/includes'
+require 'ceedling/includes/includes'
 require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
 
 class PreprocessinatorIncludesHandler

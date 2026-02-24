@@ -7,7 +7,7 @@
 
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'ceedling/includes'
+require 'ceedling/includes/includes'
 require 'ceedling/file_path_utils'
 require 'rake'
 

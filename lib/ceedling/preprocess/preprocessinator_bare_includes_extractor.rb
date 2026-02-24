@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/includes'
+require 'ceedling/includes/includes'
 
 ##
 ## Bare Includes Preprocessor Make Rule Parsing
