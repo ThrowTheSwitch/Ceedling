@@ -13,23 +13,27 @@ require 'ceedling/encodinator'
 
 class TestContextExtractor
 
-  constructor :configurator, :file_wrapper, :loginator, :parsing_parcels
+  constructor :configurator, :parsing_parcels, :include_factory, :file_path_utils, :file_wrapper, :loginator
 
   def setup
     # Per test-file lookup hashes
-    @all_header_includes = {} # Full list of all headers from test #include statements
-    @header_includes     = {} # List of all headers minus mocks & framework files
+    @header_includes     = {} # Full list of all headers from #include statements
     @source_includes     = {} # List of C files #include'd in a test file
     @source_extras       = {} # C source files outside of header convention added to test build by TEST_SOURCE_FILE()
     @test_runner_details = {} # Test case lists & Unity runner generator instances
     @partials_config     = {} # Partials configuration by test name
-    @mocks               = {} # List of mocks by name without header file extension
     @include_paths       = {} # Additional search paths added to a test build via TEST_INCLUDE_PATH()
     
     # Arrays
     @all_include_paths   = [] # List of all search paths added through individual test files using TEST_INCLUDE_PATH()
 
     @lock = Mutex.new
+  end
+
+  def collect_simple_context_from_file( filepath, *args )
+    @file_wrapper.open( filepath, 'r' ) do |input|
+      collect_simple_context( filepath, input, *args )
+    end
   end
 
   # `input` must have the interface of IO -- StringIO for testing or File in typical use
@@ -79,7 +83,7 @@ class TestContextExtractor
 
     collect_build_directive_include_paths( filepath, include_paths ) if !include_paths.empty?
     collect_build_directive_source_files( filepath, source_extras ) if !source_extras.empty?
-    collect_includes( filepath, includes ) if !includes.empty?
+    collect_includes( filepath, partials_config, includes ) if (!includes.empty? or !partials_config.empty?)
     collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
 
     # Different code processing pattern for test runner
@@ -101,28 +105,8 @@ class TestContextExtractor
     )
   end
 
-  # Scan for all includes.
-  # Unlike other extract() calls, extract_includes() is public to be called externally.
-  # `input` must have the interface of IO -- StringIO for testing or File in typical use  
-  def extract_includes(input)
-    includes = []
-
-    @parsing_parcels.code_lines( input ) {|line| includes += _extract_includes( line ) }
-
-    return includes.uniq
-  end
-
   # All header includes .h of test file
-  def lookup_full_header_includes_list(filepath)
-    val = nil
-    @lock.synchronize do
-      val = @all_header_includes[form_file_key( filepath )] || []
-    end
-    return val
-  end
-
-  # Header includes .h (minus mocks & framework headers) in test file
-  def lookup_header_includes_list(filepath)
+  def lookup_all_header_includes_list(filepath)
     val = nil
     @lock.synchronize do
       val = @header_includes[form_file_key( filepath )] || []
@@ -179,13 +163,16 @@ class TestContextExtractor
     return val
   end
 
-  # Mocks within test file with no file extension
-  def lookup_raw_mock_list(filepath)
-    val = nil
-    @lock.synchronize do
-      val = @mocks[form_file_key( filepath )] || []
-    end
-    return val
+  # Mocks within test file header includes list
+  def lookup_mock_header_includes_list(filepath)
+    includes = lookup_all_header_includes_list(filepath)
+    return includes.select { |include| include.is_a?( MockInclude ) }
+  end
+
+  # Test file header includes list minus mocks
+  def lookup_nonmock_header_includes_list(filepath)
+    includes = lookup_all_header_includes_list(filepath)
+    return includes.reject { |include| include.is_a?( MockInclude ) }
   end
 
   def lookup_partials_config(filepath)
@@ -212,43 +199,31 @@ class TestContextExtractor
 
   # Unlike other ingest() calls, ingest_includes() can be called externally.
   def ingest_includes(filepath, includes)
-    mock_prefix = @configurator.cmock_mock_prefix
-    file_key    = form_file_key( filepath )
+    _includes = Includes.sanitize(includes)
+
+    file_key = form_file_key( filepath )
     
-    mocks       = []
-    all_headers = []
-    headers     = []
-    sources     = []
+    headers = []
+    sources = []
 
-    includes.each do |include|
+    # Processing list of UserInclude and/or SystemInclude
+    _includes.each do |include|
       # <*.h>
-      if include =~ /#{Regexp.escape(@configurator.extension_header)}$/
-        # Check if include is a mock with regex match that extracts only mock name (no .h)
-        scan_results = include.scan(/([^\s]*\b#{mock_prefix}.+)#{Regexp.escape(@configurator.extension_header)}/)
-        
-        if (scan_results.size > 0)
-          # Collect mock name
-          mocks << scan_results[0][0]
-        else
-          # If not a mock or framework file, collect tailored header filename
-          headers << include unless VENDORS_FILES.include?( include.ext('') )
-        end
-
+      if include.filename =~ /#{Regexp.escape(@configurator.extension_header)}$/
         # Add to .h includes list
-        all_headers << include
-      # <*.c>
-      elsif include =~ /#{Regexp.escape(@configurator.extension_source)}$/
+        headers << include
+      elsif include.filename =~ /#{Regexp.escape(@configurator.extension_source)}$/
         # Add to .c includes list
         sources << include
       end
     end
 
     @lock.synchronize do
-      @mocks[file_key] = mocks
-      @all_header_includes[file_key] = all_headers
       @header_includes[file_key] = headers
       @source_includes[file_key] = sources
     end
+
+    return _includes
   end
 
   private #################################
@@ -273,10 +248,30 @@ class TestContextExtractor
     )
   end
 
-  def collect_includes(filepath, includes)
-    includes.uniq!
-    ingest_includes( filepath, includes )
-    debug_log_list( "#includes found", filepath, includes )
+  def collect_includes(filepath, partials_config, includes)
+    # Squeeze out any nil elements
+    includes.compact!
+
+    # `partials_config` is a list of single element hashes.
+    # Each hash associates a partial type with module name (no file extension).
+    # Note: This processing can yield duplicate includes, but `ingest_includes()` handles duplicates.
+    partials_config.each do |config|
+      # Switch on partial type
+      _module = config.values.first
+      case config.keys.first
+      when Partials::TEST_PUBLIC, Partials::TEST_PRIVATE
+        filename = @file_path_utils.form_partial_implementation_header_filename( _module )
+        includes << @include_factory.user_include_from_filepath( filename )
+      when Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE
+        filename = @file_path_utils.form_mock_partial_interface_header_filename( _module )
+        includes << @include_factory.user_include_from_filepath( filename )
+      end
+    end
+
+    # `ingest_includes()` does some housekeeping on the list
+    _includes = ingest_includes( filepath, includes )
+
+    debug_log_list( "#includes found", filepath, _includes )
   end
 
   def collect_partials_configuration(filepath, partials_config)
@@ -330,10 +325,13 @@ class TestContextExtractor
   def _extract_includes(line)
     includes = []
 
-    # Look for #include statements
-    results = line.match(PATTERNS::INCLUDE_DIRECTIVE_FILENAME)
-    includes << results[1] if !results.nil?
+    _include = @include_factory.system_include_from_directive( line )
+    includes << _include if !_include.nil?
 
+    # All of the UserInclude types
+    _include = @include_factory.user_include_from_directive( line )
+    includes << _include if !_include.nil?
+  
     return includes
   end
 

@@ -6,10 +6,10 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/preprocessinator_extractor'
+require 'ceedling/preprocessinator_reconstructor'
 require 'ceedling/parsing_parcels'
 
-describe PreprocessinatorExtractor do
+describe PreprocessinatorReconstructor do
   before(:each) do
     @parsing_parcels = ParsingParcels.new()
     @extractor = described_class.new(
@@ -62,7 +62,6 @@ describe PreprocessinatorExtractor do
       ]
 
       expected = [
-        '',
         '#pragma yo sup',
         '#define FOO(...)',
         'void some_function(void) {',
@@ -167,36 +166,42 @@ describe PreprocessinatorExtractor do
       file_contents = [
         '# 9 "path/system_header_expansion.c" 2',
         '',
+        '',
+        'uint16_t var1;',
+        '',
         'static ',
-        '# 10 "path/system_header_expansion.c" 3 4',
+        '# 13 "path/system_header_expansion.c" 3 4',
         '      _Bool ',
-        '# 10 "path/system_header_expansion.c"',
+        '# 13 "path/system_header_expansion.c"',
         '           var1;',
         '',
         'static ',
-        '# 12 "path/system_header_expansion.c" 3 4',
+        '# 15 "path/system_header_expansion.c" 3 4',
         '      _Bool ',
-        '# 12 "path/system_header_expansion.c"',
+        '# 15 "path/system_header_expansion.c"',
         '           ecs_foo__init_structure(void);',
+        '',
+        '',
         '',
         'void ecs_foo_init(void) {',
         '    var1 = ecs_foo__init_structure();',
         '}',
         '',
         'static ',
-        '# 18 "path/system_header_expansion.c" 3 4',
+        '# 23 "path/system_header_expansion.c" 3 4',
         '      _Bool ',
-        '# 18 "path/system_header_expansion.c"',
+        '# 23 "path/system_header_expansion.c"',
         '           ecs_foo__init_structure(void) {',
         '    return ',
-        '# 19 "path/system_header_expansion.c" 3 4',
+        '# 24 "path/system_header_expansion.c" 3 4',
         '          1',
-        '# 19 "path/system_header_expansion.c"',
+        '# 24 "path/system_header_expansion.c"',
         '              ;',
         '}',
       ]
 
       expected = [
+        'uint16_t var1;',
         '',
         'static _Bool var1;',
         '',

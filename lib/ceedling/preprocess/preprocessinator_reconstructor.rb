@@ -9,7 +9,7 @@ require 'ceedling/constants'
 require 'ceedling/encodinator'
 require 'ceedling/parsing_parcels'
 
-class PreprocessinatorExtractor 
+class PreprocessinatorReconstructor 
  
   constructor :parsing_parcels
 
@@ -130,16 +130,22 @@ class PreprocessinatorExtractor
         # Strip a line so we can omit useless blank lines
         _line = line.strip()
 
+        # Skip processing blank lines, but capture them unless we already have a blank line
+        if _line.empty?
+          last_line = lines.last()
+          lines << '' if (!last_line.nil? and !last_line.empty?)
+          next
+        end
+
         # If the linemarker line number hasn't advanced, aggregate the expanded line to existing last line
-        if last_line_num == line_num
+        if (last_line_num == line_num) and !lines.last().nil?
           last_line = lines.last()
           # Append the stripped line to the last line in the collection
-          # Include a space in the concatenation unless it's a semicolon
-          lines[-1] = (_line == ';') ? (last_line + _line) : (last_line + ' ' + _line)
+          # Include a space in the concatenation unless it's a semicolon or last_line is blank
+          lines[-1] = (_line == ';' or last_line.empty?) ? (last_line + _line) : (last_line + ' ' + _line)
         else
-          # Restore text with left-side whitespace if previous stripping left some text
-          _line = line.rstrip() if !_line.empty?
-
+          # Collect a left-whitespace-preserved version of the line
+          _line = line.rstrip()
           # Collect extracted lines
           lines << _line
         end

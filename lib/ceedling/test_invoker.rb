@@ -6,28 +6,31 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/includes/includes'
 require 'fileutils'
 
 class TestInvoker
 
   attr_reader :sources, :tests, :mocks
 
-  constructor :application,
-              :configurator,
-              :test_invoker_helper,
-              :plugin_manager,
-              :reportinator,
-              :loginator,
-              :batchinator,
-              :preprocessinator,
-              :task_invoker,
-              :partializer,
-              :generator,
-              :test_context_extractor,
-              :file_path_utils,
-              :file_wrapper,
-              :file_finder,
-              :verbosinator
+  constructor(
+    :application,
+    :configurator,
+    :test_invoker_helper,
+    :plugin_manager,
+    :reportinator,
+    :loginator,
+    :batchinator,
+    :include_factory,
+    :preprocessinator,
+    :partializer,
+    :generator,
+    :test_context_extractor,
+    :file_path_utils,
+    :file_wrapper,
+    :file_finder,
+    :verbosinator
+  )
 
   def setup
     # Master data structure for all test activities
@@ -65,6 +68,7 @@ class TestInvoker
             @testables[key] = {
               :filepath => filepath,
               :name => name,
+              :preprocess => {},
               :paths => {}
             }
           end
@@ -75,6 +79,12 @@ class TestInvoker
           paths[:mocks] = mocks_path if @configurator.project_use_mocks
           paths[:partials] = partials_path if @configurator.project_use_partials
           if @configurator.project_use_test_preprocessor != :none
+            # Temporary list of bare includes (not user/system specialized)
+            @testables[key][:preprocess][:includes] = []
+            @testables[key][:preprocess][:directives_only] = {
+              :filepath => nil
+            }
+
             paths[:preprocess_incudes] = preprocess_includes_path
             paths[:preprocess_files] = preprocess_files_path
             paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
@@ -93,38 +103,46 @@ class TestInvoker
       @batchinator.build_step("Collecting Essential Test Context") do
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           filepath = details[:filepath]
+          filename = File.basename(filepath)
 
-          contexts = []
+          # Always extract includes via regex.
+          #  - In non-preprocessing builds, we only use this.
+          #  - With fallback options if certain kinds of preprocessing are unavailable, use the regex includes instead.
+          contexts = [:includes]
 
           if @configurator.project_use_test_preprocessor_tests
+            # :includes (see above)
+            msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #include directives (fallback for preprocessing failures)" )
+            @loginator.log( msg )
+
             # Extracting other context will happen in later steps after preprocessing.
             contexts << :build_directive_include_paths
 
-            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for include path build directive macros" )
+            msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
             @loginator.log( msg )
           else
+            # :includes (see above)
+            msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #include directives" )
+            @loginator.log( msg )
+
             # Extract context without preprocessing.
             contexts << :build_directive_include_paths
             contexts << :build_directive_source_files
-            contexts << :includes
             contexts << :test_runner_details
 
-            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )
+            msg = @reportinator.generate_progress( "Parsing #{filename} for build directive macros and test case names" )
             @loginator.log( msg )
           end
 
           if @configurator.project_use_partials
             contexts << :partials_configuration
 
-            msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for partials directive macros" )
+            msg = @reportinator.generate_progress( "Parsing #{filename} for partials directive macros" )
             @loginator.log( msg )
           end
 
           # Collect test context using text scanning (no preprocessing involved here)
-          @file_wrapper.open( filepath, 'r' ) do |input|
-            @context_extractor.collect_simple_context( filepath, input, *contexts )
-          end
-
+          @context_extractor.collect_simple_context_from_file( filepath, *contexts )
         end
 
         # Validate paths via TEST_INCLUDE_PATH() & augment header file collection from the same
@@ -150,7 +168,7 @@ class TestInvoker
           preprocess_defines = @helper.preprocess_defines( test_defines: compile_defines, filepath:filepath )
 
           msg = @reportinator.generate_module_progress(
-            operation: 'Collecting search paths, flags, and defines',
+            operation: 'Collecting search paths, flags, and defines for',
             module_name: details[:name],
             filename: File.basename( details[:filepath] )
           )
@@ -168,55 +186,195 @@ class TestInvoker
         end
       end
 
-      # Collect include statements & mocks from test files
       @batchinator.build_step("Collecting More Test Context") do
+        # Collect includes from test files
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
-          vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
+          filepath = details[:filepath]
+          name = details[:name]
+
+          # Skip running the preprocessor if we have good, cachced includes
+          next if @preprocessinator.cached_includes_list?( test: name, filepath: filepath )
+
+          arg_hash = {
+            test:          details[:name],
+            filepath:      details[:filepath],
+            # For user includes preprocessing, we need at least one search path
+            search_paths:  [@configurator.project_build_vendor_ceedling_path],
+            flags:         details[:preprocess_flags],
+            defines:       details[:preprocess_defines]
+          }
+
+          msg = @reportinator.generate_module_progress(
+            operation: 'Extracting bare #includes for',
+            module_name: name,
+            filename: File.basename( filepath )
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+          # Extract user includes
+          includes = @preprocessinator.preprocess_bare_includes( **arg_hash )
+          
+          # Temporarily store includes for future use
+          details[:preprocess][:includes] = includes
+          
+          # Create blank mocks and partials to keep preprocessing happy before we generate these files
+          @helper.generate_test_includes_standins( name, includes )
+        end
+
+        # Generate directive-only preprocessor output only after stand-ins are present
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          # Bail out if directives-only preprocessing is not available
+          # (Updated internally in @preprocessinator while raising exception handled below)
+          next unless @preprocessinator.directives_only_available?
+
+          filepath = details[:filepath]
+          name = details[:name]
+
           arg_hash = {
             filepath:      details[:filepath],
             test:          details[:name],
             flags:         details[:preprocess_flags],
             include_paths: details[:search_paths],
-            vendor_paths:  vendor_paths,
+            vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
             defines:       details[:preprocess_defines]
           }
 
           msg = @reportinator.generate_module_progress(
-            operation: 'Preprocessing #include statements for',
-            module_name: arg_hash[:test],
-            filename: File.basename( arg_hash[:filepath] )
+            operation: 'Preprocessing test files for follow-on details extraction steps',
+            module_name: name,
+            filename: File.basename( filepath )
           )
-          @loginator.log( msg )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-          @helper.extract_include_directives( arg_hash )
+          _filepath = nil
+
+          begin
+            # Generate directive-only preprocessor output for test file to be used multiple times hereafter
+            _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+          rescue => ex
+            msg = "Using fallback methods to extract #includes and other directives: #{ex.message}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+            # Entirely stop trying to generate directive-only output
+            next
+          end
+
+          if _filepath.nil?
+            msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+          end
+
+          details[:preprocess][:directives_only][:filepath] = _filepath
+        end
+
+        @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+          filepath = details[:filepath]
+          filename = File.basename( filepath )
+          name = details[:name]
+
+          # Skip running the preprocessor if we have good, cachced includes
+          cached, includes = @preprocessinator.load_includes_list( test: name, filepath: filepath )
+          if cached
+            @context_extractor.ingest_includes( filepath, includes )
+            next
+          end
+
+          # Skip using preprocessed input if directive-only preprocessor output is not available
+          # The includes we already extracted with regex are all that we have
+          unless @preprocessinator.directives_only_available?
+            # We already have all the includes we will extract via regex
+            msg = @reportinator.generate_module_progress(
+              operation: 'Using fallback text-only system includes extraction for',
+              module_name: name,
+              filename: filename
+            )
+            @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+            next
+          end
+
+          directive_only_filepath = details[:preprocess][:directives_only][:filepath]
+          system_includes = []
+
+          unless directive_only_filepath.nil?
+            # If directive-only preprocessor output is available, extract system includes from it
+            arg_hash = {
+              filepath:                 filepath,
+              directives_only_filepath: directive_only_filepath
+            }
+
+            msg = @reportinator.generate_module_progress(
+              operation: 'Extracting system #includes for',
+              module_name: name,
+              filename: filename
+            )
+            @loginator.log( msg )
+
+            system_includes = @preprocessinator.preprocess_system_includes( **arg_hash )
+          else
+            # Otherwise, grab the system includes we already have via regex
+            system_includes = Includes.system(
+              @context_extractor.lookup_all_header_includes_list( filepath )
+            )
+          end
+
+          # Get existing list of bare includes
+          bare_includes = details[:preprocess][:includes]
+
+          # Reconcile includes with overlapping information from imperfect extraction
+          all_includes = Includes.reconcile(
+            bare: bare_includes,
+            system: system_includes,
+            include_factory: @include_factory
+          )
+
+          header = "Extracted #include list from #{filepath}"
+          @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )
+
+          # Update full list of includes (performs santization)
+          @context_extractor.ingest_includes( filepath, all_includes )
+
+          @preprocessinator.store_includes_list(
+            test: name,
+            filepath: filepath,
+            includes: all_includes
+          )
         end
       end if @configurator.project_use_test_preprocessor_tests
 
       # Determine Runners, Mocks & Partials for All Tests
       @batchinator.build_step("Determining Files to Be Generated", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
+          test = details[:name]
+          filepath = details[:filepath]
+
           # Runners
-          runner_filepath = @file_path_utils.form_runner_filepath_from_test( details[:filepath] )
+          runner_filepath = @file_path_utils.form_runner_filepath_from_test( filepath )
           
           # Mocks
           mocks = {}
-          mocks_list = @configurator.project_use_mocks ? @context_extractor.lookup_raw_mock_list( details[:filepath] ) : []
-          mocks_list.each do |name|
+          _mocks = @context_extractor.lookup_mock_header_includes_list( filepath )
+
+          # Validate mocks in use
+          @helper.validate_mocks_in_use( test: test, mocks: _mocks )
+
+          _mocks.each do |include|
+            name = File.basename(include.filename).ext()
             source = nil
             input = nil
 
             # Handle mock partial vs. (optionally preprocessed) project header
-            if @helper.is_mock_partial?( name )
-              source = @helper.gnerate_header_input_for_mock_partial( name, details[:paths] )
+            if @helper.is_mock_partial?( include )
+              source = @helper.gnerate_header_input_for_mock_partial( include, test )
               input = source
             else
-              source = @helper.find_header_input_for_mock( name )
-              preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, details[:name] )
+              source = @helper.find_header_input_for_mock( include )
+              preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, test )
               input = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
             end
 
             mocks[name.to_sym] = {
               :name => name,
+              :filepath => include.filepath,
+              :path => include.path,
               :source => source,
               :input => input
             }
@@ -225,24 +383,23 @@ class TestInvoker
           # Partials
           partials_configs = {}
           if @configurator.project_use_partials
-            partials_configs = @helper.assemble_partials_config( filepath: details[:filepath] )
+            partials_configs = @helper.assemble_partials_config( filepath: filepath )
           end
 
           # Assemble results within safety of mutex
           @lock.synchronize do
             details[:runner] = {
               :output_filepath => runner_filepath,
-              :input_filepath => details[:filepath]  # Default of the test file
+              :input_filepath => filepath # Default of the test file
             }
             details[:mocks] = mocks
-            details[:mock_list] = mocks_list
             details[:partials] = {
               :configs => partials_configs,
               :compilations => []
             }
 
             # Trigger pre_test plugin hook after having assembled all testing context
-            @plugin_manager.pre_test( details[:filepath] )
+            @plugin_manager.pre_test( filepath )
           end
         end
       end
@@ -254,24 +411,71 @@ class TestInvoker
       if @configurator.project_use_partials
         @testables.each do |_, details|
           details[:partials][:configs].each do |_, config|
-            partials_headers << {:config => config.header, :testable => details} if config.header.filepath
-            partials_sources << {:config => config.source, :testable => details} if config.source.filepath
+            partials_headers << {
+              :config => config.header,
+              :testable => details,
+              :directives_only_filepath => nil
+            } if config.header.filepath
+
+            partials_sources << {
+              :config => config.source,
+              :testable => details,
+              :directives_only_filepath => nil
+            } if config.source.filepath
           end
         end
       end
 
       # Preprocess Header Files
-      @batchinator.build_step("Preprocessing Header Files for Partials") {
+      @batchinator.build_step("Preprocessing Header Files for Testing & Mocking Partials") {
+        # Generate directive-only preprocessor output (only if directive-only preprocessor is working))
         @batchinator.exec(workload: :compile, things: partials_headers) do |details|
           config = details[:config]
           testable = details[:testable]
+          name = testable[:name]
+
           arg_hash = {
             filepath:      config.filepath,
-            test:          testable[:name],
+            test:          name,
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
-            vendor_paths:  [],
+            vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
             defines:       testable[:preprocess_defines]
+          }
+
+          msg = @reportinator.generate_module_progress(
+            operation: 'Preprocessing header file for follow-on Partials details extraction steps',
+            module_name: name,
+            filename: File.basename( config.filepath )
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+          _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+
+          if _filepath.nil?
+            msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+          end
+
+          details[:directives_only_filepath] = _filepath
+        end if @preprocessinator.directives_only_available?
+
+        # Preprocess and assemble header files
+        @batchinator.exec(workload: :compile, things: partials_headers) do |details|
+          config = details[:config]
+          testable = details[:testable]
+          directives_only_filepath = details[:directives_only_filepath]
+
+          arg_hash = {
+            test:                      testable[:name],
+            filepath:                  config.filepath,
+            directives_only_filepath:  directives_only_filepath,
+            fallback:                  (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
+            flags:                     testable[:preprocess_flags],
+            include_paths:             testable[:search_paths],
+            # For user includes preprocessing, we need at least one search path
+            vendor_paths:              [@configurator.project_build_vendor_ceedling_path],
+            defines:                   testable[:preprocess_defines]
           }
 
           config.preprocessed_filepath, config.includes = @preprocessinator.preprocess_partial_header_file( **arg_hash )
@@ -279,17 +483,55 @@ class TestInvoker
       } if @configurator.project_use_partials
 
       # Preprocess Source Files
-      @batchinator.build_step("Preprocessing Source Files for Partials") {
+      @batchinator.build_step("Preprocessing Source Files for Testing Partials") {
+        # Generate directive-only preprocessor output (only if directive-only preprocessor is working)
         @batchinator.exec(workload: :compile, things: partials_sources) do |details|
           config = details[:config]
           testable = details[:testable]
+          name = testable[:name]
+
           arg_hash = {
             filepath:      config.filepath,
-            test:          testable[:name],
+            test:          name,
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
-            vendor_paths:  [],
+            vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
             defines:       testable[:preprocess_defines]
+          }
+
+          msg = @reportinator.generate_module_progress(
+            operation: 'Preprocessing source file for follow-on Partials details extraction steps',
+            module_name: name,
+            filename: File.basename( config.filepath )
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+          _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+
+          if _filepath.nil?
+            msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+          end
+
+          details[:directives_only_filepath] = _filepath
+        end if @preprocessinator.directives_only_available?
+
+        # Preprocess and assemble source files
+        @batchinator.exec(workload: :compile, things: partials_sources) do |details|
+          config = details[:config]
+          testable = details[:testable]
+          directives_only_filepath = details[:directives_only_filepath]
+
+          arg_hash = {
+            test:                      testable[:name],
+            filepath:                  config.filepath,
+            directives_only_filepath:  directives_only_filepath,
+            fallback:                  (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
+            flags:                     testable[:preprocess_flags],
+            include_paths:             testable[:search_paths],
+            # For user includes preprocessing, we need at least one search path
+            vendor_paths:              [@configurator.project_build_vendor_ceedling_path],
+            defines:                   testable[:preprocess_defines]
           }
 
           config.preprocessed_filepath, config.includes = @preprocessinator.preprocess_partial_source_file( **arg_hash )
@@ -409,26 +651,74 @@ class TestInvoker
       if @configurator.project_use_mocks
         @testables.each do |_, details|
           details[:mocks].each do |name, elems|
-            mocks << {:name => name, :details => elems, :testable => details}
+            mocks << {
+              :name => name,
+              :details => elems,
+              :testable => details,
+              :directives_only_filepath => nil
+            }
           end
         end
       end
 
-      # Preprocess Header Files
+      # Preprocess header files
       @batchinator.build_step("Preprocessing for Mocks") {
         # Suppress preprocessing for partials headers as they have already been preprocessed
         _mocks = mocks.reject {|mock| mock[:name].to_s.include?( PARTIAL_FILENAME_PREFIX )}
+
+        if _mocks.empty?
+          @loginator.log( "No header files remain in collection requiring preproccessing." )
+        end
+
+        # Generate directive-only preprocessor output (only if directive-only preprocessor is working)
         @batchinator.exec(workload: :compile, things: _mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
+          name = testable[:name]
+          filepath = details[:source]
 
           arg_hash = {
-            filepath:      details[:source],
-            test:          testable[:name],
+            filepath:      filepath,
+            test:          name,
             flags:         testable[:preprocess_flags],
             include_paths: testable[:search_paths],
-            vendor_paths:  [],
+            vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
             defines:       testable[:preprocess_defines]
+          }
+
+          msg = @reportinator.generate_module_progress(
+            operation: 'Preprocessing mockable header file for follow-on details extraction steps',
+            module_name: name,
+            filename: File.basename( filepath )
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+
+          _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+
+          if _filepath.nil?
+            msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
+            @loginator.log( msg, Verbosity::COMPLAIN )
+          end
+
+          mock[:directives_only_filepath] = _filepath
+        end if @preprocessinator.directives_only_available?
+
+        # Preprocess and assembe header files to be mocked
+        @batchinator.exec(workload: :compile, things: _mocks) do |mock|
+          details = mock[:details]
+          testable = mock[:testable]
+          directives_only_filepath = mock[:directives_only_filepath]
+
+          arg_hash = {
+            test:                      testable[:name],
+            filepath:                  details[:source],
+            directives_only_filepath:  directives_only_filepath,
+            fallback:                  (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
+            flags:                     testable[:preprocess_flags],
+            include_paths:             testable[:search_paths],
+            # For user includes preprocessing, we need at least one search path
+            vendor_paths:              [@configurator.project_build_vendor_ceedling_path],
+            defines:                   testable[:preprocess_defines]
           }
 
           @preprocessinator.preprocess_mockable_header_file( **arg_hash )
@@ -440,9 +730,10 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: mocks) do |mock| 
           details = mock[:details]
           testable = mock[:testable]
-          # Handle subdirectories for mocks (e.g. `#include "path/mock_file.h`)
-          output_subpath = @file_wrapper.dirname( mock[:name].to_s )
-          output_path = testable[:paths][:mocks] + (output_subpath.empty? ? '' : "/#{output_subpath}")
+
+          # Support selective sub directory handling for #include "<subdir>/mock_header.h" cases.
+          output_path = File.join(testable[:paths][:mocks], details[:path])
+          @file_wrapper.mkdir(output_path)
 
           arg_hash = {
             context:        context,
@@ -459,31 +750,45 @@ class TestInvoker
       # Preprocess test files
       @batchinator.build_step("Preprocessing Test Files") {
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
-          vendor_paths = @configurator.project_use_partials ? [@configurator.project_build_vendor_ceedling_path] : []
+          filepath = details[:filepath]
+          filename = File.basename(filepath)
+          name = details[:name]
+          directives_only_filepath = details[:preprocess][:directives_only][:filepath]
 
           arg_hash = {
-            filepath:      details[:filepath],
-            test:          details[:name],
-            flags:         details[:preprocess_flags],
-            include_paths: details[:search_paths],
-            vendor_paths:  vendor_paths,
-            defines:       details[:preprocess_defines]
+            test:                      name,
+            filepath:                  filepath,
+            directives_only_filepath:  directives_only_filepath,
+            fallback:                  (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
+            # We already have the full list of includes for each test file
+            includes:                  @context_extractor.lookup_all_header_includes_list( details[:filepath] ),
+            flags:                     details[:preprocess_flags],
+            include_paths:             details[:search_paths],
+            # For user includes preprocessing, we need at least one search path
+            vendor_paths:              [@configurator.project_build_vendor_ceedling_path],
+            defines:                   details[:preprocess_defines]
           }
 
-          filepath = @preprocessinator.preprocess_test_file(**arg_hash)
+          msg = @reportinator.generate_module_progress(
+            operation: 'Preprocessing test file',
+            module_name: name,
+            filename: filename
+          )
+          @loginator.log( msg )
+
+          _filepath = @preprocessinator.preprocess_test_file(**arg_hash)
 
           # Replace default input with preprocessed file
-          @lock.synchronize { details[:runner][:input_filepath] = filepath }
+          @lock.synchronize { details[:runner][:input_filepath] = _filepath }
 
-          # Collect sources added to test build with TEST_SOURCE_FILE() directive macro
-          # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them
-          @file_wrapper.open( filepath, 'r' ) do |input|
-            @context_extractor.collect_simple_context( details[:filepath], input, :build_directive_source_files )
-          end
+          # Collect sources added to test build with TEST_SOURCE_FILE() directive macro from
+          # reconstructed preprocessed test file.
+          # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them.
+          @context_extractor.collect_simple_context_from_file( _filepath, :build_directive_source_files )
 
           # Validate test build directive source file entries via TEST_SOURCE_FILE()
           @testables.each do |_, details|
-            @helper.validate_build_directive_source_files( test:details[:name], filepath:details[:filepath] )
+            @helper.validate_build_directive_source_files( test: name, filepath: details[:filepath] )
           end
         end
       } if @configurator.project_use_test_preprocessor_tests
@@ -508,8 +813,10 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
           arg_hash = {
             context:         context,
-            mock_list:       details[:mock_list],
-            includes_list:   @test_context_extractor.lookup_header_includes_list( details[:filepath] ),
+            # Mock includes
+            mocks:           @test_context_extractor.lookup_mock_header_includes_list( details[:filepath] ),
+            # All other includes
+            includes:        @test_context_extractor.lookup_nonmock_header_includes_list( details[:filepath] ),
             test_filepath:   details[:filepath],
             input_filepath:  details[:runner][:input_filepath],
             runner_filepath: details[:runner][:output_filepath]            
@@ -522,23 +829,32 @@ class TestInvoker
       # Determine objects required for each test
       @batchinator.build_step("Determining Artifacts to Be Built", heading: false) do
         @batchinator.exec(workload: :compile, things: @testables) do |test, details|
+          filepath = details[:filepath]
+          # Get a list of mock includes
+          mock_list = @context_extractor.lookup_mock_header_includes_list( filepath )
+
           # Source files referenced by conventions or specified by build directives in a test file
-          test_sources       =  @helper.extract_sources( details[:filepath] )
+          test_sources       =  @helper.extract_sources( filepath )
           test_core          =  test_sources + 
-                                @helper.form_mock_filenames( details[:mock_list] ) +
+                                # List of mock includes transformed to simple list of .c files
+                                mock_list.map { |mock| mock.filename.ext( EXTENSION_CORE_SOURCE ) } +
                                 details[:partials][:compilations]
 
           # When we have a mock and an include for the same file, the mock wins
-          @helper.remove_mock_original_headers( test_core, details[:mock_list] )
+          @helper.remove_mock_original_headers(
+            test_core,
+            # List of mock includes as .h filenames
+            mock_list.map { |mock| mock.filename }
+          )
           
           # CMock + Unity + CException
-          test_frameworks    = @helper.collect_test_framework_sources( !details[:mock_list].empty? )
+          test_frameworks    = @helper.collect_test_framework_sources( !details[:mocks].empty? )
           
           # Extra suport source files (e.g. microcontroller startup code needed by simulator)
           test_support       = @configurator.collection_all_support
 
           compilations       =  []
-          compilations       << details[:filepath]
+          compilations       << filepath
           compilations       += test_core
           compilations       << details[:runner][:output_filepath]
           compilations       += test_frameworks
@@ -547,15 +863,15 @@ class TestInvoker
 
           test_objects       = @file_path_utils.form_test_build_objects_filelist( details[:paths][:build], compilations )
 
-          test_executable    = @file_path_utils.form_test_executable_filepath( details[:paths][:build], details[:filepath] )
-          test_pass          = @file_path_utils.form_pass_results_filepath( details[:paths][:results], details[:filepath] )
-          test_fail          = @file_path_utils.form_fail_results_filepath( details[:paths][:results], details[:filepath] )
+          test_executable    = @file_path_utils.form_test_executable_filepath( details[:paths][:build], filepath )
+          test_pass          = @file_path_utils.form_pass_results_filepath( details[:paths][:results], filepath )
+          test_fail          = @file_path_utils.form_fail_results_filepath( details[:paths][:results], filepath )
 
           # Assemble a list of object files from .c files that have been #included in the test file
           test_no_link_objects = 
             @file_path_utils.form_test_build_objects_filelist(
               details[:paths][:build],
-              @helper.fetch_shallow_source_includes( details[:filepath] ))
+              @helper.fetch_shallow_source_includes( filepath ))
 
           # TODO: Remove any source file objects partials are standing in for
           # Redefine test_objects, removing any problematic object file that would otherwise get linked into the test executable

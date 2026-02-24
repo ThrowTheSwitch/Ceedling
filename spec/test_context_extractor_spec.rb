@@ -52,15 +52,15 @@ describe TestContextExtractor do
     )
   end
 
-  context "#lookup_full_header_includes_list" do
+  context "#lookup_all_header_includes_list" do
     it "should provide empty list when no context extraction has occurred" do
-      expect( @extractor.lookup_full_header_includes_list( "path" ) ).to eq []
+      expect( @extractor.lookup_all_header_includes_list( "path" ) ).to eq []
     end
   end
 
-  context "#lookup_header_includes_list" do
+  context "#lookup_all_header_includes_list" do
     it "should provide empty list when no context extraction has occurred" do
-      expect( @extractor.lookup_header_includes_list( "path" ) ).to eq []
+      expect( @extractor.lookup_all_header_includes_list( "path" ) ).to eq []
     end
   end
 
@@ -94,9 +94,9 @@ describe TestContextExtractor do
     end
   end
 
-  context "#lookup_raw_mock_list" do
+  context "#lookup_mock_header_includes_list" do
     it "should provide empty list when no context extraction has occurred" do
-      expect( @extractor.lookup_raw_mock_list( "path" ) ).to eq []
+      expect( @extractor.lookup_mock_header_includes_list( "path" ) ).to eq []
     end
   end
 
@@ -135,7 +135,7 @@ describe TestContextExtractor do
       expect{ @extractor.collect_simple_context( "path", StringIO.new(), :bad ) }.to raise_error( CeedlingException )
     end
 
-    # collect_simple_context() + lookup_full_header_includes_list() + lookup_header_includes_list() + lookup_raw_mock_list()
+    # collect_simple_context() + lookup_all_header_includes_list() + lookup_all_header_includes_list() + lookup_mock_header_includes_list()
     it "should extract contents of #include directives" do
       filepath = "path/tests/test_file.c"
       
@@ -175,11 +175,11 @@ describe TestContextExtractor do
         'mock_another_file'
       ]
 
-      expect( @extractor.lookup_full_header_includes_list( filepath ) ).to eq expected_full
+      expect( @extractor.lookup_all_header_includes_list( filepath ) ).to eq expected_full
 
-      expect( @extractor.lookup_header_includes_list( filepath ) ).to eq expected_trim
+      expect( @extractor.lookup_all_header_includes_list( filepath ) ).to eq expected_trim
 
-      expect( @extractor.lookup_raw_mock_list( filepath ) ).to eq expected_mocks
+      expect( @extractor.lookup_mock_header_includes_list( filepath ) ).to eq expected_mocks
     end
 
     # collect_simple_context() + lookup_build_directive_sources_list()

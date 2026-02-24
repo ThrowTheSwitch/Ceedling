@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'rake' # .ext()
+require 'ceedling/includes/includes'
 require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_runtime'
 require 'ceedling/partials/partializer_constants'
@@ -44,7 +45,8 @@ class Partializer
   # Ensure no original headers for the module being paritalized
   def sanitize_includes(name:, includes:)    
     _includes = remove_matching_includes(includes: includes, modules: [name])
-    return _includes.uniq()
+    Includes.sanitize!(includes)
+    return _includes
   end
 
   def remap_implementation_header_includes(name:, includes:, partials:)
@@ -64,16 +66,20 @@ class Partializer
     _includes = includes.clone()
 
     # Add implementation header
-    _includes << @file_path_utils.form_partial_implementation_header_filename(name)
+    _includes << UserInclude.new(
+      @file_path_utils.form_partial_implementation_header_filename(name)
+    )
 
     mockable_modules = []
 
     partials.each do |_module, config|
       # Remap mockable interface headers that will be injected into generated partial implementation
-      if includes.any? { |include| include.ext().downcase() == _module.downcase() }
+      if includes.any? { |include| include.filename.ext().downcase() == _module.downcase() }
         if config.types.intersect?([Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE])
           # Insert mockable interface header from remapping of module name
-          _includes << @file_path_utils.form_partial_interface_header_filename(_module)
+          _includes << UserInclude.new(
+            @file_path_utils.form_partial_interface_header_filename(_module)
+          )
           # Remember the module for later removal of original header
           mockable_modules << _module
         end
@@ -163,13 +169,13 @@ class Partializer
     _interface = interface.map { |func| "`#{func.signature}`" }
     
     @loginator.log_list(
-      _impl,
+      _interface,
       "Mockable functions for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
     
     @loginator.log_list(
-      _interface,
+      _impl,
       "Testable functions for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
@@ -209,7 +215,7 @@ class Partializer
     
     # Filter out includes whose extension (without dot) matches any module name
     return includes.reject do |include|
-      normalized_modules.include?(include.ext().downcase())
+      normalized_modules.include?(include.filename.ext().downcase())
     end
   end  
 end

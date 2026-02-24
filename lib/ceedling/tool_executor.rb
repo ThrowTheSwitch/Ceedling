@@ -38,7 +38,7 @@ class ToolExecutor
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     # Log command as is
-    @loginator.lazy( Verbosity::DEBUG ) { "Command: #{command}" }
+    @loginator.lazy( Verbosity::DEBUG ) { "> Command: #{command}\n\n" }
 
     # Update executable after any expansion
     command[:executable] = executable

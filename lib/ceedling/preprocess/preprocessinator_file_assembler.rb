@@ -8,11 +8,28 @@
 require 'rake' # for ext() method
 require 'ceedling/file_wrapper'
 
-class PreprocessinatorFileHandler
+class PreprocessinatorFileAssembler
 
-  constructor :preprocessinator_extractor, :configurator, :tool_executor, :file_path_utils, :file_wrapper, :loginator
+  constructor(
+    :preprocessinator_reconstructor,
+    :configurator,
+    :tool_executor,
+    :file_path_utils,
+    :file_wrapper,
+    :loginator,
+    :reportinator
+  )
 
-  def collect_header_file_contents(source_filepath:, test:, flags:, defines:, include_paths:, extras:)
+  def collect_header_file_contents(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      flags:,
+      defines:,
+      include_paths:,
+      extras:
+    )
     contents = []
 
     # Our extra file content to be preserved
@@ -20,7 +37,7 @@ class PreprocessinatorFileHandler
     pragmas = []
     macro_defs = []
 
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
 
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
@@ -28,7 +45,7 @@ class PreprocessinatorFileHandler
       # Additional arguments
       flags,
       # Argument replacement
-      source_filepath,
+      filepath,
       preprocessed_filepath,
       defines,
       include_paths
@@ -36,26 +53,11 @@ class PreprocessinatorFileHandler
     @tool_executor.exec( command )
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, source_filepath )
+      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, filepath )
     end
 
     # Bail out, skipping directives-only preprocessing if no extras are required
     return contents, (pragmas + macro_defs) if !extras
-
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( source_filepath, test )
-
-    # Run GCC with directives-only preprocessor expansion
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_directives_only_preprocessor,
-      # Additional arguments
-      flags,
-      # Argument replacement
-      source_filepath,
-      preprocessed_filepath,
-      defines,
-      include_paths
-    )
-    results = @tool_executor.exec( command )
 
     # Try to find an #include guard in the first 2k of the file text.
     # An #include guard is one macro from the original file we don't want to preserve if we can help it.
@@ -63,29 +65,34 @@ class PreprocessinatorFileHandler
     # It's possible preserving the macro from the original file's #include guard could trip something up.
     # Of course, it's also possible some header conditional compilation feature is dependent on it.
     # ¯\_(ツ)_/¯
-    include_guard = @preprocessinator_extractor.extract_include_guard( @file_wrapper.read( source_filepath, 2048 ) )
+    include_guard = @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath, 2048 ) )
 
-    # If we received a warning from preprocessor saying that clang can't handle directives-only (common with older clang)
-    # then we need to attempt to extract the information directly from the source file instead
-    if results[:output].match /warning[^\n]+-fdirectives-only/
-      @file_wrapper.open( source_filepath, 'r' ) do |file|
+    if fallback
+      msg = @reportinator.generate_module_progress(
+        operation: "Using fallback method to extract pragmas and macros from",
+        module_name: test,
+        filename: File.basename(filepath)
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
+      @file_wrapper.open( filepath, 'r' ) do |file|
         # Get code contents of original source file as a string
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
         _contents = file.read
 
         # Extract pragmas and macros from 
-        pragmas = @preprocessinator_extractor.extract_pragmas( _contents )
-        macro_defs = @preprocessinator_extractor.extract_macro_defs( _contents, include_guard )
+        pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
+        macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
       end
     else
-      @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
         # Get code contents of preprocessed directives-only file as a string
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
+        _contents = @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
 
         # Extract pragmas and macros from 
-        pragmas = @preprocessinator_extractor.extract_pragmas( _contents )
-        macro_defs = @preprocessinator_extractor.extract_macro_defs( _contents, include_guard )
+        pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
+        macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
       end
     end
 
@@ -116,7 +123,7 @@ class PreprocessinatorFileHandler
     _contents << ''
 
     # Reinsert #include statements into stripped down file
-    includes.each{ |include| _contents << "#include \"#{include}\"" }
+    includes.each{ |include| _contents << "#{include}" }
 
     # Blank line
     _contents << ''
@@ -143,21 +150,75 @@ class PreprocessinatorFileHandler
     _contents = _contents.join("\n")
     _contents.gsub!( /(\h*\n){3,}/, "\n\n" )
 
-    # Remove paths from expanded #include directives
-    # ----------------------------------------------------
-    #  - We rely on search paths at compilation rather than explicit #include paths
-    #  - Match (#include ")((path/)+)(file") and reassemble string using first and last matching groups
-    _contents.gsub!( /(#include\s+")(?:(?:[^"\/]+\/)+)([^"\/]*")/, '\1\2' )
-
     # Write contents of final preprocessed file
     @file_wrapper.write( preprocessed_filepath, _contents )
   end
 
 
-  def collect_test_file_contents(source_filepath:, test:, flags:, defines:, include_paths:)
+  def collect_test_file_contents(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      flags:,
+      defines:,
+      include_paths:
+    )
     contents = []
     # TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
     test_directives = []
+
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
+
+    # Run GCC with full preprocessor expansion
+    command = @tool_executor.build_command_line(
+      @configurator.tools_test_file_full_preprocessor,
+      # Additional arguments
+      flags,
+      # Argument replacement
+      filepath,
+      preprocessed_filepath,
+      defines,
+      include_paths
+    )
+    @tool_executor.exec( command )
+
+    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, filepath )
+    end
+
+    if fallback
+      msg = @reportinator.generate_module_progress(
+        operation: "Using fallback method to extract test directive macros from",
+        module_name: test,
+        filename: File.basename(filepath)
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
+      @file_wrapper.open( filepath, 'r' ) do |file|
+        # Get code contents of original source file as a string
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        _contents = file.read
+
+        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
+        test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
+      end
+    else
+      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
+        # Get code contents of preprocessed directives-only file as a string
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        _contents = @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
+
+        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
+        test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
+      end
+    end
+
+    return contents, test_directives
+  end
+
+  def collect_source_file_contents(source_filepath:, test:, flags:, defines:, include_paths:)
+    contents = []
 
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
 
@@ -175,55 +236,17 @@ class PreprocessinatorFileHandler
     @tool_executor.exec( command )
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_extractor.extract_file_as_array_from_expansion( file, source_filepath )
+      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
     end
 
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( source_filepath, test )
-
-    # Run GCC with directives-only preprocessor expansion
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_directives_only_preprocessor,
-      # Additional arguments
-      flags,
-      # Argument replacement
-      source_filepath,
-      preprocessed_filepath,
-      defines,
-      include_paths
-    )    
-    results = @tool_executor.exec( command )
-
-    # If we receive a warning saying that clang can't handle directives-only (common with older clang)
-    # then we fall back to using the original source file to detect all TEST_SOURCE_FILE and TEST_INCLUDE_PATH macros
-    if results[:output].match /warning[^\n]+-fdirectives-only/
-      @file_wrapper.open( source_filepath, 'r' ) do |file|
-        # Get code contents of original source file as a string
-        # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = file.read
-
-        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
-        test_directives = @preprocessinator_extractor.extract_test_directive_macro_calls( _contents )
-      end
-    else
-      @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-        # Get code contents of preprocessed directives-only file as a string
-        # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = @preprocessinator_extractor.extract_file_as_string_from_expansion( file, source_filepath )
-
-        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
-        test_directives = @preprocessinator_extractor.extract_test_directive_macro_calls( _contents )
-      end
-    end
-
-    return contents, test_directives
+    return contents
   end
 
-
-  def assemble_preprocessed_source_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
+  def assemble_preprocessed_code_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
     _contents = []
 
     # Reinsert #include statements into stripped down file
-    includes.each{ |include| _contents << "#include \"#{include}\"" }
+    includes.each{ |include| _contents << "#{include}" }
 
     # Blank line
     _contents << ''
@@ -239,7 +262,7 @@ class PreprocessinatorFileHandler
     # Write file, doing some prettyifying along the way
     # ----------------------------------------------------    
     _contents = _contents.join("\n")
-    _contents.gsub!( /^\s*;/, '' )            # Drop blank lines with semicolons left over from macro expansion + trailing semicolon
+    _contents.gsub!( /^\s*;/, '' )            # Drop blank lines with semicolons left over from macro expansion + unnecessary trailing semicolon
     _contents.gsub!( /\)(\n){2,}\{/, ")\n{" ) # Collapse any unnecessary newlines between closing paren and opening function bracket
     _contents.gsub!( /\{(\n){2,}/, "{\n" )    # Collapse any unnecessary newlines between opening function bracket and code
     _contents.gsub!( /(\n){2,}\}/, "\n}" )    # Collapse any unnecessary newlines between code and closing function bracket

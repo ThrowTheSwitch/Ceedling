@@ -57,7 +57,7 @@ class Setupinator
     @loginator.set_logfile( app_cfg[:log_filepath] )
     @configurator.project_logging = @loginator.project_logging
 
-    log_step( 'Validating configuration contains minimum required sections', heading:false )
+    log_step( 'Validating configuration contains minimum required sections', heading: false )
 
     # Complain early about anything essential that's missing
     @configurator.validate_essential( config_hash )
@@ -65,14 +65,17 @@ class Setupinator
     # Merge any needed runtime settings into user configuration
     @configurator.merge_ceedling_runtime_config( config_hash, CEEDLING_RUNTIME_CONFIG.deep_clone )
 
-    # Set configuration settings derived from enabling partials
-    @configurator.set_partials_derived_config( config_hash )
+    if config_hash[:project][:use_partials]
+      log_step( 'Processing Partials configuration', heading: false, verbosity: Verbosity::NORMAL )
+      # Set configuration settings derived from enabling partials
+      @configurator.set_partials_derived_config( config_hash )
+    end
 
     ##
     ## 2. Handle basic configuration
     ##
 
-    log_step( 'Base configuration handling', heading:false )
+    log_step( 'Base configuration handling', heading: false )
 
     # Evaluate environment vars before plugin configurations that might reference with inline Ruby string expansion
     @configurator.eval_environment_variables( config_hash )
@@ -149,7 +152,7 @@ class Setupinator
     ## 6. Validate configuration
     ##
 
-    log_step( 'Validating final project configuration', heading:false )
+    log_step( 'Validating final project configuration', heading: false )
 
     @configurator.validate_final( config_hash, app_cfg )
 
@@ -188,8 +191,8 @@ class Setupinator
 private
 
   # Neaten up a build step with progress message and some scope encapsulation
-  def log_step(msg, heading:true)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+  def log_step(msg, heading: true, verbosity: Verbosity::OBNOXIOUS )
+    @loginator.lazy( verbosity ) do 
       if heading
         @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
       else # Progress message
