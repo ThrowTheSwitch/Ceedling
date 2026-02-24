@@ -66,16 +66,16 @@ class ToolExecutorHelper
     # No logging unless we're at least at Obnoxious
     return if !@verbosinator.should_output?( Verbosity::OBNOXIOUS )
 
-    output =      "> Shell executed...\n"
+    output =      "> Shell executed::\n"
     output +=     "`#{command_str}`\n"
 
     if !shell_result.empty?
       # Detailed debug logging
       if @verbosinator.should_output?( Verbosity::DEBUG )
-        output +=   "> With $stdout: "
+        output +=   "> With $stdout:: "
         output += shell_result[:stdout].empty? ? "<empty>\n" : "\n#{shell_result[:stdout].strip()}\n"
 
-        output +=   "> With $stderr: "
+        output +=   "> With $stderr:: "
         output += shell_result[:stderr].empty? ? "<empty>\n" : "\n#{shell_result[:stderr].strip()}\n"
 
         output +=   "> And terminated with status: #{shell_result[:status]}\n"
