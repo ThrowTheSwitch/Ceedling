@@ -125,11 +125,12 @@ class PreprocessinatorLineMarkerIncludesExtractor
 
   # Extracts includes from directives-only preprocessor output
   # Returns an array of Include subclass objects
-  def extract_includes(io:, filepath:, type:)
+  def extract_includes(io:, filepath:, type:, max_depth: 5)
     includes = []
     seen_paths = Set.new
     initial_file_seen = false
-    
+    depth = 0
+
     # Extract just the filename from full path
     source_filename = File.basename(filepath)
     
@@ -152,14 +153,20 @@ class PreprocessinatorLineMarkerIncludesExtractor
         if !initial_file_seen
           if (line_number == 1) && (File.basename(filepath) == source_filename)
             initial_file_seen = true
+            depth = 1
           end
           next
         end
         
         # Flag 1 means entering a new file
         if flags.include?(1)
+          depth += 1
+
           # Skip if we've already seen this path
-          next if seen_paths.include?(filepath)
+          next if seen_paths.include?( filepath )
+
+          # Skip if we're at max depth
+          next if depth > max_depth
 
           seen_paths.add(filepath)
 
@@ -175,6 +182,9 @@ class PreprocessinatorLineMarkerIncludesExtractor
               includes << @include_factory.user_include_from_filepath( filepath )
             end
           end
+        # Flag 2 means returning to a previous file
+        elsif flags.include?(2)
+          depth -= 1 if depth > 0
         end
       end
     end
