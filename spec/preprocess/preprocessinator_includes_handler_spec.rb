@@ -235,7 +235,7 @@ describe PreprocessinatorIncludesHandler do
   #   end
   # end
 
-  # context 'extract_system_includes' do
+  # context 'extract_system_includes_preprocess' do
   #   it 'should correctly filter auto link deep dependencies with mocks' do
   #     # create test state/variables
   #     # mocks/stubs/expected calls
@@ -268,7 +268,7 @@ describe PreprocessinatorIncludesHandler do
   #         @@@@source/dependency.h
   #     }})
   #     # execute method
-  #     results = subject.extract_system_includes("test_dummy.c")
+  #     results = subject.extract_system_includes_preprocess("test_dummy.c")
   #     # validate results
   #     expect(results).to eq [
   #       'assets/example_file.h',
