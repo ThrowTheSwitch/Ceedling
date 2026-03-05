@@ -277,7 +277,7 @@ class TestContextExtractor
   def collect_partials_configuration(filepath, partials_config)
     partials_config.uniq!
     ingest_partials_configuration(filepath, partials_config)
-    debug_log_list( "Partials conifgurations found", filepath, partials_config )
+    debug_log_list( "Partials configurations found", filepath, partials_config )
   end
 
   def _collect_test_runner_details(filepath, test_content, input_content=nil)
