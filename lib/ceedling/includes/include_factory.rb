@@ -20,7 +20,11 @@ class IncludeFactory
 
   def user_include_from_filepath(filepath)
     if File.basename(filepath).start_with?( @configurator.cmock_mock_prefix )
-      return MockInclude.new(filepath)
+      # Remove any build directory path that snuck into mock handling.
+      # This can happen from discovering an empty mock stand-in or previously generated mock files.
+      # This regex matches the base build mocks directory and any test name subdirectory beneath it.
+      _filepath = filepath.sub( /^#{Regexp.escape( @configurator.cmock_mock_path )}\/[^\/]+\//, '' )
+      return MockInclude.new(_filepath)
     end
     return UserInclude.new(filepath)
   end
