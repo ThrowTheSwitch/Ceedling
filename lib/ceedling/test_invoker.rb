@@ -211,7 +211,7 @@ class TestInvoker
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
           # Extract user includes
-          includes = @preprocessinator.preprocess_shallow_bare_includes( **arg_hash )
+          includes = @preprocessinator.preprocess_bare_includes( **arg_hash )
           
           # Temporarily store includes for future use
           details[:preprocess][:includes] = includes
@@ -297,6 +297,7 @@ class TestInvoker
           unless directive_only_filepath.nil?
             # If directive-only preprocessor output is available, extract system includes from it
             arg_hash = {
+              name:                     name,
               filepath:                 filepath,
               directives_only_filepath: directive_only_filepath
             }
@@ -308,7 +309,7 @@ class TestInvoker
             )
             @loginator.log( msg )
 
-            user_includes = @preprocessinator.preprocess_nested_user_includes( **arg_hash )
+            user_includes = @preprocessinator.preprocess_user_includes( **arg_hash )
 
             msg = @reportinator.generate_module_progress(
               operation: 'Extracting system #includes from',
@@ -317,7 +318,7 @@ class TestInvoker
             )
             @loginator.log( msg )
 
-            system_includes = @preprocessinator.preprocess_nested_system_includes( **arg_hash )
+            system_includes = @preprocessinator.preprocess_system_includes( **arg_hash )
           else
             all_includes = @context_extractor.lookup_all_header_includes_list( filepath )
 

@@ -85,98 +85,102 @@ class PreprocessinatorIncludesHandler
     return includes
   end
 
-  def extract_user_includes(name:, filepath:, preprocessed_filepath:, fallback: false)
+  def extract_user_includes_preprocess(name:, filepath:, preprocessed_filepath:)
     includes = []
 
     filename = File.basename(filepath)
 
-    if !fallback
-      msg = @reportinator.generate_module_progress(
-        operation: "Extracting user #includes from preprocessed output",
-        module_name: name,
-        filename: filename
+    msg = @reportinator.generate_module_progress(
+      operation: "Extracting user #includes from preprocessed output",
+      module_name: name,
+      filename: filename
+    )
+    @loginator.log(msg, Verbosity::OBNOXIOUS)
+
+    # Get system includes from up to 3 levels of nested headers.
+    # This may extract more system includes than necessary but ensures we don't
+    # miss top-level system includes hidden by nesting include guards.
+    # Later santization uses system includes slurped up in the top-level user 
+    # include extraction to identify the actual needed system includes and filter
+    # out any extras.
+    includes = 
+      @line_marker_includes_extractor.extract_includes_from_file(
+        preprocessed_filepath,
+        PreprocessinatorLineMarkerIncludesExtractor::USER
       )
-      @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-      # Get system includes from up to 3 levels of nested headers.
-      # This may extract more system includes than necessary but ensures we don't
-      # miss top-level system includes hidden by nesting include guards.
-      # Later santization uses system includes slurped up in the top-level user 
-      # include extraction to identify the actual needed system includes and filter
-      # out any extras.
-      includes = 
-        @line_marker_includes_extractor.extract_includes_from_file(
-          preprocessed_filepath,
-          PreprocessinatorLineMarkerIncludesExtractor::USER
-        )
-      includes = clean_self_reference( filepath, includes )
-    else
-      msg = @reportinator.generate_module_progress(
-        operation: "Extracting user #includes from original file using fallback method for",
-        module_name: name,
-        filename: filename
-      )
-      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-
-      @file_wrapper.open(filepath, 'r') do |input|
-        @parsing_parcels.code_lines( input ) do |line|
-          _include = @include_factory.user_include_from_directive( line )
-          includes << _include if !_include.nil?
-        end
-      end
-    end
-
-    header = "Extracted user #include list from #{filepath}"
-    @loginator.log_list( includes, header, Verbosity::DEBUG )
-
-    return includes
+    return clean_self_reference( filepath, includes )
   end
- 
-  def extract_system_includes(name:, filepath:, preprocessed_filepath:, fallback: false)
+
+  def extract_user_includes_text(name:, filepath:)
     includes = []
 
     filename = File.basename(filepath)
 
-    if !fallback
-      msg = @reportinator.generate_module_progress(
-        operation: "Extracting system #includes from preprocessed output",
-        module_name: name,
-        filename: filename
-      )
-      @loginator.log(msg, Verbosity::OBNOXIOUS)
+    msg = @reportinator.generate_module_progress(
+      operation: "Extracting user #includes from original file using fallback method",
+      module_name: name,
+      filename: filename
+    )
+    @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
-      # Get system includes from up to 3 levels of nested headers.
-      # This may extract more system includes than necessary but ensures we don't
-      # miss top-level system includes hidden by nesting include guards.
-      # Later santization uses system includes slurped up in the top-level user 
-      # include extraction to identify the actual needed system includes and filter
-      # out any extras.
-      includes = 
-        @line_marker_includes_extractor.extract_includes_from_file(
-          preprocessed_filepath,
-          PreprocessinatorLineMarkerIncludesExtractor::SYSTEM
-        )
-      includes = clean_self_reference( filepath, includes )
-    else
-      msg = @reportinator.generate_module_progress(
-        operation: "Extracting system #includes from original file using fallback method for",
-        module_name: name,
-        filename: filename
-      )
-      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-
-      @file_wrapper.open(filepath, 'r') do |input|
-        @parsing_parcels.code_lines( input ) do |line|
-          _include = @include_factory.system_include_from_directive( line )
-          includes << _include if !_include.nil?
-        end
+    @file_wrapper.open(filepath, 'r') do |input|
+      @parsing_parcels.code_lines( input ) do |line|
+        _include = @include_factory.user_include_from_directive( line )
+        includes << _include if !_include.nil?
       end
     end
 
-    header = "Extracted system #include list from #{filepath}"
-    @loginator.log_list( includes, header, Verbosity::DEBUG )
+    return clean_self_reference( filepath, includes )
+  end
+  
+  def extract_system_includes_preprocess(name:, filepath:, preprocessed_filepath:)
+    includes = []
 
-    return includes
+    filename = File.basename(filepath)
+
+    msg = @reportinator.generate_module_progress(
+      operation: "Extracting system #includes from preprocessed output",
+      module_name: name,
+      filename: filename
+    )
+    @loginator.log(msg, Verbosity::OBNOXIOUS)
+
+    # Get system includes from up to 3 levels of nested headers.
+    # This may extract more system includes than necessary but ensures we don't
+    # miss top-level system includes hidden by nesting include guards.
+    # Later santization uses system includes slurped up in the top-level user 
+    # include extraction to identify the actual needed system includes and filter
+    # out any extras.
+    includes = 
+      @line_marker_includes_extractor.extract_includes_from_file(
+        preprocessed_filepath,
+        PreprocessinatorLineMarkerIncludesExtractor::SYSTEM
+      )
+
+    return clean_self_reference( filepath, includes )
+  end
+
+  def extract_system_includes_text(name:, filepath:)
+    includes = []
+
+    filename = File.basename(filepath)
+
+    msg = @reportinator.generate_module_progress(
+      operation: "Extracting system #includes from original file using fallback method",
+      module_name: name,
+      filename: filename
+    )
+    @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
+    @file_wrapper.open(filepath, 'r') do |input|
+      @parsing_parcels.code_lines( input ) do |line|
+        _include = @include_factory.system_include_from_directive( line )
+        includes << _include if !_include.nil?
+      end
+    end
+
+    return clean_self_reference( filepath, includes )
   end
 
   # Write to disk a yaml representation of a list of includes

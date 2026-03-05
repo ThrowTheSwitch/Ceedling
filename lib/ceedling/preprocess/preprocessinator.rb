@@ -38,7 +38,7 @@ class Preprocessinator
   end
 
   # Extract bare includes (does not differentiate user/system) from a file
-  def preprocess_shallow_bare_includes(filepath:, test:, search_paths:, flags:, defines:)
+  def preprocess_bare_includes(filepath:, test:, search_paths:, flags:, defines:)
     # Pass-through
     return @includes_handler.extract_bare_includes(
       filepath:      filepath,
@@ -81,30 +81,50 @@ class Preprocessinator
     return preprocessed_filepath
   end
 
-   # Extract user includes from a file using directives-only output (or fallback)
-  def preprocess_nested_user_includes(filepath:, directives_only_filepath:, fallback: false)
-    name = File.basename(filepath)
+   # Extract user includes from a file using directives-only output (or text-only fallback)
+  def preprocess_user_includes(name:, filepath:, directives_only_filepath:, fallback: false)
+    includes = []
 
-    # Pass-through
-    return @includes_handler.extract_user_includes(
-      name:                   name,
-      filepath:               filepath,
-      preprocessed_filepath:  directives_only_filepath,
-      fallback:               fallback
+    if !fallback
+      includes = @includes_handler.extract_user_includes_preprocess(
+        name:                   name,
+        filepath:               filepath,
+        preprocessed_filepath:  directives_only_filepath
       )
+    else
+      includes = @includes_handler.extract_user_includes_text(
+        name:      name,
+        filepath:  filepath
+      )
+    end
+
+    header = "Extracted user #includes from #{filepath}"
+    @loginator.log_list( includes, header, Verbosity::DEBUG )
+
+    return includes
   end
  
-  # Extract system includes from a file using directives-only output (or fallback)
-  def preprocess_nested_system_includes(filepath:, directives_only_filepath:, fallback: false)
-    name = File.basename(filepath)
+  # Extract system includes from a file using directives-only output (or text-only fallback)
+  def preprocess_system_includes(name:, filepath:, directives_only_filepath:, fallback: false)
+    includes = []
 
-    # Pass-through
-    return @includes_handler.extract_system_includes(
-      name:                   name,
-      filepath:               filepath,
-      preprocessed_filepath:  directives_only_filepath,
-      fallback:               fallback
+    if !fallback
+      includes = @includes_handler.extract_system_includes_preprocess(
+        name:                   name,
+        filepath:               filepath,
+        preprocessed_filepath:  directives_only_filepath
       )
+    else
+      includes = @includes_handler.extract_system_includes_text(
+        name:                   name,
+        filepath:               filepath
+      )
+    end
+
+    header = "Extracted system #includes from #{filepath}"
+    @loginator.log_list( includes, header, Verbosity::DEBUG )
+
+    return includes
   end
 
   def store_includes_list(test:, filepath:, includes:)
@@ -442,19 +462,19 @@ class Preprocessinator
       )
 
       # Extract user includes
-      user_includes = @includes_handler.extract_user_includes(
-        name:                  test,
-        filepath:              filepath,
-        preprocessed_filepath: directives_only_filepath,
-        fallback:              fallback
+      user_includes = preprocess_user_includes(
+        name:                     test,
+        filepath:                 filepath,
+        directives_only_filepath: directives_only_filepath,
+        fallback:                 fallback
       )
 
       # Extract system includes
-      system_includes = @includes_handler.extract_system_includes(
-        name:                  test,
-        filepath:              filepath,
-        preprocessed_filepath: directives_only_filepath,
-        fallback:              fallback
+      system_includes = preprocess_system_includes(
+        name:                     test,
+        filepath:                 filepath,
+        directives_only_filepath: directives_only_filepath,
+        fallback:                 fallback
       )
 
       # Reconcile includes with overlapping information
