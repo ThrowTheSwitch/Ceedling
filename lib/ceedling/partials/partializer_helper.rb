@@ -96,7 +96,7 @@ class PartializerHelper
   # 2. Transform functions to appropriate container (:impl | :interface) → `FunctionDefinition[]` or `FunctionDeclaration[]`
   def filter_and_transform_funcs(funcs, visibility, output_type)
     funcs.filter_map do |func|
-      # List of decorators seperated from signature (begining with return type)
+      # List of decorators separated from signature (begining with return type)
       decorators, signature = @parser.parse_signature_decorators(func.signature, func.name)
       
       next unless @utils.matches_visibility?(decorators, visibility)
