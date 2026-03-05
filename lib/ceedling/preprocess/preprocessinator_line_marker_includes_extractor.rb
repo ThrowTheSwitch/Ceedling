@@ -81,22 +81,26 @@ require 'set'
 ##
 
 # Parse GCC preprocessor output (from -fdirectives-only) to extract system include directives
-class PreprocessinatorSystemIncludesExtractor
+class PreprocessinatorLineMarkerIncludesExtractor
   LINE_MARKER_REGEX = /^#\s+(\d+)\s+"([^"]+)"(?:\s+(\d+(?:\s+\d+)*))?$/
+
+  SYSTEM = :system
+  USER   = :user
 
   constructor :include_factory
 
   # Parse preprocessor output from a file (production use)
   # @param filepath [String] Path to the preprocessor output file
   # @return [Array<UserInclude, SystemInclude>]
-  def extract_includes_from_file(filepath, max_depth: 1)
+  def extract_includes_from_file(filepath, type)
+    validate_type_argument( type )
     includes = []
     begin
       File.open(filepath, 'r') do |file|
-        includes = extract_includes(io: file, filepath: filepath, max_depth: max_depth)
+        includes = extract_includes(io: file, filepath: filepath, type: type)
       end
     rescue StandardError => e
-      raise CeedlingException.new("Failed to extract system includes from preprocessor output file '#{filepath}': #{e.message}")
+      raise CeedlingException.new("Failed to extract #{type} includes from preprocessor output file '#{filepath}': #{e.message}")
     end
     return includes
   end
@@ -104,20 +108,25 @@ class PreprocessinatorSystemIncludesExtractor
   # Parse preprocessor output from a string (testing use)
   # @param content [String] Preprocessor output as a string
   # @return [Array<UserInclude, SystemInclude>]
-  def extract_includes_from_string(content, filepath, max_depth: 1)
+  def extract_includes_from_string(content, filepath, type)
+    validate_type_argument( type )
     require 'stringio'
     io = StringIO.new(content)
-    return extract_includes(io: io, filepath: filepath, max_depth: max_depth)
+    return extract_includes(io: io, filepath: filepath, type: type)
   end
 
   private
 
-  # Extracts system includes up to max depth from directives-only preprocessor output
-  # Returns an array of SystemInclude objects
-  # @return [Array<SystemInclude>]
-  def extract_includes(io:, filepath:, max_depth: 1)
+  def validate_type_argument(type)
+    unless [SYSTEM, USER].include?(type)
+      raise CeedlingException.new("Invalid type argument: #{type.inspect}. Must be :#{SYSTEM} or :#{USER}")
+    end
+  end
+
+  # Extracts includes from directives-only preprocessor output
+  # Returns an array of Include subclass objects
+  def extract_includes(io:, filepath:, type:)
     includes = []
-    nesting_level = 0
     seen_paths = Set.new
     initial_file_seen = false
     
@@ -143,25 +152,29 @@ class PreprocessinatorSystemIncludesExtractor
         if !initial_file_seen
           if (line_number == 1) && (File.basename(filepath) == source_filename)
             initial_file_seen = true
-            nesting_level = 0
           end
           next
         end
         
         # Flag 1 means entering a new file
         if flags.include?(1)
-          nesting_level += 1
-          
-          # Only capture includes up to max depth and skip if we've already seen this path
-          if nesting_level <= max_depth && !seen_paths.include?(filepath)
-            seen_paths.add(filepath)
-            
+          # Skip if we've already seen this path
+          next if seen_paths.include?(filepath)
+
+          seen_paths.add(filepath)
+
+          # Extract system includes
+          if type == SYSTEM
             # Flag 3 indicates a system header
-            includes << @include_factory.system_include_from_filepath( filepath ) if flags.include?(3)
+            if flags.include?(3)
+              includes << @include_factory.system_include_from_filepath( filepath )
+            end
+          # Extract user includes
+          elsif type == USER
+            unless flags.include?(3)
+              includes << @include_factory.user_include_from_filepath( filepath )
+            end
           end
-        # Flag 2 means returning to a previous file
-        elsif flags.include?(2)
-          nesting_level -= 1 if nesting_level > 0
         end
       end
     end

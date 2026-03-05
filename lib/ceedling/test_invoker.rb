@@ -21,7 +21,6 @@ class TestInvoker
     :reportinator,
     :loginator,
     :batchinator,
-    :include_factory,
     :preprocessinator,
     :partializer,
     :generator,
@@ -205,14 +204,14 @@ class TestInvoker
           }
 
           msg = @reportinator.generate_module_progress(
-            operation: 'Extracting bare #includes for',
+            operation: 'Extracting bare #includes from',
             module_name: name,
             filename: File.basename( filepath )
           )
           @loginator.log( msg, Verbosity::OBNOXIOUS )
 
           # Extract user includes
-          includes = @preprocessinator.preprocess_bare_includes( **arg_hash )
+          includes = @preprocessinator.preprocess_shallow_bare_includes( **arg_hash )
           
           # Temporarily store includes for future use
           details[:preprocess][:includes] = includes
@@ -293,6 +292,7 @@ class TestInvoker
 
           directive_only_filepath = details[:preprocess][:directives_only][:filepath]
           system_includes = []
+          user_includes = []
 
           unless directive_only_filepath.nil?
             # If directive-only preprocessor output is available, extract system includes from it
@@ -302,31 +302,41 @@ class TestInvoker
             }
 
             msg = @reportinator.generate_module_progress(
-              operation: 'Extracting system #includes for',
+              operation: 'Extracting user #includes from',
               module_name: name,
               filename: filename
             )
             @loginator.log( msg )
 
-            system_includes = @preprocessinator.preprocess_system_includes( **arg_hash )
-          else
-            # Otherwise, grab the system includes we already have via regex
-            system_includes = Includes.system(
-              @context_extractor.lookup_all_header_includes_list( filepath )
+            user_includes = @preprocessinator.preprocess_nested_user_includes( **arg_hash )
+
+            msg = @reportinator.generate_module_progress(
+              operation: 'Extracting system #includes from',
+              module_name: name,
+              filename: filename
             )
+            @loginator.log( msg )
+
+            system_includes = @preprocessinator.preprocess_nested_system_includes( **arg_hash )
+          else
+            all_includes = @context_extractor.lookup_all_header_includes_list( filepath )
+
+            # Otherwise, grab the includes we already have via regex
+            user_includes = Includes.user( all_includes )
+            system_includes = Includes.system( all_includes )
           end
 
           # Get existing list of bare includes
           bare_includes = details[:preprocess][:includes]
 
-          # Reconcile includes with overlapping information from imperfect extraction
+          # Reconcile includes with overlapping information from extraction passes
           all_includes = Includes.reconcile(
             bare: bare_includes,
-            system: system_includes,
-            include_factory: @include_factory
+            user: user_includes,
+            system: system_includes
           )
 
-          header = "Extracted #include list from #{filepath}"
+          header = "Extracted reconciled #include list from #{filepath}"
           @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )
 
           # Update full list of includes (performs santization)

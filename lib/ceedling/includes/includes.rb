@@ -120,46 +120,49 @@ class Includes
   #
   # Method
   # ------
-  # Compares bare includes against system includes and applies the following rules:
+  # Compares bare includes against user and system includes and applies the following rules:
   # 1. If a system include matches a bare include filename, keep the system include
   #    and remove the matching bare include (system includes take precedence).
   # 2. Remove any system includes that don't match bare include filenames
   # 3. Keep bare includes that have no matching system includes as user includes.
   # 4. If no bare includes exist, return system includes unchanged (should not happen).
   # 5. If no system includes exist, return bare includes unchanged as user includes.
-  def self.reconcile(bare:, system:, include_factory:)
+  def self.reconcile(bare:, user:, system:)
     # Validate input types
     unless bare.is_a?(Array) && bare.all? { |include| include.is_a?(Include) }
       raise ArgumentError, "`bare` must be an Array of Include objects"
     end
-  
+
+    return [] if bare.empty?
+
+    unless user.is_a?(Array) && user.all? { |include| include.is_a?(UserInclude) }    
+      raise ArgumentError, "`user` must be an Array of UserInclude objects"
+    end
+    
     unless system.is_a?(Array) && system.all? { |include| include.is_a?(SystemInclude) }    
       raise ArgumentError, "`system` must be an Array of SystemInclude objects"
     end
 
-    return system if bare.empty?
-    return bare if system.empty?
+    system_includes = []
+    user_includes = []
 
     # Create set of bare include filenames for O(1) lookup
     bare_filenames = Set.new(bare.map(&:filename))
-    
-    # Keep only system includes that match bare include filenames
+
+    # Intersect system includes with bare includes based on filename.
+    # Keep system includes that have matching filenames in bare list.
     system_includes = system.select do |include|
       bare_filenames.include?(include.filename)
     end
-    
-    # Remove bare includes that have matching system includes
-    matching_filenames = Set.new(system_includes.map(&:filename))
-    bare_includes = bare.reject do |include|
-      matching_filenames.include?(include.filename)
-    end
-    
-    user_includes = bare_includes.map do |include|
-      include_factory.user_include_from_filepath(include.filepath)
-    end
 
-    # Construct recocniled list of includes with filtered results
-    # Always system includes first (C best practice)
+    # Intersect user includes with bare includes based on filename.
+    # Keep user includes (including subclasses) that have matching filenames in bare list.
+    user_includes = user.select do |include|
+      bare_filenames.include?(include.filename)
+    end    
+
+    # Construct reconciled list of includes with reconciled results.
+    # Always system includes first (C best practice).
     return (system_includes + user_includes)
   end
 
