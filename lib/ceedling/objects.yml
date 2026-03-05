@@ -268,7 +268,7 @@ dependinator:
     - rake_wrapper
     - file_wrapper
 
-preprocessinator_system_includes_extractor:
+preprocessinator_line_marker_includes_extractor:
   compose:
     - include_factory
 
@@ -276,7 +276,6 @@ preprocessinator:
   compose:
     - preprocessinator_includes_handler
     - preprocessinator_file_assembler
-    - include_factory
     - file_path_utils
     - tool_executor
     - file_wrapper
@@ -288,7 +287,7 @@ preprocessinator:
 preprocessinator_includes_handler:
   compose:
     - configurator
-    - preprocessinator_system_includes_extractor
+    - preprocessinator_line_marker_includes_extractor
     - include_factory
     - tool_executor
     - parsing_parcels
@@ -342,7 +341,6 @@ test_invoker:
     - batchinator
     - reportinator
     - loginator
-    - include_factory
     - preprocessinator
     - partializer
     - generator

@@ -7,12 +7,13 @@
 
 require 'ceedling/includes/includes'
 require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
+require 'ceedling/preprocess/preprocessinator_line_marker_includes_extractor'
 
 class PreprocessinatorIncludesHandler
 
   constructor(
     :configurator,
-    :preprocessinator_system_includes_extractor,
+    :preprocessinator_line_marker_includes_extractor,
     :include_factory,
     :tool_executor,
     :file_wrapper,
@@ -24,7 +25,7 @@ class PreprocessinatorIncludesHandler
 
   def setup()
     # Aliases
-    @system_includes_extractor = @preprocessinator_system_includes_extractor
+    @line_marker_includes_extractor = @preprocessinator_line_marker_includes_extractor
   end
 
   def extract_bare_includes(test:, filepath:, search_paths:, flags:, defines:)
@@ -84,6 +85,53 @@ class PreprocessinatorIncludesHandler
     return includes
   end
 
+  def extract_user_includes(name:, filepath:, preprocessed_filepath:, fallback: false)
+    includes = []
+
+    filename = File.basename(filepath)
+
+    if !fallback
+      msg = @reportinator.generate_module_progress(
+        operation: "Extracting user #includes from preprocessed output",
+        module_name: name,
+        filename: filename
+      )
+      @loginator.log(msg, Verbosity::OBNOXIOUS)
+
+      # Get system includes from up to 3 levels of nested headers.
+      # This may extract more system includes than necessary but ensures we don't
+      # miss top-level system includes hidden by nesting include guards.
+      # Later santization uses system includes slurped up in the top-level user 
+      # include extraction to identify the actual needed system includes and filter
+      # out any extras.
+      includes = 
+        @line_marker_includes_extractor.extract_includes_from_file(
+          preprocessed_filepath,
+          PreprocessinatorLineMarkerIncludesExtractor::USER
+        )
+      includes = clean_self_reference( filepath, includes )
+    else
+      msg = @reportinator.generate_module_progress(
+        operation: "Extracting user #includes from original file using fallback method for",
+        module_name: name,
+        filename: filename
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
+      @file_wrapper.open(filepath, 'r') do |input|
+        @parsing_parcels.code_lines( input ) do |line|
+          _include = @include_factory.user_include_from_directive( line )
+          includes << _include if !_include.nil?
+        end
+      end
+    end
+
+    header = "Extracted user #include list from #{filepath}"
+    @loginator.log_list( includes, header, Verbosity::DEBUG )
+
+    return includes
+  end
+ 
   def extract_system_includes(name:, filepath:, preprocessed_filepath:, fallback: false)
     includes = []
 
@@ -103,8 +151,12 @@ class PreprocessinatorIncludesHandler
       # Later santization uses system includes slurped up in the top-level user 
       # include extraction to identify the actual needed system includes and filter
       # out any extras.
-      includes = @system_includes_extractor.extract_includes_from_file( preprocessed_filepath, max_depth: 3 )
-      includes = clean_self_reference(filepath, includes)
+      includes = 
+        @line_marker_includes_extractor.extract_includes_from_file(
+          preprocessed_filepath,
+          PreprocessinatorLineMarkerIncludesExtractor::SYSTEM
+        )
+      includes = clean_self_reference( filepath, includes )
     else
       msg = @reportinator.generate_module_progress(
         operation: "Extracting system #includes from original file using fallback method for",

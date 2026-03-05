@@ -12,7 +12,6 @@ class Preprocessinator
 
   constructor :preprocessinator_includes_handler,
               :preprocessinator_file_assembler,
-              :include_factory,
               :file_path_utils,
               :tool_executor,
               :file_wrapper,
@@ -39,7 +38,7 @@ class Preprocessinator
   end
 
   # Extract bare includes (does not differentiate user/system) from a file
-  def preprocess_bare_includes(filepath:, test:, search_paths:, flags:, defines:)
+  def preprocess_shallow_bare_includes(filepath:, test:, search_paths:, flags:, defines:)
     # Pass-through
     return @includes_handler.extract_bare_includes(
       filepath:      filepath,
@@ -82,8 +81,21 @@ class Preprocessinator
     return preprocessed_filepath
   end
 
-  # Extract system includes from a file
-  def preprocess_system_includes(filepath:, directives_only_filepath:, fallback: false)
+   # Extract user includes from a file using directives-only output (or fallback)
+  def preprocess_nested_user_includes(filepath:, directives_only_filepath:, fallback: false)
+    name = File.basename(filepath)
+
+    # Pass-through
+    return @includes_handler.extract_user_includes(
+      name:                   name,
+      filepath:               filepath,
+      preprocessed_filepath:  directives_only_filepath,
+      fallback:               fallback
+      )
+  end
+ 
+  # Extract system includes from a file using directives-only output (or fallback)
+  def preprocess_nested_system_includes(filepath:, directives_only_filepath:, fallback: false)
     name = File.basename(filepath)
 
     # Pass-through
@@ -419,6 +431,7 @@ class Preprocessinator
 
     if !success
       # Full preprocessing-based #include extraction with saving to YAML file
+
       # Extract bare includes
       bare_includes = @includes_handler.extract_bare_includes(
         filepath:      filepath,
@@ -426,21 +439,29 @@ class Preprocessinator
         flags:         flags,
         search_paths:  vendor_paths,
         defines:       defines
-        )
+      )
 
-      # Add extracted system includes
+      # Extract user includes
+      user_includes = @includes_handler.extract_user_includes(
+        name:                  test,
+        filepath:              filepath,
+        preprocessed_filepath: directives_only_filepath,
+        fallback:              fallback
+      )
+
+      # Extract system includes
       system_includes = @includes_handler.extract_system_includes(
         name:                  test,
         filepath:              filepath,
         preprocessed_filepath: directives_only_filepath,
         fallback:              fallback
-        )
+      )
 
-      # Reconcile includes with overlapping information from imperfect extraction
+      # Reconcile includes with overlapping information
       includes = Includes.reconcile(
         bare: bare_includes,
-        system: system_includes,
-        include_factory: @include_factory
+        user: user_includes,
+        system: system_includes
       )
 
       # Sanitize the final list and remove any includes that have been mocked
