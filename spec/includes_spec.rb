@@ -30,7 +30,7 @@ describe UserInclude do
     end
 
     it "creates a UserInclude with a path and used path in string expansion" do
-      include_obj = UserInclude.new("path/to/header.h", full_path: true)
+      include_obj = UserInclude.new("path/to/header.h", use_path: true)
       
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("path/to/header.h")
@@ -110,7 +110,7 @@ describe SystemInclude do
     end
 
     it "creates a SystemInclude with a path and used path in string expansion" do
-      include_obj = SystemInclude.new("path/to/header.h", full_path: true)
+      include_obj = SystemInclude.new("path/to/header.h", use_path: true)
       
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("path/to/header.h")
