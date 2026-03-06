@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/preprocessinator_reconstructor'
+require 'ceedling/preprocess/preprocessinator_reconstructor'
 require 'ceedling/parsing_parcels'
 
 describe PreprocessinatorReconstructor do
