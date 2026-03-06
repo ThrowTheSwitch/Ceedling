@@ -36,7 +36,9 @@ class TestContextExtractor
     end
   end
 
-  # `input` must have the interface of IO -- StringIO for testing or File in typical use
+  # Reads through a file's content line by line to extracts relevant information by context.
+  # `*args` is a list of context symbols.
+  # `input` must have the interface of IO -- StringIO for testing or File in typical use.
   def collect_simple_context( filepath, input, *args )
     all_options = [
       :build_directive_include_paths,
@@ -56,8 +58,6 @@ class TestContextExtractor
     source_extras = []
     includes = []
     partials_config = []
-
-    # This function reads through the file line by line and extracts relevant information for the given context.
 
     @parsing_parcels.code_lines( input ) do |line|
       if args.include?( :build_directive_include_paths )
@@ -229,12 +229,15 @@ class TestContextExtractor
   private #################################
 
   def collect_build_directive_source_files(filepath, files)
-    ingest_build_directive_source_files( filepath, files.uniq )
+    _files = files.compact
+    _files.uniq!
+
+    ingest_build_directive_source_files( filepath, _files )
 
     debug_log_list(
       "Extra source files found via TEST_SOURCE_FILE()",
       filepath,
-      files
+      _files
     )
   end
 
@@ -304,7 +307,7 @@ class TestContextExtractor
     # Look for TEST_SOURCE_FILE("<*>") statement
     results = line.scan(PATTERNS::TEST_SOURCE_FILE)
     results.each do |result|
-      source_extras << FilePathUtils.standardize( result[0] )
+      source_extras << UserInclude.new( FilePathUtils.standardize( result[0] ) )
     end
 
     return source_extras
