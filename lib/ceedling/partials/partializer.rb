@@ -45,7 +45,7 @@ class Partializer
   # Ensure no original headers for the module being paritalized
   def sanitize_includes(name:, includes:)    
     _includes = remove_matching_includes(includes: includes, modules: [name])
-    Includes.sanitize!(includes)
+    Includes.sanitize!(_includes)
     return _includes
   end
 
@@ -213,7 +213,7 @@ class Partializer
     # Normalize module names to lowercase for comparison
     normalized_modules = modules.map(&:downcase)
     
-    # Filter out includes whose extension (without dot) matches any module name
+    # Filter out includes (minus extension) that match any module name
     return includes.reject do |include|
       normalized_modules.include?(include.filename.ext().downcase())
     end
