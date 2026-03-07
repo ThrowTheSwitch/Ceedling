@@ -7,6 +7,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/includes/includes'
 require 'ceedling/partials/partializer'
 require 'ostruct'
 
@@ -86,52 +87,52 @@ describe Partializer do
     end
 
     it "removes the module's own header from includes list with case-insensitivity" do
-      includes = ['header1.h', 'module.h', 'module.H', 'MODULE.H', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('module.h'), UserInclude.new('module.H'), UserInclude.new('MODULE.H'), UserInclude.new('header2.h')]
       result = @partializer.sanitize_includes(name: 'module', includes: includes)
       
-      expect(result).to eq(['header1.h', 'header2.h'])
-      expect(result).not_to include('module.h')
-      expect(result).not_to include('module.H')
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+      expect(result).not_to include(UserInclude.new('module.h'))
+      expect(result).not_to include(UserInclude.new('module.H'))
     end
 
     it "returns empty array when only module header is present" do
-      includes = ['module.h']
+      includes = [UserInclude.new('module.h')]
       result = @partializer.sanitize_includes(name: 'module', includes: includes)
       
       expect(result).to eq([])
     end
 
     it "removes duplicate includes" do
-      includes = ['header1.h', 'header2.h', 'header1.h', 'header3.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('header2.h'), UserInclude.new('header1.h'), UserInclude.new('header3.h')]
       result = @partializer.sanitize_includes(name: 'module', includes: includes)
       
-      expect(result).to eq(['header1.h', 'header2.h', 'header3.h'])
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h'), UserInclude.new('header3.h')])
     end
 
     it "removes duplicate module includes" do
-      includes = ['header1.h', 'module.h', 'header2.h', 'module.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('module.h'), UserInclude.new('header2.h'), UserInclude.new('module.h')]
       result = @partializer.sanitize_includes(name: 'module', includes: includes)
       
-      expect(result).to eq(['header1.h', 'header2.h'])
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
 
     it "preserves order when removing duplicates" do
-      includes = ['header3.h', 'header1.h', 'header2.h', 'header1.h']
+      includes = [UserInclude.new('header3.h'), UserInclude.new('header1.h'), UserInclude.new('header2.h'), UserInclude.new('header1.h')]
       result = @partializer.sanitize_includes(name: 'module', includes: includes)
       
-      expect(result).to eq(['header3.h', 'header1.h', 'header2.h'])
+      expect(result).to eq([UserInclude.new('header3.h'), UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
 
     it "distinguishes includes with different extensions" do
-      includes = ['header1.h', 'header1.H', 'header1.hh']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('header1.H'), UserInclude.new('header1.hh')]
       result = @partializer.sanitize_includes(name: 'module', includes: includes)
       
-      # Should only remove includes with extact filename match
+      # Should only remove includes with exact filename match
       expect(result.length).to eq(3)
     end
 
     it "is not fooled by uncommon file naming conventions" do
-      includes = ['header1.12.h', 'header1.13.h', 'header1.14.h']
+      includes = [UserInclude.new('header1.12.h'), UserInclude.new('header1.13.h'), UserInclude.new('header1.14.h')]
       result = @partializer.sanitize_includes(name: 'module', includes: includes)
       
       # Should only remove includes with extact filename match
@@ -157,7 +158,7 @@ describe Partializer do
     end
 
     it "removes module's own header from includes" do
-      includes = ['header1.h', 'module.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('module.h'), UserInclude.new('header2.h')]
       partials = {}
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
@@ -165,12 +166,12 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header1.h', 'header2.h'])
-      expect(result).not_to include('module.h')
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+      expect(result).not_to include(UserInclude.new('module.h'))
     end
 
     it "removes partialized module headers from includes" do
-      includes = ['header1.h', 'partial_module.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
         'partial_module' => { types: [:test_public] }
       }
@@ -180,12 +181,12 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header1.h', 'header2.h'])
-      expect(result).not_to include('partial_module.h')
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+      expect(result).not_to include(UserInclude.new('partial_module.h'))
     end
 
     it "removes multiple partialized module headers" do
-      includes = ['header1.h', 'partial1.h', 'partial2.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial1.h'), UserInclude.new('partial2.h'), UserInclude.new('header2.h')]
       partials = {
         'partial1' => nil,
         'partial2' => nil
@@ -196,13 +197,13 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header1.h', 'header2.h'])
-      expect(result).not_to include('partial1.h')
-      expect(result).not_to include('partial2.h')
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+      expect(result).not_to include(UserInclude.new('partial1.h'))
+      expect(result).not_to include(UserInclude.new('partial2.h'))
     end
 
     it "preserves includes that are not partialized" do
-      includes = ['header1.h', 'partial_module.h', 'header2.h', 'header3.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h'), UserInclude.new('header3.h')]
       partials = {
         'partial_module' => nil
       }
@@ -212,11 +213,11 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header1.h', 'header2.h', 'header3.h'])
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h'), UserInclude.new('header3.h')])
     end
 
     it "removes duplicates after removing partialized headers" do
-      includes = ['header1.h', 'partial_module.h', 'header1.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header1.h'), UserInclude.new('header2.h')]
       partials = {
         'partial_module' => nil
       }
@@ -226,11 +227,11 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header1.h', 'header2.h'])
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
 
     it "handles case-insensitive module header removal" do
-      includes = ['header1.h', 'module.h', 'MODULE.H', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('module.h'), UserInclude.new('MODULE.H'), UserInclude.new('header2.h')]
       partials = {}
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
@@ -238,13 +239,13 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header1.h', 'header2.h'])
-      expect(result).not_to include('module.h')
-      expect(result).not_to include('MODULE.H')
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+      expect(result).not_to include(UserInclude.new('module.h'))
+      expect(result).not_to include(UserInclude.new('MODULE.H'))
     end
 
     it "handles partials with different configuration types" do
-      includes = ['header1.h', 'partial1.h', 'partial2.h', 'partial3.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial1.h'), UserInclude.new('partial2.h'), UserInclude.new('partial3.h')]
       partials = {
         'partial1' => nil,
         'partial2' => nil,
@@ -256,11 +257,11 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header1.h'])
+      expect(result).to eq([UserInclude.new('header1.h')])
     end
 
     it "preserves order of remaining includes" do
-      includes = ['header3.h', 'header1.h', 'partial_module.h', 'header2.h']
+      includes = [UserInclude.new('header3.h'), UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
         'partial_module' => nil
       }
@@ -270,11 +271,11 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header3.h', 'header1.h', 'header2.h'])
+      expect(result).to eq([UserInclude.new('header3.h'), UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
 
     it "handles empty partials hash" do
-      includes = ['header1.h', 'header2.h', 'module.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('header2.h'), UserInclude.new('module.h')]
       partials = {}
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
@@ -282,18 +283,18 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header1.h', 'header2.h'])
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
 
     it "handles complex scenario with module header, partials, and duplicates" do
       includes = [
-        'header1.h',
-        'module.h',
-        'partial1.h',
-        'header2.h',
-        'partial2.h',
-        'header1.h',
-        'header3.h'
+        UserInclude.new('header1.h'),
+        UserInclude.new('module.h'),
+        UserInclude.new('partial1.h'),
+        UserInclude.new('header2.h'),
+        UserInclude.new('partial2.h'),
+        UserInclude.new('header1.h'),
+        UserInclude.new('header3.h')
       ]
       partials = {
         'partial1' => nil,
@@ -305,10 +306,10 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result).to eq(['header1.h', 'header2.h', 'header3.h'])
-      expect(result).not_to include('module.h')
-      expect(result).not_to include('partial1.h')
-      expect(result).not_to include('partial2.h')
+      expect(result).to eq([UserInclude.new('header1.h'), UserInclude.new('header2.h'), UserInclude.new('header3.h')])
+      expect(result).not_to include(UserInclude.new('module.h'))
+      expect(result).not_to include(UserInclude.new('partial1.h'))
+      expect(result).not_to include(UserInclude.new('partial2.h'))
     end
   end
 
@@ -320,11 +321,12 @@ describe Partializer do
     it "returns implementation header when input is empty and no partials" do
       includes = []
       partials = {}
-      impl_header = 'module_impl.h'
+      filename = 'module_impl.h'
+      impl_header = UserInclude.new(filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -336,13 +338,14 @@ describe Partializer do
     end
 
     it "adds implementation header to includes" do
-      includes = ['header1.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('header2.h')]
       partials = {}
-      impl_header = 'module_impl.h'
+      filename = 'module_impl.h'
+      impl_header = UserInclude.new(filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -351,18 +354,19 @@ describe Partializer do
       )
       
       expect(result).to include(impl_header)
-      expect(result).to include('header1.h')
-      expect(result).to include('header2.h')
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
     end
 
     it "removes module's own header from includes" do
-      includes = ['header1.h', 'module.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('module.h'), UserInclude.new('header2.h')]
       partials = {}
-      impl_header = 'module_impl.h'
+      filename = 'module_impl.h'
+      impl_header = UserInclude.new(filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -371,26 +375,28 @@ describe Partializer do
       )
       
       expect(result).to include(impl_header)
-      expect(result).to include('header1.h')
-      expect(result).to include('header2.h')
-      expect(result).not_to include('module.h')
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('module.h'))
     end
 
     it "remaps mockable public partial to interface header" do
-      includes = ['header1.h', 'partial_module.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
         'partial_module' => OpenStruct.new(types: [Partials::MOCK_PUBLIC])
       }
-      impl_header = 'module_impl.h'
-      interface_header = 'partial_module_interface.h'
+      impl_filename = 'module_impl.h'
+      interface_filename = 'partial_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header = UserInclude.new(interface_filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(impl_filename)
       
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
         .with('partial_module')
-        .and_return(interface_header)
+        .and_return(interface_filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -400,26 +406,28 @@ describe Partializer do
       
       expect(result).to include(impl_header)
       expect(result).to include(interface_header)
-      expect(result).to include('header1.h')
-      expect(result).to include('header2.h')
-      expect(result).not_to include('partial_module.h')
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('partial_module.h'))
     end
 
     it "remaps mockable private partial to interface header" do
-      includes = ['header1.h', 'partial_module.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
         'partial_module' => OpenStruct.new(types: [Partials::MOCK_PRIVATE])
       }
-      impl_header = 'module_impl.h'
-      interface_header = 'partial_module_interface.h'
+      impl_filename = 'module_impl.h'
+      interface_filename = 'partial_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header = UserInclude.new(interface_filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(impl_filename)
       
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
         .with('partial_module')
-        .and_return(interface_header)
+        .and_return(interface_filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -429,32 +437,35 @@ describe Partializer do
       
       expect(result).to include(impl_header)
       expect(result).to include(interface_header)
-      expect(result).to include('header1.h')
-      expect(result).to include('header2.h')
-      expect(result).not_to include('partial_module.h')
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('partial_module.h'))
     end
 
     it "remaps multiple mockable partials to interface headers" do
-      includes = ['header1.h', 'partial1.h', 'partial2.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial1.h'), UserInclude.new('partial2.h'), UserInclude.new('header2.h')]
       partials = {
         'partial1' => OpenStruct.new(types: [Partials::MOCK_PUBLIC]),
         'partial2' => OpenStruct.new(types: [Partials::MOCK_PRIVATE])
       }
-      impl_header = 'module_impl.h'
-      interface_header1 = 'partial1_interface.h'
-      interface_header2 = 'partial2_interface.h'
+      impl_filename = 'module_impl.h'
+      interface_filename1 = 'partial1_module_interface.h'
+      interface_filename2 = 'partial2_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header1 = UserInclude.new(interface_filename1)
+      interface_header2 = UserInclude.new(interface_filename2)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(impl_filename)
       
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
         .with('partial1')
-        .and_return(interface_header1)
+        .and_return(interface_filename1)
       
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
         .with('partial2')
-        .and_return(interface_header2)
+        .and_return(interface_filename2)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -465,22 +476,23 @@ describe Partializer do
       expect(result).to include(impl_header)
       expect(result).to include(interface_header1)
       expect(result).to include(interface_header2)
-      expect(result).to include('header1.h')
-      expect(result).to include('header2.h')
-      expect(result).not_to include('partial1.h')
-      expect(result).not_to include('partial2.h')
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('partial1.h'))
+      expect(result).not_to include(UserInclude.new('partial2.h'))
     end
 
     it "remaps testable partial to implementation header" do
-      includes = ['header1.h', 'partial_module.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
         'partial_module' => OpenStruct.new(types: [Partials::TEST_PUBLIC])
       }
-      impl_header = 'module_impl.h'
+      filename = 'module_impl.h'
+      impl_header = UserInclude.new(filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -489,27 +501,29 @@ describe Partializer do
       )
       
       expect(result).to include(impl_header)
-      expect(result).to include('header1.h')
-      expect(result).to include('partial_module.h')
-      expect(result).to include('header2.h')
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('partial_module.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
     end
 
     it "remaps mix of mockable and testable partials" do
-      includes = ['header1.h', 'partial1.h', 'partial2.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial1.h'), UserInclude.new('partial2.h'), UserInclude.new('header2.h')]
       partials = {
         'partial1' => OpenStruct.new(types: [Partials::MOCK_PUBLIC]),
         'partial2' => OpenStruct.new(types: [Partials::TEST_PRIVATE])
       }
-      impl_header = 'module_impl.h'
-      interface_header1 = 'partial1_interface.h'
+      impl_filename = 'module_impl.h'
+      interface1_filename = 'partial1_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header1 = UserInclude.new(interface1_filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(impl_filename)
       
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
         .with('partial1')
-        .and_return(interface_header1)
+        .and_return(interface1_filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -519,27 +533,29 @@ describe Partializer do
       
       expect(result).to include(impl_header)
       expect(result).to include(interface_header1)
-      expect(result).to include('partial2.h')
-      expect(result).to include('header1.h')
-      expect(result).to include('header2.h')
-      expect(result).not_to include('partial1.h')
+      expect(result).to include(UserInclude.new('partial2.h'))
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('partial1.h'))
     end
 
     it "removes duplicates after remapping" do
-      includes = ['header1.h', 'partial_module.h', 'header1.h', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header1.h'), UserInclude.new('header2.h')]
       partials = {
         'partial_module' => OpenStruct.new(types: [Partials::MOCK_PUBLIC])
       }
-      impl_header = 'module_impl.h'
-      interface_header = 'partial_module_interface.h'
+      impl_filename = 'module_impl.h'
+      interface_filename = 'partial_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header = UserInclude.new(interface_filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(impl_filename)
       
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
         .with('partial_module')
-        .and_return(interface_header)
+        .and_return(interface_filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -547,20 +563,21 @@ describe Partializer do
         partials: partials
       )
       
-      expect(result.count('header1.h')).to eq(1)
+      expect(result.count(UserInclude.new('header1.h'))).to eq(1)
       expect(result).to include(impl_header)
       expect(result).to include(interface_header)
-      expect(result).to include('header2.h')
+      expect(result).to include(UserInclude.new('header2.h'))
     end
 
     it "handles case-insensitive module header removal" do
-      includes = ['header1.h', 'module.h', 'MODULE.H', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('module.h'), UserInclude.new('MODULE.H'), UserInclude.new('header2.h')]
       partials = {}
-      impl_header = 'module_impl.h'
+      filename ='module_impl.h'
+      impl_header = UserInclude.new(filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -569,27 +586,29 @@ describe Partializer do
       )
       
       expect(result).to include(impl_header)
-      expect(result).to include('header1.h')
-      expect(result).to include('header2.h')
-      expect(result).not_to include('module.h')
-      expect(result).not_to include('MODULE.H')
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('module.h'))
+      expect(result).not_to include(UserInclude.new('MODULE.H'))
     end
 
     it "handles case-insensitive partial module remapping" do
-      includes = ['header1.h', 'partial_module.h', 'PARTIAL_MODULE.H', 'header2.h']
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('PARTIAL_MODULE.H'), UserInclude.new('header2.h')]
       partials = {
         'partial_module' => OpenStruct.new(types: [Partials::MOCK_PUBLIC])
       }
-      impl_header = 'module_impl.h'
-      interface_header = 'partial_module_interface.h'
+      impl_filename ='module_impl.h'
+      interface_filename = 'partial_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header = UserInclude.new(interface_filename)
       
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
-        .and_return(impl_header)
+        .and_return(impl_filename)
       
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
         .with('partial_module')
-        .and_return(interface_header)
+        .and_return(interface_filename)
       
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
@@ -599,10 +618,10 @@ describe Partializer do
       
       expect(result).to include(impl_header)
       expect(result).to include(interface_header)
-      expect(result).to include('header1.h')
-      expect(result).to include('header2.h')
-      expect(result).not_to include('partial_module.h')
-      expect(result).not_to include('PARTIAL_MODULE.H')
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('partial_module.h'))
+      expect(result).not_to include(UserInclude.new('PARTIAL_MODULE.H'))
     end
   end
 
@@ -637,11 +656,11 @@ describe Partializer do
         variables: []
       )
       
-      expect(CExtractor).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
+      expect(CExtractor).to receive(:from_file).with(UserInclude.new('/path/to/header.h')).and_return(@mock_extractinator)
       expect(@mock_extractinator).to receive(:extract_contents).and_return(header_contents)
       
       result = @partializer.extract_module_contents(
-        header_filepath: '/path/to/header.h',
+        header_filepath: UserInclude.new('/path/to/header.h'),
         source_filepath: nil
       )
       
@@ -687,13 +706,13 @@ describe Partializer do
       header_extractinator = double('header_extractinator')
       source_extractinator = double('source_extractinator')
       
-      expect(CExtractor).to receive(:from_file).with('/path/to/header.h').and_return(header_extractinator)
+      expect(CExtractor).to receive(:from_file).with(UserInclude.new('/path/to/header.h')).and_return(header_extractinator)
       expect(CExtractor).to receive(:from_file).with('/path/to/source.c').and_return(source_extractinator)
       expect(header_extractinator).to receive(:extract_contents).and_return(header_contents)
       expect(source_extractinator).to receive(:extract_contents).and_return(source_contents)
       
       result = @partializer.extract_module_contents(
-        header_filepath: '/path/to/header.h',
+        header_filepath: UserInclude.new('/path/to/header.h'),
         source_filepath: '/path/to/source.c'
       )
       
@@ -704,11 +723,11 @@ describe Partializer do
     it "returns empty CModule when header file has no contents" do
       empty_contents = CExtractor::CModule.new(function_definitions: [], variables: [])
       
-      expect(CExtractor).to receive(:from_file).with('/path/to/header.h').and_return(@mock_extractinator)
+      expect(CExtractor).to receive(:from_file).with(UserInclude.new('/path/to/header.h')).and_return(@mock_extractinator)
       expect(@mock_extractinator).to receive(:extract_contents).and_return(empty_contents)
       
       result = @partializer.extract_module_contents(
-        header_filepath: '/path/to/header.h',
+        header_filepath: UserInclude.new('/path/to/header.h'),
         source_filepath: nil
       )
       
