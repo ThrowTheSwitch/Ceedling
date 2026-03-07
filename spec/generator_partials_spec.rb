@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/generator_partials'
 require 'ceedling/partials/partials'
+require 'ceedling/includes/includes'
 require 'stringio'
 
 describe GeneratorPartials do
@@ -65,8 +66,8 @@ describe GeneratorPartials do
           code_block: "void initialize(void) {\n  // implementation\n}"
         )
       ]
-      source_includes = ['types.h', 'config.h']
-      header_includes = ['stdint.h', 'stdbool.h']
+      source_includes = [UserInclude.new('types.h'), UserInclude.new('config.h')]
+      header_includes = [SystemInclude.new('stdint.h'), SystemInclude.new('stdbool.h')]
       source_variables = ['uint8_t my_var;']
       header_variables = ['extern uint8_t my_var;']
       
@@ -139,7 +140,7 @@ describe GeneratorPartials do
           signature: 'void initialize(void)'
         )
       ]
-      includes = ['types.h', 'config.h']
+      includes = [UserInclude.new('types.h'), UserInclude.new('config.h')]
       
       # Execute
       result = @generator.generate_interface(
@@ -200,7 +201,14 @@ describe GeneratorPartials do
     
       CONTENTS
 
-      @generator.send(:generate_header, buf, 'Apples-and-Bananas', ['foo.h', 'bar.h'], [], [])
+      @generator.send(
+        :generate_header,
+        buf,
+        'Apples-and-Bananas',
+        [UserInclude.new('foo.h'), UserInclude.new('bar.h')],
+        [], []
+      )
+
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -260,7 +268,15 @@ describe GeneratorPartials do
         'extern double bananas;'
       ]
 
-      @generator.send(:generate_header, buf, 'Apples-and-Bananas', ['Eeny.h', 'Meeny.h'], decls, variables)
+      @generator.send(
+        :generate_header,
+        buf,
+        'Apples-and-Bananas',
+        [UserInclude.new('Eeny.h'), UserInclude.new('Meeny.h')],
+        decls,
+        variables
+      )
+
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -279,11 +295,17 @@ describe GeneratorPartials do
       file_contents = <<~CONTENTS
       // Ceeding generated file
       #include "foo.h"
-      #include "bar.h"
+      #include <bar.h>
 
       CONTENTS
 
-      @generator.send(:generate_source, buf, ['foo.h', 'bar.h'], [], [])
+      @generator.send(
+        :generate_source,
+        buf,
+        [UserInclude.new('foo.h'), SystemInclude.new('bar.h')],
+        [], []
+      )
+
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -333,7 +355,7 @@ describe GeneratorPartials do
       @generator.send(
         :generate_source,
         buf,
-        ['foobar.h', 'baz.h'],
+        [UserInclude.new('foobar.h'), UserInclude.new('baz.h')],
         defns,
         [
           'int abc = 123;',
