@@ -81,12 +81,12 @@ class Includes
 
   # Class method to extract all system includes
   def self.system(includes)
-    includes.select { |include| include.is_a?(UserInclude) }
+    includes.select { |include| include.is_a?(SystemInclude) }
   end
 
   # Class method to extract all user includes
   def self.user(includes)
-    includes.select { |include| include.is_a?(SystemInclude) }
+    includes.select { |include| include.is_a?(UserInclude) }
   end
 
   # Class method for non-mutating sanitize
@@ -130,28 +130,24 @@ class Includes
     return includes
   end
 
-  # Class method to reconcile bare and system includes returning a list of
+  # Class method to reconcile bare, user, and system includes returning a list of
   # reconciled user and system includes.
   #
   # Purpose
   # -------
   # Bare include preprocessing extracts user and system includes, but there's no way
-  # to explicitly differentiate these. Meanwhile, by necessity, system include 
-  # extraction can identify too many system includes. This class method uses this
-  # knowledge to reconcile the two lists. It accomplishes:
+  # to explicitly differentiate these. Meanwhile, by necessity, user and system include 
+  # extraction can identify too many includes. This class method uses the knowledeg of
+  # the different types of extraction to reconcile the two lists. It accomplishes:
   #  1. Paring down system includes to the include directives used in original file.
-  #  2. Removing system includes from the bare includes list.
-  #  3. Recreating a list of user & system includes properly distinguished.
+  #  2. Paring down user includes to the include directives used in original file.
+  #  3. Reconciling a list of user & system includes properly distinguished.
   #
   # Method
   # ------
   # Compares bare includes against user and system includes and applies the following rules:
-  # 1. If a system include matches a bare include filename, keep the system include
-  #    and remove the matching bare include (system includes take precedence).
-  # 2. Remove any system includes that don't match bare include filenames
-  # 3. Keep bare includes that have no matching system includes as user includes.
-  # 4. If no bare includes exist, return system includes unchanged (should not happen).
-  # 5. If no system includes exist, return bare includes unchanged as user includes.
+  # 1. Intersection of bare includes and system includes.
+  # 2. Intersection of bare includes and user includes.
   def self.reconcile(bare:, user:, system:)
     # Validate input types
     unless bare.is_a?(Array) && bare.all? { |include| include.is_a?(Include) }
@@ -304,7 +300,7 @@ class UserInclude < Include
 end
 
 # MockInclude generates #include "<subdir>/header.h" (with quotes)
-# Specialization to support include directive paths before path are supported everywhere
+# Specialization to support include directive paths for mocks before path are supported everywhere
 class MockInclude < UserInclude
   def to_s()
     "#include \"#{filepath}\""
