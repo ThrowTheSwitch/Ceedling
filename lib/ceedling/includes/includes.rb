@@ -105,6 +105,31 @@ class Includes
     return _includes
   end
 
+  # Class method for mutating sanitize
+  #
+  # @param includes [Array<Include>] List of includes to sanitize in place
+  # @param block [Proc] Optional block passed to reject! for custom filtering
+  # @yield [include] Each include object for custom rejection logic
+  # @return [Array<Include>] The modified includes list
+  # @example Basic usage
+  #   Includes.sanitize!(includes)
+  # @example Custom rejection
+  #   Includes.sanitize!(includes) { |include, all| ... }
+  def self.sanitize!(includes, &block)
+    # Remove any duplicates
+    includes.uniq!
+
+    # Apply custom rejection with access to full list if block provided
+    if block_given?
+      includes.reject! { |include| block.call(include, includes) }
+    end
+
+    # Ensure system includes come first
+    self.sort!(includes)
+
+    return includes
+  end
+
   # Class method to reconcile bare and system includes returning a list of
   # reconciled user and system includes.
   #
@@ -166,31 +191,6 @@ class Includes
     return (system_includes + user_includes)
   end
 
-  # Class method for mutating sanitize
-  #
-  # @param includes [Array<Include>] List of includes to sanitize in place
-  # @param block [Proc] Optional block passed to reject! for custom filtering
-  # @yield [include] Each include object for custom rejection logic
-  # @return [Array<Include>] The modified includes list
-  # @example Basic usage
-  #   Includes.sanitize!(includes)
-  # @example Custom rejection
-  #   Includes.sanitize!(includes) { |include, all| ... }
-  def self.sanitize!(includes, &block)
-    # Remove any duplicates
-    includes.uniq!
-
-    # Apply custom rejection with access to full list if block provided
-    if block_given?
-      includes.reject! { |include| block.call(include, includes) }
-    end
-
-    # Ensure system includes come first
-    self.sort!(includes)
-
-    return includes
-  end
-
   # Sort list so system includes are at the beginning
   # (Best practice)
   def self.sort(includes)
@@ -239,14 +239,25 @@ class Include
     return @filename
   end
 
-  # Equality operator -- compares the include value with a string
+  # Equality operator -- for Include objects and strings
   def ==(other)
     case other
     when String
       include == other
+    when UserInclude, MockInclude
+      if self.is_a?(SystemInclude)
+        false
+      else
+        include == other.include
+      end
+    when SystemInclude
+      if self.is_a?(UserInclude)
+        false
+      else
+        include == other.include
+      end
     when Include
-      # Distinguish type of Include objects as well as content of the include
-      self.class == other.class && include == other.include
+      include == other.include
     else
       false
     end
@@ -279,7 +290,7 @@ class Include
     _line.gsub!(/>/, '')
     
     # Whitespace cleanup
-    _line.strip!()
+    _line.strip!
 
     return _line
   end
