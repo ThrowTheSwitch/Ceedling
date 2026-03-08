@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/test_context_extractor'
 require 'ceedling/includes/includes'
 require 'fileutils'
 
@@ -107,11 +108,11 @@ class TestInvoker
           # Always extract includes via regex.
           #  - In non-preprocessing builds, we only use this.
           #  - With fallback options if certain kinds of preprocessing are unavailable, use the regex includes instead.
-          contexts = [:includes]
+          contexts = [TestContextExtractor::Context::INCLUDES]
 
           if @configurator.project_use_test_preprocessor_tests
-            # :includes (see above)
-            msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #include directives (fallback for preprocessing failures)" )
+            # TestContextExtractor::Context::INCLUDES (see above)
+            msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #includes (fallback for preprocessing failures)" )
             @loginator.log( msg )
 
             # Extracting other context will happen in later steps after preprocessing.
@@ -120,21 +121,21 @@ class TestInvoker
             msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
             @loginator.log( msg )
           else
-            # :includes (see above)
-            msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #include directives" )
+            # TestContextExtractor::Context::INCLUDES (see above)
+            msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #includes" )
             @loginator.log( msg )
 
             # Extract context without preprocessing.
-            contexts << :build_directive_include_paths
-            contexts << :build_directive_source_files
-            contexts << :test_runner_details
+            contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
+            contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
+            contexts << TestContextExtractor::Context::TEST_RUNNER_DETAILS
 
             msg = @reportinator.generate_progress( "Parsing #{filename} for build directive macros and test case names" )
             @loginator.log( msg )
           end
 
           if @configurator.project_use_partials
-            contexts << :partials_configuration
+            contexts << TestContextExtractor::Context::PARTIALS_CONFIGURATION
 
             msg = @reportinator.generate_progress( "Parsing #{filename} for partials directive macros" )
             @loginator.log( msg )
@@ -192,7 +193,15 @@ class TestInvoker
           name = details[:name]
 
           # Skip running the preprocessor if we have good, cachced includes
-          next if @preprocessinator.cached_includes_list?( test: name, filepath: filepath )
+          if @preprocessinator.cached_includes_list?( test: name, filepath: filepath )
+            msg = @reportinator.generate_module_progress(
+              operation: 'Skipping preprocessing for #includes in favor of cached #includes for',
+              module_name: name,
+              filename: File.basename( filepath )
+            )
+            @loginator.log( msg )
+            next
+          end
 
           arg_hash = {
             test:          details[:name],
@@ -795,7 +804,11 @@ class TestInvoker
           # Collect sources added to test build with TEST_SOURCE_FILE() directive macro from
           # reconstructed preprocessed test file.
           # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them.
-          @context_extractor.collect_simple_context_from_file( _filepath, :build_directive_source_files )
+          @context_extractor.collect_simple_context_from_file(
+            _filepath, # Preprpocessed content
+            filepath,  # Actial test file
+            TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
+          )
 
           # Validate test build directive source file entries via TEST_SOURCE_FILE()
           @testables.each do |_, details|

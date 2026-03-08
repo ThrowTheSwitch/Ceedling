@@ -65,7 +65,7 @@ class CliHandler
       )
     else
       # If no project configuration is available then note why we aren't displaying more
-      msg = "Run help commands in a directory with a project file to list additional options"
+      msg = "Run help commands in a directory with a project file to list additional options\n\n"
       @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
     end
 
