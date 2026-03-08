@@ -13,16 +13,33 @@ require 'ceedling/encodinator'
 
 class TestContextExtractor
 
+  # Context extraction options
+  module Context
+    BUILD_DIRECTIVE_INCLUDE_PATHS = :build_directive_include_paths
+    BUILD_DIRECTIVE_SOURCE_FILES  = :build_directive_source_files
+    INCLUDES                      = :includes
+    TEST_RUNNER_DETAILS           = :test_runner_details
+    PARTIALS_CONFIGURATION        = :partials_configuration
+    
+    ALL = [
+      BUILD_DIRECTIVE_INCLUDE_PATHS,
+      BUILD_DIRECTIVE_SOURCE_FILES,
+      INCLUDES,
+      TEST_RUNNER_DETAILS,
+      PARTIALS_CONFIGURATION
+    ].freeze
+  end
+
   constructor :configurator, :parsing_parcels, :include_factory, :file_path_utils, :file_wrapper, :loginator
 
   def setup
     # Per test-file lookup hashes
-    @header_includes     = {} # Full list of all headers from #include statements
-    @source_includes     = {} # List of C files #include'd in a test file
-    @source_extras       = {} # C source files outside of header convention added to test build by TEST_SOURCE_FILE()
+    @header_includes     = {} # Full list of all headers as Include objects from #include statements
+    @source_includes     = {} # List of C files #include'd in a test file as Include objects
+    @source_extras       = {} # List of C source files as strings outside of header convention added to test build by TEST_SOURCE_FILE()
     @test_runner_details = {} # Test case lists & Unity runner generator instances
-    @partials_config     = {} # Partials configuration by test name
-    @include_paths       = {} # Additional search paths added to a test build via TEST_INCLUDE_PATH()
+    @partials_config     = {} # List of single item hash Partials configuration by test name
+    @include_paths       = {} # List of additional search paths as strings added to a test build via TEST_INCLUDE_PATH()
     
     # Arrays
     @all_include_paths   = [] # List of all search paths added through individual test files using TEST_INCLUDE_PATH()
@@ -30,28 +47,31 @@ class TestContextExtractor
     @lock = Mutex.new
   end
 
-  def collect_simple_context_from_file( filepath, *args )
-    @file_wrapper.open( filepath, 'r' ) do |input|
-      collect_simple_context( filepath, input, *args )
+  # Reads through a file's content line by line to extract relevant information by context.
+  # `content_filepath` is the file to be read.
+  # `source_fileapth` is the test filepath to use for results storage and lookup.
+  # `*args` is a list of context symbols.
+  # If `source_filepath` is not provided, then `content_filepath` is used for results storage and lookup.
+  def collect_simple_context_from_file( content_filepath, source_filepath=nil, *args )
+    # Load content_filepath
+    @file_wrapper.open( content_filepath, 'r' ) do |input|
+      collect_simple_context(
+        # Use source_filepath if provided, else use content_filepath
+        (source_filepath.nil? ? content_filepath : source_filepath),
+        input,
+        *args
+      )
     end
   end
 
-  # Reads through a file's content line by line to extracts relevant information by context.
+  # Reads through IO interface line by line to extract relevant information by context.
   # `*args` is a list of context symbols.
   # `input` must have the interface of IO -- StringIO for testing or File in typical use.
   def collect_simple_context( filepath, input, *args )
-    all_options = [
-      :build_directive_include_paths,
-      :build_directive_source_files,
-      :includes,
-      :test_runner_details,
-      :partials_configuration
-    ]
-
     # Code error check--bad context symbol argument
     args.each do |context|
       msg = "Unrecognized test context for collection :#{context}"
-      raise CeedlingException.new( msg ) if !all_options.include?( context )
+      raise CeedlingException.new( msg ) if !Context::ALL.include?( context )
     end
 
     include_paths = []
@@ -105,7 +125,7 @@ class TestContextExtractor
     )
   end
 
-  # All header includes .h of test file
+  # All header includes .h as list of Include objects of test file
   def lookup_all_header_includes_list(filepath)
     val = nil
     @lock.synchronize do
@@ -123,7 +143,7 @@ class TestContextExtractor
     return val
   end
 
-  # Source C includes within test file
+  # Source C includes as list of Include objects within test file
   def lookup_source_includes_list(filepath)
     val = nil
     @lock.synchronize do
@@ -132,7 +152,7 @@ class TestContextExtractor
     return val
   end
 
-  # Source extras via TEST_SOURCE_FILE() within test file
+  # Source extras as list of string via TEST_SOURCE_FILE() within test file
   def lookup_build_directive_sources_list(filepath)
     val = nil
     @lock.synchronize do
@@ -141,6 +161,7 @@ class TestContextExtractor
     return val
   end
 
+  # Test case names as list of strings
   def lookup_test_cases(filepath)
     val = []
     @lock.synchronize do
@@ -152,6 +173,7 @@ class TestContextExtractor
     return val
   end
 
+  # Fetch Unity runner generator instance for test file
   def lookup_test_runner_generator(filepath)
     val = nil
     @lock.synchronize do
@@ -163,18 +185,20 @@ class TestContextExtractor
     return val
   end
 
-  # Mocks within test file header includes list
+  # Mocks within test file header includes list as list of MockInclude objects
   def lookup_mock_header_includes_list(filepath)
     includes = lookup_all_header_includes_list(filepath)
     return includes.select { |include| include.is_a?( MockInclude ) }
   end
 
-  # Test file header includes list minus mocks
+  # Test file header includes list minus mocks as list of Include objects
   def lookup_nonmock_header_includes_list(filepath)
     includes = lookup_all_header_includes_list(filepath)
     return includes.reject { |include| include.is_a?( MockInclude ) }
   end
 
+  # List of single item hashes for Partials configuration by test name
+  # { <Partial type symbol> => <Module name string> }
   def lookup_partials_config(filepath)
     val = nil
     @lock.synchronize do
@@ -183,7 +207,8 @@ class TestContextExtractor
     return val
   end
 
-  def lookup_all_include_paths
+  # Full list of all search paths added through individual test files using TEST_INCLUDE_PATH()
+  def lookup_all_include_paths()
     val = nil
     @lock.synchronize do
       val = @all_include_paths.uniq
@@ -191,7 +216,7 @@ class TestContextExtractor
     return val
   end
 
-  def inspect_include_paths
+  def inspect_include_paths()
     @lock.synchronize do
       @include_paths.each { |test, paths| yield test, paths }
     end
@@ -307,7 +332,7 @@ class TestContextExtractor
     # Look for TEST_SOURCE_FILE("<*>") statement
     results = line.scan(PATTERNS::TEST_SOURCE_FILE)
     results.each do |result|
-      source_extras << UserInclude.new( FilePathUtils.standardize( result[0] ) )
+      source_extras << FilePathUtils.standardize( result[0] )
     end
 
     return source_extras
