@@ -150,19 +150,23 @@ class Includes
   # 2. Intersection of bare includes and user includes.
   def self.reconcile(bare:, user:, system:)
     # Validate input types
-    unless bare.is_a?(Array) && bare.all? { |include| include.is_a?(Include) }
+
+    # `bare` can only be base Include objects, no sub-classes.
+    unless bare.is_a?(Array) && bare.all? { |include| include.class == Include }
       raise ArgumentError, "`bare` must be an Array of Include objects"
     end
 
-    return [] if bare.empty?
-
+    # Ensure `user` is an array of UserInclude objects or sub-classes
     unless user.is_a?(Array) && user.all? { |include| include.is_a?(UserInclude) }    
       raise ArgumentError, "`user` must be an Array of UserInclude objects"
     end
     
+    # Ensure `system` is an array of SystemInclude objects or sub-classes
     unless system.is_a?(Array) && system.all? { |include| include.is_a?(SystemInclude) }    
       raise ArgumentError, "`system` must be an Array of SystemInclude objects"
     end
+
+    return [] if bare.empty?
 
     system_includes = []
     user_includes = []
