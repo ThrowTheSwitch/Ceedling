@@ -137,7 +137,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, :includes )
+      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::INCLUDES )
 
       expected_full = [
         UserInclude.new('some_source.h'),
@@ -174,7 +174,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, :partials_configuration )
+      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::PARTIALS_CONFIGURATION )
 
       expected_full = [
         UserInclude.new('ceedling_partial_foo_impl.h'),
@@ -213,7 +213,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, :partials_configuration )
+      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::PARTIALS_CONFIGURATION )
 
       expected = [
         {Partials::TEST_PUBLIC => 'foo'},
@@ -247,13 +247,13 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, :build_directive_source_files )
+      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES )
 
       expected = [
-        UserInclude.new('a.c'),
-        UserInclude.new('b.c'),
-        UserInclude.new('path/baz.c'),
-        UserInclude.new('some/path/boo.c')
+        'a.c',
+        'b.c',
+        'path/baz.c',
+        'some/path/boo.c'
       ]
 
       expect( @extractor.lookup_build_directive_sources_list( filepath ) ).to eq expected
@@ -277,7 +277,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, :build_directive_include_paths )
+      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
 
       expected = [
         'a',
@@ -302,7 +302,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, :build_directive_include_paths )
+      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
 
       # Second File
       filepath = "anotherfile.c"
@@ -316,7 +316,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, :build_directive_include_paths )
+      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
 
       expected = [
         'this/path',
@@ -363,7 +363,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, :test_runner_details )
+      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::TEST_RUNNER_DETAILS )
 
       expected = [
         {:line_number =>  2, :test => 'test_this_function'},
