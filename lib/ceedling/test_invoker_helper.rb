@@ -304,7 +304,7 @@ class TestInvokerHelper
   def remove_mock_original_headers( filelist, mocklist )
     filelist.delete_if do |filepath|
       # Tell `delete_if()` logic to remove inspected filepath if simple mocklist includes a mock version of filepath
-      mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ) )
+      mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ).ext( EXTENSION_CORE_HEADER ) )
     end
   end
 
