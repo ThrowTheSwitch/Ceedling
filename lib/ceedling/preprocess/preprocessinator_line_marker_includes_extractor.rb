@@ -92,12 +92,12 @@ class PreprocessinatorLineMarkerIncludesExtractor
   # Parse preprocessor output from a file (production use)
   # @param filepath [String] Path to the preprocessor output file
   # @return [Array<UserInclude, SystemInclude>]
-  def extract_includes_from_file(filepath, type)
+  def extract_includes_from_file(filepath, type, max_depth=nil)
     validate_type_argument( type )
     includes = []
     begin
       File.open(filepath, 'r') do |file|
-        includes = extract_includes(io: file, filepath: filepath, type: type)
+        includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth)
       end
     rescue StandardError => e
       raise CeedlingException.new("Failed to extract #{type} includes from preprocessor output file '#{filepath}': #{e.message}")
@@ -108,11 +108,11 @@ class PreprocessinatorLineMarkerIncludesExtractor
   # Parse preprocessor output from a string (testing use)
   # @param content [String] Preprocessor output as a string
   # @return [Array<UserInclude, SystemInclude>]
-  def extract_includes_from_string(content, filepath, type)
+  def extract_includes_from_string(content, filepath, type, max_depth=nil)
     validate_type_argument( type )
     require 'stringio'
     io = StringIO.new(content)
-    return extract_includes(io: io, filepath: filepath, type: type)
+    return extract_includes(io: io, filepath: filepath, type: type, max_depth: max_depth)
   end
 
   private
@@ -124,8 +124,8 @@ class PreprocessinatorLineMarkerIncludesExtractor
   end
 
   # Extracts includes from directives-only preprocessor output
-  # Returns an array of Include subclass objects
-  def extract_includes(io:, filepath:, type:, max_depth: 5)
+  # Returns an array of Include-derived objects
+  def extract_includes(io:, filepath:, type:, max_depth:)
     includes = []
     seen_paths = Set.new
     initial_file_seen = false
@@ -165,8 +165,9 @@ class PreprocessinatorLineMarkerIncludesExtractor
           # Skip if we've already seen this path
           next if seen_paths.include?( filepath )
 
-          # Skip if we're at max depth
-          next if depth > max_depth
+          # Skip if max depth is defined and we've exceeded it.
+          # If max depth is not defined, do not limit the depth.
+          next if (max_depth && (depth > max_depth))
 
           seen_paths.add(filepath)
 

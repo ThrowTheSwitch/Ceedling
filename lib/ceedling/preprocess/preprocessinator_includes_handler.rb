@@ -44,9 +44,10 @@ class PreprocessinatorIncludesHandler
     #    This preprocessor mode assumes any includes discovered outside of a search path will be generated.
     #
     # Notes:
-    #  - This approach can have gaps with complex macros / conditional statements.
-    #    Gaps can be minimized with proper defines in the project file. However, needed / complex macros 
-    #    located in other header files can still gum up the works.
+    #  - This approach can have gaps with advacnced user-level macros like `#include <MACRO>`.
+    #    By including Ceedling's vendor search path, we support Partials macros of this sort.
+    #  - Gaps can be minimized with proper defines in the project file. However, needed, complex macros 
+    #    located in other header files could still gum up the works.
     #  - Many errors can occur but may not necessarily prevent usable results.
     command = 
       @tool_executor.build_command_line(
@@ -97,22 +98,17 @@ class PreprocessinatorIncludesHandler
     )
     @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-    # Get system includes from up to 3 levels of nested headers.
-    # This may extract more system includes than necessary but ensures we don't
-    # miss top-level system includes hidden by nesting include guards.
-    # Later santization uses system includes slurped up in the top-level user 
-    # include extraction to identify the actual needed system includes and filter
-    # out any extras.
     includes = 
       @line_marker_includes_extractor.extract_includes_from_file(
         preprocessed_filepath,
         PreprocessinatorLineMarkerIncludesExtractor::USER
+        # Note: No limit to max depth to search for user includes
       )
 
     return clean_self_reference( filepath, includes )
   end
 
-  def extract_user_includes_text(name:, filepath:)
+  def extract_user_includes_from_text(name:, filepath:)
     includes = []
 
     filename = File.basename(filepath)
@@ -146,22 +142,17 @@ class PreprocessinatorIncludesHandler
     )
     @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-    # Get system includes from up to 3 levels of nested headers.
-    # This may extract more system includes than necessary but ensures we don't
-    # miss top-level system includes hidden by nesting include guards.
-    # Later santization uses system includes slurped up in the top-level user 
-    # include extraction to identify the actual needed system includes and filter
-    # out any extras.
     includes = 
       @line_marker_includes_extractor.extract_includes_from_file(
         preprocessed_filepath,
-        PreprocessinatorLineMarkerIncludesExtractor::SYSTEM
+        PreprocessinatorLineMarkerIncludesExtractor::SYSTEM,
+        5 # Practical max depth limit for system headers (to avoid noisy length)
       )
 
     return clean_self_reference( filepath, includes )
   end
 
-  def extract_system_includes_text(name:, filepath:)
+  def extract_system_includes_from_text(name:, filepath:)
     includes = []
 
     filename = File.basename(filepath)
