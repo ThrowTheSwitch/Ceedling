@@ -37,7 +37,8 @@ class Preprocessinator
     return @directives_only_available
   end
 
-  # Extract bare includes (does not differentiate user/system) from a file
+  # Extract bare includes (does not differentiate user/system) from a file.
+  # Called externally.
   def preprocess_bare_includes(filepath:, test:, search_paths:, flags:, defines:)
     # Pass-through
     return @includes_handler.extract_bare_includes(
@@ -81,7 +82,8 @@ class Preprocessinator
     return preprocessed_filepath
   end
 
-   # Extract user includes from a file using directives-only output (or text-only fallback)
+  # Extract user includes from a file using directives-only output (or text-only fallback).
+  # Called externally and internally by `preprocess_common`.
   def preprocess_user_includes(name:, filepath:, directives_only_filepath:, fallback: false)
     includes = []
 
@@ -92,7 +94,7 @@ class Preprocessinator
         preprocessed_filepath:  directives_only_filepath
       )
     else
-      includes = @includes_handler.extract_user_includes_text(
+      includes = @includes_handler.extract_user_includes_from_text(
         name:      name,
         filepath:  filepath
       )
@@ -104,7 +106,8 @@ class Preprocessinator
     return includes
   end
  
-  # Extract system includes from a file using directives-only output (or text-only fallback)
+  # Extract system includes from a file using directives-only output (or text-only fallback).
+  # Called externally and internally by `preprocess_common`.
   def preprocess_system_includes(name:, filepath:, directives_only_filepath:, fallback: false)
     includes = []
 
@@ -115,7 +118,7 @@ class Preprocessinator
         preprocessed_filepath:  directives_only_filepath
       )
     else
-      includes = @includes_handler.extract_system_includes_text(
+      includes = @includes_handler.extract_system_includes_from_text(
         name:                   name,
         filepath:               filepath
       )
