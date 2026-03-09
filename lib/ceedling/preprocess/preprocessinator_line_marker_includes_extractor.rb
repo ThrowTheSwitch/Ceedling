@@ -82,10 +82,10 @@ require 'set'
 
 # Parse GCC preprocessor output (from -fdirectives-only) to extract system include directives
 class PreprocessinatorLineMarkerIncludesExtractor
-  LINE_MARKER_REGEX = /^#\s+(\d+)\s+"([^"]+)"(?:\s+(\d+(?:\s+\d+)*))?$/
+  LINE_MARKER_REGEX = /^#\s+(\d+)\s+"([^"]+)"(?:\s+(\d+(?:\s+\d+)*))?$/ unless const_defined?(:LINE_MARKER_REGEX)
 
-  SYSTEM = :system
-  USER   = :user
+  SYSTEM = :system  unless const_defined?(:SYSTEM)
+  USER   = :user    unless const_defined?(:USER)
 
   constructor :include_factory
 

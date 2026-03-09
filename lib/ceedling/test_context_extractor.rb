@@ -15,11 +15,11 @@ class TestContextExtractor
 
   # Context extraction options
   module Context
-    BUILD_DIRECTIVE_INCLUDE_PATHS = :build_directive_include_paths
-    BUILD_DIRECTIVE_SOURCE_FILES  = :build_directive_source_files
-    INCLUDES                      = :includes
-    TEST_RUNNER_DETAILS           = :test_runner_details
-    PARTIALS_CONFIGURATION        = :partials_configuration
+    BUILD_DIRECTIVE_INCLUDE_PATHS = :build_directive_include_paths unless const_defined?(:BUILD_DIRECTIVE_INCLUDE_PATHS)
+    BUILD_DIRECTIVE_SOURCE_FILES  = :build_directive_source_files  unless const_defined?(:BUILD_DIRECTIVE_SOURCE_FILES)
+    INCLUDES                      = :includes                      unless const_defined?(:INCLUDES)
+    TEST_RUNNER_DETAILS           = :test_runner_details           unless const_defined?(:TEST_RUNNER_DETAILS)
+    PARTIALS_CONFIGURATION        = :partials_configuration        unless const_defined?(:PARTIALS_CONFIGURATION)
     
     ALL = [
       BUILD_DIRECTIVE_INCLUDE_PATHS,
@@ -27,7 +27,7 @@ class TestContextExtractor
       INCLUDES,
       TEST_RUNNER_DETAILS,
       PARTIALS_CONFIGURATION
-    ].freeze
+    ].freeze unless const_defined?(:ALL)
   end
 
   constructor :configurator, :parsing_parcels, :include_factory, :file_path_utils, :file_wrapper, :loginator
