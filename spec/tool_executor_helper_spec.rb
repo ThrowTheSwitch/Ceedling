@@ -106,11 +106,11 @@ describe ToolExecutorHelper do
         @shell_result[:stderr] = ''
         @shell_result[:stdout] = ''
 
-        message = "\n" +
-          "> Shell executed command:\n" +
+        message =
+          "> Shell executed::\n" +
           "`gcc ab.c`\n" +
-          "> With $stdout: <empty>\n" +
-          "> With $stderr: <empty>\n" +
+          "> With $stdout:: <empty>\n" +
+          "> With $stderr:: <empty>\n" +
           "> And terminated with status: <status>\n\n\n"
 
         expect(@loginator).to receive(:log).with(message, Verbosity::DEBUG)
@@ -122,11 +122,11 @@ describe ToolExecutorHelper do
         @shell_result[:stderr] = "error output\n\n\n"
         @shell_result[:stdout] = ''
 
-        message = "\n" +
-          "> Shell executed command:\n" +
+        message =
+          "> Shell executed::\n" +
           "`test.exe`\n" +
-          "> With $stdout: <empty>\n" +
-          "> With $stderr: \nerror output\n" +
+          "> With $stdout:: <empty>\n" +
+          "> With $stderr:: \nerror output\n" +
           "> And terminated with status: <status>\n\n\n"
 
         expect(@loginator).to receive(:log).with(message, Verbosity::DEBUG)
@@ -138,11 +138,11 @@ describe ToolExecutorHelper do
         @shell_result[:stderr] = ''
         @shell_result[:stdout] = "output\n\n\n"
 
-        message = "\n" +
-          "> Shell executed command:\n" +
+        message =
+          "> Shell executed::\n" +
           "`utility --flag`\n" +
-          "> With $stdout: \noutput\n" +
-          "> With $stderr: <empty>\n" +
+          "> With $stdout:: \noutput\n" +
+          "> With $stderr:: <empty>\n" +
           "> And terminated with status: <status>\n\n\n"
 
         expect(@loginator).to receive(:log).with(message, Verbosity::DEBUG)
@@ -162,8 +162,8 @@ describe ToolExecutorHelper do
         @shell_result[:output] = ''
         @shell_result[:exit_code] = nil
 
-        message = "\n" +
-          "> Shell executed command:\n" +
+        message =
+          "> Shell executed::\n" +
           "`gcc ab.c`\n" +
           "> And exited prematurely\n\n\n"
 
@@ -176,10 +176,9 @@ describe ToolExecutorHelper do
         @shell_result[:output] = 'some output'
         @shell_result[:exit_code] = 0
 
-        message = "\n" +
-          "> Shell executed command:\n" +
+        message =
+          "> Shell executed::\n" +
           "`test.exe --a_flag`\n" +
-          "> Produced output: \nsome output\n" +
           "> And terminated with exit code: [0]\n\n\n"
 
         expect(@loginator).to receive(:log).with(message, Verbosity::OBNOXIOUS)
@@ -191,10 +190,9 @@ describe ToolExecutorHelper do
         @shell_result[:output] = 'some more output'
         @shell_result[:exit_code] = 37
 
-        message = "\n" +
-          "> Shell executed command:\n" +
+        message =
+          "> Shell executed::\n" +
           "`utility.out args`\n" +
-          "> Produced output: \nsome more output\n" +
           "> And terminated with exit code: [37]\n\n\n"
 
         expect(@loginator).to receive(:log).with(message, Verbosity::OBNOXIOUS)
