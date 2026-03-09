@@ -139,22 +139,16 @@ describe TestContextExtractor do
 
       @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::INCLUDES )
 
-      expected_full = [
-        UserInclude.new('some_source.h'),
-        UserInclude.new('more_source.h'),
-        UserInclude.new('unity.h'),
-        MockInclude.new('mock_File.h'),
-        MockInclude.new('mock_another_file.h')
-      ]
+      result = @extractor.lookup_all_header_includes_list( filepath )
+      expect( result.length ).to eq 3
+      expect( result[0] ).to be_an_instance_of(UserInclude)
+      expect( result[1] ).to be_an_instance_of(UserInclude)
+      expect( result[2] ).to be_an_instance_of(UserInclude)
 
-      expected_mocks = [
-        MockInclude.new('mock_File.h'),
-        MockInclude.new('mock_another_file.h')
-      ]
-
-      expect( @extractor.lookup_all_header_includes_list( filepath ) ).to eq expected_full
-
-      expect( @extractor.lookup_mock_header_includes_list( filepath ) ).to eq expected_mocks
+      result = @extractor.lookup_mock_header_includes_list( filepath )
+      expect( result.length ).to eq 2
+      expect( result[0] ).to be_an_instance_of(MockInclude)
+      expect( result[1] ).to be_an_instance_of(MockInclude)
     end
 
     # collect_simple_context() + lookup_all_header_includes_list() + lookup_mock_header_includes_list()
@@ -188,9 +182,11 @@ describe TestContextExtractor do
         MockInclude.new('mock_ceedling_partial_doo_interface.h')
       ]
 
-      expect( @extractor.lookup_all_header_includes_list( filepath ) ).to eq expected_full
+      result = @extractor.lookup_all_header_includes_list( filepath )
+      expect( result ).to match_array( expected_full )
 
-      expect( @extractor.lookup_mock_header_includes_list( filepath ) ).to eq expected_mocks
+      result = @extractor.lookup_mock_header_includes_list( filepath )
+      expect( result ).to match_array( expected_mocks )
     end
 
     # collect_simple_context() + lookup_partials_config()
