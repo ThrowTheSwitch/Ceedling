@@ -8,10 +8,10 @@
 
 module Partials
   # Constants
-  TEST_PUBLIC  = :test_public
-  TEST_PRIVATE = :test_private
-  MOCK_PUBLIC  = :mock_public
-  MOCK_PRIVATE = :mock_private
+  TEST_PUBLIC  = :test_public   unless const_defined?(:TEST_PUBLIC)
+  TEST_PRIVATE = :test_private  unless const_defined?(:TEST_PRIVATE)
+  MOCK_PUBLIC  = :mock_public   unless const_defined?(:MOCK_PUBLIC)
+  MOCK_PRIVATE = :mock_private  unless const_defined?(:MOCK_PRIVATE)
 
   # Data class representing a source or header file to be partialized
   ConfigFileInfo = Struct.new(:filepath, :preprocessed_filepath, :includes, keyword_init: true) do
