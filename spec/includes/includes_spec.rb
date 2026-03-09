@@ -382,10 +382,10 @@ describe "Includes sorting" do
       
       Includes.sort!(includes)
       
-      expect(result.length).to eq(3)
-      expect(result[0]).to be_a(SystemInclude)
-      expect(result[1]).to be_a(SystemInclude)
-      expect(result[2]).to be_a(SystemInclude)
+      expect(includes.length).to eq(3)
+      expect(includes[0]).to be_a(SystemInclude)
+      expect(includes[1]).to be_a(SystemInclude)
+      expect(includes[2]).to be_a(SystemInclude)
     end
 
     it "handles array with only UserInclude objects" do
@@ -397,10 +397,10 @@ describe "Includes sorting" do
       
       Includes.sort!(includes)
       
-      expect(result.length).to eq(3)
-      expect(result[0]).to be_a(UserInclude)
-      expect(result[1]).to be_a(UserInclude)
-      expect(result[2]).to be_a(UserInclude)
+      expect(includes.length).to eq(3)
+      expect(includes[0]).to be_a(UserInclude)
+      expect(includes[1]).to be_a(UserInclude)
+      expect(includes[2]).to be_a(UserInclude)
     end
 
     it "handles empty array" do

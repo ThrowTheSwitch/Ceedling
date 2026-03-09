@@ -140,15 +140,24 @@ describe TestContextExtractor do
       @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::INCLUDES )
 
       result = @extractor.lookup_all_header_includes_list( filepath )
-      expect( result.length ).to eq 3
-      expect( result[0] ).to be_an_instance_of(UserInclude)
-      expect( result[1] ).to be_an_instance_of(UserInclude)
-      expect( result[2] ).to be_an_instance_of(UserInclude)
+      expect( result.length ).to eq 5
+      expect( result ).to match_array(
+        [
+          UserInclude.new('some_source.h'),
+          UserInclude.new('more_source.h'),
+          UserInclude.new('unity.h'),
+          MockInclude.new('mock_File.h'),
+          MockInclude.new('mock_another_file.h'),
+        ]
+      )
 
       result = @extractor.lookup_mock_header_includes_list( filepath )
-      expect( result.length ).to eq 2
-      expect( result[0] ).to be_an_instance_of(MockInclude)
-      expect( result[1] ).to be_an_instance_of(MockInclude)
+      expect( result ).to match_array(
+        [
+          MockInclude.new('mock_File.h'),
+          MockInclude.new('mock_another_file.h'),
+        ]
+      )
     end
 
     # collect_simple_context() + lookup_all_header_includes_list() + lookup_mock_header_includes_list()
