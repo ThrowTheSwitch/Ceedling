@@ -48,11 +48,11 @@ class TestContextExtractor
   end
 
   # Reads through a file's content line by line to extract relevant information by context.
-  # `content_filepath` is the file to be read.
+  # `content_filepath` is the file to be read (could be preprocessed version of test file).
   # `source_fileapth` is the test filepath to use for results storage and lookup.
   # `*args` is a list of context symbols.
   # If `source_filepath` is not provided, then `content_filepath` is used for results storage and lookup.
-  def collect_simple_context_from_file( content_filepath, source_filepath=nil, *args )
+  def collect_simple_context_from_file( content_filepath, source_filepath, *args )
     # Load content_filepath
     @file_wrapper.open( content_filepath, 'r' ) do |input|
       collect_simple_context(
@@ -80,22 +80,22 @@ class TestContextExtractor
     partials_config = []
 
     @parsing_parcels.code_lines( input ) do |line|
-      if args.include?( :build_directive_include_paths )
+      if args.include?( Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
         # Scan for build directives: TEST_INCLUDE_PATH()
         include_paths += extract_build_directive_include_paths( line )
       end
 
-      if args.include?( :build_directive_source_files )
+      if args.include?( Context::BUILD_DIRECTIVE_SOURCE_FILES )
         # Scan for build directives: TEST_SOURCE_FILE()
         source_extras += extract_build_directive_source_files( line )
       end
 
-      if args.include?( :includes )
+      if args.include?( Context::INCLUDES )
         # Scan for contents of #include directives
         includes += _extract_includes( line )
       end
 
-      if args.include?( :partials_configuration )
+      if args.include?( Context::PARTIALS_CONFIGURATION )
         # Scan for Partials directive macros
         partials_config += _extract_partials_config( line )
       end
@@ -107,7 +107,7 @@ class TestContextExtractor
     collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
 
     # Different code processing pattern for test runner
-    if args.include?( :test_runner_details )
+    if args.include?( Context::TEST_RUNNER_DETAILS )
       # Go back to beginning of IO object for a full string extraction
       input.rewind()
 

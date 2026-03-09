@@ -142,7 +142,7 @@ class TestInvoker
           end
 
           # Collect test context using text scanning (no preprocessing involved here)
-          @context_extractor.collect_simple_context_from_file( filepath, *contexts )
+          @context_extractor.collect_simple_context_from_file( filepath, nil, *contexts )
         end
 
         # Validate paths via TEST_INCLUDE_PATH() & augment header file collection from the same
@@ -805,8 +805,8 @@ class TestInvoker
           # reconstructed preprocessed test file.
           # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them.
           @context_extractor.collect_simple_context_from_file(
-            _filepath, # Preprpocessed content
-            filepath,  # Actial test file
+            _filepath, # Preprpocessed test filepath
+            filepath,  # Actual test filepath
             TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
           )
 
