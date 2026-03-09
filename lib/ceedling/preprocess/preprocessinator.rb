@@ -76,6 +76,8 @@ class Preprocessinator
 
     # Preprocessor did not succeed
     if results[:exit_code] != 0
+      msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
+      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::ERROR )
       return nil
     end
 
@@ -197,6 +199,13 @@ class Preprocessinator
       vendor_paths:,
       defines:
   )
+    msg = @reportinator.generate_module_progress(
+      operation: 'Preprocessing header file for follow-on Partials handling',
+      module_name: test,
+      filename: File.basename( filepath )
+    )
+    @loginator.log( msg )
+
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     arg_hash = {
@@ -253,6 +262,13 @@ class Preprocessinator
       vendor_paths:,
       defines:
   )
+    msg = @reportinator.generate_module_progress(
+      operation: 'Preprocessing header file for follow-on mock handling',
+      module_name: test,
+      filename: File.basename( filepath )
+    )
+    @loginator.log( msg )
+
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     plugin_arg_hash = {
@@ -328,6 +344,13 @@ class Preprocessinator
       vendor_paths:,
       defines:
   )
+    msg = @reportinator.generate_module_progress(
+      operation: 'Preprocessing source file for follow-on Partials handling',
+      module_name: test,
+      filename: File.basename( filepath )
+    )
+    @loginator.log( msg )
+
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     arg_hash = {
@@ -382,6 +405,13 @@ class Preprocessinator
       vendor_paths:,
       defines:
     )
+    msg = @reportinator.generate_module_progress(
+      operation: 'Preprocessing test file',
+      module_name: test,
+      filename: File.basename( filepath )
+    )
+    @loginator.log( msg )
+
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
     plugin_arg_hash = {
@@ -443,11 +473,11 @@ class Preprocessinator
       defines:
   )
     msg = @reportinator.generate_module_progress(
-      operation: "Preprocessing",
+      operation: "Extracting includes",
       module_name: test,
       filename: File.basename(filepath)
     )
-    @loginator.log( msg, Verbosity::NORMAL )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     includes = []
     success, includes = load_includes_list( test: test, filepath: filepath )
