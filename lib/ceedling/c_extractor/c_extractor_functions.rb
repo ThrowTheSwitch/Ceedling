@@ -14,10 +14,20 @@ class CExtractorFunctions
     :body,            # Function body including containing braces
     :code_block,      # Complete function text (signature + body)
     :line_count,      # Total number of lines in code_block
+    :source_filepath, # Source C filepath
+    :line_num,        # Line number in source C file
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to nil for convenience
-    def initialize(name: nil, signature: nil, body: nil, code_block: nil, line_count: 0)
+    def initialize(
+      name: nil,
+      signature: nil,
+      body: nil,
+      code_block: nil,
+      line_count: 0,
+      source_filepath: nil,
+      line_num: nil
+      )
       super
     end
   end
@@ -29,8 +39,6 @@ class CExtractorFunctions
   end
 
   def try_extract_function_declaration(scanner)
-    start_pos = scanner.pos
-
     # Look for function signature
     signature = extract_function_signature(scanner, :declaration)        
     return [true, signature] if signature
@@ -42,7 +50,7 @@ class CExtractorFunctions
   # Returns [success, function_data] where:
   #  - success: boolean indicating if extraction was successful
   #  - function_data: CFunctionDefinition with as much info as available (may be partial on failure)
-  def try_extract_function_definition(scanner)
+  def try_extract_function_definition(scanner, filepath)
     start_pos = scanner.pos
 
     # Look for function signature
@@ -54,7 +62,8 @@ class CExtractorFunctions
     unless scanner.peek(1) == '{'
       return [false, CFunctionDefinition.new(
         name: extract_function_name(signature),
-        signature: signature
+        signature: signature,
+        filepath: filepath
       )]
     end
     
@@ -64,6 +73,7 @@ class CExtractorFunctions
       return [false, CFunctionDefinition.new(
         name: extract_function_name(signature),
         signature: signature,
+        source_filepath: filepath,
         code_block: scanner.string[start_pos...scanner.pos]
       )]
     end
@@ -75,6 +85,7 @@ class CExtractorFunctions
     func = CFunctionDefinition.new(
       name: extract_function_name(signature),
       signature: signature,
+      source_filepath: filepath,
       body: braced_body,
       code_block: code_block,
       line_count: code_block.count("\n") + 1
