@@ -70,6 +70,7 @@ class CExtractor
 
     return new(
       io: file,
+      filepath: filepath,
       chunk_size: DEFAULT_CHUNK_SIZE,
       max_buffer_length: DEFAULT_MAX_FUNCTION_LENGTH,
       max_line_length: DEFAULT_MAX_LINE_LENGTH
@@ -112,14 +113,16 @@ class CExtractor
   )
     return new(
       io: StringIO.new(content),
+      filepath: nil,
       chunk_size: chunk_size,
       max_buffer_length: max_buffer_length,
       max_line_length: max_line_length
     )
   end
   
-  def initialize(io:, chunk_size:, max_buffer_length:, max_line_length:)
+  def initialize(io:, filepath:, chunk_size:, max_buffer_length:, max_line_length:)
     @io = io
+    @filepath = filepath
     @chunk_size = chunk_size
     @max_buffer_length = max_buffer_length
     @max_line_length = max_line_length
@@ -164,7 +167,8 @@ class CExtractor
       func = extract_next_feature(
         io: @io,
         max_length: @max_buffer_length,
-        extractor: @functions.method(:try_extract_function_definition)
+        extractor: @functions.method(:try_extract_function_definition),
+        params: [@filepath]
       )
       if func
         function_definitions << func
@@ -225,7 +229,7 @@ class CExtractor
   # Side effects:
   #  On success: Advance IO position to immediately after the extracted feature.
   #  On failure: Rewind IO position to the start of the current buffer.
-  def extract_next_feature(io:, max_length:, extractor:)
+  def extract_next_feature(io:, max_length:, extractor:, params: [])
     buffer = ""
     chunk_start_pos = io.pos
     
@@ -266,7 +270,7 @@ class CExtractor
       next if scanner.eos?
 
       # Try extract complete feature using provided extractor
-      success, feature = extractor.call(scanner)
+      success, feature = extractor.call(scanner, *params)
 
       if success
         # Consume any trailing semicolons that may follow the extracted feature.
