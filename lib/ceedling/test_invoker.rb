@@ -541,7 +541,7 @@ class TestInvoker
         end
       } if @configurator.project_use_partials
       
-      # Generate partials for all tests
+      # Generate Partials for all tests
       @batchinator.build_step("Partials") {
         # Collect partials for parallel processing
         partials = []
@@ -556,16 +556,14 @@ class TestInvoker
         @batchinator.exec(workload: :compile, things: partials) do |partial| 
           config = partial[:config]
           testable = partial[:testable]
+          name = testable[:name]
 
-          module_contents = @partializer.extract_module_contents(
-            header_filepath: config.header.preprocessed_filepath,
-            source_filepath: config.source.preprocessed_filepath
-          )
+          module_contents = @partializer.extract_module_contents( name, config )
 
-          impl, interface = @partializer.reconstruct_functions(contents: module_contents, types: config.types)
+          impl, interface = @partializer.reconstruct_functions(contents: module_contents, config: config)
 
           @partializer.log_extracted_functions(
-            test:           testable[:name],
+            test:           name,
             module_name:    config.module,
             impl:           impl,
             interface:      interface
@@ -575,19 +573,19 @@ class TestInvoker
 
           @partializer.log_extracted_variable_decls(
             label:          'Header',
-            test:           testable[:name],
+            test:           name,
             module_name:    config.module,
             decls:          header_variables
           )
           @partializer.log_extracted_variable_decls(
             label:          'Source',
-            test:           testable[:name],
+            test:           name,
             module_name:    config.module,
             decls:          source_variables
           )
 
           arg_hash = {
-            test:             testable[:name],
+            test:             name,
             name:             config[:module],
             function_defns:   impl,
             header_variables: header_variables,
