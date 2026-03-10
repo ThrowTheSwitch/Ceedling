@@ -93,28 +93,105 @@ class Partializer
     return sanitize_includes(name: name, includes: _includes)
   end
 
-  def extract_module_contents(header_filepath:, source_filepath:)
+  # Extracts and combines C code contents from header and source files
+  #
+  # This method uses CExtractor to parse C files and extract their contents including
+  # function definitions, function declarations, and variable declarations. If both
+  # header and source files are provided, their contents are merged into a single
+  # CModule structure.
+  #
+  # @param header_filepath [String, nil] Path to the header file to extract from.
+  #   If nil, no header content is extracted.
+  # @param source_filepath [String, nil] Path to the source file to extract from.
+  #   If nil, no source content is extracted.
+  #
+  # @return [CExtractor::CModule] A merged CModule containing all extracted contents
+  #   from both files. The structure includes:
+  #   - function_definitions: Array of function definitions with full implementations
+  #   - function_declarations: Array of function declarations (prototypes)
+  #   - variable_declarations: Array of variable declarations
+  #
+  # @note The method always starts with an empty CModule and merges in contents
+  #   from any provided files using the CModule's + operator for combining structures.
+  def extract_module_contents(name, config)
     # Array for CModule structs
     contents = [CExtractor::CModule.new()]
 
-    if header_filepath
-      contents << CExtractor.from_file(header_filepath).extract_contents()
+    if config.header.preprocessed_filepath
+      c_module = CExtractor.from_file( config.header.preprocessed_filepath ).extract_contents()
+
+      # Align extracted function definitions with line markers in preprocessor output.
+      # This perfectly remaps functions found in expanded preprocessor output with 
+      # original source location.
+      @helper.associate_function_line_numbers(
+        name: name,
+        funcs: c_module.function_definitions,
+        filepath: config.header.filepath
+      )
+
+      # We cannot tidy up our functions until we've used them unmodified to locate 
+      # them in preprocessor output
+      @helper.tidy_functions( c_module.function_definitions )
+
+      contents << c_module
     end
 
-    if source_filepath
-      contents << CExtractor.from_file(source_filepath).extract_contents()
+    if config.source.preprocessed_filepath
+      c_module = CExtractor.from_file( config.source.preprocessed_filepath ).extract_contents()
+
+      # Align extracted function definitions with line markers in preprocessor output.
+      # This perfectly remaps functions found in expanded preprocessor output with 
+      # original source location.
+      @helper.associate_function_line_numbers(
+        name: name,
+        funcs: c_module.function_definitions,
+        filepath: config.source.filepath
+      )
+
+      # We cannot tidy up our functions until we've used them unmodified to locate 
+      # them in preprocessor output
+      @helper.tidy_functions( c_module.function_definitions )
+
+      contents << c_module
     end    
 
     return contents.reduce(&:+)
   end
 
-  # Returns FunctionDefinition[], FunctionDeclaration[] for consumption by `GeneratorPartials`
-  # TODO: Handle source paths and line numbers for coverage reporting
-  def reconstruct_functions(contents:, types:)    
+  # Reconstructs function lists for partial implementation and interface generation
+  #
+  # This method processes extracted C module contents and separates functions into
+  # two categories based on the partial configuration:
+  # 1. Implementation functions - for testable partial implementations
+  # 2. Interface functions - for mockable partial interfaces
+  #
+  # The method filters functions by visibility (public/private) and transforms them
+  # into the appropriate format for code generation.
+  #
+  # @param contents [CExtractor::CModule] The extracted C module contents containing
+  #   function definitions, declarations, and other code elements
+  # @param config [PartialConfig] Configuration object specifying which partial types
+  #   to generate. The config.types array may contain:
+  #   - Partials::TEST_PUBLIC - Include public functions in implementation
+  #   - Partials::TEST_PRIVATE - Include private functions in implementation
+  #   - Partials::MOCK_PUBLIC - Include public functions in interface
+  #   - Partials::MOCK_PRIVATE - Include private functions in interface
+  #
+  # @return [Array<(Array<FunctionDefinition>, Array<FunctionDeclaration>)>] for 
+  #   consumption by `GeneratorPartials`.
+  #   A two-element array containing:
+  #   - impl: Array of FunctionDefinition objects for the partial implementation
+  #   - interface: Array of FunctionDeclaration objects for the partial interface
+  #
+  # @raise [RuntimeError] If an unknown partial type is encountered in config.types
+  #
+  # @note The helper methods filter_and_transform_funcs handle the actual filtering
+  #   by visibility and transformation between definition and declaration formats
+  def reconstruct_functions(contents:, config:)    
     impl = []
     interface = []
 
-    types.each do |type|
+    config.types.each do |type|
       case type
       when Partials::TEST_PUBLIC
         impl += @helper.filter_and_transform_funcs(contents.function_definitions, :public, :impl)
@@ -128,6 +205,10 @@ class Partializer
         PartializerRuntime.raise_on_option(type)
       end
     end
+
+    # Discover line numbers in source files and associate them with functions in array of FunctionDefinitions.
+    # This links the original functions with the content from preprocessed source files.
+    # @helper.associate_function_line_numbers(funcs: impl, config: config)
 
     return impl, interface
   end

@@ -29,13 +29,18 @@ class PartializerUtils
     case output_type
     when :impl
       Partials.manufacture_function_definition(
+        name: func.name,
         signature: signature,
+        source_filepath: func.source_filepath,
+        line_num: func.line_num,
         # Extract code block as beginning with the signature to end of original code block.
-        # This omits any decorators before signature in original code_block and preserves original function indentation and newlines.
+        # This omits any decorators before signature in original code_block and preserves 
+        # original whitespace (i.e. indentation & newlines including connecting signature to body).
         code_block: extract_code_block(func.code_block, signature)
       )
     when :interface
       Partials.manufacture_function_declaration(
+        name: func.name,
         signature: signature
       )
     else

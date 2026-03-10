@@ -310,6 +310,8 @@ preprocessinator_reconstructor:
   compose:
     - parsing_parcels
 
+preprocessinator_code_finder:
+
 partializer_parser:
 
 partializer_utils:
@@ -319,6 +321,8 @@ partializer_helper:
     - partializer_utils
     - partializer_parser
     - file_finder
+    - preprocessinator_code_finder
+    - file_path_utils
 
 partializer:
   compose:
