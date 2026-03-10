@@ -101,57 +101,42 @@ class PreprocessinatorFileAssembler
 
 
   def assemble_preprocessed_header_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
-    _contents = []
-
-    # Add #include guards for header files
-    # Note: These aren't truly needed as preprocessed header files are only ingested by CMock.
-    #       They're created for sake of completeness and just in case...
-    # ----------------------------------------------------
-    # abc-XYZ.h --> _ABC_XYZ_H_
+    # Generate #include guard name for header files
     guardname = FileWrapper.generate_include_guard( filename )
 
-    forward_guards = [
-      "#ifndef #{guardname} // Ceedling-generated include guard",
-      "#define #{guardname}",
-      ''
-    ]
+    # Write contents of final preprocessed file a line at a time
+    # ----------------------------------------------------------
+    @file_wrapper.open( preprocessed_filepath, 'w' ) do |file|
+      # Add include guards and extra blank lines to beginning of file contents
+      file << "#ifndef #{guardname} // Ceedling-generated include guard\n"
+      file << "#define #{guardname}\n\n"
 
-    # Add guards to beginning of file contents
-    _contents += forward_guards
-
-    # Blank line
-    _contents << ''
-
-    # Reinsert #include statements into stripped down file
-    includes.each{ |include| _contents << "#{include}" }
-
-    # Blank line
-    _contents << ''
-
-    # Add in any macro defintions or prgamas
-    extras.each do |ex|
-      if ex.class == String
-        _contents << ex
-
-      elsif ex.class == Array
-        _contents += ex
-      end
+      # Reinsert #include statements into stripped down file
+      # Rely on Include object stringification for formatting of incudes
+      includes.each { |include| file << "#{include}\n" }
 
       # Blank line
-      _contents << ''
+      file << "\n" unless includes.empty?
+
+      # Add in any macro defintions or prgamas
+      extras.each do |ex|
+        if ex.class == String
+          file << ex + "\n"
+
+        elsif ex.class == Array
+          ex.each { |line| file << line + "\n" }
+        end
+
+        # Blank line
+        file << "\n"
+      end
+
+      # Add extracted contents from preprocessed file
+      contents.each { |line| file << line + "\n" }
+
+      # Add final rear guard with extra blank lines
+      file << "\n#endif // #{guardname}\n"
     end
-
-    _contents += contents
-
-    _contents += ['', "#endif // #{guardname}", '']  # Rear guard
-
-    # Write file, collapsing any repeated blank lines
-    # ----------------------------------------------------    
-    _contents = _contents.join("\n")
-    _contents.gsub!( /(\h*\n){3,}/, "\n\n" )
-
-    # Write contents of final preprocessed file
-    @file_wrapper.write( preprocessed_filepath, _contents )
   end
 
 
@@ -243,33 +228,28 @@ class PreprocessinatorFileAssembler
   end
 
   def assemble_preprocessed_code_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
-    _contents = []
+    # Write contents of final preprocessed file a line at a time
+    # ----------------------------------------------------------
+    @file_wrapper.open( preprocessed_filepath, 'w' ) do |file|
+      # Reinsert #include statements into stripped down file
+      # Rely on Include object stringification for formatting of incudes
+      includes.each { |include| file << "#{include}\n" }
 
-    # Reinsert #include statements into stripped down file
-    includes.each{ |include| _contents << "#{include}" }
+      # Blank line
+      file << "\n" unless includes.empty?
 
-    # Blank line
-    _contents << ''
+      # Add in any extras like test directive macros
+      extras.each { |ex| file << ex + "\n" }
 
-    # Add in test directive macro calls
-    extras.each {|ex| _contents << ex}
+      # Blank line
+      file << "\n" unless extras.empty?
 
-    # Blank line
-    _contents << ''
+      # Add extracted contents from preprocessed file
+      contents.each { |line| file << line + "\n" }
 
-    _contents += contents
-
-    # Write file, doing some prettyifying along the way
-    # ----------------------------------------------------    
-    _contents = _contents.join("\n")
-    _contents.gsub!( /^\s*;/, '' )            # Drop blank lines with semicolons left over from macro expansion + unnecessary trailing semicolon
-    _contents.gsub!( /\)(\n){2,}\{/, ")\n{" ) # Collapse any unnecessary newlines between closing paren and opening function bracket
-    _contents.gsub!( /\{(\n){2,}/, "{\n" )    # Collapse any unnecessary newlines between opening function bracket and code
-    _contents.gsub!( /(\n){2,}\}/, "\n}" )    # Collapse any unnecessary newlines between code and closing function bracket
-    _contents.gsub!( /(\h*\n){3,}/, "\n\n" )  # Collapse repeated blank lines
-
-    # Write contents of final preprocessed file
-    @file_wrapper.write( preprocessed_filepath, _contents )
+      # Blank line
+      file << "\n" unless contents.empty?
+    end
   end
 
 end
