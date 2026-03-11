@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/generator_partials'
+require 'ceedling/generators/generator_partials'
 require 'ceedling/partials/partials'
 require 'ceedling/includes/includes'
 require 'stringio'
@@ -62,6 +62,7 @@ describe GeneratorPartials do
       # Define test data
       defns = [
         Partials.manufacture_function_definition(
+          name: 'initialize',
           signature: 'void initialize(void)',
           code_block: "void initialize(void) {\n  // implementation\n}"
         )
@@ -137,6 +138,7 @@ describe GeneratorPartials do
       # Define test data
       decls = [
         Partials.manufacture_function_declaration(
+          name: 'initilalize',
           signature: 'void initialize(void)'
         )
       ]
@@ -256,10 +258,12 @@ describe GeneratorPartials do
       decls = []
 
       decls << Partials.manufacture_function_declaration(
+        name: 'foobarbaz',
         signature: 'void foobarbaz(int x, int y)'
       )
 
       decls << Partials.manufacture_function_declaration(
+        name: 'razzleDazzle',
         signature: 'int razzleDazzle(void* ptr)'
       )
 
@@ -322,6 +326,7 @@ describe GeneratorPartials do
       defns = []
 
       defns << Partials.manufacture_function_definition(
+        name: 'foobar',
         signature: 'void foobar(int x, int y)',
         code_block: "void foobar(int x, int y) {\n  int z = x+y;\n}"
       )
@@ -348,6 +353,7 @@ describe GeneratorPartials do
       defns = []
 
       defns << Partials.manufacture_function_definition(
+        name: 'fobar',
         signature: 'void foobar(int x, int y)',
         code_block: "void foobar(int x, int y) {\n  int z = x+y;\n}"
       )
@@ -389,6 +395,7 @@ describe GeneratorPartials do
       defns << Partials.manufacture_function_definition(
         line_num: 9,
         source_filepath: '../foo/bar/fubar.c',
+        name: 'foobarbaz',
         signature: 'void foobarbaz(int x, int y)',
         code_block: "void foobarbaz(int x, int y) {\n  int z = x+y;\n}"
       )
@@ -396,6 +403,7 @@ describe GeneratorPartials do
       defns << Partials.manufacture_function_definition(
         line_num: 123,
         source_filepath: 'src/code/ABC.c',
+        name: 'razzleDazzle',
         signature: 'int razzleDazzle(void* ptr)',
         code_block: "int\nrazzleDazzle(void* ptr)\n{\n  global_var = ptr;\n  return 42;\n}"
       )
