@@ -270,13 +270,9 @@ class TestInvokerHelper
       sources << @file_finder.find_build_input_file(filepath: include.filename, complain: :ignore, context: context)
     end
 
-    # Only add the sources for our partials if this is a coverage build.
-    # We need to compile those sources with coverage for reporting.
-    # We can save on some compilation if it's not a coverage build.
-    if context == GCOV_SYM
-      partials_configs.each do |_module, _|
-        sources << @file_finder.find_build_input_file(filepath: _module, complain: :ignore, context: context)      
-      end
+    # TODO: Conditionally add these sources when there's a well-managed means to query a coverage build
+    partials_configs.each do |_module, _|
+      sources << @file_finder.find_build_input_file(filepath: _module, complain: :ignore, context: context)      
     end
 
     # Remove any nil or duplicate entries in list
