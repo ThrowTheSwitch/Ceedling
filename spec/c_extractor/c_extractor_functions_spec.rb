@@ -1465,13 +1465,13 @@ describe CExtractorFunctions do
   describe "#try_extract_function_definition" do
     # Helper to access private method and extract function from content
     let(:try_extract) do
-      ->(content) do
+      ->(content, filepath='/path/to/source.c') do
         scanner = StringScanner.new(content)
         functions = CExtractorFunctions.new(
           CExtractorCodeText.new(),
           1000
         )
-        success, func = functions.try_extract_function_definition( scanner )
+        success, func = functions.try_extract_function_definition( scanner, filepath )
         return [success, func, scanner.pos, scanner.rest]
       end
     end
@@ -1480,15 +1480,24 @@ describe CExtractorFunctions do
       it "extracts simple void function" do
         content = "void foo(void) { int a = 1; }"
         success, func, pos, rest = try_extract.call(content)
-        
+
         expect(success).to be true
         expect(func.name).to eq("foo")
         expect(func.signature).to eq("void foo(void)")
         expect(func.body).to eq("{ int a = 1; }")
         expect(func.code_block).to eq(content)
         expect(func.line_count).to eq(1)
+        expect(func.source_filepath).to eq('/path/to/source.c')
         expect(pos).to eq(content.length)
         expect(rest).to eq("")
+      end
+
+      it "assigns source_filepath from filepath argument" do
+        content = "void foo(void) { return; }"
+        success, func, _, _ = try_extract.call(content, '/custom/path/module.c')
+
+        expect(success).to be true
+        expect(func.source_filepath).to eq('/custom/path/module.c')
       end
 
       it "extracts function with return value" do
@@ -2008,22 +2017,25 @@ describe CExtractorFunctions do
     context "extracting multiple functions from same content" do
       it "extracts two simple functions in sequence" do
         content = "void first(void) { int a = 1; }\nvoid second(void) { int b = 2; }"
+        filepath = '/path/to/source.c'
         scanner = StringScanner.new(content)
         functions = CExtractorFunctions.new(
           CExtractorCodeText.new(),
           1000
         )
-        
-        success1, func1 = functions.try_extract_function_definition(scanner)
+
+        success1, func1 = functions.try_extract_function_definition(scanner, filepath)
         expect(success1).to be true
         expect(func1.name).to eq("first")
         expect(func1.body).to eq("{ int a = 1; }")
-                
-        success2, func2 = functions.try_extract_function_definition(scanner)
+        expect(func1.source_filepath).to eq(filepath)
+
+        success2, func2 = functions.try_extract_function_definition(scanner, filepath)
         expect(success2).to be true
         expect(func2.name).to eq("second")
         expect(func2.body).to eq("{ int b = 2; }")
-        
+        expect(func2.source_filepath).to eq(filepath)
+
         expect(scanner.eos?).to be true
       end
 
@@ -2036,25 +2048,28 @@ describe CExtractorFunctions do
         static inline bool check(void) { return true; }
 
         CONTENT
-        
+        filepath = '/path/to/source.c'
         scanner = StringScanner.new(content)
         code_text = CExtractorCodeText.new()
         functions = CExtractorFunctions.new( code_text, 1000 )
-        
-        success1, func1 = functions.try_extract_function_definition(scanner)
+
+        success1, func1 = functions.try_extract_function_definition(scanner, filepath)
         expect(success1).to be true
         expect(func1.name).to eq("add")
         expect(func1.signature).to eq("int add(int a, int b)")
-                
-        success2, func2 = functions.try_extract_function_definition(scanner)
+        expect(func1.source_filepath).to eq(filepath)
+
+        success2, func2 = functions.try_extract_function_definition(scanner, filepath)
         expect(success2).to be true
         expect(func2.name).to eq("print")
         expect(func2.signature).to eq("void print(const char* msg)")
-                
-        success3, func3 = functions.try_extract_function_definition(scanner)
+        expect(func2.source_filepath).to eq(filepath)
+
+        success3, func3 = functions.try_extract_function_definition(scanner, filepath)
         expect(success3).to be true
         expect(func3.name).to eq("check")
         expect(func3.signature).to eq("static inline bool check(void)")
+        expect(func3.source_filepath).to eq(filepath)
 
         code_text.skip_deadspace(scanner)
 
@@ -2071,24 +2086,27 @@ describe CExtractorFunctions do
          */
         void third(void) { final_work(); }
         CONTENT
-        
+        filepath = '/path/to/source.c'
         scanner = StringScanner.new(content)
         functions = CExtractorFunctions.new(
           CExtractorCodeText.new(),
           1000
         )
-        
-        success1, func1 = functions.try_extract_function_definition(scanner)
+
+        success1, func1 = functions.try_extract_function_definition(scanner, filepath)
         expect(success1).to be true
         expect(func1.name).to eq("first")
-                
-        success2, func2 = functions.try_extract_function_definition(scanner)
+        expect(func1.source_filepath).to eq(filepath)
+
+        success2, func2 = functions.try_extract_function_definition(scanner, filepath)
         expect(success2).to be true
         expect(func2.name).to eq("second")
-                
-        success3, func3 = functions.try_extract_function_definition(scanner)
+        expect(func2.source_filepath).to eq(filepath)
+
+        success3, func3 = functions.try_extract_function_definition(scanner, filepath)
         expect(success3).to be true
         expect(func3.name).to eq("third")
+        expect(func3.source_filepath).to eq(filepath)
       end
     end
   end
