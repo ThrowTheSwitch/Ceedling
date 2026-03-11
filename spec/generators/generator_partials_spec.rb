@@ -313,11 +313,12 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should generate a source file with functions" do
+    it "should generate a source file with (tidied up) functions" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
 
-      void foobar(int x, int y) {
+      void foobar(int x, int y)
+      {
         int z = x+y;
       }
 
@@ -328,7 +329,7 @@ describe GeneratorPartials do
       defns << Partials.manufacture_function_definition(
         name: 'foobar',
         signature: 'void foobar(int x, int y)',
-        code_block: "void foobar(int x, int y) {\n  int z = x+y;\n}"
+        code_block: "void foobar(int x, int y)\n\n{\n\n  int z = x+y;\n\n\n}"
       )
 
       @generator.send(:generate_source, buf, [], defns, [])
