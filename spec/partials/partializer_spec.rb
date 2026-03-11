@@ -688,121 +688,174 @@ describe Partializer do
 
   context "#extract_module_contents" do
     before(:each) do
+      @name = 'TestModule'
+
       @mock_extractinator = double('CExtractor')
       allow(CExtractor).to receive(:from_file).and_return(@mock_extractinator)
+
+      # associate_function_line_numbers is called for every file processed; stub by default
+      allow(@partializer_helper).to receive(:associate_function_line_numbers)
     end
 
-    it "returns empty CModule when both filepaths are nil" do
-      result = @partializer.extract_module_contents(
-        header_filepath: nil,
-        source_filepath: nil
+    it "returns empty CModule when both preprocessed_filepaths are nil" do
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', preprocessed_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', preprocessed_filepath: nil)
       )
 
-      expect(CExtractor).not_to receive(:from_file).with(nil)
+      expect(CExtractor).not_to receive(:from_file)
+      expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
+
+      result = @partializer.extract_module_contents(@name, config)
 
       expect(result.function_definitions).to eq([])
       expect(result.variables).to eq([])
     end
 
-    it "extracts contents from header file only" do
-      header_contents = CExtractor::CModule.new(
-        function_definitions: [
-          double('func1', name: 'func1', signature: 'void func1(void)'),
-          double('func2', name: 'func2', signature: 'int func2(int x)')
-        ],
-        variables: []
+    it "extracts contents from header preprocessed file only" do
+      header_funcs = [
+        double('func1', name: 'func1', signature: 'void func1(void)'),
+        double('func2', name: 'func2', signature: 'int func2(int x)')
+      ]
+      header_contents = CExtractor::CModule.new(function_definitions: header_funcs, variables: [])
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', preprocessed_filepath: '/build/preproc/header.i'),
+        source: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil)
       )
-      
-      expect(CExtractor).to receive(:from_file).with(UserInclude.new('/path/to/header.h')).and_return(@mock_extractinator)
+
+      expect(CExtractor).to receive(:from_file).with('/build/preproc/header.i').and_return(@mock_extractinator)
       expect(@mock_extractinator).to receive(:extract_contents).and_return(header_contents)
-      
-      result = @partializer.extract_module_contents(
-        header_filepath: UserInclude.new('/path/to/header.h'),
-        source_filepath: nil
+      expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
+        name: @name, funcs: header_funcs, filepath: '/path/to/header.h'
       )
-      
-      expect(result).to eq(header_contents)
-    end
 
-    it "extracts contents from source file only" do
-      source_contents = CExtractor::CModule.new(
-        function_definitions: [
-          double('func1', name: 'func1', signature: 'static void func1(void)'),
-          double('func2', name: 'func2', signature: 'static int func2(int x)')
-        ],
-        variables: []
-      )
-      
-      expect(CExtractor).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_contents).and_return(source_contents)
-      
-      result = @partializer.extract_module_contents(
-        header_filepath: nil,
-        source_filepath: '/path/to/source.c'
-      )
-      
-      expect(result).to eq(source_contents)
-    end
+      result = @partializer.extract_module_contents(@name, config)
 
-    it "extracts and combines contents from both header and source files" do
-      header_contents = CExtractor::CModule.new(
-        function_definitions: [
-          double('func1', name: 'func1', signature: 'void func1(void)'),
-          double('func2', name: 'func2', signature: 'int func2(int x)')
-        ],
-        variables: [double('var1', name: 'header_var')]
-      )
-      source_contents = CExtractor::CModule.new(
-        function_definitions: [
-          double('func3', name: 'func3', signature: 'static void func3(void)'),
-          double('func4', name: 'func4', signature: 'static int func4(int x)')
-        ],
-        variables: [double('var2', name: 'source_var')]
-      )
-      
-      header_extractinator = double('header_extractinator')
-      source_extractinator = double('source_extractinator')
-      
-      expect(CExtractor).to receive(:from_file).with(UserInclude.new('/path/to/header.h')).and_return(header_extractinator)
-      expect(CExtractor).to receive(:from_file).with('/path/to/source.c').and_return(source_extractinator)
-      expect(header_extractinator).to receive(:extract_contents).and_return(header_contents)
-      expect(source_extractinator).to receive(:extract_contents).and_return(source_contents)
-      
-      result = @partializer.extract_module_contents(
-        header_filepath: UserInclude.new('/path/to/header.h'),
-        source_filepath: '/path/to/source.c'
-      )
-      
-      expect(result.function_definitions).to eq(header_contents.function_definitions + source_contents.function_definitions)
-      expect(result.variables).to eq(header_contents.variables + source_contents.variables)
-    end
-
-    it "returns empty CModule when header file has no contents" do
-      empty_contents = CExtractor::CModule.new(function_definitions: [], variables: [])
-      
-      expect(CExtractor).to receive(:from_file).with(UserInclude.new('/path/to/header.h')).and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_contents).and_return(empty_contents)
-      
-      result = @partializer.extract_module_contents(
-        header_filepath: UserInclude.new('/path/to/header.h'),
-        source_filepath: nil
-      )
-      
-      expect(result.function_definitions).to eq([])
+      expect(result.function_definitions).to eq(header_funcs)
       expect(result.variables).to eq([])
     end
 
-    it "returns empty CModule when source file has no contents" do
-      empty_contents = CExtractor::CModule.new(function_definitions: [], variables: [])
-      
-      expect(CExtractor).to receive(:from_file).with('/path/to/source.c').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_contents).and_return(empty_contents)
-      
-      result = @partializer.extract_module_contents(
-        header_filepath: nil,
-        source_filepath: '/path/to/source.c'
+    it "extracts contents from source preprocessed file only" do
+      source_funcs = [
+        double('func1', name: 'func1', signature: 'static void func1(void)'),
+        double('func2', name: 'func2', signature: 'static int func2(int x)')
+      ]
+      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variables: [])
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', preprocessed_filepath: '/build/preproc/source.i')
       )
-      
+
+      expect(CExtractor).to receive(:from_file).with('/build/preproc/source.i').and_return(@mock_extractinator)
+      expect(@mock_extractinator).to receive(:extract_contents).and_return(source_contents)
+      expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
+        name: @name, funcs: source_funcs, filepath: '/path/to/source.c'
+      )
+
+      result = @partializer.extract_module_contents(@name, config)
+
+      expect(result.function_definitions).to eq(source_funcs)
+      expect(result.variables).to eq([])
+    end
+
+    it "extracts and merges contents from both source and header preprocessed files" do
+      source_funcs = [
+        double('func1', name: 'func1', signature: 'static void func1(void)'),
+        double('func2', name: 'func2', signature: 'static int func2(int x)')
+      ]
+      header_funcs = [
+        double('func3', name: 'func3', signature: 'void func3(void)'),
+        double('func4', name: 'func4', signature: 'int func4(int x)')
+      ]
+      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variables: [double('var1')])
+      header_contents = CExtractor::CModule.new(function_definitions: header_funcs, variables: [double('var2')])
+
+      source_extractinator = double('source_extractinator')
+      header_extractinator = double('header_extractinator')
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', preprocessed_filepath: '/build/preproc/header.i'),
+        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', preprocessed_filepath: '/build/preproc/source.i')
+      )
+
+      expect(CExtractor).to receive(:from_file).with('/build/preproc/source.i').and_return(source_extractinator)
+      expect(CExtractor).to receive(:from_file).with('/build/preproc/header.i').and_return(header_extractinator)
+      expect(source_extractinator).to receive(:extract_contents).and_return(source_contents)
+      expect(header_extractinator).to receive(:extract_contents).and_return(header_contents)
+      expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
+        name: @name, funcs: source_funcs, filepath: '/path/to/source.c'
+      )
+      expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
+        name: @name, funcs: header_funcs, filepath: '/path/to/header.h'
+      )
+
+      result = @partializer.extract_module_contents(@name, config)
+
+      expect(result.function_definitions).to eq(source_funcs + header_funcs)
+      expect(result.variables).to eq(source_contents.variables + header_contents.variables)
+    end
+
+    it "calls associate_function_line_numbers with the preprocessed expansion filepath, not the preprocessed filepath" do
+      source_funcs = [double('func1', name: 'func1')]
+      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variables: [])
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', preprocessed_filepath: '/build/preproc/module1.i')
+      )
+
+      allow(@mock_extractinator).to receive(:extract_contents).and_return(source_contents)
+
+      # associate_function_line_numbers must receive the original filepath, not the preprocessed one
+      expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
+        name: @name, funcs: source_funcs, filepath: '/src/module1.c'
+      )
+
+      @partializer.extract_module_contents(@name, config)
+    end
+
+    it "passes extraction name through to associate_function_line_numbers" do
+      source_funcs = [double('func1', name: 'func1')]
+      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variables: [])
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', preprocessed_filepath: '/build/preproc/module1.i')
+      )
+
+      allow(@mock_extractinator).to receive(:extract_contents).and_return(source_contents)
+
+      expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
+        name: 'SpecificTestName', funcs: source_funcs, filepath: '/src/module1.c'
+      )
+
+      @partializer.extract_module_contents('SpecificTestName', config)
+    end
+
+    it "returns empty CModule when a preprocessed file has no contents" do
+      empty_contents = CExtractor::CModule.new(function_definitions: [], variables: [])
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', preprocessed_filepath: '/build/preproc/header.i'),
+        source: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil)
+      )
+
+      expect(@mock_extractinator).to receive(:extract_contents).and_return(empty_contents)
+      expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
+        name: @name, funcs: [], filepath: '/path/to/header.h'
+      )
+
+      result = @partializer.extract_module_contents(@name, config)
+
       expect(result.function_definitions).to eq([])
       expect(result.variables).to eq([])
     end
@@ -813,15 +866,30 @@ describe Partializer do
   ###
 
   context "#reconstruct_functions" do
-    it "returns empty arrays when no functions are provided" do
+    it "returns empty arrays when config has no types" do
       contents = CExtractor::CModule.new(function_definitions: [], variables: [])
-      types = []
-      
+      config = Partials::Config.new(module: 'module1', types: [])
+
       impl, interface = @partializer.reconstruct_functions(
         contents: contents,
-        types: types
+        config: config
       )
-      
+
+      expect(impl).to eq([])
+      expect(interface).to eq([])
+    end
+
+    it "returns empty arrays when contents has no function definitions and config has no types" do
+      contents = CExtractor::CModule.new(function_definitions: [], variables: [])
+      config = Partials::Config.new(module: 'module1', types: [])
+
+      expect(@partializer_helper).not_to receive(:filter_and_transform_funcs)
+
+      impl, interface = @partializer.reconstruct_functions(
+        contents: contents,
+        config: config
+      )
+
       expect(impl).to eq([])
       expect(interface).to eq([])
     end
@@ -832,19 +900,19 @@ describe Partializer do
         double('func2', name: 'private_func')
       ]
       contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      types = [Partials::TEST_PUBLIC]
-      
+      config = Partials::Config.new(module: 'module1', types: [Partials::TEST_PUBLIC])
+
       filtered_impl = [{ name: 'public_func', type: :impl }]
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :public, :impl)
         .and_return(filtered_impl)
-      
+
       impl, interface = @partializer.reconstruct_functions(
         contents: contents,
-        types: types
+        config: config
       )
-      
+
       expect(impl).to eq(filtered_impl)
       expect(interface).to eq([])
       expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :impl)
@@ -856,19 +924,19 @@ describe Partializer do
         double('func2', name: 'private_func')
       ]
       contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      types = [Partials::TEST_PRIVATE]
-      
+      config = Partials::Config.new(module: 'module1', types: [Partials::TEST_PRIVATE])
+
       filtered_impl = [{ name: 'private_func', type: :impl }]
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :private, :impl)
         .and_return(filtered_impl)
-      
+
       impl, interface = @partializer.reconstruct_functions(
         contents: contents,
-        types: types
+        config: config
       )
-      
+
       expect(impl).to eq(filtered_impl)
       expect(interface).to eq([])
       expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :private, :impl)
@@ -880,19 +948,19 @@ describe Partializer do
         double('func2', name: 'private_func')
       ]
       contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      types = [Partials::MOCK_PUBLIC]
-      
+      config = Partials::Config.new(module: 'module1', types: [Partials::MOCK_PUBLIC])
+
       filtered_interface = [{ name: 'public_func', type: :interface }]
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :public, :interface)
         .and_return(filtered_interface)
-      
+
       impl, interface = @partializer.reconstruct_functions(
         contents: contents,
-        types: types
+        config: config
       )
-      
+
       expect(impl).to eq([])
       expect(interface).to eq(filtered_interface)
       expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :interface)
@@ -904,19 +972,19 @@ describe Partializer do
         double('func2', name: 'private_func')
       ]
       contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      types = [Partials::MOCK_PRIVATE]
-      
+      config = Partials::Config.new(module: 'module1', types: [Partials::MOCK_PRIVATE])
+
       filtered_interface = [{ name: 'private_func', type: :interface }]
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :private, :interface)
         .and_return(filtered_interface)
-      
+
       impl, interface = @partializer.reconstruct_functions(
         contents: contents,
-        types: types
+        config: config
       )
-      
+
       expect(impl).to eq([])
       expect(interface).to eq(filtered_interface)
       expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :private, :interface)
@@ -928,24 +996,24 @@ describe Partializer do
         double('func2', name: 'private_func')
       ]
       contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      types = [Partials::TEST_PUBLIC, Partials::TEST_PRIVATE]
-      
-      filtered_public_impl = [{ name: 'public_func', type: :impl }]
+      config = Partials::Config.new(module: 'module1', types: [Partials::TEST_PUBLIC, Partials::TEST_PRIVATE])
+
+      filtered_public_impl  = [{ name: 'public_func',  type: :impl }]
       filtered_private_impl = [{ name: 'private_func', type: :impl }]
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :public, :impl)
         .and_return(filtered_public_impl)
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :private, :impl)
         .and_return(filtered_private_impl)
-      
+
       impl, interface = @partializer.reconstruct_functions(
         contents: contents,
-        types: types
+        config: config
       )
-      
+
       expect(impl).to eq(filtered_public_impl + filtered_private_impl)
       expect(interface).to eq([])
       expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :impl)
@@ -958,24 +1026,24 @@ describe Partializer do
         double('func2', name: 'private_func')
       ]
       contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      types = [Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE]
-      
-      filtered_public_interface = [{ name: 'public_func', type: :interface }]
+      config = Partials::Config.new(module: 'module1', types: [Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE])
+
+      filtered_public_interface  = [{ name: 'public_func',  type: :interface }]
       filtered_private_interface = [{ name: 'private_func', type: :interface }]
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :public, :interface)
         .and_return(filtered_public_interface)
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :private, :interface)
         .and_return(filtered_private_interface)
-      
+
       impl, interface = @partializer.reconstruct_functions(
         contents: contents,
-        types: types
+        config: config
       )
-      
+
       expect(impl).to eq([])
       expect(interface).to eq(filtered_public_interface + filtered_private_interface)
       expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :interface)
@@ -988,56 +1056,58 @@ describe Partializer do
         double('func2', name: 'private_func')
       ]
       contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      types = [Partials::TEST_PUBLIC, Partials::MOCK_PRIVATE]
-      
-      filtered_public_impl = [{ name: 'public_func', type: :impl }]
+      config = Partials::Config.new(module: 'module1', types: [Partials::TEST_PUBLIC, Partials::MOCK_PRIVATE])
+
+      filtered_public_impl       = [{ name: 'public_func',  type: :impl }]
       filtered_private_interface = [{ name: 'private_func', type: :interface }]
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :public, :impl)
         .and_return(filtered_public_impl)
-      
+
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
         .with(mock_funcs, :private, :interface)
         .and_return(filtered_private_interface)
-      
+
       impl, interface = @partializer.reconstruct_functions(
         contents: contents,
-        types: types
+        config: config
       )
-      
+
       expect(impl).to eq(filtered_public_impl)
       expect(interface).to eq(filtered_private_interface)
       expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :impl)
       expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :private, :interface)
     end
 
-    it "handles empty types array" do
+    it "handles empty types in config" do
       mock_funcs = [
         double('func1', name: 'public_func'),
         double('func2', name: 'private_func')
       ]
       contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      types = []
-      
+      config = Partials::Config.new(module: 'module1', types: [])
+
+      expect(@partializer_helper).not_to receive(:filter_and_transform_funcs)
+
       impl, interface = @partializer.reconstruct_functions(
         contents: contents,
-        types: types
+        config: config
       )
-      
+
       expect(impl).to eq([])
       expect(interface).to eq([])
     end
 
-    it "raises error for invalid partial type" do
+    it "raises error for invalid partial type in config" do
       mock_funcs = [double('func1', name: 'public_func')]
       contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      types = [:invalid_type]
-      
+      config = Partials::Config.new(module: 'module1', types: [:invalid_type])
+
       expect {
         @partializer.reconstruct_functions(
           contents: contents,
-          types: types
+          config: config
         )
       }.to raise_error(ArgumentError)
     end
