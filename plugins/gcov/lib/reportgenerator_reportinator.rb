@@ -43,13 +43,13 @@ class ReportGeneratorReportinator
   def generate_reports(opts)
     shell_result = nil
     total_time = Benchmark.realtime do
-      rg_opts = get_opts(opts)
+      rg_opts = collect_reportgenerator_opts(opts)
 
       msg = @reportinator.generate_heading( "Running ReportGenerator Coverage Reports" )
       @loginator.log( msg )
 
       opts[:gcov_reports].each do |report|
-        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}'")
+        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}/'")
         @loginator.log( msg )
       end
 
@@ -149,7 +149,7 @@ class ReportGeneratorReportinator
 
   # Build the ReportGenerator arguments.
   def args_builder(opts)
-    rg_opts = get_opts(opts)
+    rg_opts = collect_reportgenerator_opts(opts)
     report_type_count = 0
 
     args = ""
@@ -197,8 +197,16 @@ class ReportGeneratorReportinator
 
 
   # Get the ReportGenerator options from the project options.
-  def get_opts(opts)
-    return opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym]
+  def collect_reportgenerator_opts(opts)
+    _opts = opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym]
+
+    # Insert an exclusion for Ceedling Partials that will merge with any other exclusions
+    if @configurator.project_use_partials
+      partials_exclude = '-' + PARTIAL_FILENAME_PREFIX + '*'
+      _opts[:file_filters] = [_opts[:file_filters], partials_exclude].compact.join(';').then { |s| s.empty? ? nil : s }
+    end
+
+    return _opts
   end
 
 
