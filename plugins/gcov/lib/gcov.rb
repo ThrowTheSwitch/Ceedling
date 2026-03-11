@@ -61,8 +61,16 @@ class Gcov < Plugin
     if arg_hash[:context] == GCOV_SYM
       source = arg_hash[:source]
 
-      # If a source file (not unity, mocks, etc.) is to be compiled use code coverage compiler
-      if (File.extname(source) != EXTENSION_ASSEMBLY) && @configurator.collection_all_source.include?(source)
+      # If a source file or Partial (not unity, mocks, etc.) is to be compiled use code coverage compiler
+      if (
+          # Not assembly
+          (File.extname(source) != EXTENSION_ASSEMBLY) && 
+          (
+            # Ceedling partial file or file in project source collection
+            File.basename(source).start_with?(PARTIAL_FILENAME_PREFIX) || 
+            @configurator.collection_all_source.include?(source)
+          )
+        )
         arg_hash[:tool] = TOOLS_GCOV_COMPILER
         arg_hash[:msg] = "Compiling #{File.basename(source)} with coverage..."
       end
@@ -189,7 +197,9 @@ class Gcov < Plugin
         name     = filename.ext('')
         command  = @tool_executor.build_command_line(
                      TOOLS_GCOV_SUMMARY,
-                     [], # No additional arguments
+                     # No additional arguments
+                     [],
+                     # Argument replacement
                      filename, # .c source file that should have been compiled with coverage
                      File.join(GCOV_BUILD_OUTPUT_PATH, test) # <build>/gcov/out/<test name> for coverage data files
                    )

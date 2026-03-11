@@ -1,0 +1,2051 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'spec_helper'
+require 'ceedling/c_extractor/c_extractor_code_text'
+require 'stringio'
+
+describe CExtractorCodeText do
+
+  ###
+  ### skip_c_string()
+  ###
+  describe "#skip_c_string" do
+    # Helper to access private method
+    let(:skip_c_string) do
+      ->(content, quote) do
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new
+        bytes_skipped = code_text.skip_c_string( scanner, quote )
+        return [bytes_skipped, scanner.pos, scanner.rest]
+      end
+    end
+
+    context "double-quoted string handling" do
+      it "skips simple double-quoted string" do
+        content = '"hello"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(7)
+        expect(pos).to eq(7)
+        expect(rest).to eq("code")
+      end
+
+      it "skips empty double-quoted string" do
+        content = '""code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(2)
+        expect(pos).to eq(2)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with spaces" do
+        content = '"hello   world"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(15)
+        expect(pos).to eq(15)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with special characters" do
+        content = '"hello!@#$%^&*()"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(17)
+        expect(pos).to eq(17)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with newlines" do
+        content = "\"hello\nworld\"code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(13)
+        expect(pos).to eq(13)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with tabs" do
+        content = "\"hello\tworld\"code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(13)
+        expect(pos).to eq(13)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "single-quoted character handling" do
+      it "skips simple single-quoted character" do
+        content = "'a'code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq("code")
+      end
+
+      it "skips single-quoted digit" do
+        content = "'5'code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq("code")
+      end
+
+      it "skips single-quoted special character" do
+        content = "'@'code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq("code")
+      end
+
+      it "skips single-quoted space" do
+        content = "' 'code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "escape sequence handling" do
+      it "skips string with escaped double quote" do
+        content = '"hello \\"world\\""code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(17)
+        expect(pos).to eq(17)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with escaped backslash" do
+        content = '"path\\\\to\\\\file"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(16)
+        expect(pos).to eq(16)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with escaped newline" do
+        content = '"hello\\nworld"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with escaped tab" do
+        content = '"hello\\tworld"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with escaped carriage return" do
+        content = '"hello\\rworld"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with multiple escape sequences" do
+        content = '"\\n\\t\\r\\\\\\"\\\'"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "skips character with escaped single quote" do
+        content = "'\\\''code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(4)
+        expect(pos).to eq(4)
+        expect(rest).to eq("code")
+      end
+
+      it "skips character with escaped backslash" do
+        content = "'\\\\'code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(4)
+        expect(pos).to eq(4)
+        expect(rest).to eq("code")
+      end
+
+      it "skips character with escaped newline" do
+        content = "'\\n'code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(4)
+        expect(pos).to eq(4)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with octal escape sequence" do
+        content = '"\\101\\102\\103"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with hexadecimal escape sequence" do
+        content = '"\\x41\\x42\\x43"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with unicode escape sequence" do
+        content = '"\\u0041\\u0042"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "unterminated string handling" do
+      it "handles unterminated double-quoted string" do
+        content = '"hello world'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(12)
+        expect(pos).to eq(12)
+        expect(rest).to eq("")
+      end
+
+      it "handles unterminated single-quoted character" do
+        content = "'a"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(2)
+        expect(pos).to eq(2)
+        expect(rest).to eq("")
+      end
+
+      it "handles unterminated string with escape at end" do
+        content = '"hello\\'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(7)
+        expect(pos).to eq(7)
+        expect(rest).to eq("")
+      end
+
+      it "handles unterminated string with newline" do
+        content = "\"hello\nworld"
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(12)
+        expect(pos).to eq(12)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "edge cases" do
+      it "handles string with only opening quote" do
+        content = '"'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(1)
+        expect(pos).to eq(1)
+        expect(rest).to eq("")
+      end
+
+      it "handles character with only opening quote" do
+        content = "'"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(1)
+        expect(pos).to eq(1)
+        expect(rest).to eq("")
+      end
+
+      it "handles string with consecutive escaped backslashes" do
+        content = '"\\\\\\\\"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(6)
+        expect(pos).to eq(6)
+        expect(rest).to eq("code")
+      end
+
+      it "handles string ending with backslash before quote" do
+        content = '"test\\\\"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(8)
+        expect(pos).to eq(8)
+        expect(rest).to eq("code")
+      end
+
+      it "does not confuse single quote inside double-quoted string" do
+        content = '"don\'t"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(7)
+        expect(pos).to eq(7)
+        expect(rest).to eq("code")
+      end
+
+      it "does not confuse double quote inside single-quoted character" do
+        content = '\'"\'code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq("code")
+      end
+
+      it "handles very long string" do
+        long_string = '"' + ('x' * 1000) + '"code'
+        bytes_skipped, pos, rest = skip_c_string.call(long_string, '"')
+        
+        expect(bytes_skipped).to eq(1002)
+        expect(pos).to eq(1002)
+        expect(rest).to eq("code")
+      end
+
+      it "handles string with null character" do
+        content = "\"hello\\0world\"code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "real-world C code patterns" do
+      it "skips string literal in printf statement" do
+        content = '"Hello, World!")'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(15)
+        expect(pos).to eq(15)
+        expect(rest).to eq(")")
+      end
+
+      it "skips format string with specifiers" do
+        content = '"%d %s %f", x, y, z)'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(10)
+        expect(pos).to eq(10)
+        expect(rest).to eq(', x, y, z)')
+      end
+
+      it "skips file path string" do
+        content = '"C:\\\\Users\\\\file.txt"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(21)
+        expect(pos).to eq(21)
+        expect(rest).to eq("code")
+      end
+
+      it "skips character constant in switch case" do
+        content = "'a': return 1;"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq(": return 1;")
+      end
+
+      it "skips string with JSON-like content" do
+        content = '"{\"key\": \"value\"}"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(22)
+        expect(pos).to eq(22)
+        expect(rest).to eq("code")
+      end
+
+      it "skips multi-line string literal (C11 style)" do
+        content = "\"line1\\\nline2\\\nline3\"code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(21)
+        expect(pos).to eq(21)
+        expect(rest).to eq("code")
+      end
+
+      it "skips string with SQL query" do
+        content = '"SELECT * FROM users WHERE id = 1"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(34)
+        expect(pos).to eq(34)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "consecutive strings" do
+      it "skips first string when followed by another string" do
+        content = '"first" "second"'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(7)
+        expect(pos).to eq(7)
+        expect(rest).to eq(' "second"')
+      end
+
+      it "skips string followed by character literal" do
+        content = '"string" \'c\''
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(8)
+        expect(pos).to eq(8)
+        expect(rest).to eq(" 'c'")
+      end
+
+      it "skips character literal followed by string" do
+        content = "'c' \"string\""
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq(' "string"')
+      end
+    end
+
+    context "strings in complex expressions" do
+      it "skips string in array initialization" do
+        content = '"element1", "element2"'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(10)
+        expect(pos).to eq(10)
+        expect(rest).to eq(', "element2"')
+      end
+
+      it "skips string in function call" do
+        content = '"argument", 42)'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(10)
+        expect(pos).to eq(10)
+        expect(rest).to eq(", 42)")
+      end
+
+      it "skips string in ternary operator" do
+        content = '"true" : "false"'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(6)
+        expect(pos).to eq(6)
+        expect(rest).to eq(' : "false"')
+      end
+    end
+
+    context "performance and boundary conditions" do
+      it "handles string at end of input" do
+        content = '"last"'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(6)
+        expect(pos).to eq(6)
+        expect(rest).to eq("")
+      end
+
+      it "handles character at end of input" do
+        content = "'x'"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq("")
+      end
+
+      it "handles alternating escaped and regular characters" do
+        content = '"a\\nb\\tc\\rd\\\\e"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(15)
+        expect(pos).to eq(15)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "invalid but handled gracefully" do
+      it "handles empty character literal" do
+        content = "''code"
+        bytes_skipped, pos, rest = skip_c_string.call(content, "'")
+        
+        expect(bytes_skipped).to eq(2)
+        expect(pos).to eq(2)
+        expect(rest).to eq("code")
+      end
+
+      it "handles string with unrecognized escape sequence" do
+        # \q is not a valid escape, but should still consume it
+        content = '"\\q"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(4)
+        expect(pos).to eq(4)
+        expect(rest).to eq("code")
+      end
+
+      it "handles incomplete octal escape at end of string" do
+        content = '"\\1"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(4)
+        expect(pos).to eq(4)
+        expect(rest).to eq("code")
+      end
+
+      it "handles incomplete hex escape at end of string" do
+        content = '"\\x"code'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(4)
+        expect(pos).to eq(4)
+        expect(rest).to eq("code")
+      end
+
+      it "handles backslash at very end of unterminated string" do
+        content = '"test\\'
+        bytes_skipped, pos, rest = skip_c_string.call(content, '"')
+        
+        expect(bytes_skipped).to eq(6)
+        expect(pos).to eq(6)
+        expect(rest).to eq("")
+      end
+    end
+  end
+
+  ###
+  ### skip_semicolons()
+  ###
+  describe "#skip_semicolons" do
+    let(:skip_semicolons) do
+      ->(content) do
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
+        code_text.skip_semicolons( scanner )
+        return [scanner.pos, scanner.rest]
+      end
+    end
+
+    context "single semicolon handling" do
+      it "skips single semicolon" do
+        content = ";code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolon with trailing space" do
+        content = "; code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq(" code")
+      end
+
+      it "skips semicolon at end of input" do
+        content = ";"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "multiple consecutive semicolons" do
+      it "skips two consecutive semicolons" do
+        content = ";;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("code")
+      end
+
+      it "skips three consecutive semicolons" do
+        content = ";;;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(3)
+        expect(rest).to eq("code")
+      end
+
+      it "skips many consecutive semicolons" do
+        content = ";;;;;;;;;;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(10)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "semicolons with whitespace" do
+      it "skips semicolons separated by spaces" do
+        content = "; ; ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(5)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons separated by tabs" do
+        content = ";\t;\t;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(5)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons separated by newlines" do
+        content = ";\n;\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(5)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with mixed whitespace" do
+        content = "; \t\n ; \r\n ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(11)
+        expect(rest).to eq("code")
+      end
+
+      it "skips leading whitespace before first semicolon" do
+        content = "  \t;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(4)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "semicolons with comments" do
+      it "skips semicolons separated by line comments" do
+        content = "; // comment\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons separated by block comments" do
+        content = "; /* comment */ ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(17)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with multi-line block comments" do
+        content = ";\n/* comment\n   spanning\n   lines */\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(38)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with multiple comments" do
+        content = "; // first\n; /* second */ ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(27)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "semicolons with preprocessor directives" do
+      it "skips semicolons separated by #define" do
+        content = ";\n#define FOO\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(15)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons separated by #include" do
+        content = ";\n#include <stdio.h>\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(22)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with multi-line preprocessor directive" do
+        content = ";\n#define MACRO \\\n  value\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(27)
+        expect(rest).to eq("code")
+      end
+
+      it "skips semicolons with multiple directives" do
+        content = ";\n#define A\n#define B\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(23)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "mixed deadspace between semicolons" do
+      it "skips semicolons with whitespace, comments, and directives" do
+        content = "; \n// comment\n  /* block */\n  #define FOO\n  ;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(45)
+        expect(rest).to eq("code")
+      end
+
+      it "skips complex mix of deadspace and semicolons" do
+        content = ";\t// first\n;\n/* second */\n#define X\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(37)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "stopping at non-semicolon content" do
+      it "stops at identifier" do
+        content = ";code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq("code")
+      end
+
+      it "stops at number" do
+        content = ";;123"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("123")
+      end
+
+      it "stops at opening brace" do
+        content = "; ; {"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(3)
+        expect(rest).to eq(" {")
+      end
+
+      it "stops at closing brace" do
+        content = ";;}"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("}")
+      end
+
+      it "stops at comma" do
+        content = "; , next"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq(" , next")
+      end
+
+      it "stops at operator" do
+        content = ";;++"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("++")
+      end
+    end
+
+    context "no semicolons present" do
+      it "does not advance when no semicolons" do
+        content = "code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("code")
+      end
+
+      it "does not advance with only whitespace" do
+        content = "  \t\ncode"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("  \t\ncode")
+      end
+
+      it "does not advance with only comments" do
+        content = "// comment\ncode"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("// comment\ncode")
+      end
+
+      it "does not advance with only preprocessor" do
+        content = "#define FOO\ncode"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("#define FOO\ncode")
+      end
+    end
+
+    context "edge cases" do
+      it "handles empty string" do
+        content = ""
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(0)
+        expect(rest).to eq("")
+      end
+
+      it "handles only semicolons" do
+        content = ";;;;;"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(5)
+        expect(rest).to eq("")
+      end
+
+      it "handles only semicolons and whitespace" do
+        content = "; ; ; "
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(6)
+        expect(rest).to eq("")
+      end
+
+      it "handles semicolons with unterminated comment" do
+        content = "; /* unterminated"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "handles semicolons ending with preprocessor directive" do
+        content = ";\n#define FOO"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(13)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "real-world C code patterns" do
+      it "skips null statements in for loop" do
+        content = ";;) {"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq(") {")
+      end
+
+      it "skips multiple null statements" do
+        content = ";;;\nreturn 0;"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(3)
+        expect(rest).to eq("\nreturn 0;")
+      end
+
+      it "handles semicolons from macro expansion pattern" do
+        content = "; // from MACRO_CALL()\n;code"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(24)
+        expect(rest).to eq("code")
+      end
+
+      it "skips null statements in switch case" do
+        content = ";case 2:"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(1)
+        expect(rest).to eq("case 2:")
+      end
+
+      it "skips multiple null statements between switch cases" do
+        content = ";;;\ncase 3:"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(3)
+        expect(rest).to eq("\ncase 3:")
+      end
+
+      it "skips null statements after break in switch" do
+        content = ";;default:"
+        pos, rest = skip_semicolons.call(content)
+        
+        expect(pos).to eq(2)
+        expect(rest).to eq("default:")
+      end
+    end
+  end
+
+  ###
+  ### skip_deadspace()
+  ###
+  describe "#skip_deadspace" do
+    # Helper to access private method
+    let(:skip_deadspace) do
+      ->(content) do
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
+        bytes_skipped = code_text.skip_deadspace( scanner )
+        return [bytes_skipped, scanner.pos, scanner.rest]
+      end
+    end
+
+    context "whitespace handling" do
+      it "skips spaces" do
+        content = "     code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(5)
+        expect(pos).to eq(5)
+        expect(rest).to eq("code")
+      end
+
+      it "skips tabs" do
+        content = "\t\t\tcode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq("code")
+      end
+
+      it "skips newlines" do
+        content = "\n\n\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(3)
+        expect(pos).to eq(3)
+        expect(rest).to eq("code")
+      end
+
+      it "skips carriage returns" do
+        content = "\r\n\r\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(4)
+        expect(pos).to eq(4)
+        expect(rest).to eq("code")
+      end
+
+      it "skips mixed whitespace" do
+        content = " \t\n \r\n\t code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(8)
+        expect(pos).to eq(8)
+        expect(rest).to eq("code")
+      end
+
+      it "returns 0 when no whitespace present" do
+        content = "code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(0)
+        expect(pos).to eq(0)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "line comment handling" do
+      it "skips single line comment" do
+        content = "// comment\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(11)
+        expect(pos).to eq(11)
+        expect(rest).to eq("code")
+      end
+
+      it "skips line comment without trailing newline" do
+        content = "// comment at end"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(17)
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "skips multiple consecutive line comments" do
+        content = "// comment 1\n// comment 2\n// comment 3\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(39)
+        expect(pos).to eq(39)
+        expect(rest).to eq("code")
+      end
+
+      it "skips line comment with whitespace before it" do
+        content = "   // comment\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "handles line comment with special characters" do
+        content = "// TODO: fix this!!!\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(21)
+        expect(pos).to eq(21)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "block comment handling" do
+      it "skips single-line block comment" do
+        content = "/* comment */code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(13)
+        expect(pos).to eq(13)
+        expect(rest).to eq("code")
+      end
+
+      it "skips multi-line block comment" do
+        content = "/* comment\nline 2\nline 3 */code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(27)
+        expect(pos).to eq(27)
+        expect(rest).to eq("code")
+      end
+
+      it "skips multiple consecutive block comments" do
+        content = "/* first *//* second *//* third */code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(34)
+        expect(pos).to eq(34)
+        expect(rest).to eq("code")
+      end
+
+      it "skips block comment with whitespace before it" do
+        content = "   /* comment */code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(16)
+        expect(pos).to eq(16)
+        expect(rest).to eq("code")
+      end
+
+      it "handles block comment with asterisks inside" do
+        content = "/* ** comment ** */code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(19)
+        expect(pos).to eq(19)
+        expect(rest).to eq("code")
+      end
+
+      it "handles block comment with forward slashes inside" do
+        content = "/* comment // not a line comment */code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(35)
+        expect(pos).to eq(35)
+        expect(rest).to eq("code")
+      end
+
+      it "handles unterminated block comment" do
+        content = "/* unterminated comment"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(23)
+        expect(pos).to eq(23)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "preprocessor directive handling" do
+      it "skips simple #include directive" do
+        content = "#include <stdio.h>\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(19)
+        expect(pos).to eq(19)
+        expect(rest).to eq("code")
+      end
+
+      it "skips #define directive" do
+        content = "#define MAX 100\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(16)
+        expect(pos).to eq(16)
+        expect(rest).to eq("code")
+      end
+
+      it "skips #ifdef directive" do
+        content = "#ifdef DEBUG\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(13)
+        expect(pos).to eq(13)
+        expect(rest).to eq("code")
+      end
+
+      it "skips directive with line continuation" do
+        content = "#define MACRO(x) \\\n  do { something; } \\\n  while(0)\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(52)
+        expect(pos).to eq(52)
+        expect(rest).to eq("code")
+      end
+
+      it "skips multiple consecutive directives" do
+        content = "#include <stdio.h>\n#include <stdlib.h>\n#define MAX 100\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(55)
+        expect(pos).to eq(55)
+        expect(rest).to eq("code")
+      end
+
+      it "skips directive with whitespace before hash" do
+        content = "  #define FOO\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(14)
+        expect(pos).to eq(14)
+        expect(rest).to eq("code")
+      end
+
+      it "skips directive without trailing newline" do
+        content = "#define FOO"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(11)
+        expect(pos).to eq(11)
+        expect(rest).to eq("")
+      end
+
+      it "handles directive with multiple line continuations" do
+        content = "#define LONG_MACRO \\\n  line1 \\\n  line2 \\\n  line3\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(49)
+        expect(pos).to eq(49)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "mixed deadspace handling" do
+      it "skips whitespace followed by comment" do
+        content = "  \t/* comment */code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(16)
+        expect(pos).to eq(16)
+        expect(rest).to eq("code")
+      end
+
+      it "skips comment followed by whitespace" do
+        content = "/* comment */  \ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(16)
+        expect(pos).to eq(16)
+        expect(rest).to eq("code")
+      end
+
+      it "skips line comment followed by block comment" do
+        content = "// line\n/* block */code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(19)
+        expect(pos).to eq(19)
+        expect(rest).to eq("code")
+      end
+
+      it "skips preprocessor followed by comment" do
+        content = "#define FOO\n// comment\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(23)
+        expect(pos).to eq(23)
+        expect(rest).to eq("code")
+      end
+
+      it "skips comment followed by preprocessor" do
+        content = "/* comment */\n#define FOO\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(26)
+        expect(pos).to eq(26)
+        expect(rest).to eq("code")
+      end
+
+      it "skips complex mix of all deadspace types" do
+        content = "  \n// comment\n  /* block */\n  #define FOO\n  code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(44)
+        expect(pos).to eq(44)
+        expect(rest).to eq("code")
+      end
+     it "skips comment followed by preprocessor" do
+        content = "/* comment */\n#define FOO\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(26)
+        expect(pos).to eq(26)
+        expect(rest).to eq("code")
+      end
+    end
+
+    context "edge cases" do
+      it "handles empty string" do
+        content = ""
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(0)
+        expect(pos).to eq(0)
+        expect(rest).to eq("")
+      end
+
+      it "handles string with only whitespace" do
+        content = "   \t\n  "
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(7)
+        expect(pos).to eq(7)
+        expect(rest).to eq("")
+      end
+
+      it "handles string with only comments" do
+        content = "// comment\n/* block */"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(22)
+        expect(pos).to eq(22)
+        expect(rest).to eq("")
+      end
+
+      it "handles string with only preprocessor directives" do
+        content = "#define FOO\n#include <bar.h>"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(28)
+        expect(pos).to eq(28)
+        expect(rest).to eq("")
+      end
+
+      it "does not skip code that looks like comment but isn't" do
+        content = "int a = 5 / 2; // actual comment\ncode"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        expect(bytes_skipped).to eq(0)
+        expect(pos).to eq(0)
+        expect(rest).to start_with("int a")
+      end
+
+      it "handles nested block comments (not standard C)" do
+        # NOTE: C extraction is not implemented as a full C parser and/or preprocessor
+        # We assume that the file to be processed is either relatively simple or has already been preprocessed
+        # to remove complex preprocessor directives, etc.
+
+        content = "/* outer /* inner */ still outer */code"
+        bytes_skipped, pos, rest = skip_deadspace.call(content)
+        
+        # We expect only partial comment block handling for nested blocks
+        expect(bytes_skipped).to eq(21)
+        expect(pos).to eq(21)
+        expect(rest).to eq("still outer */code")
+      end
+    end
+
+    context "real-world C code patterns" do
+      it "skips typical file header" do
+        content = <<~C
+          // File: example.c
+          // Author: Someone
+          /* Copyright notice
+             spanning multiple lines */
+          
+          #include <stdio.h>
+          #include <stdlib.h>
+          
+          #define MAX_SIZE 100
+          
+          int main() {
+        C
+        
+        _, _, rest = skip_deadspace.call(content)
+        
+        expect(rest).to start_with("int main()")
+      end
+
+      it "skips multiple successive preprocessor directive lines" do
+        content = <<~C
+          #ifdef DEBUG
+          #define LOG(x) printf(x)
+          #else
+          #define LOG(x)
+          #endif
+          
+          void foo() {
+        C
+        
+        _, _, rest = skip_deadspace.call(content)
+        
+        expect(rest).to start_with("void foo()")
+      end
+
+      it "handles Doxygen-style comments" do
+        content = <<~CODE
+          /**
+           * @brief Function description
+           * @param x The parameter
+           * @return The result
+           */
+          int func(int x) {
+        CODE
+        
+        _, _, rest = skip_deadspace.call(content)
+        
+        expect(rest).to start_with("int func(int x)")
+      end
+
+      it "should not be able to process disabled code blocks" do
+        # NOTE: C extraction is not implemented as a full C parser and/or preprocessor
+        # We assume that the file to be processed is either relatively simple or has already been preprocessed
+        # to remove complex preprocessor directives, etc.
+
+        content = <<~CODE
+          #if 0
+          // This code is disabled
+          void old_function() {
+              // ...
+          }
+          #endif
+          
+          void new_function() {
+        CODE
+        
+        _, _, rest = skip_deadspace.call(content)
+        
+        expect(rest).to start_with("void old_function() {\n    // ...\n}\n#endif\n\nvoid new_function() {\n")
+      end
+    end
+  end
+
+  ###
+  ### extract_balanced_braces()
+  ###
+
+  describe "#extract_balanced_braces" do
+    # Helper to access private method
+    let(:extract_braces) do
+      ->(content) do
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
+        success, block = code_text.extract_balanced_braces( scanner )
+        return [success, block, scanner.pos, scanner.rest]
+      end
+    end
+
+    context "simple balanced braces" do
+      it "extracts single-level braces" do
+        content = "{ code }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code }")
+        expect(pos).to eq(8)
+        expect(rest).to eq("")
+      end
+
+      it "extracts empty braces" do
+        content = "{}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{}")
+        expect(pos).to eq(2)
+        expect(rest).to eq("")
+      end
+
+      it "extracts braces with content after" do
+        content = "{ code } more"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code }")
+        expect(pos).to eq(8)
+        expect(rest).to eq(" more")
+      end
+
+      it "extracts braces with whitespace" do
+        content = "{   \n\t  }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{   \n\t  }")
+        expect(pos).to eq(9)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "nested braces" do
+      it "extracts one level of nesting" do
+        content = "{ outer { inner } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ outer { inner } }")
+        expect(pos).to eq(19)
+        expect(rest).to eq("")
+      end
+
+      it "extracts two levels of nesting" do
+        content = "{ a { b { c } } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ a { b { c } } }")
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "extracts multiple nested blocks at same level" do
+        content = "{ { a } { b } { c } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ { a } { b } { c } }")
+        expect(pos).to eq(21)
+        expect(rest).to eq("")
+      end
+
+      it "extracts deeply nested braces" do
+        content = "{ { { { { deep } } } } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ { { { { deep } } } } }")
+        expect(pos).to eq(24)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "braces in strings" do
+      it "ignores braces in double-quoted strings" do
+        content = '{ "string with brace }" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "string with brace }" }')
+        expect(pos).to eq(25)
+        expect(rest).to eq("")
+      end
+
+      it "ignores braces in single-quoted strings" do
+        content = "{ 'char {' }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ 'char {' }")
+        expect(pos).to eq(12)
+        expect(rest).to eq("")
+      end
+
+      it "handles escaped quotes in strings with braces" do
+        content = '{ "string with \\" and { brace" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "string with \\" and { brace" }')
+        expect(pos).to eq(32)
+        expect(rest).to eq("")
+      end
+
+      it "handles multiple strings with braces" do
+        content = '{ "first { }" "second } " }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "first { }" "second } " }')
+        expect(pos).to eq(27)
+        expect(rest).to eq("")
+      end
+
+      it "handles empty strings" do
+        content = '{ "" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "" }')
+        expect(pos).to eq(6)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "braces in comments" do
+      it "ignores braces in line comments" do
+        content = "{ code // comment with { brace\n}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code // comment with { brace\n}")
+        expect(pos).to eq(32)
+        expect(rest).to eq("")
+      end
+
+      it "ignores braces in block comments" do
+        content = "{ code /* comment with { brace */ }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code /* comment with { brace */ }")
+        expect(pos).to eq(35)
+        expect(rest).to eq("")
+      end
+
+      it "handles multiple comments with braces" do
+        content = "{ /* { */ code // }\n}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ /* { */ code // }\n}")
+        expect(pos).to eq(21)
+        expect(rest).to eq("")
+      end
+
+      it "handles nested block comments with braces" do
+        content = "{ /* outer { /* inner } */ */ }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ /* outer { /* inner } */ */ }")
+        expect(pos).to eq(31)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "real C code patterns" do
+      it "extracts simple function body" do
+        content = "{ return 0; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ return 0; }")
+        expect(pos).to eq(13)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function body with nested blocks" do
+        content = "{ if (x) { do_something(); } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ if (x) { do_something(); } }")
+        expect(pos).to eq(30)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function body with multiple statements" do
+        content = <<~CODE.chomp
+          {
+            int x = 5;
+            printf("value: %d", x);
+            return x;
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts struct initialization" do
+        content = '{ .field1 = 10, .field2 = "test" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ .field1 = 10, .field2 = "test" }')
+        expect(pos).to eq(34)
+        expect(rest).to eq("")
+      end
+
+      it "extracts array initialization" do
+        content = "{ 1, 2, 3, 4, 5 }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ 1, 2, 3, 4, 5 }")
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "extracts switch statement" do
+        content = <<~CODE.chomp
+          {
+            switch (x) {
+              case 1: { action1(); break; }
+              case 2: { action2(); break; }
+              default: { action_default(); }
+            }
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts do-while loop" do
+        content = "{ do { process(); } while (condition); }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ do { process(); } while (condition); }")
+        expect(pos).to eq(40)
+        expect(rest).to eq("")
+      end
+
+      it "extracts nested if-else blocks" do
+        content = <<~CODE.chomp
+          {
+            if (a) {
+              if (b) { x(); }
+              else { y(); }
+            } else {
+              z();
+            }
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "failure cases" do
+      it "fails when not starting at opening brace" do
+        content = "not a brace"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(1) # Advanced by one character (the 'n')
+        expect(rest).to eq("ot a brace")
+      end
+
+      it "fails on unbalanced braces (missing closing)" do
+        content = "{ incomplete"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(12) # At end of string
+        expect(rest).to eq("")
+      end
+
+      it "fails on unbalanced braces (extra closing)" do
+        content = "{ code } }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code }")
+        expect(pos).to eq(8)
+        expect(rest).to eq(" }")
+      end
+
+      it "fails on unbalanced nested braces" do
+        content = "{ outer { inner }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "fails on empty content" do
+        content = ""
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq("")
+      end
+
+      it "fails when starting with closing brace" do
+        content = "} wrong"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(pos).to eq(1)
+        expect(rest).to eq(" wrong")
+      end
+    end
+
+    context "edge cases with strings and comments" do
+      it "handles string with escaped backslash before quote" do
+        content = '{ "path\\\\file" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "path\\\\file" }')
+        expect(pos).to eq(16)
+        expect(rest).to eq("")
+      end
+
+      it "handles string with escaped newline" do
+        content = '{ "line1\\nline2" }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ "line1\\nline2" }')
+        expect(pos).to eq(18)
+        expect(rest).to eq("")
+      end
+
+      it "handles character literal with closing brace" do
+        content = "{ char c = '}'; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ char c = '}'; }")
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "handles character literal with opening brace" do
+        content = "{ char c = '{'; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ char c = '{'; }")
+        expect(pos).to eq(17)
+        expect(rest).to eq("")
+      end
+
+      it "handles escaped single quote in character literal" do
+        content = "{ char c = '\\''; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ char c = '\\''; }")
+        expect(pos).to eq(18)
+        expect(rest).to eq("")
+      end
+
+      it "handles comment at end of line with brace" do
+        content = "{ code; // comment }\n}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ code; // comment }\n}")
+        expect(pos).to eq(22)
+        expect(rest).to eq("")
+      end
+
+      it "handles block comment spanning multiple lines with braces" do
+        content = <<~CODE.chomp
+          {
+            /* This is a comment
+               with { braces } in it
+               spanning lines */
+            code;
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "handles unterminated string (malformed C)" do
+        # NOTE: This tests behavior with malformed C code
+        content = '{ "unterminated }'
+        success, block, _, _ = extract_braces.call(content)
+        
+        # The extractor should fail because the closing brace is inside an unterminated string
+        expect(success).to be false
+        expect(block).to be_nil
+      end
+
+      it "handles unterminated comment (malformed C)" do
+        # NOTE: This tests behavior with malformed C code
+        content = "{ /* unterminated }"
+        success, block, _, _ = extract_braces.call(content)
+        
+        # The extractor should fail because the closing brace is inside an unterminated comment
+        expect(success).to be false
+        expect(block).to be_nil
+      end
+    end
+
+    context "complex real-world patterns" do
+      it "extracts function with macro usage" do
+        content = <<~CODE.chomp
+          {
+            MACRO_CALL(arg1, arg2);
+            if (CHECK_FLAG(x)) {
+              DO_SOMETHING();
+            }
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with string containing comment-like text" do
+        content = '{ printf("/* not a comment */"); }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ printf("/* not a comment */"); }')
+        expect(pos).to eq(34)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with comment containing string-like text" do
+        content = '{ /* "not a string" */ code; }'
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq('{ /* "not a string" */ code; }')
+        expect(pos).to eq(30)
+        expect(rest).to eq("")
+      end
+
+      it "extracts nested struct and array initializers" do
+        content = <<~CODE.chomp
+          {
+            struct data d = {
+              .array = { 1, 2, 3 },
+              .nested = { { 4, 5 }, { 6, 7 } }
+            };
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with ternary operator and braces" do
+        content = "{ result = condition ? { .a = 1 } : { .b = 2 }; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ result = condition ? { .a = 1 } : { .b = 2 }; }")
+        expect(pos).to eq(49)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with compound literal" do
+        content = "{ func((struct point){ .x = 10, .y = 20 }); }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq("{ func((struct point){ .x = 10, .y = 20 }); }")
+        expect(pos).to eq(45)
+        expect(rest).to eq("")
+      end
+
+      it "extracts function with designated initializers and nested braces" do
+        content = <<~CODE.chomp
+          {
+            struct config cfg = {
+              [0] = { .name = "first", .value = { 1, 2 } },
+              [1] = { .name = "second", .value = { 3, 4 } }
+            };
+          }
+        CODE
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+    end
+
+    context "scanner position management" do
+      it "leaves scanner at correct position after successful extraction" do
+        content = "{ first }{ second }{third}"
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
+        
+        success1, block1 = code_text.extract_balanced_braces( scanner )
+
+        expect(success1).to be true
+        expect(block1).to eq("{ first }")
+
+        success2, block2 = code_text.extract_balanced_braces( scanner )
+        
+        expect(success2).to be true
+        expect(block2).to eq("{ second }")
+
+        success3, block3 = code_text.extract_balanced_braces( scanner )
+        
+        expect(success3).to be true
+        expect(block3).to eq("{third}")
+
+        expect(scanner.eos?).to be true
+      end
+
+      it "leaves scanner at correct position after failed extraction" do
+        content = "not_brace { valid }"
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
+        
+        success1, block1 = code_text.extract_balanced_braces( scanner )
+        
+        expect(success1).to be false
+        expect(block1).to be_nil
+        expect(scanner.pos).to eq(1) # Advanced by one character
+        
+        # Skip to the valid brace
+        scanner.scan(/[^{]*/)
+        success2, block2 = code_text.extract_balanced_braces( scanner )
+        
+        expect(success2).to be true
+        expect(block2).to eq("{ valid }")
+      end
+
+      it "handles scanner at end of string" do
+        content = "{ code }"
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new()
+        
+        # Extract the only block
+        code_text.extract_balanced_braces( scanner )
+        
+        # Try to extract again at end of string
+        success, block = code_text.extract_balanced_braces( scanner )
+        
+        expect(success).to be false
+        expect(block).to be_nil
+        expect(scanner.eos?).to be true
+      end
+    end
+
+    context "performance considerations" do
+      it "handles very long brace blocks" do
+        # Create a large but balanced brace block
+        inner_content = "int x = 0;\n" * 100
+        content = "{\n#{inner_content}}"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+     it "handles deeply nested braces" do
+        # Create 50 levels of nesting
+        opening = "{ " * 50
+        closing = " }" * 50
+        content = opening + "core" + closing
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "handles many sequential brace blocks" do
+        # Create 100 sequential blocks
+        blocks = (1..100).map { |i| "{ block#{i} }" }.join(" ")
+        scanner = StringScanner.new(blocks)
+        code_text = CExtractorCodeText.new()
+        
+        count = 0
+        while !scanner.eos?
+          scanner.scan(/\s*/)
+          break if scanner.eos?
+          success, _ = code_text.extract_balanced_braces( scanner )
+          break unless success
+          count += 1
+        end
+        
+        expect(count).to eq(100)
+      end
+
+      it "handles large strings within braces" do
+        large_string = "x" * 1000
+        content = "{ char* str = \"#{large_string}\"; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "handles large comments within braces" do
+        large_comment = "comment text " * 100
+        content = "{ /* #{large_comment} */ code; }"
+        success, block, pos, rest = extract_braces.call(content)
+        
+        expect(success).to be true
+        expect(block).to eq(content)
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+    end
+  end
+
+end
