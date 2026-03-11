@@ -49,7 +49,7 @@ class ReportGeneratorReportinator
       @loginator.log( msg )
 
       opts[:gcov_reports].each do |report|
-        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}'")
+        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}/'")
         @loginator.log( msg )
       end
 
