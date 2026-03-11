@@ -188,10 +188,6 @@ class Partializer
       end
     end
 
-    # Discover line numbers in source files and associate them with functions in array of FunctionDefinitions.
-    # This links the original functions with the content from preprocessed source files.
-    # @helper.associate_function_line_numbers(funcs: impl, config: config)
-
     return impl, interface
   end
 
