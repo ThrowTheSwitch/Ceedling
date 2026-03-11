@@ -852,6 +852,8 @@ class TestInvoker
           compilations       << details[:runner][:output_filepath]
           compilations       += test_frameworks
           compilations       += test_support
+          # Add the original sources of partials for coverage mapping compilation (not linked for test executable)
+          compilations       += @helper.partials_module_sources( details[:partials][:configs] )
           compilations.uniq!
 
           test_objects       = @file_path_utils.form_test_build_objects_filelist( details[:paths][:build], compilations )
@@ -866,7 +868,6 @@ class TestInvoker
               details[:paths][:build],
               @helper.fetch_shallow_source_includes( filepath ))
 
-          # TODO: Remove any source file objects partials are standing in for
           # Redefine test_objects, removing any problematic object file that would otherwise get linked into the test executable
           test_objects = (test_objects.uniq - test_no_link_objects)
 
@@ -884,7 +885,7 @@ class TestInvoker
         end
       end
 
-      # Prepare to Parallelize ALL the build objects
+      # Prepare to parallelize all the build objects
       objects = @testables.map do |_, details| 
         details[:objects].map do |obj|
           { 
@@ -896,11 +897,18 @@ class TestInvoker
         end
       end.flatten
 
-      # Build All Test objects
+      # Build all test objects
       @batchinator.build_step("Building Objects") do
         @batchinator.exec(workload: :compile, things: objects) do |obj|
           src = @file_finder.find_build_input_file(filepath: obj[:obj], context: context)
-          compile_test_component(tool: obj[:tool], context: context, test: obj[:test], source: src, object: obj[:obj], msg: obj[:msg])
+          compile_test_component(
+            tool: obj[:tool],
+            context: context,
+            test: obj[:test],
+            source: src,
+            object: obj[:obj],
+            msg: obj[:msg]
+          )
         end
       end
 
@@ -909,6 +917,10 @@ class TestInvoker
         lib_args = @helper.convert_libraries_to_arguments()
         lib_paths = @helper.get_library_paths_to_arguments()
         @batchinator.exec(workload: :compile, things: @testables) do |_, details|
+
+          # Ensure none of the original code for partials is in the test executable
+          @helper.remove_partials_source_objects( details[:objects], details[:partials][:configs] )
+
           arg_hash = {
             context:    context,
             build_path: details[:paths][:build],
@@ -926,7 +938,7 @@ class TestInvoker
 
       # Execute Final Tests
       @batchinator.build_step("Executing") {
-        results = @batchinator.exec(workload: :test, things: @testables) do |_, details|
+        @batchinator.exec(workload: :test, things: @testables) do |_, details|
           begin
             arg_hash = {
               context:        context,
