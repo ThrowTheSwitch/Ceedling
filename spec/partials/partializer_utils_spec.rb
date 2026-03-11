@@ -124,12 +124,14 @@ describe PartializerUtils do
       double('function',
         name: 'testFunc',
         signature: 'void testFunc(int x)',
+        source_filepath: 'src/code/myfile.c',
+        line_num: 34,
         code_block: "__pragma__ static void testFunc(int x) {\n  return x * 2;\n}"
       )
     end
 
     context "when output_type is :impl" do
-      it "returns a FunctionDefinition with signature and code block" do
+      it "returns a FunctionDefinition with source filepath, line number, signature, and code block" do
         signature = 'void testFunc(int x)'
         
         result = @utils.transform_function(mock_func, signature, :impl)
