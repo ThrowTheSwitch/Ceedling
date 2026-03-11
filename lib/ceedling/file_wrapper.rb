@@ -14,6 +14,13 @@ require 'ceedling/constants'
 
 class FileWrapper
 
+  def self.generate_include_guard(name)
+    # abc-XYZ.h --> _ABC_XYZ_H_
+    base = File.basename(name, '.*') # Remove any extension
+    guard = '__' + base.gsub(/\W/, '_').upcase + '_H__'
+    return guard
+  end
+
   def get_expanded_path(path)
     return File.expand_path(path)
   end
@@ -99,6 +106,12 @@ class FileWrapper
 
   def touch(filepath, options={})
     FileUtils.touch(filepath, **options)
+  end
+
+  def write_blank_file(filepath)
+    File.open(filepath, 'w') do |file|
+      file.write("// Ceedling intentionally blank file\n\n")
+    end
   end
 
   def write(filepath, contents, flags='w')

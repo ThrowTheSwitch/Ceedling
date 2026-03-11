@@ -105,7 +105,8 @@ class ConfiguratorBuilder
 
   def cleanup(in_hash)
     # Ensure that include files inserted into test runners have file extensions & proper ones at that
-    in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
+    # TODO: Remove once we know it can be removed
+    # in_hash[:test_runner_includes].map!{|include| include.ext(in_hash[:extension_header])}
   end
 
 
@@ -131,6 +132,8 @@ class ConfiguratorBuilder
       [:project_test_dependencies_path,         File.join(project_build_tests_root, 'dependencies'),      true ],
 
       [:project_build_vendor_unity_path,        File.join(project_build_vendor_root, 'unity', 'src'),       true ],
+      # Always include a Ceedling path (even if empty) as we need a search path present for certain preprocessing steps
+      [:project_build_vendor_ceedling_path,     File.join(project_build_vendor_root, 'ceedling'),           true ],
       [:project_build_vendor_cmock_path,        File.join(project_build_vendor_root, 'cmock', 'src'),       in_hash[:project_use_mocks] ],
       [:project_build_vendor_cexception_path,   File.join(project_build_vendor_root, 'c_exception', 'lib'), in_hash[:project_use_exceptions] ],
 
@@ -143,6 +146,8 @@ class ConfiguratorBuilder
 
       [:project_test_preprocess_includes_path,  File.join(project_build_tests_root, 'preprocess/includes'), (in_hash[:project_use_test_preprocessor] != :none) ],
       [:project_test_preprocess_files_path,     File.join(project_build_tests_root, 'preprocess/files'),    (in_hash[:project_use_test_preprocessor] != :none) ],
+
+      [:project_test_partials_path,             File.join(project_build_tests_root, 'partials'),            in_hash[:project_use_partials] ],
     ]
 
     out_hash[:project_build_paths] = []
@@ -226,7 +231,6 @@ class ConfiguratorBuilder
     }
   end
 
-
   def set_test_preprocessor_accessors(in_hash)
     accessors = {}
 
@@ -288,6 +292,7 @@ class ConfiguratorBuilder
   def collect_source_include_vendor_paths(in_hash)
     extra_paths = []
     extra_paths <<  in_hash[:project_build_vendor_cexception_path] if (in_hash[:project_use_exceptions])
+    extra_paths <<  in_hash[:project_build_vendor_ceedling_path] if (in_hash[:project_use_partials])
 
     return {
       :collection_paths_source_include_vendor =>
@@ -551,6 +556,7 @@ class ConfiguratorBuilder
     vendor_paths << in_hash[:project_build_vendor_unity_path]
     vendor_paths << in_hash[:project_build_vendor_cmock_path]       if (in_hash[:project_use_mocks])
     vendor_paths << in_hash[:project_build_vendor_cexception_path]  if (in_hash[:project_use_exceptions])
+    vendor_paths << in_hash[:project_build_vendor_ceedling_path]    if (in_hash[:project_use_partials])
 
     return vendor_paths
   end

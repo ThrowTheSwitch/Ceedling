@@ -148,7 +148,6 @@ plugin_reportinator_helper:
     - file_wrapper
 
 verbosinator:
-  # compose: configurator
 
 file_finder:
   compose:
@@ -164,10 +163,16 @@ file_finder_helper:
 
 parsing_parcels:
 
+include_factory:
+  compose:
+    - configurator
+
 test_context_extractor:
   compose:
     - configurator
     - file_wrapper
+    - file_path_utils
+    - include_factory
     - loginator
     - parsing_parcels
 
@@ -207,7 +212,7 @@ generator:
   compose:
     - configurator
     - generator_helper
-    - preprocessinator
+    - generator_partials
     - generator_mocks
     - generator_test_results
     - test_context_extractor
@@ -217,7 +222,6 @@ generator:
     - reportinator
     - loginator
     - plugin_manager
-    - file_wrapper
     - test_runner_manager
     - generator_test_results_backtrace
 
@@ -246,6 +250,16 @@ generator_mocks:
   compose:
     - configurator
 
+generator_partials:
+  compose:
+    - file_path_utils
+    - file_wrapper
+
+batchinator:
+  compose:
+    - batchinator_helper
+    - task_invoker
+
 dependinator:
   compose:
     - configurator
@@ -254,44 +268,67 @@ dependinator:
     - rake_wrapper
     - file_wrapper
 
+preprocessinator_line_marker_includes_extractor:
+  compose:
+    - include_factory
+
 preprocessinator:
   compose:
     - preprocessinator_includes_handler
-    - preprocessinator_file_handler
-    - task_invoker
-    - file_finder
+    - preprocessinator_file_assembler
     - file_path_utils
+    - tool_executor
     - file_wrapper
-    - yaml_wrapper
     - plugin_manager
     - configurator
-    - test_context_extractor
     - loginator
     - reportinator
-    - rake_wrapper
 
 preprocessinator_includes_handler:
   compose:
     - configurator
+    - preprocessinator_line_marker_includes_extractor
+    - include_factory
     - tool_executor
-    - test_context_extractor
+    - parsing_parcels
     - file_wrapper
     - yaml_wrapper
     - loginator
     - reportinator
 
-preprocessinator_file_handler:
+preprocessinator_file_assembler:
   compose:
-    - preprocessinator_extractor
+    - preprocessinator_reconstructor
     - configurator
     - tool_executor
     - file_path_utils
     - file_wrapper
     - loginator
+    - reportinator
 
-preprocessinator_extractor:
+preprocessinator_reconstructor:
   compose:
     - parsing_parcels
+
+preprocessinator_code_finder:
+
+partializer_parser:
+
+partializer_utils:
+
+partializer_helper:
+  compose:
+    - partializer_utils
+    - partializer_parser
+    - file_finder
+    - preprocessinator_code_finder
+    - file_path_utils
+
+partializer:
+  compose:
+    - partializer_helper
+    - file_path_utils
+    - loginator
 
 batchinator:
   compose:
@@ -309,7 +346,7 @@ test_invoker:
     - reportinator
     - loginator
     - preprocessinator
-    - task_invoker
+    - partializer
     - generator
     - test_context_extractor
     - file_path_utils
@@ -321,6 +358,7 @@ test_invoker_helper:
   compose:
     - configurator
     - loginator
+    - reportinator
     - batchinator
     - task_invoker
     - test_context_extractor
@@ -331,6 +369,7 @@ test_invoker_helper:
     - file_finder
     - file_path_utils
     - file_wrapper
+    - partializer
     - generator
     - test_runner_manager
 
