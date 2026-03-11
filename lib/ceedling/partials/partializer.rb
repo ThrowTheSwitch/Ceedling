@@ -117,8 +117,12 @@ class Partializer
     # Array for CModule structs
     contents = [CExtractor::CModule.new()]
 
-    if config.header.preprocessed_filepath
-      c_module = CExtractor.from_file( config.header.preprocessed_filepath ).extract_contents()
+    # Process the C module source and/or header associated with the Partial config
+    [config.source, config.header].each do |c_file|
+      # Do nothing if there's no preprocessed filepath (e.g. no source for Partial mock, only header)
+      next unless c_file.preprocessed_filepath
+
+      c_module = CExtractor.from_file( c_file.preprocessed_filepath ).extract_contents()
 
       # Align extracted function definitions with line markers in preprocessor output.
       # This perfectly remaps functions found in expanded preprocessor output with 
@@ -126,35 +130,13 @@ class Partializer
       @helper.associate_function_line_numbers(
         name: name,
         funcs: c_module.function_definitions,
-        filepath: config.header.filepath
+        filepath: c_file.filepath
       )
-
-      # We cannot tidy up our functions until we've used them unmodified to locate 
-      # them in preprocessor output
-      @helper.tidy_functions( c_module.function_definitions )
 
       contents << c_module
     end
 
-    if config.source.preprocessed_filepath
-      c_module = CExtractor.from_file( config.source.preprocessed_filepath ).extract_contents()
-
-      # Align extracted function definitions with line markers in preprocessor output.
-      # This perfectly remaps functions found in expanded preprocessor output with 
-      # original source location.
-      @helper.associate_function_line_numbers(
-        name: name,
-        funcs: c_module.function_definitions,
-        filepath: config.source.filepath
-      )
-
-      # We cannot tidy up our functions until we've used them unmodified to locate 
-      # them in preprocessor output
-      @helper.tidy_functions( c_module.function_definitions )
-
-      contents << c_module
-    end    
-
+    # Use `+` operator for CModule to merge everything
     return contents.reduce(&:+)
   end
 
@@ -278,7 +260,7 @@ class Partializer
     )
   end
 
-   def log_interface_includes(test:, module_name:, includes:)    
+  def log_interface_includes(test:, module_name:, includes:)    
     @loginator.log_list(
       includes,
       "Includes to inject for mockable Partial #{test}::#{module_name}",
