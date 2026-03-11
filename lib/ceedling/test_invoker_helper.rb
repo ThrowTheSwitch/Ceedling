@@ -301,10 +301,29 @@ class TestInvokerHelper
     return partials.map { |partial| @file_path_utils.form_partial_implementation_source_filename(partial) }
   end
 
-  def remove_mock_original_headers( filelist, mocklist )
+  def remove_mock_original_headers(filelist, mocklist)
     filelist.delete_if do |filepath|
       # Tell `delete_if()` logic to remove inspected filepath if simple mocklist includes a mock version of filepath
       mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ).ext( EXTENSION_CORE_HEADER ) )
+    end
+  end
+
+  def partials_module_sources(configs)
+    sources = []
+
+    configs.each do |_module, _|
+      sources << @file_finder.find_build_input_file( filepath: _module, context: TEST_SYM )
+    end
+
+    return sources
+  end
+
+  def remove_partials_source_objects(objects, configs)
+    modules = configs.keys
+
+    objects.delete_if do |filepath|
+      # Remove any object filepath that was formed from an orginal source module partialized
+      modules.include?( File.basename(filepath).ext() )
     end
   end
 
