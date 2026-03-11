@@ -97,9 +97,24 @@ class GeneratorPartials
         io << "#line #{defn.line_num} \"#{defn.source_filepath}\"\n"
       end
 
-      io << defn.code_block
+      io << cleanup_function( defn.code_block )
       io << "\n\n"
     end
+  end
+
+  private
+
+  def cleanup_function(code_block)
+    # Collapse any unnecessary newlines between closing paren and opening function bracket      
+    _code_block = code_block.gsub( /\)(\n){2,}\{/, ")\n{" )
+    # Collapse any unnecessary newlines between opening function bracket and code
+    _code_block.gsub!( /\{(\n){2,}/, "{\n" )
+    # Collapse any unnecessary newlines between code and closing function bracket
+    _code_block.gsub!( /(\n){2,}\}/, "\n}" )
+    # Collapse repeated blank lines
+    _code_block.gsub!( /(\h*\n){3,}/, "\n\n" )
+
+    return _code_block
   end
 
 end

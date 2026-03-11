@@ -128,19 +128,4 @@ class PartializerHelper
     end
   end
 
-  def tidy_functions(funcs)
-    funcs.each do |func|
-      code_block = func.code_block
-
-      # Collapse any unnecessary newlines between closing paren and opening function bracket      
-      code_block.gsub!( /\)(\n){2,}\{/, ")\n{" )
-      # Collapse any unnecessary newlines between opening function bracket and code
-      code_block.gsub!( /\{(\n){2,}/, "{\n" )
-      # Collapse any unnecessary newlines between code and closing function bracket
-      code_block.gsub!( /(\n){2,}\}/, "\n}" )
-      # Collapse repeated blank lines
-      code_block.gsub!( /(\h*\n){3,}/, "\n\n" )
-    end
-  end
-
 end
