@@ -16,12 +16,16 @@ describe PartializerHelper do
     @partializer_utils = double( "PartializerUtils" )
     @partializer_parser = double( "PartializerParser" )
     @file_finder = double( "FileFinder" )
+    @preprocessinator_code_finder = double( "PreprocessinatorCodeFinder" )
+    @file_path_utils = double( "FilePathUtils" )
 
     @helper = described_class.new(
       {
         :partializer_utils => @partializer_utils,
         :partializer_parser => @partializer_parser,
-        :file_finder => @file_finder
+        :file_finder => @file_finder,
+        :preprocessinator_code_finder => @preprocessinator_code_finder,
+        :file_path_utils => @file_path_utils
       }
     )
   end
@@ -704,22 +708,148 @@ describe PartializerHelper do
 
     it "returns empty array when no functions match visibility" do
       funcs = [@mock_func1, @mock_func2]
-      
+
       allow(@partializer_parser).to receive(:parse_signature_decorators)
         .with(@mock_func1.signature, @mock_func1.name)
         .and_return([[], 'void publicFunc(void)'])
-      
+
       allow(@partializer_parser).to receive(:parse_signature_decorators)
         .with(@mock_func2.signature, @mock_func2.name)
         .and_return([[], 'void staticFunc(void)'])
-      
+
       allow(@partializer_utils).to receive(:matches_visibility?)
         .with([], :private)
         .and_return(false)
-      
+
       result = @helper.filter_and_transform_funcs(funcs, :private, :impl)
-      
+
       expect(result).to eq([])
+    end
+  end
+
+  context "#associate_function_line_numbers" do
+    before(:each) do
+      @name      = 'TestModule'
+      @filepath  = '/path/to/module.c'
+      @exp_path  = '/build/preproc/module_TestModule.i'
+
+      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath)
+        .with(@filepath, @name)
+        .and_return(@exp_path)
+    end
+
+    it "does nothing when funcs is empty" do
+      expect(@preprocessinator_code_finder).not_to receive(:find_in_file)
+
+      @helper.associate_function_line_numbers(name: @name, funcs: [], filepath: @filepath)
+    end
+
+    it "constructs preprocessor expansion filepath from name and filepath" do
+      expect(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath)
+        .with(@filepath, @name)
+        .and_return(@exp_path)
+
+      func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil, source_filepath: nil)
+      allow(@preprocessinator_code_finder).to receive(:find_in_file).and_return(nil)
+
+      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath)
+    end
+
+    it "sets line_num and source_filepath when function is found in preprocessor output" do
+      func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil, source_filepath: nil)
+
+      allow(@preprocessinator_code_finder).to receive(:find_in_file)
+        .with(@exp_path, func.code_block)
+        .and_return(42)
+
+      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath)
+
+      expect(func.line_num).to eq(42)
+      expect(func.source_filepath).to eq(@filepath)
+    end
+
+    it "sets source_filepath but does not set line_num when function is not found (nil returned)" do
+      func = OpenStruct.new(code_block: 'void bar(void) {}', line_num: nil, source_filepath: nil)
+
+      allow(@preprocessinator_code_finder).to receive(:find_in_file)
+        .with(@exp_path, func.code_block)
+        .and_return(nil)
+
+      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath)
+
+      expect(func.line_num).to be_nil
+      expect(func.source_filepath).to eq(@filepath)
+    end
+
+    it "does not overwrite a pre-existing line_num when function is not found" do
+      func = OpenStruct.new(code_block: 'void baz(void) {}', line_num: 99, source_filepath: nil)
+
+      allow(@preprocessinator_code_finder).to receive(:find_in_file)
+        .with(@exp_path, func.code_block)
+        .and_return(nil)
+
+      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath)
+
+      expect(func.line_num).to eq(99)
+      expect(func.source_filepath).to eq(@filepath)
+    end
+
+    it "processes all functions, setting line_num for each found" do
+      func1 = OpenStruct.new(code_block: 'void foo(void) {}',      line_num: nil, source_filepath: nil)
+      func2 = OpenStruct.new(code_block: 'int bar(int x) {}',      line_num: nil, source_filepath: nil)
+      func3 = OpenStruct.new(code_block: 'char* baz(char* s) {}',  line_num: nil, source_filepath: nil)
+
+      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func1.code_block).and_return(10)
+      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func2.code_block).and_return(25)
+      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func3.code_block).and_return(50)
+
+      @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2, func3], filepath: @filepath)
+
+      expect(func1.line_num).to eq(10)
+      expect(func2.line_num).to eq(25)
+      expect(func3.line_num).to eq(50)
+      expect(func1.source_filepath).to eq(@filepath)
+      expect(func2.source_filepath).to eq(@filepath)
+      expect(func3.source_filepath).to eq(@filepath)
+    end
+
+    it "sets source_filepath for all functions even when some are not found" do
+      func1 = OpenStruct.new(code_block: 'void found(void) {}',    line_num: nil, source_filepath: nil)
+      func2 = OpenStruct.new(code_block: 'void missing(void) {}',  line_num: nil, source_filepath: nil)
+      func3 = OpenStruct.new(code_block: 'void also_found(void) {}', line_num: nil, source_filepath: nil)
+
+      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func1.code_block).and_return(7)
+      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func2.code_block).and_return(nil)
+      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func3.code_block).and_return(33)
+
+      @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2, func3], filepath: @filepath)
+
+      expect(func1.line_num).to eq(7)
+      expect(func2.line_num).to be_nil
+      expect(func3.line_num).to eq(33)
+      expect(func1.source_filepath).to eq(@filepath)
+      expect(func2.source_filepath).to eq(@filepath)
+      expect(func3.source_filepath).to eq(@filepath)
+    end
+
+    it "searches for each function's code_block in the expansion file" do
+      func1 = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil, source_filepath: nil)
+      func2 = OpenStruct.new(code_block: 'void bar(void) {}', line_num: nil, source_filepath: nil)
+
+      expect(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func1.code_block).and_return(1)
+      expect(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func2.code_block).and_return(2)
+
+      @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2], filepath: @filepath)
+    end
+
+    it "always overwrites source_filepath regardless of prior value" do
+      func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil, source_filepath: '/old/path.c')
+
+      allow(@preprocessinator_code_finder).to receive(:find_in_file).and_return(nil)
+
+      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath)
+
+      expect(func.source_filepath).to eq(@filepath)
     end
   end
 end
