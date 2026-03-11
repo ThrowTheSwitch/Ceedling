@@ -248,13 +248,13 @@ class TestInvokerHelper
     return sources
   end
 
-  def extract_sources(test_filepath)
+  def extract_sources(context, test_filepath, partials_configs)
     sources = []
 
     # Get any additional source files specified by TEST_SOURCE_FILE() in test file
-    _sources = @test_context_extractor.lookup_build_directive_sources_list(test_filepath)
+    _sources = @test_context_extractor.lookup_build_directive_sources_list( test_filepath )
     _sources.each do |source|
-      sources << @file_finder.find_build_input_file(filepath: source, complain: :ignore, context: TEST_SYM)
+      sources << @file_finder.find_build_input_file( filepath: source, complain: :ignore, context: context )
     end
 
     _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename(filepath).ext(EXTENSION_HEADER) }
@@ -263,11 +263,20 @@ class TestInvokerHelper
     includes = @test_context_extractor.lookup_all_header_includes_list(test_filepath)
     includes.each do |include|
       _basename = include.filename
-      next if _basename == UNITY_H_FILE                # Ignore Unity in this list
-      next if _basename.start_with?(CMOCK_MOCK_PREFIX) # Ignore mocks in this list
-      next if _support_headers.include?(_basename)     # Ignore any sources in our support files list
+      next if _basename == UNITY_H_FILE                      # Ignore Unity in this list
+      next if _basename.start_with?(CMOCK_MOCK_PREFIX)       # Ignore mocks in this list
+      next if _support_headers.include?(_basename)           # Ignore any sources in our support files list
 
-      sources << @file_finder.find_build_input_file(filepath: include.filename, complain: :ignore, context: TEST_SYM)
+      sources << @file_finder.find_build_input_file(filepath: include.filename, complain: :ignore, context: context)
+    end
+
+    # Only add the sources for our partials if this is a coverage build.
+    # We need to compile those sources with coverage for reporting.
+    # We can save on some compilation if it's not a coverage build.
+    if context == GCOV_SYM
+      partials_configs.each do |_module, _|
+        sources << @file_finder.find_build_input_file(filepath: _module, complain: :ignore, context: context)      
+      end
     end
 
     # Remove any nil or duplicate entries in list
@@ -306,16 +315,6 @@ class TestInvokerHelper
       # Tell `delete_if()` logic to remove inspected filepath if simple mocklist includes a mock version of filepath
       mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ).ext( EXTENSION_CORE_HEADER ) )
     end
-  end
-
-  def partials_module_sources(configs)
-    sources = []
-
-    configs.each do |_module, _|
-      sources << @file_finder.find_build_input_file( filepath: _module, context: TEST_SYM )
-    end
-
-    return sources
   end
 
   def remove_partials_source_objects(objects, configs)

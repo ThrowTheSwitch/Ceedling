@@ -413,8 +413,7 @@ class TestInvoker
             }
             details[:mocks] = mocks
             details[:partials] = {
-              :configs => partials_configs,
-              :compilations => []
+              :configs => partials_configs
             }
 
             # Trigger pre_test plugin hook after having assembled all testing context
@@ -620,7 +619,7 @@ class TestInvoker
               includes:       arg_hash[:header_includes]
             )
 
-            testable[:partials][:compilations] << @generator.generate_partial_implementation(**arg_hash)
+            @generator.generate_partial_implementation(**arg_hash)
           end
 
           arg_hash = {
@@ -827,11 +826,10 @@ class TestInvoker
           mock_list = @context_extractor.lookup_mock_header_includes_list( filepath )
 
           # Source files referenced by conventions or specified by build directives in a test file
-          test_sources       =  @helper.extract_sources( filepath )
+          test_sources       =  @helper.extract_sources( context, filepath, details[:partials][:configs] )
           test_core          =  test_sources + 
                                 # List of mock includes transformed to simple list of .c files
-                                mock_list.map { |mock| mock.filename.ext( EXTENSION_CORE_SOURCE ) } +
-                                details[:partials][:compilations]
+                                mock_list.map { |mock| mock.filename.ext( EXTENSION_CORE_SOURCE ) }
 
           # When we have a mock and an include for the same file, the mock wins
           @helper.remove_mock_original_headers(
@@ -852,8 +850,6 @@ class TestInvoker
           compilations       << details[:runner][:output_filepath]
           compilations       += test_frameworks
           compilations       += test_support
-          # Add the original sources of partials for coverage mapping compilation (not linked for test executable)
-          compilations       += @helper.partials_module_sources( details[:partials][:configs] )
           compilations.uniq!
 
           test_objects       = @file_path_utils.form_test_build_objects_filelist( details[:paths][:build], compilations )
@@ -975,18 +971,16 @@ class TestInvoker
 
   def each_test_with_sources
     @testables.each do |test, details|
-      yield(test.to_s, lookup_sources(test:test))
+      yield(test.to_s, lookup_sources(test: test))
     end
   end
 
   def lookup_sources(test:)
-    _test = test.is_a?(Symbol) ? test : test.to_sym
-    return (@testables[_test])[:sources]
+    return (@testables[test.to_sym])[:sources]
   end
 
   def compile_test_component(tool:, context:TEST_SYM, test:, source:, object:, msg:nil)
     testable = @testables[test.to_sym]
-    filepath = testable[:filepath]
     defines = testable[:compile_defines]
 
     # Tailor search path:
