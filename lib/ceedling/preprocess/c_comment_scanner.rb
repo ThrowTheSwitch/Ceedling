@@ -10,6 +10,9 @@ require 'strscan'
 
 class CCommentScanner
 
+  PRESERVE_LINES = :preserve_lines unless const_defined?( :PRESERVE_LINES )
+  COMPACT = :compact unless const_defined?( :COMPACT )
+
   # Describes a single C comment found within source or preprocessor text.
   #
   # position      - Byte offset of the first comment character (the leading /)
@@ -25,56 +28,40 @@ class CCommentScanner
   end
 
 
-  # Open a C source or preprocessor output file and return all comments found.
-  # Returns an Array<CommentInfo> in ascending position order.
+  # Given the Array<CommentInfo> from scan, return a copy of
+  # content with every comment replaced according to mode:
   #
-  # Intended for production use where files reside on disk.
-  def scan_file(filepath)
-    File.open(filepath, 'r') do |file|
-      return scan(io: file)
-    end
-  end
-
-
-  # Wrap a C source or preprocessor output string and return all comments found.
-  # Returns an Array<CommentInfo> in ascending position order.
+  #   :compact (default) — every comment replaced by a single space character.
+  #   :preserve_lines    — single-line comments (lines_removed == 0) replaced by a
+  #                        single space; multi-line comments replaced by
+  #                        lines_removed newlines so the total line count is unchanged.
   #
-  # Intended for production or testing use (requiring no temporary files).
-  def scan_string(content)
-    buffer = StringIO.new(content)
-    return scan(io: buffer)
-  end
-
-
-  # Given the Array<CommentInfo> from scan_file or scan_string, return a copy of
-  # content with every comment replaced by a single space character.
-  #
-  # Array<CommentInfo> is processed in descending position order (i.e. backwards) 
-  # to ensure each comment removal does not disturb earlier comments in the content 
-  # with respect to `CommentInfo`` details.
-  def remove(content, comment_infos)
+  # Array<CommentInfo> is processed in descending position order (i.e. backwards)
+  # to ensure each comment removal does not disturb earlier comments in the content
+  # with respect to `CommentInfo` details.
+  def remove(content, comment_infos, mode: COMPACT)
     result = content.dup
     # Process in descending position order so earlier byte positions remain valid
     comment_infos.sort_by { |info| -info.position }.each do |info|
-      result[info.position, info.length] = ' '
+      replacement = ' '
+      if (mode == PRESERVE_LINES && info.lines_removed > 0)
+        replacement = "\n" * info.lines_removed        
+      end
+
+      result[info.position, info.length] = replacement
     end
     return result
   end
 
-
-  private
-
-
-  # Core lexical scan of an IO stream.
+  # Scan an IO stream (File or StringIO) and return all C comments found.
+  # Returns an Array<CommentInfo> in ascending position order.
   #
   # Uses StringScanner for a single-pass scan.  Recognises string/character
   # literals and prevents comment detection inside them.
-  # 
+  #
   # Records:
   #   - // single-line comments (with optional backslash continuation lines)
   #   - /* ... */ block comments (including multiline; unterminated at EOF)
-  #
-  # Returns an Array<CommentInfo> in ascending position order.
   def scan(io:)
     content = io.read
     return [] if content.nil? || content.empty?
@@ -125,6 +112,8 @@ class CCommentScanner
     return comments
   end
 
+
+  private
 
   # Advance the scanner past a string or character literal.
   # Called when the scanner is positioned at the opening quote character.
