@@ -321,9 +321,9 @@ class TestContextExtractor
     )
 
     test_cases = unity_test_runner_generator.test_cases
-    test_cases = test_cases.map {|test_case| "#{test_case[:line_number]}:#{test_case[:test]}()" }
+    test_cases = test_cases.map {|test_case| "#{test_case[:test]}(): #{test_case[:line_number]}" }
 
-    debug_log_list( "Test cases found", filepath, test_cases )
+    debug_log_list( "Test cases with line numbers found", filepath, test_cases )
   end
 
   def extract_build_directive_source_files(line)
