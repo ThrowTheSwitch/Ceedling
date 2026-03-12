@@ -201,4 +201,118 @@ describe PreprocessinatorCodeFinder do
 
   end
 
+
+  context "#find_in_c_string" do
+
+    # -----------------------------------------------------------------------
+    # nil cases
+    # -----------------------------------------------------------------------
+
+    it "returns nil for empty content" do
+      expect( @finder.find_in_c_string( "", "int foo(void);" ) ).to be_nil
+    end
+
+    it "returns nil when the search string is not present in the content" do
+      content = "int foo(void);\nint bar(void);\n"
+      expect( @finder.find_in_c_string( content, "int baz(void);" ) ).to be_nil
+    end
+
+    # -----------------------------------------------------------------------
+    # Line number arithmetic — no GCC markers, pure newline count
+    # -----------------------------------------------------------------------
+
+    it "returns 1 when the match is at the very start of the content" do
+      content = "uint32_t sensor_val;\nint x;\n"
+      expect( @finder.find_in_c_string( content, "uint32_t sensor_val;" ) ).to eq 1
+    end
+
+    it "returns the correct 1-indexed line number for a match on a later line" do
+      content = "int a;\nint b;\nint c;\n"
+      expect( @finder.find_in_c_string( content, "int c;" ) ).to eq 3
+    end
+
+    it "returns the correct line number for a match on the last line with no trailing newline" do
+      content = "void foo(void);\nvoid bar(void);\nvoid baz(void);"
+      expect( @finder.find_in_c_string( content, "void baz(void);" ) ).to eq 3
+    end
+
+    it "locates a declaration several lines into a realistic C header block" do
+      content = <<~C
+        #include <stdint.h>
+        #include <stdbool.h>
+        #define MAX_CHANNELS 16
+        typedef struct { uint32_t count; } Buffer;
+        void buffer_init(Buffer *b);
+        bool buffer_full(const Buffer *b);
+      C
+
+      expect( @finder.find_in_c_string( content, "void buffer_init(Buffer *b);" ) ).to eq 5
+      expect( @finder.find_in_c_string( content, "bool buffer_full(const Buffer *b);" ) ).to eq 6
+    end
+
+    # -----------------------------------------------------------------------
+    # Multiline search string
+    # -----------------------------------------------------------------------
+
+    it "finds a multiline function body and reports the line of its opening signature" do
+      content = <<~C
+        void setup(void);
+        void teardown(void);
+        int add(int a, int b)
+        {
+          return a + b;
+        }
+      C
+
+      func = <<~FUNCTION
+        int add(int a, int b)
+        {
+          return a + b;
+        }
+      FUNCTION
+
+      expect( @finder.find_in_c_string( content, func ) ).to eq 3
+    end
+
+    it "reports the correct line for a multiline match preceded by declarations and macros" do
+      content = <<~C
+        #include <stdint.h>
+        #define ENABLE  1
+        #define DISABLE 0
+        void driver_init(int mode)
+        {
+          if (mode == ENABLE) { setup(); }
+        }
+      C
+
+      func = <<~FUNCTION
+        void driver_init(int mode)
+        {
+          if (mode == ENABLE) { setup(); }
+        }
+      FUNCTION
+
+      expect( @finder.find_in_c_string( content, func ) ).to eq 4
+    end
+
+    # -----------------------------------------------------------------------
+    # Realistic C source
+    # -----------------------------------------------------------------------
+
+    it "correctly locates multiple functions in a realistic stripped C source file" do
+      content = <<~C
+        #include <stdint.h>
+        static uint32_t counter = 0;
+        void increment(void) { counter++; }
+        uint32_t get_count(void) { return counter; }
+        void reset(void) { counter = 0; }
+      C
+
+      expect( @finder.find_in_c_string( content, "void increment(void) { counter++; }" ) ).to eq 3
+      expect( @finder.find_in_c_string( content, "uint32_t get_count(void) { return counter; }" ) ).to eq 4
+      expect( @finder.find_in_c_string( content, "void reset(void) { counter = 0; }" ) ).to eq 5
+    end
+
+  end
+
 end
