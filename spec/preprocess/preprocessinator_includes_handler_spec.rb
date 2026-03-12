@@ -23,15 +23,17 @@ describe PreprocessinatorIncludesHandler do
 
   subject do
     PreprocessinatorIncludesHandler.new(
-      :configurator           => @configurator,
-      :include_factory        => @include_factory,
-      :preprocessinator_line_marker_includes_extractor => @preprocessinator_line_marker_includes_extractor,
-      :tool_executor          => @tool_executor,
-      :file_wrapper           => @file_wrapper,
-      :yaml_wrapper           => @yaml_wrapper,
-      :parsing_parcels        => @parsing_parcels,
-      :loginator              => @loginator,
-      :reportinator           => @reportinator
+      {
+        :configurator           => @configurator,
+        :include_factory        => @include_factory,
+        :preprocessinator_line_marker_includes_extractor => @preprocessinator_line_marker_includes_extractor,
+        :tool_executor          => @tool_executor,
+        :file_wrapper           => @file_wrapper,
+        :yaml_wrapper           => @yaml_wrapper,
+        :parsing_parcels        => @parsing_parcels,
+        :loginator              => @loginator,
+        :reportinator           => @reportinator
+      }
     )
   end
 
