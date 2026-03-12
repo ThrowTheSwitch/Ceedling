@@ -9,12 +9,14 @@ require 'stringio'
 
 class PreprocessinatorCodeFinder
 
+  LINE_MARKER_REGEX = /^#\s+(\d+)\s+"[^"]+"[^\n]*\n/ unless const_defined?(:LINE_MARKER_REGEX)
+
   # Open a GCC preprocessor output file and search it for code.
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for production use where preprocessor output resides on disk.
-  def find_in_file(filepath, code)
+  def find_in_preprpocessed_file(filepath, code)
     File.open( filepath, 'r' ) do |file|
-      return find( io: file, search: code )
+      return find_in_preprocessed_content( io: file, search: code )
     end
   end
 
@@ -22,9 +24,9 @@ class PreprocessinatorCodeFinder
   # Wrap a GCC preprocessor output string in a StringIO and search it for code.
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for test use so that specs require no temporary files.
-  def find_in_string(content, code)
+  def find_in_preprpocessed_string(content, code)
     buffer = StringIO.new( content )
-    return find( io: buffer, search: code )
+    return find_in_preprocessed_content( io: buffer, search: code )
   end
 
   private
@@ -46,7 +48,7 @@ class PreprocessinatorCodeFinder
   #
   # Returns nil when search is not present in the stream or no line marker
   # precedes the match (which indicates malformed preprocessor output).
-  def find(io:, search:)
+  def find_in_preprocessed_content(io:, search:)
     content = io.read
     return nil if content.nil? || content.empty?
 
@@ -60,9 +62,10 @@ class PreprocessinatorCodeFinder
     prefix = content[0, match_pos]
 
     last_marker_num = nil
-    last_marker_end = 0   # byte position in content after the last marker's newline
+    # Byte position in content after the last marker's newline
+    last_marker_end = 0
 
-    prefix.scan(/^#\s+(\d+)\s+"[^"]+"[^\n]*\n/) do |captures|
+    prefix.scan( LINE_MARKER_REGEX ) do |captures|
       last_marker_num = captures[0].to_i
       last_marker_end = $~.end(0)
     end
@@ -76,6 +79,7 @@ class PreprocessinatorCodeFinder
     # advances the source line by one. The marker's linenum is the base.
     newlines_after_marker = content[last_marker_end, match_pos - last_marker_end].count("\n")
     
+    # Return line number of found code (mostly for test validation)
     return last_marker_num + newlines_after_marker
   end
 end
