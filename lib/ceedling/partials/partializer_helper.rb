@@ -10,7 +10,14 @@ require 'ceedling/array_patches' # Redundant `require` to ensure patching in tes
 
 class PartializerHelper
 
-  constructor :partializer_parser, :partializer_utils, :file_finder, :preprocessinator_code_finder, :file_path_utils
+  constructor(
+    :partializer_parser, 
+    :partializer_utils,
+    :file_finder,
+    :preprocessinator_code_finder,
+    :file_path_utils,
+    :loginator
+  )
 
   def setup()
     # Aliases
@@ -70,8 +77,8 @@ class PartializerHelper
       # Every partial type involves processing header files
       config.header.filepath = @file_finder.find_header_file(_module, :ignore)
       
-      # Only test partial types involve processing source files
-      if config.types.intersect?([Partials::TEST_PUBLIC, Partials::TEST_PRIVATE])
+      # Only these partial types involve processing source files
+      if config.types.intersect?([Partials::TEST_PUBLIC, Partials::TEST_PRIVATE, Partials::MOCK_PRIVATE])
         config.source.filepath = @file_finder.find_source_file(_module, :ignore)
       end
     end
@@ -115,17 +122,68 @@ class PartializerHelper
   # locations are to be resolved. Matched entries are mutated in place.
   # @param filepath [String] Path to the original C source file that was 
   # preprocessed, written into each matched FunctionDefinition as source_filepath.
-  def associate_function_line_numbers(name:, funcs:, filepath:)
-    # File path of fully expanded preprocessor output
-    _filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, name )
+  # @param fallback [bool] Whether to immediately use simple source file scanning
+  # instead of preprocessed output (because preprocessed output is not available)
+  def associate_function_line_numbers(name:, funcs:, filepath:, fallback:)
+    # File path of directives-only preprocessor output
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( filepath, name )
+
+    # Always set source filepath
+    funcs.each { |func| func.source_filepath = filepath }
+
+    if fallback
+      msg = "Using fallback C function location search for #{filepath}"
+      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
+      funcs.each do |func|
+        line_num = @preprocessinator_code_finder.find_in_c_file(
+          filepath,
+          func.code_block
+        )
+
+        # Set line number (including nil)
+        func.line_num = line_num
+      end
+
+    else
+      # If not relying on a simple fallback technique for all functions, attempt the search
+      # within the preprocessor output and fallback to simple source file searching for any
+      # individual search failures.
+      funcs.each do |func|
+        # Try preprocesed output search first
+        line_num = @preprocessinator_code_finder.find_in_preprpocessed_file(
+          preprocessed_filepath,
+          func.code_block
+        )
+
+        # Try fallback search next
+        if line_num.nil?
+          msg = "Using fallback C function location search for #{filepath}"
+          @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+          line_num = @preprocessinator_code_finder.find_in_c_file(
+            filepath,
+            func.code_block
+          )
+        end
+
+        # Set line number (including nil)
+        func.line_num = line_num        
+      end
+    end
 
     funcs.each do |func|
-      line_num = @preprocessinator_code_finder.find_in_file( _filepath, func.code_block )
-      # Set line number conditionally
-      func.line_num = line_num unless line_num.nil?
-      # Always set filepath
-      func.source_filepath = filepath
+      if func.line_num.nil?
+        msg = "Could not locate function #{func.name}() in #{filepath} ➡️ Any test coverage reporting will be incomplete."
+        @loginator.log( msg, Verbosity::COMPLAIN )
+      end
     end
+
+    header = "Found functions at line numbers in #{filepath}"
+    found_list = funcs.map do |func|
+      "#{func.name}(): #{func.line_num.nil? ? 'N/A' : func.line_num.to_s()}"
+    end
+    @loginator.log_list( found_list, header, Verbosity::DEBUG )
+
   end
 
 end

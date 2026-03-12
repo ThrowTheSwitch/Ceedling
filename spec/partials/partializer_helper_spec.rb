@@ -448,25 +448,6 @@ describe PartializerHelper do
       expect(configs['module1'].source.filepath).to eq('/path/to/module1.c')
     end
 
-    it "populates header and source filepaths for TEST_PUBLIC and TEST_PRIVATE types" do
-      configs = {
-        'module1' => OpenStruct.new(
-          module: 'module1',
-          types: [Partials::TEST_PUBLIC, Partials::TEST_PRIVATE],
-          header: OpenStruct.new(filepath: nil),
-          source: OpenStruct.new(filepath: nil)
-        )
-      }
-      
-      allow(@file_finder).to receive(:find_header_file).with('module1', :ignore).and_return('/path/to/module1.h')
-      allow(@file_finder).to receive(:find_source_file).with('module1', :ignore).and_return('/path/to/module1.c')
-      
-      @helper.config_populate_filepaths(configs)
-      
-      expect(configs['module1'].header.filepath).to eq('/path/to/module1.h')
-      expect(configs['module1'].source.filepath).to eq('/path/to/module1.c')
-    end
-
     it "populates only header filepath for MOCK_PUBLIC type" do
       configs = {
         'module1' => OpenStruct.new(
@@ -486,7 +467,7 @@ describe PartializerHelper do
       expect(configs['module1'].source.filepath).to be_nil
     end
 
-    it "populates only header filepath for MOCK_PRIVATE type" do
+    it "populates header and source filepaths for MOCK_PRIVATE type" do
       configs = {
         'module1' => OpenStruct.new(
           module: 'module1',
@@ -497,12 +478,31 @@ describe PartializerHelper do
       }
       
       allow(@file_finder).to receive(:find_header_file).with('module1', :ignore).and_return('/path/to/module1.h')
-      expect(@file_finder).not_to receive(:find_source_file)
+      expect(@file_finder).to receive(:find_source_file).with('module1', :ignore).and_return('/path/to/module1.c')
 
       @helper.config_populate_filepaths(configs)
       
       expect(configs['module1'].header.filepath).to eq('/path/to/module1.h')
-      expect(configs['module1'].source.filepath).to be_nil
+      expect(configs['module1'].source.filepath).to eq('/path/to/module1.c')
+    end
+
+    it "populates header and source filepaths for TEST_PUBLIC, TEST_PRIVATE, and MOCK_PRIVATE types" do
+      configs = {
+        'module1' => OpenStruct.new(
+          module: 'module1',
+          types: [Partials::TEST_PUBLIC, Partials::TEST_PRIVATE, Partials::MOCK_PRIVATE],
+          header: OpenStruct.new(filepath: nil),
+          source: OpenStruct.new(filepath: nil)
+        )
+      }
+      
+      allow(@file_finder).to receive(:find_header_file).with('module1', :ignore).and_return('/path/to/module1.h')
+      allow(@file_finder).to receive(:find_source_file).with('module1', :ignore).and_return('/path/to/module1.c')
+      
+      @helper.config_populate_filepaths(configs)
+      
+      expect(configs['module1'].header.filepath).to eq('/path/to/module1.h')
+      expect(configs['module1'].source.filepath).to eq('/path/to/module1.c')
     end
 
     it "populates filepaths for multiple modules" do
@@ -739,7 +739,7 @@ describe PartializerHelper do
     end
 
     it "does nothing when funcs is empty" do
-      expect(@preprocessinator_code_finder).not_to receive(:find_in_file)
+      expect(@preprocessinator_code_finder).not_to receive(:find_in_preprpocessed_file)
 
       @helper.associate_function_line_numbers(name: @name, funcs: [], filepath: @filepath)
     end
@@ -750,7 +750,7 @@ describe PartializerHelper do
         .and_return(@exp_path)
 
       func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil, source_filepath: nil)
-      allow(@preprocessinator_code_finder).to receive(:find_in_file).and_return(nil)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).and_return(nil)
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath)
     end
@@ -758,7 +758,7 @@ describe PartializerHelper do
     it "sets line_num and source_filepath when function is found in preprocessor output" do
       func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil, source_filepath: nil)
 
-      allow(@preprocessinator_code_finder).to receive(:find_in_file)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file)
         .with(@exp_path, func.code_block)
         .and_return(42)
 
@@ -771,7 +771,7 @@ describe PartializerHelper do
     it "sets source_filepath but does not set line_num when function is not found (nil returned)" do
       func = OpenStruct.new(code_block: 'void bar(void) {}', line_num: nil, source_filepath: nil)
 
-      allow(@preprocessinator_code_finder).to receive(:find_in_file)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file)
         .with(@exp_path, func.code_block)
         .and_return(nil)
 
@@ -784,7 +784,7 @@ describe PartializerHelper do
     it "does not overwrite a pre-existing line_num when function is not found" do
       func = OpenStruct.new(code_block: 'void baz(void) {}', line_num: 99, source_filepath: nil)
 
-      allow(@preprocessinator_code_finder).to receive(:find_in_file)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file)
         .with(@exp_path, func.code_block)
         .and_return(nil)
 
@@ -799,9 +799,9 @@ describe PartializerHelper do
       func2 = OpenStruct.new(code_block: 'int bar(int x) {}',      line_num: nil, source_filepath: nil)
       func3 = OpenStruct.new(code_block: 'char* baz(char* s) {}',  line_num: nil, source_filepath: nil)
 
-      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func1.code_block).and_return(10)
-      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func2.code_block).and_return(25)
-      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func3.code_block).and_return(50)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).with(@exp_path, func1.code_block).and_return(10)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).with(@exp_path, func2.code_block).and_return(25)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).with(@exp_path, func3.code_block).and_return(50)
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2, func3], filepath: @filepath)
 
@@ -818,9 +818,9 @@ describe PartializerHelper do
       func2 = OpenStruct.new(code_block: 'void missing(void) {}',  line_num: nil, source_filepath: nil)
       func3 = OpenStruct.new(code_block: 'void also_found(void) {}', line_num: nil, source_filepath: nil)
 
-      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func1.code_block).and_return(7)
-      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func2.code_block).and_return(nil)
-      allow(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func3.code_block).and_return(33)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).with(@exp_path, func1.code_block).and_return(7)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).with(@exp_path, func2.code_block).and_return(nil)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).with(@exp_path, func3.code_block).and_return(33)
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2, func3], filepath: @filepath)
 
@@ -836,8 +836,8 @@ describe PartializerHelper do
       func1 = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil, source_filepath: nil)
       func2 = OpenStruct.new(code_block: 'void bar(void) {}', line_num: nil, source_filepath: nil)
 
-      expect(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func1.code_block).and_return(1)
-      expect(@preprocessinator_code_finder).to receive(:find_in_file).with(@exp_path, func2.code_block).and_return(2)
+      expect(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).with(@exp_path, func1.code_block).and_return(1)
+      expect(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).with(@exp_path, func2.code_block).and_return(2)
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2], filepath: @filepath)
     end
@@ -845,7 +845,7 @@ describe PartializerHelper do
     it "always overwrites source_filepath regardless of prior value" do
       func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil, source_filepath: '/old/path.c')
 
-      allow(@preprocessinator_code_finder).to receive(:find_in_file).and_return(nil)
+      allow(@preprocessinator_code_finder).to receive(:find_in_preprpocessed_file).and_return(nil)
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath)
 
