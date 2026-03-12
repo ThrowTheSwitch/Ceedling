@@ -205,20 +205,22 @@ class PreprocessinatorFileAssembler
   def collect_source_file_contents(source_filepath:, test:, flags:, defines:, include_paths:)
     contents = []
 
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
+    # preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
+
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( source_filepath, test )
 
     # Run GCC with full preprocessor expansion
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_full_preprocessor,
-      # Additional arguments
-      flags,
-      # Argument replacement
-      source_filepath,
-      preprocessed_filepath,
-      defines,
-      include_paths
-    )
-    @tool_executor.exec( command )
+    # command = @tool_executor.build_command_line(
+    #   @configurator.tools_test_file_full_preprocessor,
+    #   # Additional arguments
+    #   flags,
+    #   # Argument replacement
+    #   source_filepath,
+    #   preprocessed_filepath,
+    #   defines,
+    #   include_paths
+    # )
+    # @tool_executor.exec( command )
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )

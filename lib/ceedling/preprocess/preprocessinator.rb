@@ -10,20 +10,24 @@ require 'ceedling/exceptions'
 
 class Preprocessinator
 
-  constructor :preprocessinator_includes_handler,
-              :preprocessinator_file_assembler,
-              :file_path_utils,
-              :tool_executor,
-              :file_wrapper,
-              :plugin_manager,
-              :configurator,
-              :loginator,
-              :reportinator
+  constructor(
+    :preprocessinator_includes_handler,
+    :preprocessinator_comment_stripper,
+    :preprocessinator_file_assembler,
+    :file_path_utils,
+    :tool_executor,
+    :file_wrapper,
+    :plugin_manager,
+    :configurator,
+    :loginator,
+    :reportinator
+  )
 
   def setup
     # Aliases
     @includes_handler = @preprocessinator_includes_handler
     @file_assembler = @preprocessinator_file_assembler
+    @comment_stripper = @preprocessinator_comment_stripper
 
     # Thread-safe per-file locking for YAML cache operations
     # Key: includes list filepath (String), Value: Mutex
@@ -80,6 +84,11 @@ class Preprocessinator
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::ERROR )
       return nil
     end
+
+    # Remove comments from directives-only file in filesystem.
+    # Directives-only output keeps our most essential details (include directives & macros) and handles #ifdefs, etc.
+    # However, it does not strip out comments.
+    @comment_stripper.strip_file( preprocessed_filepath )
 
     return preprocessed_filepath
   end
