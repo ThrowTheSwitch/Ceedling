@@ -687,7 +687,7 @@ class Configurator
 
     # Ensure element already exists
     if not @project_config_hash.include?(elem)
-      error = "Could not rederine #{elem} in configurator--element does not exist"
+      error = "Could not redefine #{elem} in configurator ⏩️ Element does not exist"
       raise CeedlingException.new(error)
     end
 

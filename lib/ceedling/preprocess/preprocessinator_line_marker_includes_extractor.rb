@@ -100,7 +100,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
         includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth)
       end
     rescue StandardError => e
-      raise CeedlingException.new("Failed to extract #{type} includes from preprocessor output file '#{filepath}': #{e.message}")
+      raise CeedlingException.new("Failed to extract #{type} includes from preprocessor output file '#{filepath}' ⏩️ #{e.message}")
     end
     return includes
   end

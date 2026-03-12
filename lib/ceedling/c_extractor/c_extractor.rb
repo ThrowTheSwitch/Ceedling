@@ -63,9 +63,9 @@ class CExtractor
     begin
       file = File.open(filepath, 'r')
     rescue SystemCallError => e
-      raise CeedlingException.new("Failed to open file for C contents extraction `#{filepath}`: #{e.message}")
+      raise CeedlingException.new("Failed to open file for C contents extraction `#{filepath}` ⏩️ #{e.message}")
     rescue => e
-      raise CeedlingException.new("Error opening file for C contents extraction `#{filepath}`: #{e.message}")
+      raise CeedlingException.new("Error opening file for C contents extraction `#{filepath}` ⏩️ #{e.message}")
     end
 
     return new(
