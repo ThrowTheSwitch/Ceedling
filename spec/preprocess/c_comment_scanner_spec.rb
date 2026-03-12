@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'stringio'
 require 'ceedling/preprocess/c_comment_scanner'
 
 RSpec.describe CCommentScanner do
@@ -21,7 +22,7 @@ RSpec.describe CCommentScanner do
 
 
   # ===========================================================================
-  describe '#scan_string' do
+  describe '#scan' do
   # ===========================================================================
 
     # -------------------------------------------------------------------------
@@ -29,7 +30,7 @@ RSpec.describe CCommentScanner do
     # -------------------------------------------------------------------------
 
       it 'returns empty array for an empty string' do
-        expect(scanner.scan_string('')).to eq([])
+        expect(scanner.scan(io: StringIO.new(''))).to eq([])
       end
 
       it 'returns empty array for realistic C code that contains no comments' do
@@ -46,7 +47,7 @@ RSpec.describe CCommentScanner do
           static bool buffer_full(const Buffer *b);
           static void buffer_clear(Buffer *b);
         C
-        expect(scanner.scan_string(content)).to eq([])
+        expect(scanner.scan(io: StringIO.new(content))).to eq([])
       end
 
     end
@@ -58,7 +59,7 @@ RSpec.describe CCommentScanner do
 
       it 'finds an inline // comment and reports correct position, length, and lines_removed' do
         content = "int x = 5; // assign x\nint y = 6;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(infos[0].position).to eq(11)
@@ -68,7 +69,7 @@ RSpec.describe CCommentScanner do
 
       it 'finds a // comment that extends to end of file with no trailing newline' do
         content = "int x = 5; // eof comment"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq('// eof comment')
@@ -77,7 +78,7 @@ RSpec.describe CCommentScanner do
 
       it 'does not consume the terminating newline of a // comment' do
         content = "// comment\nint x;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         # The \n at position 10 must remain available; only the comment is captured
@@ -88,7 +89,7 @@ RSpec.describe CCommentScanner do
       it 'handles a backslash continuation (no trailing whitespace) spanning one extra line' do
         # A backslash immediately before the newline continues the line comment.
         content = "// first line \\\nsecond line still comment\nint x;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq("// first line \\\nsecond line still comment")
@@ -98,7 +99,7 @@ RSpec.describe CCommentScanner do
       it 'handles a backslash continuation with trailing spaces between backslash and newline' do
         # GCC accepts (with a warning) whitespace between the \ and the newline.
         content = "// first line \\   \nsecond line still comment\nint x;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq("// first line \\   \nsecond line still comment")
@@ -109,7 +110,7 @@ RSpec.describe CCommentScanner do
         # \\\t\t\n in the Ruby string literal: one backslash, two tabs, then a newline.
         # The scanner must treat \<TAB><TAB><NEWLINE> as a continuation sequence.
         content = "// comment\\\t\t\ncontinuation\ncode;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq("// comment\\\t\t\ncontinuation")
@@ -118,7 +119,7 @@ RSpec.describe CCommentScanner do
 
       it 'handles a // comment with multiple continuation lines' do
         content = "// line one \\\nline two \\\nline three\ncode;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq("// line one \\\nline two \\\nline three")
@@ -134,7 +135,7 @@ RSpec.describe CCommentScanner do
 
       it 'finds an inline /* */ comment on a single line with lines_removed = 0' do
         content = "int x = /* the value */ 5;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq('/* the value */')
@@ -149,7 +150,7 @@ RSpec.describe CCommentScanner do
            */
           #include <stdint.h>
         C
-        infos = scanner.scan_string(content)
+        infos = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(infos[0].position).to eq(0)
@@ -159,7 +160,7 @@ RSpec.describe CCommentScanner do
 
       it 'records an unterminated /* comment that extends to EOF' do
         content = "int x = 5;\n/* unterminated block\nstill in comment\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq("/* unterminated block\nstill in comment\n")
@@ -168,7 +169,7 @@ RSpec.describe CCommentScanner do
 
       it 'treats // sequences inside /* */ as non-special (not a nested comment)' do
         content = "/* block with // inside\nstill block */\ncode;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq("/* block with // inside\nstill block */")
@@ -184,19 +185,19 @@ RSpec.describe CCommentScanner do
 
       it 'does not detect // inside a double-quoted string literal as a comment' do
         content = "const char *s = \"http://example.com\";\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
         expect(infos).to be_empty
       end
 
       it 'does not detect /* */ inside a double-quoted string literal as a comment' do
         content = "const char *msg = \"/* not a comment */\";\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
         expect(infos).to be_empty
       end
 
       it 'does not detect // inside a single-quoted character literal as a comment' do
         content = "char a = '/';\nchar b = '/';\n// real comment\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq('// real comment')
@@ -205,7 +206,7 @@ RSpec.describe CCommentScanner do
       it 'handles an escaped quote inside a string literal before a real comment' do
         # The \" inside the string must not prematurely close the literal.
         content = "char *s = \"he said \\\"hi\\\"\";\n// real comment\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq('// real comment')
@@ -220,7 +221,7 @@ RSpec.describe CCommentScanner do
 
       it 'does not treat /* appearing after // as a block comment start' do
         content = "// line comment /* not a block\ncode;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
         expect(content[infos[0].position, infos[0].length]).to eq('// line comment /* not a block')
@@ -229,7 +230,7 @@ RSpec.describe CCommentScanner do
 
       it 'finds two adjacent comments with no code between them' do
         content = "/* block *//* another block */\ncode;\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(2)
         expect(content[infos[0].position, infos[0].length]).to eq('/* block */')
@@ -246,7 +247,7 @@ RSpec.describe CCommentScanner do
             uint8_t  data[16];
           } Buffer;
         C
-        infos = scanner.scan_string(content)
+        infos = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(4)
         expect(infos.map(&:lines_removed)).to all(eq(0))
@@ -267,7 +268,7 @@ RSpec.describe CCommentScanner do
           # 4 "sensor.c"
           #define SCALE_FACTOR 0.001f /* mV per LSB */
         PREPROCESSED
-        infos = scanner.scan_string(content)
+        infos = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(3)
         expect(comment_texts(content, infos)).to eq([
@@ -282,7 +283,7 @@ RSpec.describe CCommentScanner do
 
       it 'returns comments in ascending byte position order' do
         content = "/* first */ code; /* second */\nmore; // third\n"
-        infos   = scanner.scan_string(content)
+        infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(3)
         positions = infos.map(&:position)
@@ -300,7 +301,7 @@ RSpec.describe CCommentScanner do
 
     it 'replaces each comment with a single space and leaves all other content intact' do
       content = "int x = 5; // inline comment\nint y = /* value */ 6;\n"
-      infos   = scanner.scan_string(content)
+      infos   = scanner.scan(io: StringIO.new(content))
       result  = scanner.remove(content, infos)
 
       expect(result).to eq("int x = 5;  \nint y =   6;\n")
@@ -309,7 +310,7 @@ RSpec.describe CCommentScanner do
     it 'preserves the original string (returns a modified copy)' do
       content  = "/* comment */ code;\n"
       original = content.dup
-      infos    = scanner.scan_string(content)
+      infos    = scanner.scan(io: StringIO.new(content))
       scanner.remove(content, infos)
 
       expect(content).to eq(original)
@@ -323,7 +324,7 @@ RSpec.describe CCommentScanner do
 
     it 'removes a multi-line block comment (replacing with space reduces newline count)' do
       content = "before\n/* multi\nline\ncomment */\nafter"
-      infos   = scanner.scan_string(content)
+      infos   = scanner.scan(io: StringIO.new(content))
       result  = scanner.remove(content, infos)
 
       original_lines = content.count("\n")
@@ -343,7 +344,7 @@ RSpec.describe CCommentScanner do
           return ch * 256; // placeholder
         }
       C
-      infos  = scanner.scan_string(content)
+      infos  = scanner.scan(io: StringIO.new(content))
       result = scanner.remove(content, infos)
 
       # No comment delimiters should remain
@@ -356,6 +357,35 @@ RSpec.describe CCommentScanner do
       expect(result).to include('return ch * 256;')
     end
 
+    it 'with mode: :preserve_lines replaces multi-line comments with equivalent newlines' do
+      content = "before\n/* multi\nline\ncomment */\nafter"
+      infos   = scanner.scan(io: StringIO.new(content))
+      result  = scanner.remove(content, infos, mode: :preserve_lines)
+
+      # Two internal newlines → replaced by \n\n; total line count preserved.
+      expect(result.count("\n")).to eq(content.count("\n"))
+      expect(result).to eq("before\n\n\n\nafter")
+    end
+
+    it 'with mode: :preserve_lines replaces single-line comments with a single space' do
+      content = "int x; // inline\nint y;\n"
+      infos   = scanner.scan(io: StringIO.new(content))
+      result  = scanner.remove(content, infos, mode: :preserve_lines)
+
+      # lines_removed == 0 → same space replacement as :compact mode.
+      expect(result).to eq("int x;  \nint y;\n")
+    end
+
+    it 'with mode: :preserve_lines handles mixed comment types without changing line count' do
+      # // comment (lines_removed=0) → space; /* two\nlines */ (lines_removed=1) → \n.
+      content = "int x; // comment\n/* two\nlines */\nint y;\n"
+      infos   = scanner.scan(io: StringIO.new(content))
+      result  = scanner.remove(content, infos, mode: :preserve_lines)
+
+      expect(result.count("\n")).to eq(content.count("\n"))
+      expect(result).to eq("int x;  \n\n\nint y;\n")
+    end
+
     it 'lines_removed equals exactly the newlines eliminated by replace-with-space' do
       content = <<~C
         /* header comment
@@ -364,7 +394,7 @@ RSpec.describe CCommentScanner do
         */
         void foo(void) {}
       C
-      infos = scanner.scan_string(content)
+      infos = scanner.scan(io: StringIO.new(content))
 
       expect(infos.length).to eq(1)
       result         = scanner.remove(content, infos)
