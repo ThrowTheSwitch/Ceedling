@@ -11,6 +11,9 @@ class PreprocessinatorCodeFinder
 
   LINE_MARKER_REGEX = /^#\s+(\d+)\s+"[^"]+"[^\n]*\n/ unless const_defined?(:LINE_MARKER_REGEX)
 
+  # Regex-special-character-immune string
+  WHITESPACE_MARKER = '<!@_ws_!@>' unless const_defined?(:WHITESPACE_MARKER)
+
   # Open a GCC preprocessor output file and search it for code.
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for production use where preprocessor output resides on disk.
@@ -70,8 +73,8 @@ class PreprocessinatorCodeFinder
     content = io.read
     return nil if content.nil? || content.empty?
 
-    # Locate the exact search string within the preprocessor output
-    match_pos = content.index(search)
+    # Locate the search string within the preprocessor output
+    match_pos = whitespace_insensitive_search( content, search )
     return nil if match_pos.nil?
 
     # Examine only the content before the match for GCC line markers.
@@ -110,11 +113,38 @@ class PreprocessinatorCodeFinder
     content = io.read
     return nil if content.nil? || content.empty?
 
-    # Locate the exact search string within the preprocessor output
-    match_pos = content.index(search)
+    # Locate the search string within the preprocessor output
+    match_pos = whitespace_insensitive_search( content, search )
     return nil if match_pos.nil?
 
     return (content[0, match_pos].count("\n")) + 1
   end
+
+  private
+
+  def whitespace_insensitive_search(content, code)
+    # Collapse whitespace to a unique token
+    _code = code.gsub(/\s+/, WHITESPACE_MARKER)
+
+    # Escape the code block to search for.
+    # Note: Regexp#escape escapes each piece of whitespace and, so, we must take the preparation step above.
+    _code = Regexp.escape( _code )
+
+    # Replace the whitespace token with regex whitespace-insenstive matcher
+    _code.gsub!(/#{WHITESPACE_MARKER}/, '\s+')
+
+    # Create the regex we'll use
+    pattern = Regexp.new( _code )
+
+    # Try to find the code block
+    matched = pattern.match( content )
+
+    # Failed to match
+    return matched if matched.nil?
+
+    # Return position of the match within `content`
+    return matched.begin( 0 )
+  end
+
 
 end

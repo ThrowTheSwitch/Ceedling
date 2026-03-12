@@ -57,17 +57,13 @@ describe PreprocessinatorCodeFinder do
       expect( @finder.find_in_preprpocessed_string( content, "int foo(void) { return 0; }" ) ).to eq 5
     end
 
-    it "returns marker linenum plus line offset when code follows after other lines" do
-      # Marker says line 10; two lines of other declarations precede the match,
-      # placing the target at source line 12.
+    it "returns the marker line number when code immediately follows the marker" do
       content = <<~PREPROCESSED
-        # 10 "source.c"
-        void setup(void);
-        void teardown(void);
-        int compute(int x) { return x * 2; }
+        # 5 "source.c"
+        int foo(void) { return 0; }
       PREPROCESSED
 
-      expect( @finder.find_in_preprpocessed_string( content, "int compute(int x) { return x * 2; }" ) ).to eq 12
+      expect( @finder.find_in_preprpocessed_string( content, "int foo(void) { return 0; }" ) ).to eq 5
     end
 
     it "handles a line marker carrying a single flag" do
@@ -88,6 +84,27 @@ describe PreprocessinatorCodeFinder do
       PREPROCESSED
 
       expect( @finder.find_in_preprpocessed_string( content, "void init(uint32_t value);" ) ).to eq 4
+    end
+
+    # -----------------------------------------------------------------------
+    # Whitespace-insensitive match
+    # -----------------------------------------------------------------------
+
+    it "returns marker linenum plus line offset when whitespace expanded code follows after other lines" do
+      # Marker says line 10; two lines of other declarations precede the match,
+      # placing the target at source line 12.
+      content = <<~PREPROCESSED
+        # 10 "source.c"
+        void setup(void);
+        void teardown(void);
+        int   compute(int x)
+        {
+
+          return x * 2;
+        }
+      PREPROCESSED
+
+      expect( @finder.find_in_preprpocessed_string( content, "int compute(int x) { return x * 2; }" ) ).to eq 12
     end
 
     # -----------------------------------------------------------------------
@@ -293,6 +310,32 @@ describe PreprocessinatorCodeFinder do
       FUNCTION
 
       expect( @finder.find_in_c_string( content, func ) ).to eq 4
+    end
+
+    # -----------------------------------------------------------------------
+    # Whitespace-insensitive match
+    # -----------------------------------------------------------------------
+
+    it "finds a multiline whitespace expanded function body and reports the line of its opening signature" do
+      content = <<~C
+        void setup(void);
+        void teardown(void);
+        int add(int a, int b)
+        {
+            return  a  +  b;
+
+
+        }
+      C
+
+      func = <<~FUNCTION
+        int add(int a, int b)
+        {
+          return a + b;
+        }
+      FUNCTION
+
+      expect( @finder.find_in_c_string( content, func ) ).to eq 3
     end
 
     # -----------------------------------------------------------------------
