@@ -29,6 +29,24 @@ class PreprocessinatorCodeFinder
     return find_in_preprocessed_content( io: buffer, search: code )
   end
 
+  # Open a C source file and search it for code.
+  # Returns the 1-indexed source line number of the match, or nil if not found.
+  # Intended for production use where C file resides on disk.
+  def find_in_c_file(filepath, code)
+    File.open( filepath, 'r' ) do |file|
+      return find_in_c_code( io: file, search: code )
+    end
+  end
+
+
+  # Wrap a C file content string in a StringIO and search it for code.
+  # Returns the 1-indexed source line number of the match, or nil if not found.
+  # Intended for test use so that specs require no temporary files.
+  def find_in_c_string(content, code)
+    buffer = StringIO.new( content )
+    return find_in_c_code( io: buffer, search: code )
+  end
+
   private
 
   # Search a GCC preprocessor output IO stream for an exact match of search.
@@ -38,12 +56,12 @@ class PreprocessinatorCodeFinder
   #   # <linenum> "<filename>" [flags]
   #
   # Each marker declares that the source line immediately following it
-  # corresponds to line linenum in the named file.  Subsequent non-marker lines
+  # corresponds to line linenum in the named file. Subsequent non-marker lines
   # increment the source line count by one each.
   #
-  # The method locates search as a substring of the full stream content, then
+  # The method locates `search`` as a substring of the full stream content, then
   # walks backwards through the line markers that precede the match to find the
-  # most recent one.  The source line number is computed as:
+  # most recent one. The source line number is computed as:
   #   last_marker_linenum + (newlines between marker end and match start)
   #
   # Returns nil when search is not present in the stream or no line marker
@@ -82,4 +100,21 @@ class PreprocessinatorCodeFinder
     # Return line number of found code (mostly for test validation)
     return last_marker_num + newlines_after_marker
   end
+
+  # Search a C code IO stream for an exact match of search.
+  #
+  # The method locates `search`` as a substring of the full stream content, then
+  # identifies the source line number. Returns nil when search is not present in 
+  # the stream.
+  def find_in_c_code(io:, search:)
+    content = io.read
+    return nil if content.nil? || content.empty?
+
+    # Locate the exact search string within the preprocessor output
+    match_pos = content.index(search)
+    return nil if match_pos.nil?
+
+    return (content[0, match_pos].count("\n")) + 1
+  end
+
 end
