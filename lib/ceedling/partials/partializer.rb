@@ -113,7 +113,7 @@ class Partializer
   #
   # @note The method always starts with an empty CModule and merges in contents
   #   from any provided files using the CModule's + operator for combining structures.
-  def extract_module_contents(name, config)
+  def extract_module_contents(name, config, fallback)
     # Array for CModule structs
     contents = [CExtractor::CModule.new()]
 
@@ -130,7 +130,8 @@ class Partializer
       @helper.associate_function_line_numbers(
         name: name,
         funcs: c_module.function_definitions,
-        filepath: c_file.filepath
+        filepath: c_file.filepath,
+        fallback: fallback
       )
 
       contents << c_module

@@ -557,7 +557,12 @@ class TestInvoker
           testable = partial[:testable]
           name = testable[:name]
 
-          module_contents = @partializer.extract_module_contents( name, config )
+          module_contents = @partializer.extract_module_contents(
+            name,
+            config,
+            # Fallback
+            !@preprocessinator.directives_only_available?
+          )
 
           impl, interface = @partializer.reconstruct_functions(contents: module_contents, config: config)
 
