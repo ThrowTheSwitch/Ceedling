@@ -65,7 +65,7 @@ class GeneratorPartials
     io << "\n" if !includes.empty?
 
     variable_declarations.each do |line|
-      io << "#{line}\n"
+      io << cleanup_declaration(line) + "\n"
     end
 
     io << "\n" if !variable_declarations.empty?
@@ -87,7 +87,7 @@ class GeneratorPartials
     io << "\n"
 
     variable_declarations.each do |decl|
-      io << decl + "\n"
+      io << cleanup_declaration(decl) + "\n"
     end
 
     io << "\n" if !variable_declarations.empty?
@@ -103,6 +103,15 @@ class GeneratorPartials
   end
 
   private
+
+  def cleanup_declaration(code_block)
+      # Clean up whitespace
+      _code_block = code_block.strip
+      _code_block.gsub!(/\r\n|\r|\n|\t/, ' ')
+      _code_block.gsub!(/\s+/, ' ')
+
+      return _code_block
+  end
 
   def cleanup_function(code_block)
     # Collapse any unnecessary newlines between closing paren and opening function bracket      
