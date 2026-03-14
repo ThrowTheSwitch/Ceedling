@@ -323,11 +323,26 @@ partializer_parser:
 
 partializer_utils:
 
+c_extractor_code_text:
+
+c_extractor_functions:
+  compose:
+    - c_extractor_code_text
+
+c_extractor_declarations:
+
+c_extractor:
+  compose:
+    - c_extractor_code_text
+    - c_extractor_declarations
+    - c_extractor_functions
+
 partializer_helper:
   compose:
     - partializer_utils
     - partializer_parser
     - file_finder
+    - c_extractor_declarations
     - preprocessinator_code_finder
     - file_path_utils
     - loginator
@@ -335,6 +350,7 @@ partializer_helper:
 partializer:
   compose:
     - partializer_helper
+    - c_extractor
     - file_path_utils
     - loginator
 

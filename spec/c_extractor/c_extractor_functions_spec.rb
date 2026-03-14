@@ -21,10 +21,9 @@ describe CExtractorFunctions do
     let(:extract_signature) do
       ->(content, type, max_line_length=1000) do
         scanner = StringScanner.new(content)
-        functions = CExtractorFunctions.new(
-          CExtractorCodeText.new(),
-          max_line_length
-        )
+        functions = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+        functions.setup()
+        functions.max_line_length = max_line_length
         signature = functions.send( :extract_function_signature, scanner, type )
         return [signature, scanner.pos, scanner.rest]
       end
@@ -795,10 +794,9 @@ describe CExtractorFunctions do
     # Helper to access private method
     let(:parse_name) do
       ->(signature) do
-        functions = CExtractorFunctions.new(
-          CExtractorCodeText.new(),
-          1000
-        )
+        functions = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+        functions.setup()
+        functions.max_line_length = 1000
         name = functions.send( :extract_function_name, signature )
         return name
       end
@@ -1467,10 +1465,9 @@ describe CExtractorFunctions do
     let(:try_extract) do
       ->(content, filepath='/path/to/source.c') do
         scanner = StringScanner.new(content)
-        functions = CExtractorFunctions.new(
-          CExtractorCodeText.new(),
-          1000
-        )
+        functions = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+        functions.setup()
+        functions.max_line_length = 1000
         success, func = functions.try_extract_function_definition( scanner, filepath )
         return [success, func, scanner.pos, scanner.rest]
       end
@@ -2019,10 +2016,9 @@ describe CExtractorFunctions do
         content = "void first(void) { int a = 1; }\nvoid second(void) { int b = 2; }"
         filepath = '/path/to/source.c'
         scanner = StringScanner.new(content)
-        functions = CExtractorFunctions.new(
-          CExtractorCodeText.new(),
-          1000
-        )
+        functions = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+        functions.setup()
+        functions.max_line_length = 1000
 
         success1, func1 = functions.try_extract_function_definition(scanner, filepath)
         expect(success1).to be true
@@ -2051,7 +2047,9 @@ describe CExtractorFunctions do
         filepath = '/path/to/source.c'
         scanner = StringScanner.new(content)
         code_text = CExtractorCodeText.new()
-        functions = CExtractorFunctions.new( code_text, 1000 )
+        functions = CExtractorFunctions.new({ c_extractor_code_text: code_text })
+        functions.setup()
+        functions.max_line_length = 1000
 
         success1, func1 = functions.try_extract_function_definition(scanner, filepath)
         expect(success1).to be true
@@ -2088,10 +2086,9 @@ describe CExtractorFunctions do
         CONTENT
         filepath = '/path/to/source.c'
         scanner = StringScanner.new(content)
-        functions = CExtractorFunctions.new(
-          CExtractorCodeText.new(),
-          1000
-        )
+        functions = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+        functions.setup()
+        functions.max_line_length = 1000
 
         success1, func1 = functions.try_extract_function_definition(scanner, filepath)
         expect(success1).to be true
@@ -2113,10 +2110,10 @@ describe CExtractorFunctions do
 
   describe "#clean_signature" do
     let(:functions) do
-      CExtractorFunctions.new(
-        CExtractorCodeText.new(),
-        1000
-      )
+      f = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+      f.setup()
+      f.max_line_length = 1000
+      f
     end
 
     it "removes carriage return and newline" do
@@ -2347,10 +2344,10 @@ describe CExtractorFunctions do
     # NOTE: These test cases do not duplicate `clean_signature()` test coverage.
     #       `clean_declaration()` calls `clean_signature()` internally.
     let(:functions) do
-      CExtractorFunctions.new(
-        CExtractorCodeText.new(),
-        1000
-      )
+      f = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+      f.setup()
+      f.max_line_length = 1000
+      f
     end
 
     context "whitespace handling before final semicolon" do

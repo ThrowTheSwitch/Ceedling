@@ -7,13 +7,17 @@
 
 require 'ceedling/exceptions'
 require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
+require 'ceedling/c_extractor/c_extractor_declarations'
+require 'ceedling/partials/partializer_constants'
+require 'strscan'
 
 class PartializerHelper
 
   constructor(
-    :partializer_parser, 
+    :partializer_parser,
     :partializer_utils,
     :file_finder,
+    :c_extractor_declarations,
     :preprocessinator_code_finder,
     :file_path_utils,
     :loginator
@@ -23,6 +27,7 @@ class PartializerHelper
     # Aliases
     @utils = @partializer_utils
     @parser = @partializer_parser
+    @declaration_extractor = @c_extractor_declarations
   end
 
   def manufacture_partial_configs(test_context_configs)
@@ -184,6 +189,47 @@ class PartializerHelper
     end
     @loginator.log_list( found_list, header, Verbosity::DEBUG )
 
+  end
+
+  def extract_function_scope_static_vars(funcs)
+    decls = []
+
+    # Process each function definition looking for function-scoped static variables.
+    # If found, collect them and remove from function `body`` and `code_block`.
+    funcs.each do |func|
+      # Remove contaning brackets of function body
+      func_body = func.body.dup
+      func_body.delete_prefix!( '{' )
+      func_body.delete_prefix!( '}' )
+
+      scanner = StringScanner.new( func_body )
+      _decls = []
+
+      loop do
+        success, decl = @declaration_extractor.try_extract_variable( scanner )
+        break unless success
+        decl.strip!
+        PartializerConstants::PRIVATE_KEYWORDS.each do |keyword|
+          if decl.start_with?( keyword )
+            _decls << decl
+            break
+          end
+        end
+      end
+
+      _decls.each do |decl|
+        func.code_block.sub!( decl, "(void)0; /* #{decl} */" )
+        func.body.sub!( decl, "(void)0; /* #{decl} */" )
+      end
+
+      decls += _decls
+    end
+
+    return decls
+  end
+
+  def collect_module_variables(existing, new)
+    existing.concat( new )
   end
 
 end

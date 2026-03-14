@@ -7,6 +7,9 @@
 
 require 'spec_helper'
 require 'ceedling/c_extractor/c_extractor'
+require 'ceedling/c_extractor/c_extractor_code_text'
+require 'ceedling/c_extractor/c_extractor_functions'
+require 'ceedling/c_extractor/c_extractor_declarations'
 require 'stringio'
 
 ##
@@ -34,11 +37,31 @@ describe CExtractor do
       end
     end
 
+    # Helper to build a fully-wired CExtractor via DI
+    let(:build_extractor) do
+      ->() do
+        code_text    = CExtractorCodeText.new
+        declarations = CExtractorDeclarations.new
+        functions    = CExtractorFunctions.new({ c_extractor_code_text: code_text })
+        functions.setup()
+        extractor = CExtractor.new(
+          {
+            c_extractor_code_text: code_text,
+            c_extractor_functions: functions,
+            c_extractor_declarations: declarations
+          }
+        )
+        extractor.setup()
+        extractor
+      end
+    end
+
     # Helper to access private method
     let(:extract_feature) do
-      ->(io, max_length, extractor, chunk_size=10) do
-        extractor_obj = CExtractor.from_string(content: "", chunk_size: chunk_size)
-        extractor_obj.send(:extract_next_feature, io: io, max_length: max_length, extractor: extractor)
+      ->(io, max_length, extractor_lambda, chunk_size=10) do
+        obj = build_extractor.call()
+        obj.chunk_size = chunk_size
+        obj.send(:extract_next_feature, io: io, max_length: max_length, extractor: extractor_lambda)
       end
     end
 
@@ -190,7 +213,8 @@ describe CExtractor do
         io = StringIO.new(content)
         extractor = create_pattern_extractor.call(/\w+/)
 
-        extractor_obj = CExtractor.from_string(content: "", chunk_size: 2000)
+        extractor_obj = build_extractor.call()
+        extractor_obj.chunk_size = 2000
 
         result1 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
         result2 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
