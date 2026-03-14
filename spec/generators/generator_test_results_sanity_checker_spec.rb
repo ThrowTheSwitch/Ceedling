@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/generator_test_results_sanity_checker'
+require 'ceedling/generators/generator_test_results_sanity_checker'
 require 'ceedling/constants'
 require 'ceedling/loginator'
 require 'ceedling/configurator'

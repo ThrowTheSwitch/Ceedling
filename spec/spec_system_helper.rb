@@ -11,6 +11,19 @@ require 'ceedling/yaml_wrapper'
 require 'spec_helper'
 require 'deep_merge'
 
+module CeedlingSystemSpecHelpers
+  # Helper method to convert method name to readable description
+  def test_case(method_name)
+    description = method_name.to_s.gsub('_', ' ').capitalize
+    it(description) { send(method_name) }
+  end
+end
+
+# Extend RSpec's DSL to include our helper above
+RSpec.configure do |config|
+  config.extend CeedlingSystemSpecHelpers
+end
+
 def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', 'assets', asset_file_name)
 end
@@ -469,7 +482,7 @@ module CeedlingTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
-        settings = { :project => { :use_test_preprocessor => :all, :use_deep_preprocessor => :mocks },
+        settings = { :project => { :use_test_preprocessor => :all },
                      :unity => { :use_param_tests => true }
                    }
         @c.merge_project_yml_for_test(settings)
