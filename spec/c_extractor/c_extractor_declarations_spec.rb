@@ -20,7 +20,8 @@ describe CExtractorDeclarations do
     let(:extract_variable) do
       ->(content, max_line_length=1000) do
         scanner = StringScanner.new(content)
-        declarations = CExtractorDeclarations.new(max_line_length)
+        declarations = CExtractorDeclarations.new
+        declarations.max_line_length = max_line_length
         success, variable = declarations.try_extract_variable(scanner)
         return [success, variable, scanner.pos, scanner.rest]
       end

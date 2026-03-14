@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/c_extractor/c_extractor_constants'
+
 class CExtractorFunctions
 
   # Data class representing an extracted C function
@@ -32,10 +34,15 @@ class CExtractorFunctions
     end
   end
 
-  def initialize(code_text, max_line_length)
-    # Dependency injection
-    @code_text = code_text
-    @max_line_length = max_line_length
+  constructor :c_extractor_code_text
+
+  attr_writer :max_line_length
+
+  def setup()
+    # Aliases
+    @code_text = @c_extractor_code_text
+
+    @max_line_length = CExtractorConstants::DEFAULT_MAX_LINE_LENGTH
   end
 
   def try_extract_function_declaration(scanner)

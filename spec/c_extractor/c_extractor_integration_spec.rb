@@ -7,6 +7,9 @@
 
 require 'spec_helper'
 require 'ceedling/c_extractor/c_extractor'
+require 'ceedling/c_extractor/c_extractor_code_text'
+require 'ceedling/c_extractor/c_extractor_functions'
+require 'ceedling/c_extractor/c_extractor_declarations'
 
 ##
 ## These integration tests exercise the composition of all CExtractor* objects
@@ -15,14 +18,26 @@ require 'ceedling/c_extractor/c_extractor'
 ##
 describe CExtractor do
 
-  context "#extract_contents" do
-    # Helper method to create CExtractor and extract contents from a string as CModule
+  let(:extractor) do
+    code_text    = CExtractorCodeText.new
+    declarations = CExtractorDeclarations.new
+    functions    = CExtractorFunctions.new({ c_extractor_code_text: code_text })
+    functions.setup()
+    extractor = CExtractor.new(
+      {
+        c_extractor_code_text: code_text,
+        c_extractor_functions: functions,
+        c_extractor_declarations: declarations
+      }
+    )
+    extractor.setup()
+    extractor
+  end
+
+  context "#from_string" do
+    # Helper method to extract contents from a string as CModule
     let(:extract_from) do
-      ->(content) do
-        extractinator = CExtractor.from_string(content: content)
-        # Return CModule struct
-        return extractinator.extract_contents()
-      end
+      ->(content) { extractor.from_string(content: content) }
     end
 
     it "should extract nothing from blank input" do
@@ -441,8 +456,7 @@ describe CExtractor do
       
       CONTENTS
 
-      extractinator = CExtractor.from_string(content: file_contents, chunk_size: 10)
-      contents = extractinator.extract_contents()
+      contents = extractor.from_string(content: file_contents, chunk_size: 10)
 
       expect( contents.variables.length ).to eq 0
 
@@ -474,13 +488,8 @@ describe CExtractor do
       }
       CONTENTS
 
-      extractinator = CExtractor.from_string(
-        content: file_contents,
-        chunk_size: 10,
-        max_buffer_length: 20
-      )
       # TODO: Test for function name extraction after implementing generic handling of feature summaries
-      expect { extractinator.extract_contents() }.to raise_error(CeedlingException, /Feature extraction exceeded maximum length/)
+      expect { extractor.from_string(content: file_contents, chunk_size: 10, max_buffer_length: 20) }.to raise_error(CeedlingException, /Feature extraction exceeded maximum length/)
     end
 
     it "should fail to extract a signature longer than max length" do
@@ -490,13 +499,7 @@ describe CExtractor do
       }
       CONTENTS
 
-      extractinator = CExtractor.from_string(
-        content: file_contents,
-        chunk_size: 10,
-        max_line_length: 10
-      )
-      
-      contents = extractinator.extract_contents()
+      contents = extractor.from_string(content: file_contents, chunk_size: 10, max_line_length: 10)
       expect(contents.function_definitions.length ).to eq 0
     end
     

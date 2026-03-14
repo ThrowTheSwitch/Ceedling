@@ -16,7 +16,7 @@ require 'ceedling/constants'
 class Partializer
   include PartializerConstants
 
-  constructor :partializer_helper, :file_path_utils, :loginator
+  constructor :partializer_helper, :c_extractor, :file_path_utils, :loginator
 
   def setup()
     # Alias
@@ -122,17 +122,24 @@ class Partializer
       # Do nothing if there's no preprocessed filepath (e.g. no source for Partial mock, only header)
       next unless c_file.preprocessed_filepath
 
-      c_module = CExtractor.from_file( c_file.preprocessed_filepath ).extract_contents()
+      c_module = @c_extractor.from_file( c_file.preprocessed_filepath )
 
       # Align extracted function definitions with line markers in preprocessor output.
       # This perfectly remaps functions found in expanded preprocessor output with 
       # original source location.
+      # This routine depends on original, unaltered function definitions.
       @helper.associate_function_line_numbers(
         name: name,
         funcs: c_module.function_definitions,
         filepath: c_file.filepath,
         fallback: fallback
       )
+
+      # 1. Find any function-scope static variable declarations.
+      # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
+      # 3. Promote the function-scoped variables to be module-level variables.
+      decls = @helper.extract_function_scope_static_vars( c_module.function_definitions )
+      @helper.collect_module_variables(c_module.variables, decls)
 
       contents << c_module
     end

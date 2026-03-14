@@ -6,11 +6,16 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
+require 'ceedling/c_extractor/c_extractor_constants'
 
 class CExtractorDeclarations
 
-  def initialize(max_line_length)
-    @max_line_length = max_line_length
+  # For testing access
+  attr_writer :max_line_length
+
+  def initialize()
+    # Default
+    @max_line_length = CExtractorConstants::DEFAULT_MAX_LINE_LENGTH
   end
 
   # Attempts to extract a complete variable declaration from the scanner
@@ -56,13 +61,13 @@ class CExtractorDeclarations
     brace_depth = 0
     in_string = false
     string_char = nil
-    seen_equals = false  # Track if we've seen an assignment operator
     
-    # Scan until we find a semicolon at depth 0
+    # Scan until we find a semicolon at depth 0.
+    # If we reach the end of string scanner, we failed to find something.
     until scanner.eos?
       char = scanner.peek(1)
       
-      # Safety check - prevent infinite loops on malformed input
+      # Safety check -- prevent infinite loops on malformed input
       if (scanner.pos - start_pos) > @max_line_length
         scanner.pos = start_pos
         return [false, nil]
@@ -94,10 +99,10 @@ class CExtractorDeclarations
         # Handle comments
         if scanner.peek(2) =~ %r{^(/[/*])}
           if scanner.peek(2) == '//'
-            # Line comment - skip to end of line
+            # Line comment -- skip to end of line
             scanner.scan_until(/\n/) || scanner.terminate
           elsif scanner.peek(2) == '/*'
-            # Block comment - skip to closing */
+            # Block comment -- skip to closing */
             scanner.pos += 2
             scanner.scan_until(%r{\*/})
           else
@@ -108,7 +113,6 @@ class CExtractorDeclarations
         end
       when '='
         # Track assignment for initializer detection
-        seen_equals = true
         scanner.getch
       when '('
         paren_depth += 1
@@ -116,7 +120,7 @@ class CExtractorDeclarations
       when ')'
         paren_depth -= 1
         scanner.getch
-        # Unbalanced parentheses - not a valid declaration
+        # Unbalanced parentheses -- not a valid declaration
         if paren_depth < 0
           scanner.pos = start_pos
           return [false, nil]
@@ -127,7 +131,7 @@ class CExtractorDeclarations
       when ']'
         bracket_depth -= 1
         scanner.getch
-        # Unbalanced brackets - not a valid declaration
+        # Unbalanced brackets -- not a valid declaration
         if bracket_depth < 0
           scanner.pos = start_pos
           return [false, nil]
@@ -139,7 +143,7 @@ class CExtractorDeclarations
       when '}'
         brace_depth -= 1
         scanner.getch
-        # Unbalanced braces - not a valid declaration
+        # Unbalanced braces -- not a valid declaration
         if brace_depth < 0
           scanner.pos = start_pos
           return [false, nil]
@@ -153,11 +157,6 @@ class CExtractorDeclarations
           # Extract the declaration
           declaration = scanner.string[start_pos...scanner.pos]
 
-          # Clean up whitespace
-          declaration = declaration.strip
-          declaration.gsub!(/\r\n|\r|\n|\t/, ' ')
-          declaration.gsub!(/\s+/, ' ')
-
           # Verify this looks like a valid declaration
           # Must have at least a type and identifier
           # Can end with: word character, ], ), }, or " (for string initializers)
@@ -168,7 +167,7 @@ class CExtractorDeclarations
             return [false, nil]
           end
         else
-          # Semicolon inside parens, brackets, or braces - keep scanning
+          # Semicolon inside parens, brackets, or braces -- keep scanning
           scanner.getch
         end        
       else
