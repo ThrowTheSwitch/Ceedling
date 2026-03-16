@@ -573,27 +573,17 @@ class TestInvoker
             interface:      interface
           )
 
-          source_variables, header_variables = @partializer.reconstruct_variables(variables: module_contents.variables)
-
           @partializer.log_extracted_variable_decls(
-            label:          'Header',
             test:           name,
             module_name:    config.module,
-            decls:          header_variables
-          )
-          @partializer.log_extracted_variable_decls(
-            label:          'Source',
-            test:           name,
-            module_name:    config.module,
-            decls:          source_variables
+            decls:          module_contents.variables
           )
 
           arg_hash = {
-            test:             name,
-            name:             config[:module],
-            function_defns:   impl,
-            header_variables: header_variables,
-            source_variables: source_variables,
+            test:                  name,
+            name:                  config[:module],
+            function_defns:        impl,
+            variable_declarations: module_contents.variables,
             header_includes:  @partializer.remap_implementation_header_includes(
                                 name: config.module,
                                 includes: (config.source.includes + config.header.includes),

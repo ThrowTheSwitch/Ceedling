@@ -11,11 +11,14 @@ require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_constants'
 
 class CExtractor
+
+  include CExtractorConstants
+
   # Data class representing all extracted content of C module
   CModule = Struct.new(
-    :variables,             # Array of strings containing module-level variable declarations
-    :function_definitions,  # Array of CFunctionDefinition definition structs
-    :function_declarations, # Array of function delcaration strings
+    :variables,             # Array of CVariableDeclaration structs
+    :function_definitions,  # Array of CFunctionDefinition structs
+    :function_declarations, # Array of CFunctionDeclaration structs
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to empty arrays for convenience
@@ -44,12 +47,8 @@ class CExtractor
     @functions = @c_extractor_functions
     @declarations = @c_extractor_declarations
 
-    # CExtractorDeclarations has no `constructor`, so its setup() is never triggered
-    # by the constructor macro. Call it here to ensure defaults are initialized.
-    # @declarations.setup()
-
-    @chunk_size        = CExtractorConstants::DEFAULT_CHUNK_SIZE
-    @max_buffer_length = CExtractorConstants::DEFAULT_MAX_FUNCTION_LENGTH
+    @chunk_size        = DEFAULT_CHUNK_SIZE
+    @max_buffer_length = DEFAULT_MAX_FUNCTION_LENGTH
   end
 
   # Extract C module contents from a source file on disk.
@@ -82,9 +81,9 @@ class CExtractor
   # Returns: CModule struct containing all features extracted.
   def from_string(
     content:,
-    chunk_size:        CExtractorConstants::DEFAULT_CHUNK_SIZE,
-    max_buffer_length: CExtractorConstants::DEFAULT_MAX_FUNCTION_LENGTH,
-    max_line_length:   CExtractorConstants::DEFAULT_MAX_LINE_LENGTH
+    chunk_size:        DEFAULT_CHUNK_SIZE,
+    max_buffer_length: DEFAULT_MAX_FUNCTION_LENGTH,
+    max_line_length:   DEFAULT_MAX_LINE_LENGTH
   )
     @chunk_size        = chunk_size
     @max_buffer_length = max_buffer_length
@@ -140,14 +139,15 @@ class CExtractor
         next
       end
 
-      # Second pass: Extract variable declarations
-      var = extract_next_feature(
+      # Second pass: Extract variable declarations as array
+      # Note that a compound variable declaration (e.g. `int x, y`) yields multiple declarations
+      vars = extract_next_feature(
         io: io,
         max_length: @max_buffer_length,
         extractor: @declarations.method(:try_extract_variable)
       )
-      if var
-        variables << var
+      if vars
+        variables.concat(vars)
         # Avoid the final `break` that ends all feature search
         next
       end

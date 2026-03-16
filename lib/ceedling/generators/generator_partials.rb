@@ -13,12 +13,11 @@ class GeneratorPartials
   constructor :file_wrapper, :file_path_utils
 
   def generate_implementation(
-      name:, 
+      name:,
       definitions:,
       source_includes:,
       header_includes:,
-      header_variables:,
-      source_variables:,
+      variable_declarations:,
       output_path:
     )
     source = @file_path_utils.form_partial_implementation_source_filename(name)
@@ -28,11 +27,11 @@ class GeneratorPartials
     source_filepath = File.join(output_path, source)
 
     @file_wrapper.open(header_filepath, 'w') do |file|
-      generate_header(file, header, header_includes, definitions, header_variables)
+      generate_header(file, header, header_includes, definitions, variable_declarations)
     end
 
     @file_wrapper.open(source_filepath, 'w') do |file|
-      generate_source(file, source_includes, definitions, source_variables)
+      generate_source(file, source_includes, definitions, variable_declarations)
     end
 
     return source_filepath
@@ -59,13 +58,13 @@ class GeneratorPartials
     io << "#define #{guard}\n\n"
 
     includes.each do |include|
-      io << "#{include}\n"  
+      io << "#{include}\n"
     end
 
     io << "\n" if !includes.empty?
 
-    variable_declarations.each do |line|
-      io << cleanup_declaration(line) + "\n"
+    variable_declarations.each do |var|
+      io << "extern #{var.declaration}\n"
     end
 
     io << "\n" if !variable_declarations.empty?
@@ -86,8 +85,8 @@ class GeneratorPartials
 
     io << "\n"
 
-    variable_declarations.each do |decl|
-      io << cleanup_declaration(decl) + "\n"
+    variable_declarations.each do |var|
+      io << "#{var.declaration}\n"
     end
 
     io << "\n" if !variable_declarations.empty?
@@ -100,17 +99,6 @@ class GeneratorPartials
       io << cleanup_function( defn.code_block )
       io << "\n\n"
     end
-  end
-
-  private
-
-  def cleanup_declaration(code_block)
-      # Clean up whitespace
-      _code_block = code_block.strip
-      _code_block.gsub!(/\r\n|\r|\n|\t/, ' ')
-      _code_block.gsub!(/\s+/, ' ')
-
-      return _code_block
   end
 
   def cleanup_function(code_block)

@@ -9,12 +9,11 @@ require 'rake' # .ext()
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_runtime'
-require 'ceedling/partials/partializer_constants'
 require 'ceedling/c_extractor/c_extractor'
+require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/constants'
 
 class Partializer
-  include PartializerConstants
 
   constructor :partializer_helper, :c_extractor, :file_path_utils, :loginator
 
@@ -199,37 +198,6 @@ class Partializer
     return impl, interface
   end
 
-  def reconstruct_variables(variables:)
-    # Remove all keywords from type contained in PRIVATE_KEYWORDS and TYPE_QUALIFIER_KEYWORDS
-    variables = variables.filter_map do |declaration|
-      # Skip empty string
-      next nil if declaration.strip.empty?
-
-      # Split on assignment operator to preserve keywords in initialization values
-      parts = declaration.split('=', 2)
-      
-      # Remove keywords only from the declaration part (before '=')
-      cleaned_declaration = parts[0].dup
-      (PRIVATE_KEYWORDS + TYPE_QUALIFIER_KEYWORDS).each do |keyword|
-        cleaned_declaration.gsub!(/\b#{Regexp.escape(keyword)}\b/, '')
-      end
-      cleaned_declaration = cleaned_declaration.strip.squeeze(' ')
-      
-      # Rejoin with initialization value if it exists
-      if parts.length > 1
-        cleaned_declaration += (' = ' + parts[1].strip.squeeze(' '))
-      end
-
-      cleaned_declaration
-    end
-
-    extern_variables = variables.map do |declaration|
-      "extern #{declaration}"
-    end
-
-    return variables, extern_variables
-  end
-
   def log_extracted_functions(test:, module_name:, impl:, interface:)
     # Get function signatures
     _impl = impl.map { |func| "`#{func.signature}`" }
@@ -248,10 +216,11 @@ class Partializer
     )
   end
 
-  def log_extracted_variable_decls(test:, module_name:, label:, decls:)
+  def log_extracted_variable_decls(test:, module_name:, decls:)
+    _decls = decls.map { |v| "`#{v.declaration}`" }
     @loginator.log_list(
-      decls,
-      "#{label} variable declarations for Partial #{test}::#{module_name}",
+      _decls,
+      "Variable declarations for Partial #{test}::#{module_name}",
       Verbosity::OBNOXIOUS
     )
   end

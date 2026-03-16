@@ -2454,4 +2454,259 @@ describe CExtractorFunctions do
     end
   end
 
+  ###
+  ### try_extract_function_declaration()
+  ###
+
+  describe "#try_extract_function_declaration" do
+    let(:try_extract_decl) do
+      ->(content) do
+        scanner = StringScanner.new(content)
+        functions = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+        functions.setup()
+        functions.max_line_length = 1000
+        success, decl = functions.try_extract_function_declaration(scanner)
+        return [success, decl, scanner.pos, scanner.rest]
+      end
+    end
+
+    context "successful extraction returns CFunctionDeclaration struct" do
+      it "extracts simple function declaration" do
+        content = "int foo(void);"
+        success, decl, pos, rest = try_extract_decl.call(content)
+
+        expect(success).to be true
+        expect(decl).to be_a(CExtractorFunctions::CFunctionDeclaration)
+        expect(decl.name).to eq("foo")
+        expect(decl.signature).to eq("int foo(void);")
+        expect(decl.decorators).to eq([])
+        expect(decl.signature_stripped).to eq("int foo(void);")
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts void function declaration" do
+        content = "void process(int x, int y);"
+        success, decl, _, _ = try_extract_decl.call(content)
+
+        expect(success).to be true
+        expect(decl.name).to eq("process")
+        expect(decl.signature).to eq("void process(int x, int y);")
+        expect(decl.decorators).to eq([])
+        expect(decl.signature_stripped).to eq("void process(int x, int y);")
+      end
+
+      it "extracts static function declaration and populates decorators" do
+        content = "static int foo(void);"
+        success, decl, _, _ = try_extract_decl.call(content)
+
+        expect(success).to be true
+        expect(decl.name).to eq("foo")
+        expect(decl.decorators).to eq(["static"])
+        expect(decl.signature_stripped).to eq("int foo(void);")
+      end
+
+      it "extracts static inline function declaration" do
+        content = "static inline int foo(void);"
+        success, decl, _, _ = try_extract_decl.call(content)
+
+        expect(success).to be true
+        expect(decl.name).to eq("foo")
+        expect(decl.decorators).to eq(["static", "inline"])
+        expect(decl.signature_stripped).to eq("int foo(void);")
+      end
+
+      it "extracts extern function declaration" do
+        content = "extern void bar(int x);"
+        success, decl, _, _ = try_extract_decl.call(content)
+
+        expect(success).to be true
+        expect(decl.name).to eq("bar")
+        expect(decl.decorators).to eq(["extern"])
+        expect(decl.signature_stripped).to eq("void bar(int x);")
+      end
+    end
+
+    context "failed extraction" do
+      it "returns false for variable declaration" do
+        content = "int x;"
+        success, decl, _, _ = try_extract_decl.call(content)
+
+        expect(success).to be false
+        expect(decl).to be_nil
+      end
+
+      it "returns false for function definition" do
+        content = "void foo(void) { return; }"
+        success, decl, _, _ = try_extract_decl.call(content)
+
+        expect(success).to be false
+        expect(decl).to be_nil
+      end
+    end
+  end
+
+  ###
+  ### parse_decorators_and_strip() (private)
+  ###
+
+  describe "#parse_decorators_and_strip (private method)" do
+    let(:functions) do
+      f = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+      f.setup()
+      f
+    end
+
+    it "returns empty decorators and original for simple function" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "int foo(void)", "foo")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "returns empty decorators and original for void function" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "void foo(void)", "foo")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("void foo(void)")
+    end
+
+    it "extracts static decorator" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "static int foo(void)", "foo")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "extracts inline decorator" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "inline int foo(void)", "foo")
+      expect(decorators).to eq(["inline"])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "extracts static inline decorators" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "static inline int foo(void)", "foo")
+      expect(decorators).to eq(["static", "inline"])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "extracts extern decorator" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "extern int foo(void)", "foo")
+      expect(decorators).to eq(["extern"])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "extracts const decorator from return type" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "const int* foo(void)", "foo")
+      expect(decorators).to eq(["const"])
+      expect(stripped).to eq("int* foo(void)")
+    end
+
+    it "separates leading type keyword token and remainder for unsigned int return type" do
+      # The algorithm treats leading TYPE_KEYWORDS as the split point; "unsigned" becomes a decorator
+      # and "int" becomes the start of the return type
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "unsigned int foo(void)", "foo")
+      expect(decorators).to eq(["unsigned"])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "separates leading struct keyword token and remainder for struct return type" do
+      # Similarly, "struct" is a TYPE_KEYWORD and becomes the split point
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "struct Point* foo(void)", "foo")
+      expect(decorators).to eq(["struct"])
+      expect(stripped).to eq("Point* foo(void)")
+    end
+
+    it "separates leading long keyword token and remainder for long return type" do
+      # Similarly, "long" is a TYPE_KEYWORD and becomes the split point
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "long int foo(void)", "foo")
+      expect(decorators).to eq(["long"])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "returns empty decorators and original signature when name is nil" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "int foo(void)", nil)
+      expect(decorators).to eq([])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "returns empty decorators and original signature when name not found" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "int foo(void)", "bar")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "returns empty decorators and original signature for single-token prefix" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "int foo(void)", "foo")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "handles __inline decorator" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "__inline int foo(void)", "foo")
+      expect(decorators).to eq(["__inline"])
+      expect(stripped).to eq("int foo(void)")
+    end
+
+    it "handles static with pointer return type" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "static char* foo(void)", "foo")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq("char* foo(void)")
+    end
+
+    it "handles static const pointer return -- both static and const are decorators" do
+      # const is in MODIFIER_KEYWORDS, so algorithm treats it as decorator alongside static
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "static const char* foo(void)", "foo")
+      expect(decorators).to eq(["static", "const"])
+      expect(stripped).to eq("char* foo(void)")
+    end
+
+    it "handles function with parameters that include type keywords" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "static int foo(unsigned int x)", "foo")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq("int foo(unsigned int x)")
+    end
+
+    it "handles extern with struct return type" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "extern struct Node* foo(void)", "foo")
+      expect(decorators).to eq(["extern"])
+      expect(stripped).to eq("struct Node* foo(void)")
+    end
+  end
+
+  ###
+  ### try_extract_function_definition() -- decorator/signature_stripped fields
+  ###
+
+  describe "#try_extract_function_definition decorator fields" do
+    let(:try_extract) do
+      ->(content, filepath='/path/to/source.c') do
+        scanner = StringScanner.new(content)
+        functions = CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() })
+        functions.setup()
+        functions.max_line_length = 1000
+        success, func = functions.try_extract_function_definition( scanner, filepath )
+        return [success, func]
+      end
+    end
+
+    it "sets empty decorators and signature_stripped matching signature for plain function" do
+      success, func = try_extract.call("void foo(void) { }")
+      expect(success).to be true
+      expect(func.decorators).to eq([])
+      expect(func.signature_stripped).to eq("void foo(void)")
+    end
+
+    it "populates decorators and signature_stripped for static function" do
+      success, func = try_extract.call("static void foo(void) { }")
+      expect(success).to be true
+      expect(func.decorators).to eq(["static"])
+      expect(func.signature_stripped).to eq("void foo(void)")
+    end
+
+    it "populates decorators and signature_stripped for static inline function" do
+      success, func = try_extract.call("static inline int bar(int x) { return x; }")
+      expect(success).to be true
+      expect(func.decorators).to eq(["static", "inline"])
+      expect(func.signature_stripped).to eq("int bar(int x)")
+    end
+  end
+
 end

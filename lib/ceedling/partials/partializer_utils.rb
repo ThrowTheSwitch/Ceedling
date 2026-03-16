@@ -6,11 +6,17 @@
 # =========================================================================
 
 require 'ceedling/partials/partials'
-require 'ceedling/partials/partializer_constants'
 require 'ceedling/partials/partializer_runtime'
+require 'ceedling/c_extractor/c_extractor_constants'
 
 class PartializerUtils
-  include PartializerConstants
+
+  constructor :preprocessinator_code_finder, :loginator
+
+  def setup()
+    # Aliases
+    @code_finder = @preprocessinator_code_finder
+  end
 
   # Check if function decorators match the desired visibility
   def matches_visibility?(decorators, visibility)
@@ -48,12 +54,140 @@ class PartializerUtils
     end
   end
 
+  # Replace a C variable declaration in a text block with a no-op expression.
+  #
+  # Substitutes the first occurrence of `original_decl` in `text` with:
+  #   (void)0; /* <placeholder> */
+  # The caller supplies a unique `placeholder` token for the comment slot. This
+  # allows subsequent rename operations (which use simple token-bounded substitution
+  # with no comment awareness) to run without touching the comment. After all renames
+  # are complete, the caller restores `original_decl` by replacing the placeholder.
+  #
+  # Block form of `sub` is used so that `\` and `&` in the declaration are not
+  # interpreted as regex replacement backreferences.
+  #
+  # @param text          [String] Code text to modify (e.g., a function code_block or body)
+  # @param original_decl [String] Declaration text to replace (should be stripped of surrounding whitespace)
+  # @param placeholder   [String] Opaque token to embed in the comment (caller replaces it afterwards)
+  # @return [String] Modified text with declaration replaced by a no-op expression
+  def replace_declaration_with_noop(text, original_decl, placeholder)
+    replace_compound_declaration_with_noops(text, original_decl, [placeholder])
+  end
+
+  # Replace a C compound variable declaration with one no-op expression per variable.
+  #
+  # For each placeholder in `placeholders`, generates a `(void)0; /* ... */` no-op
+  # containing that placeholder in the comment slot. All no-ops are joined with a single
+  # space and replace the first occurrence of `original_decl` in `text`.
+  #
+  # Used when a compound declaration (e.g. `static int a, b;`) produces multiple variable
+  # structs that all share the same `original` text. The caller must replace the shared
+  # original statement exactly once (not once per variable), then rename each variable's
+  # references, and finally restore each placeholder after all renames are complete.
+  #
+  # Block form of `sub` is used so that `\` and `&` in the declaration are not
+  # interpreted as regex replacement backreferences.
+  #
+  # @param text          [String] Code text to modify (e.g., a function code_block or body)
+  # @param original_decl [String] Declaration text to replace (should be stripped of surrounding whitespace)
+  # @param placeholders  [Array<String>] Opaque tokens to embed in comments, one per variable
+  # @return [String] Modified text with declaration replaced by inline no-op expressions
+  def replace_compound_declaration_with_noops(text, original_decl, placeholders)
+    placeholder = placeholders[0]
+    noops = "#{'(void)0;' * placeholders.length}"
+    comment = " /* `#{placeholder}` replaced with no-op plus variable renamed & promoted to module-scope */"
+    code = noops + comment
+    text.sub(original_decl) { code }
+  end
+
+  # Rename a C identifier throughout a text block with token-bounded substitution.
+  #
+  # Replaces all occurrences of `old_name` that are bounded by C identifier boundaries
+  # with `new_name`. Token boundaries use Ruby `\b` (word boundary between
+  # `\w` = `[a-zA-Z0-9_]` and `\W`), which exactly matches C identifier boundaries.
+  # For example, renaming `count`:
+  #   - Matches:     `count = 0`, `(count)`, `count==5`, `*count`, `count[0]`
+  #   - No match:    `count_down`, `up_count`, `recount`
+  #
+  # Note: This method has no comment-awareness. Callers that need comment content
+  # preserved verbatim (e.g., no-op placeholders) should use `replace_declaration_with_noop`
+  # with an opaque placeholder and restore the original text after renaming.
+  #
+  # @param text     [String] Code text to process
+  # @param old_name [String] Identifier to replace
+  # @param new_name [String] Replacement identifier
+  # @return [String] Modified text with all token-bounded occurrences renamed
+  def rename_c_identifier(text, old_name, new_name)
+    text.gsub(/\b#{Regexp.escape(old_name)}\b/, new_name)
+  end
+
+  # Stamp the originating source filepath onto each function in a collection.
+  #
+  # Mutates each element of `funcs` in place by assigning `filepath` to its
+  # `source_filepath` field. Called before any line-number search so the field
+  # is always populated regardless of whether a line number is ultimately found.
+  #
+  # @param funcs    [Array<CFunctionDefinition>] Functions to annotate
+  # @param filepath [String] Path to the originating C source file
+  def stamp_source_filepaths(funcs, filepath)
+    funcs.each { |func| func.source_filepath = filepath }
+  end
+
+  # Locate a function's line number by searching the original C source file.
+  #
+  # Used when the global fallback mode is active — i.e., preprocessed output is
+  # unavailable for all functions in the current context. Delegates directly to
+  # `code_finder.find_in_c_file`.
+  #
+  # @param code_block  [String] Function definition text to search for
+  # @param filepath    [String] Path to the C source file to search
+  # @return [Integer, nil] 1-indexed source line number, or nil if not found
+  def locate_function_in_source(code_block:, filepath:)
+    @code_finder.find_in_c_file(filepath, code_block)
+  end
+
+  # Locate a function's line number using preprocessed output with C source fallback.
+  #
+  # Two-strategy lookup for a single function:
+  #   1. Try the GCC-preprocessed directives-only file — exact match preserving line markers.
+  #   2. If that yields nil, fall back to the original C source file.
+  #
+  # Returns line number or nil if neither approach succeeds.
+  #
+  # @param code_block            [String] Function definition text to search for
+  # @param filepath              [String] Path to the original C source file (fallback target)
+  # @param preprocessed_filepath [String] Path to the preprocessed directives-only file
+  # @return [Integer, nil] 1-indexed source line number, or nil if not found
+  def locate_function_via_preprocessed(code_block:, filepath:, preprocessed_filepath:)
+    line_num = @code_finder.find_in_preprpocessed_file(preprocessed_filepath, code_block)
+    return line_num unless line_num.nil?
+
+    msg = "Using fallback C function location search for #{filepath}"
+    @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
+    return @code_finder.find_in_c_file(filepath, code_block)
+  end
+
+  # Format per-function line-number results as a list of human-readable strings.
+  #
+  # Produces one entry per function in the form `"name(): <line_num>"`.
+  # Functions with no resolved line number are rendered with `'N/A'`.
+  # The returned array is passed directly to `@loginator.log_list` for debug output.
+  #
+  # @param funcs [Array<CFunctionDefinition>] Functions with `name` and `line_num` fields
+  # @return [Array<String>]
+  def format_line_number_list(funcs)
+    funcs.map do |func|
+      "#{func.name}(): #{func.line_num.nil? ? 'N/A' : func.line_num.to_s()}"
+    end
+  end
+
   private
 
   # Does any decorator in a list matche any private keyword (case-insensitive)
   def is_function_private?(decorators)
     return decorators.any? do |decorator|
-      PRIVATE_KEYWORDS.any? { |keyword| decorator.downcase == keyword.downcase }
+      CExtractorConstants::PRIVATE_KEYWORDS.any? { |keyword| decorator.downcase == keyword.downcase }
     end
   end
 
@@ -64,7 +198,8 @@ class PartializerUtils
     
     # Handle case where signature is not found in code_block
     if start_index.nil?
-      raise ArgumentError, "Signature '#{signature}' not found in code block"
+      # Raise Ruby ArgumentError not Constructor
+      raise ::ArgumentError, "Signature '#{signature}' not found in code block"
     end
     
     # Return code block minus any decorators before signature
