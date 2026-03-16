@@ -54,13 +54,12 @@ class Generator
   end
 
   def generate_partial_implementation(
-      test:, 
-      name:, 
+      test:,
+      name:,
       function_defns:,
-      source_includes:, 
-      header_includes:, 
-      header_variables:,
-      source_variables:,
+      source_includes:,
+      header_includes:,
+      variable_declarations:,
       input_filepath:,
       output_path:
     )
@@ -77,8 +76,7 @@ class Generator
       :name => name,
       :source_includes => source_includes,
       :header_includes => header_includes,
-      :header_variables => header_variables,
-      :source_variables => source_variables,
+      :variable_declarations => variable_declarations,
       :output_path => output_path
     }
 

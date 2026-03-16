@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/generators/generator_partials'
 require 'ceedling/partials/partials'
 require 'ceedling/includes/includes'
+require 'ceedling/c_extractor/c_extractor_declarations'
 require 'stringio'
 
 describe GeneratorPartials do
@@ -24,6 +25,14 @@ describe GeneratorPartials do
     )
   end
 
+  # Helper to create CVariableDeclaration structs for testing
+  def make_var(name:, type:, declaration:, decorators: [])
+    CExtractorDeclarations::CVariableDeclaration.new(
+      name: name, type: type, decorators: decorators,
+      declaration: declaration, original: declaration
+    )
+  end
+
   context "#generate_implementation" do
     it "should call generate_header() and generate_source() with correct parameters" do
       # Setup
@@ -33,32 +42,32 @@ describe GeneratorPartials do
       header_filename = 'my_implementation_impl.h'
       expected_source_filepath = File.join(output_path, source_filename)
       expected_header_filepath = File.join(output_path, header_filename)
-      
+
       # Mock FilePathUtils
       allow(@file_path_utils).to receive(:form_partial_implementation_source_filename)
         .with(name)
         .and_return(source_filename)
-      
+
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with(name)
         .and_return(header_filename)
-      
+
       # Mock FileWrapper.open to yield file handles
       header_file_handle = double('header_file_handle')
       source_file_handle = double('source_file_handle')
-      
+
       allow(@file_wrapper).to receive(:open)
         .with(expected_header_filepath, 'w')
         .and_yield(header_file_handle)
-      
+
       allow(@file_wrapper).to receive(:open)
         .with(expected_source_filepath, 'w')
         .and_yield(source_file_handle)
-      
+
       # Spy on generate_header and generate_source -- allow them to be called but track the calls
       allow(@generator).to receive(:generate_header)
       allow(@generator).to receive(:generate_source)
-      
+
       # Define test data
       defns = [
         Partials.manufacture_function_definition(
@@ -69,45 +78,45 @@ describe GeneratorPartials do
       ]
       source_includes = [UserInclude.new('types.h'), UserInclude.new('config.h')]
       header_includes = [SystemInclude.new('stdint.h'), SystemInclude.new('stdbool.h')]
-      source_variables = ['uint8_t my_var;']
-      header_variables = ['extern uint8_t my_var;']
-      
+      variable_declarations = [
+        make_var(name: 'my_var', type: 'uint8_t', declaration: 'uint8_t my_var;')
+      ]
+
       # Execute
       result = @generator.generate_implementation(
         name: name,
         definitions: defns,
         source_includes: source_includes,
         header_includes: header_includes,
-        source_variables: source_variables,
-        header_variables: header_variables,
+        variable_declarations: variable_declarations,
         output_path: output_path
       )
-      
-      # Verify generate_header was called with correct parameters
+
+      # Verify generate_header was called with correct parameters (single variable_declarations array)
       expect(@generator).to have_received(:generate_header).with(
         header_file_handle,
         header_filename,
         header_includes,
         defns,
-        header_variables
+        variable_declarations
       )
-      
-      # Verify generate_source was called with correct parameters
+
+      # Verify generate_source was called with correct parameters (same variable_declarations array)
       expect(@generator).to have_received(:generate_source).with(
         source_file_handle,
         source_includes,
         defns,
-        source_variables
+        variable_declarations
       )
-      
+
       # Verify file path utilities were called
       expect(@file_path_utils).to have_received(:form_partial_implementation_source_filename).with(name)
       expect(@file_path_utils).to have_received(:form_partial_implementation_header_filename).with(name)
-      
+
       # Verify file operations
       expect(@file_wrapper).to have_received(:open).with(expected_header_filepath, 'w')
       expect(@file_wrapper).to have_received(:open).with(expected_source_filepath, 'w')
-      
+
       # Verify return value is the source filepath
       expect(result).to eq(expected_source_filepath)
     end
@@ -120,21 +129,21 @@ describe GeneratorPartials do
       name = 'my_interface'
       header_filename = 'my_interface_interface.h'
       expected_filepath = File.join(output_path, header_filename)
-      
+
       # Mock FilePathUtils
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
         .with(name)
         .and_return(header_filename)
-      
+
       # Mock FileWrapper.open to yield a file handle
       file_handle = double('file_handle')
       allow(@file_wrapper).to receive(:open)
         .with(expected_filepath, 'w')
         .and_yield(file_handle)
-      
+
       # Spy on generate_header -- allow it to be called but track the call
       allow(@generator).to receive(:generate_header)
-      
+
       # Define test data
       decls = [
         Partials.manufacture_function_declaration(
@@ -143,7 +152,7 @@ describe GeneratorPartials do
         )
       ]
       includes = [UserInclude.new('types.h'), UserInclude.new('config.h')]
-      
+
       # Execute
       result = @generator.generate_interface(
         declarations: decls,
@@ -151,7 +160,7 @@ describe GeneratorPartials do
         includes: includes,
         output_path: output_path
       )
-      
+
       # Verify generate_header was called with correct parameters
       expect(@generator).to have_received(:generate_header).with(
         file_handle,
@@ -160,13 +169,13 @@ describe GeneratorPartials do
         decls,
         []
       )
-      
+
       # Verify file path utilities were called
       expect(@file_path_utils).to have_received(:form_partial_interface_header_filename).with(name)
-      
+
       # Verify file operations
       expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'w')
-      
+
       # Verify return value is the header filepath
       expect(result).to eq(expected_filepath)
     end
@@ -183,7 +192,7 @@ describe GeneratorPartials do
       #define __FOO_BAR_H__
 
       #endif // __FOO_BAR_H__
-    
+
       CONTENTS
 
       @generator.send(:generate_header, buf, 'foo_bar', [], [], [])
@@ -200,7 +209,7 @@ describe GeneratorPartials do
       #include "bar.h"
 
       #endif // __APPLES_AND_BANANAS_H__
-    
+
       CONTENTS
 
       @generator.send(
@@ -214,22 +223,22 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should generate a header file with variable declarations but nothing else" do
+    it "should generate a header file with variable declarations (extern prefix added automatically)" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
       #ifndef __PB_AND_J_H__
       #define __PB_AND_J_H__
 
       extern unsigned int slices_of_bread;
-      char[10] crumbs;
+      extern char crumbs[10];
 
       #endif // __PB_AND_J_H__
-    
+
       CONTENTS
 
       variables = [
-        'extern unsigned int slices_of_bread;',
-        'char[10] crumbs;'
+        make_var(name: 'slices_of_bread', type: 'unsigned int', declaration: 'unsigned int slices_of_bread;'),
+        make_var(name: 'crumbs', type: 'char', declaration: 'char crumbs[10];')
       ]
       @generator.send(:generate_header, buf, 'pb-and-j', [], [], variables)
       expect( buf.string.strip() ).to eq file_contents.strip()
@@ -244,7 +253,7 @@ describe GeneratorPartials do
       #include "Eeny.h"
       #include "Meeny.h"
 
-      signed long int apples;
+      extern signed long int apples;
       extern double bananas;
 
       void foobarbaz(int x, int y);
@@ -252,7 +261,7 @@ describe GeneratorPartials do
       int razzleDazzle(void* ptr);
 
       #endif // __APPLES_AND_BANANAS_H__
-    
+
       CONTENTS
 
       decls = []
@@ -268,8 +277,8 @@ describe GeneratorPartials do
       )
 
       variables = [
-        'signed long int apples;',
-        'extern double bananas;'
+        make_var(name: 'apples', type: 'signed long int', declaration: 'signed long int apples;'),
+        make_var(name: 'bananas', type: 'double', declaration: 'double bananas;')
       ]
 
       @generator.send(
@@ -343,7 +352,7 @@ describe GeneratorPartials do
       #include "baz.h"
 
       int abc = 123;
-      char[] str = "Hello, World!";
+      char str[] = "Hello, World!";
 
       void foobar(int x, int y) {
         int z = x+y;
@@ -365,8 +374,8 @@ describe GeneratorPartials do
         [UserInclude.new('foobar.h'), UserInclude.new('baz.h')],
         defns,
         [
-          'int abc = 123;',
-          'char[] str = "Hello, World!";'
+          make_var(name: 'abc', type: 'int', declaration: 'int abc = 123;'),
+          make_var(name: 'str', type: 'char', declaration: 'char str[] = "Hello, World!";')
         ]
       )
       expect( buf.string.strip() ).to eq file_contents.strip()
@@ -375,7 +384,7 @@ describe GeneratorPartials do
     it "should generate a source file with functions and #line directives" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
-      
+
       #line 9 "../foo/bar/fubar.c"
       void foobarbaz(int x, int y) {
         int z = x+y;

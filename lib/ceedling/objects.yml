@@ -319,10 +319,6 @@ preprocessinator_reconstructor:
 
 preprocessinator_code_finder:
 
-partializer_parser:
-
-partializer_utils:
-
 c_extractor_code_text:
 
 c_extractor_functions:
@@ -337,13 +333,16 @@ c_extractor:
     - c_extractor_declarations
     - c_extractor_functions
 
+partializer_utils:
+  compose:
+    - preprocessinator_code_finder
+    - loginator
+
 partializer_helper:
   compose:
     - partializer_utils
-    - partializer_parser
     - file_finder
     - c_extractor_declarations
-    - preprocessinator_code_finder
     - file_path_utils
     - loginator
 

@@ -142,10 +142,25 @@ describe CExtractor do
 
       expect( contents.variables.length ).to eq 4
 
-      expect( contents.variables[0] ).to eq 'int global_var;'
-      expect( contents.variables[1] ).to eq 'static const char* ptr = "hello";'
-      expect( contents.variables[2] ).to eq 'struct foo { int x; } instance;'
-      expect( contents.variables[3] ).to eq 'int array[] = {1, 2, 3};'
+      expect( contents.variables[0].name ).to eq 'global_var'
+      expect( contents.variables[0].type ).to eq 'int'
+      expect( contents.variables[0].decorators ).to eq []
+      expect( contents.variables[0].declaration ).to eq 'int global_var;'
+
+      expect( contents.variables[1].original ).to eq 'static const char* ptr = "hello";'
+      expect( contents.variables[1].name ).to eq 'ptr'
+      expect( contents.variables[1].type ).to eq 'char*'
+      expect( contents.variables[1].decorators ).to eq ['static', 'const']
+      expect( contents.variables[1].declaration ).to eq 'char* ptr = "hello";'
+
+      expect( contents.variables[2].name ).to eq 'instance'
+      expect( contents.variables[2].decorators ).to eq []
+      expect( contents.variables[2].declaration ).to eq 'struct foo { int x; } instance;'
+
+      expect( contents.variables[3].name ).to eq 'array'
+      expect( contents.variables[3].type ).to eq 'int'
+      expect( contents.variables[3].decorators ).to eq []
+      expect( contents.variables[3].declaration ).to eq 'int array[] = {1, 2, 3};'
 
       expect( contents.function_definitions.length ).to eq 2
 
@@ -420,9 +435,18 @@ describe CExtractor do
       contents = extract_from.call(file_contents)
 
       expect( contents.variables.length ).to eq 2
-      
-      expect( contents.variables[0] ).to eq 'static int global_counter = 0;'
-      expect( contents.variables[1] ).to eq 'const char* global_message = "Hello, World!";'
+
+      expect( contents.variables[0].original ).to eq 'static int global_counter = 0;'
+      expect( contents.variables[0].name ).to eq 'global_counter'
+      expect( contents.variables[0].type ).to eq 'int'
+      expect( contents.variables[0].decorators ).to eq ['static']
+      expect( contents.variables[0].declaration ).to eq 'int global_counter = 0;'
+
+      expect( contents.variables[1].original ).to eq 'const char* global_message = "Hello, World!";'
+      expect( contents.variables[1].name ).to eq 'global_message'
+      expect( contents.variables[1].type ).to eq 'char*'
+      expect( contents.variables[1].decorators ).to eq ['const']
+      expect( contents.variables[1].declaration ).to eq 'char* global_message = "Hello, World!";'
 
       expect( contents.function_declarations.length ).to eq 2
 

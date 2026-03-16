@@ -9,15 +9,32 @@ require 'ceedling/c_extractor/c_extractor_constants'
 
 class CExtractorFunctions
 
-  # Data class representing an extracted C function
+  include CExtractorConstants
+
+  # Data class representing an extracted C function declaration
+  CFunctionDeclaration = Struct.new(
+    :name,               # Function name (e.g., "foo")
+    :signature,          # Full signature with decorators (e.g., "static int foo(void);")
+    :decorators,         # Array of decorator strings (e.g., ["static"])
+    :signature_stripped, # Signature without decorators (e.g., "int foo(void);")
+    keyword_init: true
+  ) do
+    def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil)
+      super
+    end
+  end
+
+  # Data class representing an extracted C function definition
   CFunctionDefinition = Struct.new(
-    :name,            # Function name only (e.g., "foo")
-    :signature,       # Function signature (e.g., "int foo(void)")
-    :body,            # Function body including containing braces
-    :code_block,      # Complete function text (signature + body)
-    :line_count,      # Total number of lines in code_block
-    :source_filepath, # Source C filepath
-    :line_num,        # Line number in source C file
+    :name,               # Function name only (e.g., "foo")
+    :signature,          # Function signature (e.g., "int foo(void)")
+    :body,               # Function body including containing braces
+    :code_block,         # Complete function text (signature + body)
+    :line_count,         # Total number of lines in code_block
+    :source_filepath,    # Source C filepath
+    :line_num,           # Line number in source C file
+    :decorators,         # Array of decorator strings (e.g., ["static"])
+    :signature_stripped, # Signature without decorators (e.g., "int foo(void)")
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to nil for convenience
@@ -28,7 +45,9 @@ class CExtractorFunctions
       code_block: nil,
       line_count: 0,
       source_filepath: nil,
-      line_num: nil
+      line_num: nil,
+      decorators: [],
+      signature_stripped: nil
       )
       super
     end
@@ -42,15 +61,17 @@ class CExtractorFunctions
     # Aliases
     @code_text = @c_extractor_code_text
 
-    @max_line_length = CExtractorConstants::DEFAULT_MAX_LINE_LENGTH
+    @max_line_length = DEFAULT_MAX_LINE_LENGTH
   end
 
   def try_extract_function_declaration(scanner)
     # Look for function signature
-    signature = extract_function_signature(scanner, :declaration)        
-    return [true, signature] if signature
+    signature = extract_function_signature(scanner, :declaration)
+    return [false, nil] unless signature
 
-    return [false, nil]
+    name = extract_function_name(signature)
+    decorators, signature_stripped = parse_decorators_and_strip(signature, name)
+    return [true, CFunctionDeclaration.new(name: name, signature: signature, decorators: decorators, signature_stripped: signature_stripped)]
   end
 
   # Try to extract a complete function from the scanner
@@ -89,15 +110,20 @@ class CExtractorFunctions
     code_block = scanner.string[start_pos...scanner.pos]
     
     # Fill out function data class
+    name = extract_function_name(signature)
+    decorators, signature_stripped = parse_decorators_and_strip(signature, name)
+
     func = CFunctionDefinition.new(
-      name: extract_function_name(signature),
+      name: name,
       signature: signature,
       source_filepath: filepath,
       body: braced_body,
       code_block: code_block,
-      line_count: code_block.count("\n") + 1
+      line_count: code_block.count("\n") + 1,
+      decorators: decorators,
+      signature_stripped: signature_stripped
     )
-    
+
     return [true, func]
   end
 
@@ -310,6 +336,66 @@ class CExtractorFunctions
     # Removes any whitespace before final semicolon
     _declaration.gsub!(/\s*;$/, ';')
     return _declaration
+  end
+
+  # Extracts decorator keywords from a C function signature and returns the shortened signature
+  # Migrated from PartializerParser#parse_signature_decorators
+  #
+  # Parameters:
+  #   signature: Complete function signature string
+  #   name:      Function name string (used to split the signature)
+  #
+  # Returns: [decorators_array, shortened_signature_string]
+  # Example: "static inline int foo(void)" with name "foo"
+  #   => [["static", "inline"], "int foo(void)"]
+  def parse_decorators_and_strip(signature, name)
+    return [[], signature] if name.nil?
+
+    # Find the function name in the signature
+    name_index = signature.index(name)
+    return [[], signature] if name_index.nil?
+
+    # Extract everything before the function name
+    prefix = signature[0...name_index]
+
+    # Extract everything from the function name onwards
+    remainder = signature[name_index..-1]
+
+    # Split prefix by whitespace to get tokens
+    tokens = prefix.split(/\s+/).reject(&:empty?)
+
+    return [[], signature] if tokens.empty?
+
+    # Find where decorators end and return type begins
+    decorator_end_index = 0
+    tokens.each_with_index do |token, idx|
+      if TYPE_KEYWORDS.include?(token) ||
+        !PRIVATE_KEYWORDS.any? { |kw| token == kw.downcase } &&
+        !MODIFIER_KEYWORDS.include?(token)
+        decorator_end_index = idx
+        break
+      end
+    end
+
+    # If all tokens are decorators (shouldn't happen in valid C), treat last as return type
+    decorator_end_index = tokens.length - 1 if decorator_end_index == 0 && tokens.length > 1
+
+    decorators = tokens[0...decorator_end_index]
+    return_type_tokens = tokens[decorator_end_index..-1]
+
+    return [[], signature] if decorators.empty?
+
+    # Find where the first return type token appears in the prefix
+    first_return_type_token = return_type_tokens.first
+    return_type_start_index = prefix.index(first_return_type_token)
+
+    # Everything from first return type token onwards is the return type portion
+    return_type_portion = prefix[return_type_start_index..-1]
+
+    # Build shortened signature: return_type_portion + remainder
+    shortened_signature = "#{return_type_portion}#{remainder}"
+
+    return decorators, shortened_signature
   end
 
   def extract_function_name(signature)

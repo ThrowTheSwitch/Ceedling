@@ -8,17 +8,15 @@
 require 'ceedling/exceptions'
 require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
 require 'ceedling/c_extractor/c_extractor_declarations'
-require 'ceedling/partials/partializer_constants'
+require 'ceedling/c_extractor/c_extractor_constants'
 require 'strscan'
 
 class PartializerHelper
 
   constructor(
-    :partializer_parser,
     :partializer_utils,
     :file_finder,
     :c_extractor_declarations,
-    :preprocessinator_code_finder,
     :file_path_utils,
     :loginator
   )
@@ -26,7 +24,6 @@ class PartializerHelper
   def setup()
     # Aliases
     @utils = @partializer_utils
-    @parser = @partializer_parser
     @declaration_extractor = @c_extractor_declarations
   end
 
@@ -93,12 +90,9 @@ class PartializerHelper
   # 2. Transform functions to appropriate container (:impl | :interface) → `FunctionDefinition[]` or `FunctionDeclaration[]`
   def filter_and_transform_funcs(funcs, visibility, output_type)
     funcs.filter_map do |func|
-      # List of decorators separated from signature (begining with return type)
-      decorators, signature = @parser.parse_signature_decorators(func.signature, func.name)
-      
-      next unless @utils.matches_visibility?(decorators, visibility)
-      
-      @utils.transform_function(func, signature, output_type)
+      next unless @utils.matches_visibility?(func.decorators, visibility)
+
+      @utils.transform_function(func, func.signature_stripped, output_type)
     end
   end
 
@@ -133,46 +127,27 @@ class PartializerHelper
     # File path of directives-only preprocessor output
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( filepath, name )
 
-    # Always set source filepath
-    funcs.each { |func| func.source_filepath = filepath }
+    @utils.stamp_source_filepaths( funcs, filepath )
 
     if fallback
       msg = "Using fallback C function location search for #{filepath}"
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
       funcs.each do |func|
-        line_num = @preprocessinator_code_finder.find_in_c_file(
-          filepath,
-          func.code_block
+        func.line_num = @utils.locate_function_in_source(
+          code_block:  func.code_block,
+          filepath:    filepath
         )
-
-        # Set line number (including nil)
-        func.line_num = line_num
       end
 
     else
-      # If not relying on a simple fallback technique for all functions, attempt the search
-      # within the preprocessor output and fallback to simple source file searching for any
-      # individual search failures.
       funcs.each do |func|
-        # Try preprocesed output search first
-        line_num = @preprocessinator_code_finder.find_in_preprpocessed_file(
-          preprocessed_filepath,
-          func.code_block
+        # Uses `locate_function_in_source` as an automatic fallback
+        func.line_num = @utils.locate_function_via_preprocessed(
+          code_block:            func.code_block,
+          filepath:              filepath,
+          preprocessed_filepath: preprocessed_filepath
         )
-
-        # Try fallback search next
-        if line_num.nil?
-          msg = "Using fallback C function location search for #{filepath}"
-          @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-          line_num = @preprocessinator_code_finder.find_in_c_file(
-            filepath,
-            func.code_block
-          )
-        end
-
-        # Set line number (including nil)
-        func.line_num = line_num        
       end
     end
 
@@ -184,20 +159,39 @@ class PartializerHelper
     end
 
     header = "Found functions at line numbers in #{filepath}"
-    found_list = funcs.map do |func|
-      "#{func.name}(): #{func.line_num.nil? ? 'N/A' : func.line_num.to_s()}"
-    end
-    @loginator.log_list( found_list, header, Verbosity::DEBUG )
-
+    @loginator.log_list( @utils.format_line_number_list( funcs ), header, Verbosity::DEBUG )
   end
 
+  # Excise function-scoped static variable declarations from function bodies (to be
+  # promoted to module-scope).
+  #
+  # C functions may contain local `static` variable declarations. These variables have
+  # file-level storage duration but function-level scope. When generating partials, they
+  # must be lifted out of function bodies and treated as module-level variables so that
+  # linker and coverage tooling see them correctly.
+  #
+  # For each function in `funcs`, this method:
+  #   1. Scans the function body for variable declarations bearing a private keyword
+  #      (i.e. any keyword in `CExtractorConstants::PRIVATE_KEYWORDS`, e.g. `static`).
+  #   2. Replaces each such declaration in the function's `code_block` and `body` with a
+  #      no-op expression of the form `(void)0; /* <original text> */` so that coverage
+  #      line mappings remain valid without re-declaring the variable inside the body.
+  #   3. Renames each private function-scoped declaration to be prepended with the 
+  #      containing function name to prevent name collisions at module-scope.
+  #   4. Collects all promoted declarations and returns them for inclusion at module scope.
+  #
+  # @param funcs [Array<CFunctionDefinition>] Function definitions to scan. Each matched
+  #   function's `code_block` and `body` fields are mutated in place.
+  #
+  # @return [Array<CVariableDeclaration>] All function-scoped static variable declarations
+  #   found across all supplied functions, suitable for emission at module scope.
   def extract_function_scope_static_vars(funcs)
     decls = []
 
     # Process each function definition looking for function-scoped static variables.
-    # If found, collect them and remove from function `body`` and `code_block`.
+    # If found, collect them and remove from function `body` and `code_block`.
     funcs.each do |func|
-      # Remove contaning brackets of function body
+      # Remove containing brackets of function body
       func_body = func.body.dup
       func_body.delete_prefix!( '{' )
       func_body.delete_prefix!( '}' )
@@ -206,20 +200,69 @@ class PartializerHelper
       _decls = []
 
       loop do
-        success, decl = @declaration_extractor.try_extract_variable( scanner )
+        # `try_extract_variable` returns an array of declarations.
+        # A compound declaration (e.g. int x, y) yields multiple declaration Structs
+        success, var_decls = @declaration_extractor.try_extract_variable( scanner )
         break unless success
-        decl.strip!
-        PartializerConstants::PRIVATE_KEYWORDS.each do |keyword|
-          if decl.start_with?( keyword )
-            _decls << decl
-            break
+        var_decls.each do |var|
+          if var.decorators.any? { |d| CExtractorConstants::PRIVATE_KEYWORDS.include?(d) }
+            _decls << var
           end
         end
       end
 
-      _decls.each do |decl|
-        func.code_block.sub!( decl, "(void)0; /* #{decl} */" )
-        func.body.sub!( decl, "(void)0; /* #{decl} */" )
+      # Group declarations by original statement.
+      # Simple declarations (one var per unique original) and compound declarations
+      # (multiple vars sharing the same original, e.g. `static int a, b;`) require
+      # different strategies to prevent the restored comment text from being found and
+      # corrupted by a subsequent replace call.
+      groups = _decls.group_by { |var| var.original.strip }
+
+      groups.each do |_original, vars|
+        # Pre-compute old names, new names, and unique placeholders before any mutation of var.name
+        old_names    = vars.map(&:name)
+        new_names    = old_names.map { |n| "partial_#{func.name}_#{n}" }
+        placeholders = old_names.map { |n| "__CEEDLING_NOOP_#{func.name.upcase}_#{n.upcase}__" }
+
+        if vars.size > 1
+          # Compound statement: replace original ONCE with one no-op per variable.
+          # Defer ALL placeholder restoration until after ALL renames are complete so that
+          # restored comment text cannot be found and re-processed by a subsequent replace.
+          func.code_block = @utils.replace_compound_declaration_with_noops( func.code_block, _original, placeholders )
+          func.body       = @utils.replace_compound_declaration_with_noops( func.body,       _original, placeholders )
+
+          vars.zip( old_names, new_names ).each do |var, old_name, new_name|
+            var.declaration = @utils.rename_c_identifier( var.declaration, old_name, new_name )
+            var.name        = new_name
+            func.code_block = @utils.rename_c_identifier( func.code_block, old_name, new_name )
+            func.body       = @utils.rename_c_identifier( func.body,       old_name, new_name )
+          end
+
+          placeholders.each do |ph|
+            func.code_block = func.code_block.sub(ph) { _original }
+            func.body       = func.body.sub(ph)       { _original }
+          end
+
+        else
+          # Simple single-variable declaration: original interleaved approach is safe
+          # because no other var shares this original statement.
+          var         = vars.first
+          old_name    = old_names.first
+          new_name    = new_names.first
+          placeholder = placeholders.first
+
+          func.code_block = @utils.replace_declaration_with_noop( func.code_block, _original, placeholder )
+          func.body       = @utils.replace_declaration_with_noop( func.body,       _original, placeholder )
+
+          var.declaration = @utils.rename_c_identifier( var.declaration, old_name, new_name )
+          var.name        = new_name
+
+          func.code_block = @utils.rename_c_identifier( func.code_block, old_name, new_name )
+          func.body       = @utils.rename_c_identifier( func.body,       old_name, new_name )
+
+          func.code_block = func.code_block.sub(placeholder) { _original }
+          func.body       = func.body.sub(placeholder)       { _original }
+        end
       end
 
       decls += _decls
