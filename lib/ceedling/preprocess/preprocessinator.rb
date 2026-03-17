@@ -198,69 +198,6 @@ class Preprocessinator
     return !includes.empty?, includes
   end
 
-  def preprocess_partial_header_file(
-      test:,
-      filepath:,
-      directives_only_filepath:,
-      fallback:,
-      flags:,
-      include_paths:,
-      vendor_paths:,
-      defines:
-  )
-    msg = @reportinator.generate_module_progress(
-      operation: 'Preprocessing header file for follow-on Partials handling',
-      module_name: test,
-      filename: File.basename( filepath )
-    )
-    @loginator.log( msg )
-
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
-
-    arg_hash = {
-      test:                      test,
-      filepath:                  filepath,
-      directives_only_filepath:  directives_only_filepath,
-      fallback:                  fallback,
-      flags:                     flags,
-      include_paths:             include_paths,
-      vendor_paths:              vendor_paths,
-      defines:                   defines
-    }
-
-    # Extract includes & log progress and details   
-    includes = preprocess_file_common( **arg_hash )
-
-    header = "Discovered #includes for Partial header from #{filepath}"
-    @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
-    
-    arg_hash = {
-      test:                      test,
-      filepath:                  filepath,
-      directives_only_filepath:  directives_only_filepath,
-      fallback:                  fallback,
-      flags:                     flags,
-      include_paths:             include_paths,
-      defines:                   defines,
-      extras:                    false
-    }
-
-    contents, extras = @file_assembler.collect_header_file_contents( **arg_hash )
-
-    arg_hash = {
-      filename:              File.basename( filepath ),
-      preprocessed_filepath: preprocessed_filepath,
-      contents:              contents,
-      extras:                extras,
-      includes:              includes                       
-    }
-
-    # Create a reconstituted header file from preprocessing expansion and preserving any extras
-    @file_assembler.assemble_preprocessed_header_file( **arg_hash )
-
-    return preprocessed_filepath, includes
-  end
-
   def preprocess_mockable_header_file(
       test:,
       filepath:,
@@ -269,7 +206,8 @@ class Preprocessinator
       flags:,
       include_paths:,
       vendor_paths:,
-      defines:
+      defines:,
+      extras: false
   )
     msg = @reportinator.generate_module_progress(
       operation: 'Preprocessing header file for follow-on mock handling',
@@ -304,7 +242,7 @@ class Preprocessinator
     }
 
     # Extract includes & log progress and details   
-    includes = preprocess_file_common( **arg_hash )
+    includes = preprocess_file_includes_common( **arg_hash )
 
     header = "Discovered #includes for mockable header from #{filepath}"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
@@ -317,14 +255,14 @@ class Preprocessinator
       flags:                     flags,
       include_paths:             include_paths,
       defines:                   defines,
-      extras:                    (@configurator.cmock_treat_inlines == :include)
+      extras:                    extras
     }
 
     # `contents` & `extras` are arrays of text strings to be assembled in generating a new header file.
     # `extras` are macro definitions, pragmas, etc. needed for the special case of mocking `inline` function declarations.
     # `extras` are empty for any cases other than mocking `inline` function declarations
     # (We don't want to increase our chances of a badly generated file--extracting extras could fail in complex files.)
-    contents, extras = @file_assembler.collect_header_file_contents( **arg_hash )
+    contents, extras = @file_assembler.collect_mockable_header_file_contents( **arg_hash )
 
     arg_hash = {
       filename:              File.basename( filepath ),
@@ -341,6 +279,58 @@ class Preprocessinator
     @plugin_manager.post_mock_preprocess( plugin_arg_hash )
 
     return preprocessed_filepath
+  end
+
+  def preprocess_partial_header_file(
+      test:,
+      filepath:,
+      directives_only_filepath:,
+      fallback:,
+      flags:,
+      include_paths:,
+      vendor_paths:,
+      defines:
+  )
+    msg = @reportinator.generate_module_progress(
+      operation: 'Preprocessing header file for follow-on Partials handling',
+      module_name: test,
+      filename: File.basename( filepath )
+    )
+    @loginator.log( msg )
+
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
+
+    arg_hash = {
+      test:                      test,
+      filepath:                  filepath,
+      directives_only_filepath:  directives_only_filepath,
+      fallback:                  fallback,
+      flags:                     flags,
+      include_paths:             include_paths,
+      vendor_paths:              vendor_paths,
+      defines:                   defines
+    }
+
+    # Extract includes & log progress and details   
+    includes = preprocess_file_includes_common( **arg_hash )
+
+    header = "Discovered #includes for Partial header from #{filepath}"
+    @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
+    
+    contents = @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
+
+    arg_hash = {
+      filename:              File.basename( filepath ),
+      preprocessed_filepath: preprocessed_filepath,
+      contents:              contents,
+      extras:                [],
+      includes:              includes                       
+    }
+
+    # Create a reconstituted header file
+    @file_assembler.assemble_preprocessed_header_file( **arg_hash )
+
+    return preprocessed_filepath, includes
   end
 
   def preprocess_partial_source_file(
@@ -374,20 +364,12 @@ class Preprocessinator
     }
 
     # Extract includes & log progress and info
-    includes = preprocess_file_common( **arg_hash )
+    includes = preprocess_file_includes_common( **arg_hash )
 
     header = "Discovered #includes for Partial source from #{filepath}"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
 
-    arg_hash = {
-      source_filepath:       filepath,
-      test:                  test,
-      flags:                 flags,
-      include_paths:         include_paths,
-      defines:               defines      
-    }
-
-    contents = @file_assembler.collect_source_file_contents( **arg_hash )
+    contents = @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
 
     arg_hash = {
       filename:              File.basename( filepath ),
@@ -397,7 +379,7 @@ class Preprocessinator
       includes:              includes                       
     }
 
-    # Create a reconstituted test file from preprocessing expansion and preserving any extras
+    # Create a reconstituted source file
     @file_assembler.assemble_preprocessed_code_file( **arg_hash )
 
     return preprocessed_filepath, includes
@@ -435,7 +417,7 @@ class Preprocessinator
     # Trigger pre_test_preprocess plugin hook
     @plugin_manager.pre_test_preprocess( plugin_arg_hash )
 
-    # NOTE: No call to `preprocess_file_common()` because we already have includes
+    # NOTE: No call to `preprocess_file_includes_common()` because we already have includes
 
     arg_hash = {
       test:                      test,
@@ -471,7 +453,7 @@ class Preprocessinator
   ### Private ###
   private
 
-  def preprocess_file_common(
+  def preprocess_file_includes_common(
       test:,
       filepath:,
       directives_only_filepath:,
