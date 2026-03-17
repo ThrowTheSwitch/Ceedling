@@ -13,15 +13,17 @@ require 'ostruct'
 
 describe Partializer do
   before(:each) do
-    @partializer_helper = double( "PartializerHelper" )
-    @file_path_utils = double( "FilePathUtils" )
-    @loginator = double( "Loginator" )
+    @partializer_helper = double("PartializerHelper")
+    @c_extractor        = double("CExtractor")
+    @file_path_utils    = double("FilePathUtils")
+    @loginator          = double("Loginator")
 
     @partializer = described_class.new(
       {
         :partializer_helper => @partializer_helper,
-        :file_path_utils => @file_path_utils,
-        :loginator => @loginator
+        :c_extractor        => @c_extractor,
+        :file_path_utils    => @file_path_utils,
+        :loginator          => @loginator
       }
     )
   end
@@ -690,11 +692,11 @@ describe Partializer do
     before(:each) do
       @name = 'TestModule'
 
-      @mock_extractinator = double('CExtractor')
-      allow(CExtractor).to receive(:from_file).and_return(@mock_extractinator)
-
       # associate_function_line_numbers is called for every file processed; stub by default
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
+      # static var extraction/promotion called for every file processed; stub by default
+      allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
+      allow(@partializer_helper).to receive(:collect_module_variables)
     end
 
     it "returns empty CModule when both preprocessed_filepaths are nil" do
@@ -704,10 +706,12 @@ describe Partializer do
         source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', preprocessed_filepath: nil)
       )
 
-      expect(CExtractor).not_to receive(:from_file)
+      expect(@c_extractor).not_to receive(:from_file)
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
+      expect(@partializer_helper).not_to receive(:extract_function_scope_static_vars)
+      expect(@partializer_helper).not_to receive(:collect_module_variables)
 
-      result = @partializer.extract_module_contents(@name, config)
+      result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq([])
       expect(result.variables).to eq([])
@@ -726,13 +730,12 @@ describe Partializer do
         source: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil)
       )
 
-      expect(CExtractor).to receive(:from_file).with('/build/preproc/header.i').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_contents).and_return(header_contents)
+      expect(@c_extractor).to receive(:from_file).with('/build/preproc/header.i').and_return(header_contents)
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: header_funcs, filepath: '/path/to/header.h'
+        name: @name, funcs: header_funcs, filepath: '/path/to/header.h', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config)
+      result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq(header_funcs)
       expect(result.variables).to eq([])
@@ -751,13 +754,12 @@ describe Partializer do
         source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', preprocessed_filepath: '/build/preproc/source.i')
       )
 
-      expect(CExtractor).to receive(:from_file).with('/build/preproc/source.i').and_return(@mock_extractinator)
-      expect(@mock_extractinator).to receive(:extract_contents).and_return(source_contents)
+      expect(@c_extractor).to receive(:from_file).with('/build/preproc/source.i').and_return(source_contents)
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: source_funcs, filepath: '/path/to/source.c'
+        name: @name, funcs: source_funcs, filepath: '/path/to/source.c', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config)
+      result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq(source_funcs)
       expect(result.variables).to eq([])
@@ -775,27 +777,22 @@ describe Partializer do
       source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variables: [double('var1')])
       header_contents = CExtractor::CModule.new(function_definitions: header_funcs, variables: [double('var2')])
 
-      source_extractinator = double('source_extractinator')
-      header_extractinator = double('header_extractinator')
-
       config = Partials::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', preprocessed_filepath: '/build/preproc/header.i'),
         source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', preprocessed_filepath: '/build/preproc/source.i')
       )
 
-      expect(CExtractor).to receive(:from_file).with('/build/preproc/source.i').and_return(source_extractinator)
-      expect(CExtractor).to receive(:from_file).with('/build/preproc/header.i').and_return(header_extractinator)
-      expect(source_extractinator).to receive(:extract_contents).and_return(source_contents)
-      expect(header_extractinator).to receive(:extract_contents).and_return(header_contents)
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/source.i').and_return(source_contents)
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/header.i').and_return(header_contents)
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: source_funcs, filepath: '/path/to/source.c'
+        name: @name, funcs: source_funcs, filepath: '/path/to/source.c', fallback: false
       )
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: header_funcs, filepath: '/path/to/header.h'
+        name: @name, funcs: header_funcs, filepath: '/path/to/header.h', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config)
+      result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq(source_funcs + header_funcs)
       expect(result.variables).to eq(source_contents.variables + header_contents.variables)
@@ -811,14 +808,14 @@ describe Partializer do
         source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', preprocessed_filepath: '/build/preproc/module1.i')
       )
 
-      allow(@mock_extractinator).to receive(:extract_contents).and_return(source_contents)
+      allow(@c_extractor).to receive(:from_file).and_return(source_contents)
 
       # associate_function_line_numbers must receive the original filepath, not the preprocessed one
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: source_funcs, filepath: '/src/module1.c'
+        name: @name, funcs: source_funcs, filepath: '/src/module1.c', fallback: false
       )
 
-      @partializer.extract_module_contents(@name, config)
+      @partializer.extract_module_contents(@name, config, false)
     end
 
     it "passes extraction name through to associate_function_line_numbers" do
@@ -831,13 +828,13 @@ describe Partializer do
         source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', preprocessed_filepath: '/build/preproc/module1.i')
       )
 
-      allow(@mock_extractinator).to receive(:extract_contents).and_return(source_contents)
+      allow(@c_extractor).to receive(:from_file).and_return(source_contents)
 
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: 'SpecificTestName', funcs: source_funcs, filepath: '/src/module1.c'
+        name: 'SpecificTestName', funcs: source_funcs, filepath: '/src/module1.c', fallback: false
       )
 
-      @partializer.extract_module_contents('SpecificTestName', config)
+      @partializer.extract_module_contents('SpecificTestName', config, false)
     end
 
     it "returns empty CModule when a preprocessed file has no contents" do
@@ -849,12 +846,12 @@ describe Partializer do
         source: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil)
       )
 
-      expect(@mock_extractinator).to receive(:extract_contents).and_return(empty_contents)
+      expect(@c_extractor).to receive(:from_file).and_return(empty_contents)
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: [], filepath: '/path/to/header.h'
+        name: @name, funcs: [], filepath: '/path/to/header.h', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config)
+      result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq([])
       expect(result.variables).to eq([])
@@ -1110,268 +1107,6 @@ describe Partializer do
           config: config
         )
       }.to raise_error(ArgumentError)
-    end
-  end
-
-  ###
-  ### reconstruct_variables()
-  ###
-
-  context "#reconstruct_variables" do
-    it "returns empty array when no variables are provided" do
-      source, header = @partializer.reconstruct_variables(variables: [])
-      
-      expect(source).to eq([])
-      expect(header).to eq([])
-    end
-
-    it "returns variable unchanged when no keywords present" do
-      variables = ['int counter;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int counter;'])
-      expect(header).to eq(['extern int counter;'])
-    end
-
-    it "removes static keyword from variable declaration" do
-      variables = ['static int counter;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int counter;'])
-      expect(header).to eq(['extern int counter;'])
-    end
-
-    it "removes const keyword from variable declaration" do
-      variables = ['const int MAX_VALUE;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int MAX_VALUE;'])
-      expect(header).to eq(['extern int MAX_VALUE;'])
-    end
-
-    it "removes volatile keyword from variable declaration" do
-      variables = ['volatile int status;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int status;'])
-      expect(header).to eq(['extern int status;'])
-    end
-
-    it "removes multiple keywords from single declaration" do
-      variables = ['static const int MAX_VALUE;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int MAX_VALUE;'])
-      expect(header).to eq(['extern int MAX_VALUE;'])
-    end
-
-    it "removes all type qualifiers from declaration" do
-      variables = ['static const volatile int flags;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int flags;'])
-      expect(header).to eq(['extern int flags;'])
-    end
-
-    it "preserves variable names containing keyword substrings" do
-      variables = ['int my_static_var;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int my_static_var;'])
-      expect(header).to eq(['extern int my_static_var;'])
-    end
-
-    it "handles pointer declarations" do
-      variables = ['static int* ptr;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int* ptr;'])
-      expect(header).to eq(['extern int* ptr;'])
-    end
-
-    it "handles array declarations" do
-      variables = ['static int array[10];']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int array[10];'])
-      expect(header).to eq(['extern int array[10];'])
-    end
-
-    it "handles complex pointer declarations" do
-      variables = ['const char* const ptr;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['char* ptr;'])
-      expect(header).to eq(['extern char* ptr;'])
-    end
-
-    it "normalizes multiple spaces to single space" do
-      variables = ['static  const   int    value;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int value;'])
-      expect(header).to eq(['extern int value;'])
-    end
-
-    it "removes leading and trailing whitespace" do
-      variables = ['  static int counter;  ']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int counter;'])
-      expect(header).to eq(['extern int counter;'])
-    end
-
-    it "processes multiple variable declarations" do
-      variables = [
-        'static int counter;',
-        'const float pi;',
-        'volatile bool flag;'
-      ]
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq([
-        'int counter;',
-        'float pi;',
-        'bool flag;'
-      ])
-      expect(header).to eq([
-        'extern int counter;',
-        'extern float pi;',
-        'extern bool flag;'
-      ])
-    end
-
-    it "handles struct declarations with keywords" do
-      variables = ['static struct Point position;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['struct Point position;'])
-      expect(header).to eq(['extern struct Point position;'])
-    end
-
-    it "handles typedef declarations with keywords" do
-      variables = ['static MyType_t instance;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['MyType_t instance;'])
-      expect(header).to eq(['extern MyType_t instance;'])
-    end
-
-    it "handles unsigned types with keywords" do
-      variables = ['static unsigned int count;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['unsigned int count;'])
-      expect(header).to eq(['extern unsigned int count;'])
-    end
-
-    it "handles long types with keywords" do
-      variables = ['static long long int big_number;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['long long int big_number;'])
-      expect(header).to eq(['extern long long int big_number;'])
-    end
-
-    it "handles function pointer declarations" do
-      variables = ['static void (*callback)(int);']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['void (*callback)(int);'])
-      expect(header).to eq(['extern void (*callback)(int);'])
-    end
-
-    it "preserves initialization values" do
-      variables = ['static int counter = 0;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int counter = 0;'])
-      expect(header).to eq(['extern int counter = 0;'])
-    end
-
-    it "handles complex initialization with keywords" do
-      variables = ['static const int values[] = {1, 2, 3};']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int values[] = {1, 2, 3};'])
-      expect(header).to eq(['extern int values[] = {1, 2, 3};'])
-    end
-
-    it "handles keywords in middle of declaration" do
-      variables = ['int static counter;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int counter;'])
-      expect(header).to eq(['extern int counter;'])
-    end
-
-    it "handles multiple const keywords" do
-      variables = ['const int* const ptr;']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['int* ptr;'])
-      expect(header).to eq(['extern int* ptr;'])
-    end
-
-    it "does not remove keywords from string literals" do
-      variables = ['char* str = "static const";']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq(['char* str = "static const";'])
-      expect(header).to eq(['extern char* str = "static const";'])
-    end
-
-    it "handles empty string in variables array" do
-      variables = ['']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq([])
-      expect(header).to eq([])
-    end
-
-    it "handles whitespace-only string in variables array" do
-      variables = ['   ']
-      
-      source, header = @partializer.reconstruct_variables(variables: variables)
-      
-      expect(source).to eq([])
-      expect(header).to eq([])
-    end
-
-    it "preserves original array and returns new array" do
-      original_variables = ['static int counter;']
-      
-      source, header = @partializer.reconstruct_variables(variables: original_variables)
-      
-      expect(original_variables).to eq(['static int counter;'])
-      expect(source).to eq(['int counter;'])
-      expect(source).not_to equal(original_variables)
-      expect(header).to eq(['extern int counter;'])
-      expect(header).not_to equal(original_variables)
     end
   end
 
