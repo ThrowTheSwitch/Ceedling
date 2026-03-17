@@ -42,6 +42,7 @@ class Gcov < Plugin
     # Convenient instance variable references
     @configurator = @ceedling[:configurator]
     @loginator = @ceedling[:loginator]
+    @reportinator = @ceedling[:reportinator]
     @test_invoker = @ceedling[:test_invoker]
     @plugin_reportinator = @ceedling[:plugin_reportinator]
     @file_path_utils = @ceedling[:file_path_utils]
@@ -61,10 +62,22 @@ class Gcov < Plugin
     if arg_hash[:context] == GCOV_SYM
       source = arg_hash[:source]
 
-      # If a source file (not unity, mocks, etc.) is to be compiled use code coverage compiler
-      if (File.extname(source) != EXTENSION_ASSEMBLY) && @configurator.collection_all_source.include?(source)
+      # If a source file or Partial (not unity, mocks, etc.) is to be compiled use code coverage compiler
+      if (
+          # Not assembly
+          (File.extname(source) != EXTENSION_ASSEMBLY) && 
+          (
+            # Ceedling partial file or file in project source collection
+            File.basename(source).start_with?(PARTIAL_FILENAME_PREFIX) || 
+            @configurator.collection_all_source.include?(source)
+          )
+        )
         arg_hash[:tool] = TOOLS_GCOV_COMPILER
-        arg_hash[:msg] = "Compiling #{File.basename(source)} with coverage..."
+        arg_hash[:msg] = @reportinator.generate_module_progress(
+          operation: "Compiling with coverage",
+          module_name: arg_hash[:module_name],
+          filename: File.basename(source)
+        )
       end
     end
   end
@@ -186,13 +199,18 @@ class Gcov < Plugin
 
       sources.each do |source|
         filename = File.basename(source)
-        name     = filename.ext('')
+
+        # Skip Partials
+        next if filename.start_with?(PARTIAL_FILENAME_PREFIX)
+
         command  = @tool_executor.build_command_line(
-                     TOOLS_GCOV_SUMMARY,
-                     [], # No additional arguments
-                     filename, # .c source file that should have been compiled with coverage
-                     File.join(GCOV_BUILD_OUTPUT_PATH, test) # <build>/gcov/out/<test name> for coverage data files
-                   )
+          TOOLS_GCOV_SUMMARY,
+          # No additional arguments
+          [],
+          # Argument replacement
+          filename, # .c source file that should have been compiled with coverage
+          File.join(GCOV_BUILD_OUTPUT_PATH, test) # <build>/gcov/out/<test name> for coverage data files
+        )
 
         # Do not raise an exception if `gcov` terminates with a non-zero exit code, just note it and move on.
         # Recent releases of `gcov` have become more strict and vocal about errors and exit codes.
@@ -260,7 +278,7 @@ class Gcov < Plugin
     config.each do |reportinator|
       if not GCOV_UTILITY_NAMES.map(&:upcase).include?( reportinator.upcase )
         options = GCOV_UTILITY_NAMES.map{ |utility| "'#{utility}'" }.join(', ')
-        msg = "Plugin configuration :gcov ↳ :utilities => `#{reportinator}` is not a recognized option {#{options}}."
+        msg = "Plugin configuration :gcov ↳ :utilities ➡️ `#{reportinator}` is not a recognized option {#{options}}."
         raise CeedlingException.new(msg)
       end
     end

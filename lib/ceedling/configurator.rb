@@ -67,6 +67,20 @@ class Configurator
   end
 
 
+  def set_partials_derived_config(config)
+    return if !config[:project][:use_partials]
+
+    # If partials enabled, enable mocking
+    config[:project][:use_mocks] = true
+    @loginator.log( " > Enabled mocking." )
+    # If partials enabled, enable full test preprocessing
+    config[:project][:use_test_preprocessor] = :all
+    @loginator.log( " > Enabled preprocessing." )
+    # If partials enabled, inject partials name prefix symbols to all test compilation
+    config[:defines][:test] << "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}"
+  end
+
+
   # The default tools (eg. DEFAULT_TOOLS_TEST) are merged into default config hash
   def merge_tools_defaults(config, default_config)
     @loginator.lazy( Verbosity::OBNOXIOUS ) do 
@@ -249,6 +263,9 @@ class Configurator
     end
 
     cmock[:includes].uniq!
+
+    # Add mocking prefix symbol for all test compilation
+    cmock[:defines] << "CMOCK_MOCK_PREFIX=#{cmock[:mock_prefix]}"
 
     @loginator.lazy( Verbosity::DEBUG ) do
       "CMock configuration >> #{cmock}"
@@ -626,7 +643,6 @@ class Configurator
     blotter &= @configurator_setup.validate_defines( config )
     blotter &= @configurator_setup.validate_flags( config )
     blotter &= @configurator_setup.validate_test_preprocessor( config )
-    blotter &= @configurator_setup.validate_deep_preprocessor( config )
     blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
     blotter &= @configurator_setup.validate_plugins( config )
@@ -671,7 +687,7 @@ class Configurator
 
     # Ensure element already exists
     if not @project_config_hash.include?(elem)
-      error = "Could not rederine #{elem} in configurator--element does not exist"
+      error = "Could not redefine #{elem} in configurator ⏩️ Element does not exist"
       raise CeedlingException.new(error)
     end
 

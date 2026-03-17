@@ -6,10 +6,10 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/preprocessinator_extractor'
+require 'ceedling/preprocess/preprocessinator_reconstructor'
 require 'ceedling/parsing_parcels'
 
-describe PreprocessinatorExtractor do
+describe PreprocessinatorReconstructor do
   before(:each) do
     @parsing_parcels = ParsingParcels.new()
     @extractor = described_class.new(
@@ -62,7 +62,6 @@ describe PreprocessinatorExtractor do
       ]
 
       expected = [
-        '',
         '#pragma yo sup',
         '#define FOO(...)',
         'void some_function(void) {',
@@ -160,8 +159,69 @@ describe PreprocessinatorExtractor do
 
       expect( @extractor.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
     end
-  end
 
+    it "should extract text of original file from staggered system include expansions" do
+      filepath = "path/system_header_expansion.c"
+      
+      file_contents = [
+        '# 9 "path/system_header_expansion.c" 2',
+        '',
+        '',
+        'uint16_t var1;',
+        '',
+        'static ',
+        '# 13 "path/system_header_expansion.c" 3 4',
+        '      _Bool ',
+        '# 13 "path/system_header_expansion.c"',
+        '           var1;',
+        '',
+        'static ',
+        '# 15 "path/system_header_expansion.c" 3 4',
+        '      _Bool ',
+        '# 15 "path/system_header_expansion.c"',
+        '           ecs_foo__init_structure(void);',
+        '',
+        '',
+        '',
+        'void ecs_foo_init(void) {',
+        '    var1 = ecs_foo__init_structure();',
+        '}',
+        '',
+        'static ',
+        '# 23 "path/system_header_expansion.c" 3 4',
+        '      _Bool ',
+        '# 23 "path/system_header_expansion.c"',
+        '           ecs_foo__init_structure(void) {',
+        '    return ',
+        '# 24 "path/system_header_expansion.c" 3 4',
+        '          1',
+        '# 24 "path/system_header_expansion.c"',
+        '              ;',
+        '}',
+      ]
+
+      expected = [
+        'uint16_t var1;',
+        '',
+        'static _Bool var1;',
+        '',
+        'static _Bool ecs_foo__init_structure(void);',
+        '',
+        'void ecs_foo_init(void) {',
+        '    var1 = ecs_foo__init_structure();',
+        '}',
+        '',
+        'static _Bool ecs_foo__init_structure(void) {',
+        '    return 1;',
+        '}',
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+  end
+  
   context "#extract_file_as_string_from_expansion" do
     it "should simply extract text of original file from preprocessed expansion" do
       filepath = "path/do/WANT.c"

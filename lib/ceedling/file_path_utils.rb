@@ -8,6 +8,7 @@
 require 'rubygems'
 require 'rake' # for ext()
 require 'fileutils'
+require 'ceedling/exceptions'
 require 'ceedling/system_wrapper'
 require 'ceedling/constants'
 
@@ -91,7 +92,7 @@ class FilePathUtils
     return path
   end
 
-  ######### instance methods ##########
+  ######### Instance methods ##########
 
   ### release ###
   def form_release_build_cache_path(filepath)
@@ -172,9 +173,37 @@ class FilePathUtils
     return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{path}/%n#{@configurator.extension_object}")
   end
 
+  def form_mock_header_filepath(subdir, filename)
+    # @configurator.cmock_mock_path accessor only exists if mocks are enabled
+    raise CeedlingException.new('Mocks are not enabled, but an internal feature dependent on them was accessed.') unless @configurator.project_use_mocks
+    return File.join(@configurator.cmock_mock_path, subdir, filename.ext(EXTENSION_CORE_HEADER))
+  end
+
   def form_mocks_source_filelist(path, mocks)
     list = (@file_wrapper.instantiate_file_list(mocks))
-    return list.map{ |file| File.join(path, File.basename(file).ext(@configurator.extension_source)) }
+    return list.map{ |file| File.join(path, File.basename(file).ext(EXTENSION_CORE_SOURCE)) }
+  end
+
+  def form_partial_header_filepath(subdir, filename)
+    # @configurator.project_test_partials_path accessor only exists if partials are enabled
+    raise CeedlingException.new('Partials are not enabled, but an internal feature dependent on them was accessed.') unless @configurator.project_use_partials
+    return File.join( @configurator.project_test_partials_path, subdir, filename.ext(EXTENSION_CORE_HEADER) )
+  end
+
+  def form_partial_interface_header_filename(_module)
+    return PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
+  end
+
+  def form_mock_partial_interface_header_filename(_module)
+    return @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
+  end
+
+  def form_partial_implementation_header_filename(_module)
+    return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_HEADER
+  end
+
+  def form_partial_implementation_source_filename(_module)
+    return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_SOURCE
   end
 
   def form_test_dependencies_filelist(files)

@@ -1,0 +1,150 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'stringio'
+
+class PreprocessinatorCodeFinder
+
+  LINE_MARKER_REGEX = /^#\s+(\d+)\s+"[^"]+"[^\n]*\n/ unless const_defined?(:LINE_MARKER_REGEX)
+
+  # Regex-special-character-immune string
+  WHITESPACE_MARKER = '<!@_ws_!@>' unless const_defined?(:WHITESPACE_MARKER)
+
+  # Open a GCC preprocessor output file and search it for code.
+  # Returns the 1-indexed source line number of the match, or nil if not found.
+  # Intended for production use where preprocessor output resides on disk.
+  def find_in_preprpocessed_file(filepath, code)
+    File.open( filepath, 'r' ) do |file|
+      return find_in_preprocessed_content( io: file, search: code )
+    end
+  end
+
+
+  # Wrap a GCC preprocessor output string in a StringIO and search it for code.
+  # Returns the 1-indexed source line number of the match, or nil if not found.
+  # Intended for test use so that specs require no temporary files.
+  def find_in_preprpocessed_string(content, code)
+    buffer = StringIO.new( content )
+    return find_in_preprocessed_content( io: buffer, search: code )
+  end
+
+  # Open a C source file and search it for code.
+  # Returns the 1-indexed source line number of the match, or nil if not found.
+  # Intended for production use where C file resides on disk.
+  def find_in_c_file(filepath, code)
+    File.open( filepath, 'r' ) do |file|
+      return find_in_c_code( io: file, search: code )
+    end
+  end
+
+
+  # Wrap a C file content string in a StringIO and search it for code.
+  # Returns the 1-indexed source line number of the match, or nil if not found.
+  # Intended for test use so that specs require no temporary files.
+  def find_in_c_string(content, code)
+    buffer = StringIO.new( content )
+    return find_in_c_code( io: buffer, search: code )
+  end
+
+  private
+
+  # Search a GCC preprocessor output IO stream for an exact match of search.
+  #
+  # GCC preprocessor output intersperses the expanded source text with line
+  # markers of the form:
+  #   # <linenum> "<filename>" [flags]
+  #
+  # Each marker declares that the source line immediately following it
+  # corresponds to line linenum in the named file. Subsequent non-marker lines
+  # increment the source line count by one each.
+  #
+  # The method locates `search`` as a substring of the full stream content, then
+  # walks backwards through the line markers that precede the match to find the
+  # most recent one. The source line number is computed as:
+  #   last_marker_linenum + (newlines between marker end and match start)
+  #
+  # Returns nil when search is not present in the stream or no line marker
+  # precedes the match (which indicates malformed preprocessor output).
+  def find_in_preprocessed_content(io:, search:)
+    content = io.read
+    return nil if content.nil? || content.empty?
+
+    # Locate the search string within the preprocessor output
+    match_pos = whitespace_insensitive_search( content, search )
+    return nil if match_pos.nil?
+
+    # Examine only the content before the match for GCC line markers.
+    # Line markers have the form: # <linenum> "<filename>" [optional flags]
+    # The linenum in each marker refers to the source line immediately following it.
+    prefix = content[0, match_pos]
+
+    last_marker_num = nil
+    # Byte position in content after the last marker's newline
+    last_marker_end = 0
+
+    prefix.scan( LINE_MARKER_REGEX ) do |captures|
+      last_marker_num = captures[0].to_i
+      last_marker_end = $~.end(0)
+    end
+
+    if last_marker_num.nil?
+      # No line marker precedes the match -- something is wrong
+      return nil
+    end
+
+    # Each newline between the end of the last line marker line and the match start
+    # advances the source line by one. The marker's linenum is the base.
+    newlines_after_marker = content[last_marker_end, match_pos - last_marker_end].count("\n")
+    
+    # Return line number of found code (mostly for test validation)
+    return last_marker_num + newlines_after_marker
+  end
+
+  # Search a C code IO stream for an exact match of search.
+  #
+  # The method locates `search`` as a substring of the full stream content, then
+  # identifies the source line number. Returns nil when search is not present in 
+  # the stream.
+  def find_in_c_code(io:, search:)
+    content = io.read
+    return nil if content.nil? || content.empty?
+
+    # Locate the search string within the preprocessor output
+    match_pos = whitespace_insensitive_search( content, search )
+    return nil if match_pos.nil?
+
+    return (content[0, match_pos].count("\n")) + 1
+  end
+
+  private
+
+  def whitespace_insensitive_search(content, code)
+    # Collapse whitespace to a unique token
+    _code = code.gsub(/\s+/, WHITESPACE_MARKER)
+
+    # Escape the code block to search for.
+    # Note: Regexp#escape escapes each piece of whitespace and, so, we must take the preparation step above.
+    _code = Regexp.escape( _code )
+
+    # Replace the whitespace token with regex whitespace-insenstive matcher
+    _code.gsub!(/#{WHITESPACE_MARKER}/, '\s+')
+
+    # Create the regex we'll use
+    pattern = Regexp.new( _code )
+
+    # Try to find the code block
+    matched = pattern.match( content )
+
+    # Failed to match
+    return matched if matched.nil?
+
+    # Return position of the match within `content`
+    return matched.begin( 0 )
+  end
+
+
+end
