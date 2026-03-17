@@ -70,11 +70,22 @@ end
 
 class PATTERNS
   GLOB = /[\*\?\{\}\[\]]/
+
   RUBY_STRING_REPLACEMENT = /#\{.+\}/
   TOOL_EXECUTOR_ARGUMENT_REPLACEMENT = /(\$\{(\d+)\})/
+
   TEST_STDOUT_STATISTICS  = /\n-+\s*(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
+
+  USER_INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+\"\s*([\/\w\.\-]+)\s*\"/
+  SYSTEM_INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+<\s*([\/\w\.\-]+)\s*>/
+
   TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
   TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
+
+  TEST_PARTIAL_PUBLIC_MODULE  = /#\s*include\s+TEST_PARTIAL_PUBLIC_MODULE\s*\(\s*(.+)\s*\)/
+  TEST_PARTIAL_PRIVATE_MODULE = /#\s*include\s+TEST_PARTIAL_PRIVATE_MODULE\s*\(\s*(.+)\s*\)/
+  MOCK_PARTIAL_PUBLIC_MODULE  = /#\s*include\s+MOCK_PARTIAL_PUBLIC_MODULE\s*\(\s*(.+)\s*\)/
+  MOCK_PARTIAL_PRIVATE_MODULE = /#\s*include\s+MOCK_PARTIAL_PRIVATE_MODULE\s*\(\s*(.+)\s*\)/
 end
 
 GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
@@ -89,8 +100,10 @@ GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support']
 
 EXTENSION_WIN_EXE     = '.exe'
 EXTENSION_NONWIN_EXE  = '.out'
+
 # Vendor frameworks, generated mocks, generated runners are always .c files
-EXTENSION_CORE_SOURCE = '.c' 
+EXTENSION_CORE_HEADER = '.h'
+EXTENSION_CORE_SOURCE = '.c'
 
 PREPROCESS_SYM = :preprocess
 
@@ -119,6 +132,9 @@ DEFAULT_CEEDLING_LOGFILE = 'ceedling.log'
 
 BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
 
+PARTIALS_HEADER_FILEPATH = 'partials/partials.h'
+PARTIAL_FILENAME_PREFIX = 'ceedling_partial_'
+
 INPUT_CONFIGURATION_CACHE_FILE = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
 DEFINES_DEPENDENCY_CACHE_FILE  = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files
 
@@ -139,6 +155,7 @@ OPERATION_COMPILE_SYM     = :compile    unless defined?(OPERATION_COMPILE_SYM)
 OPERATION_ASSEMBLE_SYM    = :assemble   unless defined?(OPERATION_ASSEMBLE_SYM)
 OPERATION_LINK_SYM        = :link       unless defined?(OPERATION_LINK_SYM)
 
+PREPROCESS_STANDINS_DIR  = 'standins'
 PREPROCESS_FULL_EXPANSION_DIR  = 'full_expansion'
 PREPROCESS_DIRECTIVES_ONLY_DIR = 'directives_only'
 
@@ -147,7 +164,7 @@ NULL_FILE_PATH = '/dev/null'
 TESTS_BASE_PATH   = TEST_ROOT_NAME
 RELEASE_BASE_PATH = RELEASE_ROOT_NAME
 
-VENDORS_FILES = %w(unity UnityHelper cmock CException).freeze
+VENDORS_FILES = %w(unity UnityHelper cmock CException ceedling).freeze
 
 # Ruby Here
 UNITY_TEST_RESULTS_TEMPLATE = <<~UNITY_TEST_RESULTS

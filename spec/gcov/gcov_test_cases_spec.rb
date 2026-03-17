@@ -224,11 +224,11 @@ module GcovTestCases
 
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         if @gcov_reports.include? :gcovr
-          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
+          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
         if @gcov_reports.include? :modulegenerator
-          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
+          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
       end
@@ -258,11 +258,11 @@ module GcovTestCases
         expect(output).to match(/IGNORED:\s+0/)
         expect(output).to match(/example_file.c \| Lines executed:5?0.00% of 4/)
         if @gcov_reports.include? :gcovr
-          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
+          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
         if @gcov_reports.include? :modulegenerator
-          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
+          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
       end
@@ -293,11 +293,11 @@ module GcovTestCases
         expect(output).to match(/example_file.c \| Lines executed:0.00% of 4/)
 
         if @gcov_reports.include? :gcovr
-          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
+          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
         if @gcov_reports.include? :modulegenerator
-          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
+          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
       end
@@ -331,11 +331,11 @@ module GcovTestCases
         expect(output).to match(/example_file.c \| Lines executed:100.00% of 4/)
 
         if @gcov_reports.include? :gcovr
-          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr'\.\.\./)
+          expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
         if @gcov_reports.include? :modulegenerator
-          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator'\.\.\./)
+          expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
       end

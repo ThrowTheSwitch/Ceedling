@@ -87,6 +87,12 @@ class ConfiguratorSetup
       File.join( ceedling_lib_path, BACKTRACE_GDB_SCRIPT_FILE ),
       flattened_config[:project_build_tests_root]
     ) if flattened_config[:project_use_backtrace] == :gdb
+
+    # Copy supporting partials code into build/vendor directory structure
+    @file_wrapper.cp_r(
+      File.join( ceedling_lib_path, PARTIALS_HEADER_FILEPATH ),
+      flattened_config[:project_build_vendor_ceedling_path]
+    ) if flattened_config[:project_use_partials]
   end
 
   def build_project_collections(flattened_config)
@@ -583,24 +589,6 @@ class ConfiguratorSetup
   end
 
 
-  def validate_deep_preprocessor(config)
-    valid = true
-
-    options = [:none, :mocks]
-
-    use_deep_preprocessor = config[:project][:use_deep_preprocessor]
-
-    if !options.include?( use_deep_preprocessor )
-      walk = @reportinator.generate_config_walk( [:project, :use_deep_preprocessor] )
-      msg = "#{walk} is ':#{use_deep_preprocessor}' but must be one of {#{options.map{|o| ':' + o.to_s()}.join(', ')}}"
-      @loginator.log( msg, Verbosity::ERRORS )
-      valid = false
-    end
-
-    return valid
-  end
-
-
   def validate_environment_vars(config)
     environment = config[:environment]
 
@@ -766,7 +754,6 @@ class ConfiguratorSetup
 
   def warnings_for_problematic_configs(config)
     warning_for_parameterized_tests_with_preprocessing( config )
-    warning_for_deep_preprocessor_without_preprocessing( config )
   end
 
   ### Private
@@ -788,20 +775,5 @@ class ConfiguratorSetup
       @loginator.log( msg, Verbosity::COMPLAIN )
     end
   end
-
-  def warning_for_deep_preprocessor_without_preprocessing(config)
-    # :use_deep_preprocessor set without :use_test_preprocessor for mocks
-    mock_preprocessing = 
-      (config[:project][:use_test_preprocessor] == :mocks) ||
-      (config[:project][:use_test_preprocessor] == :all)
-
-    if ((config[:project][:use_deep_preprocessor] == :mocks) and !mock_preprocessing)
-      msg = "The deep dependencies preprocessor configuration setting [:project ↳ :use_deep_preprocessor => :mocks] " \
-            "is only useful when Ceedling's test preprocessing feature is also enabled and configured for mocks. " \
-            "See docs for more."
-      @loginator.log( msg, Verbosity::COMPLAIN )
-    end
-  end
-
 
 end

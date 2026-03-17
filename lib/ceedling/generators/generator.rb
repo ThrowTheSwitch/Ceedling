@@ -7,6 +7,7 @@
 
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/includes/includes'
 require 'ceedling/file_path_utils'
 require 'rake'
 
@@ -14,10 +15,10 @@ class Generator
 
   constructor :configurator,
               :generator_helper,
-              :preprocessinator,
               :generator_mocks,
               :generator_test_results,
               :generator_test_results_backtrace,
+              :generator_partials,
               :test_context_extractor,
               :tool_executor,
               :file_finder,
@@ -25,7 +26,6 @@ class Generator
               :reportinator,
               :loginator,
               :plugin_manager,
-              :file_wrapper,
               :test_runner_manager
 
 
@@ -33,6 +33,54 @@ class Generator
     # Aliases
     @helper = @generator_helper
     @backtrace = @generator_test_results_backtrace
+  end
+
+  def generate_partial_interface(test:, name:, declarations:, includes:, input_filepath:, output_path:)
+    msg = @reportinator.generate_module_progress(
+      operation: "Generating Partial mockable interface for",
+      module_name: test,
+      filename: name # Partial module name, not filename
+    )
+    @loginator.log( msg )
+
+    arg_hash = {
+      :declarations => declarations,
+      :name => name,
+      :includes => includes,
+      :output_path => output_path
+    }
+
+    return @generator_partials.generate_interface( **arg_hash )
+  end
+
+  def generate_partial_implementation(
+      test:,
+      name:,
+      function_defns:,
+      source_includes:,
+      header_includes:,
+      variable_declarations:,
+      input_filepath:,
+      output_path:
+    )
+
+    msg = @reportinator.generate_module_progress(
+      operation: "Generating Partial implementation for",
+      module_name: test,
+      filename: name # Partial module name, not filename
+    )
+    @loginator.log( msg )
+
+    arg_hash = {
+      :definitions => function_defns,
+      :name => name,
+      :source_includes => source_includes,
+      :header_includes => header_includes,
+      :variable_declarations => variable_declarations,
+      :output_path => output_path
+    }
+
+    return @generator_partials.generate_implementation( **arg_hash )
   end
 
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
@@ -74,7 +122,9 @@ class Generator
     end
   end
 
-  def generate_test_runner(context:, mock_list:, includes_list:, test_filepath:, input_filepath:, runner_filepath:)
+  # @param mocks: Array of Mocks to include in the runner
+  # @param includes: Array of Includes without mocks to include in the runner
+  def generate_test_runner(context:, mocks:, includes:, test_filepath:, input_filepath:, runner_filepath:)
     arg_hash = {
       :context => context,
       :test_file => test_filepath,
@@ -97,14 +147,18 @@ class Generator
       raise CeedlingException.new( msg )
     end
 
+    # Further filter others to remove vendor files
+    others = includes.reject do |include|
+      !VENDORS_FILES.include?( include.filename.ext() )
+    end
+
     # Build runner file
     begin
       unity_test_runner_generator.generate(
         module_name: module_name,
         runner_filepath: runner_filepath,
-        mock_list: mock_list,
-        test_file_includes: includes_list,
-        header_extension: @configurator.extension_header
+        mocks: mocks,
+        includes: others
       )
     rescue StandardError => ex
       # Re-raise execption but decorate it to better identify it in Ceedling output
@@ -156,7 +210,9 @@ class Generator
     command =
       @tool_executor.build_command_line(
         arg_hash[:tool],
+        # Extra arguments
         arg_hash[:flags],
+        # Argument replacement
         arg_hash[:source],
         arg_hash[:object],
         arg_hash[:list],
@@ -219,7 +275,9 @@ class Generator
     command =
       @tool_executor.build_command_line( 
         arg_hash[:tool],
+        # Extra arguments
         arg_hash[:flags],
+        # Argument replacement
         arg_hash[:source],
         arg_hash[:object],
         arg_hash[:search_paths],
@@ -260,7 +318,9 @@ class Generator
     command =
       @tool_executor.build_command_line(
         arg_hash[:tool],
+        # Extra arguments
         arg_hash[:flags],
+        # Argument replacement
         arg_hash[:objects],
         arg_hash[:executable],
         arg_hash[:map],
@@ -301,8 +361,9 @@ class Generator
     command = 
       @tool_executor.build_command_line(
         arg_hash[:tool],
-        # Apply additional test case filters 
+        # Extra arguments: Additional test case filters 
         @test_runner_manager.collect_cmdline_args(),
+        # Argument replacement
         arg_hash[:executable]
       )
 
