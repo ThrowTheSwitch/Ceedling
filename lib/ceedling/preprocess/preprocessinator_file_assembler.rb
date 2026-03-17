@@ -20,7 +20,7 @@ class PreprocessinatorFileAssembler
     :reportinator
   )
 
-  def collect_header_file_contents(
+  def collect_mockable_header_file_contents(
       test:,
       filepath:,
       directives_only_filepath:,
@@ -56,8 +56,8 @@ class PreprocessinatorFileAssembler
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, filepath )
     end
 
-    # Bail out, skipping directives-only preprocessing if no extras are required
-    return contents, (pragmas + macro_defs) if !extras
+    # Bail out if no extras are required
+    return contents, [] if !extras
 
     # Try to find an #include guard in the first 2k of the file text.
     # An #include guard is one macro from the original file we don't want to preserve if we can help it.
@@ -97,6 +97,19 @@ class PreprocessinatorFileAssembler
     end
 
     return contents, (pragmas + macro_defs)
+  end
+
+
+  def collect_file_contents_from_directives_only_preprocessing(source_filepath:, test:)
+    contents = []
+
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( source_filepath, test )
+
+    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
+    end
+
+    return contents
   end
 
 
@@ -202,18 +215,6 @@ class PreprocessinatorFileAssembler
     return contents, test_directives
   end
 
-  
-  def collect_source_file_contents(source_filepath:, test:, flags:, defines:, include_paths:)
-    contents = []
-
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( source_filepath, test )
-
-    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
-    end
-
-    return contents
-  end
 
   def assemble_preprocessed_code_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
     # Write contents of final preprocessed file a line at a time

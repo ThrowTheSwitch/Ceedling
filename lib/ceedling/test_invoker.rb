@@ -658,15 +658,8 @@ class TestInvoker
 
       # Preprocess header files
       @batchinator.build_step("Preprocessing for Mocks") {
-        # Suppress preprocessing for partials headers as they have already been preprocessed
-        _mocks = mocks.reject {|mock| mock[:name].to_s.include?( PARTIAL_FILENAME_PREFIX )}
-
-        if _mocks.empty?
-          @loginator.log( "No header files remain in collection requiring preproccessing." )
-        end
-
         # Generate directive-only preprocessor output (only if directive-only preprocessor is working)
-        @batchinator.exec(workload: :compile, things: _mocks) do |mock|
+        @batchinator.exec(workload: :compile, things: mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
           name = testable[:name]
@@ -694,10 +687,13 @@ class TestInvoker
         end if @preprocessinator.directives_only_available?
 
         # Preprocess and assembe header files to be mocked
-        @batchinator.exec(workload: :compile, things: _mocks) do |mock|
+        @batchinator.exec(workload: :compile, things: mocks) do |mock|
           details = mock[:details]
           testable = mock[:testable]
           directives_only_filepath = mock[:directives_only_filepath]
+
+          # Defaults to false for all other mocking cases
+          extras = (@configurator.cmock_treat_inlines == :include)
 
           arg_hash = {
             test:                      testable[:name],
@@ -708,7 +704,8 @@ class TestInvoker
             include_paths:             testable[:search_paths],
             # For user includes preprocessing, we need at least one search path
             vendor_paths:              [@configurator.project_build_vendor_ceedling_path],
-            defines:                   testable[:preprocess_defines]
+            defines:                   testable[:preprocess_defines],
+            extras:                    extras
           }
 
           @preprocessinator.preprocess_mockable_header_file( **arg_hash )
