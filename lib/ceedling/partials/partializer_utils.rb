@@ -71,33 +71,29 @@ class PartializerUtils
   # @param placeholder   [String] Opaque token to embed in the comment (caller replaces it afterwards)
   # @return [String] Modified text with declaration replaced by a no-op expression
   def replace_declaration_with_noop(text, original_decl, placeholder)
-    replace_compound_declaration_with_noops(text, original_decl, [placeholder])
+    replace_compound_declaration_with_noops(text, original_decl, placeholder, 1)
   end
 
-  # Replace a C compound variable declaration with one no-op expression per variable.
+  # Replace a C compound variable declaration with N no-op expressions and a single comment.
   #
-  # For each placeholder in `placeholders`, generates a `(void)0; /* ... */` no-op
-  # containing that placeholder in the comment slot. All no-ops are joined with a single
-  # space and replace the first occurrence of `original_decl` in `text`.
+  # Generates `count` `(void)0;` expressions where the final one carries a comment
+  # containing `placeholder`. The result replaces the first occurrence of `original_decl`
+  # in `text`. The caller supplies `count` = number of variables in the compound statement
+  # and a single unique `placeholder` token. After all variable renames are complete, the
+  # caller restores `original_decl` by replacing the placeholder with the original text.
   #
-  # Used when a compound declaration (e.g. `static int a, b;`) produces multiple variable
-  # structs that all share the same `original` text. The caller must replace the shared
-  # original statement exactly once (not once per variable), then rename each variable's
-  # references, and finally restore each placeholder after all renames are complete.
-  #
-  # Block form of `sub` is used so that `\` and `&` in the declaration are not
-  # interpreted as regex replacement backreferences.
+  # Block form of `sub` is used so that `\` and `&` in the declaration are not interpreted
+  # as regex replacement backreferences.
   #
   # @param text          [String] Code text to modify (e.g., a function code_block or body)
   # @param original_decl [String] Declaration text to replace (should be stripped of surrounding whitespace)
-  # @param placeholders  [Array<String>] Opaque tokens to embed in comments, one per variable
-  # @return [String] Modified text with declaration replaced by inline no-op expressions
-  def replace_compound_declaration_with_noops(text, original_decl, placeholders)
-    placeholder = placeholders[0]
-    noops = "#{'(void)0;' * placeholders.length}"
-    comment = " /* `#{placeholder}` replaced with no-op plus variable renamed & promoted to module-scope */"
-    code = noops + comment
-    text.sub(original_decl) { code }
+  # @param placeholder   [String] Opaque token to embed in the single trailing comment
+  # @param count         [Integer] Number of no-op expressions to insert (one per variable)
+  # @return [String] Modified text
+  def replace_compound_declaration_with_noops(text, original_decl, placeholder, count)
+    noops   = "(void)0; " * (count - 1)
+    comment = "(void)0; /* `#{placeholder}` replaced with no-op plus variable renamed & promoted to module-scope */"
+    text.sub(original_decl) { noops + comment }
   end
 
   # Rename a C identifier throughout a text block with token-bounded substitution.

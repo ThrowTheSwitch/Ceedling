@@ -912,9 +912,8 @@ describe PartializerHelper do
         allow(@c_extractor_declarations).to receive(:try_extract_variable)
           .and_return([true, [var_a, var_b]], [false, nil])
 
-        ph_a    = '__CEEDLING_NOOP_CALC_A__'
-        ph_b    = '__CEEDLING_NOOP_CALC_B__'
-        noops   = "(void)0; /* `#{ph_a}` ... */ (void)0; /* `#{ph_b}` ... */"
+        placeholder = '__CEEDLING_NOOP_CALC_A__'
+        noops       = "(void)0; (void)0; /* `#{placeholder}` ... */"
 
         allow(@partializer_utils).to receive(:replace_compound_declaration_with_noops)
           .and_return(noops)
@@ -923,7 +922,9 @@ describe PartializerHelper do
 
         result = @helper.extract_function_scope_static_vars([func])
 
-        expect(@partializer_utils).to have_received(:replace_compound_declaration_with_noops).exactly(2).times
+        expect(@partializer_utils).to have_received(:replace_compound_declaration_with_noops)
+          .with(anything, shared_original, placeholder, 2)
+          .exactly(2).times
         expect(@partializer_utils).to have_received(:rename_c_identifier).exactly(6).times
         expect(result.map(&:name)).to contain_exactly('partial_calc_a', 'partial_calc_b')
       end
@@ -1020,12 +1021,8 @@ describe PartializerHelper do
         expect(func.code_block).to include('partial_calc_a')
         expect(func.code_block).to include('partial_calc_b')
 
-        # Both noop comments contain the original compound declaration text (not corrupted)
-        noop_comments = func.code_block.scan(%r{\(void\)0; /\*.*?\*/}).map(&:to_s)
-        expect(noop_comments.length).to eq(2)
-        noop_comments.each do |comment|
-          expect(comment).to include('static int a, b;')
-        end
+        # Replacement no-op with (incomplete) comment
+        expect(func.code_block).to include('(void)0; (void)0; /* `static int a, b;` replaced with no-op')
       end
     end
   end

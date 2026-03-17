@@ -286,38 +286,36 @@ describe PartializerUtils do
   end
 
   context "#replace_compound_declaration_with_noops" do
-    it "produces a single noop for a single placeholder" do
+    it "produces a single noop with comment for count=1" do
       text   = "  static int count;\n  count = 0;"
-      result = @utils.replace_compound_declaration_with_noops(text, "static int count", ["PH_COUNT"])
+      result = @utils.replace_compound_declaration_with_noops(text, "static int count", "PH_COUNT", 1)
 
       expect(result.scan("(void)0;").length).to eq(1)
       expect(result).to include("`PH_COUNT`")
     end
 
-    it "produces one noop per placeholder for two placeholders, joined by a space" do
+    it "produces two noops for count=2 with single comment containing placeholder" do
       text   = "void f(void) { static int a, b; a = 0; b = 1; }"
-      result = @utils.replace_compound_declaration_with_noops(text, "static int a, b;", ["PH_A", "PH_B"])
+      result = @utils.replace_compound_declaration_with_noops(text, "static int a, b;", "PH_A", 2)
 
       expect(result.scan("(void)0;").length).to eq(2)
       expect(result).to include("`PH_A`")
-      expect(result).to include("`PH_B`")
-      # Both noops on same line (joined with space)
-      expect(result).to include("(void)0;")
+      # Only one comment
+      expect(result.scan("/*").length).to eq(1)
     end
 
-    it "produces one noop per placeholder for three placeholders" do
+    it "produces three noops for count=3 with a single comment" do
       text   = "static int x, y, z;"
-      result = @utils.replace_compound_declaration_with_noops(text, "static int x, y, z;", ["PH_X", "PH_Y", "PH_Z"])
+      result = @utils.replace_compound_declaration_with_noops(text, "static int x, y, z;", "PH_X", 3)
 
       expect(result.scan("(void)0;").length).to eq(3)
       expect(result).to include("`PH_X`")
-      expect(result).to include("`PH_Y`")
-      expect(result).to include("`PH_Z`")
+      expect(result.scan("/*").length).to eq(1)
     end
 
     it "replaces only the first occurrence of the declaration (sub, not gsub)" do
       text   = "static int a, b; static int a, b;"
-      result = @utils.replace_compound_declaration_with_noops(text, "static int a, b;", ["PH_A", "PH_B"])
+      result = @utils.replace_compound_declaration_with_noops(text, "static int a, b;", "PH_A", 2)
 
       expect(result.scan("(void)0;").length).to eq(2)     # two noops from one replacement
       expect(result).to include("static int a, b;")       # second occurrence unchanged
@@ -325,17 +323,16 @@ describe PartializerUtils do
 
     it "returns unchanged text when declaration is not found" do
       text   = "int x = 0;"
-      result = @utils.replace_compound_declaration_with_noops(text, "static int y, z;", ["PH_Y", "PH_Z"])
+      result = @utils.replace_compound_declaration_with_noops(text, "static int y, z;", "PH_Y", 2)
 
       expect(result).to eq(text)
     end
 
-    it "each noop comment contains its own placeholder token verbatim" do
+    it "placeholder token appears verbatim in the single comment" do
       text   = "static int val1, val2;"
-      result = @utils.replace_compound_declaration_with_noops(text, "static int val1, val2;", ["TOKEN_1", "TOKEN_2"])
+      result = @utils.replace_compound_declaration_with_noops(text, "static int val1, val2;", "TOKEN_1", 2)
 
       expect(result).to include("`TOKEN_1`")
-      expect(result).to include("`TOKEN_2`")
       expect(result).not_to include("static int val1, val2;")
     end
   end

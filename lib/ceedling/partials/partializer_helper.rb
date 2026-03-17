@@ -219,50 +219,35 @@ class PartializerHelper
       groups = _decls.group_by { |var| var.original.strip }
 
       groups.each do |_original, vars|
-        # Pre-compute old names, new names, and unique placeholders before any mutation of var.name
-        old_names    = vars.map(&:name)
-        new_names    = old_names.map { |n| "partial_#{func.name}_#{n}" }
-        placeholders = old_names.map { |n| "__CEEDLING_NOOP_#{func.name.upcase}_#{n.upcase}__" }
+        # Pre-compute old/new names before any mutation of var.name
+        old_names   = vars.map(&:name)
+        new_names   = old_names.map { |n| "partial_#{func.name}_#{n}" }
 
+        # Single placeholder per group — keyed on the first variable's name
+        placeholder = "__CEEDLING_NOOP_#{func.name.upcase}_#{old_names.first.upcase}__"
+
+        # Replace original declaration: one no-op per variable, single comment with placeholder.
+        # Defer placeholder restoration until after ALL renames are complete so that
+        # restored comment text cannot be found and re-processed by a subsequent replace.
         if vars.size > 1
-          # Compound statement: replace original ONCE with one no-op per variable.
-          # Defer ALL placeholder restoration until after ALL renames are complete so that
-          # restored comment text cannot be found and re-processed by a subsequent replace.
-          func.code_block = @utils.replace_compound_declaration_with_noops( func.code_block, _original, placeholders )
-          func.body       = @utils.replace_compound_declaration_with_noops( func.body,       _original, placeholders )
-
-          vars.zip( old_names, new_names ).each do |var, old_name, new_name|
-            var.declaration = @utils.rename_c_identifier( var.declaration, old_name, new_name )
-            var.name        = new_name
-            func.code_block = @utils.rename_c_identifier( func.code_block, old_name, new_name )
-            func.body       = @utils.rename_c_identifier( func.body,       old_name, new_name )
-          end
-
-          placeholders.each do |ph|
-            func.code_block = func.code_block.sub(ph) { _original }
-            func.body       = func.body.sub(ph)       { _original }
-          end
-
+          func.code_block = @utils.replace_compound_declaration_with_noops( func.code_block, _original, placeholder, vars.size )
+          func.body       = @utils.replace_compound_declaration_with_noops( func.body,       _original, placeholder, vars.size )
         else
-          # Simple single-variable declaration: original interleaved approach is safe
-          # because no other var shares this original statement.
-          var         = vars.first
-          old_name    = old_names.first
-          new_name    = new_names.first
-          placeholder = placeholders.first
-
           func.code_block = @utils.replace_declaration_with_noop( func.code_block, _original, placeholder )
           func.body       = @utils.replace_declaration_with_noop( func.body,       _original, placeholder )
+        end
 
+        # Rename all variables' token-bounded references (shared logic for both cases)
+        vars.zip( old_names, new_names ).each do |var, old_name, new_name|
           var.declaration = @utils.rename_c_identifier( var.declaration, old_name, new_name )
           var.name        = new_name
-
           func.code_block = @utils.rename_c_identifier( func.code_block, old_name, new_name )
           func.body       = @utils.rename_c_identifier( func.body,       old_name, new_name )
-
-          func.code_block = func.code_block.sub(placeholder) { _original }
-          func.body       = func.body.sub(placeholder)       { _original }
         end
+
+        # Restore original declaration text in the single placeholder comment
+        func.code_block = func.code_block.sub(placeholder) { _original }
+        func.body       = func.body.sub(placeholder)       { _original }
       end
 
       decls += _decls
