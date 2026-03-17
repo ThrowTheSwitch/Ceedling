@@ -9,7 +9,7 @@ require 'ceedling/constants'
 require 'ceedling/encodinator'
 require 'ceedling/parsing_parcels'
 
-class PreprocessinatorExtractor 
+class PreprocessinatorReconstructor 
  
   constructor :parsing_parcels
 
@@ -105,9 +105,12 @@ class PreprocessinatorExtractor
     # Preprocessor directive blocks generally take the form of '# <digits> <text> [optional digits]'
     directive   = /^# \d+ \"/
     # Line markers have the specific form of '# <digits> "path/filename.ext" [optional digits]' (see above)
-    line_marker = /^#\s\d+\s\"(.+)\"/
+    line_marker = /^#\s(\d+)\s\"(.+)\"/
     # Boolean to ping pong between line-by-line extract/ignore
     extract = false
+
+    line_num = 0
+    last_line_num = 0
 
     # Collection of extracted lines
     lines = []
@@ -122,12 +125,30 @@ class PreprocessinatorExtractor
 
       # Handle expansion extraction if the line is not a preprocessor directive
       if extract and not line =~ directive
+        line_num += 1
+
         # Strip a line so we can omit useless blank lines
         _line = line.strip()
-        # Restore text with left-side whitespace if previous stripping left some text
-        _line = line.rstrip() if !_line.empty?
-        # Collect extracted lines
-        lines << _line
+
+        # Skip processing blank lines, but capture them unless we already have a blank line
+        if _line.empty?
+          last_line = lines.last()
+          lines << '' if (!last_line.nil? and !last_line.empty?)
+          next
+        end
+
+        # If the linemarker line number hasn't advanced, aggregate the expanded line to existing last line
+        if (last_line_num == line_num) and !lines.last().nil?
+          last_line = lines.last()
+          # Append the stripped line to the last line in the collection
+          # Include a space in the concatenation unless it's a semicolon or last_line is blank
+          lines[-1] = (_line == ';' or last_line.empty?) ? (last_line + _line) : (last_line + ' ' + _line)
+        else
+          # Collect a left-whitespace-preserved version of the line
+          _line = line.rstrip()
+          # Collect extracted lines
+          lines << _line
+        end
 
       # Otherwise the line contained a preprocessor directive; drop out of extract mode
       else
@@ -136,8 +157,10 @@ class PreprocessinatorExtractor
 
       # Enter extract mode if the line is a preprocessor line marker with filepath of interest
       matches = line.match( line_marker )
-      if matches and matches.size() > 1
-        filepath = File.expand_path( matches[1].strip() )
+      if matches and matches.size() > 2
+        last_line_num = line_num
+        line_num = (matches[1].to_i - 1)
+        filepath = File.expand_path( matches[2].strip() )
         extract = true if extaction_filepath == filepath
       end
     end
