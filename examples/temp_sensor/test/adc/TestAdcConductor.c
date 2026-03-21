@@ -46,6 +46,7 @@ void testRunShouldGetLatestSampleFromAdcAndPassItToModelAndStartNewConversionWhe
 {
   AdcModel_DoGetSample_ExpectAndReturn(TRUE);
   AdcHardware_GetSampleComplete_ExpectAndReturn(TRUE);
+  AdcHardware_GetSampleComplete_ExpectAndReturn(TRUE);
   AdcHardware_GetSample_ExpectAndReturn(293U);
   AdcModel_ProcessInput_Expect(293U);
   AdcHardware_StartConversion_Expect();

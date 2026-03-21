@@ -1,11 +1,15 @@
 GEM
   remote: http://rubygems.org/
   specs:
+    cgi (0.5.1)
     constructor (2.0.0)
     deep_merge (1.2.2)
     diff-lcs (1.5.1)
     diy (1.1.2)
       constructor (>= 1.0.0)
+    erb (4.0.4)
+      cgi (>= 0.3.3)
+    parallel (1.27.0)
     rake (13.2.1)
     require_all (3.0.0)
     rr (3.1.1)
@@ -30,7 +34,6 @@ GEM
 PLATFORMS
   ruby
   x64-mingw-ucrt
-  x64-mingw32
   x86_64-darwin-22
   x86_64-linux
 
@@ -39,6 +42,8 @@ DEPENDENCIES
   constructor (~> 2)
   deep_merge (~> 1.2)
   diy (~> 1.1)
+  erb (~> 4.0)
+  parallel (~> 1.26)
   rake (>= 12, < 14)
   require_all
   rr
@@ -47,4 +52,4 @@ DEPENDENCIES
   unicode-display_width (~> 3.1)
 
 BUNDLED WITH
-   2.5.23
+   2.7.2
