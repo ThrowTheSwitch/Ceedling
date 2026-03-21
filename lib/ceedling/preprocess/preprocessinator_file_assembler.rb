@@ -103,7 +103,7 @@ class PreprocessinatorFileAssembler
   def collect_file_contents_from_directives_only_preprocessing(source_filepath:, test:)
     contents = []
 
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( source_filepath, test )
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( source_filepath, test )
 
     @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
@@ -195,7 +195,6 @@ class PreprocessinatorFileAssembler
 
       @file_wrapper.open( filepath, 'r' ) do |file|
         # Get code contents of original source file as a string
-        # TODO: Modify to process line-at-a-time for memory savings & performance boost
         _contents = file.read
 
         # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
@@ -204,7 +203,6 @@ class PreprocessinatorFileAssembler
     else
       @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
         # Get code contents of preprocessed directives-only file as a string
-        # TODO: Modify to process line-at-a-time for memory savings & performance boost
         _contents = @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
 
         # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()

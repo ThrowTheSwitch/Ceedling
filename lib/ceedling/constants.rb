@@ -158,6 +158,7 @@ OPERATION_LINK_SYM        = :link       unless defined?(OPERATION_LINK_SYM)
 PREPROCESS_STANDINS_DIR  = 'standins'
 PREPROCESS_FULL_EXPANSION_DIR  = 'full_expansion'
 PREPROCESS_DIRECTIVES_ONLY_DIR = 'directives_only'
+PREPROCESS_RAW_DIRECTIVES_ONLY_DIR = 'directives_only/raw'
 
 NULL_FILE_PATH = '/dev/null'
 

@@ -14,6 +14,7 @@ class Preprocessinator
     :preprocessinator_includes_handler,
     :preprocessinator_comment_stripper,
     :preprocessinator_file_assembler,
+    :preprocessinator_reconstructor,
     :file_path_utils,
     :tool_executor,
     :file_wrapper,
@@ -28,6 +29,7 @@ class Preprocessinator
     @includes_handler = @preprocessinator_includes_handler
     @file_assembler = @preprocessinator_file_assembler
     @comment_stripper = @preprocessinator_comment_stripper
+    @reconstructor = @preprocessinator_reconstructor
 
     # Thread-safe per-file locking for YAML cache operations
     # Key: includes list filepath (String), Value: Mutex
@@ -55,7 +57,11 @@ class Preprocessinator
   end
 
   def generate_directives_only_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( filepath, test )
+    raw_preprocessed_filepath = 
+      @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, test )
+
+    compacted_preprocessed_fileapth =
+      @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, test )
 
     # Run GCC with directives-only preprocessor expansion
     command = @tool_executor.build_command_line(
@@ -64,7 +70,7 @@ class Preprocessinator
       flags,
       # Argument replacement
       filepath,
-      preprocessed_filepath,
+      raw_preprocessed_filepath,
       defines,
       (include_paths + vendor_paths)
     )
@@ -88,9 +94,16 @@ class Preprocessinator
     # Remove comments from directives-only file in filesystem.
     # Directives-only output keeps our most essential details (include directives & macros) and handles #ifdefs, etc.
     # However, it does not strip out comments.
-    @comment_stripper.strip_file( preprocessed_filepath )
+    @comment_stripper.strip_file( raw_preprocessed_filepath )
 
-    return preprocessed_filepath
+    # Collect all code from between line markers into a clean file
+    @reconstructor.compact_file_from_expansion(
+      input_filepath: raw_preprocessed_filepath,
+      source_filepath: filepath,
+      output_filepath: compacted_preprocessed_fileapth
+    )
+
+    return raw_preprocessed_filepath
   end
 
   # Extract user includes from a file using directives-only output (or text-only fallback).

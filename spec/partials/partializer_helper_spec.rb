@@ -682,7 +682,7 @@ describe PartializerHelper do
       @filepath             = '/path/to/module.c'
       @preprocessed_filepath = '/build/preproc/module_TestModule.i'
 
-      allow(@file_path_utils).to receive(:form_preprocessed_file_directives_only_filepath)
+      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
         .with(@filepath, @name)
         .and_return(@preprocessed_filepath)
 
@@ -710,7 +710,7 @@ describe PartializerHelper do
     end
 
     it "constructs preprocessed filepath from name and filepath" do
-      expect(@file_path_utils).to receive(:form_preprocessed_file_directives_only_filepath)
+      expect(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
         .with(@filepath, @name)
         .and_return(@preprocessed_filepath)
 
@@ -793,7 +793,7 @@ describe PartializerHelper do
       func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
 
       custom_preproc = '/custom/preproc/output.i'
-      allow(@file_path_utils).to receive(:form_preprocessed_file_directives_only_filepath)
+      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
         .with(@filepath, @name)
         .and_return(custom_preproc)
 

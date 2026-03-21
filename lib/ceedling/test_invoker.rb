@@ -89,6 +89,7 @@ class TestInvoker
             paths[:preprocess_files] = preprocess_files_path
             paths[:preprocess_files_full_expansion] = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
             paths[:preprocess_files_directives_only] = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
+            paths[:preprocess_files_raw_directives_only] = File.join( preprocess_files_path, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR )
           end
 
           @testables[key][:paths].each {|_, path| @file_wrapper.mkdir( path ) }
@@ -116,10 +117,11 @@ class TestInvoker
             @loginator.log( msg )
 
             # Extracting other context will happen in later steps after preprocessing.
-            contexts << :build_directive_include_paths
+            contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
 
             msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
             @loginator.log( msg )
+
           else
             # TestContextExtractor::Context::INCLUDES (see above)
             msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #includes" )
@@ -131,13 +133,6 @@ class TestInvoker
             contexts << TestContextExtractor::Context::TEST_RUNNER_DETAILS
 
             msg = @reportinator.generate_progress( "Parsing #{filename} for build directive macros and test case names" )
-            @loginator.log( msg )
-          end
-
-          if @configurator.project_use_partials
-            contexts << TestContextExtractor::Context::PARTIALS_CONFIGURATION
-
-            msg = @reportinator.generate_progress( "Parsing #{filename} for partials directive macros" )
             @loginator.log( msg )
           end
 
@@ -742,11 +737,13 @@ class TestInvoker
           name = details[:name]
           directives_only_filepath = details[:preprocess][:directives_only][:filepath]
 
+          fallback = (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?)
+
           arg_hash = {
             test:                      name,
             filepath:                  filepath,
             directives_only_filepath:  directives_only_filepath,
-            fallback:                  (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
+            fallback:                  fallback,
             # We already have the full list of includes for each test file
             includes:                  @context_extractor.lookup_all_header_includes_list( details[:filepath] ),
             flags:                     details[:preprocess_flags],
@@ -761,11 +758,22 @@ class TestInvoker
           # Replace default input with preprocessed file
           @lock.synchronize { details[:runner][:input_filepath] = _filepath }
 
+          msg = @reportinator.generate_progress( "Parsing #{filename} for test source directive macros" )
+          @loginator.log( msg )
+
+          if fallback
+            # Use actual test file
+            _fileapth = filepath
+          else
+            # If available, use compacted directives-only filepath
+            _filepath = @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, name )
+          end
+
           # Collect sources added to test build with TEST_SOURCE_FILE() directive macro from
           # reconstructed preprocessed test file.
           # TEST_SOURCE_FILE() can be within #ifdef's--this retrieves them.
           @context_extractor.collect_simple_context_from_file(
-            _filepath, # Preprpocessed test filepath
+            _filepath,
             filepath,  # Actual test filepath
             TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
           )
@@ -774,6 +782,20 @@ class TestInvoker
           @testables.each do |_, details|
             @helper.validate_build_directive_source_files( test: name, filepath: details[:filepath] )
           end
+
+          if @configurator.project_use_partials
+            msg = @reportinator.generate_progress( "Parsing #{filename} for Partials directive macros" )
+            @loginator.log( msg )
+
+            # Collect Partials and configuration from directive macros from reconstructed preprocessed test file.
+            # Macros can be within #ifdef's--this retrieves them.
+            @context_extractor.collect_simple_context_from_file(
+              _filepath,
+              filepath,  # Actual test filepath
+              TestContextExtractor::Context::PARTIALS_CONFIGURATION
+            )
+          end
+
         end
       } if @configurator.project_use_test_preprocessor_tests
 

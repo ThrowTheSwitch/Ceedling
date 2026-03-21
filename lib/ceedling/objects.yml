@@ -171,8 +171,9 @@ test_context_extractor:
   compose:
     - configurator
     - file_wrapper
-    - file_path_utils
     - include_factory
+    - c_extractor_macros
+    - file_path_utils
     - loginator
     - parsing_parcels
 
@@ -278,11 +279,16 @@ preprocessinator_comment_stripper:
   compose:
     - c_comment_scanner
 
+preprocessinator_reconstructor:
+  compose:
+    - parsing_parcels
+
 preprocessinator:
   compose:
     - preprocessinator_includes_handler
     - preprocessinator_comment_stripper
     - preprocessinator_file_assembler
+    - preprocessinator_reconstructor
     - file_path_utils
     - tool_executor
     - file_wrapper
@@ -313,10 +319,6 @@ preprocessinator_file_assembler:
     - loginator
     - reportinator
 
-preprocessinator_reconstructor:
-  compose:
-    - parsing_parcels
-
 preprocessinator_code_finder:
 
 c_extractor_code_text:
@@ -326,6 +328,10 @@ c_extractor_functions:
     - c_extractor_code_text
 
 c_extractor_declarations:
+
+c_extractor_macros:
+  compose:
+    - c_extractor_code_text
 
 c_extractor:
   compose:

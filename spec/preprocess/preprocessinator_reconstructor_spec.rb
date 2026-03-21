@@ -250,6 +250,94 @@ describe PreprocessinatorReconstructor do
     end
   end
 
+  context "#compact_from_expansion" do
+    it "should write only lines from source filepath to output IO, excluding other included files" do
+      filepath = "path/do/WANT.c"
+
+      file_contents = [
+        '# 1 "some/file/we/do/not/care/about.c" 5',
+        'some_text_we_do_not_want();',
+        '# 11 "path/do/WANT.c" 99999',               # Beginning of block to extract
+        'some_text_we_do_want();',                   #  Line to write
+        '',                                          #  Blank line to write
+        'some_awesome_text_we_want_so_hard();',      #  Line to write
+        'holy_crepes_more_awesome_text();',          #  Line to write
+        '# 3 "some/other/file/we/ignore.c" 5',       # End of block to extract
+      ]
+
+      expected_lines = [
+        'some_text_we_do_want();',
+        '',
+        'some_awesome_text_we_want_so_hard();',
+        'holy_crepes_more_awesome_text();'
+      ]
+
+      input  = StringIO.new( file_contents.join( "\n" ) )
+      output = StringIO.new
+
+      @extractor.compact_from_expansion( input: input, filepath: filepath, output: output )
+
+      # `puts` appends "\n" to each line, so join with "\n" + trailing "\n"
+      expect( output.string ).to eq( expected_lines.join( "\n" ) + "\n" )
+    end
+
+    it "should produce empty output when source filepath has no matching line markers" do
+      filepath = "path/not/in/expansion.c"
+
+      file_contents = [
+        '# 1 "some/other/file.c" 5',
+        'text_we_do_not_want();',
+        '# 5 "another/file.c" 1',
+        'more_unwanted_text();',
+      ]
+
+      input  = StringIO.new( file_contents.join( "\n" ) )
+      output = StringIO.new
+
+      @extractor.compact_from_expansion( input: input, filepath: filepath, output: output )
+
+      expect( output.string ).to eq ''
+    end
+
+    it "should produce content matching extract_file_as_string_from_expansion (modulo trailing newline)" do
+      filepath = "dir/our_file.c"
+
+      file_contents = [
+        '# 1 "dir/our_file.c" 123',
+        'some_text_we_do_want();',
+        'some_awesome_text_we_want_so_hard();',
+        '# 3 "some preprocessor directive"',
+        '',
+        'some_text_we_do_not_want();',
+        '# 15 "dir/our_file.c" 9',
+        'more_text_we_want();',
+        'void some_function(void) { func(); }',
+        '# 9 "dir/our_file.c" 77',
+        'some code',
+        'test statements',
+        '# 6 "dir/our_file.c" 19',
+        'some_additional_awesomely_wanted_text();'
+      ]
+
+      joined = file_contents.join( "\n" )
+
+      string_result = @extractor.extract_file_as_string_from_expansion(
+        StringIO.new( joined ), filepath
+      )
+
+      output = StringIO.new
+      @extractor.compact_from_expansion(
+        input: StringIO.new( joined ),
+        filepath: filepath,
+        output: output
+      )
+
+      # compact_from_expansion uses `puts` which appends "\n" to each line;
+      # extract_file_as_string_from_expansion uses join("\n") with no trailing newline
+      expect( output.string ).to eq( string_result + "\n" )
+    end
+  end
+
   context "#extract_test_directive_macro_calls" do
     it "should extract any and all test directive macro calls from test file text" do
       file_text = <<~FILE_TEXT

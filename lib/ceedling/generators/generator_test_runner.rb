@@ -16,7 +16,7 @@ class GeneratorTestRunner
   # It is instantiated on demand for each test file processed in a build.
   #
 
-  def initialize(config:, test_file_contents:, preprocessed_file_contents:nil)
+  def initialize(config:, test_file_contents:, preprocessed_file_contents: nil)
     @unity_runner_generator = UnityTestRunnerGenerator.new( config )
     
     # Reduced information set

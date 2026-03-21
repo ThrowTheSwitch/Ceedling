@@ -125,7 +125,7 @@ class PartializerHelper
   # instead of preprocessed output (because preprocessed output is not available)
   def associate_function_line_numbers(name:, funcs:, filepath:, fallback:)
     # File path of directives-only preprocessor output
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_directives_only_filepath( filepath, name )
+    preprocessed_filepath = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, name )
 
     @utils.stamp_source_filepaths( funcs, filepath )
 

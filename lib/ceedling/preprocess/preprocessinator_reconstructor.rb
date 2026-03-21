@@ -80,91 +80,8 @@ class PreprocessinatorReconstructor
 
   # `input` must have the interface of IO -- StringIO for testing or File in typical use
   def extract_file_as_array_from_expansion(input, filepath)
-
-    ##
-    ## Iterate through all lines and alternate between extract and ignore modes.
-    ## All lines between a '#' line containing the filepath to extract (a line marker) and the next '#' line should be extracted.
-    ##
-    ## GCC preprocessor output line marker format: `# <linenum> "<filename>" <flags>`
-    ## 
-    ## Documentation on line markers in GCC preprocessor output:
-    ##  https://gcc.gnu.org/onlinedocs/gcc-3.0.2/cpp_9.html
-    ##
-    ## Notes:
-    ##  1. Successive blocks can all be from the same source text file without a different, intervening '#' line.
-    ##     Multiple back-to-back blocks could all begin with '# 99 "path/file.c"'.
-    ##  2. The first line of the file could start a text block we care about.
-    ##  3. End of file could end a text block.
-    ##  4. Usually, the first line marker contains no trailing flag.
-    ##  5. Different preprocessors conforming to the GCC output standard may use different trailiing flags.
-    ##  6. Our simple ping-pong-between-line-markers extraction technique does not require decoding flags.
-    ##  
-
-    # Expand filepath under inspection to ensure proper match
-    extaction_filepath = File.expand_path( filepath )
-    # Preprocessor directive blocks generally take the form of '# <digits> <text> [optional digits]'
-    directive   = /^# \d+ \"/
-    # Line markers have the specific form of '# <digits> "path/filename.ext" [optional digits]' (see above)
-    line_marker = /^#\s(\d+)\s\"(.+)\"/
-    # Boolean to ping pong between line-by-line extract/ignore
-    extract = false
-
-    line_num = 0
-    last_line_num = 0
-
-    # Collection of extracted lines
     lines = []
-
-    # Use `each_line()` instead of `readlines()` (chomp removes newlines).
-    # `each_line()` processes the IO buffer one line at a time instead of ingesting lines in an array.
-    # At large buffer sizes needed for potentially lengthy preprocessor output this is far more memory efficient and faster.
-    input.each_line( chomp:true ) do |line|
-      
-      # Clean up any oddball characters in an otherwise ASCII document
-      line = line.clean_encoding
-
-      # Handle expansion extraction if the line is not a preprocessor directive
-      if extract and not line =~ directive
-        line_num += 1
-
-        # Strip a line so we can omit useless blank lines
-        _line = line.strip()
-
-        # Skip processing blank lines, but capture them unless we already have a blank line
-        if _line.empty?
-          last_line = lines.last()
-          lines << '' if (!last_line.nil? and !last_line.empty?)
-          next
-        end
-
-        # If the linemarker line number hasn't advanced, aggregate the expanded line to existing last line
-        if (last_line_num == line_num) and !lines.last().nil?
-          last_line = lines.last()
-          # Append the stripped line to the last line in the collection
-          # Include a space in the concatenation unless it's a semicolon or last_line is blank
-          lines[-1] = (_line == ';' or last_line.empty?) ? (last_line + _line) : (last_line + ' ' + _line)
-        else
-          # Collect a left-whitespace-preserved version of the line
-          _line = line.rstrip()
-          # Collect extracted lines
-          lines << _line
-        end
-
-      # Otherwise the line contained a preprocessor directive; drop out of extract mode
-      else
-        extract = false
-      end
-
-      # Enter extract mode if the line is a preprocessor line marker with filepath of interest
-      matches = line.match( line_marker )
-      if matches and matches.size() > 2
-        last_line_num = line_num
-        line_num = (matches[1].to_i - 1)
-        filepath = File.expand_path( matches[2].strip() )
-        extract = true if extaction_filepath == filepath
-      end
-    end
-
+    _scan_expansion_for_file(input, filepath) { |line| lines << line }
     return lines
   end
 
@@ -172,6 +89,26 @@ class PreprocessinatorReconstructor
   # Simple variation of preceding that returns file contents as single string
   def extract_file_as_string_from_expansion(input, filepath)
     return extract_file_as_array_from_expansion(input, filepath).join( "\n" )
+  end
+
+
+  # Writes only C code from `input` preprocessor expansion belonging to `filepath`
+  # to `output` IO object incrementally (one logical line at a time) without building
+  # an intermediate array. `output` must respond to `puts` (e.g. File or StringIO).
+  def compact_from_expansion(input:, filepath:, output:)
+    _scan_expansion_for_file(input, filepath) { |line| output.puts(line) }
+  end
+
+
+  # File-based convenience wrapper around `compact_from_expansion`.
+  # Opens `input_filepath` for reading and `output_filepath` for writing,
+  # then delegates to `compact_from_expansion` with the resulting IO objects.
+  def compact_file_from_expansion(input_filepath:, source_filepath:, output_filepath:)
+    File.open( input_filepath, 'r' ) do |input|
+      File.open( output_filepath, 'w' ) do |output|
+        compact_from_expansion( input: input, filepath: source_filepath, output: output )
+      end
+    end
   end
 
 
@@ -227,6 +164,109 @@ class PreprocessinatorReconstructor
   ### Private ###
 
   private
+
+  ##
+  ## Iterate through all lines and alternate between extract and ignore modes.
+  ## All lines between a '#' line containing the filepath to extract (a line marker) and the next '#' line should be extracted.
+  ##
+  ## GCC preprocessor output line marker format: `# <linenum> "<filename>" <flags>`
+  ##
+  ## Documentation on line markers in GCC preprocessor output:
+  ##  https://gcc.gnu.org/onlinedocs/gcc-3.0.2/cpp_9.html
+  ##
+  ## Notes:
+  ##  1. Successive blocks can all be from the same source text file without a different, intervening '#' line.
+  ##     Multiple back-to-back blocks could all begin with '# 99 "path/file.c"'.
+  ##  2. The first line of the file could start a text block we care about.
+  ##  3. End of file could end a text block.
+  ##  4. Usually, the first line marker contains no trailing flag.
+  ##  5. Different preprocessors conforming to the GCC output standard may use different trailiing flags.
+  ##  6. Our simple ping-pong-between-line-markers extraction technique does not require decoding flags.
+  ##
+  ## Yields one complete logical line at a time to the given block.
+  ## A single `pending_line` buffer is held to allow aggregation of preprocessor-wrapped
+  ## expansions (multiple physical lines at the same logical line number) before yielding.
+  ##
+  def _scan_expansion_for_file(input, filepath, &block)
+    # Expand filepath under inspection to ensure proper match
+    extraction_filepath = File.expand_path( filepath )
+    # Preprocessor directive blocks generally take the form of '# <digits> <text> [optional digits]'
+    directive   = /^# \d+ \"/
+    # Line markers have the specific form of '# <digits> "path/filename.ext" [optional digits]' (see above)
+    line_marker = /^#\s(\d+)\s\"(.+)\"/
+    # Boolean to ping pong between line-by-line extract/ignore
+    extract = false
+
+    line_num      = 0
+    last_line_num = 0
+
+    # Buffer for the last logical line (may still receive aggregated content)
+    pending_line  = nil
+    # Whether a blank line should follow pending_line when flushed
+    pending_blank = false
+
+    # Yields pending_line (and optional trailing blank) then clears the buffer
+    flush = lambda do
+      unless pending_line.nil?
+        block.call( pending_line )
+        block.call( '' ) if pending_blank
+        pending_line  = nil
+        pending_blank = false
+      end
+    end
+
+    # Use `each_line()` instead of `readlines()` (chomp removes newlines).
+    # `each_line()` processes the IO buffer one line at a time instead of ingesting lines in an array.
+    # At large buffer sizes needed for potentially lengthy preprocessor output this is far more memory efficient and faster.
+    input.each_line( chomp:true ) do |line|
+
+      # Clean up any oddball characters in an otherwise ASCII document
+      line = line.clean_encoding
+
+      # Handle expansion extraction if the line is not a preprocessor directive
+      if extract and not line =~ directive
+        line_num += 1
+
+        # Strip a line so we can omit useless blank lines
+        _line = line.strip()
+
+        # Skip processing blank lines, but mark a pending blank unless we already have one
+        if _line.empty?
+          pending_blank = true if !pending_line.nil? && !pending_line.empty?
+          next
+        end
+
+        # If the linemarker line number hasn't advanced, aggregate the expanded line into pending
+        if (last_line_num == line_num) and !pending_line.nil?
+          # Append the stripped line to the pending line
+          # Include a space in the concatenation unless it's a semicolon or pending_line is blank
+          pending_line = (_line == ';' or pending_line.empty?) ? (pending_line + _line) : (pending_line + ' ' + _line)
+        else
+          # Flush previous pending line before starting a new one
+          flush.call()
+          # Collect a left-whitespace-preserved version of the line
+          pending_line = line.rstrip()
+        end
+
+      # Otherwise the line contained a preprocessor directive; drop out of extract mode
+      else
+        extract = false
+      end
+
+      # Enter extract mode if the line is a preprocessor line marker with filepath of interest
+      matches = line.match( line_marker )
+      if matches and matches.size() > 2
+        last_line_num = line_num
+        line_num = (matches[1].to_i - 1)
+        fp = File.expand_path( matches[2].strip() )
+        extract = true if extraction_filepath == fp
+      end
+    end
+
+    # Yield any remaining buffered line at end of input
+    flush.call()
+  end
+
 
   def extract_multiline_directives(file_contents, directive)
     results = []

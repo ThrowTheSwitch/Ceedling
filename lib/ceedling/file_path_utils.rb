@@ -165,7 +165,11 @@ class FilePathUtils
     return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_FULL_EXPANSION_DIR, File.basename(filepath) )
   end
 
-  def form_preprocessed_file_directives_only_filepath(filepath, subdir)
+  def form_preprocessed_file_raw_directives_only_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR, File.basename(filepath) )
+  end
+
+  def form_preprocessed_file_compacted_directives_only_filepath(filepath, subdir)
     return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_DIRECTIVES_ONLY_DIR, File.basename(filepath) )
   end
 

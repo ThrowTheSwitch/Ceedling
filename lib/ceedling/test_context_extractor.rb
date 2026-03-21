@@ -30,7 +30,15 @@ class TestContextExtractor
     ].freeze unless const_defined?(:ALL)
   end
 
-  constructor :configurator, :parsing_parcels, :include_factory, :file_path_utils, :file_wrapper, :loginator
+  constructor(
+    :configurator, 
+    :parsing_parcels,
+    :include_factory,
+    :c_extractor_macros,
+    :file_path_utils,
+    :file_wrapper,
+    :loginator
+  )
 
   def setup
     # Per test-file lookup hashes
@@ -43,6 +51,9 @@ class TestContextExtractor
     
     # Arrays
     @all_include_paths   = [] # List of all search paths added through individual test files using TEST_INCLUDE_PATH()
+
+    # Aliases
+    @macro_extractor = @c_extractor_macros
 
     @lock = Mutex.new
   end
@@ -94,18 +105,11 @@ class TestContextExtractor
         # Scan for contents of #include directives
         includes += _extract_includes( line )
       end
-
-      if args.include?( Context::PARTIALS_CONFIGURATION )
-        # Scan for Partials directive macros
-        partials_config += _extract_partials_config( line )
-      end
     end
 
     collect_build_directive_include_paths( filepath, include_paths ) if !include_paths.empty?
     collect_build_directive_source_files( filepath, source_extras ) if !source_extras.empty?
-    collect_includes( filepath, partials_config, includes ) if (!includes.empty? or !partials_config.empty?)
-    collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
-
+  
     # Different code processing pattern for test runner
     if args.include?( Context::TEST_RUNNER_DETAILS )
       # Go back to beginning of IO object for a full string extraction
@@ -114,7 +118,21 @@ class TestContextExtractor
       # Ultimately, we rely on Unity's runner generator that processes file contents as a single string
       _collect_test_runner_details( filepath, input.read() )
     end
+  
+    if args.include?( Context::PARTIALS_CONFIGURATION )
+      # Go back to beginning of IO object for a full string extraction
+      input.rewind()
+
+      # Scan for Partials directive macros
+      partials_config = _extract_partials_config( input )
+      collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
+
+    end  
+
+    collect_includes( filepath, partials_config, includes ) if (!includes.empty? or !partials_config.empty?)
   end
+
+
 
   def collect_test_runner_details(test_filepath, input_filepath=nil)
     # Ultimately, we rely on Unity's runner generator that processes file contents as a single string
@@ -363,32 +381,42 @@ class TestContextExtractor
     return includes
   end
 
-  def _extract_partials_config(line)
+  def _extract_partials_config(input)
+    require 'strscan'
+    require 'partials/partializer_config'
+
     configs = []
 
-    # Look for #include partials config directives
-    results = line.match(PATTERNS::TEST_PARTIAL_PUBLIC_MODULE)
-    if !results.nil?
-      configs << {Partials::TEST_PUBLIC => results[1]}
-      return configs
-    end
+    lines = @macro_extractor.try_extract_calls(
+      StringScanner.new( input.read ),
+      PartializerConfig::MACRO_NAMES
+    )
 
-    results = line.match(PATTERNS::TEST_PARTIAL_PRIVATE_MODULE)
-    if !results.nil?
-      configs << {Partials::TEST_PRIVATE => results[1]}
-      return configs
-    end
+    lines.each do |line|
+      # Look for #include partials config directives
+      results = line.match(PATTERNS::TEST_PARTIAL_PUBLIC_MODULE)
+      if !results.nil?
+        configs << {Partials::TEST_PUBLIC => results[1]}
+        return configs
+      end
 
-    results = line.match(PATTERNS::MOCK_PARTIAL_PUBLIC_MODULE)
-    if !results.nil?
-      configs << {Partials::MOCK_PUBLIC => results[1]}
-      return configs
-    end
+      results = line.match(PATTERNS::TEST_PARTIAL_PRIVATE_MODULE)
+      if !results.nil?
+        configs << {Partials::TEST_PRIVATE => results[1]}
+        return configs
+      end
 
-    results = line.match(PATTERNS::MOCK_PARTIAL_PRIVATE_MODULE)
-    if !results.nil?
-      configs << {Partials::MOCK_PRIVATE => results[1]}
-      return configs
+      results = line.match(PATTERNS::MOCK_PARTIAL_PUBLIC_MODULE)
+      if !results.nil?
+        configs << {Partials::MOCK_PUBLIC => results[1]}
+        return configs
+      end
+
+      results = line.match(PATTERNS::MOCK_PARTIAL_PRIVATE_MODULE)
+      if !results.nil?
+        configs << {Partials::MOCK_PRIVATE => results[1]}
+        return configs
+      end
     end
 
     return configs
