@@ -52,4 +52,4 @@ DEPENDENCIES
   unicode-display_width (~> 3.1)
 
 BUNDLED WITH
-   2.7.2
+   2.5.23
