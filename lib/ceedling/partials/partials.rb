@@ -8,8 +8,9 @@
 
 module Partials
   # Constants
-  PUBLIC   = :public   unless const_defined?(:PUBLIC)
-  PRIVATE  = :private  unless const_defined?(:PRIVATE)
+  PUBLIC     = :public     unless const_defined?(:PUBLIC)
+  PRIVATE    = :private    unless const_defined?(:PRIVATE)
+  ACCUMULATE = :accumulate unless const_defined?(:ACCUMULATE)
 
   TEST_PUBLIC  = :test_public   unless const_defined?(:TEST_PUBLIC)
   TEST_PRIVATE = :test_private  unless const_defined?(:TEST_PRIVATE)

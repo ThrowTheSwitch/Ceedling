@@ -24,6 +24,13 @@ class Partializer
     @helper = @partializer_helper
   end
 
+  def validate(c_module:, config:, name:)
+    @helper.validate_function_names_exist(c_module, config, name)
+    @helper.validate_no_additions_subtractions_overlap(config, name)
+    @helper.validate_no_test_and_mock_overlap(config, name)
+    @helper.validate_additions_subtractions_visibility(c_module, config, name)
+  end
+
   def populate_filepaths(configs)
     configs.each do |_module, config|
       # Every partial involves processing header files
@@ -71,7 +78,7 @@ class Partializer
     partials.each do |_module, config|
       # Remap mockable interface headers that will be injected into generated partial implementation
       if includes.any? { |include| include.filename.ext().downcase() == _module.downcase() }
-        if config.mocks.types.intersect?([PUBLIC, PRIVATE])
+        if [PUBLIC, PRIVATE].include?( config.mocks.type )
           # Insert mockable interface header from remapping of module name
           _includes << UserInclude.new(
             @file_path_utils.form_partial_interface_header_filename(_module)
@@ -115,7 +122,7 @@ class Partializer
 
     # Process the C module source and/or header associated with the Partial config
     [config.source, config.header].each do |c_file|
-      # Do nothing if there's no preprocessed filepath (e.g. no source for Partial mock, only header)
+      # Do nothing if there's no preprocessed filepath (e.g. no source only header for a Partial mock)
       next unless c_file.preprocessed_filepath
 
       c_module = @c_extractor.from_file( c_file.preprocessed_filepath )
@@ -177,13 +184,17 @@ class Partializer
     impl = []
     interface = []
 
-    config.tests.types.each do |type|
-      impl += @helper.filter_and_transform_funcs(contents.function_definitions, type, :impl)
-    end
+    impl += @helper.filter_and_transform_funcs(
+      contents.function_definitions,
+      config.tests.type,
+      :impl
+    )
 
-    config.mocks.types.each do |type|
-      interface += @helper.filter_and_transform_funcs(contents.function_definitions, type, :interface)
-    end
+    interface += @helper.filter_and_transform_funcs(
+      contents.function_definitions,
+      config.mocks.type,
+      :interface
+    )
     
     # PartializerRuntime.raise_on_option(type)
  

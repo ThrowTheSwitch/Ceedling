@@ -564,6 +564,8 @@ class TestInvoker
             !@preprocessinator.directives_only_available?
           )
 
+          @partializer.validate(c_module: module_contents, config: config, name: name)
+
           impl, interface = @partializer.reconstruct_functions(contents: module_contents, config: config)
 
           @partializer.log_extracted_functions(
@@ -584,23 +586,23 @@ class TestInvoker
             name:                  config[:module],
             function_defns:        impl,
             variable_declarations: module_contents.variables,
-            header_includes:  @partializer.remap_implementation_header_includes(
-                                name: config.module,
-                                includes: (config.source.includes + config.header.includes),
-                                # All partials configurations to remap includes for partials to be generated
-                                partials: testable[:partials][:configs]
-                              ),
-            source_includes:  @partializer.remap_implementation_source_includes(
-                                name: config.module,
-                                includes: (config.source.includes + config.header.includes),
-                                # All partials configurations to remap includes for partials to be generated
-                                partials: testable[:partials][:configs]
-                              ),
-            input_filepath:   config.source.filepath,
-            output_path:      testable[:paths][:partials]
+            header_includes:       @partializer.remap_implementation_header_includes(
+                                    name: config.module,
+                                    includes: (config.source.includes + config.header.includes),
+                                    # All partials configurations to remap includes for partials to be generated
+                                    partials: testable[:partials][:configs]
+                                   ),
+            source_includes:       @partializer.remap_implementation_source_includes(
+                                    name: config.module,
+                                    includes: (config.source.includes + config.header.includes),
+                                    # All partials configurations to remap includes for partials to be generated
+                                    partials: testable[:partials][:configs]
+                                   ),
+            input_filepath:        config.source.filepath,
+            output_path:           testable[:paths][:partials]
           }
 
-          if !impl.empty?
+          unless impl.empty?
             @partializer.log_implementation_includes(
               label:          'Source',
               test:           testable[:name],

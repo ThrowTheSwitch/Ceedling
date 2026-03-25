@@ -6,6 +6,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
 require 'spec_helper'
 require 'ceedling/partials/partializer_helper'
 require 'ceedling/partials/partializer_utils'
@@ -546,6 +547,265 @@ describe PartializerHelper do
       existing = ['a', 'b']
       result   = @helper.collect_module_variables(existing, [])
       expect(result).to eq(['a', 'b'])
+    end
+  end
+
+  ###
+  ### Validation helpers shared fixtures
+  ###
+
+  def make_func(name, decorators: [])
+    OpenStruct.new(name: name, decorators: decorators)
+  end
+
+  def make_c_module(funcs)
+    OpenStruct.new(function_definitions: funcs)
+  end
+
+  def make_pf(type: nil, additions: [], subtractions: [])
+    OpenStruct.new(type: type, additions: additions, subtractions: subtractions)
+  end
+
+  def make_config(mod, tests:, mocks:)
+    OpenStruct.new(module: mod, tests: tests, mocks: mocks)
+  end
+
+  ###
+  ### validate_function_names_exist()
+  ###
+
+  context "#validate_function_names_exist" do
+    it "does not raise when all additions and subtractions name existing functions" do
+      name     = "test_mod"
+      c_module = make_c_module([make_func('foo'), make_func('bar')])
+      config   = make_config('mod',
+        tests: make_pf(additions: ['foo'], subtractions: ['bar']),
+        mocks: make_pf
+      )
+      expect { @helper.validate_function_names_exist(c_module, config, name) }.not_to raise_error
+    end
+
+    it "raises when a tests.additions name is not in function_definitions" do
+      name     = "test_mod"
+      c_module = make_c_module([make_func('foo')])
+      config   = make_config('mod',
+        tests: make_pf(additions: ['missing']),
+        mocks: make_pf
+      )
+      expect { @helper.validate_function_names_exist(c_module, config, name) }
+        .to raise_error(CeedlingException, /test_mod.*mod.*missing/)
+    end
+
+    it "raises when a tests.subtractions name is not in function_definitions" do
+      name     = "test_mod"
+      c_module = make_c_module([make_func('foo')])
+      config   = make_config('mod',
+        tests: make_pf(subtractions: ['ghost']),
+        mocks: make_pf
+      )
+      expect { @helper.validate_function_names_exist(c_module, config, name) }
+        .to raise_error(CeedlingException, /test_mod.*mod.*ghost/)
+    end
+
+    it "raises when a mocks.additions name is not in function_definitions" do
+      name     = "test_mod"
+      c_module = make_c_module([make_func('foo')])
+      config   = make_config('mod',
+        tests: make_pf,
+        mocks: make_pf(additions: ['unknown'])
+      )
+      expect { @helper.validate_function_names_exist(c_module, config, name) }
+        .to raise_error(CeedlingException, /test_mod.*mod.*unknown/)
+    end
+
+    it "raises when a mocks.subtractions name is not in function_definitions" do
+      name     = "test_mod"
+      c_module = make_c_module([make_func('foo')])
+      config   = make_config('mod',
+        tests: make_pf,
+        mocks: make_pf(subtractions: ['gone'])
+      )
+      expect { @helper.validate_function_names_exist(c_module, config, name) }
+        .to raise_error(CeedlingException, /test_mod.*mod.*gone/)
+    end
+
+    it "raises a case-mismatch exception when name differs only by case from a known function" do
+      name     = "test_mod"
+      c_module = make_c_module([make_func('FooBar')])
+      config   = make_config('mod',
+        tests: make_pf(additions: ['foobar']),
+        mocks: make_pf
+      )
+      expect { @helper.validate_function_names_exist(c_module, config, name) }
+        .to raise_error(CeedlingException, /test_mod.*case/)
+    end
+  end
+
+  ###
+  ### validate_no_additions_subtractions_overlap()
+  ###
+
+  context "#validate_no_additions_subtractions_overlap" do
+    it "does not raise when tests additions and subtractions are disjoint" do
+      name   = "test_mod"
+      config = make_config('mod',
+        tests: make_pf(additions: ['foo'], subtractions: ['bar']),
+        mocks: make_pf
+      )
+      expect { @helper.validate_no_additions_subtractions_overlap(config, name) }.not_to raise_error
+    end
+
+    it "does not raise when mocks additions and subtractions are disjoint" do
+      name   = "test_mod"
+      config = make_config('mod',
+        tests: make_pf,
+        mocks: make_pf(additions: ['read'], subtractions: ['write'])
+      )
+      expect { @helper.validate_no_additions_subtractions_overlap(config, name) }.not_to raise_error
+    end
+
+    it "raises when a function appears in both tests.additions and tests.subtractions" do
+      name   = "test_mod"
+      config = make_config('mod',
+        tests: make_pf(additions: ['foo'], subtractions: ['foo']),
+        mocks: make_pf
+      )
+      expect { @helper.validate_no_additions_subtractions_overlap(config, name) }
+        .to raise_error(CeedlingException, /test_mod.*mod.*foo/)
+    end
+
+    it "raises when a function appears in both mocks.additions and mocks.subtractions" do
+      name   = "test_mod"
+      config = make_config('mod',
+        tests: make_pf,
+        mocks: make_pf(additions: ['bar'], subtractions: ['bar'])
+      )
+      expect { @helper.validate_no_additions_subtractions_overlap(config, name) }
+        .to raise_error(CeedlingException, /test_mod.*mod.*bar/)
+    end
+  end
+
+  ###
+  ### validate_no_test_and_mock_overlap()
+  ###
+
+  context "#validate_no_test_and_mock_overlap" do
+    it "does not raise when tests.additions and mocks.additions are disjoint" do
+      name   = "test_mod"
+      config = make_config('mod',
+        tests: make_pf(additions: ['foo']),
+        mocks: make_pf(additions: ['bar'])
+      )
+      expect { @helper.validate_no_test_and_mock_overlap(config, name) }.not_to raise_error
+    end
+
+    it "raises when the same function appears in both tests.additions and mocks.additions" do
+      name   = "test_mod"
+      config = make_config('mod',
+        tests: make_pf(additions: ['shared']),
+        mocks: make_pf(additions: ['shared'])
+      )
+      expect { @helper.validate_no_test_and_mock_overlap(config, name) }
+        .to raise_error(CeedlingException, /test_mod.*mod.*shared/)
+    end
+  end
+
+  ###
+  ### validate_additions_subtractions_visibility()
+  ###
+
+  context "#validate_additions_subtractions_visibility" do
+    it "does not raise when PUBLIC subtractions are public functions" do
+      name     = "test_mod"
+      func     = make_func('pub')
+      c_module = make_c_module([func])
+      config   = make_config('mod',
+        tests: make_pf(type: Partials::PUBLIC, subtractions: ['pub']),
+        mocks: make_pf
+      )
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(func.decorators, Partials::PUBLIC).and_return(true)
+      expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }
+        .not_to raise_error
+    end
+
+    it "raises when PUBLIC subtractions include a private function" do
+      name     = "test_mod"
+      func     = make_func('priv', decorators: ['static'])
+      c_module = make_c_module([func])
+      config   = make_config('mod',
+        tests: make_pf(type: Partials::PUBLIC, subtractions: ['priv']),
+        mocks: make_pf
+      )
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(func.decorators, Partials::PUBLIC).and_return(false)
+      expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }
+        .to raise_error(CeedlingException, /test_mod.*mod.*priv/)
+    end
+
+    it "does not raise when PRIVATE subtractions are private functions" do
+      name     = "test_mod"
+      func     = make_func('priv', decorators: ['static'])
+      c_module = make_c_module([func])
+      config   = make_config('mod',
+        tests: make_pf(type: Partials::PRIVATE, subtractions: ['priv']),
+        mocks: make_pf
+      )
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(func.decorators, Partials::PRIVATE).and_return(true)
+      expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }
+        .not_to raise_error
+    end
+
+    it "raises when PRIVATE subtractions include a public function" do
+      name     = "test_mod"
+      func     = make_func('pub')
+      c_module = make_c_module([func])
+      config   = make_config('mod',
+        tests: make_pf(type: Partials::PRIVATE, subtractions: ['pub']),
+        mocks: make_pf
+      )
+      allow(@partializer_utils).to receive(:matches_visibility?)
+        .with(func.decorators, Partials::PRIVATE).and_return(false)
+      expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }
+        .to raise_error(CeedlingException, /test_mod.*mod.*pub/)
+    end
+
+    it "does not raise when PUBLIC additions include a public function (redundant but harmless)" do
+      name     = "test_mod"
+      func     = make_func('pub')
+      c_module = make_c_module([func])
+      config   = make_config('mod',
+        tests: make_pf(type: Partials::PUBLIC, additions: ['pub']),
+        mocks: make_pf
+      )
+      expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }
+        .not_to raise_error
+    end
+
+    it "does not raise when PRIVATE additions include a private function (redundant but harmless)" do
+      name     = "test_mod"
+      func     = make_func('priv', decorators: ['static'])
+      c_module = make_c_module([func])
+      config   = make_config('mod',
+        tests: make_pf(type: Partials::PRIVATE, additions: ['priv']),
+        mocks: make_pf
+      )
+      expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }
+        .not_to raise_error
+    end
+
+    it "skips visibility check for ACCUMULATE type" do
+      name     = "test_mod"
+      func     = make_func('any')
+      c_module = make_c_module([func])
+      config   = make_config('mod',
+        tests: make_pf(type: Partials::ACCUMULATE, additions: ['any']),
+        mocks: make_pf
+      )
+      expect(@partializer_utils).not_to receive(:matches_visibility?)
+      expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }
+        .not_to raise_error
     end
   end
 

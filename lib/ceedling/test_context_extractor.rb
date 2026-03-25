@@ -317,8 +317,8 @@ class TestContextExtractor
     debug_lines = partials_config.map do |_module, config|
       t = config.tests
       m = config.mocks
-      "#{_module}: tests(types=#{t.types} +#{t.additions} -#{t.subtractions}) " \
-      "mocks(types=#{m.types} +#{m.additions} -#{m.subtractions})"
+      "#{_module}: tests(type=#{t.type} +#{t.additions} -#{t.subtractions}) " \
+      "mocks(type=#{m.type} +#{m.additions} -#{m.subtractions})"
     end
     debug_log_list( "Partials configurations found", filepath, debug_lines )
   end

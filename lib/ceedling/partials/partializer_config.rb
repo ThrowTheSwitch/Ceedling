@@ -29,16 +29,16 @@ class PartializerConfig
   ].freeze
 
   # Holds function-level extraction config for tests or mocks within a Partial.
-  # types        -- visibility types (:public / :private) to include; empty means all
+  # type         -- :public, :private, or :accumulate (additions-driven); nil if unset
   # additions    -- function names to explicitly include
-  # subtractions -- function names to explicitly exclude
-  PartialFunctions = Struct.new(:types, :additions, :subtractions, keyword_init: true) do
-    def initialize(types: [], additions: [], subtractions: [])
+  # subtractions -- function names to explicitly exclude (illegal with ACCUMULATE)
+  PartialFunctions = Struct.new(:type, :additions, :subtractions, keyword_init: true) do
+    def initialize(type: nil, additions: [], subtractions: [])
       super
     end
 
     def present?
-      !types.empty? || !additions.empty? || !subtractions.empty?
+      !type.nil? || !additions.empty? || !subtractions.empty?
     end
   end
 
@@ -92,25 +92,32 @@ class PartializerConfig
 
       case macro_name
       when 'TEST_PARTIAL_PUBLIC_MODULE'
-        configs[mod].tests.types |= [PUBLIC]
+        _check_type_unset!(configs[mod].tests, mod, macro_name)
+        configs[mod].tests.type = PUBLIC
       when 'TEST_PARTIAL_PRIVATE_MODULE'
-        configs[mod].tests.types |= [PRIVATE]
+        _check_type_unset!(configs[mod].tests, mod, macro_name)
+        configs[mod].tests.type = PRIVATE
       when 'MOCK_PARTIAL_PUBLIC_MODULE'
-        configs[mod].mocks.types |= [PUBLIC]
+        _check_type_unset!(configs[mod].mocks, mod, macro_name)
+        configs[mod].mocks.type = PUBLIC
       when 'MOCK_PARTIAL_PRIVATE_MODULE'
-        configs[mod].mocks.types |= [PRIVATE]
-      when 'TEST_PARTIAL_MODULE', 'MOCK_PARTIAL_MODULE'
-        # types intentionally left empty — signals "all types"
-        # Config entry is still created (handled by configs[mod] ||= above)
+        _check_type_unset!(configs[mod].mocks, mod, macro_name)
+        configs[mod].mocks.type = PRIVATE
+      when 'TEST_PARTIAL_MODULE'
+        _check_type_unset!(configs[mod].tests, mod, macro_name)
+        configs[mod].tests.type = ACCUMULATE
+      when 'MOCK_PARTIAL_MODULE'
+        _check_type_unset!(configs[mod].mocks, mod, macro_name)
+        configs[mod].mocks.type = ACCUMULATE
       end
     end
-    puts(configs)
+
     # --- Pass 2: CONFIG macros ---
     config_calls.each do |macro_name, params|
       mod = _strip_quotes(params[0])
       unless configs.key?(mod)
         raise CeedlingException.new(
-          "#{macro_name} references unknown module '#{mod}' -— no corresponding MODULE Partial macro directive found"
+          "#{macro_name} references module '#{mod}' but no corresponding MODULE Partial macro directive for that module was found"
         )
       end
 
@@ -130,8 +137,26 @@ class PartializerConfig
     configs.each do |mod, config|
       unless config.tests.present? || config.mocks.present?
         raise CeedlingException.new(
-          "Module '#{mod}' has partial macro(s) but no meaningful configuration (no types, additions, or subtractions)"
+          "Partials are to be generated for module '#{mod}' but no meaningful configuration has been set for this Partial"
         )
+      end
+
+      # Rule 1: tests and mocks cannot share the same PUBLIC/PRIVATE classification
+      t = config.tests.type; m = config.mocks.type
+      if (t == PUBLIC && m == PUBLIC) || (t == PRIVATE && m == PRIVATE)
+        raise CeedlingException.new(
+          "Partials for module '#{mod}' cannot both test and mock #{t} functions"
+        )
+      end
+
+      # Rule 2: subtractions are illegal with ACCUMULATE
+      [[:tests, 'TEST'], [:mocks, 'MOCK']].each do |field, label|
+        pf = config.send(field)
+        if pf.type == ACCUMULATE && !pf.subtractions.empty?
+          raise CeedlingException.new(
+            "Function subtractions are specified for the #{label} Partial of module '#{mod}', but subtractions are only allowed with PUBLIC/PRIVATE Partial classifications"
+          )
+        end
       end
     end
 
@@ -141,6 +166,14 @@ class PartializerConfig
   ### Private ###
 
   private
+
+  # Raise if partial_functions.type is already set — indicates duplicate MODULE macro.
+  def _check_type_unset!(partial_functions, mod, macro_name)
+    return if partial_functions.type.nil?
+    raise CeedlingException.new(
+      "'#{macro_name}' for module '#{mod}' — type already set (only one MODULE macro per tests/mocks entry)"
+    )
+  end
 
   # Strip a matched pair of double-quotes from str.
   # Returns str unchanged if it is not double-quoted.

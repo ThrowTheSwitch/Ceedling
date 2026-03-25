@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
 require 'ceedling/exceptions'
 require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
 require 'ceedling/partials/partials'
@@ -32,6 +33,8 @@ class PartializerHelper
   # 1. Filter functions by visibility (:private | :public)
   # 2. Transform functions to appropriate container (:impl | :interface) → `FunctionDefinition[]` or `FunctionDeclaration[]`
   def filter_and_transform_funcs(funcs, visibility, output_type)
+    return [] unless [PRIVATE, PUBLIC].include?(visibility)
+
     funcs.filter_map do |func|
       next unless @utils.matches_visibility?(func.decorators, visibility)
 
@@ -201,6 +204,88 @@ class PartializerHelper
 
   def collect_module_variables(existing, new)
     existing.concat( new )
+  end
+
+  # Validate that every function name in additions and subtractions exists in c_module.
+  # Case-sensitive match; if a name matches case-insensitively but not exactly, raise
+  # a specific case-mismatch exception.
+  def validate_function_names_exist(c_module, config, name)
+    known_exact = Set.new( c_module.function_definitions.map(&:name) )
+    known_lower = Set.new( c_module.function_definitions.map { |f| f.name.downcase } )
+    mod         = config.module
+
+    {TEST: config.tests, MOCK: config.mocks}.each do |label, pf|
+      (pf.additions + pf.subtractions).each do |func_name|
+        next if known_exact.include?(func_name)
+
+        if known_lower.include?(func_name.downcase)
+          raise CeedlingException.new(
+            "#{name}: #{label} Partial configuration for module '#{mod}' references function '#{func_name}' " \
+            "which differs only by case from a real function name"
+          )
+        else
+          raise CeedlingException.new(
+            "#{name}: #{label} Partial configuration for module '#{mod}' references function '#{func_name}' which does not exist"
+          )
+        end
+      end
+    end
+  end
+
+  # Validate that no function name appears in both additions and subtractions of the
+  # same tests or mocks entry.
+  def validate_no_additions_subtractions_overlap(config, name)
+    mod = config.module
+
+    {TEST: config.tests, MOCK: config.mocks}.each do |label, pf|
+      overlap = Set.new(pf.additions) & Set.new(pf.subtractions)
+      overlap.each do |func_name|
+        raise CeedlingException.new(
+          "#{name}: #{label} Partial configuration for module '#{mod}' ⏩️ Function '#{func_name}' cannot be both added and subtracted"
+        )
+      end
+    end
+  end
+
+  # Validate that no function name appears in both tests.additions and mocks.additions.
+  def validate_no_test_and_mock_overlap(config, name)
+    mod        = config.module
+    test_names = Set.new(config.tests.additions)
+    mock_names = Set.new(config.mocks.additions)
+
+    overlap = test_names & mock_names
+    overlap.each do |func_name|
+      raise CeedlingException.new(
+        "#{name}: Partial configuration for module '#{mod}' ⏩️ Function '#{func_name}' cannot be in both test additions and mock additions"
+      )
+    end
+  end
+
+  # Validate that subtractions match their type's own visibility classification.
+  # For PUBLIC type: subtractions must be public functions.
+  # For PRIVATE type: subtractions must be private functions.
+  # Additions are not validated (same-visibility additions are redundant but harmless).
+  # ACCUMULATE is skipped (no subtractions allowed, already enforced by extract_configs).
+  def validate_additions_subtractions_visibility(c_module, config, name)
+    func_map = c_module.function_definitions.each_with_object({}) { |f, h| h[f.name] = f }
+    mod      = config.module
+
+    {tests: config.tests, mocks: config.mocks}.each do |label, pf|
+      next unless pf.type == PUBLIC || pf.type == PRIVATE
+
+      subtraction_required_visibility = pf.type
+
+      pf.subtractions.each do |func_name|
+        func = func_map[func_name]
+        unless @utils.matches_visibility?(func.decorators, subtraction_required_visibility)
+          raise CeedlingException.new(
+            "#{name}: Partial configuration for module '#{mod}': #{label} type is #{pf.type}, " \
+            "so subtractions must be #{subtraction_required_visibility} functions, " \
+            "but '#{func_name}' is not #{subtraction_required_visibility}"
+          )
+        end
+      end
+    end
   end
 
 end

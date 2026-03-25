@@ -37,7 +37,7 @@ describe PartializerConfig do
     it "extracts configs from a raw IO object" do
       io = StringIO.new('TEST_PARTIAL_PUBLIC_MODULE(widget)')
       result = @config.extract_configs(io)
-      expect( result['widget'].tests.types ).to eq [Partials::PUBLIC]
+      expect( result['widget'].tests.type ).to eq Partials::PUBLIC
     end
   end
 
@@ -63,76 +63,74 @@ describe PartializerConfig do
       expect( extract('int x = UNRELATED(42);') ).to eq({})
     end
 
-    # --- MODULE macros: types ---
+    # --- MODULE macros: type ---
 
-    it "extracts TEST_PARTIAL_PUBLIC_MODULE and sets tests.types to PUBLIC" do
+    it "extracts TEST_PARTIAL_PUBLIC_MODULE and sets tests.type to PUBLIC" do
       result = extract('TEST_PARTIAL_PUBLIC_MODULE(calculator)')
       expect( result.keys ).to eq ['calculator']
-      expect( result['calculator'].tests.types ).to eq [Partials::PUBLIC]
-      expect( result['calculator'].mocks.types ).to eq []
+      expect( result['calculator'].tests.type ).to eq Partials::PUBLIC
+      expect( result['calculator'].mocks.type ).to be_nil
     end
 
-    it "extracts TEST_PARTIAL_PRIVATE_MODULE and sets tests.types to PRIVATE" do
+    it "extracts TEST_PARTIAL_PRIVATE_MODULE and sets tests.type to PRIVATE" do
       result = extract('TEST_PARTIAL_PRIVATE_MODULE(calculator)')
-      expect( result['calculator'].tests.types ).to eq [Partials::PRIVATE]
-      expect( result['calculator'].mocks.types ).to eq []
+      expect( result['calculator'].tests.type ).to eq Partials::PRIVATE
+      expect( result['calculator'].mocks.type ).to be_nil
     end
 
-    it "extracts MOCK_PARTIAL_PUBLIC_MODULE and sets mocks.types to PUBLIC" do
+    it "extracts MOCK_PARTIAL_PUBLIC_MODULE and sets mocks.type to PUBLIC" do
       result = extract('MOCK_PARTIAL_PUBLIC_MODULE(calculator)')
-      expect( result['calculator'].mocks.types ).to eq [Partials::PUBLIC]
-      expect( result['calculator'].tests.types ).to eq []
+      expect( result['calculator'].mocks.type ).to eq Partials::PUBLIC
+      expect( result['calculator'].tests.type ).to be_nil
     end
 
-    it "extracts MOCK_PARTIAL_PRIVATE_MODULE and sets mocks.types to PRIVATE" do
+    it "extracts MOCK_PARTIAL_PRIVATE_MODULE and sets mocks.type to PRIVATE" do
       result = extract('MOCK_PARTIAL_PRIVATE_MODULE(calculator)')
-      expect( result['calculator'].mocks.types ).to eq [Partials::PRIVATE]
-      expect( result['calculator'].tests.types ).to eq []
+      expect( result['calculator'].mocks.type ).to eq Partials::PRIVATE
+      expect( result['calculator'].tests.type ).to be_nil
     end
 
-    # --- TEST/MOCK_PARTIAL_MODULE: types empty, additions required ---
+    # --- TEST/MOCK_PARTIAL_MODULE: ACCUMULATE ---
 
-    it "accepts TEST_PARTIAL_MODULE when accompanied by TEST_PARTIAL_CONFIG additions" do
+    it "extracts TEST_PARTIAL_MODULE and sets tests.type to ACCUMULATE" do
       input = <<~C
         TEST_PARTIAL_MODULE(calculator)
         TEST_PARTIAL_CONFIG(calculator, add, subtract)
       C
       result = extract(input)
-      expect( result['calculator'].tests.types ).to eq []
+      expect( result['calculator'].tests.type ).to eq Partials::ACCUMULATE
       expect( result['calculator'].tests.additions ).to eq ['add', 'subtract']
     end
 
-    it "accepts MOCK_PARTIAL_MODULE when accompanied by MOCK_PARTIAL_CONFIG subtractions" do
+    it "extracts MOCK_PARTIAL_MODULE and sets mocks.type to ACCUMULATE" do
       input = <<~C
         MOCK_PARTIAL_MODULE(calculator)
-        MOCK_PARTIAL_CONFIG(calculator, -multiply)
+        MOCK_PARTIAL_CONFIG(calculator, +multiply)
       C
       result = extract(input)
-      expect( result['calculator'].mocks.types ).to eq []
-      expect( result['calculator'].mocks.subtractions ).to eq ['multiply']
+      expect( result['calculator'].mocks.type ).to eq Partials::ACCUMULATE
+      expect( result['calculator'].mocks.additions ).to eq ['multiply']
     end
 
-    it "raises an exception for TEST_PARTIAL_MODULE with no accompanying CONFIG" do
-      expect {
-        extract('TEST_PARTIAL_MODULE(calculator)')
-      }.to raise_error(CeedlingException, /calculator/)
+    it "TEST_PARTIAL_MODULE alone (without CONFIG) is valid" do
+      result = extract('TEST_PARTIAL_MODULE(calculator)')
+      expect( result['calculator'].tests.type ).to eq Partials::ACCUMULATE
+      expect( result['calculator'].tests.additions ).to be_empty
     end
 
-    # --- Type accumulation ---
+    # --- MODULE macro overwrite raises ---
 
-    it "accumulates types without duplicates when same MODULE macro appears twice" do
+    it "raises when the same MODULE macro is used twice for the same module" do
       input = "TEST_PARTIAL_PUBLIC_MODULE(calc) TEST_PARTIAL_PUBLIC_MODULE(calc)"
-      result = extract(input)
-      expect( result['calc'].tests.types ).to eq [Partials::PUBLIC]
+      expect { extract(input) }.to raise_error(CeedlingException, /calc/)
     end
 
-    it "accumulates PUBLIC and PRIVATE types for the same module from different MODULE macros" do
+    it "raises when multiple MODULE macros target the same tests entry for a module" do
       input = <<~C
         TEST_PARTIAL_PUBLIC_MODULE(calc)
         TEST_PARTIAL_PRIVATE_MODULE(calc)
       C
-      result = extract(input)
-      expect( result['calc'].tests.types ).to include(Partials::PUBLIC, Partials::PRIVATE)
+      expect { extract(input) }.to raise_error(CeedlingException, /calc/)
     end
 
     # --- Multiple modules ---
@@ -144,8 +142,8 @@ describe PartializerConfig do
       C
       result = extract(input)
       expect( result.keys ).to contain_exactly('module_a', 'module_b')
-      expect( result['module_a'].tests.types ).to eq [Partials::PUBLIC]
-      expect( result['module_b'].mocks.types ).to eq [Partials::PUBLIC]
+      expect( result['module_a'].tests.type ).to eq Partials::PUBLIC
+      expect( result['module_b'].mocks.type ).to eq Partials::PUBLIC
     end
 
     # --- CONFIG: additions and subtractions ---
@@ -196,6 +194,54 @@ describe PartializerConfig do
       }.to raise_error(CeedlingException, /MOCK_PARTIAL_CONFIG/)
     end
 
+    # --- Validation: same-classification conflict ---
+
+    it "raises when tests and mocks are both configured for PUBLIC" do
+      input = 'TEST_PARTIAL_PUBLIC_MODULE("foo") MOCK_PARTIAL_PUBLIC_MODULE("foo")'
+      expect { extract(input) }.to raise_error(CeedlingException, /foo/)
+    end
+
+    it "raises when tests and mocks are both configured for PRIVATE" do
+      input = 'TEST_PARTIAL_PRIVATE_MODULE("foo") MOCK_PARTIAL_PRIVATE_MODULE("foo")'
+      expect { extract(input) }.to raise_error(CeedlingException, /foo/)
+    end
+
+    it "does not raise when tests are ACCUMULATE and mocks are PUBLIC" do
+      input = 'TEST_PARTIAL_MODULE("foo") MOCK_PARTIAL_PUBLIC_MODULE("foo")'
+      expect { extract(input) }.not_to raise_error
+    end
+
+    it "does not raise when tests are PUBLIC and mocks are PRIVATE" do
+      input = 'TEST_PARTIAL_PUBLIC_MODULE("foo") MOCK_PARTIAL_PRIVATE_MODULE("foo")'
+      expect { extract(input) }.not_to raise_error
+    end
+
+    # --- Validation: subtractions illegal with ACCUMULATE ---
+
+    it "raises when subtractions are used with TEST ACCUMULATE" do
+      input = <<~C
+        TEST_PARTIAL_MODULE("foo")
+        TEST_PARTIAL_CONFIG("foo", "-bar")
+      C
+      expect { extract(input) }.to raise_error(CeedlingException, /foo/)
+    end
+
+    it "raises when subtractions are used with MOCK ACCUMULATE" do
+      input = <<~C
+        MOCK_PARTIAL_MODULE("foo")
+        MOCK_PARTIAL_CONFIG("foo", "+baz", "-bar")
+      C
+      expect { extract(input) }.to raise_error(CeedlingException, /foo/)
+    end
+
+    it "does not raise when only additions are used with ACCUMULATE" do
+      input = <<~C
+        TEST_PARTIAL_MODULE("foo")
+        TEST_PARTIAL_CONFIG("foo", "a", "+b")
+      C
+      expect { extract(input) }.not_to raise_error
+    end
+
     # --- Complete round-trip ---
 
     it "handles a complete source snippet with MODULE and CONFIG macros together" do
@@ -206,7 +252,7 @@ describe PartializerConfig do
         TEST_PARTIAL_CONFIG(calculator, +add, -internal_helper)
 
         MOCK_PARTIAL_PRIVATE_MODULE(driver)
-        MOCK_PARTIAL_CONFIG(driver, write, -debug_write)
+        MOCK_PARTIAL_CONFIG(driver, write)
 
         void some_function(void) {}
       C
@@ -215,18 +261,18 @@ describe PartializerConfig do
       expect( result.keys ).to contain_exactly('calculator', 'driver')
 
       expect( result['calculator'].module ).to eq 'calculator'
-      expect( result['calculator'].tests.types        ).to eq [Partials::PUBLIC]
+      expect( result['calculator'].tests.type        ).to eq Partials::PUBLIC
       expect( result['calculator'].tests.additions    ).to eq ['add']
       expect( result['calculator'].tests.subtractions ).to eq ['internal_helper']
-      expect( result['calculator'].mocks.types        ).to eq []
+      expect( result['calculator'].mocks.type         ).to be_nil
       expect( result['calculator'].mocks.additions    ).to eq []
       expect( result['calculator'].mocks.subtractions ).to eq []
 
       expect( result['driver'].module ).to eq 'driver'
-      expect( result['driver'].mocks.types        ).to eq [Partials::PRIVATE]
+      expect( result['driver'].mocks.type         ).to eq Partials::PRIVATE
       expect( result['driver'].mocks.additions    ).to eq ['write']
-      expect( result['driver'].mocks.subtractions ).to eq ['debug_write']
-      expect( result['driver'].tests.types        ).to eq []
+      expect( result['driver'].mocks.subtractions ).to eq []
+      expect( result['driver'].tests.type         ).to be_nil
     end
 
   end

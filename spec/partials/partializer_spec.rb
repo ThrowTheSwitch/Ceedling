@@ -127,6 +127,29 @@ describe Partializer do
   end
 
   ###
+  ### validate()
+  ###
+
+  context "#validate" do
+    it "delegates to all four validation helpers in order" do
+      c_module = double("CModule")
+      config   = double("Config")
+      name     = "test_foo"
+
+      expect(@partializer_helper).to receive(:validate_function_names_exist)
+        .with(c_module, config, name).ordered
+      expect(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
+        .with(config, name).ordered
+      expect(@partializer_helper).to receive(:validate_no_test_and_mock_overlap)
+        .with(config, name).ordered
+      expect(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
+        .with(c_module, config, name).ordered
+
+      @partializer.validate(c_module: c_module, config: config, name: name)
+    end
+  end
+
+  ###
   ### sanitize_includes()
   ###
 
@@ -401,6 +424,13 @@ describe Partializer do
   ### remap_implementation_source_includes()
   ###
 
+  def make_partial_config(mocks_type: nil, tests_type: nil)
+    OpenStruct.new(
+      mocks: OpenStruct.new(type: mocks_type),
+      tests: OpenStruct.new(type: tests_type)
+    )
+  end
+
   context "#remap_implementation_source_includes" do
     it "returns implementation header when input is empty and no partials" do
       includes = []
@@ -467,7 +497,7 @@ describe Partializer do
     it "remaps mockable public partial to interface header" do
       includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
-        'partial_module' => OpenStruct.new(types: [Partials::MOCK_PUBLIC])
+        'partial_module' => make_partial_config(mocks_type: Partials::PUBLIC)
       }
       impl_filename = 'module_impl.h'
       interface_filename = 'partial_module_interface.h'
@@ -498,7 +528,7 @@ describe Partializer do
     it "remaps mockable private partial to interface header" do
       includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
-        'partial_module' => OpenStruct.new(types: [Partials::MOCK_PRIVATE])
+        'partial_module' => make_partial_config(mocks_type: Partials::PRIVATE)
       }
       impl_filename = 'module_impl.h'
       interface_filename = 'partial_module_interface.h'
@@ -534,8 +564,8 @@ describe Partializer do
         UserInclude.new('header2.h')
       ]
       partials = {
-        'partial1' => OpenStruct.new(types: [Partials::MOCK_PUBLIC]),
-        'partial2' => OpenStruct.new(types: [Partials::MOCK_PRIVATE])
+        'partial1' => make_partial_config(mocks_type: Partials::PUBLIC),
+        'partial2' => make_partial_config(mocks_type: Partials::PRIVATE)
       }
       impl_filename = 'module_impl.h'
       interface_filename1 = 'partial1_module_interface.h'
@@ -574,7 +604,7 @@ describe Partializer do
     it "remaps testable partial to implementation header" do
       includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
-        'partial_module' => OpenStruct.new(types: [Partials::TEST_PUBLIC])
+        'partial_module' => make_partial_config(tests_type: Partials::PUBLIC)
       }
       filename = 'module_impl.h'
       impl_header = UserInclude.new(filename)
@@ -603,8 +633,8 @@ describe Partializer do
         UserInclude.new('header2.h')
       ]
       partials = {
-        'partial1' => OpenStruct.new(types: [Partials::MOCK_PUBLIC]),
-        'partial2' => OpenStruct.new(types: [Partials::TEST_PRIVATE])
+        'partial1' => make_partial_config(mocks_type: Partials::PUBLIC),
+        'partial2' => make_partial_config(tests_type: Partials::PRIVATE)
       }
       impl_filename = 'module_impl.h'
       interface1_filename = 'partial1_module_interface.h'
@@ -641,27 +671,27 @@ describe Partializer do
         UserInclude.new('header2.h')
       ]
       partials = {
-        'partial_module' => OpenStruct.new(types: [Partials::MOCK_PUBLIC])
+        'partial_module' => make_partial_config(mocks_type: Partials::PUBLIC)
       }
       impl_filename = 'module_impl.h'
       interface_filename = 'partial_module_interface.h'
       impl_header = UserInclude.new(impl_filename)
       interface_header = UserInclude.new(interface_filename)
-      
+
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module')
         .and_return(impl_filename)
-      
+
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
         .with('partial_module')
         .and_return(interface_filename)
-      
+
       result = @partializer.remap_implementation_source_includes(
         name: 'module',
         includes: includes,
         partials: partials
       )
-      
+
       expect(result.count(UserInclude.new('header1.h'))).to eq(1)
       expect(result).to include(impl_header)
       expect(result).to include(interface_header)
@@ -704,9 +734,9 @@ describe Partializer do
         UserInclude.new('header2.h')
       ]
       partials = {
-        'partial_module' => OpenStruct.new(types: [Partials::MOCK_PUBLIC])
+        'partial_module' => make_partial_config(mocks_type: Partials::PUBLIC)
       }
-      impl_filename ='module_impl.h'
+      impl_filename = 'module_impl.h'
       interface_filename = 'partial_module_interface.h'
       impl_header = UserInclude.new(impl_filename)
       interface_header = UserInclude.new(interface_filename)
