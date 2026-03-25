@@ -31,10 +31,10 @@ class TestContextExtractor
   end
 
   constructor(
-    :configurator, 
+    :configurator,
     :parsing_parcels,
     :include_factory,
-    :c_extractor_macros,
+    :partializer_config,
     :file_path_utils,
     :file_wrapper,
     :loginator
@@ -46,14 +46,11 @@ class TestContextExtractor
     @source_includes     = {} # List of C files #include'd in a test file as Include objects
     @source_extras       = {} # List of C source files as strings outside of header convention added to test build by TEST_SOURCE_FILE()
     @test_runner_details = {} # Test case lists & Unity runner generator instances
-    @partials_config     = {} # List of single item hash Partials configuration by test name
+    @partials_config     = {} # Hash of module_name => PartializerConfig::Config structs per test file
     @include_paths       = {} # List of additional search paths as strings added to a test build via TEST_INCLUDE_PATH()
     
     # Arrays
     @all_include_paths   = [] # List of all search paths added through individual test files using TEST_INCLUDE_PATH()
-
-    # Aliases
-    @macro_extractor = @c_extractor_macros
 
     @lock = Mutex.new
   end
@@ -66,7 +63,7 @@ class TestContextExtractor
   def collect_simple_context_from_file( content_filepath, source_filepath, *args )
     # Load content_filepath
     @file_wrapper.open( content_filepath, 'r' ) do |input|
-      collect_simple_context(
+      collect_context(
         # Use source_filepath if provided, else use content_filepath
         (source_filepath.nil? ? content_filepath : source_filepath),
         input,
@@ -78,7 +75,7 @@ class TestContextExtractor
   # Reads through IO interface line by line to extract relevant information by context.
   # `*args` is a list of context symbols.
   # `input` must have the interface of IO -- StringIO for testing or File in typical use.
-  def collect_simple_context( filepath, input, *args )
+  def collect_context( filepath, input, *args )
     # Code error check--bad context symbol argument
     args.each do |context|
       msg = "Unrecognized test context for collection :#{context}"
@@ -88,7 +85,7 @@ class TestContextExtractor
     include_paths = []
     source_extras = []
     includes = []
-    partials_config = []
+    partials_config = {}
 
     @parsing_parcels.code_lines( input ) do |line|
       if args.include?( Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
@@ -123,16 +120,13 @@ class TestContextExtractor
       # Go back to beginning of IO object for a full string extraction
       input.rewind()
 
-      # Scan for Partials directive macros
+      # Scan for Partials configuration directive macros
       partials_config = _extract_partials_config( input )
       collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
-
     end  
 
     collect_includes( filepath, partials_config, includes ) if (!includes.empty? or !partials_config.empty?)
   end
-
-
 
   def collect_test_runner_details(test_filepath, input_filepath=nil)
     # Ultimately, we rely on Unity's runner generator that processes file contents as a single string
@@ -220,7 +214,7 @@ class TestContextExtractor
   def lookup_partials_config(filepath)
     val = nil
     @lock.synchronize do
-      val = @partials_config[form_file_key( filepath )] || []
+      val = @partials_config[form_file_key( filepath )] || {}
     end
     return val
   end
@@ -298,17 +292,14 @@ class TestContextExtractor
     # Squeeze out any nil elements
     includes.compact!
 
-    # `partials_config` is a list of single element hashes.
-    # Each hash associates a partial type with module name (no file extension).
-    # Note: This processing can yield duplicate includes, but `ingest_includes()` handles duplicates.
-    partials_config.each do |config|
-      # Switch on partial type
-      _module = config.values.first
-      case config.keys.first
-      when Partials::TEST_PUBLIC, Partials::TEST_PRIVATE
+    # `partials_config` is a hash of module_name => PartializerConfig::Config.
+    partials_config.each do |_module, config|
+      if config.tests.present?
         filename = @file_path_utils.form_partial_implementation_header_filename( _module )
         includes << @include_factory.user_include_from_filepath( filename )
-      when Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE
+      end
+
+      if config.mocks.present?
         filename = @file_path_utils.form_mock_partial_interface_header_filename( _module )
         includes << @include_factory.user_include_from_filepath( filename )
       end
@@ -321,9 +312,15 @@ class TestContextExtractor
   end
 
   def collect_partials_configuration(filepath, partials_config)
-    partials_config.uniq!
     ingest_partials_configuration(filepath, partials_config)
-    debug_log_list( "Partials configurations found", filepath, partials_config )
+
+    debug_lines = partials_config.map do |_module, config|
+      t = config.tests
+      m = config.mocks
+      "#{_module}: tests(types=#{t.types} +#{t.additions} -#{t.subtractions}) " \
+      "mocks(types=#{m.types} +#{m.additions} -#{m.subtractions})"
+    end
+    debug_log_list( "Partials configurations found", filepath, debug_lines )
   end
 
   def _collect_test_runner_details(filepath, test_content, input_content=nil)
@@ -382,44 +379,7 @@ class TestContextExtractor
   end
 
   def _extract_partials_config(input)
-    require 'strscan'
-    require 'partials/partializer_config'
-
-    configs = []
-
-    lines = @macro_extractor.try_extract_calls(
-      StringScanner.new( input.read ),
-      PartializerConfig::MACRO_NAMES
-    )
-
-    lines.each do |line|
-      # Look for #include partials config directives
-      results = line.match(PATTERNS::TEST_PARTIAL_PUBLIC_MODULE)
-      if !results.nil?
-        configs << {Partials::TEST_PUBLIC => results[1]}
-        return configs
-      end
-
-      results = line.match(PATTERNS::TEST_PARTIAL_PRIVATE_MODULE)
-      if !results.nil?
-        configs << {Partials::TEST_PRIVATE => results[1]}
-        return configs
-      end
-
-      results = line.match(PATTERNS::MOCK_PARTIAL_PUBLIC_MODULE)
-      if !results.nil?
-        configs << {Partials::MOCK_PUBLIC => results[1]}
-        return configs
-      end
-
-      results = line.match(PATTERNS::MOCK_PARTIAL_PRIVATE_MODULE)
-      if !results.nil?
-        configs << {Partials::MOCK_PRIVATE => results[1]}
-        return configs
-      end
-    end
-
-    return configs
+    @partializer_config.extract_configs(input)
   end
 
   ##

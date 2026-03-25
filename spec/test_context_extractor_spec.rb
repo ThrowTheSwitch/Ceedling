@@ -11,6 +11,10 @@ require 'ceedling/includes/includes'
 require 'ceedling/includes/include_factory'
 require 'ceedling/parsing_parcels'
 require 'ceedling/exceptions'
+require 'ceedling/c_extractor/c_extractor_code_text'
+require 'ceedling/c_extractor/c_extractor_macros'
+require 'ceedling/partials/partializer_config'
+require 'ceedling/partials/partials'
 
 
 describe TestContextExtractor do
@@ -31,7 +35,11 @@ describe TestContextExtractor do
     ## Concrete injected dependencies
     @parsing_parcels = ParsingParcels.new()
     @include_factory = IncludeFactory.new( {:configurator => @configurator} )
-    @file_path_utils = FilePathUtils.new( {:configurator => @configurator, :file_wrapper => @file_wrapper } ) 
+    @file_path_utils = FilePathUtils.new( {:configurator => @configurator, :file_wrapper => @file_wrapper } )
+
+    code_text          = CExtractorCodeText.new
+    c_extractor_macros = CExtractorMacros.new({ c_extractor_code_text: code_text })
+    partializer_config = PartializerConfig.new({ c_extractor_macros: c_extractor_macros })
 
     # Provide configurations
     mock_prefix = 'mock_'
@@ -54,12 +62,13 @@ describe TestContextExtractor do
 
     @extractor = described_class.new(
       {
-        :configurator => @configurator,
-        :parsing_parcels => @parsing_parcels,
-        :include_factory => @include_factory,
-        :file_path_utils => @file_path_utils,
-        :file_wrapper => @file_wrapper,
-        :loginator => loginator
+        :configurator       => @configurator,
+        :parsing_parcels    => @parsing_parcels,
+        :include_factory    => @include_factory,
+        :partializer_config => partializer_config,
+        :file_path_utils    => @file_path_utils,
+        :file_wrapper       => @file_wrapper,
+        :loginator          => loginator
       }
     )
   end
@@ -112,12 +121,12 @@ describe TestContextExtractor do
     end
   end
 
-  context "#collect_simple_context" do
+  context "#collect_context" do
     it "should raise an execption for unknown symbol argument" do
-      expect{ @extractor.collect_simple_context( "path", StringIO.new(), :bad ) }.to raise_error( CeedlingException )
+      expect{ @extractor.collect_context( "path", StringIO.new(), :bad ) }.to raise_error( CeedlingException )
     end
 
-    # collect_simple_context() + lookup_all_header_includes_list() + lookup_mock_header_includes_list()
+    # collect_context() + lookup_all_header_includes_list() + lookup_mock_header_includes_list()
     it "should extract contents of #include directives" do
       filepath = "path/tests/test_file.c"
       
@@ -137,7 +146,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::INCLUDES )
+      @extractor.collect_context( filepath, input, TestContextExtractor::Context::INCLUDES )
 
       result = @extractor.lookup_all_header_includes_list( filepath )
       expect( result.length ).to eq 5
@@ -160,7 +169,7 @@ describe TestContextExtractor do
       )
     end
 
-    # collect_simple_context() + lookup_all_header_includes_list() + lookup_mock_header_includes_list()
+    # collect_context() + lookup_all_header_includes_list() + lookup_mock_header_includes_list()
     it "should extract contents of partials configurations as #include directives" do
       filepath = "path/tests/test_file_with_partials.c"
       
@@ -177,7 +186,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::PARTIALS_CONFIGURATION )
+      @extractor.collect_context( filepath, input, TestContextExtractor::Context::PARTIALS_CONFIGURATION )
 
       expected_full = [
         UserInclude.new('ceedling_partial_foo_impl.h'),
@@ -198,13 +207,12 @@ describe TestContextExtractor do
       expect( result ).to match_array( expected_mocks )
     end
 
-    # collect_simple_context() + lookup_partials_config()
+    # collect_context() + lookup_partials_config()
     it "should extract contents of partials configurations" do
       filepath = "path/tests/test_file_with_partials.c"
-      
-      # Complex comments tested in `clean_code_line()` test case
+
       file_contents = <<~CONTENTS
-      // Partial confgurations
+      // Partial configurations
       #include TEST_PARTIAL_PUBLIC_MODULE(foo)
       #include TEST_PARTIAL_PUBLIC_MODULE(foobar)
       #include TEST_PARTIAL_PRIVATE_MODULE(baz)
@@ -213,28 +221,40 @@ describe TestContextExtractor do
       #include MOCK_PARTIAL_PRIVATE_MODULE(hardyharhar)
       #include MOCK_PARTIAL_PUBLIC_MODULE(abc)
       #include MOCK_PARTIAL_PUBLIC_MODULE(abc_xyz)
+      TEST_PARTIAL_CONFIG(foo, +add, -internal_helper)
+      MOCK_PARTIAL_CONFIG(foobar, write, -debug_write)
 
       CONTENTS
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::PARTIALS_CONFIGURATION )
+      @extractor.collect_context( filepath, input, TestContextExtractor::Context::PARTIALS_CONFIGURATION )
 
-      expected = [
-        {Partials::TEST_PUBLIC => 'foo'},
-        {Partials::TEST_PUBLIC => 'foobar'},
-        {Partials::TEST_PRIVATE => 'baz'},
-        {Partials::TEST_PRIVATE => 'razmataz'},
-        {Partials::MOCK_PRIVATE => 'foobar'},
-        {Partials::MOCK_PRIVATE => 'hardyharhar'},
-        {Partials::MOCK_PUBLIC => 'abc'},
-        {Partials::MOCK_PUBLIC => 'abc_xyz'},
-      ]
+      result = @extractor.lookup_partials_config( filepath )
 
-      expect( @extractor.lookup_partials_config( filepath ) ).to eq expected
+      expect( result ).to be_a( Hash )
+      expect( result.keys ).to contain_exactly('foo', 'foobar', 'baz', 'razmataz', 'hardyharhar', 'abc', 'abc_xyz')
+
+      # Test-only modules
+      expect( result['foo'].tests.types        ).to eq [Partials::PUBLIC]
+      expect( result['foo'].tests.additions    ).to eq ['add']
+      expect( result['foo'].tests.subtractions ).to eq ['internal_helper']
+      expect( result['baz'].tests.types        ).to eq [Partials::PRIVATE]
+      expect( result['razmataz'].tests.types   ).to eq [Partials::PRIVATE]
+
+      # Module with both test and mock config
+      expect( result['foobar'].tests.types        ).to eq [Partials::PUBLIC]
+      expect( result['foobar'].mocks.types        ).to eq [Partials::PRIVATE]
+      expect( result['foobar'].mocks.additions    ).to eq ['write']
+      expect( result['foobar'].mocks.subtractions ).to eq ['debug_write']
+
+      # Mock-only modules
+      expect( result['hardyharhar'].mocks.types ).to eq [Partials::PRIVATE]
+      expect( result['abc'].mocks.types         ).to eq [Partials::PUBLIC]
+      expect( result['abc_xyz'].mocks.types     ).to eq [Partials::PUBLIC]
     end
 
-    # collect_simple_context() + lookup_build_directive_sources_list()
+    # collect_context() + lookup_build_directive_sources_list()
     it "should extract extra source files by build directive macros" do
       filepath = "path/tests/testfile.c"
       
@@ -252,7 +272,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES )
+      @extractor.collect_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES )
 
       expected = [
         'a.c',
@@ -264,7 +284,7 @@ describe TestContextExtractor do
       expect( @extractor.lookup_build_directive_sources_list( filepath ) ).to eq expected
     end
 
-    # collect_simple_context() + lookup_include_paths_list()
+    # collect_context() + lookup_include_paths_list()
     it "should extract extra header search paths by build directive macros" do
       filepath = "path/tests/testfile.c"
       
@@ -282,7 +302,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
+      @extractor.collect_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
 
       expected = [
         'a',
@@ -294,7 +314,7 @@ describe TestContextExtractor do
       expect( @extractor.lookup_include_paths_list( filepath ) ).to eq expected
     end
 
-    # collect_simple_context() + lookup_all_include_paths()
+    # collect_context() + lookup_all_include_paths()
     it "should extract extra header search paths for multiple files" do
       # First File
       filepath = "path/tests/testfile.c"
@@ -307,7 +327,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
+      @extractor.collect_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
 
       # Second File
       filepath = "anotherfile.c"
@@ -321,7 +341,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
+      @extractor.collect_context( filepath, input, TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS )
 
       expected = [
         'this/path',
@@ -333,7 +353,7 @@ describe TestContextExtractor do
       expect( @extractor.lookup_all_include_paths() ).to eq expected
     end
 
-    # collect_simple_context() + lookup_test_cases()
+    # collect_context() + lookup_test_cases()
     it "should extract test case names with line numbers" do
       filepath = "path/tests/testfile.c"
       
@@ -368,7 +388,7 @@ describe TestContextExtractor do
 
       input = StringIO.new( file_contents )
 
-      @extractor.collect_simple_context( filepath, input, TestContextExtractor::Context::TEST_RUNNER_DETAILS )
+      @extractor.collect_context( filepath, input, TestContextExtractor::Context::TEST_RUNNER_DETAILS )
 
       expected = [
         {:line_number =>  2, :test => 'test_this_function'},

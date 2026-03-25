@@ -9,11 +9,13 @@
 require 'spec_helper'
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partializer'
+require 'ceedling/partials/partials'
 require 'ostruct'
 
 describe Partializer do
   before(:each) do
     @partializer_helper = double("PartializerHelper")
+    @file_finder        = double("FileFinder")
     @c_extractor        = double("CExtractor")
     @file_path_utils    = double("FilePathUtils")
     @loginator          = double("Loginator")
@@ -21,6 +23,7 @@ describe Partializer do
     @partializer = described_class.new(
       {
         :partializer_helper => @partializer_helper,
+        :file_finder        => @file_finder,
         :c_extractor        => @c_extractor,
         :file_path_utils    => @file_path_utils,
         :loginator          => @loginator
@@ -29,50 +32,97 @@ describe Partializer do
   end
 
   ###
-  ### assemble_configs()
+  ### populate_filepaths()
   ###
 
-  context "#assemble_configs" do
-    it "returns empty hash when test_context_configs is empty" do
-      test_context_configs = []
-      
-      result = @partializer.assemble_configs(test_context_configs: test_context_configs)
-      
+  context "#populate_filepaths" do
+    def make_tests(present:)
+      OpenStruct.new(present?: present)
+    end
+
+    def make_mocks(present:, types: [])
+      OpenStruct.new(present?: present, types: types)
+    end
+
+    def make_config(tests:, mocks:)
+      OpenStruct.new(
+        tests:  tests,
+        mocks:  mocks,
+        header: OpenStruct.new(filepath: nil),
+        source: OpenStruct.new(filepath: nil)
+      )
+    end
+
+    it "returns the configs hash unchanged when empty" do
+      result = @partializer.populate_filepaths({})
       expect(result).to eq({})
     end
 
-    it "delegates config assembly to helper methods in correct sequence" do
-      test_context_configs = [
-        { Partials::TEST_PUBLIC => 'module1' },
-        { Partials::MOCK_PRIVATE => 'module2' }
-      ]
-      
-      mock_configs = {
-        'module1' => OpenStruct.new(module: 'module1', types: [Partials::TEST_PUBLIC]),
-        'module2' => OpenStruct.new(module: 'module2', types: [Partials::MOCK_PRIVATE])
+    it "populates header and source for a test config" do
+      configs = { 'mod' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
+
+      @partializer.populate_filepaths(configs)
+
+      expect(configs['mod'].header.filepath).to eq('mod.h')
+      expect(configs['mod'].source.filepath).to eq('mod.c')
+    end
+
+    it "populates header only for mock-public config" do
+      configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, types: [Partials::PUBLIC])) }
+
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      expect(@file_finder).not_to receive(:find_source_file)
+
+      @partializer.populate_filepaths(configs)
+
+      expect(configs['mod'].header.filepath).to eq('mod.h')
+      expect(configs['mod'].source.filepath).to be_nil
+    end
+
+    it "populates header and source for mock-private config" do
+      configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, types: [Partials::PRIVATE])) }
+
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
+
+      @partializer.populate_filepaths(configs)
+
+      expect(configs['mod'].header.filepath).to eq('mod.h')
+      expect(configs['mod'].source.filepath).to eq('mod.c')
+    end
+
+    it "populates header and source when mocks.types is empty (all types)" do
+      configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, types: [])) }
+
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
+
+      @partializer.populate_filepaths(configs)
+
+      expect(configs['mod'].header.filepath).to eq('mod.h')
+      expect(configs['mod'].source.filepath).to eq('mod.c')
+    end
+
+    it "handles multiple modules independently" do
+      configs = {
+        'a' => make_config(tests: make_tests(present: true),  mocks: make_mocks(present: false)),
+        'b' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, types: [Partials::PUBLIC]))
       }
-      
-      # Set up expectations for helper method calls
-      expect(@partializer_helper).to receive(:manufacture_partial_configs)
-        .with(test_context_configs)
-        .and_return(mock_configs)
-        .ordered
-      
-      expect(@partializer_helper).to receive(:config_collect_partial_types)
-        .with(test_context_configs, mock_configs)
-        .ordered
-      
-      expect(@partializer_helper).to receive(:validate_partial_configs)
-        .with(mock_configs)
-        .ordered
-      
-      expect(@partializer_helper).to receive(:config_populate_filepaths)
-        .with(mock_configs)
-        .ordered
-      
-      result = @partializer.assemble_configs(test_context_configs: test_context_configs)
-      
-      expect(result).to eq(mock_configs)
+
+      allow(@file_finder).to receive(:find_header_file).with('a', :ignore).and_return('a.h')
+      allow(@file_finder).to receive(:find_source_file).with('a', :ignore).and_return('a.c')
+      allow(@file_finder).to receive(:find_header_file).with('b', :ignore).and_return('b.h')
+      expect(@file_finder).not_to receive(:find_source_file).with('b', :ignore)
+
+      @partializer.populate_filepaths(configs)
+
+      expect(configs['a'].header.filepath).to eq('a.h')
+      expect(configs['a'].source.filepath).to eq('a.c')
+      expect(configs['b'].header.filepath).to eq('b.h')
+      expect(configs['b'].source.filepath).to be_nil
     end
   end
 
@@ -902,7 +952,7 @@ describe Partializer do
       filtered_impl = [{ name: 'public_func', type: :impl }]
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :public, :impl)
+        .with(mock_funcs, Partials::PUBLIC, :impl)
         .and_return(filtered_impl)
 
       impl, interface = @partializer.reconstruct_functions(
@@ -912,7 +962,7 @@ describe Partializer do
 
       expect(impl).to eq(filtered_impl)
       expect(interface).to eq([])
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :impl)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :impl)
     end
 
     it "extracts private functions for TEST_PRIVATE type" do
@@ -926,7 +976,7 @@ describe Partializer do
       filtered_impl = [{ name: 'private_func', type: :impl }]
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :private, :impl)
+        .with(mock_funcs, Partials::PRIVATE, :impl)
         .and_return(filtered_impl)
 
       impl, interface = @partializer.reconstruct_functions(
@@ -936,7 +986,7 @@ describe Partializer do
 
       expect(impl).to eq(filtered_impl)
       expect(interface).to eq([])
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :private, :impl)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :impl)
     end
 
     it "extracts public interface for MOCK_PUBLIC type" do
@@ -950,7 +1000,7 @@ describe Partializer do
       filtered_interface = [{ name: 'public_func', type: :interface }]
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :public, :interface)
+        .with(mock_funcs, Partials::PUBLIC, :interface)
         .and_return(filtered_interface)
 
       impl, interface = @partializer.reconstruct_functions(
@@ -960,7 +1010,7 @@ describe Partializer do
 
       expect(impl).to eq([])
       expect(interface).to eq(filtered_interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :interface)
     end
 
     it "extracts private interface for MOCK_PRIVATE type" do
@@ -974,7 +1024,7 @@ describe Partializer do
       filtered_interface = [{ name: 'private_func', type: :interface }]
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :private, :interface)
+        .with(mock_funcs, Partials::PRIVATE, :interface)
         .and_return(filtered_interface)
 
       impl, interface = @partializer.reconstruct_functions(
@@ -984,7 +1034,7 @@ describe Partializer do
 
       expect(impl).to eq([])
       expect(interface).to eq(filtered_interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :private, :interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :interface)
     end
 
     it "extracts both public and private functions for multiple TEST types" do
@@ -999,11 +1049,11 @@ describe Partializer do
       filtered_private_impl = [{ name: 'private_func', type: :impl }]
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :public, :impl)
+        .with(mock_funcs, Partials::PUBLIC, :impl)
         .and_return(filtered_public_impl)
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :private, :impl)
+        .with(mock_funcs, Partials::PRIVATE, :impl)
         .and_return(filtered_private_impl)
 
       impl, interface = @partializer.reconstruct_functions(
@@ -1013,8 +1063,8 @@ describe Partializer do
 
       expect(impl).to eq(filtered_public_impl + filtered_private_impl)
       expect(interface).to eq([])
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :impl)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :private, :impl)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :impl)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :impl)
     end
 
     it "extracts both public and private interfaces for multiple MOCK types" do
@@ -1029,11 +1079,11 @@ describe Partializer do
       filtered_private_interface = [{ name: 'private_func', type: :interface }]
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :public, :interface)
+        .with(mock_funcs, Partials::PUBLIC, :interface)
         .and_return(filtered_public_interface)
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :private, :interface)
+        .with(mock_funcs, Partials::PRIVATE, :interface)
         .and_return(filtered_private_interface)
 
       impl, interface = @partializer.reconstruct_functions(
@@ -1043,8 +1093,8 @@ describe Partializer do
 
       expect(impl).to eq([])
       expect(interface).to eq(filtered_public_interface + filtered_private_interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :private, :interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :interface)
     end
 
     it "extracts mixed TEST and MOCK types" do
@@ -1059,11 +1109,11 @@ describe Partializer do
       filtered_private_interface = [{ name: 'private_func', type: :interface }]
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :public, :impl)
+        .with(mock_funcs, Partials::PUBLIC, :impl)
         .and_return(filtered_public_impl)
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, :private, :interface)
+        .with(mock_funcs, Partials::PRIVATE, :interface)
         .and_return(filtered_private_interface)
 
       impl, interface = @partializer.reconstruct_functions(
@@ -1073,8 +1123,8 @@ describe Partializer do
 
       expect(impl).to eq(filtered_public_impl)
       expect(interface).to eq(filtered_private_interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :public, :impl)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, :private, :interface)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :impl)
+      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :interface)
     end
 
     it "handles empty types in config" do

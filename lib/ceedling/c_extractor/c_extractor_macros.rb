@@ -56,6 +56,26 @@ class CExtractorMacros
     return results
   end
 
+  # Parse a single macro call string (as returned by `try_extract_calls`) into its
+  # macro name and an array of individual parameter strings.
+  #
+  # Top-level commas (not nested inside `()`, `[]`, `{}`, or string literals) are
+  # treated as argument separators. Each returned parameter is trimmed of leading
+  # and trailing whitespace.
+  #
+  # @param call_str [String] a cleaned macro call string, e.g. "FOO(a, b, [c, d])"
+  # @return [Array(String, Array<String>)] two-element array of [macro_name, params]
+  #   where macro_name is nil and params is [] if the string is malformed
+  def parse_call(call_str)
+    scanner = StringScanner.new( call_str )
+
+    # Extract macro name — everything before the opening '('
+    macro_name = scanner.scan( /[^(]+/ )&.strip
+    return [nil, []] if macro_name.nil? || !scanner.scan( /\(/ )
+
+    return [macro_name, _split_params(scanner)]
+  end
+
   ### Private ###
 
   private
@@ -109,6 +129,54 @@ class CExtractorMacros
 
     return nil  # unbalanced — malformed input
   end
+
+  # Split parameter text of a macro call whose opening '(' has already been consumed.
+  # Splits on top-level commas only — commas inside `()`, `[]`, `{}`, or string
+  # literals are not treated as separators. Returns an array of trimmed parameters.
+  def _split_params(scanner)
+    params    = []
+    buffer    = +''
+    d_paren   = 0
+    d_bracket = 0
+    d_brace   = 0
+
+    until scanner.eos?
+      ch = scanner.peek(1)
+
+      # String/char literals are captured verbatim — commas and delimiters inside
+      # must not affect depth tracking or param splitting
+      if ch == '"' || ch == "'"
+        before = scanner.pos
+        @c_extractor_code_text.skip_c_string( scanner, ch )
+        buffer << scanner.string[before...scanner.pos]
+
+      elsif scanner.scan( /\(/ ) ; d_paren   += 1 ; buffer << '('
+      elsif scanner.scan( /\[/ ) ; d_bracket += 1 ; buffer << '['
+      elsif scanner.scan( /\{/ ) ; d_brace   += 1 ; buffer << '{'
+      elsif scanner.scan( /\]/ ) ; d_bracket -= 1 ; buffer << ']'
+      elsif scanner.scan( /\}/ ) ; d_brace   -= 1 ; buffer << '}'
+
+      elsif scanner.scan( /\)/ )
+        if d_paren == 0
+          # Closing outer paren — end of argument list
+          params << buffer.strip unless buffer.strip.empty?
+          break
+        end
+        d_paren -= 1
+        buffer << ')'
+
+      elsif d_paren == 0 && d_bracket == 0 && d_brace == 0 && scanner.scan( /,/ )
+        params << buffer.strip
+        buffer = +''
+
+      else
+        buffer << scanner.getch
+      end
+    end
+
+    return params
+  end
+
 
   # Collapse any run of whitespace (spaces, tabs, newlines) to a single space
   # and strip leading/trailing whitespace.

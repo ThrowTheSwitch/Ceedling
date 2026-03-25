@@ -9,6 +9,7 @@
 require 'spec_helper'
 require 'ostruct'
 require 'ceedling/constants'
+require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_utils'
 
 describe PartializerUtils do
@@ -27,94 +28,94 @@ describe PartializerUtils do
   context "#matches_visibility?" do
     context ":private visibility" do
       it "returns false when decorators array is empty" do
-        result = @utils.matches_visibility?([], :private)
+        result = @utils.matches_visibility?([], Partials::PRIVATE)
         expect(result).to be false
       end
 
       it "returns true when decorators contain 'static'" do
-        result = @utils.matches_visibility?(['static'], :private)
+        result = @utils.matches_visibility?(['static'], Partials::PRIVATE)
         expect(result).to be true
       end
 
       it "returns true when decorators contain 'inline'" do
-        result = @utils.matches_visibility?(['inline'], :private)
+        result = @utils.matches_visibility?(['inline'], Partials::PRIVATE)
         expect(result).to be true
       end
 
       it "returns true when decorators contain '__inline'" do
-        result = @utils.matches_visibility?(['__inline'], :private)
+        result = @utils.matches_visibility?(['__inline'], Partials::PRIVATE)
         expect(result).to be true
       end
 
       it "returns true when decorators contain '__inline__'" do
-        result = @utils.matches_visibility?(['__inline__'], :private)
+        result = @utils.matches_visibility?(['__inline__'], Partials::PRIVATE)
         expect(result).to be true
       end
 
       it "returns true when decorators contain multiple private keywords" do
-        result = @utils.matches_visibility?(['static', 'inline'], :private)
+        result = @utils.matches_visibility?(['static', 'inline'], Partials::PRIVATE)
         expect(result).to be true
       end
 
       it "returns false when decorators contain only 'extern'" do
-        result = @utils.matches_visibility?(['extern'], :private)
+        result = @utils.matches_visibility?(['extern'], Partials::PRIVATE)
         expect(result).to be false
       end
 
       it "returns false when decorators contain only 'const'" do
-        result = @utils.matches_visibility?(['const'], :private)
+        result = @utils.matches_visibility?(['const'], Partials::PRIVATE)
         expect(result).to be false
       end
 
       it "returns true when mixed with non-private decorators" do
-        result = @utils.matches_visibility?(['extern', 'static', 'const'], :private)
+        result = @utils.matches_visibility?(['extern', 'static', 'const'], Partials::PRIVATE)
         expect(result).to be true
       end
     end
 
     context ":public visibility" do
       it "returns true when decorators array is empty" do
-        result = @utils.matches_visibility?([], :public)
+        result = @utils.matches_visibility?([], Partials::PUBLIC)
         expect(result).to be true
       end
 
       it "returns false when decorators contain 'static'" do
-        result = @utils.matches_visibility?(['static'], :public)
+        result = @utils.matches_visibility?(['static'], Partials::PUBLIC)
         expect(result).to be false
       end
 
       it "returns false when decorators contain 'inline'" do
-        result = @utils.matches_visibility?(['inline'], :public)
+        result = @utils.matches_visibility?(['inline'], Partials::PUBLIC)
         expect(result).to be false
       end
 
       it "returns false when decorators contain '__inline'" do
-        result = @utils.matches_visibility?(['__inline'], :public)
+        result = @utils.matches_visibility?(['__inline'], Partials::PUBLIC)
         expect(result).to be false
       end
 
       it "returns false when decorators contain '__inline__'" do
-        result = @utils.matches_visibility?(['__inline__'], :public)
+        result = @utils.matches_visibility?(['__inline__'], Partials::PUBLIC)
         expect(result).to be false
       end
 
       it "returns false when decorators contain multiple private keywords" do
-        result = @utils.matches_visibility?(['static', 'inline'], :public)
+        result = @utils.matches_visibility?(['static', 'inline'], Partials::PUBLIC)
         expect(result).to be false
       end
 
       it "returns true when decorators contain only 'extern'" do
-        result = @utils.matches_visibility?(['extern'], :public)
+        result = @utils.matches_visibility?(['extern'], Partials::PUBLIC)
         expect(result).to be true
       end
 
       it "returns true when decorators contain only 'const'" do
-        result = @utils.matches_visibility?(['const'], :public)
+        result = @utils.matches_visibility?(['const'], Partials::PUBLIC)
         expect(result).to be true
       end
 
       it "returns false when mixed with private decorators" do
-        result = @utils.matches_visibility?(['extern', 'static', 'const'], :public)
+        result = @utils.matches_visibility?(['extern', 'static', 'const'], Partials::PUBLIC)
         expect(result).to be false
       end
     end

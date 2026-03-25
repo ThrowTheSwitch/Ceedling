@@ -172,7 +172,7 @@ test_context_extractor:
     - configurator
     - file_wrapper
     - include_factory
-    - c_extractor_macros
+    - partializer_config
     - file_path_utils
     - loginator
     - parsing_parcels
@@ -339,6 +339,10 @@ c_extractor:
     - c_extractor_declarations
     - c_extractor_functions
 
+partializer_config:
+  compose:
+    - c_extractor_macros
+
 partializer_utils:
   compose:
     - preprocessinator_code_finder
@@ -347,7 +351,6 @@ partializer_utils:
 partializer_helper:
   compose:
     - partializer_utils
-    - file_finder
     - c_extractor_declarations
     - file_path_utils
     - loginator
@@ -355,6 +358,7 @@ partializer_helper:
 partializer:
   compose:
     - partializer_helper
+    - file_finder
     - c_extractor
     - file_path_utils
     - loginator

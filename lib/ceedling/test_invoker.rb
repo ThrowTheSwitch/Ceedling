@@ -122,6 +122,11 @@ class TestInvoker
             msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
             @loginator.log( msg )
 
+            if @configurator.project_use_partials
+              msg = @reportinator.generate_progress( "Parsing #{filename} for Partials directive macros" )
+              @loginator.log( msg )
+              contexts << TestContextExtractor::Context::PARTIALS_CONFIGURATION
+            end
           else
             # TestContextExtractor::Context::INCLUDES (see above)
             msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #includes" )
@@ -782,20 +787,6 @@ class TestInvoker
           @testables.each do |_, details|
             @helper.validate_build_directive_source_files( test: name, filepath: details[:filepath] )
           end
-
-          if @configurator.project_use_partials
-            msg = @reportinator.generate_progress( "Parsing #{filename} for Partials directive macros" )
-            @loginator.log( msg )
-
-            # Collect Partials and configuration from directive macros from reconstructed preprocessed test file.
-            # Macros can be within #ifdef's--this retrieves them.
-            @context_extractor.collect_simple_context_from_file(
-              _filepath,
-              filepath,  # Actual test filepath
-              TestContextExtractor::Context::PARTIALS_CONFIGURATION
-            )
-          end
-
         end
       } if @configurator.project_use_test_preprocessor_tests
 

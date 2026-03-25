@@ -225,7 +225,7 @@ class TestInvokerHelper
 
   def assemble_partials_config(filepath:)
     configs = @test_context_extractor.lookup_partials_config( filepath )
-    return @partializer.assemble_configs( test_context_configs: configs )
+    return @partializer.populate_filepaths( configs )
   end
 
   def collect_test_framework_sources(mocks)

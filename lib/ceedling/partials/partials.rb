@@ -8,6 +8,9 @@
 
 module Partials
   # Constants
+  PUBLIC   = :public   unless const_defined?(:PUBLIC)
+  PRIVATE  = :private  unless const_defined?(:PRIVATE)
+
   TEST_PUBLIC  = :test_public   unless const_defined?(:TEST_PUBLIC)
   TEST_PRIVATE = :test_private  unless const_defined?(:TEST_PRIVATE)
   MOCK_PUBLIC  = :mock_public   unless const_defined?(:MOCK_PUBLIC)
@@ -55,10 +58,6 @@ module Partials
     def initialize(name: nil, signature: nil, code_block: nil, source_filepath: nil, line_num: nil)
       super
     end
-  end
-
-  def self.manufacture_config(module_name:)
-    return Config.new(module: module_name)
   end
 
   def self.manufacture_function_declaration(line_num: nil, source_filepath: nil, name:, signature:)

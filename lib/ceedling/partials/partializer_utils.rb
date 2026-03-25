@@ -11,6 +11,8 @@ require 'ceedling/c_extractor/c_extractor_constants'
 
 class PartializerUtils
 
+  include Partials
+
   constructor :preprocessinator_code_finder, :loginator
 
   def setup()
@@ -21,9 +23,9 @@ class PartializerUtils
   # Check if function decorators match the desired visibility
   def matches_visibility?(decorators, visibility)
     case visibility
-    when :public
+    when PUBLIC
       return !is_function_private?(decorators)
-    when :private
+    when PRIVATE
       return is_function_private?(decorators)
     else
       PartializerRuntime.raise_on_option(visibility)

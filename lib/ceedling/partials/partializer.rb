@@ -15,33 +15,30 @@ require 'ceedling/constants'
 
 class Partializer
 
-  constructor :partializer_helper, :c_extractor, :file_path_utils, :loginator
+  include Partials
+
+  constructor :partializer_helper, :file_finder, :c_extractor, :file_path_utils, :loginator
 
   def setup()
     # Alias
     @helper = @partializer_helper
   end
 
-  def assemble_configs(test_context_configs:)
-    # A list of single entry hashes associating a module name with a Partial type
-    return {} if test_context_configs.empty?
+  def populate_filepaths(configs)
+    configs.each do |_module, config|
+      # Every partial involves processing header files
+      config.header.filepath = @file_finder.find_header_file(_module, :ignore)
 
-    # Delegate config creation to helper
-    configs = @helper.manufacture_partial_configs(test_context_configs)
-    
-    # Delegate type collection and processing to helper
-    @helper.config_collect_partial_types(test_context_configs, configs)
-    
-    # Delegate validation to helper
-    @helper.validate_partial_configs(configs)
-    
-    # Delegate file finding to helper
-    @helper.config_populate_filepaths(configs)
-    
+      # Source file not needed only when mocking public functions exclusively
+      unless !config.tests.present? && config.mocks.types == [PUBLIC]
+        config.source.filepath = @file_finder.find_source_file(_module, :ignore)
+      end
+    end
+
     return configs
   end
 
-  # Ensure no original headers for the module being paritalized
+  # Ensure no original headers for the module being partialized
   def sanitize_includes(name:, includes:)    
     _includes = remove_matching_includes(includes: includes, modules: [name])
     Includes.sanitize!(_includes)
@@ -74,7 +71,7 @@ class Partializer
     partials.each do |_module, config|
       # Remap mockable interface headers that will be injected into generated partial implementation
       if includes.any? { |include| include.filename.ext().downcase() == _module.downcase() }
-        if config.types.intersect?([Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE])
+        if config.mocks.types.intersect?([PUBLIC, PRIVATE])
           # Insert mockable interface header from remapping of module name
           _includes << UserInclude.new(
             @file_path_utils.form_partial_interface_header_filename(_module)
@@ -180,21 +177,16 @@ class Partializer
     impl = []
     interface = []
 
-    config.types.each do |type|
-      case type
-      when Partials::TEST_PUBLIC
-        impl += @helper.filter_and_transform_funcs(contents.function_definitions, :public, :impl)
-      when Partials::TEST_PRIVATE
-        impl += @helper.filter_and_transform_funcs(contents.function_definitions, :private, :impl)
-      when Partials::MOCK_PUBLIC
-        interface += @helper.filter_and_transform_funcs(contents.function_definitions, :public, :interface)
-      when Partials::MOCK_PRIVATE
-        interface += @helper.filter_and_transform_funcs(contents.function_definitions, :private, :interface)
-      else
-        PartializerRuntime.raise_on_option(type)
-      end
+    config.tests.types.each do |type|
+      impl += @helper.filter_and_transform_funcs(contents.function_definitions, type, :impl)
     end
 
+    config.mocks.types.each do |type|
+      interface += @helper.filter_and_transform_funcs(contents.function_definitions, type, :interface)
+    end
+    
+    # PartializerRuntime.raise_on_option(type)
+ 
     return impl, interface
   end
 

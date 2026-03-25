@@ -172,4 +172,58 @@ describe CExtractorMacros do
 
   end
 
+  context "#parse_call" do
+
+    def parse(str)
+      @macros.parse_call(str)
+    end
+
+    it "returns macro name and single param" do
+      expect( parse('FOO(bar)') ).to eq ['FOO', ['bar']]
+    end
+
+    it "returns macro name and multiple comma-separated params" do
+      expect( parse('FOO(a, b, c)') ).to eq ['FOO', ['a', 'b', 'c']]
+    end
+
+    it "returns macro name and empty params array when no arguments" do
+      expect( parse('FOO()') ).to eq ['FOO', []]
+    end
+
+    it "trims leading and trailing whitespace from each param" do
+      expect( parse('FOO(  a  ,  b  )') ).to eq ['FOO', ['a', 'b']]
+    end
+
+    it "treats nested parens as a single param unit — inner comma is not a separator" do
+      expect( parse('FOO(func(x, y), z)') ).to eq ['FOO', ['func(x, y)', 'z']]
+    end
+
+    it "treats square brackets as a single param unit — inner comma is not a separator" do
+      expect( parse('FOO(calc, [add, subtract])') ).to eq ['FOO', ['calc', '[add, subtract]']]
+    end
+
+    it "treats curly braces as a single param unit — inner comma is not a separator" do
+      expect( parse('FOO(name, {a, b})') ).to eq ['FOO', ['name', '{a, b}']]
+    end
+
+    it "treats a string literal as a single param unit — inner comma is not a separator" do
+      expect( parse('FOO("hello, world")') ).to eq ['FOO', ['"hello, world"']]
+    end
+
+    it "handles a mix of string literals, brackets, and nested parens" do
+      expect( parse('TEST_PARTIAL_CONFIG(calculator, test_public, [add, subtract])') ).to eq [
+        'TEST_PARTIAL_CONFIG', ['calculator', 'test_public', '[add, subtract]']
+      ]
+    end
+
+    it "returns [nil, []] for malformed input with no opening paren" do
+      expect( parse('FOO_no_parens') ).to eq [nil, []]
+    end
+
+    it "returns [nil, []] for empty input" do
+      expect( parse('') ).to eq [nil, []]
+    end
+
+  end
+
 end
