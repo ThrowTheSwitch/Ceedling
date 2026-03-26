@@ -89,6 +89,11 @@ class Includes
     includes.select { |include| include.is_a?(UserInclude) }
   end
 
+  # Class method to check for a filename in the collection
+  def self.contains?(includes, filename)
+    includes.any? { |include| include.filename == filename }
+  end
+
   # Class method for non-mutating sanitize
   #
   # @param includes [Array<Include>] List of includes to sanitize

@@ -7,25 +7,28 @@
 
 require 'ceedling/exceptions'
 require 'ceedling/partials/partials'
+require 'ceedling/includes/includes'
 
 class TestInvokerHelper
 
-  constructor :configurator,
-              :loginator,
-              :reportinator,
-              :batchinator,
-              :task_invoker,
-              :test_context_extractor,
-              :include_pathinator,
-              :preprocessinator,
-              :defineinator,
-              :flaginator,
-              :file_finder,
-              :file_path_utils,
-              :file_wrapper,
-              :partializer,
-              :generator,
-              :test_runner_manager
+  constructor(
+    :configurator,
+    :loginator,
+    :reportinator,
+    :batchinator,
+    :task_invoker,
+    :test_context_extractor,
+    :include_pathinator,
+    :preprocessinator,
+    :defineinator,
+    :flaginator,
+    :file_finder,
+    :file_path_utils,
+    :file_wrapper,
+    :partializer,
+    :generator,
+    :test_runner_manager
+  )
 
   def setup()
   end
@@ -100,10 +103,32 @@ class TestInvokerHelper
     end
   end
 
-  def validate_mocks_in_use(test:, mocks:)
+  def validate_mocks_in_use(filename:, mocks:)
     if !@configurator.project_use_mocks and !mocks.empty?
       _mocks = mocks.map { |include| include.filename }
-      msg = "Your project is not configured for mocking, but test file '#{test}' is referencing [#{_mocks.join(', ')}]"
+      # Redefine _mocks as a single items versus multiple entry string
+      if _mocks.length > 1
+        _mocks = "[#{_mocks.join(', ')}]"
+      else
+        _mocks = _mocks[0]
+      end
+      msg = "Your project is not configured for mocking, but #{filename} #includes #{_mocks}"
+      raise CeedlingException.new( msg )
+    end
+  end
+
+  def validate_partials_in_use(filename:, partials_in_use:, includes:)
+    partials_header_in_use = Includes.contains?( includes, PARTIALS_HEADER_FILENAME )
+
+    # If a test has Partials configuration and/or #includes the Partials header file but Partials aren't enabled, complain about it
+    if (partials_in_use || partials_header_in_use) && !@configurator.project_use_partials
+      msg = "Your project is not configured for Partials, but #{filename} is attempting to use Partial features"
+      raise CeedlingException.new( msg )
+    end
+
+    # If a test has Partials configuration but does not include the Partials header file, complain about it
+    if partials_in_use && !partials_header_in_use
+      msg = "Your test file #{filename} is attempting to use Partial features without #including #{PARTIALS_HEADER_FILENAME}"
       raise CeedlingException.new( msg )
     end
   end

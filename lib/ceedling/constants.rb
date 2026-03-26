@@ -81,11 +81,6 @@ class PATTERNS
 
   TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
   TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
-
-  TEST_PARTIAL_PUBLIC_MODULE  = /#\s*include\s+TEST_PARTIAL_PUBLIC_MODULE\s*\(\s*(.+)\s*\)/
-  TEST_PARTIAL_PRIVATE_MODULE = /#\s*include\s+TEST_PARTIAL_PRIVATE_MODULE\s*\(\s*(.+)\s*\)/
-  MOCK_PARTIAL_PUBLIC_MODULE  = /#\s*include\s+MOCK_PARTIAL_PUBLIC_MODULE\s*\(\s*(.+)\s*\)/
-  MOCK_PARTIAL_PRIVATE_MODULE = /#\s*include\s+MOCK_PARTIAL_PRIVATE_MODULE\s*\(\s*(.+)\s*\)/
 end
 
 GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
@@ -132,7 +127,8 @@ DEFAULT_CEEDLING_LOGFILE = 'ceedling.log'
 
 BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
 
-PARTIALS_HEADER_FILEPATH = 'partials/partials.h'
+PARTIALS_HEADER_FILENAME = 'partials.h'
+PARTIALS_HEADER_FILEPATH = File.join('partials', PARTIALS_HEADER_FILENAME)
 PARTIAL_FILENAME_PREFIX = 'ceedling_partial_'
 
 INPUT_CONFIGURATION_CACHE_FILE = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump

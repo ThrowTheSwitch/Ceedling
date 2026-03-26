@@ -122,11 +122,11 @@ class TestInvoker
             msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
             @loginator.log( msg )
 
-            if @configurator.project_use_partials
-              msg = @reportinator.generate_progress( "Parsing #{filename} for Partials directive macros" )
-              @loginator.log( msg )
-              contexts << TestContextExtractor::Context::PARTIALS_CONFIGURATION
-            end
+            # Always do this check.
+            # We help out the user by later checking for Partials usage without Partials configuration
+            msg = @reportinator.generate_progress( "Parsing #{filename} for Partials directive macros" )
+            @loginator.log( msg )
+            contexts << TestContextExtractor::Context::PARTIALS_CONFIGURATION
           else
             # TestContextExtractor::Context::INCLUDES (see above)
             msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #includes" )
@@ -143,6 +143,19 @@ class TestInvoker
 
           # Collect test context using text scanning (no preprocessing involved here)
           @context_extractor.collect_simple_context_from_file( filepath, nil, *contexts )
+
+          # Validate mocks in use
+          @helper.validate_mocks_in_use(
+            filename: filename,
+            mocks: @context_extractor.lookup_mock_header_includes_list( filepath )
+          )
+
+          # Validate Partials in use
+          @helper.validate_partials_in_use(
+            filename: filename,
+            partials_in_use: !(@context_extractor.lookup_partials_config( filepath )).empty?,
+            includes: @context_extractor.lookup_all_header_includes_list( filepath )
+          )
         end
 
         # Validate paths via TEST_INCLUDE_PATH() & augment header file collection from the same
@@ -371,9 +384,6 @@ class TestInvoker
           # Mocks
           mocks = {}
           _mocks = @context_extractor.lookup_mock_header_includes_list( filepath )
-
-          # Validate mocks in use
-          @helper.validate_mocks_in_use( test: test, mocks: _mocks )
 
           _mocks.each do |include|
             name = File.basename(include.filename).ext()
