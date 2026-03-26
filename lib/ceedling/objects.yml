@@ -255,6 +255,7 @@ generator_partials:
   compose:
     - file_path_utils
     - file_wrapper
+    - loginator
 
 batchinator:
   compose:

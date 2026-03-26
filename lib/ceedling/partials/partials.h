@@ -20,8 +20,8 @@
 #define MOCK_PARTIAL_PRIVATE_MODULE(module) MOCK_PARTIAL_PUBLIC_MODULE(module) // Deduplicate macro definition
 
 // Partials directive macros needing configuration
-#define TEST_PARTIAL_MODULE(file) TEST_PARTIAL_PUBLIC_MODULE(module) // Deduplicate macro definition
-#define MOCK_PARTIAL_MODULE(file) MOCK_PARTIAL_PUBLIC_MODULE(module) // Deduplicate macro definition
+#define TEST_PARTIAL_MODULE(module) TEST_PARTIAL_PUBLIC_MODULE(module) // Deduplicate macro definition
+#define MOCK_PARTIAL_MODULE(module) MOCK_PARTIAL_PUBLIC_MODULE(module) // Deduplicate macro definition
 
 // Partials configuration macros
 // The parameter construction ensures at least two arguments

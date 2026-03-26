@@ -170,6 +170,105 @@ describe PartializerHelper do
     end
   end
 
+  context "#find_and_transform_func" do
+    before(:each) do
+      @prim_func = OpenStruct.new(name: 'primary_func', signature_stripped: 'int primary_func(void)')
+      @sec_func  = OpenStruct.new(name: 'secondary_func', signature_stripped: 'void secondary_func(void)')
+      @transformed = double('transformed')
+    end
+
+    it "returns transformed result from primary_funcs when found there" do
+      expect(@partializer_utils).to receive(:transform_function)
+        .with(@prim_func, 'int primary_func(void)', :impl)
+        .and_return(@transformed)
+
+      result = @helper.find_and_transform_func(
+        name:            'primary_func',
+        primary_funcs:   [@prim_func],
+        secondary_funcs: [@sec_func],
+        output_type:     :impl
+      )
+      expect(result).to eq(@transformed)
+    end
+
+    it "falls back to secondary_funcs when name not in primary" do
+      expect(@partializer_utils).to receive(:transform_function)
+        .with(@sec_func, 'void secondary_func(void)', :interface)
+        .and_return(@transformed)
+
+      result = @helper.find_and_transform_func(
+        name:            'secondary_func',
+        primary_funcs:   [@prim_func],
+        secondary_funcs: [@sec_func],
+        output_type:     :interface
+      )
+      expect(result).to eq(@transformed)
+    end
+
+    it "returns nil when name not found in either list" do
+      expect(@partializer_utils).not_to receive(:transform_function)
+
+      result = @helper.find_and_transform_func(
+        name:            'missing',
+        primary_funcs:   [@prim_func],
+        secondary_funcs: [@sec_func],
+        output_type:     :impl
+      )
+      expect(result).to be_nil
+    end
+
+    it "does not search secondary when name found in primary" do
+      expect(@partializer_utils).to receive(:transform_function)
+        .with(@prim_func, 'int primary_func(void)', :interface)
+        .and_return(@transformed)
+        .once
+
+      # A duplicate of prim_func in secondary — should never be reached
+      sec_dup = OpenStruct.new(name: 'primary_func', signature_stripped: 'WRONG')
+
+      result = @helper.find_and_transform_func(
+        name:            'primary_func',
+        primary_funcs:   [@prim_func],
+        secondary_funcs: [sec_dup],
+        output_type:     :interface
+      )
+      expect(result).to eq(@transformed)
+    end
+  end
+
+  context "#subtract_funcs" do
+    before(:each) do
+      @fa = OpenStruct.new(name: 'foo')
+      @fb = OpenStruct.new(name: 'bar')
+      @fc = OpenStruct.new(name: 'baz')
+    end
+
+    it "removes a named function from the list" do
+      result = @helper.subtract_funcs(funcs: [@fa, @fb, @fc], names: ['bar'])
+      expect(result.map(&:name)).to eq(['foo', 'baz'])
+    end
+
+    it "removes multiple named functions" do
+      result = @helper.subtract_funcs(funcs: [@fa, @fb, @fc], names: ['foo', 'baz'])
+      expect(result.map(&:name)).to eq(['bar'])
+    end
+
+    it "returns original list unchanged when names is empty" do
+      result = @helper.subtract_funcs(funcs: [@fa, @fb], names: [])
+      expect(result).to eq([@fa, @fb])
+    end
+
+    it "has no effect when named function is not in the list" do
+      result = @helper.subtract_funcs(funcs: [@fa, @fb], names: ['nonexistent'])
+      expect(result.map(&:name)).to eq(['foo', 'bar'])
+    end
+
+    it "returns empty array when all functions are subtracted" do
+      result = @helper.subtract_funcs(funcs: [@fa, @fb], names: ['foo', 'bar'])
+      expect(result).to eq([])
+    end
+  end
+
   context "#associate_function_line_numbers" do
     before(:each) do
       @name                 = 'TestModule'

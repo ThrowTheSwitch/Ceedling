@@ -566,7 +566,20 @@ class TestInvoker
 
           @partializer.validate(c_module: module_contents, config: config, name: name)
 
-          impl, interface = @partializer.reconstruct_functions(contents: module_contents, config: config)
+          impl = @partializer.extract_implementation_functions(
+            test: name,
+            partial: config.module,
+            definitions: module_contents.function_definitions,
+            config: config.tests
+          )
+
+          interface = @partializer.extract_interface_functions(
+            test: name,
+            partial: config.module,
+            definitions: module_contents.function_definitions,
+            declarations: module_contents.function_declarations,
+            config: config.mocks
+          )
 
           @partializer.log_extracted_functions(
             test:           name,
@@ -583,7 +596,7 @@ class TestInvoker
 
           arg_hash = {
             test:                  name,
-            name:                  config[:module],
+            partial:               config.module,
             function_defns:        impl,
             variable_declarations: module_contents.variables,
             header_includes:       @partializer.remap_implementation_header_includes(
@@ -602,13 +615,15 @@ class TestInvoker
             output_path:           testable[:paths][:partials]
           }
 
-          unless impl.empty?
+          # Partial implementation generation
+          unless impl.nil?
             @partializer.log_implementation_includes(
               label:          'Source',
               test:           testable[:name],
               module_name:    config.module,
               includes:       arg_hash[:source_includes]
             )
+
             @partializer.log_implementation_includes(
               label:          'Header',
               test:           testable[:name],
@@ -620,8 +635,8 @@ class TestInvoker
           end
 
           arg_hash = {
-            test:           testable[:name],
-            name:           config.module,
+            test:           name,
+            partial:        config.module,
             declarations:   interface,
             includes:       @partializer.sanitize_includes( 
                               name: config.module,
@@ -631,12 +646,14 @@ class TestInvoker
             output_path:    testable[:paths][:partials]
           }
 
-          if !interface.empty?
+          # Partial interface generation
+          unless interface.nil?
             @partializer.log_interface_includes(
               test:           testable[:name],
               module_name:    config.module,
               includes:       arg_hash[:includes]
             )
+
             @generator.generate_partial_interface(**arg_hash)
           end
         end

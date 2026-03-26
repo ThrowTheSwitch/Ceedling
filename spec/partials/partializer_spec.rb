@@ -18,7 +18,7 @@ describe Partializer do
     @file_finder        = double("FileFinder")
     @c_extractor        = double("CExtractor")
     @file_path_utils    = double("FilePathUtils")
-    @loginator          = double("Loginator")
+    @loginator          = double("Loginator").as_null_object
 
     @partializer = described_class.new(
       {
@@ -939,254 +939,277 @@ describe Partializer do
   end
 
   ###
-  ### reconstruct_functions()
+  ### extract_implementation_functions()
   ###
 
-  context "#reconstruct_functions" do
-    it "returns empty arrays when config has no types" do
-      contents = CExtractor::CModule.new(function_definitions: [], variables: [])
-      config = Partials::Config.new(module: 'module1', types: [])
+  def make_pf(type: nil, additions: [], subtractions: [])
+    OpenStruct.new(type: type, additions: additions, subtractions: subtractions)
+  end
 
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
-      )
+  context "#extract_implementation_functions" do
+    it "returns empty array when config type is nil" do
+      defs = []
+      pf   = make_pf
 
-      expect(impl).to eq([])
-      expect(interface).to eq([])
-    end
-
-    it "returns empty arrays when contents has no function definitions and config has no types" do
-      contents = CExtractor::CModule.new(function_definitions: [], variables: [])
-      config = Partials::Config.new(module: 'module1', types: [])
-
-      expect(@partializer_helper).not_to receive(:filter_and_transform_funcs)
-
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
-      )
-
-      expect(impl).to eq([])
-      expect(interface).to eq([])
-    end
-
-    it "extracts public functions for TEST_PUBLIC type" do
-      mock_funcs = [
-        double('func1', name: 'public_func'),
-        double('func2', name: 'private_func')
-      ]
-      contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      config = Partials::Config.new(module: 'module1', types: [Partials::TEST_PUBLIC])
-
-      filtered_impl = [{ name: 'public_func', type: :impl }]
+      expect(@partializer_helper).not_to receive(:find_and_transform_func)
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PUBLIC, :impl)
-        .and_return(filtered_impl)
+        .with(defs, nil, :impl).and_return([])
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: [], names: []).and_return([])
 
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
+      result = @partializer.extract_implementation_functions(
+        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
       )
-
-      expect(impl).to eq(filtered_impl)
-      expect(interface).to eq([])
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :impl)
+      expect(result).to eq([])
     end
 
-    it "extracts private functions for TEST_PRIVATE type" do
-      mock_funcs = [
-        double('func1', name: 'public_func'),
-        double('func2', name: 'private_func')
-      ]
-      contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      config = Partials::Config.new(module: 'module1', types: [Partials::TEST_PRIVATE])
+    it "delegates initial list to filter_and_transform_funcs for PUBLIC type" do
+      defs     = [double('func1', name: 'pub')]
+      filtered = [double('impl_func')]
+      pf       = make_pf(type: Partials::PUBLIC)
 
-      filtered_impl = [{ name: 'private_func', type: :impl }]
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::PUBLIC, :impl).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
 
-      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PRIVATE, :impl)
-        .and_return(filtered_impl)
-
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
+      result = @partializer.extract_implementation_functions(
+        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
       )
-
-      expect(impl).to eq(filtered_impl)
-      expect(interface).to eq([])
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :impl)
+      expect(result).to eq(filtered)
     end
 
-    it "extracts public interface for MOCK_PUBLIC type" do
-      mock_funcs = [
-        double('func1', name: 'public_func'),
-        double('func2', name: 'private_func')
-      ]
-      contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      config = Partials::Config.new(module: 'module1', types: [Partials::MOCK_PUBLIC])
+    it "delegates initial list to filter_and_transform_funcs for PRIVATE type" do
+      defs     = [double('func1', name: 'priv')]
+      filtered = [double('impl_func')]
+      pf       = make_pf(type: Partials::PRIVATE)
 
-      filtered_interface = [{ name: 'public_func', type: :interface }]
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::PRIVATE, :impl).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
 
-      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PUBLIC, :interface)
-        .and_return(filtered_interface)
-
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
+      result = @partializer.extract_implementation_functions(
+        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
       )
-
-      expect(impl).to eq([])
-      expect(interface).to eq(filtered_interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :interface)
+      expect(result).to eq(filtered)
     end
 
-    it "extracts private interface for MOCK_PRIVATE type" do
-      mock_funcs = [
-        double('func1', name: 'public_func'),
-        double('func2', name: 'private_func')
-      ]
-      contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      config = Partials::Config.new(module: 'module1', types: [Partials::MOCK_PRIVATE])
-
-      filtered_interface = [{ name: 'private_func', type: :interface }]
+    it "fills list from additions only for ACCUMULATE type" do
+      defs  = [double('func1', name: 'named')]
+      found = double('impl_func', name: 'named')
+      pf    = make_pf(type: Partials::ACCUMULATE, additions: ['named'])
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PRIVATE, :interface)
-        .and_return(filtered_interface)
+        .with(defs, Partials::ACCUMULATE, :impl).and_return([])
+      expect(@partializer_helper).to receive(:find_and_transform_func)
+        .with(name: 'named', primary_funcs: defs, secondary_funcs: [], output_type: :impl)
+        .and_return(found)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: [found], names: []).and_return([found])
 
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
+      result = @partializer.extract_implementation_functions(
+        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
       )
-
-      expect(impl).to eq([])
-      expect(interface).to eq(filtered_interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :interface)
+      expect(result).to eq([found])
     end
 
-    it "extracts both public and private functions for multiple TEST types" do
-      mock_funcs = [
-        double('func1', name: 'public_func'),
-        double('func2', name: 'private_func')
-      ]
-      contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      config = Partials::Config.new(module: 'module1', types: [Partials::TEST_PUBLIC, Partials::TEST_PRIVATE])
-
-      filtered_public_impl  = [{ name: 'public_func',  type: :impl }]
-      filtered_private_impl = [{ name: 'private_func', type: :impl }]
+    it "adds cross-visibility function from additions to initial list" do
+      pub_func  = double('pub',  name: 'pub')
+      priv_func = double('priv', name: 'priv')
+      defs      = [pub_func, priv_func]
+      filtered  = [double('impl_pub', name: 'pub')]
+      added     = double('impl_priv', name: 'priv')
+      pf        = make_pf(type: Partials::PUBLIC, additions: ['priv'])
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PUBLIC, :impl)
-        .and_return(filtered_public_impl)
+        .with(defs, Partials::PUBLIC, :impl).and_return(filtered)
+      expect(@partializer_helper).to receive(:find_and_transform_func)
+        .with(name: 'priv', primary_funcs: defs, secondary_funcs: [], output_type: :impl)
+        .and_return(added)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: [filtered[0], added], names: []).and_return([filtered[0], added])
 
-      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PRIVATE, :impl)
-        .and_return(filtered_private_impl)
-
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
+      result = @partializer.extract_implementation_functions(
+        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
       )
-
-      expect(impl).to eq(filtered_public_impl + filtered_private_impl)
-      expect(interface).to eq([])
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :impl)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :impl)
+      expect(result).to include(filtered[0], added)
     end
 
-    it "extracts both public and private interfaces for multiple MOCK types" do
-      mock_funcs = [
-        double('func1', name: 'public_func'),
-        double('func2', name: 'private_func')
-      ]
-      contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      config = Partials::Config.new(module: 'module1', types: [Partials::MOCK_PUBLIC, Partials::MOCK_PRIVATE])
-
-      filtered_public_interface  = [{ name: 'public_func',  type: :interface }]
-      filtered_private_interface = [{ name: 'private_func', type: :interface }]
+    it "skips addition when function already in initial list (dedup)" do
+      func     = double('impl_pub', name: 'pub')
+      defs     = [double('def', name: 'pub')]
+      filtered = [func]
+      pf       = make_pf(type: Partials::PUBLIC, additions: ['pub'])
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PUBLIC, :interface)
-        .and_return(filtered_public_interface)
+        .with(defs, Partials::PUBLIC, :impl).and_return(filtered)
+      expect(@partializer_helper).not_to receive(:find_and_transform_func)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
 
-      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PRIVATE, :interface)
-        .and_return(filtered_private_interface)
-
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
+      result = @partializer.extract_implementation_functions(
+        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
       )
-
-      expect(impl).to eq([])
-      expect(interface).to eq(filtered_public_interface + filtered_private_interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :interface)
+      expect(result).to eq(filtered)
     end
 
-    it "extracts mixed TEST and MOCK types" do
-      mock_funcs = [
-        double('func1', name: 'public_func'),
-        double('func2', name: 'private_func')
-      ]
-      contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      config = Partials::Config.new(module: 'module1', types: [Partials::TEST_PUBLIC, Partials::MOCK_PRIVATE])
-
-      filtered_public_impl       = [{ name: 'public_func',  type: :impl }]
-      filtered_private_interface = [{ name: 'private_func', type: :interface }]
+    it "delegates subtractions to subtract_funcs" do
+      defs     = [double('func', name: 'pub')]
+      filtered = [double('impl_pub', name: 'pub')]
+      pf       = make_pf(type: Partials::PUBLIC, subtractions: ['pub'])
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PUBLIC, :impl)
-        .and_return(filtered_public_impl)
+        .with(defs, Partials::PUBLIC, :impl).and_return(filtered)
+      expect(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: ['pub']).and_return([])
+
+      result = @partializer.extract_implementation_functions(
+        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
+      )
+      expect(result).to eq([])
+    end
+  end
+
+  ###
+  ### extract_interface_functions()
+  ###
+
+  context "#extract_interface_functions" do
+    it "returns empty array when config type is nil" do
+      defs  = []
+      decls = []
+      pf    = make_pf
+
+      expect(@partializer_helper).not_to receive(:find_and_transform_func)
 
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(mock_funcs, Partials::PRIVATE, :interface)
-        .and_return(filtered_private_interface)
+        .with(defs, nil, :interface).and_return([])
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: [], names: []).and_return([])
 
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: pf
       )
-
-      expect(impl).to eq(filtered_public_impl)
-      expect(interface).to eq(filtered_private_interface)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PUBLIC, :impl)
-      expect(@partializer_helper).to have_received(:filter_and_transform_funcs).with(mock_funcs, Partials::PRIVATE, :interface)
+      expect(result).to eq([])
     end
 
-    it "handles empty types in config" do
-      mock_funcs = [
-        double('func1', name: 'public_func'),
-        double('func2', name: 'private_func')
-      ]
-      contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      config = Partials::Config.new(module: 'module1', types: [])
+    it "delegates initial list to filter_and_transform_funcs for PUBLIC type" do
+      defs     = [double('func1', name: 'pub')]
+      decls    = []
+      filtered = [double('iface_func')]
+      pf       = make_pf(type: Partials::PUBLIC)
 
-      expect(@partializer_helper).not_to receive(:filter_and_transform_funcs)
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::PUBLIC, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
 
-      impl, interface = @partializer.reconstruct_functions(
-        contents: contents,
-        config: config
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: pf
       )
-
-      expect(impl).to eq([])
-      expect(interface).to eq([])
+      expect(result).to eq(filtered)
     end
 
-    it "raises error for invalid partial type in config" do
-      mock_funcs = [double('func1', name: 'public_func')]
-      contents = CExtractor::CModule.new(function_definitions: mock_funcs, variables: [])
-      config = Partials::Config.new(module: 'module1', types: [:invalid_type])
+    it "delegates initial list to filter_and_transform_funcs for PRIVATE type" do
+      defs     = [double('func1', name: 'priv')]
+      decls    = []
+      filtered = [double('iface_func')]
+      pf       = make_pf(type: Partials::PRIVATE)
 
-      expect {
-        @partializer.reconstruct_functions(
-          contents: contents,
-          config: config
-        )
-      }.to raise_error(ArgumentError)
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::PRIVATE, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: pf
+      )
+      expect(result).to eq(filtered)
+    end
+
+    it "fills list from additions only for ACCUMULATE type" do
+      defs   = [double('def', name: 'named')]
+      decls  = []
+      found  = double('iface_func', name: 'named')
+      pf     = make_pf(type: Partials::ACCUMULATE, additions: ['named'])
+
+      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::ACCUMULATE, :interface).and_return([])
+      expect(@partializer_helper).to receive(:find_and_transform_func)
+        .with(name: 'named', primary_funcs: defs, secondary_funcs: decls, output_type: :interface)
+        .and_return(found)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: [found], names: []).and_return([found])
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: pf
+      )
+      expect(result).to eq([found])
+    end
+
+    it "searches definitions then declarations for additions" do
+      defs  = []
+      decls = [double('decl', name: 'decl_only')]
+      found = double('iface_func', name: 'decl_only')
+      pf    = make_pf(type: Partials::ACCUMULATE, additions: ['decl_only'])
+
+      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::ACCUMULATE, :interface).and_return([])
+      expect(@partializer_helper).to receive(:find_and_transform_func)
+        .with(name: 'decl_only', primary_funcs: defs, secondary_funcs: decls, output_type: :interface)
+        .and_return(found)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: [found], names: []).and_return([found])
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: pf
+      )
+      expect(result).to include(found)
+    end
+
+    it "skips addition when function already in initial list (dedup)" do
+      func     = double('iface_pub', name: 'pub')
+      defs     = [double('def', name: 'pub')]
+      decls    = []
+      filtered = [func]
+      pf       = make_pf(type: Partials::PUBLIC, additions: ['pub'])
+
+      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::PUBLIC, :interface).and_return(filtered)
+      expect(@partializer_helper).not_to receive(:find_and_transform_func)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: pf
+      )
+      expect(result).to eq(filtered)
+    end
+
+    it "delegates subtractions to subtract_funcs" do
+      defs     = [double('func', name: 'pub')]
+      decls    = []
+      filtered = [double('iface_pub', name: 'pub')]
+      pf       = make_pf(type: Partials::PUBLIC, subtractions: ['pub'])
+
+      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::PUBLIC, :interface).and_return(filtered)
+      expect(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: ['pub']).and_return([])
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: pf
+      )
+      expect(result).to eq([])
     end
   end
 

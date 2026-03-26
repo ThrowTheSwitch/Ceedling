@@ -37,7 +37,7 @@ class Partializer
       config.header.filepath = @file_finder.find_header_file(_module, :ignore)
 
       # Source file not needed only when mocking public functions exclusively
-      unless !config.tests.present? && config.mocks.types == [PUBLIC]
+      unless !config.tests.present? && config.mocks.type == PUBLIC
         config.source.filepath = @file_finder.find_source_file(_module, :ignore)
       end
     end
@@ -151,60 +151,104 @@ class Partializer
     return contents.reduce(&:+)
   end
 
-  # Reconstructs function lists for partial implementation and interface generation
+  # Returns Array<Partials::FunctionDefinition> for the testable partial implementation.
   #
-  # This method processes extracted C module contents and separates functions into
-  # two categories based on the partial configuration:
-  # 1. Implementation functions - for testable partial implementations
-  # 2. Interface functions - for mockable partial interfaces
+  # Processes the `tests` PartialFunctions config against extracted C function definitions:
+  #   PUBLIC     -- initial list is all non-private functions; additions inject named private functions
+  #   PRIVATE    -- initial list is all private functions; additions inject named public functions
+  #   ACCUMULATE -- initial list is empty; additions fill it entirely
+  #   nil        -- returns []
+  # Subtractions remove named functions from the assembled list.
+  # Parameters are expected to be pre-validated (no unknown names, no overlap, etc.).
   #
-  # The method filters functions by visibility (public/private) and transforms them
-  # into the appropriate format for code generation.
-  #
-  # @param contents [CExtractor::CModule] The extracted C module contents containing
-  #   function definitions, declarations, and other code elements
-  # @param config [PartialConfig] Configuration object specifying which partial types
-  #   to generate. The config.types array may contain:
-  #   - Partials::TEST_PUBLIC - Include public functions in implementation
-  #   - Partials::TEST_PRIVATE - Include private functions in implementation
-  #   - Partials::MOCK_PUBLIC - Include public functions in interface
-  #   - Partials::MOCK_PRIVATE - Include private functions in interface
-  #
-  # @return [Array<(Array<FunctionDefinition>, Array<FunctionDeclaration>)>] for 
-  #   consumption by `GeneratorPartials`.
-  #   A two-element array containing:
-  #   - impl: Array of FunctionDefinition objects for the partial implementation
-  #   - interface: Array of FunctionDeclaration objects for the partial interface
-  #
-  # @raise [RuntimeError] If an unknown partial type is encountered in config.types
-  #
-  # @note The helper methods filter_and_transform_funcs handle the actual filtering
-  #   by visibility and transformation between definition and declaration formats
-  def reconstruct_functions(contents:, config:)    
-    impl = []
-    interface = []
+  # @param test        [String] Test file name (for log messages)
+  # @param partial     [String] Partial module name (for log messages)
+  # @param definitions [Array<CFunctionDefinition>] Extracted function definitions
+  # @param config      [PartializerConfig::PartialFunctions] The tests config entry
+  # @return [Array<Partials::FunctionDefinition>]
+  def extract_implementation_functions(test:, partial:, definitions:, config:)
+    # No Partial mocks
+    return nil if config.type.nil?
 
-    impl += @helper.filter_and_transform_funcs(
-      contents.function_definitions,
-      config.tests.type,
-      :impl
-    )
+    # Build initial list by visibility; ACCUMULATE yields []
+    funcs = @helper.filter_and_transform_funcs(definitions, config.type, :impl)
 
-    interface += @helper.filter_and_transform_funcs(
-      contents.function_definitions,
-      config.mocks.type,
-      :interface
-    )
-    
-    # PartializerRuntime.raise_on_option(type)
- 
-    return impl, interface
+    # Additions: only search definitions — code_block required for impl transform
+    config.additions.each do |name|
+      next if funcs.any? { |f| f.name == name }
+      func = @helper.find_and_transform_func(
+        name:            name,
+        primary_funcs:   definitions,
+        secondary_funcs: [],
+        output_type:     :impl
+      )
+      funcs << func if func
+    end
+
+    # Subtractions: remove named functions from list
+    result = @helper.subtract_funcs(funcs: funcs, names: config.subtractions)
+    if !funcs.empty? && result.empty?
+      @loginator.log(
+        "Partial #{test}::#{partial} ⏩️ Subtractions left no testable functions",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+    end
+    return result
+  end
+
+  # Returns Array<Partials::FunctionDeclaration> for the mockable partial interface.
+  #
+  # Processes the `mocks` PartialFunctions config against extracted C functions:
+  #   PUBLIC     -- initial list is all non-private functions; additions inject named private functions
+  #   PRIVATE    -- initial list is all private functions; additions inject named public functions
+  #   ACCUMULATE -- initial list is empty; additions fill it entirely
+  #   nil        -- returns []
+  # Subtractions remove named functions from the assembled list.
+  # Parameters are expected to be pre-validated (no unknown names, no overlap, etc.).
+  # Additions search definitions first, then declarations; only the first match is used.
+  #
+  # @param test         [String] Test file name (for log messages)
+  # @param partial      [String] Partial module name (for log messages)
+  # @param definitions  [Array<CFunctionDefinition>] Extracted function definitions
+  # @param declarations [Array<CFunctionDeclaration>] Extracted function declarations
+  # @param config       [PartializerConfig::PartialFunctions] The mocks config entry
+  # @return [Array<Partials::FunctionDeclaration>]
+  def extract_interface_functions(test:, partial:, definitions:, declarations:, config:)
+    # No Partial mocks
+    return nil if config.type.nil?
+
+    # Build initial list by visibility; ACCUMULATE yields []
+    funcs = @helper.filter_and_transform_funcs(definitions, config.type, :interface)
+
+    # Additions: search definitions first, then declarations
+    config.additions.each do |name|
+      next if funcs.any? { |f| f.name == name }
+      func = @helper.find_and_transform_func(
+        name:            name,
+        primary_funcs:   definitions,
+        secondary_funcs: declarations,
+        output_type:     :interface
+      )
+      funcs << func if func
+    end
+
+    # Subtractions: remove named functions from list
+    result = @helper.subtract_funcs(funcs: funcs, names: config.subtractions)
+    if !funcs.empty? && result.empty?
+      @loginator.log(
+        "Partial #{test}::#{partial} ⏩️ Subtractions left no mockable signatures",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+    end
+    return result
   end
 
   def log_extracted_functions(test:, module_name:, impl:, interface:)
     # Get function signatures
-    _impl = impl.map { |func| "`#{func.signature}`" }
-    _interface = interface.map { |func| "`#{func.signature}`" }
+    _impl = impl.nil? ? [] : impl.map { |func| "`#{func.signature}`" }
+    _interface = interface.nil? ? [] : interface.map { |func| "`#{func.signature}`" }
     
     @loginator.log_list(
       _interface,

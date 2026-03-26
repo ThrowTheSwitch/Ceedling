@@ -82,7 +82,7 @@ class Configurator
     # Enabling Partials and this feature causes extra processing for Ceedling and CMock that is never used.
     if config[:cmock][:treat_inlines] == :include
       config[:cmock][:treat_inlines] = :exclude
-      @loginator.log( "Reverted :cmock ↳ :treat_inlines to :exclude because this CMock feature is superseded by Partials.", Verbosity::OBNOXIOUS, LogLabels::NOTICE )
+      @loginator.log( "Reverted :cmock ↳ :treat_inlines to :exclude because this CMock feature is superseded by Partials.", Verbosity::COMPLAIN, LogLabels::NOTICE )
     end
 
     # If partials enabled, inject partials name prefix symbols to all test compilation

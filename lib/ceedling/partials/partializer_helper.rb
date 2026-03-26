@@ -42,6 +42,26 @@ class PartializerHelper
     end
   end
 
+  # Find a function by name, searching primary_funcs first then secondary_funcs.
+  # Returns the first match transformed for the given output_type, or nil if not found.
+  # For :impl output_type, pass secondary_funcs: [] — declarations have no code_block.
+  def find_and_transform_func(name:, primary_funcs:, secondary_funcs:, output_type:)
+    func = primary_funcs.find { |f| f.name == name }
+    return @utils.transform_function(func, func.signature_stripped, output_type) if func
+
+    func = secondary_funcs.find { |f| f.name == name }
+    return @utils.transform_function(func, func.signature_stripped, output_type) if func
+
+    nil
+  end
+
+  # Return funcs with any function whose name is in names removed.
+  def subtract_funcs(funcs:, names:)
+    return funcs if names.empty?
+    name_set = Set.new(names)
+    funcs.reject { |f| name_set.include?(f.name) }
+  end
+
   # Associate each FunctionDefinition with its line number in the original source file.
   #
   # C source files are run through the GCC preprocessor before extraction. The

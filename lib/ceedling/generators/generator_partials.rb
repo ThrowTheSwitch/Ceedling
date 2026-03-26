@@ -10,9 +10,10 @@ require 'ceedling/partials/partials'
 
 class GeneratorPartials
 
-  constructor :file_wrapper, :file_path_utils
+  constructor :file_wrapper, :file_path_utils, :loginator
 
   def generate_implementation(
+      test:,
       name:,
       definitions:,
       source_includes:,
@@ -37,7 +38,7 @@ class GeneratorPartials
     return source_filepath
   end
 
-  def generate_interface(declarations:, name:, includes:, output_path:)
+  def generate_interface(test:, name:, declarations:, includes:, output_path:)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = File.join(output_path, header)
 
@@ -64,7 +65,7 @@ class GeneratorPartials
     io << "\n" if !includes.empty?
 
     variable_declarations.each do |var|
-      io << "extern #{var.declaration}\n"
+      io << "extern #{var.type} #{var.name};\n"
     end
 
     io << "\n" if !variable_declarations.empty?

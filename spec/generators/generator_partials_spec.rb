@@ -14,13 +14,15 @@ require 'stringio'
 
 describe GeneratorPartials do
   before(:each) do
-    @file_wrapper = double( "FileWrapper" )
+    @file_wrapper    = double( "FileWrapper" )
     @file_path_utils = double( "FilePathUtils" )
+    @loginator       = double( "Loginator" ).as_null_object
 
     @generator = described_class.new(
       {
-        :file_wrapper => @file_wrapper,
+        :file_wrapper    => @file_wrapper,
         :file_path_utils => @file_path_utils,
+        :loginator       => @loginator,
       }
     )
   end
