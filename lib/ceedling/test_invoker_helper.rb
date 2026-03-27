@@ -113,24 +113,24 @@ class TestInvokerHelper
       else
         _mocks = _mocks[0]
       end
-      
+
       msg = "Your project is not configured for mocking, but #{filename} #includes #{_mocks}"
       raise CeedlingException.new( msg )
     end
   end
 
   def validate_partials_in_use(filename:, partials_in_use:, includes:)
-    partials_header_in_use = Includes.contains?( includes, PARTIALS_HEADER_FILENAME )
+    partials_header_in_use = Includes.contains?( includes, CEEDLING_HEADER_FILENAME )
 
     # If a test has Partials configuration and/or #includes the Partials header file but Partials aren't enabled, complain about it
-    if (partials_in_use || partials_header_in_use) && !@configurator.project_use_partials
+    if partials_in_use && !@configurator.project_use_partials
       msg = "Your project is not configured for Partials, but #{filename} is attempting to use Partial features"
       raise CeedlingException.new( msg )
     end
 
     # If a test has Partials configuration but does not include the Partials header file, complain about it
     if partials_in_use && !partials_header_in_use
-      msg = "Your test file #{filename} is attempting to use Partial features without #including #{PARTIALS_HEADER_FILENAME}"
+      msg = "Your test file #{filename} is attempting to use Partial features without #including #{CEEDLING_HEADER_FILENAME}"
       raise CeedlingException.new( msg )
     end
   end

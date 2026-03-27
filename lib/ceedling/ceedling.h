@@ -1,5 +1,5 @@
-#ifndef CEEDLING_PARTIALS_H
-#define CEEDLING_PARTIALS_H
+#ifndef _CEEDLING_SUPPORT_H_
+#define _CEEDLING_SUPPORT_H_
 
 // Stringification and tokenization helper macros
 #define __PARTIALS_STRINGIFY(x) __PARTIALS_STR(x)
@@ -28,4 +28,4 @@
 #define TEST_PARTIAL_CONFIG(module, func1, ...)
 #define MOCK_PARTIAL_CONFIG(module, func1, ...)
 
-#endif /* CEEDLING_PARTIALS_H */
+#endif /* _CEEDLING_SUPPORT_H_ */

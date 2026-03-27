@@ -90,7 +90,7 @@ class ConfiguratorSetup
 
     # Copy supporting partials code into build/vendor directory structure
     @file_wrapper.cp_r(
-      File.join( ceedling_lib_path, PARTIALS_HEADER_FILEPATH ),
+      File.join( ceedling_lib_path, CEEDLING_HEADER_FILEPATH ),
       flattened_config[:project_build_vendor_ceedling_path]
     ) if flattened_config[:project_use_partials]
   end
