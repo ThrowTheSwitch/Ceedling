@@ -236,22 +236,22 @@ describe TestContextExtractor do
       expect( result.keys ).to contain_exactly('foo', 'foobar', 'baz', 'razmataz', 'hardyharhar', 'abc', 'abc_xyz')
 
       # Test-only modules
-      expect( result['foo'].tests.types        ).to eq [Partials::PUBLIC]
+      expect( result['foo'].tests.type         ).to eq Partials::PUBLIC
       expect( result['foo'].tests.additions    ).to eq ['add']
       expect( result['foo'].tests.subtractions ).to eq ['internal_helper']
-      expect( result['baz'].tests.types        ).to eq [Partials::PRIVATE]
-      expect( result['razmataz'].tests.types   ).to eq [Partials::PRIVATE]
+      expect( result['baz'].tests.type         ).to eq Partials::PRIVATE
+      expect( result['razmataz'].tests.type    ).to eq Partials::PRIVATE
 
       # Module with both test and mock config
-      expect( result['foobar'].tests.types        ).to eq [Partials::PUBLIC]
-      expect( result['foobar'].mocks.types        ).to eq [Partials::PRIVATE]
+      expect( result['foobar'].tests.type         ).to eq Partials::PUBLIC
+      expect( result['foobar'].mocks.type         ).to eq Partials::PRIVATE
       expect( result['foobar'].mocks.additions    ).to eq ['write']
       expect( result['foobar'].mocks.subtractions ).to eq ['debug_write']
 
       # Mock-only modules
-      expect( result['hardyharhar'].mocks.types ).to eq [Partials::PRIVATE]
-      expect( result['abc'].mocks.types         ).to eq [Partials::PUBLIC]
-      expect( result['abc_xyz'].mocks.types     ).to eq [Partials::PUBLIC]
+      expect( result['hardyharhar'].mocks.type ).to eq Partials::PRIVATE
+      expect( result['abc'].mocks.type         ).to eq Partials::PUBLIC
+      expect( result['abc_xyz'].mocks.type     ).to eq Partials::PUBLIC
     end
 
     # collect_context() + lookup_build_directive_sources_list()

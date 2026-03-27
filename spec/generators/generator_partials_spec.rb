@@ -86,6 +86,7 @@ describe GeneratorPartials do
 
       # Execute
       result = @generator.generate_implementation(
+        test: 'test_my_implementation',
         name: name,
         definitions: defns,
         source_includes: source_includes,
@@ -157,6 +158,7 @@ describe GeneratorPartials do
 
       # Execute
       result = @generator.generate_interface(
+        test: 'test_my_interface',
         declarations: decls,
         name: name,
         includes: includes,
@@ -232,14 +234,14 @@ describe GeneratorPartials do
       #define __PB_AND_J_H__
 
       extern unsigned int slices_of_bread;
-      extern char crumbs[10];
+      extern char crumbs;
 
       #endif // __PB_AND_J_H__
 
       CONTENTS
 
       variables = [
-        make_var(name: 'slices_of_bread', type: 'unsigned int', declaration: 'unsigned int slices_of_bread;'),
+        make_var(name: 'slices_of_bread', type: 'unsigned int', declaration: 'unsigned int slices_of_bread = 10;'),
         make_var(name: 'crumbs', type: 'char', declaration: 'char crumbs[10];')
       ]
       @generator.send(:generate_header, buf, 'pb-and-j', [], [], variables)

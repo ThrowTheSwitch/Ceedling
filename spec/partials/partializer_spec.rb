@@ -40,8 +40,8 @@ describe Partializer do
       OpenStruct.new(present?: present)
     end
 
-    def make_mocks(present:, types: [])
-      OpenStruct.new(present?: present, types: types)
+    def make_mocks(present:, type: nil)
+      OpenStruct.new(present?: present, type: type)
     end
 
     def make_config(tests:, mocks:)
@@ -71,7 +71,7 @@ describe Partializer do
     end
 
     it "populates header only for mock-public config" do
-      configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, types: [Partials::PUBLIC])) }
+      configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PUBLIC)) }
 
       allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
       expect(@file_finder).not_to receive(:find_source_file)
@@ -83,7 +83,7 @@ describe Partializer do
     end
 
     it "populates header and source for mock-private config" do
-      configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, types: [Partials::PRIVATE])) }
+      configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PRIVATE)) }
 
       allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
       allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
@@ -94,8 +94,8 @@ describe Partializer do
       expect(configs['mod'].source.filepath).to eq('mod.c')
     end
 
-    it "populates header and source when mocks.types is empty (all types)" do
-      configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, types: [])) }
+    it "populates header and source when mocks.type is nil" do
+      configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: nil)) }
 
       allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
       allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
@@ -109,7 +109,7 @@ describe Partializer do
     it "handles multiple modules independently" do
       configs = {
         'a' => make_config(tests: make_tests(present: true),  mocks: make_mocks(present: false)),
-        'b' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, types: [Partials::PUBLIC]))
+        'b' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PUBLIC))
       }
 
       allow(@file_finder).to receive(:find_header_file).with('a', :ignore).and_return('a.h')
@@ -961,7 +961,7 @@ describe Partializer do
       result = @partializer.extract_implementation_functions(
         test: 'test_mod', partial: 'mod', definitions: defs, config: pf
       )
-      expect(result).to eq([])
+      expect(result).to be_nil
     end
 
     it "delegates initial list to filter_and_transform_funcs for PUBLIC type" do
@@ -1093,7 +1093,7 @@ describe Partializer do
         test: 'test_mod', partial: 'mod',
         definitions: defs, declarations: decls, config: pf
       )
-      expect(result).to eq([])
+      expect(result).to be_nil
     end
 
     it "delegates initial list to filter_and_transform_funcs for PUBLIC type" do
