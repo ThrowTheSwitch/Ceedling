@@ -574,13 +574,13 @@ class TestInvoker
             !@preprocessinator.directives_only_available?
           )
 
-          @partializer.validate(c_module: module_contents, config: config, name: name)
+          @partializer.validate_config(c_module: module_contents, config: config, name: name)
 
           impl = @partializer.extract_implementation_functions(
             test: name,
             partial: config.module,
             definitions: module_contents.function_definitions,
-            config: config.tests
+            config: config
           )
 
           interface = @partializer.extract_interface_functions(
@@ -588,7 +588,14 @@ class TestInvoker
             partial: config.module,
             definitions: module_contents.function_definitions,
             declarations: module_contents.function_declarations,
-            config: config.mocks
+            config: config
+          )
+
+          @partializer.validate_extracted_functions(
+            name: name,
+            partial: config.module,
+            impl: impl,
+            interface: interface
           )
 
           @partializer.log_extracted_functions(

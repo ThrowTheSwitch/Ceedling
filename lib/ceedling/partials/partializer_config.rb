@@ -131,6 +131,9 @@ class PartializerConfig
           target.additions << name.delete_prefix('+')
         end
       end
+
+      target.subtractions.uniq!
+      target.additions.uniq!
     end
 
     # --- Pass 3: Validation ---
@@ -141,15 +144,7 @@ class PartializerConfig
         )
       end
 
-      # Rule 1: tests and mocks cannot share the same PUBLIC/PRIVATE classification
-      t = config.tests.type; m = config.mocks.type
-      if (t == PUBLIC && m == PUBLIC) || (t == PRIVATE && m == PRIVATE)
-        raise CeedlingException.new(
-          "Partials for module '#{mod}' cannot both test and mock #{t} functions"
-        )
-      end
-
-      # Rule 2: subtractions are illegal with ACCUMULATE
+      # Rule 1: subtractions are illegal with ACCUMULATE
       [[:tests, 'TEST'], [:mocks, 'MOCK']].each do |field, label|
         pf = config.send(field)
         if pf.type == ACCUMULATE && !pf.subtractions.empty?

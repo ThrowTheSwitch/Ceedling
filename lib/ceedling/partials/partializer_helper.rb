@@ -261,23 +261,9 @@ class PartializerHelper
       overlap = Set.new(pf.additions) & Set.new(pf.subtractions)
       overlap.each do |func_name|
         raise CeedlingException.new(
-          "#{name}: #{label} Partial configuration for module '#{mod}' ⏩️ Function '#{func_name}' cannot be both added and subtracted"
+          "#{name}: #{label} Partial configuration for module '#{mod}' ⏩️ Function '#{func_name}' should not be both added and subtracted"
         )
       end
-    end
-  end
-
-  # Validate that no function name appears in both tests.additions and mocks.additions.
-  def validate_no_test_and_mock_overlap(config, name)
-    mod        = config.module
-    test_names = Set.new(config.tests.additions)
-    mock_names = Set.new(config.mocks.additions)
-
-    overlap = test_names & mock_names
-    overlap.each do |func_name|
-      raise CeedlingException.new(
-        "#{name}: Partial configuration for module '#{mod}' ⏩️ Function '#{func_name}' cannot be in both test additions and mock additions"
-      )
     end
   end
 

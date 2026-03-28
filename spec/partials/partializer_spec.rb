@@ -127,11 +127,11 @@ describe Partializer do
   end
 
   ###
-  ### validate()
+  ### validate_config()
   ###
 
-  context "#validate" do
-    it "delegates to all four validation helpers in order" do
+  context "#validate_config" do
+    it "delegates to three validation helpers in order" do
       c_module = double("CModule")
       config   = double("Config")
       name     = "test_foo"
@@ -140,12 +140,59 @@ describe Partializer do
         .with(c_module, config, name).ordered
       expect(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
         .with(config, name).ordered
-      expect(@partializer_helper).to receive(:validate_no_test_and_mock_overlap)
-        .with(config, name).ordered
       expect(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
         .with(c_module, config, name).ordered
 
-      @partializer.validate(c_module: c_module, config: config, name: name)
+      @partializer.validate_config(c_module: c_module, config: config, name: name)
+    end
+  end
+
+  ###
+  ### validate_extracted_functions()
+  ###
+
+  context "#validate_extracted_functions" do
+    def make_impl(name)
+      Partials.manufacture_function_definition(
+        name: name, signature: "void #{name}(void)", code_block: "void #{name}(void) {}"
+      )
+    end
+
+    def make_iface(name)
+      Partials.manufacture_function_declaration(name: name, signature: "void #{name}(void)")
+    end
+
+    it "does not raise when impl and interface have no overlapping functions" do
+      impl      = [make_impl('foo'), make_impl('bar')]
+      interface = [make_iface('baz'), make_iface('qux')]
+
+      expect {
+        @partializer.validate_extracted_functions(
+          name: 'test_mod', partial: 'mod', impl: impl, interface: interface
+        )
+      }.not_to raise_error
+    end
+
+    it "raises CeedlingException when one function appears in both impl and interface" do
+      impl      = [make_impl('foo'), make_impl('shared')]
+      interface = [make_iface('shared'), make_iface('bar')]
+
+      expect {
+        @partializer.validate_extracted_functions(
+          name: 'test_mod', partial: 'mod', impl: impl, interface: interface
+        )
+      }.to raise_error(CeedlingException, /shared/)
+    end
+
+    it "raises for each overlapping function when multiple functions overlap" do
+      impl      = [make_impl('alpha'), make_impl('beta')]
+      interface = [make_iface('alpha'), make_iface('beta')]
+
+      expect {
+        @partializer.validate_extracted_functions(
+          name: 'test_mod', partial: 'mod', impl: impl, interface: interface
+        )
+      }.to raise_error(CeedlingException)
     end
   end
 
@@ -946,8 +993,12 @@ describe Partializer do
     OpenStruct.new(type: type, additions: additions, subtractions: subtractions)
   end
 
+  def make_config(tests: make_pf, mocks: make_pf)
+    OpenStruct.new(tests: tests, mocks: mocks)
+  end
+
   context "#extract_implementation_functions" do
-    it "returns empty array when config type is nil" do
+    it "returns nil when config tests type is nil" do
       defs = []
       pf   = make_pf
 
@@ -959,7 +1010,7 @@ describe Partializer do
         .with(funcs: [], names: []).and_return([])
 
       result = @partializer.extract_implementation_functions(
-        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
+        test: 'test_mod', partial: 'mod', definitions: defs, config: make_config(tests: pf)
       )
       expect(result).to be_nil
     end
@@ -975,7 +1026,7 @@ describe Partializer do
         .with(funcs: filtered, names: []).and_return(filtered)
 
       result = @partializer.extract_implementation_functions(
-        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
+        test: 'test_mod', partial: 'mod', definitions: defs, config: make_config(tests: pf)
       )
       expect(result).to eq(filtered)
     end
@@ -991,7 +1042,7 @@ describe Partializer do
         .with(funcs: filtered, names: []).and_return(filtered)
 
       result = @partializer.extract_implementation_functions(
-        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
+        test: 'test_mod', partial: 'mod', definitions: defs, config: make_config(tests: pf)
       )
       expect(result).to eq(filtered)
     end
@@ -1010,7 +1061,7 @@ describe Partializer do
         .with(funcs: [found], names: []).and_return([found])
 
       result = @partializer.extract_implementation_functions(
-        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
+        test: 'test_mod', partial: 'mod', definitions: defs, config: make_config(tests: pf)
       )
       expect(result).to eq([found])
     end
@@ -1032,7 +1083,7 @@ describe Partializer do
         .with(funcs: [filtered[0], added], names: []).and_return([filtered[0], added])
 
       result = @partializer.extract_implementation_functions(
-        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
+        test: 'test_mod', partial: 'mod', definitions: defs, config: make_config(tests: pf)
       )
       expect(result).to include(filtered[0], added)
     end
@@ -1050,7 +1101,7 @@ describe Partializer do
         .with(funcs: filtered, names: []).and_return(filtered)
 
       result = @partializer.extract_implementation_functions(
-        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
+        test: 'test_mod', partial: 'mod', definitions: defs, config: make_config(tests: pf)
       )
       expect(result).to eq(filtered)
     end
@@ -1064,9 +1115,31 @@ describe Partializer do
         .with(defs, Partials::PUBLIC, :impl).and_return(filtered)
       expect(@partializer_helper).to receive(:subtract_funcs)
         .with(funcs: filtered, names: ['pub']).and_return([])
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: [], names: []).and_return([])
 
       result = @partializer.extract_implementation_functions(
-        test: 'test_mod', partial: 'mod', definitions: defs, config: pf
+        test: 'test_mod', partial: 'mod', definitions: defs, config: make_config(tests: pf)
+      )
+      expect(result).to eq([])
+    end
+
+    it "subtracts mocks.additions from the impl result" do
+      defs     = [double('func', name: 'pub')]
+      filtered = [double('impl_pub', name: 'pub')]
+      test_pf  = make_pf(type: Partials::PUBLIC)
+      mock_pf  = make_pf(additions: ['pub'])
+
+      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::PUBLIC, :impl).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+      expect(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: ['pub']).and_return([])
+
+      result = @partializer.extract_implementation_functions(
+        test: 'test_mod', partial: 'mod', definitions: defs,
+        config: make_config(tests: test_pf, mocks: mock_pf)
       )
       expect(result).to eq([])
     end
@@ -1077,7 +1150,7 @@ describe Partializer do
   ###
 
   context "#extract_interface_functions" do
-    it "returns empty array when config type is nil" do
+    it "returns nil when config mocks type is nil" do
       defs  = []
       decls = []
       pf    = make_pf
@@ -1091,7 +1164,7 @@ describe Partializer do
 
       result = @partializer.extract_interface_functions(
         test: 'test_mod', partial: 'mod',
-        definitions: defs, declarations: decls, config: pf
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
       )
       expect(result).to be_nil
     end
@@ -1109,7 +1182,7 @@ describe Partializer do
 
       result = @partializer.extract_interface_functions(
         test: 'test_mod', partial: 'mod',
-        definitions: defs, declarations: decls, config: pf
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
       )
       expect(result).to eq(filtered)
     end
@@ -1127,7 +1200,7 @@ describe Partializer do
 
       result = @partializer.extract_interface_functions(
         test: 'test_mod', partial: 'mod',
-        definitions: defs, declarations: decls, config: pf
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
       )
       expect(result).to eq(filtered)
     end
@@ -1148,7 +1221,7 @@ describe Partializer do
 
       result = @partializer.extract_interface_functions(
         test: 'test_mod', partial: 'mod',
-        definitions: defs, declarations: decls, config: pf
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
       )
       expect(result).to eq([found])
     end
@@ -1169,7 +1242,7 @@ describe Partializer do
 
       result = @partializer.extract_interface_functions(
         test: 'test_mod', partial: 'mod',
-        definitions: defs, declarations: decls, config: pf
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
       )
       expect(result).to include(found)
     end
@@ -1189,7 +1262,7 @@ describe Partializer do
 
       result = @partializer.extract_interface_functions(
         test: 'test_mod', partial: 'mod',
-        definitions: defs, declarations: decls, config: pf
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
       )
       expect(result).to eq(filtered)
     end
@@ -1204,10 +1277,34 @@ describe Partializer do
         .with(defs, Partials::PUBLIC, :interface).and_return(filtered)
       expect(@partializer_helper).to receive(:subtract_funcs)
         .with(funcs: filtered, names: ['pub']).and_return([])
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: [], names: []).and_return([])
 
       result = @partializer.extract_interface_functions(
         test: 'test_mod', partial: 'mod',
-        definitions: defs, declarations: decls, config: pf
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
+      )
+      expect(result).to eq([])
+    end
+
+    it "subtracts tests.additions from the interface result" do
+      defs     = [double('func', name: 'pub')]
+      decls    = []
+      filtered = [double('iface_pub', name: 'pub')]
+      mock_pf  = make_pf(type: Partials::PUBLIC)
+      test_pf  = make_pf(additions: ['pub'])
+
+      allow(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with(defs, Partials::PUBLIC, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+      expect(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: ['pub']).and_return([])
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls,
+        config: make_config(tests: test_pf, mocks: mock_pf)
       )
       expect(result).to eq([])
     end

@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
 require 'rake' # .ext()
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partials'
@@ -24,11 +25,22 @@ class Partializer
     @helper = @partializer_helper
   end
 
-  def validate(c_module:, config:, name:)
+  def validate_config(c_module:, config:, name:)
     @helper.validate_function_names_exist(c_module, config, name)
     @helper.validate_no_additions_subtractions_overlap(config, name)
-    @helper.validate_no_test_and_mock_overlap(config, name)
     @helper.validate_additions_subtractions_visibility(c_module, config, name)
+  end
+
+  def validate_extracted_functions(name:, partial:, impl:, interface:)
+    impl_names      = Set.new(impl.map(&:name))
+    interface_names = Set.new(interface.map(&:name))
+
+    overlap = impl_names & interface_names
+    overlap.each do |func_name|
+      raise CeedlingException.new(
+        "#{name}: Partial '#{partial}' ⏩️ Function '#{func_name}' cannot be both testable and mockable"
+      )
+    end
   end
 
   def populate_filepaths(configs)
@@ -157,24 +169,25 @@ class Partializer
   #   PUBLIC     -- initial list is all non-private functions; additions inject named private functions
   #   PRIVATE    -- initial list is all private functions; additions inject named public functions
   #   ACCUMULATE -- initial list is empty; additions fill it entirely
-  #   nil        -- returns []
+  #   nil        -- returns nil
   # Subtractions remove named functions from the assembled list.
+  # Any functions in mocks.additions are also removed from the final result.
   # Parameters are expected to be pre-validated (no unknown names, no overlap, etc.).
   #
   # @param test        [String] Test file name (for log messages)
   # @param partial     [String] Partial module name (for log messages)
   # @param definitions [Array<CFunctionDefinition>] Extracted function definitions
-  # @param config      [PartializerConfig::PartialFunctions] The tests config entry
+  # @param config      [PartializerConfig::Config] Full partial config for the module
   # @return [Array<Partials::FunctionDefinition>]
   def extract_implementation_functions(test:, partial:, definitions:, config:)
-    # No Partial mocks
-    return nil if config.type.nil?
+    pf = config.tests
+    return nil if pf.type.nil?
 
     # Build initial list by visibility; ACCUMULATE yields []
-    funcs = @helper.filter_and_transform_funcs(definitions, config.type, :impl)
+    funcs = @helper.filter_and_transform_funcs(definitions, pf.type, :impl)
 
     # Additions: only search definitions — code_block required for impl transform
-    config.additions.each do |name|
+    pf.additions.each do |name|
       next if funcs.any? { |f| f.name == name }
       func = @helper.find_and_transform_func(
         name:            name,
@@ -186,7 +199,7 @@ class Partializer
     end
 
     # Subtractions: remove named functions from list
-    result = @helper.subtract_funcs(funcs: funcs, names: config.subtractions)
+    result = @helper.subtract_funcs(funcs: funcs, names: pf.subtractions)
     if !funcs.empty? && result.empty?
       @loginator.log(
         "Partial #{test}::#{partial} ⏩️ Subtractions left no testable functions",
@@ -194,7 +207,9 @@ class Partializer
         LogLabels::NOTICE
       )
     end
-    return result
+
+    # Remove any functions explicitly claimed by the mock side
+    return @helper.subtract_funcs(funcs: result, names: config.mocks.additions)
   end
 
   # Returns Array<Partials::FunctionDeclaration> for the mockable partial interface.
@@ -203,8 +218,9 @@ class Partializer
   #   PUBLIC     -- initial list is all non-private functions; additions inject named private functions
   #   PRIVATE    -- initial list is all private functions; additions inject named public functions
   #   ACCUMULATE -- initial list is empty; additions fill it entirely
-  #   nil        -- returns []
+  #   nil        -- returns nil
   # Subtractions remove named functions from the assembled list.
+  # Any functions in tests.additions are also removed from the final result.
   # Parameters are expected to be pre-validated (no unknown names, no overlap, etc.).
   # Additions search definitions first, then declarations; only the first match is used.
   #
@@ -212,17 +228,17 @@ class Partializer
   # @param partial      [String] Partial module name (for log messages)
   # @param definitions  [Array<CFunctionDefinition>] Extracted function definitions
   # @param declarations [Array<CFunctionDeclaration>] Extracted function declarations
-  # @param config       [PartializerConfig::PartialFunctions] The mocks config entry
+  # @param config       [PartializerConfig::Config] Full partial config for the module
   # @return [Array<Partials::FunctionDeclaration>]
   def extract_interface_functions(test:, partial:, definitions:, declarations:, config:)
-    # No Partial mocks
-    return nil if config.type.nil?
+    pf = config.mocks
+    return nil if pf.type.nil?
 
     # Build initial list by visibility; ACCUMULATE yields []
-    funcs = @helper.filter_and_transform_funcs(definitions, config.type, :interface)
+    funcs = @helper.filter_and_transform_funcs(definitions, pf.type, :interface)
 
     # Additions: search definitions first, then declarations
-    config.additions.each do |name|
+    pf.additions.each do |name|
       next if funcs.any? { |f| f.name == name }
       func = @helper.find_and_transform_func(
         name:            name,
@@ -234,7 +250,7 @@ class Partializer
     end
 
     # Subtractions: remove named functions from list
-    result = @helper.subtract_funcs(funcs: funcs, names: config.subtractions)
+    result = @helper.subtract_funcs(funcs: funcs, names: pf.subtractions)
     if !funcs.empty? && result.empty?
       @loginator.log(
         "Partial #{test}::#{partial} ⏩️ Subtractions left no mockable signatures",
@@ -242,7 +258,9 @@ class Partializer
         LogLabels::NOTICE
       )
     end
-    return result
+
+    # Remove any functions explicitly claimed by the test side
+    return @helper.subtract_funcs(funcs: result, names: config.tests.additions)
   end
 
   def log_extracted_functions(test:, module_name:, impl:, interface:)

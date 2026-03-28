@@ -194,18 +194,6 @@ describe PartializerConfig do
       }.to raise_error(CeedlingException, /MOCK_PARTIAL_CONFIG/)
     end
 
-    # --- Validation: same-classification conflict ---
-
-    it "raises when tests and mocks are both configured for PUBLIC" do
-      input = 'TEST_PARTIAL_PUBLIC_MODULE("foo") MOCK_PARTIAL_PUBLIC_MODULE("foo")'
-      expect { extract(input) }.to raise_error(CeedlingException, /foo/)
-    end
-
-    it "raises when tests and mocks are both configured for PRIVATE" do
-      input = 'TEST_PARTIAL_PRIVATE_MODULE("foo") MOCK_PARTIAL_PRIVATE_MODULE("foo")'
-      expect { extract(input) }.to raise_error(CeedlingException, /foo/)
-    end
-
     it "does not raise when tests are ACCUMULATE and mocks are PUBLIC" do
       input = 'TEST_PARTIAL_MODULE("foo") MOCK_PARTIAL_PUBLIC_MODULE("foo")'
       expect { extract(input) }.not_to raise_error

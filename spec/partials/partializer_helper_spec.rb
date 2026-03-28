@@ -785,31 +785,6 @@ describe PartializerHelper do
   end
 
   ###
-  ### validate_no_test_and_mock_overlap()
-  ###
-
-  context "#validate_no_test_and_mock_overlap" do
-    it "does not raise when tests.additions and mocks.additions are disjoint" do
-      name   = "test_mod"
-      config = make_config('mod',
-        tests: make_pf(additions: ['foo']),
-        mocks: make_pf(additions: ['bar'])
-      )
-      expect { @helper.validate_no_test_and_mock_overlap(config, name) }.not_to raise_error
-    end
-
-    it "raises when the same function appears in both tests.additions and mocks.additions" do
-      name   = "test_mod"
-      config = make_config('mod',
-        tests: make_pf(additions: ['shared']),
-        mocks: make_pf(additions: ['shared'])
-      )
-      expect { @helper.validate_no_test_and_mock_overlap(config, name) }
-        .to raise_error(CeedlingException, /test_mod.*mod.*shared/)
-    end
-  end
-
-  ###
   ### validate_additions_subtractions_visibility()
   ###
 
