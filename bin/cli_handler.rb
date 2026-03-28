@@ -65,7 +65,7 @@ class CliHandler
       )
     else
       # If no project configuration is available then note why we aren't displaying more
-      msg = "Run help commands in a directory with a project file to list additional options"
+      msg = "Run help commands in a directory with a project file to list additional options\n\n"
       @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
     end
 
@@ -130,8 +130,7 @@ class CliHandler
       @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
-    @loginator.log() # Blank line
-    @loginator.log( "New project created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\nNew project created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -168,8 +167,7 @@ class CliHandler
       @helper.copy_docs( app_cfg[:ceedling_root_path], path )
     end
 
-    @loginator.log() # Blank line
-    @loginator.log( "Upgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\nUpgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -277,8 +275,7 @@ class CliHandler
     ensure
       @helper.dump_yaml( config, filepath, sections )
 
-      @loginator.log() # Blank line
-      @loginator.log( "Dumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
+      @loginator.log( "\nDumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
     end
   end
 
@@ -324,8 +321,7 @@ class CliHandler
       output << " • #{line}\n"
     end
 
-    @loginator.log() # Blank line
-    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\n#{output}\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -343,8 +339,7 @@ class CliHandler
 
     examples.each {|example| output << " • #{example}\n" }
 
-    @loginator.log() # Blank line
-    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\n#{output}\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -387,8 +382,7 @@ class CliHandler
     # Copy in documentation
     @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
-    @loginator.log() # Blank line
-    @loginator.log( "Example project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\nExample project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
