@@ -162,6 +162,22 @@ describe Partializer do
       Partials.manufacture_function_declaration(name: name, signature: "void #{name}(void)")
     end
 
+    it "does not raise when impl is empty" do
+      expect {
+        @partializer.validate_extracted_functions(
+          name: 'test_mod', partial: 'mod', impl: [], interface: [make_iface('foo')]
+        )
+      }.not_to raise_error
+    end
+
+    it "does not raise when interface is empty" do
+      expect {
+        @partializer.validate_extracted_functions(
+          name: 'test_mod', partial: 'mod', impl: [make_impl('foo')], interface: []
+        )
+      }.not_to raise_error
+    end
+
     it "does not raise when impl and interface have no overlapping functions" do
       impl      = [make_impl('foo'), make_impl('bar')]
       interface = [make_iface('baz'), make_iface('qux')]
