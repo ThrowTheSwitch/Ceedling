@@ -162,6 +162,22 @@ describe Partializer do
       Partials.manufacture_function_declaration(name: name, signature: "void #{name}(void)")
     end
 
+    it "does not raise when impl is nil" do
+      expect {
+        @partializer.validate_extracted_functions(
+          name: 'test_mod', partial: 'mod', impl: nil, interface: [make_iface('foo')]
+        )
+      }.not_to raise_error
+    end
+
+    it "does not raise when interface is nil" do
+      expect {
+        @partializer.validate_extracted_functions(
+          name: 'test_mod', partial: 'mod', impl: [make_impl('foo')], interface: nil
+        )
+      }.not_to raise_error
+    end
+
     it "does not raise when impl is empty" do
       expect {
         @partializer.validate_extracted_functions(

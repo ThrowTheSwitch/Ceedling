@@ -32,8 +32,10 @@ class Partializer
   end
 
   def validate_extracted_functions(name:, partial:, impl:, interface:)
+    # Validation is only meaningful and possible if both references are non-nil.
+    return if impl.nil? || interface.nil?
+
     # Validation is only meaningful if both lists have content.
-    # The `map()` calls below will fail for empty arrays as well.
     return if impl.empty? || interface.empty?
 
     impl_names      = Set.new(impl.map(&:name))
