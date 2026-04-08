@@ -33,7 +33,7 @@ class ShellException < CeedlingException
       _message = "#{name} terminated with exit code [#{shell_result[:exit_code]}]"
 
       if !shell_result[:output].empty?
-        _message += " and output >>\n#{shell_result[:output].strip()}"
+        _message += " and output ⏩️\n#{shell_result[:output].strip()}"
       end
 
       if !message.empty?
@@ -42,7 +42,7 @@ class ShellException < CeedlingException
 
     # Otherwise, just report the exception message
     else
-      _message = "#{name} encountered an error with output >>\n#{message}"
+      _message = "#{name} encountered an error with output ⏩️\n#{message}"
     end
 
     # Hand the message off to parent Exception
