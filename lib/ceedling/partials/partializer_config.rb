@@ -38,7 +38,7 @@ class PartializerConfig
     end
 
     def present?
-      !type.nil? || !additions.empty? || !subtractions.empty?
+      !type.nil? && (!additions.empty? || !subtractions.empty?)
     end
   end
 
@@ -138,9 +138,17 @@ class PartializerConfig
 
     # --- Pass 3: Validation ---
     configs.each do |mod, config|
-      unless config.tests.present? || config.mocks.present?
+      if config.tests.type == ACCUMULATE && config.tests.additions.empty?
         raise CeedlingException.new(
-          "Partials are to be generated for module '#{mod}' but no meaningful configuration has been set for this Partial"
+          "TEST Partial for module '#{mod}' uses TEST_PARTIAL_MODULE() but no function additions were specified — " \
+          "add at least one function name via TEST_PARTIAL_CONFIG()"
+        )
+      end
+
+      if config.mocks.type == ACCUMULATE && config.mocks.additions.empty?
+        raise CeedlingException.new(
+          "MOCK Partial for module '#{mod}' uses MOCK_PARTIAL_MODULE() but no function additions were specified — " \
+          "add at least one function name via MOCK_PARTIAL_CONFIG()"
         )
       end
 
@@ -149,7 +157,7 @@ class PartializerConfig
         pf = config.send(field)
         if pf.type == ACCUMULATE && !pf.subtractions.empty?
           raise CeedlingException.new(
-            "Function subtractions are specified for the #{label} Partial of module '#{mod}', but subtractions are only allowed with PUBLIC/PRIVATE Partial classifications"
+            "#{label} configuration for '#{mod}' Partial cannot contain subtractions because only additions are available with PARTIAL_#{label}_MODULE()"
           )
         end
       end
@@ -162,11 +170,11 @@ class PartializerConfig
 
   private
 
-  # Raise if partial_functions.type is already set — indicates duplicate MODULE macro.
+  # Raise if partial_functions.type is already set -— indicates duplicate MODULE macro.
   def _check_type_unset!(partial_functions, mod, macro_name)
     return if partial_functions.type.nil?
     raise CeedlingException.new(
-      "'#{macro_name}' for module '#{mod}' — type already set (only one MODULE macro per tests/mocks entry)"
+      "Partial for module '#{mod}' was declared with '#{macro_name}', but it was already declared and can only be declared once."
     )
   end
 

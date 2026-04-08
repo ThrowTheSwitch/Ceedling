@@ -112,10 +112,10 @@ describe PartializerConfig do
       expect( result['calculator'].mocks.additions ).to eq ['multiply']
     end
 
-    it "TEST_PARTIAL_MODULE alone (without CONFIG) is valid" do
-      result = extract('TEST_PARTIAL_MODULE(calculator)')
-      expect( result['calculator'].tests.type ).to eq Partials::ACCUMULATE
-      expect( result['calculator'].tests.additions ).to be_empty
+    it "raises when TEST_PARTIAL_MODULE is used alone without any CONFIG additions" do
+      expect {
+        extract('TEST_PARTIAL_MODULE(calculator)')
+      }.to raise_error(CeedlingException, /TEST_PARTIAL_MODULE/)
     end
 
     # --- MODULE macro overwrite raises ---
@@ -194,9 +194,9 @@ describe PartializerConfig do
       }.to raise_error(CeedlingException, /MOCK_PARTIAL_CONFIG/)
     end
 
-    it "does not raise when tests are ACCUMULATE and mocks are PUBLIC" do
+    it "raises when tests are ACCUMULATE without CONFIG additions (even when mocks are PUBLIC)" do
       input = 'TEST_PARTIAL_MODULE("foo") MOCK_PARTIAL_PUBLIC_MODULE("foo")'
-      expect { extract(input) }.not_to raise_error
+      expect { extract(input) }.to raise_error(CeedlingException, /TEST_PARTIAL_MODULE/)
     end
 
     it "does not raise when tests are PUBLIC and mocks are PRIVATE" do
