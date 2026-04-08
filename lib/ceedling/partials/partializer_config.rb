@@ -38,7 +38,9 @@ class PartializerConfig
     end
 
     def present?
-      !type.nil? && (!additions.empty? || !subtractions.empty?)
+      return false if type.nil?
+      return false if type == ACCUMULATE && additions.empty?
+      return true
     end
   end
 
