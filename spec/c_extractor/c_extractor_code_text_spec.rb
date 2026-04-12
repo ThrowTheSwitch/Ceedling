@@ -683,58 +683,6 @@ describe CExtractorCodeText do
       end
     end
 
-    context "semicolons with preprocessor directives" do
-      it "skips semicolons separated by #define" do
-        content = ";\n#define FOO\n;code"
-        pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(15)
-        expect(rest).to eq("code")
-      end
-
-      it "skips semicolons separated by #include" do
-        content = ";\n#include <stdio.h>\n;code"
-        pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(22)
-        expect(rest).to eq("code")
-      end
-
-      it "skips semicolons with multi-line preprocessor directive" do
-        content = ";\n#define MACRO \\\n  value\n;code"
-        pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(27)
-        expect(rest).to eq("code")
-      end
-
-      it "skips semicolons with multiple directives" do
-        content = ";\n#define A\n#define B\n;code"
-        pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(23)
-        expect(rest).to eq("code")
-      end
-    end
-
-    context "mixed deadspace between semicolons" do
-      it "skips semicolons with whitespace, comments, and directives" do
-        content = "; \n// comment\n  /* block */\n  #define FOO\n  ;code"
-        pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(45)
-        expect(rest).to eq("code")
-      end
-
-      it "skips complex mix of deadspace and semicolons" do
-        content = ";\t// first\n;\n/* second */\n#define X\n;code"
-        pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(37)
-        expect(rest).to eq("code")
-      end
-    end
-
     context "stopping at non-semicolon content" do
       it "stops at identifier" do
         content = ";code"
@@ -852,13 +800,6 @@ describe CExtractorCodeText do
         expect(rest).to eq("")
       end
 
-      it "handles semicolons ending with preprocessor directive" do
-        content = ";\n#define FOO"
-        pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(13)
-        expect(rest).to eq("")
-      end
     end
 
     context "real-world C code patterns" do
@@ -1094,80 +1035,6 @@ describe CExtractorCodeText do
       end
     end
 
-    context "preprocessor directive handling" do
-      it "skips simple #include directive" do
-        content = "#include <stdio.h>\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(19)
-        expect(pos).to eq(19)
-        expect(rest).to eq("code")
-      end
-
-      it "skips #define directive" do
-        content = "#define MAX 100\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(16)
-        expect(pos).to eq(16)
-        expect(rest).to eq("code")
-      end
-
-      it "skips #ifdef directive" do
-        content = "#ifdef DEBUG\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(13)
-        expect(pos).to eq(13)
-        expect(rest).to eq("code")
-      end
-
-      it "skips directive with line continuation" do
-        content = "#define MACRO(x) \\\n  do { something; } \\\n  while(0)\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(52)
-        expect(pos).to eq(52)
-        expect(rest).to eq("code")
-      end
-
-      it "skips multiple consecutive directives" do
-        content = "#include <stdio.h>\n#include <stdlib.h>\n#define MAX 100\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(55)
-        expect(pos).to eq(55)
-        expect(rest).to eq("code")
-      end
-
-      it "skips directive with whitespace before hash" do
-        content = "  #define FOO\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(14)
-        expect(pos).to eq(14)
-        expect(rest).to eq("code")
-      end
-
-      it "skips directive without trailing newline" do
-        content = "#define FOO"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(11)
-        expect(pos).to eq(11)
-        expect(rest).to eq("")
-      end
-
-      it "handles directive with multiple line continuations" do
-        content = "#define LONG_MACRO \\\n  line1 \\\n  line2 \\\n  line3\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(49)
-        expect(pos).to eq(49)
-        expect(rest).to eq("code")
-      end
-    end
-
     context "mixed deadspace handling" do
       it "skips whitespace followed by comment" do
         content = "  \t/* comment */code"
@@ -1196,40 +1063,6 @@ describe CExtractorCodeText do
         expect(rest).to eq("code")
       end
 
-      it "skips preprocessor followed by comment" do
-        content = "#define FOO\n// comment\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(23)
-        expect(pos).to eq(23)
-        expect(rest).to eq("code")
-      end
-
-      it "skips comment followed by preprocessor" do
-        content = "/* comment */\n#define FOO\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(26)
-        expect(pos).to eq(26)
-        expect(rest).to eq("code")
-      end
-
-      it "skips complex mix of all deadspace types" do
-        content = "  \n// comment\n  /* block */\n  #define FOO\n  code"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(44)
-        expect(pos).to eq(44)
-        expect(rest).to eq("code")
-      end
-     it "skips comment followed by preprocessor" do
-        content = "/* comment */\n#define FOO\ncode"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(26)
-        expect(pos).to eq(26)
-        expect(rest).to eq("code")
-      end
     end
 
     context "edge cases" do
@@ -1260,15 +1093,6 @@ describe CExtractorCodeText do
         expect(rest).to eq("")
       end
 
-      it "handles string with only preprocessor directives" do
-        content = "#define FOO\n#include <bar.h>"
-        bytes_skipped, pos, rest = skip_deadspace.call(content)
-        
-        expect(bytes_skipped).to eq(28)
-        expect(pos).to eq(28)
-        expect(rest).to eq("")
-      end
-
       it "does not skip code that looks like comment but isn't" do
         content = "int a = 5 / 2; // actual comment\ncode"
         bytes_skipped, pos, rest = skip_deadspace.call(content)
@@ -1294,42 +1118,6 @@ describe CExtractorCodeText do
     end
 
     context "real-world C code patterns" do
-      it "skips typical file header" do
-        content = <<~C
-          // File: example.c
-          // Author: Someone
-          /* Copyright notice
-             spanning multiple lines */
-          
-          #include <stdio.h>
-          #include <stdlib.h>
-          
-          #define MAX_SIZE 100
-          
-          int main() {
-        C
-        
-        _, _, rest = skip_deadspace.call(content)
-        
-        expect(rest).to start_with("int main()")
-      end
-
-      it "skips multiple successive preprocessor directive lines" do
-        content = <<~C
-          #ifdef DEBUG
-          #define LOG(x) printf(x)
-          #else
-          #define LOG(x)
-          #endif
-          
-          void foo() {
-        C
-        
-        _, _, rest = skip_deadspace.call(content)
-        
-        expect(rest).to start_with("void foo()")
-      end
-
       it "handles Doxygen-style comments" do
         content = <<~CODE
           /**
@@ -1345,26 +1133,6 @@ describe CExtractorCodeText do
         expect(rest).to start_with("int func(int x)")
       end
 
-      it "should not be able to process disabled code blocks" do
-        # NOTE: C extraction is not implemented as a full C parser and/or preprocessor
-        # We assume that the file to be processed is either relatively simple or has already been preprocessed
-        # to remove complex preprocessor directives, etc.
-
-        content = <<~CODE
-          #if 0
-          // This code is disabled
-          void old_function() {
-              // ...
-          }
-          #endif
-          
-          void new_function() {
-        CODE
-        
-        _, _, rest = skip_deadspace.call(content)
-        
-        expect(rest).to start_with("void old_function() {\n    // ...\n}\n#endif\n\nvoid new_function() {\n")
-      end
     end
   end
 

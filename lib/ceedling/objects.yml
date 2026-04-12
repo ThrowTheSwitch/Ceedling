@@ -330,7 +330,7 @@ c_extractor_functions:
 
 c_extractor_declarations:
 
-c_extractor_macros:
+c_extractor_preprocessing:
   compose:
     - c_extractor_code_text
 
@@ -339,10 +339,11 @@ c_extractor:
     - c_extractor_code_text
     - c_extractor_declarations
     - c_extractor_functions
+    - c_extractor_preprocessing
 
 partializer_config:
   compose:
-    - c_extractor_macros
+    - c_extractor_preprocessing
 
 partializer_utils:
   compose:

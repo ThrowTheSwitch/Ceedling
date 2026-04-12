@@ -101,33 +101,33 @@ class CExtractorCodeText
   end
 
   # Skip consecutive semicolons and any intervening deadspace
-  # 
+  #
   # This method handles cases where multiple semicolons appear in sequence,
-  # potentially separated by whitespace, comments, or preprocessor directives.
+  # potentially separated by whitespace or comments.
   # This is valid C syntax (null statements) and can occur due to:
   #   - Macro expansions
   #   - Code generation
   #   - Coding mistakes that don't cause compilation errors
-  # 
+  #
   # The method repeatedly:
-  #   1. Skips any deadspace (whitespace, comments, preprocessor directives)
+  #   1. Skips any deadspace (whitespace and comments)
   #   2. Checks for a semicolon
   #   3. If found, consumes it and continues
   #   4. If not found, restores position and exits
-  # 
+  #
   # Parameters:
   #   scanner: StringScanner positioned at potential semicolons/deadspace
-  # 
+  #
   # Returns: Nothing (void method)
-  # 
+  #
   # Side effects: Advances scanner position past all consecutive semicolons and deadspace
-  # 
+  #
   # Examples:
-  #   ";;;"                    -> skips all three semicolons
-  #   "; ; ;"                  -> skips semicolons and spaces
-  #   "; /* comment */ ;"      -> skips semicolons and comment
-  #   "; code"                 -> skips first semicolon, stops at "code"
-  #   "code"                   -> skips nothing
+  #   ";;;"               -> skips all three semicolons
+  #   "; ; ;"             -> skips semicolons and spaces
+  #   "; /* comment */ ;" -> skips semicolons and comment
+  #   "; code"            -> skips first semicolon, stops at "code"
+  #   "code"              -> skips nothing
   def skip_semicolons(scanner)
     while !scanner.eos?
       start_pos = scanner.pos
@@ -149,42 +149,36 @@ class CExtractorCodeText
   # Deadspace includes:
   #   - Whitespace (spaces, tabs, newlines, carriage returns)
   #   - Comments (both single-line // and multi-line /* */)
-  #   - Preprocessor directives (lines starting with #, including multi-line directives)
   #
-  # NOTE: C extraction is not implemented as a full C parser and/or preprocessor
-  # We assume that the file to be processed is either relatively simple or has already been 
-  # preprocessed to remove complex preprocessor directives, etc. Certain complex blocks
-  # cannot be processed by this method.
-  # 
+  # NOTE: Preprocessing directives (lines starting with #) are NOT deadspace —
+  # they are first-class features handled by CExtractorPreprocessing.
+  #
   # This method repeatedly scans for and skips these elements until no more are found,
   # ensuring all consecutive deadspace is consumed in a single call.
-  # 
+  #
   # Parameters:
   #   scanner: StringScanner positioned at potential deadspace
-  # 
+  #
   # Returns: Number of bytes skipped
-  # 
+  #
   # Side effects: Advances scanner position past all consecutive deadspace
-  # 
+  #
   # Examples:
-  #   "   \n// comment\n#define FOO\ncode" -> skips to "code"
-  #   "/* block */  \t\ncode"              -> skips to "code"
-  #   "code"                               -> skips 0 bytes (no deadspace)
+  #   "   \n// comment\ncode" -> skips to "code"
+  #   "/* block */  \t\ncode" -> skips to "code"
+  #   "code"                  -> skips 0 bytes (no deadspace)
   def skip_deadspace(scanner)
     start_pos = scanner.pos
 
     loop do
       initial = scanner.pos
-      
+
       # Skip whitespace
       scanner.skip(/\s+/)
-      
+
       # Skip comments
       skip_comment(scanner) if scanner.check(%r{/[/*]})
-      
-      # Skip preprocessor directives
-      skip_preprocessor_directive(scanner) if scanner.check(/#/)
-      
+
       # If nothing was skipped, we're done
       break if scanner.pos == initial
     end
@@ -202,30 +196,4 @@ class CExtractorCodeText
     end
   end
 
-  private
-  
-  # Skip preprocessor directives (lines starting with #)
-  # Handles multiline directives with backslash continuation
-  def skip_preprocessor_directive(scanner)
-    return false unless scanner.scan(/#/)
-    
-    # Skip the rest of the directive line, handling line continuations
-    loop do
-      # Scan to end of line or backslash
-      scanner.scan(/[^\n\\]*/)
-      
-      # Check if line continues
-      if scanner.scan(/\\\n/)
-        # Line continues, keep scanning
-        next
-      else
-        # End of directive - consume the newline if present
-        scanner.scan(/\n/)
-        break
-      end
-    end
-    
-    true
-  end
-  
 end

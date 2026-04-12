@@ -8,21 +8,21 @@
 require 'spec_helper'
 require 'strscan'
 require 'ceedling/c_extractor/c_extractor_code_text'
-require 'ceedling/c_extractor/c_extractor_macros'
+require 'ceedling/c_extractor/c_extractor_preprocessing'
 
-describe CExtractorMacros do
+describe CExtractorPreprocessing do
 
   before(:each) do
-    code_text = CExtractorCodeText.new
-    @macros   = described_class.new( { c_extractor_code_text: code_text } )
+    code_text      = CExtractorCodeText.new
+    @preprocessing = described_class.new( { c_extractor_code_text: code_text } )
   end
 
   # Helper: scan `text` for FOO and BAR macro calls
   def scan(text, names = ['FOO', 'BAR'])
-    @macros.try_extract_calls( StringScanner.new(text), names )
+    @preprocessing.try_extract_macro_calls( StringScanner.new(text), names )
   end
 
-  context "#try_extract_calls" do
+  context "#try_extract_macro_calls" do
 
     it "returns empty array for empty input" do
       expect( scan('') ).to eq []
@@ -172,10 +172,10 @@ describe CExtractorMacros do
 
   end
 
-  context "#parse_call" do
+  context "#parse_macro_call" do
 
     def parse(str)
-      @macros.parse_call(str)
+      @preprocessing.parse_macro_call(str)
     end
 
     it "returns macro name and single param" do
@@ -222,6 +222,117 @@ describe CExtractorMacros do
 
     it "returns [nil, []] for empty input" do
       expect( parse('') ).to eq [nil, []]
+    end
+
+  end
+
+  context "#try_extract_directive" do
+
+    def try_directive(text)
+      scanner = StringScanner.new(text)
+      result  = @preprocessing.try_extract_directive(scanner)
+      [result, scanner.pos]
+    end
+
+    it "returns [false, nil] when scanner is not at #" do
+      result, pos = try_directive('int x = 0;')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0  # scanner not advanced
+    end
+
+    it "returns [false, nil] for empty input" do
+      result, pos = try_directive('')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "extracts a simple #pragma directive" do
+      result, pos = try_directive("#pragma once\n")
+      expect(result).to eq [true, "#pragma once\n"]
+      expect(pos).to eq "#pragma once\n".length
+    end
+
+    it "extracts a simple #include directive" do
+      result, pos = try_directive("#include <stdio.h>\n")
+      expect(result).to eq [true, "#include <stdio.h>\n"]
+      expect(pos).to eq "#include <stdio.h>\n".length
+    end
+
+    it "extracts a simple single-line #define macro" do
+      result, pos = try_directive("#define FOO 42\n")
+      expect(result).to eq [true, "#define FOO 42\n"]
+      expect(pos).to eq "#define FOO 42\n".length
+    end
+
+    it "extracts a #define with whitespace after #" do
+      result, pos = try_directive("# define FOO\n")
+      expect(result).to eq [true, "# define FOO\n"]
+      expect(pos).to eq "# define FOO\n".length
+    end
+
+    it "extracts a directive without trailing newline (EOS)" do
+      result, pos = try_directive("#define FOO")
+      expect(result).to eq [true, "#define FOO"]
+      expect(pos).to eq "#define FOO".length
+    end
+
+    it "extracts a multiline #define with single backslash continuation" do
+      input = "#define MAX(a,b) \\\n  ((a)>(b)?(a):(b))\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    it "extracts a multiline #define with multiple backslash continuations" do
+      input = "#define MULTI \\\n  line1 \\\n  line2\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    it "stops at end of directive and does not consume following code" do
+      input = "#define FOO 1\nint x = 0;"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, "#define FOO 1\n"]
+      expect(pos).to eq "#define FOO 1\n".length
+    end
+
+    it "leaves scanner position unchanged on failure" do
+      scanner = StringScanner.new("int x;")
+      scanner.pos = 0
+      @preprocessing.try_extract_directive(scanner)
+      expect(scanner.pos).to eq 0
+    end
+
+  end
+
+  context "#filter_directive" do
+
+    it "returns the directive text for MACRO_DEFINITION when directive is #define" do
+      text = "#define FOO 42\n"
+      expect( @preprocessing.filter_directive(text, CExtractorPreprocessing::MACRO_DEFINITION) ).to eq text
+    end
+
+    it "returns the directive text for MACRO_DEFINITION when directive is multiline #define" do
+      text = "#define MAX(a,b) \\\n  ((a)>(b)?(a):(b))\n"
+      expect( @preprocessing.filter_directive(text, CExtractorPreprocessing::MACRO_DEFINITION) ).to eq text
+    end
+
+    it "returns the directive text for MACRO_DEFINITION when # define has whitespace after #" do
+      text = "# define FOO\n"
+      expect( @preprocessing.filter_directive(text, CExtractorPreprocessing::MACRO_DEFINITION) ).to eq text
+    end
+
+    it "returns nil for MACRO_DEFINITION when directive is #pragma" do
+      expect( @preprocessing.filter_directive("#pragma once\n", CExtractorPreprocessing::MACRO_DEFINITION) ).to be_nil
+    end
+
+    it "returns nil for MACRO_DEFINITION when directive is #include" do
+      expect( @preprocessing.filter_directive("#include <stdio.h>\n", CExtractorPreprocessing::MACRO_DEFINITION) ).to be_nil
+    end
+
+    it "returns nil for unknown type symbols" do
+      expect( @preprocessing.filter_directive("#define FOO\n", :unknown_type) ).to be_nil
     end
 
   end

@@ -10,6 +10,7 @@ require 'ceedling/c_extractor/c_extractor'
 require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ceedling/c_extractor/c_extractor_functions'
 require 'ceedling/c_extractor/c_extractor_declarations'
+require 'ceedling/c_extractor/c_extractor_preprocessing'
 require 'stringio'
 
 ##
@@ -40,15 +41,17 @@ describe CExtractor do
     # Helper to build a fully-wired CExtractor via DI
     let(:build_extractor) do
       ->() do
-        code_text    = CExtractorCodeText.new
-        declarations = CExtractorDeclarations.new
-        functions    = CExtractorFunctions.new({ c_extractor_code_text: code_text })
+        code_text      = CExtractorCodeText.new
+        declarations   = CExtractorDeclarations.new
+        functions      = CExtractorFunctions.new({ c_extractor_code_text: code_text })
+        preprocessing  = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
         functions.setup()
         extractor = CExtractor.new(
           {
-            c_extractor_code_text: code_text,
-            c_extractor_functions: functions,
-            c_extractor_declarations: declarations
+            c_extractor_code_text:    code_text,
+            c_extractor_functions:    functions,
+            c_extractor_declarations: declarations,
+            c_extractor_preprocessing: preprocessing
           }
         )
         extractor.setup()
@@ -161,14 +164,14 @@ describe CExtractor do
         expect(result).to eq("PATTERN")
       end
 
-      it "skips preprocessor directives before pattern" do
+      it "does not skip preprocessor directives — they are features, not deadspace" do
         content = "#include <stdio.h>\n#define FOO 123\nPATTERN"
         io = StringIO.new(content)
         extractor = create_pattern_extractor.call(/PATTERN/)
-        
+
         result = extract_feature.call(io, 1000, extractor)
-        
-        expect(result).to eq("PATTERN")
+
+        expect(result).to be_nil
       end
     end
 

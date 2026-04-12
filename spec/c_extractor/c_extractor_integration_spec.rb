@@ -10,6 +10,7 @@ require 'ceedling/c_extractor/c_extractor'
 require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ceedling/c_extractor/c_extractor_functions'
 require 'ceedling/c_extractor/c_extractor_declarations'
+require 'ceedling/c_extractor/c_extractor_preprocessing'
 
 ##
 ## These integration tests exercise the composition of all CExtractor* objects
@@ -19,15 +20,17 @@ require 'ceedling/c_extractor/c_extractor_declarations'
 describe CExtractor do
 
   let(:extractor) do
-    code_text    = CExtractorCodeText.new
-    declarations = CExtractorDeclarations.new
-    functions    = CExtractorFunctions.new({ c_extractor_code_text: code_text })
+    code_text     = CExtractorCodeText.new
+    declarations  = CExtractorDeclarations.new
+    functions     = CExtractorFunctions.new({ c_extractor_code_text: code_text })
+    preprocessing = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
     functions.setup()
     extractor = CExtractor.new(
       {
-        c_extractor_code_text: code_text,
-        c_extractor_functions: functions,
-        c_extractor_declarations: declarations
+        c_extractor_code_text:     code_text,
+        c_extractor_functions:     functions,
+        c_extractor_declarations:  declarations,
+        c_extractor_preprocessing: preprocessing
       }
     )
     extractor.setup()
@@ -114,7 +117,7 @@ describe CExtractor do
     end
 
     it "should extract functions and module variables while ignoring deadspace text and errant semicolons" do
-      file_contents = <<~CONTENTS
+      file_contents = <<~'CONTENTS'
 
       #include <stdint.h>
       #include "foo.h"
@@ -175,6 +178,10 @@ describe CExtractor do
       expect( contents.function_definitions[1].body ).to eq "{ int a = 1 + 1;; }"
       expect( contents.function_definitions[1].code_block ).to eq "void b_function(void) { int a = 1 + 1;; }"
       expect( contents.function_definitions[1].line_count ).to eq 1
+
+      expect( contents.macro_definitions.length ).to eq 2
+      expect( contents.macro_definitions[0] ).to eq "#define FOO 123\n"
+      expect( contents.macro_definitions[1] ).to start_with("#define MACRO(x) \\\n")
     end
 
     it "should ignore commented out functions and handle comments with braces" do
@@ -461,6 +468,10 @@ describe CExtractor do
       expect( contents.function_definitions[1].name ).to eq 'simple_function'
       expect( contents.function_definitions[1].signature ).to eq 'void simple_function(void)'
       expect( contents.function_definitions[1].line_count ).to eq 3
+
+      expect( contents.macro_definitions.length ).to eq 2
+      expect( contents.macro_definitions[0] ).to eq "#define MAX_SIZE 100\n"
+      expect( contents.macro_definitions[1] ).to eq "#define PROCESS(x) do { process_data(x); } while(0)\n"
     end
 
     it "should extract multiple simple functions longer than buffer chunk size" do
@@ -503,6 +514,43 @@ describe CExtractor do
       expect( contents.function_definitions[2].body ).to eq "{\n  return &global_var;\n}"
       expect( contents.function_definitions[2].code_block ).to eq "uint16_t*  C_Function (void)\n{\n  return &global_var;\n}"
       expect( contents.function_definitions[2].line_count ).to eq 4
+    end
+
+    it "should extract macro definitions and no other features from a macros-only input" do
+      file_contents = <<~'CONTENTS'
+      #define SIMPLE 1
+      #define WITH_ARGS(x, y) ((x) + (y))
+      #define MULTILINE(a) \
+        do { \
+          process(a); \
+        } while(0)
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect( contents.macro_definitions.length ).to eq 3
+      expect( contents.macro_definitions[0] ).to eq "#define SIMPLE 1\n"
+      expect( contents.macro_definitions[1] ).to eq "#define WITH_ARGS(x, y) ((x) + (y))\n"
+      expect( contents.macro_definitions[2] ).to start_with("#define MULTILINE(a) \\\n")
+      expect( contents.function_definitions.length ).to eq 0
+      expect( contents.function_declarations.length ).to eq 0
+      expect( contents.variables.length ).to eq 0
+    end
+
+    it "should consume #pragma and #include directives without storing them" do
+      file_contents = <<~CONTENTS
+      #pragma once
+      #include <stdio.h>
+      #include "myheader.h"
+
+      void a_function(void) {}
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect( contents.macro_definitions.length ).to eq 0
+      expect( contents.function_definitions.length ).to eq 1
+      expect( contents.function_definitions[0].name ).to eq 'a_function'
     end
 
     it "should fail to extract a function longer than max buffer length" do

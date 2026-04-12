@@ -9,12 +9,13 @@ require 'stringio'
 require 'strscan'
 require 'ceedling/partials/partials'
 require 'ceedling/exceptions'
+require 'ceedling/c_extractor/c_extractor_preprocessing'
 
 class PartializerConfig
 
   include Partials
 
-  constructor :c_extractor_macros
+  constructor :c_extractor_preprocessing
 
   # Macro names for all partial configuration macros
   MACRO_NAMES = [
@@ -74,14 +75,14 @@ class PartializerConfig
   def extract_configs(io)
     content = io.read
     scanner = StringScanner.new(content)
-    calls   = @c_extractor_macros.try_extract_calls(scanner, MACRO_NAMES)
+    calls   = @c_extractor_preprocessing.try_extract_macro_calls(scanner, MACRO_NAMES)
 
     configs      = {}  # module_name => Config
     config_calls = []  # deferred: [macro_name, params] for CONFIG macros
 
     # --- Pass 1: MODULE macros ---
     calls.each do |call_str|
-      macro_name, params = @c_extractor_macros.parse_call(call_str)
+      macro_name, params = @c_extractor_preprocessing.parse_macro_call(call_str)
       next if macro_name.nil?
 
       if macro_name.end_with?('_CONFIG')

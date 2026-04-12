@@ -9,6 +9,7 @@ require 'strscan'
 require 'stringio'
 require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_constants'
+require 'ceedling/c_extractor/c_extractor_preprocessing'
 
 class CExtractor
 
@@ -19,10 +20,11 @@ class CExtractor
     :variables,             # Array of CVariableDeclaration structs
     :function_definitions,  # Array of CFunctionDefinition structs
     :function_declarations, # Array of CFunctionDeclaration structs
+    :macro_definitions,     # Array of String — raw #define text (single or multiline)
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to empty arrays for convenience
-    def initialize(variables: [], function_definitions: [], function_declarations: [])
+    def initialize(variables: [], function_definitions: [], function_declarations: [], macro_definitions: [])
       super
     end
 
@@ -30,22 +32,24 @@ class CExtractor
     # Returns a new CModule with combined arrays
     def +(other)
       CModule.new(
-        variables: (self.variables + other.variables),
-        function_definitions: (self.function_definitions + other.function_definitions),
-        function_declarations: (self.function_declarations + other.function_declarations)
+        variables:             (self.variables             + other.variables),
+        function_definitions:  (self.function_definitions  + other.function_definitions),
+        function_declarations: (self.function_declarations + other.function_declarations),
+        macro_definitions:     (self.macro_definitions     + other.macro_definitions)
       )
     end
   end
 
-  constructor :c_extractor_code_text, :c_extractor_functions, :c_extractor_declarations
+  constructor :c_extractor_code_text, :c_extractor_functions, :c_extractor_declarations, :c_extractor_preprocessing
 
   attr_writer :chunk_size, :max_buffer_length
 
   def setup()
     # Aliases
-    @code_text = @c_extractor_code_text
-    @functions = @c_extractor_functions
-    @declarations = @c_extractor_declarations
+    @code_text     = @c_extractor_code_text
+    @functions     = @c_extractor_functions
+    @declarations  = @c_extractor_declarations
+    @preprocessing = @c_extractor_preprocessing
 
     @chunk_size        = DEFAULT_CHUNK_SIZE
     @max_buffer_length = DEFAULT_MAX_FUNCTION_LENGTH
@@ -108,13 +112,27 @@ class CExtractor
   def extract_contents(io, filepath)
     function_definitions  = []
     function_declarations = []
-    variables = []
+    variables             = []
+    macro_definitions     = []
 
     # Ensure we're at the start of buffer
     io.rewind
 
     until io.eof?
-      # First pass: Extract a function (most unique feature)
+      # First: preprocessing directives — '#' is the most syntactically unique leading character.
+      # All directives are consumed; filter_directive selects only those collected for storage.
+      directive = extract_next_feature(
+        io: io,
+        max_length: @max_buffer_length,
+        extractor: @preprocessing.method(:try_extract_directive)
+      )
+      if directive
+        macro_def = @preprocessing.filter_directive(directive, CExtractorPreprocessing::MACRO_DEFINITION)
+        macro_definitions << macro_def if macro_def
+        next
+      end
+
+      # Extract a function definition (most unique non-preprocessor feature)
       func = extract_next_feature(
         io: io,
         max_length: @max_buffer_length,
@@ -123,11 +141,10 @@ class CExtractor
       )
       if func
         function_definitions << func
-        # Avoid the final `break` that ends all feature search
         next
       end
 
-      # First pass: Extract a function forward declaration (next most unique feature)
+      # Extract a function forward declaration (next most unique feature)
       func = extract_next_feature(
         io: io,
         max_length: @max_buffer_length,
@@ -135,11 +152,10 @@ class CExtractor
       )
       if func
         function_declarations << func
-        # Avoid the final `break` that ends all feature search
         next
       end
 
-      # Second pass: Extract variable declarations as array
+      # Extract variable declarations as array
       # Note that a compound variable declaration (e.g. `int x, y`) yields multiple declarations
       vars = extract_next_feature(
         io: io,
@@ -148,7 +164,6 @@ class CExtractor
       )
       if vars
         variables.concat(vars)
-        # Avoid the final `break` that ends all feature search
         next
       end
 
@@ -157,9 +172,10 @@ class CExtractor
     end
 
     return CModule.new(
-      function_definitions: function_definitions,
+      function_definitions:  function_definitions,
       function_declarations: function_declarations,
-      variables: variables
+      variables:             variables,
+      macro_definitions:     macro_definitions
     )
   ensure
     io.close

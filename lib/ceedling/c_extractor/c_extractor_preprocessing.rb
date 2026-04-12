@@ -5,7 +5,10 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-class CExtractorMacros
+class CExtractorPreprocessing
+
+  # Directive type symbols for use with filter_directive()
+  MACRO_DEFINITION = :macro_definition
 
   constructor :c_extractor_code_text
 
@@ -21,7 +24,7 @@ class CExtractorMacros
   # @param scanner [StringScanner] positioned anywhere in the source text
   # @param macro_names [Array<String>] macro names to search for
   # @return [Array<String>] cleaned macro call strings
-  def try_extract_calls(scanner, macro_names)
+  def try_extract_macro_calls(scanner, macro_names)
     results = []
     pattern = _build_pattern(macro_names)
 
@@ -56,7 +59,7 @@ class CExtractorMacros
     return results
   end
 
-  # Parse a single macro call string (as returned by `try_extract_calls`) into its
+  # Parse a single macro call string (as returned by `try_extract_macro_calls`) into its
   # macro name and an array of individual parameter strings.
   #
   # Top-level commas (not nested inside `()`, `[]`, `{}`, or string literals) are
@@ -66,7 +69,7 @@ class CExtractorMacros
   # @param call_str [String] a cleaned macro call string, e.g. "FOO(a, b, [c, d])"
   # @return [Array(String, Array<String>)] two-element array of [macro_name, params]
   #   where macro_name is nil and params is [] if the string is malformed
-  def parse_call(call_str)
+  def parse_macro_call(call_str)
     scanner = StringScanner.new( call_str )
 
     # Extract macro name — everything before the opening '('
@@ -74,6 +77,35 @@ class CExtractorMacros
     return [nil, []] if macro_name.nil? || !scanner.scan( /\(/ )
 
     return [macro_name, _split_params(scanner)]
+  end
+
+  # Try to extract a C preprocessing directive from the scanner.
+  # Called as a feature extractor by CExtractor#extract_next_feature.
+  # Returns every directive found as raw text — callers filter by type as needed.
+  #
+  # @param scanner [StringScanner] positioned at the start of potential directive
+  # @return [Array(Boolean, String)]
+  #   [true,  '#define FOO 42\n'] — directive text (any directive type)
+  #   [false, nil               ] — no # at current position; nothing consumed
+  def try_extract_directive(scanner)
+    text = _collect_directive(scanner)
+    return [false, nil] if text.nil?
+
+    [true, text]
+  end
+
+  # Filter a directive string by type, returning the text only if it matches the requested type.
+  # This allows callers to selectively collect specific directive types while still ensuring
+  # all directives are consumed from the input.
+  #
+  # @param directive [String] raw directive text (as returned by try_extract_directive)
+  # @param type [Symbol] the directive type to match; see MACRO_DEFINITION and other constants
+  # @return [String, nil] the directive text if it matches the requested type, nil otherwise
+  def filter_directive(directive, type)
+    case type
+    when MACRO_DEFINITION
+      directive.match?(/\A#\s*define\b/) ? directive : nil
+    end
   end
 
   ### Private ###
@@ -177,6 +209,28 @@ class CExtractorMacros
     return params
   end
 
+  # Collect and return the full text of a preprocessing directive starting at '#'.
+  # Returns nil if not positioned at '#'. Handles backslash-newline continuations.
+  def _collect_directive(scanner)
+    return nil unless scanner.check(/#/)
+
+    text = scanner.scan(/#/)
+
+    loop do
+      text += scanner.scan(/[^\n\\]*/) || ''
+
+      if scanner.scan(/\\\n/)
+        text += "\\\n"
+      elsif scanner.scan(/\n/)
+        text += "\n"
+        break
+      else
+        break  # EOS — no trailing newline
+      end
+    end
+
+    text
+  end
 
   # Collapse any run of whitespace (spaces, tabs, newlines) to a single space
   # and strip leading/trailing whitespace.
