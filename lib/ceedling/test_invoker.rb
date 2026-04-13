@@ -608,14 +608,14 @@ class TestInvoker
           @partializer.log_extracted_variable_decls(
             test:           name,
             module_name:    config.module,
-            decls:          module_contents.variables
+            decls:          module_contents.variable_declarations
           )
 
           arg_hash = {
             test:                  name,
             partial:               config.module,
             function_defns:        impl,
-            variable_declarations: module_contents.variables,
+            variable_declarations: module_contents.variable_declarations,
             header_includes:       @partializer.remap_implementation_header_includes(
                                     name: config.module,
                                     includes: (config.source.includes + config.header.includes),

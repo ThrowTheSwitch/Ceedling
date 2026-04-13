@@ -17,7 +17,7 @@ class CExtractor
 
   # Data class representing all extracted content of C module
   CModule = Struct.new(
-    :variables,             # Array of CVariableDeclaration structs
+    :variable_declarations, # Array of CVariableDeclaration structs
     :function_definitions,  # Array of CFunctionDefinition structs
     :function_declarations, # Array of CFunctionDeclaration structs
     :macro_definitions,     # Array of String — raw #define text (single or multiline)
@@ -25,7 +25,13 @@ class CExtractor
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to empty arrays for convenience
-    def initialize(variables: [], function_definitions: [], function_declarations: [], macro_definitions: [], type_definitions: [])
+    def initialize(
+        variable_declarations: [],
+        function_definitions: [],
+        function_declarations: [],
+        macro_definitions: [],
+        type_definitions: []
+      )
       super
     end
 
@@ -33,7 +39,7 @@ class CExtractor
     # Returns a new CModule with combined arrays
     def +(other)
       CModule.new(
-        variables:             (self.variables             + other.variables),
+        variable_declarations: (self.variable_declarations + other.variable_declarations),
         function_definitions:  (self.function_definitions  + other.function_definitions),
         function_declarations: (self.function_declarations + other.function_declarations),
         macro_definitions:     (self.macro_definitions     + other.macro_definitions),
@@ -114,7 +120,7 @@ class CExtractor
   def extract_contents(io, filepath)
     function_definitions  = []
     function_declarations = []
-    variables             = []
+    variable_declarations = []
     macro_definitions     = []
     type_definitions      = []
 
@@ -171,25 +177,26 @@ class CExtractor
       end
 
       # Extract variable declarations as array
-      # Note that a compound variable declaration (e.g. `int x, y`) yields multiple declarations
+      # NOTE: A compound variable declaration (e.g. `int x, y`) yields multiple declarations
       vars = extract_next_feature(
         io: io,
         max_length: @max_buffer_length,
         extractor: @declarations.method(:try_extract_variable)
       )
       if vars
-        variables.concat(vars)
+        variable_declarations.concat(vars)
         next
       end
 
-      # If no features found, end the loop and return the accumulated results.
+      # If no features found, we are either at EOF or stuck on unrecognized text.
+      # In either case, break out of the loop to avoid infinite looping and return the accumulated results.
       break
     end
 
     return CModule.new(
       function_definitions:  function_definitions,
       function_declarations: function_declarations,
-      variables:             variables,
+      variable_declarations: variable_declarations,
       macro_definitions:     macro_definitions,
       type_definitions:      type_definitions
     )

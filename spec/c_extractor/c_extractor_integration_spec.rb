@@ -46,13 +46,13 @@ describe CExtractor do
     it "should extract nothing from blank input" do
       contents = extract_from.call('')
       expect( contents.function_definitions.length ).to eq 0
-      expect( contents.variables.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
     end
 
     it "should extract nothing from whitespace" do
       contents = extract_from.call("                   \n\n\r\n         \t\n\n\n\n")
       expect( contents.function_definitions.length ).to eq 0
-      expect( contents.variables.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
     end
 
     it "should extract a simple function" do
@@ -64,7 +64,7 @@ describe CExtractor do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.variables.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
 
       expect( contents.function_definitions.length ).to eq 1
       expect( contents.function_definitions[0].name ).to eq 'a_function'
@@ -94,7 +94,7 @@ describe CExtractor do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.variables.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
       expect( contents.function_definitions.length ).to eq 3
 
       expect( contents.function_definitions[0].name ).to eq 'a_function'
@@ -143,27 +143,27 @@ describe CExtractor do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.variables.length ).to eq 4
+      expect( contents.variable_declarations.length ).to eq 4
 
-      expect( contents.variables[0].name ).to eq 'global_var'
-      expect( contents.variables[0].type ).to eq 'int'
-      expect( contents.variables[0].decorators ).to eq []
-      expect( contents.variables[0].declaration ).to eq 'int global_var;'
+      expect( contents.variable_declarations[0].name ).to eq 'global_var'
+      expect( contents.variable_declarations[0].type ).to eq 'int'
+      expect( contents.variable_declarations[0].decorators ).to eq []
+      expect( contents.variable_declarations[0].declaration ).to eq 'int global_var;'
 
-      expect( contents.variables[1].original ).to eq 'static const char* ptr = "hello";'
-      expect( contents.variables[1].name ).to eq 'ptr'
-      expect( contents.variables[1].type ).to eq 'char*'
-      expect( contents.variables[1].decorators ).to eq ['static', 'const']
-      expect( contents.variables[1].declaration ).to eq 'char* ptr = "hello";'
+      expect( contents.variable_declarations[1].original ).to eq 'static const char* ptr = "hello";'
+      expect( contents.variable_declarations[1].name ).to eq 'ptr'
+      expect( contents.variable_declarations[1].type ).to eq 'char*'
+      expect( contents.variable_declarations[1].decorators ).to eq ['static', 'const']
+      expect( contents.variable_declarations[1].declaration ).to eq 'char* ptr = "hello";'
 
-      expect( contents.variables[2].name ).to eq 'instance'
-      expect( contents.variables[2].decorators ).to eq []
-      expect( contents.variables[2].declaration ).to eq 'struct foo { int x; } instance;'
+      expect( contents.variable_declarations[2].name ).to eq 'instance'
+      expect( contents.variable_declarations[2].decorators ).to eq []
+      expect( contents.variable_declarations[2].declaration ).to eq 'struct foo { int x; } instance;'
 
-      expect( contents.variables[3].name ).to eq 'array'
-      expect( contents.variables[3].type ).to eq 'int'
-      expect( contents.variables[3].decorators ).to eq []
-      expect( contents.variables[3].declaration ).to eq 'int array[] = {1, 2, 3};'
+      expect( contents.variable_declarations[3].name ).to eq 'array'
+      expect( contents.variable_declarations[3].type ).to eq 'int'
+      expect( contents.variable_declarations[3].decorators ).to eq []
+      expect( contents.variable_declarations[3].declaration ).to eq 'int array[] = {1, 2, 3};'
 
       expect( contents.function_definitions.length ).to eq 2
 
@@ -227,7 +227,7 @@ describe CExtractor do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.variables.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
       expect( contents.function_definitions.length ).to eq 3
 
       expect( contents.function_definitions[0].name ).to eq 'real_function_a'
@@ -311,7 +311,7 @@ describe CExtractor do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.variables.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
       expect( contents.function_definitions.length ).to eq 5
 
       expect( contents.function_definitions[0].name ).to eq 'function_with_if_else'
@@ -441,19 +441,19 @@ describe CExtractor do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.variables.length ).to eq 2
+      expect( contents.variable_declarations.length ).to eq 2
 
-      expect( contents.variables[0].original ).to eq 'static int global_counter = 0;'
-      expect( contents.variables[0].name ).to eq 'global_counter'
-      expect( contents.variables[0].type ).to eq 'int'
-      expect( contents.variables[0].decorators ).to eq ['static']
-      expect( contents.variables[0].declaration ).to eq 'int global_counter = 0;'
+      expect( contents.variable_declarations[0].original ).to eq 'static int global_counter = 0;'
+      expect( contents.variable_declarations[0].name ).to eq 'global_counter'
+      expect( contents.variable_declarations[0].type ).to eq 'int'
+      expect( contents.variable_declarations[0].decorators ).to eq ['static']
+      expect( contents.variable_declarations[0].declaration ).to eq 'int global_counter = 0;'
 
-      expect( contents.variables[1].original ).to eq 'const char* global_message = "Hello, World!";'
-      expect( contents.variables[1].name ).to eq 'global_message'
-      expect( contents.variables[1].type ).to eq 'char*'
-      expect( contents.variables[1].decorators ).to eq ['const']
-      expect( contents.variables[1].declaration ).to eq 'char* global_message = "Hello, World!";'
+      expect( contents.variable_declarations[1].original ).to eq 'const char* global_message = "Hello, World!";'
+      expect( contents.variable_declarations[1].name ).to eq 'global_message'
+      expect( contents.variable_declarations[1].type ).to eq 'char*'
+      expect( contents.variable_declarations[1].decorators ).to eq ['const']
+      expect( contents.variable_declarations[1].declaration ).to eq 'char* global_message = "Hello, World!";'
 
       expect( contents.function_declarations.length ).to eq 2
 
@@ -493,7 +493,7 @@ describe CExtractor do
 
       contents = extractor.from_string(content: file_contents, chunk_size: 10)
 
-      expect( contents.variables.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
 
       expect( contents.function_definitions.length ).to eq 3
 
@@ -534,7 +534,7 @@ describe CExtractor do
       expect( contents.macro_definitions[2] ).to start_with("#define MULTILINE(a) \\\n")
       expect( contents.function_definitions.length ).to eq 0
       expect( contents.function_declarations.length ).to eq 0
-      expect( contents.variables.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
     end
 
     it "should consume #pragma and #include directives without storing them" do
@@ -600,7 +600,7 @@ describe CExtractor do
 
       expect( contents.function_definitions.length ).to eq 0
       expect( contents.function_declarations.length ).to eq 0
-      expect( contents.variables.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
       expect( contents.macro_definitions.length ).to eq 0
     end
 
@@ -631,8 +631,8 @@ describe CExtractor do
       expect( contents.macro_definitions.length ).to eq 1
       expect( contents.macro_definitions[0] ).to eq "#define MAX_VAL 255\n"
 
-      expect( contents.variables.length ).to eq 1
-      expect( contents.variables[0].name ).to eq 'global_counter'
+      expect( contents.variable_declarations.length ).to eq 1
+      expect( contents.variable_declarations[0].name ).to eq 'global_counter'
 
       expect( contents.function_declarations.length ).to eq 1
       expect( contents.function_declarations[0].name ).to eq 'helper'

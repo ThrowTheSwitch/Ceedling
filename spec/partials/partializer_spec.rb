@@ -873,7 +873,7 @@ describe Partializer do
       result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq([])
-      expect(result.variables).to eq([])
+      expect(result.variable_declarations).to eq([])
     end
 
     it "extracts contents from header preprocessed file only" do
@@ -897,7 +897,7 @@ describe Partializer do
       result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq(header_funcs)
-      expect(result.variables).to eq([])
+      expect(result.variable_declarations).to eq([])
     end
 
     it "extracts contents from source preprocessed file only" do
@@ -921,7 +921,7 @@ describe Partializer do
       result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq(source_funcs)
-      expect(result.variables).to eq([])
+      expect(result.variable_declarations).to eq([])
     end
 
     it "extracts and merges contents from both source and header preprocessed files" do
@@ -954,7 +954,7 @@ describe Partializer do
       result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq(source_funcs + header_funcs)
-      expect(result.variables).to eq(source_contents.variables + header_contents.variables)
+      expect(result.variable_declarations).to eq(source_contents.variable_declarations + header_contents.variable_declarations)
     end
 
     it "calls associate_function_line_numbers with the preprocessed expansion filepath, not the preprocessed filepath" do
@@ -1013,7 +1013,7 @@ describe Partializer do
       result = @partializer.extract_module_contents(@name, config, false)
 
       expect(result.function_definitions).to eq([])
-      expect(result.variables).to eq([])
+      expect(result.variable_declarations).to eq([])
     end
   end
 

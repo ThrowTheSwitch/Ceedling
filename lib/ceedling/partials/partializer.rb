@@ -160,7 +160,7 @@ class Partializer
       # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
       # 3. Promote the function-scoped variables to be module-level variables.
       decls = @helper.extract_function_scope_static_vars( c_module.function_definitions )
-      @helper.collect_module_variables(c_module.variables, decls)
+      @helper.collect_module_variables(c_module.variable_declarations, decls)
 
       contents << c_module
     end
