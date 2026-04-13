@@ -881,7 +881,7 @@ describe Partializer do
         double('func1', name: 'func1', signature: 'void func1(void)'),
         double('func2', name: 'func2', signature: 'int func2(int x)')
       ]
-      header_contents = CExtractor::CModule.new(function_definitions: header_funcs, variables: [])
+      header_contents = CExtractor::CModule.new(function_definitions: header_funcs, variable_declarations: [])
 
       config = Partials::Config.new(
         module: 'module1',
@@ -905,7 +905,7 @@ describe Partializer do
         double('func1', name: 'func1', signature: 'static void func1(void)'),
         double('func2', name: 'func2', signature: 'static int func2(int x)')
       ]
-      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variables: [])
+      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = Partials::Config.new(
         module: 'module1',
@@ -933,8 +933,8 @@ describe Partializer do
         double('func3', name: 'func3', signature: 'void func3(void)'),
         double('func4', name: 'func4', signature: 'int func4(int x)')
       ]
-      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variables: [double('var1')])
-      header_contents = CExtractor::CModule.new(function_definitions: header_funcs, variables: [double('var2')])
+      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variable_declarations: [double('var1')])
+      header_contents = CExtractor::CModule.new(function_definitions: header_funcs, variable_declarations: [double('var2')])
 
       config = Partials::Config.new(
         module: 'module1',
@@ -959,7 +959,7 @@ describe Partializer do
 
     it "calls associate_function_line_numbers with the preprocessed expansion filepath, not the preprocessed filepath" do
       source_funcs = [double('func1', name: 'func1')]
-      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variables: [])
+      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = Partials::Config.new(
         module: 'module1',
@@ -979,7 +979,7 @@ describe Partializer do
 
     it "passes extraction name through to associate_function_line_numbers" do
       source_funcs = [double('func1', name: 'func1')]
-      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variables: [])
+      source_contents = CExtractor::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = Partials::Config.new(
         module: 'module1',
@@ -997,7 +997,7 @@ describe Partializer do
     end
 
     it "returns empty CModule when a preprocessed file has no contents" do
-      empty_contents = CExtractor::CModule.new(function_definitions: [], variables: [])
+      empty_contents = CExtractor::CModule.new(function_definitions: [], variable_declarations: [])
 
       config = Partials::Config.new(
         module: 'module1',
