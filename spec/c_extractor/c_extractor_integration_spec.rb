@@ -574,7 +574,73 @@ describe CExtractor do
       contents = extractor.from_string(content: file_contents, chunk_size: 10, max_line_length: 10)
       expect(contents.function_definitions.length ).to eq 0
     end
-    
+
+    it "should extract typedef definitions and no other features from a typedefs-only input" do
+      file_contents = <<~CONTENTS
+      typedef int MyInt;
+      typedef const char* CStr;
+      typedef void (*Callback)(int, void*);
+      typedef enum { RED, GREEN, BLUE } Color;
+      typedef struct {
+        int x;
+        int y;
+      } Point;
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect( contents.type_definitions.length ).to eq 5
+
+      expect( contents.type_definitions[0] ).to eq "typedef int MyInt;\n"
+      expect( contents.type_definitions[1] ).to eq "typedef const char* CStr;\n"
+      expect( contents.type_definitions[2] ).to eq "typedef void (*Callback)(int, void*);\n"
+      expect( contents.type_definitions[3] ).to eq "typedef enum { RED, GREEN, BLUE } Color;\n"
+      expect( contents.type_definitions[4] ).to start_with("typedef struct {\n")
+      expect( contents.type_definitions[4] ).to end_with("} Point;\n")
+
+      expect( contents.function_definitions.length ).to eq 0
+      expect( contents.function_declarations.length ).to eq 0
+      expect( contents.variables.length ).to eq 0
+      expect( contents.macro_definitions.length ).to eq 0
+    end
+
+    it "should extract typedefs alongside functions, variables, and macros" do
+      file_contents = <<~CONTENTS
+      #include <stdint.h>
+
+      #define MAX_VAL 255
+
+      typedef uint8_t Byte;
+      typedef struct { int x; int y; } Point;
+
+      static int global_counter = 0;
+
+      void helper(void);
+
+      int compute(int a, int b) {
+        return a + b;
+      }
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect( contents.type_definitions.length ).to eq 2
+      expect( contents.type_definitions[0] ).to eq "typedef uint8_t Byte;\n"
+      expect( contents.type_definitions[1] ).to eq "typedef struct { int x; int y; } Point;\n"
+
+      expect( contents.macro_definitions.length ).to eq 1
+      expect( contents.macro_definitions[0] ).to eq "#define MAX_VAL 255\n"
+
+      expect( contents.variables.length ).to eq 1
+      expect( contents.variables[0].name ).to eq 'global_counter'
+
+      expect( contents.function_declarations.length ).to eq 1
+      expect( contents.function_declarations[0].name ).to eq 'helper'
+
+      expect( contents.function_definitions.length ).to eq 1
+      expect( contents.function_definitions[0].name ).to eq 'compute'
+    end
+
   end
 
 end

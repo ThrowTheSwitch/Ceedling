@@ -108,6 +108,58 @@ class CExtractorPreprocessing
     end
   end
 
+  # Try to extract a C typedef declaration from the scanner.
+  # Called as a feature extractor by CExtractor#extract_next_feature.
+  # Collects everything from the `typedef` keyword through the terminating `;`
+  # (handling nested braces for struct/union/enum bodies, string literals,
+  # and comments) and returns it as a raw string including any trailing newline.
+  #
+  # @param scanner [StringScanner] positioned at the start of potential typedef
+  # @return [Array(Boolean, String)]
+  #   [true,  "typedef struct { int x; } Point;\n"] — full typedef text
+  #   [false, nil                                  ] — no typedef keyword here; nothing consumed
+  def try_extract_typedef(scanner)
+    return [false, nil] unless scanner.check(/typedef\b/)
+
+    text  = +''
+    depth = 0   # brace nesting — typedef body terminates only at depth == 0
+
+    until scanner.eos?
+      ch = scanner.peek(1)
+
+      if ch == '"' || ch == "'"
+        # Capture string/char literals verbatim — a ';' inside must not terminate
+        before = scanner.pos
+        @c_extractor_code_text.skip_c_string(scanner, ch)
+        text << scanner.string[before...scanner.pos]
+
+      elsif scanner.check(%r{/[/*]})
+        # Capture comments verbatim — a ';' inside must not terminate
+        before = scanner.pos
+        @c_extractor_code_text.skip_comment(scanner)
+        text << scanner.string[before...scanner.pos]
+
+      elsif scanner.scan(/\{/)
+        depth += 1
+        text  << '{'
+
+      elsif scanner.scan(/\}/)
+        depth -= 1
+        text  << '}'
+
+      elsif depth == 0 && scanner.scan(/;/)
+        text << ';'
+        text << (scanner.scan(/[ \t]*\n/) || '')  # absorb optional trailing newline
+        return [true, text]
+
+      else
+        text << scanner.getch
+      end
+    end
+
+    [false, nil]   # EOF without finding ';'
+  end
+
   ### Private ###
 
   private

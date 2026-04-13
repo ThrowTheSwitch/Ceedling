@@ -21,10 +21,11 @@ class CExtractor
     :function_definitions,  # Array of CFunctionDefinition structs
     :function_declarations, # Array of CFunctionDeclaration structs
     :macro_definitions,     # Array of String — raw #define text (single or multiline)
+    :type_definitions,      # Array of String — raw typedef text (single or multiline)
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to empty arrays for convenience
-    def initialize(variables: [], function_definitions: [], function_declarations: [], macro_definitions: [])
+    def initialize(variables: [], function_definitions: [], function_declarations: [], macro_definitions: [], type_definitions: [])
       super
     end
 
@@ -35,7 +36,8 @@ class CExtractor
         variables:             (self.variables             + other.variables),
         function_definitions:  (self.function_definitions  + other.function_definitions),
         function_declarations: (self.function_declarations + other.function_declarations),
-        macro_definitions:     (self.macro_definitions     + other.macro_definitions)
+        macro_definitions:     (self.macro_definitions     + other.macro_definitions),
+        type_definitions:      (self.type_definitions      + other.type_definitions)
       )
     end
   end
@@ -114,6 +116,7 @@ class CExtractor
     function_declarations = []
     variables             = []
     macro_definitions     = []
+    type_definitions      = []
 
     # Ensure we're at the start of buffer
     io.rewind
@@ -129,6 +132,18 @@ class CExtractor
       if directive
         macro_def = @preprocessing.filter_directive(directive, CExtractorPreprocessing::MACRO_DEFINITION)
         macro_definitions << macro_def if macro_def
+        next
+      end
+
+      # Second: typedef declarations — 'typedef' is as syntactically unique as '#',
+      # so handle it early before any heuristic-based feature detectors.
+      typedef_def = extract_next_feature(
+        io:         io,
+        max_length: @max_buffer_length,
+        extractor:  @preprocessing.method(:try_extract_typedef)
+      )
+      if typedef_def
+        type_definitions << typedef_def
         next
       end
 
@@ -175,7 +190,8 @@ class CExtractor
       function_definitions:  function_definitions,
       function_declarations: function_declarations,
       variables:             variables,
-      macro_definitions:     macro_definitions
+      macro_definitions:     macro_definitions,
+      type_definitions:      type_definitions
     )
   ensure
     io.close
