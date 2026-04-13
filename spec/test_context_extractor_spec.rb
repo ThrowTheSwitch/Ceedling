@@ -12,7 +12,7 @@ require 'ceedling/includes/include_factory'
 require 'ceedling/parsing_parcels'
 require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_code_text'
-require 'ceedling/c_extractor/c_extractor_macros'
+require 'ceedling/c_extractor/c_extractor_preprocessing'
 require 'ceedling/partials/partializer_config'
 require 'ceedling/partials/partials'
 
@@ -37,9 +37,9 @@ describe TestContextExtractor do
     @include_factory = IncludeFactory.new( {:configurator => @configurator} )
     @file_path_utils = FilePathUtils.new( {:configurator => @configurator, :file_wrapper => @file_wrapper } )
 
-    code_text          = CExtractorCodeText.new
-    c_extractor_macros = CExtractorMacros.new({ c_extractor_code_text: code_text })
-    partializer_config = PartializerConfig.new({ c_extractor_macros: c_extractor_macros })
+    code_text               = CExtractorCodeText.new
+    c_extractor_preprocessing = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
+    partializer_config = PartializerConfig.new({ c_extractor_preprocessing: c_extractor_preprocessing })
 
     # Provide configurations
     mock_prefix = 'mock_'

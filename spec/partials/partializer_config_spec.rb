@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/c_extractor/c_extractor_code_text'
-require 'ceedling/c_extractor/c_extractor_macros'
+require 'ceedling/c_extractor/c_extractor_preprocessing'
 require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_config'
 
@@ -29,9 +29,9 @@ describe PartializerConfig do
 
   context "#extract_configs" do
     before(:each) do
-      code_text          = CExtractorCodeText.new
-      c_extractor_macros = CExtractorMacros.new({ c_extractor_code_text: code_text })
-      @config = described_class.new({ c_extractor_macros: c_extractor_macros })
+      code_text               = CExtractorCodeText.new
+      c_extractor_preprocessing = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
+      @config = described_class.new({ c_extractor_preprocessing: c_extractor_preprocessing })
     end
 
     it "extracts configs from a raw IO object" do
@@ -44,9 +44,9 @@ describe PartializerConfig do
   context "#extract_configs_from_string" do
 
     before(:each) do
-      code_text          = CExtractorCodeText.new
-      c_extractor_macros = CExtractorMacros.new({ c_extractor_code_text: code_text })
-      @config = described_class.new({ c_extractor_macros: c_extractor_macros })
+      code_text               = CExtractorCodeText.new
+      c_extractor_preprocessing = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
+      @config = described_class.new({ c_extractor_preprocessing: c_extractor_preprocessing })
     end
 
     def extract(str)
