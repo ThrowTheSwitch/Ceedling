@@ -1698,22 +1698,22 @@ describe CExtractorFunctions do
         expect(func.body).to eq("{ char c = '{'; }")
       end
 
-      it "extracts function with comments containing braces" do
+      it "extracts function with comments containing braces (block comment replaced with space)" do
         content = "void func(void) { /* { comment } */ int x = 1; }"
         success, func, _, _ = try_extract.call(content)
-        
+
         expect(success).to be true
         expect(func.name).to eq("func")
-        expect(func.body).to eq("{ /* { comment } */ int x = 1; }")
+        expect(func.body).to eq("{   int x = 1; }")  # space + comment→space + space after comment
       end
 
-      it "extracts function with line comments containing braces" do
+      it "extracts function with line comments containing braces (line comment replaced with space)" do
         content = "void func(void) { // { comment }\nint x = 1; }"
         success, func, _, _ = try_extract.call(content)
-        
+
         expect(success).to be true
         expect(func.name).to eq("func")
-        expect(func.body).to eq("{ // { comment }\nint x = 1; }")
+        expect(func.body).to eq("{  int x = 1; }")  # space + comment+newline→space; no leading space on next line
       end
 
       it "extracts function with struct initialization" do

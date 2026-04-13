@@ -1137,6 +1137,124 @@ describe CExtractorCodeText do
   end
 
   ###
+  ### collect_balanced()
+  ###
+
+  describe "#collect_balanced" do
+    let(:collect_balanced) do
+      ->(content, open_char, close_char) do
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new
+        success, text = code_text.collect_balanced(scanner, open_char, close_char)
+        [success, text, scanner.pos, scanner.rest]
+      end
+    end
+
+    context "failure cases" do
+      it "returns [false, nil] when not positioned at open_char" do
+        success, text, pos, _ = collect_balanced.call("x{content}", '{', '}')
+        expect(success).to be false
+        expect(text).to be_nil
+        expect(pos).to eq(0)  # scanner not advanced
+      end
+
+      it "returns [false, nil] for empty input" do
+        success, text, _, _ = collect_balanced.call("", '{', '}')
+        expect(success).to be false
+        expect(text).to be_nil
+      end
+
+      it "returns [false, nil] for unbalanced input (no matching close)" do
+        success, text, _, _ = collect_balanced.call("{content without close", '{', '}')
+        expect(success).to be false
+        expect(text).to be_nil
+      end
+    end
+
+    context "successful extraction" do
+      it "extracts a simple brace pair and returns text including delimiters" do
+        success, text, pos, rest = collect_balanced.call("{content}", '{', '}')
+        expect(success).to be true
+        expect(text).to eq("{content}")
+        expect(pos).to eq(9)
+        expect(rest).to eq("")
+      end
+
+      it "extracts a simple paren pair" do
+        success, text, pos, rest = collect_balanced.call("(args)", '(', ')')
+        expect(success).to be true
+        expect(text).to eq("(args)")
+        expect(pos).to eq(6)
+      end
+
+      it "extracts a simple bracket pair" do
+        success, text, pos, rest = collect_balanced.call("[items]", '[', ']')
+        expect(success).to be true
+        expect(text).to eq("[items]")
+        expect(pos).to eq(7)
+      end
+
+      it "handles nested same-pair delimiters" do
+        success, text, pos, rest = collect_balanced.call("{a {b} c}", '{', '}')
+        expect(success).to be true
+        expect(text).to eq("{a {b} c}")
+        expect(pos).to eq(9)
+        expect(rest).to eq("")
+      end
+
+      it "stops at matching close and does not consume following code" do
+        success, text, pos, rest = collect_balanced.call("{block} remaining", '{', '}')
+        expect(success).to be true
+        expect(text).to eq("{block}")
+        expect(pos).to eq(7)
+        expect(rest).to eq(" remaining")
+      end
+    end
+
+    context "string literals" do
+      it "preserves string literals verbatim and does not treat close_char inside them as closer" do
+        success, text, _, _ = collect_balanced.call('{"string with }"}', '{', '}')
+        expect(success).to be true
+        expect(text).to eq('{"string with }"}')
+      end
+
+      it "preserves char literals verbatim" do
+        success, text, _, _ = collect_balanced.call("{ char c = '}'; }", '{', '}')
+        expect(success).to be true
+        expect(text).to eq("{ char c = '}'; }")
+      end
+    end
+
+    context "comments replaced with a single space" do
+      it "replaces a block comment containing close_char with a space — does not terminate early" do
+        success, text, pos, _ = collect_balanced.call("{ /* } */ }", '{', '}')
+        expect(success).to be true
+        expect(text).to eq("{   }")   # space + space (before/after comment) + space for comment
+        expect(pos).to eq(11)         # scanner advanced through full original content
+      end
+
+      it "replaces a line comment containing close_char with a space — does not terminate early" do
+        success, text, pos, _ = collect_balanced.call("{ // }\n}", '{', '}')
+        expect(success).to be true
+        expect(text).to eq("{  }")    # space before comment + space for comment+newline
+        expect(pos).to eq(8)
+      end
+
+      it "replaces a block comment with exactly one space regardless of comment length" do
+        success, text, _, _ = collect_balanced.call("{ /* long comment text */ code }", '{', '}')
+        expect(success).to be true
+        expect(text).to eq("{   code }")   # space + comment→space + space before code
+      end
+
+      it "replaces a line comment with exactly one space (consuming the newline too)" do
+        success, text, _, _ = collect_balanced.call("{ code // comment\n more }", '{', '}')
+        expect(success).to be true
+        expect(text).to eq("{ code   more }")  # space before comment + comment→space + space before more
+      end
+    end
+  end
+
+  ###
   ### extract_balanced_braces()
   ###
 
@@ -1288,42 +1406,43 @@ describe CExtractorCodeText do
     end
 
     context "braces in comments" do
-      it "ignores braces in line comments" do
+      it "ignores braces in line comments (comment replaced with space)" do
         content = "{ code // comment with { brace\n}"
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be true
-        expect(block).to eq("{ code // comment with { brace\n}")
-        expect(pos).to eq(32)
+        expect(block).to eq("{ code  }")  # comment+newline → single space
+        expect(pos).to eq(32)             # scanner.pos spans full original content
         expect(rest).to eq("")
       end
 
-      it "ignores braces in block comments" do
+      it "ignores braces in block comments (comment replaced with space)" do
         content = "{ code /* comment with { brace */ }"
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be true
-        expect(block).to eq("{ code /* comment with { brace */ }")
+        expect(block).to eq("{ code   }")  # comment → single space; space before } preserved
         expect(pos).to eq(35)
         expect(rest).to eq("")
       end
 
-      it "handles multiple comments with braces" do
+      it "handles multiple comments with braces (each comment replaced with space)" do
         content = "{ /* { */ code // }\n}"
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be true
-        expect(block).to eq("{ /* { */ code // }\n}")
+        expect(block).to eq("{   code  }")  # block comment → space; line comment+newline → space
         expect(pos).to eq(21)
         expect(rest).to eq("")
       end
 
-      it "handles nested block comments with braces" do
+      it "handles nested block comments with braces (only innermost comment consumed)" do
         content = "{ /* outer { /* inner } */ */ }"
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be true
-        expect(block).to eq("{ /* outer { /* inner } */ */ }")
+        # First */ closes the comment; remaining */ */ is literal text
+        expect(block).to eq("{   */ }")
         expect(pos).to eq(31)
         expect(rest).to eq("")
       end
@@ -1438,11 +1557,11 @@ describe CExtractorCodeText do
       it "fails when not starting at opening brace" do
         content = "not a brace"
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be false
         expect(block).to be_nil
-        expect(pos).to eq(1) # Advanced by one character (the 'n')
-        expect(rest).to eq("ot a brace")
+        expect(pos).to eq(0) # Scanner not advanced on failure (peek, not getch)
+        expect(rest).to eq("not a brace")
       end
 
       it "fails on unbalanced braces (missing closing)" do
@@ -1488,11 +1607,11 @@ describe CExtractorCodeText do
       it "fails when starting with closing brace" do
         content = "} wrong"
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be false
         expect(block).to be_nil
-        expect(pos).to eq(1)
-        expect(rest).to eq(" wrong")
+        expect(pos).to eq(0) # Scanner not advanced on failure (peek, not getch)
+        expect(rest).to eq("} wrong")
       end
     end
 
@@ -1547,17 +1666,17 @@ describe CExtractorCodeText do
         expect(rest).to eq("")
       end
 
-      it "handles comment at end of line with brace" do
+      it "handles comment at end of line with brace (comment replaced with space)" do
         content = "{ code; // comment }\n}"
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be true
-        expect(block).to eq("{ code; // comment }\n}")
+        expect(block).to eq("{ code;  }")  # comment+newline → single space; } is the real closer
         expect(pos).to eq(22)
         expect(rest).to eq("")
       end
 
-      it "handles block comment spanning multiple lines with braces" do
+      it "handles block comment spanning multiple lines with braces (comment replaced with space)" do
         content = <<~CODE.chomp
           {
             /* This is a comment
@@ -1567,9 +1686,9 @@ describe CExtractorCodeText do
           }
         CODE
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be true
-        expect(block).to eq(content)
+        expect(block).to eq("{\n   \n  code;\n}")  # comment block → single space; newline+indent after preserved
         expect(pos).to eq(content.length)
         expect(rest).to eq("")
       end
@@ -1623,12 +1742,12 @@ describe CExtractorCodeText do
         expect(rest).to eq("")
       end
 
-      it "extracts function with comment containing string-like text" do
+      it "extracts function with comment containing string-like text (comment replaced with space)" do
         content = '{ /* "not a string" */ code; }'
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be true
-        expect(block).to eq('{ /* "not a string" */ code; }')
+        expect(block).to eq("{   code; }")  # comment → space; surrounding spaces preserved
         expect(pos).to eq(30)
         expect(rest).to eq("")
       end
@@ -1716,17 +1835,17 @@ describe CExtractorCodeText do
         content = "not_brace { valid }"
         scanner = StringScanner.new(content)
         code_text = CExtractorCodeText.new()
-        
+
         success1, block1 = code_text.extract_balanced_braces( scanner )
-        
+
         expect(success1).to be false
         expect(block1).to be_nil
-        expect(scanner.pos).to eq(1) # Advanced by one character
-        
+        expect(scanner.pos).to eq(0) # Scanner not advanced on failure (peek, not getch)
+
         # Skip to the valid brace
         scanner.scan(/[^{]*/)
         success2, block2 = code_text.extract_balanced_braces( scanner )
-        
+
         expect(success2).to be true
         expect(block2).to eq("{ valid }")
       end
@@ -1803,13 +1922,13 @@ describe CExtractorCodeText do
         expect(rest).to eq("")
       end
 
-      it "handles large comments within braces" do
+      it "handles large comments within braces (comment replaced with space)" do
         large_comment = "comment text " * 100
         content = "{ /* #{large_comment} */ code; }"
         success, block, pos, rest = extract_braces.call(content)
-        
+
         expect(success).to be true
-        expect(block).to eq(content)
+        expect(block).to eq("{   code; }")  # entire comment → single space; spaces around preserved
         expect(pos).to eq(content.length)
         expect(rest).to eq("")
       end

@@ -73,7 +73,7 @@ class CExtractorDeclarations
   def try_extract_variable(scanner)
     start_pos = scanner.pos
 
-    # Track depth of various constructs
+    # Tracks paren, bracket, and brace depth simultaneously with inline string state machine and max_line_length guard — not suitable for collect_balanced()
     paren_depth = 0
     bracket_depth = 0
     brace_depth = 0
@@ -223,7 +223,7 @@ class CExtractorDeclarations
     # Determine the text before any initializer to look for commas
     pre_init = raw_text.split('=', 2).first || raw_text
 
-    # Find depth-0 commas in the pre-initializer portion
+    # Combined depth across (), [], {} for comma-splitting — not suitable for collect_balanced()
     depth = 0
     comma_positions = []
     pre_init.each_char.with_index do |ch, i|

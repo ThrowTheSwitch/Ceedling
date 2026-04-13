@@ -522,4 +522,161 @@ describe CExtractorPreprocessing do
 
   end
 
+  context "#try_extract_static_assert" do
+
+    def try_static_assert(text)
+      scanner = StringScanner.new(text)
+      result  = @preprocessing.try_extract_static_assert(scanner)
+      [result, scanner.pos]
+    end
+
+    # --- Failure cases ---
+
+    it "returns [false, nil] when scanner is not at a static assert keyword" do
+      result, pos = try_static_assert('int x = 0;')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "returns [false, nil] for empty input" do
+      result, pos = try_static_assert('')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "does not advance scanner on failure" do
+      scanner = StringScanner.new('int x;')
+      @preprocessing.try_extract_static_assert(scanner)
+      expect(scanner.pos).to eq 0
+    end
+
+    it "does not match a longer identifier that ends with the keyword" do
+      result, pos = try_static_assert('not_static_assert(1 == 1, "msg");')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "returns [false, nil] when the argument list is missing its closing ')'" do
+      result, _pos = try_static_assert('_Static_assert(sizeof(int) == 4')
+      expect(result).to eq [false, nil]
+    end
+
+    it "returns [false, nil] when the terminating ';' is missing" do
+      result, _pos = try_static_assert('_Static_assert(sizeof(int) == 4, "msg")')
+      expect(result).to eq [false, nil]
+    end
+
+    # --- C11 _Static_assert ---
+
+    it "extracts a two-argument C11 _Static_assert with trailing newline" do
+      input = "_Static_assert(sizeof(int) == 4, \"int must be 32-bit\");\n"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    it "extracts _Static_assert without trailing newline (EOS)" do
+      input = "_Static_assert(1 == 1, \"always true\");"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    # --- C23 static_assert ---
+
+    it "extracts a one-argument C23 static_assert" do
+      input = "static_assert(sizeof(int) == 4);\n"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    it "extracts a two-argument C23 static_assert" do
+      input = "static_assert(sizeof(int) == 4, \"int must be 32-bit\");\n"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    # --- Complex / nested expressions ---
+
+    it "handles sizeof with a struct type in the expression" do
+      input = "_Static_assert(sizeof(struct Point) == 8, \"Point must be 8 bytes\");\n"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    it "handles offsetof with nested parens in the expression" do
+      input = "_Static_assert(offsetof(struct S, field) == sizeof(int), \"layout\");\n"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    it "handles deeply nested parentheses in the expression" do
+      input = "_Static_assert(sizeof(int[sizeof(char)]) == 4, \"nested sizeof\");\n"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    it "handles a boolean expression with multiple parenthesised sub-expressions" do
+      input = "static_assert((sizeof(int) == 4) && (sizeof(long) >= 4));\n"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    # --- String literal in message argument ---
+
+    it "handles a ')' inside the message string without terminating early" do
+      input = "_Static_assert(1, \"message with ) paren inside\");\n"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    # --- Comments inside the assertion ---
+
+    it "handles a block comment inside the expression (comment replaced with space)" do
+      input = "_Static_assert(/* condition */ 1 == 1, \"always\");\n"
+      result, pos = try_static_assert(input)
+      expect(result).to be_a Array
+      expect(result[0]).to be true  # text content varies (comment→space); just verify success
+      expect(pos).to eq input.length
+    end
+
+    # --- Whitespace variants ---
+
+    it "handles whitespace between keyword and '('" do
+      input = "_Static_assert  (sizeof(int) == 4, \"msg\");\n"
+      result, pos = try_static_assert(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    it "handles a multiline static assert" do
+      input = <<~'C'
+        _Static_assert(
+          sizeof(struct BigThing) == 128,
+          "BigThing must be exactly 128 bytes"
+        );
+      C
+      result, pos = try_static_assert(input)
+      expect(result[0]).to be true
+      expect(pos).to eq input.length
+    end
+
+    # --- Boundary behaviour ---
+
+    it "stops at the ';' and does not consume following code" do
+      input  = "_Static_assert(1 == 1, \"ok\");\nint x = 0;"
+      result, pos = try_static_assert(input)
+      expect(result[0]).to be true
+      expect(pos).to eq "_Static_assert(1 == 1, \"ok\");\n".length
+    end
+
+  end
+
 end

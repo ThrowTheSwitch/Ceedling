@@ -108,6 +108,7 @@ class CExtractorPreprocessing
     end
   end
 
+  # Tracks brace depth but terminates on ';' rather than '}' — not suitable for collect_balanced()
   # Try to extract a C typedef declaration from the scanner.
   # Called as a feature extractor by CExtractor#extract_next_feature.
   # Collects everything from the `typedef` keyword through the terminating `;`
@@ -160,6 +161,53 @@ class CExtractorPreprocessing
     [false, nil]   # EOF without finding ';'
   end
 
+  # Try to extract a C11 _Static_assert or C23 static_assert statement from the scanner.
+  # Called as a feature extractor by CExtractor#extract_next_feature.
+  # The statement is consumed and the full text returned, but callers discard it —
+  # static asserts are not collected into CModule.
+  #
+  # Handles all three forms:
+  #   _Static_assert(expr, "message");   # C11 — message required
+  #   static_assert(expr);               # C23 — message optional
+  #   static_assert(expr, "message");    # C23 — with message
+  #
+  # The expression argument may contain arbitrarily nested parentheses
+  # (e.g. sizeof(struct S) == 8) which are handled by collect_balanced().
+  #
+  # @param scanner [StringScanner] positioned at potential static assert
+  # @return [Array(Boolean, String|nil)]
+  #   [true,  '_Static_assert(sizeof(S) == 4, "msg");\n'] — full statement text
+  #   [false, nil                                        ] — not a static assert; scanner unchanged
+  def try_extract_static_assert(scanner)
+    return [false, nil] unless scanner.check(/(?:_Static_assert|static_assert)\b/)
+
+    text = +''
+
+    # Consume keyword
+    # Pattern (?:_Static_assert|static_assert) ensures that a longer identifier (e.g. `not_static_assert`) does not match
+    text << scanner.scan(/(?:_Static_assert|static_assert)/)
+
+    # Consume optional whitespace between keyword and '('
+    text << (scanner.scan(/[ \t]*/) || '')
+
+    # Consume the balanced argument list — handles all nested parens, strings, comments
+    success, args = @c_extractor_code_text.collect_balanced(scanner, '(', ')')
+    return [false, nil] unless success
+    text << args
+
+    # Consume optional whitespace before ';'
+    text << (scanner.scan(/[ \t]*/) || '')
+
+    # Consume the required terminating ';'
+    return [false, nil] unless scanner.scan(/;/)
+    text << ';'
+
+    # Absorb optional trailing newline (mirrors try_extract_typedef convention)
+    text << (scanner.scan(/[ \t]*\n/) || '')
+
+    [true, text]
+  end
+
   ### Private ###
 
   private
@@ -175,45 +223,18 @@ class CExtractorPreprocessing
   end
 
   # Collect argument text of a macro call whose opening '(' has already been
-  # consumed. Tracks paren depth to find the matching ')'. String literals and
-  # comments inside the argument list are handled without breaking depth tracking.
-  # Returns the argument string (without the outer parens) or nil on malformed input.
+  # consumed by the scan pattern in try_extract_macro_calls. Steps back one
+  # position so collect_balanced() can start at '(' and strips the outer parens
+  # from the result. Returns nil on malformed (unbalanced) input.
   def _collect_balanced_args(scanner)
-    depth  = 1
-    buffer = +''
-
-    until scanner.eos?
-      ch = scanner.peek(1)
-
-      # Capture string/char literals verbatim — commas, parens, macro names inside
-      # strings must not affect argument parsing
-      if ch == '"' || ch == "'"
-        before = scanner.pos
-        @c_extractor_code_text.skip_c_string(scanner, ch)
-        buffer << scanner.string[before...scanner.pos]
-
-      # Comments inside args are consumed and replaced with a space
-      elsif scanner.check( %r{/[/*]} )
-        @c_extractor_code_text.skip_comment(scanner)
-        buffer << ' '
-
-      elsif scanner.scan( /\(/ )
-        depth  += 1
-        buffer << '('
-
-      elsif scanner.scan( /\)/ )
-        depth -= 1
-        return buffer if depth == 0
-        buffer << ')'
-
-      else
-        buffer << scanner.getch
-      end
-    end
-
-    return nil  # unbalanced — malformed input
+    # The outer scan pattern consumed the opening '(' — step back one position
+    # so collect_balanced() can start at it.
+    scanner.pos -= 1
+    success, text = @c_extractor_code_text.collect_balanced(scanner, '(', ')')
+    success ? text[1..-2] : nil  # strip outer parens; nil on unbalanced input
   end
 
+  # Tracks paren, bracket, and brace depth simultaneously for comma-splitting — not suitable for collect_balanced()
   # Split parameter text of a macro call whose opening '(' has already been consumed.
   # Splits on top-level commas only — commas inside `()`, `[]`, `{}`, or string
   # literals are not treated as separators. Returns an array of trimmed parameters.

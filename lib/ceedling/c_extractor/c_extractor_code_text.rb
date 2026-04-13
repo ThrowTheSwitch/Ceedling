@@ -7,66 +7,56 @@
 
 class CExtractorCodeText
 
-  # Extract a balanced block of braces from the scanner
-  # Handles nested braces, string literals, and comments that might contain braces
-  # 
-  # Parameters:
-  #   scanner: StringScanner positioned at the opening brace
-  # 
-  # Returns: [success, extracted_block] where:
-  #   - success: boolean indicating if a complete balanced block was found
-  #   - extracted_block: string containing the complete block including braces (nil on failure)
-  # 
-  # Side effects: Advances scanner position past the closing brace on success
-  # 
-  # Examples:
-  #   "{ code }"           -> [true, "{ code }"]
-  #   "{ a { b } c }"      -> [true, "{ a { b } c }"]
-  #   "{ incomplete"       -> [false, nil]
-  #   "not a brace"        -> [false, nil]
-  def extract_balanced_braces(scanner)
-    start_pos = scanner.pos
-    
-    # Verify we're starting at an opening brace
-    return [false, nil] unless scanner.getch == '{'
-    
+  # Collect the full text of a balanced delimiter pair starting AT open_char.
+  # Nested pairs, string literals (verbatim), and comments (replaced with a
+  # single space) are handled correctly.
+  # Returns [true, text_including_delimiters] or [false, nil] on unbalanced input
+  # or EOS before the matching close delimiter is found.
+  #
+  # Works for any single-character delimiter pair: '{}', '()', or '[]'.
+  #
+  # @param scanner    [StringScanner] positioned at open_char
+  # @param open_char  [String] single-character opening delimiter
+  # @param close_char [String] single-character closing delimiter
+  # @return [Array(Boolean, String|nil)]
+  def collect_balanced(scanner, open_char, close_char)
+    return [false, nil] unless scanner.peek(1) == open_char
+
+    text  = +scanner.getch  # consume and record open_char
     depth = 1
-    
+
     until scanner.eos?
-      char = scanner.peek(1)
-      
-      case char
-      when '{'
-        # Found nested opening brace -- increase depth
+      ch = scanner.peek(1)
+
+      if ch == '"' || ch == "'"
+        before = scanner.pos
+        skip_c_string(scanner, ch)
+        text << scanner.string[before...scanner.pos]
+      elsif scanner.check(%r{/[/*]})
+        skip_comment(scanner)
+        text << ' '
+      elsif ch == open_char
         depth += 1
-        scanner.getch
-      when '}'
-        # Found closing brace -- decrease depth
+        text  << scanner.getch
+      elsif ch == close_char
         depth -= 1
-        scanner.getch
-        # When depth reaches 0, we've found the matching closing brace
-        if depth == 0
-          extracted_block = scanner.string[start_pos...scanner.pos]
-          return [true, extracted_block]
-        end
-      when '"', "'"
-        # Skip string literals that might contain braces
-        skip_c_string(scanner, char)
-      when '/'
-        # Skip comments that might contain braces
-        if scanner.peek(2) =~ %r{^(/[/*])}
-          skip_comment(scanner)
-        else
-          scanner.getch
-        end
+        text  << scanner.getch
+        return [true, text] if depth == 0
       else
-        # Regular character -- just advance
-        scanner.getch
+        text << scanner.getch
       end
     end
-    
-    # Reached end of input without finding matching closing brace
+
     [false, nil]
+  end
+
+  # Extract a balanced block of braces from the scanner.
+  # Delegates to collect_balanced() — see its documentation for full details.
+  #
+  # @param scanner [StringScanner] positioned at the opening '{'
+  # @return [Array(Boolean, String|nil)]
+  def extract_balanced_braces(scanner)
+    collect_balanced(scanner, '{', '}')
   end
 
   # Skip a C string or character literal

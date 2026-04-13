@@ -232,18 +232,21 @@ describe CExtractor do
 
       expect( contents.function_definitions[0].name ).to eq 'real_function_a'
       expect( contents.function_definitions[0].signature ).to eq 'void real_function_a(void)'
-      expect( contents.function_definitions[0].body ).to eq "{\n  int a = 1;\n  // Comment with braces: { } should not break extraction\n  int b = 2;\n}"
-      expect( contents.function_definitions[0].line_count ).to eq 5
+      # Line comment + its newline replaced by one space; 2-space indents on both sides preserved
+      expect( contents.function_definitions[0].body ).to eq "{\n  int a = 1;\n     int b = 2;\n}"
+      expect( contents.function_definitions[0].line_count ).to eq 5  # based on original code_block, not rebuilt body
 
       expect( contents.function_definitions[1].name ).to eq 'real_function_b'
       expect( contents.function_definitions[1].signature ).to eq 'void real_function_b(void)'
-      expect( contents.function_definitions[1].body ).to eq "{\n  /* Inline comment with braces { } */\n  return;\n}"
-      expect( contents.function_definitions[1].line_count ).to eq 4
+      # Block comment replaced by one space; newline + indent after comment preserved
+      expect( contents.function_definitions[1].body ).to eq "{\n   \n  return;\n}"
+      expect( contents.function_definitions[1].line_count ).to eq 4  # based on original code_block, not rebuilt body
 
       expect( contents.function_definitions[2].name ).to eq 'real_function_c'
       expect( contents.function_definitions[2].signature ).to eq 'void real_function_c(void)'
-      expect( contents.function_definitions[2].body ).to eq "{ \n  // Single line comment with opening brace {\n  int x = 1;\n  /* Multi-line comment with closing brace } */\n  int y = 2;\n}"
-      expect( contents.function_definitions[2].line_count ).to eq 6
+      # Line comment + its newline → space (5 chars before int x); block comment → space (3 chars on blank line)
+      expect( contents.function_definitions[2].body ).to eq "{ \n     int x = 1;\n   \n  int y = 2;\n}"
+      expect( contents.function_definitions[2].line_count ).to eq 6  # based on original code_block, not rebuilt body
     end
 
     it "should extract functions with nested braces from control flow and initializers" do
@@ -639,6 +642,42 @@ describe CExtractor do
 
       expect( contents.function_definitions.length ).to eq 1
       expect( contents.function_definitions[0].name ).to eq 'compute'
+    end
+
+    it "should consume static assert statements without collecting them" do
+      file_contents = <<~'CONTENTS'
+        #include <stdint.h>
+
+        _Static_assert(sizeof(int) == 4, "int must be 32-bit");
+
+        typedef struct {
+          int x;
+          int y;
+        } Point;
+
+        static_assert(sizeof(Point) == 8);
+
+        static_assert(
+          offsetof(Point, y) == sizeof(int),
+          "y must follow x with no padding"
+        );
+
+        void some_function(void) {
+          int local = 0;
+        }
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      # Static asserts are consumed — nothing lands in any CModule field
+      expect( contents.function_definitions.length  ).to eq 1
+      expect( contents.function_declarations.length ).to eq 0
+      expect( contents.variable_declarations.length ).to eq 0
+      expect( contents.type_definitions.length      ).to eq 1   # the typedef struct
+      expect( contents.macro_definitions.length     ).to eq 0   # #include is not #define
+
+      expect( contents.function_definitions[0].name ).to eq 'some_function'
+      expect( contents.type_definitions[0] ).to include('typedef struct')
     end
 
   end

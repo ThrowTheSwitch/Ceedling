@@ -167,6 +167,7 @@ class CExtractorFunctions
   #   Enforces max_line_length limit to prevent infinite loops on malformed input
   def extract_function_signature(scanner, type)
     start_pos = scanner.pos
+    # Tracks paren depth while accumulating candidate end-positions — not suitable for collect_balanced()
     paren_depth = 0
     in_string = false
     string_char = nil
@@ -399,7 +400,7 @@ class CExtractorFunctions
   end
 
   def extract_function_name(signature)
-    # Verify balanced parentheses first
+    # Paren depth for balance validation only, no text collection — not suitable for collect_balanced()
     paren_depth = 0
     signature.each_char do |char|
       case char

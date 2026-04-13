@@ -153,6 +153,15 @@ class CExtractor
         next
       end
 
+      # Third: static assertions — C11 _Static_assert / C23 static_assert.
+      # Keyword-led and syntactically unambiguous; consumed but not collected.
+      static_assert = extract_next_feature(
+        io:         io,
+        max_length: @max_buffer_length,
+        extractor:  @preprocessing.method(:try_extract_static_assert)
+      )
+      next if static_assert
+
       # Extract a function definition (most unique non-preprocessor feature)
       func = extract_next_feature(
         io: io,
