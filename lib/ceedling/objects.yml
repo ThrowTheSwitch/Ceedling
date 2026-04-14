@@ -334,12 +334,17 @@ c_extractor_preprocessing:
   compose:
     - c_extractor_code_text
 
+c_extractor_definitions:
+  compose:
+    - c_extractor_code_text
+
 c_extractor:
   compose:
     - c_extractor_code_text
     - c_extractor_declarations
     - c_extractor_functions
     - c_extractor_preprocessing
+    - c_extractor_definitions
 
 partializer_config:
   compose:

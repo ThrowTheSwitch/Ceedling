@@ -11,6 +11,7 @@ require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ceedling/c_extractor/c_extractor_functions'
 require 'ceedling/c_extractor/c_extractor_declarations'
 require 'ceedling/c_extractor/c_extractor_preprocessing'
+require 'ceedling/c_extractor/c_extractor_definitions'
 require 'stringio'
 
 ##
@@ -45,13 +46,15 @@ describe CExtractor do
         declarations   = CExtractorDeclarations.new
         functions      = CExtractorFunctions.new({ c_extractor_code_text: code_text })
         preprocessing  = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
+        definitions    = CExtractorDefinitions.new({ c_extractor_code_text: code_text })
         functions.setup()
         extractor = CExtractor.new(
           {
             c_extractor_code_text:    code_text,
             c_extractor_functions:    functions,
             c_extractor_declarations: declarations,
-            c_extractor_preprocessing: preprocessing
+            c_extractor_preprocessing: preprocessing,
+            c_extractor_definitions:  definitions
           }
         )
         extractor.setup()

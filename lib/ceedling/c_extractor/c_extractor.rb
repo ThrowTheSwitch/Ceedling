@@ -10,6 +10,7 @@ require 'stringio'
 require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_preprocessing'
+require 'ceedling/c_extractor/c_extractor_definitions'
 
 class CExtractor
 
@@ -22,6 +23,7 @@ class CExtractor
     :function_declarations, # Array of CFunctionDeclaration structs
     :macro_definitions,     # Array of String — raw #define text (single or multiline)
     :type_definitions,      # Array of String — raw typedef text (single or multiline)
+    :aggregate_definitions, # Array of String — raw non-typedef struct/enum/union text
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to empty arrays for convenience
@@ -30,7 +32,8 @@ class CExtractor
         function_definitions: [],
         function_declarations: [],
         macro_definitions: [],
-        type_definitions: []
+        type_definitions: [],
+        aggregate_definitions: []
       )
       super
     end
@@ -43,12 +46,13 @@ class CExtractor
         function_definitions:  (self.function_definitions  + other.function_definitions),
         function_declarations: (self.function_declarations + other.function_declarations),
         macro_definitions:     (self.macro_definitions     + other.macro_definitions),
-        type_definitions:      (self.type_definitions      + other.type_definitions)
+        type_definitions:      (self.type_definitions      + other.type_definitions),
+        aggregate_definitions: (self.aggregate_definitions + other.aggregate_definitions)
       )
     end
   end
 
-  constructor :c_extractor_code_text, :c_extractor_functions, :c_extractor_declarations, :c_extractor_preprocessing
+  constructor :c_extractor_code_text, :c_extractor_functions, :c_extractor_declarations, :c_extractor_preprocessing, :c_extractor_definitions
 
   attr_writer :chunk_size, :max_buffer_length
 
@@ -58,6 +62,7 @@ class CExtractor
     @functions     = @c_extractor_functions
     @declarations  = @c_extractor_declarations
     @preprocessing = @c_extractor_preprocessing
+    @definitions   = @c_extractor_definitions
 
     @chunk_size        = DEFAULT_CHUNK_SIZE
     @max_buffer_length = DEFAULT_MAX_FUNCTION_LENGTH
@@ -123,6 +128,7 @@ class CExtractor
     variable_declarations = []
     macro_definitions     = []
     type_definitions      = []
+    aggregate_definitions = []
 
     # Ensure we're at the start of buffer
     io.rewind
@@ -146,7 +152,7 @@ class CExtractor
       typedef_def = extract_next_feature(
         io:         io,
         max_length: @max_buffer_length,
-        extractor:  @preprocessing.method(:try_extract_typedef)
+        extractor:  @definitions.method(:try_extract_typedef)
       )
       if typedef_def
         type_definitions << typedef_def
@@ -161,6 +167,19 @@ class CExtractor
         extractor:  @preprocessing.method(:try_extract_static_assert)
       )
       next if static_assert
+
+      # Fourth: non-typedef struct/enum/union type definitions.
+      # Keyword-led and syntactically unambiguous at the brace level;
+      # collected into aggregate_definitions.
+      agg_def = extract_next_feature(
+        io:         io,
+        max_length: @max_buffer_length,
+        extractor:  @definitions.method(:try_extract_aggregate_definition)
+      )
+      if agg_def
+        aggregate_definitions << agg_def
+        next
+      end
 
       # Extract a function definition (most unique non-preprocessor feature)
       func = extract_next_feature(
@@ -207,7 +226,8 @@ class CExtractor
       function_declarations: function_declarations,
       variable_declarations: variable_declarations,
       macro_definitions:     macro_definitions,
-      type_definitions:      type_definitions
+      type_definitions:      type_definitions,
+      aggregate_definitions: aggregate_definitions
     )
   ensure
     io.close

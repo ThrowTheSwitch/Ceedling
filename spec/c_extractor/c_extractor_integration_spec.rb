@@ -11,6 +11,7 @@ require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ceedling/c_extractor/c_extractor_functions'
 require 'ceedling/c_extractor/c_extractor_declarations'
 require 'ceedling/c_extractor/c_extractor_preprocessing'
+require 'ceedling/c_extractor/c_extractor_definitions'
 
 ##
 ## These integration tests exercise the composition of all CExtractor* objects
@@ -24,13 +25,15 @@ describe CExtractor do
     declarations  = CExtractorDeclarations.new
     functions     = CExtractorFunctions.new({ c_extractor_code_text: code_text })
     preprocessing = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
+    definitions   = CExtractorDefinitions.new({ c_extractor_code_text: code_text })
     functions.setup()
     extractor = CExtractor.new(
       {
         c_extractor_code_text:     code_text,
         c_extractor_functions:     functions,
         c_extractor_declarations:  declarations,
-        c_extractor_preprocessing: preprocessing
+        c_extractor_preprocessing: preprocessing,
+        c_extractor_definitions:   definitions
       }
     )
     extractor.setup()
@@ -642,6 +645,56 @@ describe CExtractor do
 
       expect( contents.function_definitions.length ).to eq 1
       expect( contents.function_definitions[0].name ).to eq 'compute'
+    end
+
+    it "should extract non-typedef struct, enum, and union definitions into aggregate_definitions" do
+      file_contents = <<~'CONTENTS'
+        #include <stdint.h>
+
+        struct Point {
+          int x;
+          int y;
+        };
+
+        enum Color { RED, GREEN, BLUE };
+
+        union Number {
+          int   i;
+          float f;
+        };
+
+        /* struct with declarator — stays in variable_declarations, not aggregate_definitions */
+        struct Foo { int val; } foo_instance;
+
+        typedef struct { int a; int b; } Pair;
+
+        int some_global = 0;
+
+        void a_function(void) {
+          int local = 1;
+        }
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect( contents.aggregate_definitions.length ).to eq 3
+      expect( contents.aggregate_definitions[0] ).to start_with('struct Point')
+      expect( contents.aggregate_definitions[0] ).to include('int x;')
+      expect( contents.aggregate_definitions[1] ).to eq "enum Color { RED, GREEN, BLUE };\n"
+      expect( contents.aggregate_definitions[2] ).to start_with('union Number')
+
+      # struct Foo { int val; } foo_instance; stays in variable_declarations
+      expect( contents.variable_declarations.length ).to eq 2
+      expect( contents.variable_declarations[0].name ).to eq 'foo_instance'
+      expect( contents.variable_declarations[1].name ).to eq 'some_global'
+
+      expect( contents.type_definitions.length ).to eq 1
+      expect( contents.type_definitions[0] ).to include('typedef struct')
+
+      expect( contents.function_definitions.length ).to eq 1
+      expect( contents.function_definitions[0].name ).to eq 'a_function'
+      expect( contents.macro_definitions.length     ).to eq 0
+      expect( contents.function_declarations.length ).to eq 0
     end
 
     it "should consume static assert statements without collecting them" do
