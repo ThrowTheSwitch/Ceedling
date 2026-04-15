@@ -31,27 +31,18 @@ class CliHelper
 
 
   def help_footer(ceedling_tag='master')
-    # Blank line
-    @loginator.log( "" )
-
     # Documentation incorporating Ceedling version tag in URL
     msg = "Ceedling Packet User Manual (v#{ceedling_tag})\n" +
-          "https://github.com/ThrowTheSwitch/Ceedling/blob/#{ceedling_tag}/docs/CeedlingPacket.md"
+          "https://github.com/ThrowTheSwitch/Ceedling/blob/#{ceedling_tag}/docs/CeedlingPacket.md\n\n"
     @loginator.log( msg, Verbosity::NORMAL, LogLabels::DOCUMENTATION )
 
-    # Blank line
-    @loginator.log( "" )
-
     # Ceedling Suite
-    msg = "Ceedling Suite can help you do more ➡️ https://www.thingamabyte.com/ceedling"
+    msg = "Ceedling Suite can help you do more ➡️ https://www.thingamabyte.com/ceedling\n\n"
     @loginator.log( msg, Verbosity::NORMAL, LogLabels::COMMERCIAL )
 
     # GitHub Sponsors
-    msg = "Please consider supporting this work ➡️ https://github.com/sponsors/throwtheswitch"
+    msg = "Please consider supporting this work ➡️ https://github.com/sponsors/throwtheswitch\n\n"
     @loginator.log( msg, Verbosity::NORMAL, LogLabels::REQUEST )
-
-    # Blank line
-    @loginator.log( "" )
   end
 
 

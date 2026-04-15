@@ -16,7 +16,7 @@ class GeneratorTestRunner
   # It is instantiated on demand for each test file processed in a build.
   #
 
-  def initialize(config:, test_file_contents:, preprocessed_file_contents:nil)
+  def initialize(config:, test_file_contents:, preprocessed_file_contents: nil)
     @unity_runner_generator = UnityTestRunnerGenerator.new( config )
     
     # Reduced information set
@@ -28,14 +28,15 @@ class GeneratorTestRunner
     parse_test_file( test_file_contents, preprocessed_file_contents )
   end
 
-  def generate(module_name:, runner_filepath:, mock_list:, test_file_includes:, header_extension:)
+  def generate(module_name:, runner_filepath:, mocks:, includes:)
     # Actually build the test runner using Unity's test runner generator.
     @unity_runner_generator.generate(
       module_name,
       runner_filepath,
       @test_cases_internal,
-      mock_list.map{ |mock| mock + header_extension },
-      test_file_includes.map{|f| File.basename(f,'.*') + header_extension}
+      # Small hack for mock subdirectory support until include paths fully supported
+      mocks.map{ |include| include.filepath },
+      includes.map{ |include| include.filename }
     )
   end
 

@@ -114,7 +114,7 @@ class GeneratorTestResults
       results[:counts][:ignored] = $3.to_i
       results[:counts][:passed] = (results[:counts][:total] - results[:counts][:failed] - results[:counts][:ignored])
     else
-      raise CeedlingException.new( "Could not parse output for `#{executable}`: \"#{unity_shell_result[:output]}\"" ) 
+      raise CeedlingException.new( "Could not parse output for `#{executable}` ⏩️ \"#{unity_shell_result[:output]}\"" ) 
     end
 
     # Remove test statistics lines
