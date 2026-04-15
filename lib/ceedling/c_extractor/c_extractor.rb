@@ -16,14 +16,26 @@ class CExtractor
 
   include CExtractorConstants
 
+  # Pairs a raw C statement string with its 1-based source line number.
+  # Used for macro_definitions, type_definitions, and aggregate_definitions in CModule.
+  CStatement = Struct.new(
+    :text,     # String  — raw extracted statement text (comments replaced with spaces)
+    :line_num, # Integer — 1-based line number where the statement begins in the source file
+    keyword_init: true
+  ) do
+    def initialize(text: nil, line_num: nil)
+      super
+    end
+  end
+
   # Data class representing all extracted content of C module
   CModule = Struct.new(
-    :variable_declarations, # Array of CVariableDeclaration structs
-    :function_definitions,  # Array of CFunctionDefinition structs
-    :function_declarations, # Array of CFunctionDeclaration structs
-    :macro_definitions,     # Array of String — raw #define text (single or multiline)
-    :type_definitions,      # Array of String — raw typedef text (single or multiline)
-    :aggregate_definitions, # Array of String — raw non-typedef struct/enum/union text
+    :variable_declarations, # Array of CVariableDeclaration structs (each with :line_num)
+    :function_definitions,  # Array of CFunctionDefinition structs (each with :line_num)
+    :function_declarations, # Array of CFunctionDeclaration structs (each with :line_num)
+    :macro_definitions,     # Array of CStatement — raw #define text with source line number
+    :type_definitions,      # Array of CStatement — raw typedef text with source line number
+    :aggregate_definitions, # Array of CStatement — raw non-typedef struct/enum/union text with source line number
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to empty arrays for convenience
@@ -129,89 +141,113 @@ class CExtractor
     macro_definitions     = []
     type_definitions      = []
     aggregate_definitions = []
+    cumulative_newlines   = 0
 
     # Ensure we're at the start of buffer
     io.rewind
 
     until io.eof?
+      # Record IO position once per outer iteration.
+      # All extractors that fail rewind IO back to this position.
+      call_start = io.pos
+
       # First: preprocessing directives — '#' is the most syntactically unique leading character.
       # All directives are consumed; filter_directive selects only those collected for storage.
-      directive = extract_next_feature(
+      directive, dir_start = extract_next_feature(
         io: io,
         max_length: @max_buffer_length,
         extractor: @preprocessing.method(:try_extract_directive)
       )
       if directive
+        line_num, cumulative_newlines =
+          _compute_line_info(io, call_start, dir_start, cumulative_newlines)
         macro_def = @preprocessing.filter_directive(directive, CExtractorPreprocessing::MACRO_DEFINITION)
-        macro_definitions << macro_def if macro_def
+        macro_definitions << CStatement.new(text: macro_def, line_num: line_num) if macro_def
         next
       end
 
       # Second: typedef declarations — 'typedef' is as syntactically unique as '#',
       # so handle it early before any heuristic-based feature detectors.
-      typedef_def = extract_next_feature(
+      typedef_def, td_start = extract_next_feature(
         io:         io,
         max_length: @max_buffer_length,
         extractor:  @definitions.method(:try_extract_typedef)
       )
       if typedef_def
-        type_definitions << typedef_def
+        line_num, cumulative_newlines =
+          _compute_line_info(io, call_start, td_start, cumulative_newlines)
+        type_definitions << CStatement.new(text: typedef_def, line_num: line_num)
         next
       end
 
       # Third: static assertions — C11 _Static_assert / C23 static_assert.
       # Keyword-led and syntactically unambiguous; consumed but not collected.
-      static_assert = extract_next_feature(
+      static_assert, sa_start = extract_next_feature(
         io:         io,
         max_length: @max_buffer_length,
         extractor:  @preprocessing.method(:try_extract_static_assert)
       )
-      next if static_assert
+      if static_assert
+        _line_num, cumulative_newlines =
+          _compute_line_info(io, call_start, sa_start, cumulative_newlines)
+        next
+      end
 
       # Fourth: non-typedef struct/enum/union type definitions.
       # Keyword-led and syntactically unambiguous at the brace level;
       # collected into aggregate_definitions.
-      agg_def = extract_next_feature(
+      agg_def, agg_start = extract_next_feature(
         io:         io,
         max_length: @max_buffer_length,
         extractor:  @definitions.method(:try_extract_aggregate_definition)
       )
       if agg_def
-        aggregate_definitions << agg_def
+        line_num, cumulative_newlines =
+          _compute_line_info(io, call_start, agg_start, cumulative_newlines)
+        aggregate_definitions << CStatement.new(text: agg_def, line_num: line_num)
         next
       end
 
       # Extract a function definition (most unique non-preprocessor feature)
-      func = extract_next_feature(
+      func, func_start = extract_next_feature(
         io: io,
         max_length: @max_buffer_length,
         extractor: @functions.method(:try_extract_function_definition),
         params: [filepath]
       )
       if func
+        line_num, cumulative_newlines =
+          _compute_line_info(io, call_start, func_start, cumulative_newlines)
+        func.line_num = line_num
         function_definitions << func
         next
       end
 
       # Extract a function forward declaration (next most unique feature)
-      func = extract_next_feature(
+      func, func_start = extract_next_feature(
         io: io,
         max_length: @max_buffer_length,
         extractor: @functions.method(:try_extract_function_declaration)
       )
       if func
+        line_num, cumulative_newlines =
+          _compute_line_info(io, call_start, func_start, cumulative_newlines)
+        func.line_num = line_num
         function_declarations << func
         next
       end
 
       # Extract variable declarations as array
       # NOTE: A compound variable declaration (e.g. `int x, y`) yields multiple declarations
-      vars = extract_next_feature(
+      vars, vars_start = extract_next_feature(
         io: io,
         max_length: @max_buffer_length,
         extractor: @declarations.method(:try_extract_variable)
       )
       if vars
+        line_num, cumulative_newlines =
+          _compute_line_info(io, call_start, vars_start, cumulative_newlines)
+        vars.each { |v| v.line_num = line_num }
         variable_declarations.concat(vars)
         next
       end
@@ -254,7 +290,7 @@ class CExtractor
     # Incrementally attempt feature extraction with repeated attempts and a growing buffer.
     #
     # Return on successful finding of a complete feature.
-    # Exit the method with failure (nil) and rewind IO:
+    # Exit the method with failure ([nil, nil]) and rewind IO:
     #  1. If we reach end of IO.
     #  2. Exceed maximum buffer length.
     #  3. Find no feature.
@@ -287,6 +323,9 @@ class CExtractor
       # If reached end of string having found no feature -- restart loop to containing loop to grow buffer
       next if scanner.eos?
 
+      # Capture absolute IO position of feature start (after deadspace) before calling extractor
+      feature_start_pos = chunk_start_pos + scanner.pos
+
       # Try extract complete feature using provided extractor
       success, feature = extractor.call(scanner, *params)
 
@@ -298,12 +337,37 @@ class CExtractor
 
         # Rewind IO buffer to position after this feature for next extraction attempt
         io.seek(chunk_start_pos + scanner.pos)
-        return feature
+        return [feature, feature_start_pos]
       end
     end
 
     # Reached IO EOF without finding complete feature -- rewind IO buffer for next extraction attempt
     io.seek(chunk_start_pos)
-    return nil
+    return [nil, nil]
+  end
+
+  # Compute the 1-based line number of a feature in the source file and advance the
+  # cumulative newline counter past all bytes consumed in this extraction cycle.
+  #
+  # Parameters:
+  #   io:                   IO object (File or StringIO), currently positioned at end_pos
+  #   call_start:           IO byte position at the start of the extract_next_feature call
+  #   feature_start:        IO byte position where the feature begins (after leading deadspace)
+  #   cumulative_newlines:  Running count of newlines consumed before call_start
+  #
+  # Returns: [feature_line, new_cumulative_newlines]
+  #   feature_line:          1-based line number in source file where the feature starts
+  #   new_cumulative_newlines: Updated counter including all bytes consumed this cycle
+  def _compute_line_info(io, call_start, feature_start, cumulative_newlines)
+    end_pos = io.pos
+    io.seek(call_start)
+    consumed = io.read(end_pos - call_start)
+    io.seek(end_pos)
+
+    gap_len        = feature_start - call_start
+    feature_line   = 1 + cumulative_newlines + consumed[0...gap_len].count("\n")
+    new_cumulative = cumulative_newlines + consumed.count("\n")
+
+    [feature_line, new_cumulative]
   end
 end

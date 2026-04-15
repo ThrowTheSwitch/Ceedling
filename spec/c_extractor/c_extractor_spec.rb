@@ -62,12 +62,13 @@ describe CExtractor do
       end
     end
 
-    # Helper to access private method
+    # Helper to access private method — unwraps the [feature, start_pos] tuple and returns just the feature
     let(:extract_feature) do
       ->(io, max_length, extractor_lambda, chunk_size=10) do
         obj = build_extractor.call()
         obj.chunk_size = chunk_size
-        obj.send(:extract_next_feature, io: io, max_length: max_length, extractor: extractor_lambda)
+        feature, _start = obj.send(:extract_next_feature, io: io, max_length: max_length, extractor: extractor_lambda)
+        feature
       end
     end
 
@@ -222,10 +223,10 @@ describe CExtractor do
         extractor_obj = build_extractor.call()
         extractor_obj.chunk_size = 2000
 
-        result1 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
-        result2 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
-        result3 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
-        result4 = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
+        result1, _ = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
+        result2, _ = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
+        result3, _ = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
+        result4, _ = extractor_obj.send(:extract_next_feature, io: io, max_length: 1200, extractor: extractor)
                
         expect(result1).to eq("FIRST")
         expect(result2).to eq("SECOND")

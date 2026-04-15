@@ -14,15 +14,16 @@ class CExtractorDeclarations
 
   # Struct representing a single parsed C variable declaration
   CVariableDeclaration = Struct.new(
-    :original,    # Full original C text (e.g., "static int x, y;") -- shared by all Structs 
+    :original,    # Full original C text (e.g., "static int x, y;") -- shared by all Structs
                   # created from a single compound declaration.
     :name,        # Variable name (e.g., "x")
     :type,        # Type without decorator keywords (e.g., "int", "char*")
     :decorators,  # Array of decorator keyword strings (e.g., ["static", "const"])
     :declaration, # Cleaned declaration without decorators, whitespace normalized (e.g., "int x;")
+    :line_num,    # Integer — 1-based line number in source file where declaration begins
     keyword_init: true
   ) do
-    def initialize(original: nil, name: nil, type: nil, decorators: [], declaration: nil)
+    def initialize(original: nil, name: nil, type: nil, decorators: [], declaration: nil, line_num: nil)
       super
     end
   end

@@ -17,9 +17,10 @@ class CExtractorFunctions
     :signature,          # Full signature with decorators (e.g., "static int foo(void);")
     :decorators,         # Array of decorator strings (e.g., ["static"])
     :signature_stripped, # Signature without decorators (e.g., "int foo(void);")
+    :line_num,           # Integer — 1-based line number in source file where declaration begins
     keyword_init: true
   ) do
-    def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil)
+    def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil, line_num: nil)
       super
     end
   end
