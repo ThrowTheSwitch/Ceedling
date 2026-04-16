@@ -282,7 +282,7 @@ class Cppcheck < Plugin
 
   def opts_builder_xml()
     opts = [
-      "--xml",
+      "--output-format=xmlv3",
       "--output-file=#{@xml_artifact_filepath}"
     ]
 
