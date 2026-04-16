@@ -576,7 +576,7 @@ class TestInvoker
 
           @partializer.validate_config(c_module: module_contents, config: config, name: name)
 
-          impl = @partializer.extract_implementation_functions(
+          implementation = @partializer.extract_implementation_functions(
             test: name,
             partial: config.module,
             definitions: module_contents.function_definitions,
@@ -594,14 +594,14 @@ class TestInvoker
           @partializer.validate_extracted_functions(
             name: name,
             partial: config.module,
-            impl: impl,
+            impl: implementation,
             interface: interface
           )
 
           @partializer.log_extracted_functions(
             test:           name,
             module_name:    config.module,
-            impl:           impl,
+            impl:           implementation,
             interface:      interface
           )
 
@@ -614,7 +614,7 @@ class TestInvoker
           arg_hash = {
             test:                  name,
             partial:               config.module,
-            function_defns:        impl,
+            function_definitions:  implementation,
             variable_declarations: module_contents.variable_declarations,
             header_includes:       @partializer.remap_implementation_header_includes(
                                     name: config.module,
@@ -633,7 +633,7 @@ class TestInvoker
           }
 
           # Partial implementation generation
-          unless impl.nil?
+          unless implementation.nil?
             @partializer.log_implementation_includes(
               label:          'Source',
               test:           testable[:name],
@@ -652,15 +652,15 @@ class TestInvoker
           end
 
           arg_hash = {
-            test:           name,
-            partial:        config.module,
-            declarations:   interface,
-            includes:       @partializer.sanitize_includes( 
-                              name: config.module,
-                              includes: (config.source.includes + config.header.includes)
-                            ),
-            input_filepath: config.header.filepath,
-            output_path:    testable[:paths][:partials]
+            test:                    name,
+            partial:                 config.module,
+            function_declarations:   interface,
+            includes:                @partializer.sanitize_includes( 
+                                       name: config.module,
+                                       includes: (config.source.includes + config.header.includes)
+                                     ),
+            input_filepath:          config.header.filepath,
+            output_path:             testable[:paths][:partials]
           }
 
           # Partial interface generation

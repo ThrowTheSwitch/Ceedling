@@ -35,7 +35,7 @@ class Generator
     @backtrace = @generator_test_results_backtrace
   end
 
-  def generate_partial_interface(test:, partial:, declarations:, includes:, input_filepath:, output_path:)
+  def generate_partial_interface(test:, partial:, function_declarations:, includes:, input_filepath:, output_path:)
     msg = @reportinator.generate_module_progress(
       operation: "Generating Partial mockable interface for",
       module_name: test,
@@ -46,7 +46,7 @@ class Generator
     arg_hash = {
       :test => test,
       :name => partial,
-      :declarations => declarations,
+      :function_declarations => function_declarations,
       :includes => includes,
       :output_path => output_path
     }
@@ -57,7 +57,7 @@ class Generator
   def generate_partial_implementation(
       test:,
       partial:,
-      function_defns:,
+      function_definitions:,
       source_includes:,
       header_includes:,
       variable_declarations:,
@@ -73,7 +73,7 @@ class Generator
     @loginator.log( msg )
 
     arg_hash = {
-      :definitions => function_defns,
+      :function_definitions => function_definitions,
       :test => test,
       :name => partial,
       :source_includes => source_includes,

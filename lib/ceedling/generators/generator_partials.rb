@@ -15,7 +15,7 @@ class GeneratorPartials
   def generate_implementation(
       test:,
       name:,
-      definitions:,
+      function_definitions:,
       source_includes:,
       header_includes:,
       variable_declarations:,
@@ -28,22 +28,22 @@ class GeneratorPartials
     source_filepath = File.join(output_path, source)
 
     @file_wrapper.open(header_filepath, 'w') do |file|
-      generate_header(file, header, header_includes, definitions, variable_declarations)
+      generate_header(file, header, header_includes, function_definitions, variable_declarations)
     end
 
     @file_wrapper.open(source_filepath, 'w') do |file|
-      generate_source(file, source_includes, definitions, variable_declarations)
+      generate_source(file, source_includes, function_definitions, variable_declarations)
     end
 
     return source_filepath
   end
 
-  def generate_interface(test:, name:, declarations:, includes:, output_path:)
+  def generate_interface(test:, name:, function_declarations:, includes:, output_path:)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = File.join(output_path, header)
 
     @file_wrapper.open(filepath, 'w') do |file|
-      generate_header(file, header, includes, declarations, [])
+      generate_header(file, header, includes, function_declarations, [])
     end
 
     return filepath
@@ -51,7 +51,7 @@ class GeneratorPartials
 
   private
 
-  def generate_header(io, name, includes, declarations, variable_declarations)
+  def generate_header(io, name, includes, function_declarations, variable_declarations)
     guard = FileWrapper.generate_include_guard( name )
 
     io << "// Ceeding generated file\n"
@@ -70,7 +70,7 @@ class GeneratorPartials
 
     io << "\n" if !variable_declarations.empty?
 
-    declarations.each do |decl|
+    function_declarations.each do |decl|
       io << decl.signature
       io << ";\n\n"
     end
@@ -78,7 +78,7 @@ class GeneratorPartials
     io << "#endif // #{guard}\n\n"
   end
 
-  def generate_source(io, includes, definitions, variable_declarations)
+  def generate_source(io, includes, function_definitions, variable_declarations)
     io << "// Ceeding generated file\n"
     includes.each do |include|
       io << "#{include}\n"
@@ -92,7 +92,7 @@ class GeneratorPartials
 
     io << "\n" if !variable_declarations.empty?
 
-    definitions.each do |defn|
+    function_definitions.each do |defn|
       if defn.line_num and defn.source_filepath
         io << "#line #{defn.line_num} \"#{defn.source_filepath}\"\n"
       end

@@ -88,7 +88,7 @@ describe GeneratorPartials do
       result = @generator.generate_implementation(
         test: 'test_my_implementation',
         name: name,
-        definitions: defns,
+        function_definitions: defns,
         source_includes: source_includes,
         header_includes: header_includes,
         variable_declarations: variable_declarations,
@@ -159,7 +159,7 @@ describe GeneratorPartials do
       # Execute
       result = @generator.generate_interface(
         test: 'test_my_interface',
-        declarations: decls,
+        function_declarations: decls,
         name: name,
         includes: includes,
         output_path: output_path
