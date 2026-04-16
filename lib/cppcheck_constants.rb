@@ -8,18 +8,20 @@ CPPCHECK_ARTIFACTS_PATH      = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, CPPCHECK_
 CPPCHECK_ARTIFACTS_HTML_PATH = File.join(CPPCHECK_ARTIFACTS_PATH, 'html')
 
 CPPCHECK_ARTIFACTS_FILE_TEXT = 'CppcheckReport.txt'
+CPPCHECK_ARTIFACTS_FILE_SARIF = 'CppcheckReport.sarif'
 CPPCHECK_ARTIFACTS_FILE_XML  = File.basename(CPPCHECK_ARTIFACTS_FILE_TEXT).ext('.xml')
 
 class CppcheckReportTypes
   TEXT = 'text'.freeze
   XML = 'xml'.freeze
   HTML = 'html'.freeze
-  
+  SARIF = 'sarif'.freeze
+
   def self.is_supported?(report)
     REPORTS.include?(report)
   end
-  
+
   private
-  
-  REPORTS = [TEXT, XML, HTML].freeze
+
+  REPORTS = [TEXT, XML, HTML, SARIF].freeze
 end
