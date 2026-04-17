@@ -28,14 +28,14 @@ describe CExtractorDeclarations do
     end
 
     # Shorthand to check a single-variable result
-    def check_single(variable, name:, type:, decorators: [], declaration:)
+    def check_single(variable, name:, type:, decorators: [], text:)
       expect(variable).to be_an(Array)
       expect(variable.length).to eq 1
       v = variable[0]
       expect(v.name).to eq name
       expect(v.type).to eq type
       expect(v.decorators).to eq decorators
-      expect(v.declaration).to eq declaration
+      expect(v.text).to eq text
     end
 
     context "simple variable declarations" do
@@ -44,7 +44,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'x', type: 'int', declaration: 'int x;')
+        check_single(variable, name: 'x', type: 'int', text: 'int x;')
         expect(variable[0].original).to eq 'int x;'
         expect(pos).to eq(6)
         expect(rest).to eq("")
@@ -55,7 +55,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'c', type: 'char', declaration: 'char c;')
+        check_single(variable, name: 'c', type: 'char', text: 'char c;')
         expect(pos).to eq(7)
         expect(rest).to eq("")
       end
@@ -65,7 +65,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'value', type: 'float', declaration: 'float value;')
+        check_single(variable, name: 'value', type: 'float', text: 'float value;')
         expect(pos).to eq(12)
         expect(rest).to eq("")
       end
@@ -75,7 +75,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'pi', type: 'double', declaration: 'double pi;')
+        check_single(variable, name: 'pi', type: 'double', text: 'double pi;')
         expect(pos).to eq(10)
         expect(rest).to eq("")
       end
@@ -85,7 +85,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'my_variable', type: 'int', declaration: 'int my_variable;')
+        check_single(variable, name: 'my_variable', type: 'int', text: 'int my_variable;')
         expect(pos).to eq(16)
         expect(rest).to eq("")
       end
@@ -95,7 +95,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'myVariable', type: 'int', declaration: 'int myVariable;')
+        check_single(variable, name: 'myVariable', type: 'int', text: 'int myVariable;')
         expect(pos).to eq(15)
         expect(rest).to eq("")
       end
@@ -105,7 +105,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'value123', type: 'int', declaration: 'int value123;')
+        check_single(variable, name: 'value123', type: 'int', text: 'int value123;')
         expect(pos).to eq(13)
         expect(rest).to eq("")
       end
@@ -117,7 +117,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'ptr', type: 'int*', declaration: 'int* ptr;')
+        check_single(variable, name: 'ptr', type: 'int*', text: 'int* ptr;')
         expect(pos).to eq(9)
         expect(rest).to eq("")
       end
@@ -127,7 +127,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'ptr', type: 'int *', declaration: 'int *ptr;')
+        check_single(variable, name: 'ptr', type: 'int *', text: 'int *ptr;')
         expect(pos).to eq(9)
         expect(rest).to eq("")
       end
@@ -137,7 +137,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'ptr', type: 'int *', declaration: 'int * ptr;')
+        check_single(variable, name: 'ptr', type: 'int *', text: 'int * ptr;')
         expect(pos).to eq(10)
         expect(rest).to eq("")
       end
@@ -147,7 +147,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'buffer', type: 'char**', declaration: 'char** buffer;')
+        check_single(variable, name: 'buffer', type: 'char**', text: 'char** buffer;')
         expect(pos).to eq(14)
         expect(rest).to eq("")
       end
@@ -157,7 +157,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'ptr', type: 'void***', declaration: 'void*** ptr;')
+        check_single(variable, name: 'ptr', type: 'void***', text: 'void*** ptr;')
         expect(pos).to eq(12)
         expect(rest).to eq("")
       end
@@ -167,7 +167,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'ptr', type: 'int*', decorators: ['const'], declaration: 'int* ptr;')
+        check_single(variable, name: 'ptr', type: 'int*', decorators: ['const'], text: 'int* ptr;')
         expect(pos).to eq(15)
         expect(rest).to eq("")
       end
@@ -181,7 +181,7 @@ describe CExtractorDeclarations do
         expect(variable.length).to eq 1
         expect(variable[0].name).to eq 'ptr'
         expect(variable[0].decorators).to eq []
-        expect(variable[0].declaration).to eq 'int* const ptr;'
+        expect(variable[0].text).to eq 'int* const ptr;'
         expect(pos).to eq(15)
         expect(rest).to eq("")
       end
@@ -192,7 +192,7 @@ describe CExtractorDeclarations do
 
         expect(success).to be true
         # Leading `const` is a decorator; gsub removes all `const` occurrences
-        check_single(variable, name: 'ptr', type: 'int*', decorators: ['const'], declaration: 'int* ptr;')
+        check_single(variable, name: 'ptr', type: 'int*', decorators: ['const'], text: 'int* ptr;')
         expect(pos).to eq(21)
         expect(rest).to eq("")
       end
@@ -204,7 +204,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[10];')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[10];')
         expect(pos).to eq(12)
         expect(rest).to eq("")
       end
@@ -214,7 +214,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[];')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[];')
         expect(pos).to eq(10)
         expect(rest).to eq("")
       end
@@ -224,7 +224,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'matrix', type: 'int', declaration: 'int matrix[3][4];')
+        check_single(variable, name: 'matrix', type: 'int', text: 'int matrix[3][4];')
         expect(pos).to eq(17)
         expect(rest).to eq("")
       end
@@ -234,7 +234,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'cube', type: 'int', declaration: 'int cube[2][3][4];')
+        check_single(variable, name: 'cube', type: 'int', text: 'int cube[2][3][4];')
         expect(pos).to eq(18)
         expect(rest).to eq("")
       end
@@ -244,7 +244,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'strings', type: 'char*', declaration: 'char* strings[10];')
+        check_single(variable, name: 'strings', type: 'char*', text: 'char* strings[10];')
         expect(pos).to eq(18)
         expect(rest).to eq("")
       end
@@ -254,7 +254,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'ptr', type: 'int', declaration: 'int (*ptr)[10];')
+        check_single(variable, name: 'ptr', type: 'int', text: 'int (*ptr)[10];')
         expect(pos).to eq(15)
         expect(rest).to eq("")
       end
@@ -264,7 +264,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[MAX_SIZE];')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[MAX_SIZE];')
         expect(pos).to eq(18)
         expect(rest).to eq("")
       end
@@ -274,7 +274,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[10 + 5];')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[10 + 5];')
         expect(pos).to eq(16)
         expect(rest).to eq("")
       end
@@ -286,7 +286,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[] = {1, 2, 3};')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[] = {1, 2, 3};')
         expect(pos).to eq(22)
         expect(rest).to eq("")
       end
@@ -296,7 +296,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[5] = {1, 2, 3, 4, 5};')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[5] = {1, 2, 3, 4, 5};')
         expect(pos).to eq(29)
         expect(rest).to eq("")
       end
@@ -306,7 +306,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[10] = {1, 2, 3};')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[10] = {1, 2, 3};')
         expect(pos).to eq(24)
         expect(rest).to eq("")
       end
@@ -316,7 +316,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[5] = {};')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[5] = {};')
         expect(pos).to eq(16)
         expect(rest).to eq("")
       end
@@ -326,7 +326,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'str', type: 'char', declaration: 'char str[] = "hello";')
+        check_single(variable, name: 'str', type: 'char', text: 'char str[] = "hello";')
         expect(pos).to eq(21)
         expect(rest).to eq("")
       end
@@ -336,7 +336,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'str', type: 'char', declaration: 'char str[10] = "hello";')
+        check_single(variable, name: 'str', type: 'char', text: 'char str[10] = "hello";')
         expect(pos).to eq(23)
         expect(rest).to eq("")
       end
@@ -346,7 +346,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'matrix', type: 'int', declaration: 'int matrix[2][3] = {{1, 2, 3}, {4, 5, 6}};')
+        check_single(variable, name: 'matrix', type: 'int', text: 'int matrix[2][3] = {{1, 2, 3}, {4, 5, 6}};')
         expect(pos).to eq(42)
         expect(rest).to eq("")
       end
@@ -356,7 +356,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[5] = {[0] = 1, [4] = 5};')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[5] = {[0] = 1, [4] = 5};')
         expect(pos).to eq(32)
         expect(rest).to eq("")
       end
@@ -366,7 +366,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[] = {-1, -2, -3};')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[] = {-1, -2, -3};')
         expect(pos).to eq(25)
         expect(rest).to eq("")
       end
@@ -376,7 +376,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'float', declaration: 'float arr[] = {1.5, 2.7, 3.14};')
+        check_single(variable, name: 'arr', type: 'float', text: 'float arr[] = {1.5, 2.7, 3.14};')
         expect(pos).to eq(31)
         expect(rest).to eq("")
       end
@@ -386,7 +386,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[] = {0x01, 0xFF, 0xAB};')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[] = {0x01, 0xFF, 0xAB};')
         expect(pos).to eq(31)
         expect(rest).to eq("")
       end
@@ -396,7 +396,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', decorators: ['const'], declaration: 'int arr[] = {1, 2, 3};')
+        check_single(variable, name: 'arr', type: 'int', decorators: ['const'], text: 'int arr[] = {1, 2, 3};')
         expect(pos).to eq(28)
         expect(rest).to eq("")
       end
@@ -406,7 +406,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', decorators: ['static'], declaration: 'int arr[] = {10, 20, 30};')
+        check_single(variable, name: 'arr', type: 'int', decorators: ['static'], text: 'int arr[] = {10, 20, 30};')
         expect(pos).to eq(32)
         expect(rest).to eq("")
       end
@@ -416,7 +416,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'char*', declaration: 'char* arr[] = {"hello", "world"};')
+        check_single(variable, name: 'arr', type: 'char*', text: 'char* arr[] = {"hello", "world"};')
         expect(pos).to eq(33)
         expect(rest).to eq("")
       end
@@ -426,7 +426,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[] = {MAX_VALUE, MIN_VALUE};')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[] = {MAX_VALUE, MIN_VALUE};')
         expect(pos).to eq(35)
         expect(rest).to eq("")
       end
@@ -436,7 +436,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'arr', type: 'int', declaration: 'int arr[] = {1 + 2, 3 * 4, 5 - 1};')
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[] = {1 + 2, 3 * 4, 5 - 1};')
         expect(pos).to eq(34)
         expect(rest).to eq("")
       end
@@ -448,7 +448,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'value', type: 'int', decorators: ['const'], declaration: 'int value;')
+        check_single(variable, name: 'value', type: 'int', decorators: ['const'], text: 'int value;')
         expect(pos).to eq(16)
         expect(rest).to eq("")
       end
@@ -458,7 +458,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'flag', type: 'int', decorators: ['volatile'], declaration: 'int flag;')
+        check_single(variable, name: 'flag', type: 'int', decorators: ['volatile'], text: 'int flag;')
         expect(pos).to eq(18)
         expect(rest).to eq("")
       end
@@ -468,7 +468,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'reg', type: 'int', decorators: ['const', 'volatile'], declaration: 'int reg;')
+        check_single(variable, name: 'reg', type: 'int', decorators: ['const', 'volatile'], text: 'int reg;')
         expect(pos).to eq(23)
         expect(rest).to eq("")
       end
@@ -478,7 +478,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'counter', type: 'int', decorators: ['static'], declaration: 'int counter;')
+        check_single(variable, name: 'counter', type: 'int', decorators: ['static'], text: 'int counter;')
         expect(pos).to eq(19)
         expect(rest).to eq("")
       end
@@ -488,7 +488,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'global', type: 'int', decorators: ['extern'], declaration: 'int global;')
+        check_single(variable, name: 'global', type: 'int', decorators: ['extern'], text: 'int global;')
         expect(pos).to eq(18)
         expect(rest).to eq("")
       end
@@ -498,7 +498,7 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        check_single(variable, name: 'MAX', type: 'int', decorators: ['static', 'const'], declaration: 'int MAX;')
+        check_single(variable, name: 'MAX', type: 'int', decorators: ['static', 'const'], text: 'int MAX;')
         expect(pos).to eq(21)
         expect(rest).to eq("")
       end
@@ -512,7 +512,7 @@ describe CExtractorDeclarations do
         expect(variable.length).to eq 1
         expect(variable[0].name).to eq 'fast'
         expect(variable[0].decorators).to eq []
-        expect(variable[0].declaration).to eq 'register int fast;'
+        expect(variable[0].text).to eq 'register int fast;'
         expect(pos).to eq(18)
         expect(rest).to eq("")
       end
@@ -530,13 +530,13 @@ describe CExtractorDeclarations do
         expect(variable[0].name).to eq 'x'
         expect(variable[0].type).to eq 'int'
         expect(variable[0].decorators).to eq []
-        expect(variable[0].declaration).to eq 'int x;'
+        expect(variable[0].text).to eq 'int x;'
 
         expect(variable[1].original).to eq 'int x, y;'
         expect(variable[1].name).to eq 'y'
         expect(variable[1].type).to eq 'int'
         expect(variable[1].decorators).to eq []
-        expect(variable[1].declaration).to eq 'int y;'
+        expect(variable[1].text).to eq 'int y;'
 
         expect(pos).to eq(9)
         expect(rest).to eq("")
@@ -555,13 +555,13 @@ describe CExtractorDeclarations do
         end
 
         expect(variable[0].name).to eq 'a'
-        expect(variable[0].declaration).to eq 'int a;'
+        expect(variable[0].text).to eq 'int a;'
 
         expect(variable[1].name).to eq 'b'
-        expect(variable[1].declaration).to eq 'int b;'
+        expect(variable[1].text).to eq 'int b;'
 
         expect(variable[2].name).to eq 'c'
-        expect(variable[2].declaration).to eq 'int c;'
+        expect(variable[2].text).to eq 'int c;'
 
         expect(pos).to eq(19)
         expect(rest).to eq("")
@@ -577,12 +577,12 @@ describe CExtractorDeclarations do
         expect(variable[0].name).to eq 'p'
         expect(variable[0].type).to eq 'int *'
         expect(variable[0].decorators).to eq []
-        expect(variable[0].declaration).to eq 'int *p;'
+        expect(variable[0].text).to eq 'int *p;'
 
         expect(variable[1].name).to eq 'q'
         expect(variable[1].type).to eq 'int'
         expect(variable[1].decorators).to eq []
-        expect(variable[1].declaration).to eq 'int q;'
+        expect(variable[1].text).to eq 'int q;'
 
         expect(pos).to eq(10)
         expect(rest).to eq("")
@@ -597,11 +597,11 @@ describe CExtractorDeclarations do
 
         expect(variable[0].name).to eq 's1'
         expect(variable[0].decorators).to eq ['const']
-        expect(variable[0].declaration).to eq 'char *s1;'
+        expect(variable[0].text).to eq 'char *s1;'
 
         expect(variable[1].name).to eq 's2'
         expect(variable[1].decorators).to eq ['const']
-        expect(variable[1].declaration).to eq 'char *s2;'
+        expect(variable[1].text).to eq 'char *s2;'
 
         expect(pos).to eq(20)
         expect(rest).to eq("")

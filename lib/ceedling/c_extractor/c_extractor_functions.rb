@@ -6,53 +6,12 @@
 # =========================================================================
 
 require 'ceedling/c_extractor/c_extractor_constants'
+require 'ceedling/c_extractor/c_extractor_types'
 
 class CExtractorFunctions
 
   include CExtractorConstants
-
-  # Data class representing an extracted C function declaration
-  CFunctionDeclaration = Struct.new(
-    :name,               # Function name (e.g., "foo")
-    :signature,          # Full signature with decorators (e.g., "static int foo(void);")
-    :decorators,         # Array of decorator strings (e.g., ["static"])
-    :signature_stripped, # Signature without decorators (e.g., "int foo(void);")
-    :line_num,           # Integer — 1-based line number in source file where declaration begins
-    keyword_init: true
-  ) do
-    def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil, line_num: nil)
-      super
-    end
-  end
-
-  # Data class representing an extracted C function definition
-  CFunctionDefinition = Struct.new(
-    :name,               # Function name only (e.g., "foo")
-    :signature,          # Function signature (e.g., "int foo(void)")
-    :body,               # Function body including containing braces
-    :code_block,         # Complete function text (signature + body)
-    :line_count,         # Total number of lines in code_block
-    :source_filepath,    # Source C filepath
-    :line_num,           # Line number in source C file
-    :decorators,         # Array of decorator strings (e.g., ["static"])
-    :signature_stripped, # Signature without decorators (e.g., "int foo(void)")
-    keyword_init: true
-  ) do
-    # Constructor to set unassigned fields to nil for convenience
-    def initialize(
-      name: nil,
-      signature: nil,
-      body: nil,
-      code_block: nil,
-      line_count: 0,
-      source_filepath: nil,
-      line_num: nil,
-      decorators: [],
-      signature_stripped: nil
-      )
-      super
-    end
-  end
+  include CExtractorTypes
 
   constructor :c_extractor_code_text
 

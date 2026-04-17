@@ -615,7 +615,10 @@ class TestInvoker
             test:                  name,
             partial:               config.module,
             function_definitions:  implementation,
-            variable_declarations: module_contents.variable_declarations,
+            c_statements:          module_contents.variable_declarations +
+                                   module_contents.macro_definitions     +
+                                   module_contents.type_definitions      +
+                                   module_contents.aggregate_definitions,
             header_includes:       @partializer.remap_implementation_header_includes(
                                     name: config.module,
                                     includes: (config.source.includes + config.header.includes),
@@ -655,10 +658,13 @@ class TestInvoker
             test:                    name,
             partial:                 config.module,
             function_declarations:   interface,
-            includes:                @partializer.sanitize_includes( 
+            includes:                @partializer.sanitize_includes(
                                        name: config.module,
                                        includes: (config.source.includes + config.header.includes)
                                      ),
+            c_statements:            module_contents.macro_definitions  +
+                                     module_contents.type_definitions   +
+                                     module_contents.aggregate_definitions,
             input_filepath:          config.header.filepath,
             output_path:             testable[:paths][:partials]
           }

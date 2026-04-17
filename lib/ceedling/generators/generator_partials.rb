@@ -7,6 +7,7 @@
 
 require 'ceedling/file_wrapper'
 require 'ceedling/partials/partials'
+require 'ceedling/c_extractor/c_extractor_types'
 
 class GeneratorPartials
 
@@ -18,7 +19,7 @@ class GeneratorPartials
       function_definitions:,
       source_includes:,
       header_includes:,
-      variable_declarations:,
+      c_statements:,
       output_path:
     )
     source = @file_path_utils.form_partial_implementation_source_filename(name)
@@ -28,22 +29,22 @@ class GeneratorPartials
     source_filepath = File.join(output_path, source)
 
     @file_wrapper.open(header_filepath, 'w') do |file|
-      generate_header(file, header, header_includes, function_definitions, variable_declarations)
+      generate_header(file, header, header_includes, function_definitions, c_statements)
     end
 
     @file_wrapper.open(source_filepath, 'w') do |file|
-      generate_source(file, source_includes, function_definitions, variable_declarations)
+      generate_source(file, source_includes, function_definitions, c_statements)
     end
 
     return source_filepath
   end
 
-  def generate_interface(test:, name:, function_declarations:, includes:, output_path:)
+  def generate_interface(test:, name:, function_declarations:, includes:, c_statements:, output_path:)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = File.join(output_path, header)
 
     @file_wrapper.open(filepath, 'w') do |file|
-      generate_header(file, header, includes, function_declarations, [])
+      generate_header(file, header, includes, function_declarations, c_statements)
     end
 
     return filepath
@@ -51,7 +52,7 @@ class GeneratorPartials
 
   private
 
-  def generate_header(io, name, includes, function_declarations, variable_declarations)
+  def generate_header(io, name, includes, function_declarations, c_statements)
     guard = FileWrapper.generate_include_guard( name )
 
     io << "// Ceeding generated file\n"
@@ -64,11 +65,19 @@ class GeneratorPartials
 
     io << "\n" if !includes.empty?
 
-    variable_declarations.each do |var|
-      io << "extern #{var.type} #{var.name};\n"
+    sorted = sort_by_line_num(c_statements)
+    sorted.each do |item|
+      if item.is_a?(CExtractorTypes::CStatement)
+        # Macro, typedef, or aggregate definition — emit text as-is
+        io << item.text.chomp
+        io << "\n"
+      else
+        # CVariableDeclaration — emit extern declaration
+        io << "extern #{item.type} #{item.name};\n"
+      end
     end
 
-    io << "\n" if !variable_declarations.empty?
+    io << "\n" if !c_statements.empty?
 
     function_declarations.each do |decl|
       io << decl.signature
@@ -78,7 +87,7 @@ class GeneratorPartials
     io << "#endif // #{guard}\n\n"
   end
 
-  def generate_source(io, includes, function_definitions, variable_declarations)
+  def generate_source(io, includes, function_definitions, c_statements)
     io << "// Ceeding generated file\n"
     includes.each do |include|
       io << "#{include}\n"
@@ -86,11 +95,13 @@ class GeneratorPartials
 
     io << "\n"
 
-    variable_declarations.each do |var|
-      io << "#{var.declaration}\n"
+    # Only CVariableDeclaration items belong in the source file
+    var_decls = c_statements.select { |item| item.is_a?(CExtractorTypes::CVariableDeclaration) }
+    var_decls.each do |var|
+      io << "#{var.text}\n"
     end
 
-    io << "\n" if !variable_declarations.empty?
+    io << "\n" if !var_decls.empty?
 
     function_definitions.each do |defn|
       if defn.line_num and defn.source_filepath
@@ -102,8 +113,14 @@ class GeneratorPartials
     end
   end
 
+  def sort_by_line_num(collection)
+    with_num    = collection.select { |item| item.line_num }
+    without_num = collection.reject { |item| item.line_num }
+    with_num.sort_by { |item| item.line_num } + without_num
+  end
+
   def cleanup_function(code_block)
-    # Collapse any unnecessary newlines between closing paren and opening function bracket      
+    # Collapse any unnecessary newlines between closing paren and opening function bracket
     _code_block = code_block.gsub( /\)(\n){2,}\{/, ")\n{" )
     # Collapse any unnecessary newlines between opening function bracket and code
     _code_block.gsub!( /\{(\n){2,}/, "{\n" )

@@ -9,7 +9,7 @@ require 'spec_helper'
 require 'ceedling/generators/generator_partials'
 require 'ceedling/partials/partials'
 require 'ceedling/includes/includes'
-require 'ceedling/c_extractor/c_extractor_declarations'
+require 'ceedling/c_extractor/c_extractor_types'
 require 'stringio'
 
 describe GeneratorPartials do
@@ -28,11 +28,16 @@ describe GeneratorPartials do
   end
 
   # Helper to create CVariableDeclaration structs for testing
-  def make_var(name:, type:, declaration:, decorators: [])
-    CExtractorDeclarations::CVariableDeclaration.new(
+  def make_var(name:, type:, text:, decorators: [], line_num: nil)
+    CExtractorTypes::CVariableDeclaration.new(
       name: name, type: type, decorators: decorators,
-      declaration: declaration, original: declaration
+      text: text, original: text, line_num: line_num
     )
+  end
+
+  # Helper to create CStatement structs for testing
+  def make_stmt(text:, line_num: nil)
+    CExtractorTypes::CStatement.new(text: text, line_num: line_num)
   end
 
   context "#generate_implementation" do
@@ -80,8 +85,9 @@ describe GeneratorPartials do
       ]
       source_includes = [UserInclude.new('types.h'), UserInclude.new('config.h')]
       header_includes = [SystemInclude.new('stdint.h'), SystemInclude.new('stdbool.h')]
-      variable_declarations = [
-        make_var(name: 'my_var', type: 'uint8_t', declaration: 'uint8_t my_var;')
+      c_statements = [
+        make_var(name: 'my_var', type: 'uint8_t', text: 'uint8_t my_var;'),
+        make_stmt(text: "#define MAX_SIZE 100\n", line_num: 5)
       ]
 
       # Execute
@@ -91,25 +97,25 @@ describe GeneratorPartials do
         function_definitions: defns,
         source_includes: source_includes,
         header_includes: header_includes,
-        variable_declarations: variable_declarations,
+        c_statements: c_statements,
         output_path: output_path
       )
 
-      # Verify generate_header was called with correct parameters (single variable_declarations array)
+      # Verify generate_header was called with correct parameters
       expect(@generator).to have_received(:generate_header).with(
         header_file_handle,
         header_filename,
         header_includes,
         defns,
-        variable_declarations
+        c_statements
       )
 
-      # Verify generate_source was called with correct parameters (same variable_declarations array)
+      # Verify generate_source was called with correct parameters
       expect(@generator).to have_received(:generate_source).with(
         source_file_handle,
         source_includes,
         defns,
-        variable_declarations
+        c_statements
       )
 
       # Verify file path utilities were called
@@ -155,6 +161,9 @@ describe GeneratorPartials do
         )
       ]
       includes = [UserInclude.new('types.h'), UserInclude.new('config.h')]
+      c_statements = [
+        make_stmt(text: "typedef uint8_t Byte;\n", line_num: 3)
+      ]
 
       # Execute
       result = @generator.generate_interface(
@@ -162,6 +171,7 @@ describe GeneratorPartials do
         function_declarations: decls,
         name: name,
         includes: includes,
+        c_statements: c_statements,
         output_path: output_path
       )
 
@@ -171,7 +181,7 @@ describe GeneratorPartials do
         header_filename,
         includes,
         decls,
-        []
+        c_statements
       )
 
       # Verify file path utilities were called
@@ -240,11 +250,11 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      variables = [
-        make_var(name: 'slices_of_bread', type: 'unsigned int', declaration: 'unsigned int slices_of_bread = 10;'),
-        make_var(name: 'crumbs', type: 'char', declaration: 'char crumbs[10];')
+      c_statements = [
+        make_var(name: 'slices_of_bread', type: 'unsigned int', text: 'unsigned int slices_of_bread = 10;'),
+        make_var(name: 'crumbs', type: 'char', text: 'char crumbs[10];')
       ]
-      @generator.send(:generate_header, buf, 'pb-and-j', [], [], variables)
+      @generator.send(:generate_header, buf, 'pb-and-j', [], [], c_statements)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -280,9 +290,9 @@ describe GeneratorPartials do
         signature: 'int razzleDazzle(void* ptr)'
       )
 
-      variables = [
-        make_var(name: 'apples', type: 'signed long int', declaration: 'signed long int apples;'),
-        make_var(name: 'bananas', type: 'double', declaration: 'double bananas;')
+      c_statements = [
+        make_var(name: 'apples', type: 'signed long int', text: 'signed long int apples;'),
+        make_var(name: 'bananas', type: 'double', text: 'double bananas;')
       ]
 
       @generator.send(
@@ -291,9 +301,82 @@ describe GeneratorPartials do
         'Apples-and-Bananas',
         [UserInclude.new('Eeny.h'), UserInclude.new('Meeny.h')],
         decls,
-        variables
+        c_statements
       )
 
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should emit CStatement text as-is in the header" do
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+      #ifndef __DEFS_H__
+      #define __DEFS_H__
+
+      #define MAX_SIZE 100
+      typedef uint8_t Byte;
+      struct Point { int x; int y; };
+
+      #endif // __DEFS_H__
+
+      CONTENTS
+
+      c_statements = [
+        make_stmt(text: "#define MAX_SIZE 100\n"),
+        make_stmt(text: "typedef uint8_t Byte;\n"),
+        make_stmt(text: "struct Point { int x; int y; };\n")
+      ]
+
+      @generator.send(:generate_header, buf, 'defs', [], [], c_statements)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should sort mixed CStatement and CVariableDeclaration items by line_num in the header" do
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+      #ifndef __MIXED_H__
+      #define __MIXED_H__
+
+      #define FOO 1
+      extern int counter;
+      typedef uint8_t Byte;
+
+      #endif // __MIXED_H__
+
+      CONTENTS
+
+      # Items intentionally out of source order — sorted by line_num
+      c_statements = [
+        make_var(name: 'counter', type: 'int', text: 'int counter;', line_num: 2),
+        make_stmt(text: "typedef uint8_t Byte;\n", line_num: 3),
+        make_stmt(text: "#define FOO 1\n", line_num: 1)
+      ]
+
+      @generator.send(:generate_header, buf, 'mixed', [], [], c_statements)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should place nil line_num items after numbered items in their original order" do
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+      #ifndef __ORDERING_H__
+      #define __ORDERING_H__
+
+      #define KNOWN 42
+      #define UNKNOWN_A 1
+      #define UNKNOWN_B 2
+
+      #endif // __ORDERING_H__
+
+      CONTENTS
+
+      c_statements = [
+        make_stmt(text: "#define UNKNOWN_A 1\n"),        # nil line_num — first in input
+        make_stmt(text: "#define UNKNOWN_B 2\n"),        # nil line_num — second in input
+        make_stmt(text: "#define KNOWN 42\n", line_num: 1)
+      ]
+
+      @generator.send(:generate_header, buf, 'ordering', [], [], c_statements)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -378,8 +461,8 @@ describe GeneratorPartials do
         [UserInclude.new('foobar.h'), UserInclude.new('baz.h')],
         defns,
         [
-          make_var(name: 'abc', type: 'int', declaration: 'int abc = 123;'),
-          make_var(name: 'str', type: 'char', declaration: 'char str[] = "Hello, World!";')
+          make_var(name: 'abc', type: 'int', text: 'int abc = 123;'),
+          make_var(name: 'str', type: 'char', text: 'char str[] = "Hello, World!";')
         ]
       )
       expect( buf.string.strip() ).to eq file_contents.strip()
@@ -426,6 +509,24 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
+    it "should emit only CVariableDeclaration items from a mixed c_statements collection" do
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+
+      int counter = 0;
+
+      CONTENTS
+
+      # Mixed collection: one variable and two CStatements (macro + typedef)
+      c_statements = [
+        make_stmt(text: "#define MAX 100\n", line_num: 1),
+        make_var(name: 'counter', type: 'int', text: 'int counter = 0;'),
+        make_stmt(text: "typedef uint8_t Byte;\n", line_num: 3)
+      ]
+
+      @generator.send(:generate_source, buf, [], [], c_statements)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
 
   end
 

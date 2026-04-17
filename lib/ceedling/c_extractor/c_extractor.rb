@@ -11,58 +11,12 @@ require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_preprocessing'
 require 'ceedling/c_extractor/c_extractor_definitions'
+require 'ceedling/c_extractor/c_extractor_types'
 
 class CExtractor
 
   include CExtractorConstants
-
-  # Pairs a raw C statement string with its 1-based source line number.
-  # Used for macro_definitions, type_definitions, and aggregate_definitions in CModule.
-  CStatement = Struct.new(
-    :text,     # String  — raw extracted statement text (comments replaced with spaces)
-    :line_num, # Integer — 1-based line number where the statement begins in the source file
-    keyword_init: true
-  ) do
-    def initialize(text: nil, line_num: nil)
-      super
-    end
-  end
-
-  # Data class representing all extracted content of C module
-  CModule = Struct.new(
-    :variable_declarations, # Array of CVariableDeclaration structs (each with :line_num)
-    :function_definitions,  # Array of CFunctionDefinition structs (each with :line_num)
-    :function_declarations, # Array of CFunctionDeclaration structs (each with :line_num)
-    :macro_definitions,     # Array of CStatement — raw #define text with source line number
-    :type_definitions,      # Array of CStatement — raw typedef text with source line number
-    :aggregate_definitions, # Array of CStatement — raw non-typedef struct/enum/union text with source line number
-    keyword_init: true
-  ) do
-    # Constructor to set unassigned fields to empty arrays for convenience
-    def initialize(
-        variable_declarations: [],
-        function_definitions: [],
-        function_declarations: [],
-        macro_definitions: [],
-        type_definitions: [],
-        aggregate_definitions: []
-      )
-      super
-    end
-
-    # Concatenate two CModule instances
-    # Returns a new CModule with combined arrays
-    def +(other)
-      CModule.new(
-        variable_declarations: (self.variable_declarations + other.variable_declarations),
-        function_definitions:  (self.function_definitions  + other.function_definitions),
-        function_declarations: (self.function_declarations + other.function_declarations),
-        macro_definitions:     (self.macro_definitions     + other.macro_definitions),
-        type_definitions:      (self.type_definitions      + other.type_definitions),
-        aggregate_definitions: (self.aggregate_definitions + other.aggregate_definitions)
-      )
-    end
-  end
+  include CExtractorTypes
 
   constructor :c_extractor_code_text, :c_extractor_functions, :c_extractor_declarations, :c_extractor_preprocessing, :c_extractor_definitions
 

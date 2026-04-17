@@ -435,7 +435,7 @@ describe PartializerHelper do
           original:    'int x',
           name:        'x',
           decorators:  [],
-          declaration: 'int x;'
+          text: 'int x;'
         )
 
         allow(@c_extractor_declarations).to receive(:try_extract_variable)
@@ -459,7 +459,7 @@ describe PartializerHelper do
           original:    'static int count',
           name:        'count',
           decorators:  ['static'],
-          declaration: 'int count;'
+          text: 'int count;'
         )
 
         allow(@c_extractor_declarations).to receive(:try_extract_variable)
@@ -492,13 +492,13 @@ describe PartializerHelper do
           original:    shared_original,
           name:        'a',
           decorators:  ['static'],
-          declaration: 'int a;'
+          text: 'int a;'
         )
         var_b = OpenStruct.new(
           original:    shared_original,
           name:        'b',
           decorators:  ['static'],
-          declaration: 'int b;'
+          text: 'int b;'
         )
 
         # Scanner returns both vars in one call, then fails

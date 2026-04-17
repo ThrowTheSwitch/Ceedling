@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ceedling/c_extractor/c_extractor_functions'
+require 'ceedling/c_extractor/c_extractor_types'
 require 'stringio'
 
 describe CExtractorFunctions do
@@ -2476,7 +2477,7 @@ describe CExtractorFunctions do
         success, decl, pos, rest = try_extract_decl.call(content)
 
         expect(success).to be true
-        expect(decl).to be_a(CExtractorFunctions::CFunctionDeclaration)
+        expect(decl).to be_a(CExtractorTypes::CFunctionDeclaration)
         expect(decl.name).to eq("foo")
         expect(decl.signature).to eq("int foo(void);")
         expect(decl.decorators).to eq([])

@@ -12,6 +12,7 @@ require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_runtime'
 require 'ceedling/c_extractor/c_extractor'
 require 'ceedling/c_extractor/c_extractor_constants'
+require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/constants'
 
 class Partializer
@@ -126,7 +127,7 @@ class Partializer
   # @param source_filepath [String, nil] Path to the source file to extract from.
   #   If nil, no source content is extracted.
   #
-  # @return [CExtractor::CModule] A merged CModule containing all extracted contents
+  # @return [CExtractorTypes::CModule] A merged CModule containing all extracted contents
   #   from both files. The structure includes:
   #   - function_definitions: Array of function definitions with full implementations
   #   - function_declarations: Array of function declarations (prototypes)
@@ -136,7 +137,7 @@ class Partializer
   #   from any provided files using the CModule's + operator for combining structures.
   def extract_module_contents(name, config, fallback)
     # Array for CModule structs
-    contents = [CExtractor::CModule.new()]
+    contents = [CExtractorTypes::CModule.new()]
 
     # Process the C module source and/or header associated with the Partial config
     [config.source, config.header].each do |c_file|
@@ -288,7 +289,7 @@ class Partializer
   end
 
   def log_extracted_variable_decls(test:, module_name:, decls:)
-    _decls = decls.map { |v| "`#{v.declaration}`" }
+    _decls = decls.map { |v| "`#{v.text}`" }
     @loginator.log_list(
       _decls,
       "Variable declarations for Partial #{test}::#{module_name}",

@@ -178,9 +178,9 @@ class PartializerHelper
       end
 
       # Group declarations by original statement.
-      # Simple declarations (one var per unique original) and compound declarations
-      # (multiple vars sharing the same original, e.g. `static int a, b;`) require
-      # different strategies to prevent the restored comment text from being found and
+      # Simple declarations (one var per unique original) and 
+      # compound declarations (multiple vars sharing the same original, e.g. `static int a, b;`)
+      # require different strategies to prevent the restored comment text from being found and
       # corrupted by a subsequent replace call.
       groups = _decls.group_by { |var| var.original.strip }
 
@@ -205,7 +205,7 @@ class PartializerHelper
 
         # Rename all variables' token-bounded references (shared logic for both cases)
         vars.zip( old_names, new_names ).each do |var, old_name, new_name|
-          var.declaration = @utils.rename_c_identifier( var.declaration, old_name, new_name )
+          var.text        = @utils.rename_c_identifier( var.text,        old_name, new_name )
           var.name        = new_name
           func.code_block = @utils.rename_c_identifier( func.code_block, old_name, new_name )
           func.body       = @utils.rename_c_identifier( func.body,       old_name, new_name )
