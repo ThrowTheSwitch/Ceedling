@@ -13,7 +13,7 @@ require 'ceedling/partials/partializer_config'
 
 describe PartializerConfig do
 
-  it "defines MACRO_NAMES with the expected 8 macro name strings" do
+  it "defines MACRO_NAMES with the expected 10 macro name strings" do
     expect( PartializerConfig::MACRO_NAMES ).to include(
       'TEST_PARTIAL_PUBLIC_MODULE',
       'TEST_PARTIAL_PRIVATE_MODULE',
@@ -21,10 +21,12 @@ describe PartializerConfig do
       'MOCK_PARTIAL_PRIVATE_MODULE',
       'TEST_PARTIAL_MODULE',
       'MOCK_PARTIAL_MODULE',
+      'TEST_PARTIAL_ALL_MODULE',
+      'MOCK_PARTIAL_ALL_MODULE',
       'TEST_PARTIAL_CONFIG',
       'MOCK_PARTIAL_CONFIG'
     )
-    expect( PartializerConfig::MACRO_NAMES.size ).to eq 8
+    expect( PartializerConfig::MACRO_NAMES.size ).to eq 10
   end
 
   context "#extract_configs" do
@@ -116,6 +118,125 @@ describe PartializerConfig do
       expect {
         extract('TEST_PARTIAL_MODULE(calculator)')
       }.to raise_error(CeedlingException, /TEST_PARTIAL_MODULE/)
+    end
+
+    # --- TEST/MOCK_PARTIAL_ALL_MODULE: DEDUCT ---
+
+    it "extracts TEST_PARTIAL_ALL_MODULE and sets tests.type to DEDUCT" do
+      result = extract('TEST_PARTIAL_ALL_MODULE(calculator)')
+      expect( result['calculator'].tests.type ).to eq Partials::DEDUCT
+      expect( result['calculator'].mocks.type ).to be_nil
+    end
+
+    it "extracts MOCK_PARTIAL_ALL_MODULE and sets mocks.type to DEDUCT" do
+      result = extract('MOCK_PARTIAL_ALL_MODULE(calculator)')
+      expect( result['calculator'].mocks.type ).to eq Partials::DEDUCT
+      expect( result['calculator'].tests.type ).to be_nil
+    end
+
+    it "does not raise when TEST_PARTIAL_ALL_MODULE is used alone without CONFIG (means all functions)" do
+      expect { extract('TEST_PARTIAL_ALL_MODULE(calculator)') }.not_to raise_error
+    end
+
+    it "does not raise when MOCK_PARTIAL_ALL_MODULE is used alone without CONFIG (means all functions)" do
+      expect { extract('MOCK_PARTIAL_ALL_MODULE(calculator)') }.not_to raise_error
+    end
+
+    it "extracts TEST_PARTIAL_ALL_MODULE with CONFIG subtractions" do
+      input = <<~C
+        TEST_PARTIAL_ALL_MODULE(calculator)
+        TEST_PARTIAL_CONFIG(calculator, -internal_helper, -debug_only)
+      C
+      result = extract(input)
+      expect( result['calculator'].tests.type        ).to eq Partials::DEDUCT
+      expect( result['calculator'].tests.subtractions ).to contain_exactly('internal_helper', 'debug_only')
+      expect( result['calculator'].tests.additions    ).to eq []
+    end
+
+    it "extracts MOCK_PARTIAL_ALL_MODULE with CONFIG subtractions" do
+      input = <<~C
+        MOCK_PARTIAL_ALL_MODULE(driver)
+        MOCK_PARTIAL_CONFIG(driver, -write)
+      C
+      result = extract(input)
+      expect( result['driver'].mocks.type        ).to eq Partials::DEDUCT
+      expect( result['driver'].mocks.subtractions ).to eq ['write']
+      expect( result['driver'].mocks.additions    ).to eq []
+    end
+
+    it "raises when additions are used with TEST DEDUCT" do
+      input = <<~C
+        TEST_PARTIAL_ALL_MODULE("foo")
+        TEST_PARTIAL_CONFIG("foo", "+bar")
+      C
+      expect { extract(input) }.to raise_error(CeedlingException, /foo/)
+    end
+
+    it "raises when additions are used with MOCK DEDUCT" do
+      input = <<~C
+        MOCK_PARTIAL_ALL_MODULE("foo")
+        MOCK_PARTIAL_CONFIG("foo", "baz", "-bar")
+      C
+      expect { extract(input) }.to raise_error(CeedlingException, /foo/)
+    end
+
+    it "does not raise when only subtractions are used with DEDUCT" do
+      input = <<~C
+        TEST_PARTIAL_ALL_MODULE("foo")
+        TEST_PARTIAL_CONFIG("foo", "-a", "-b")
+      C
+      expect { extract(input) }.not_to raise_error
+    end
+
+    it "does not raise when CONFIG is present but has no function names (empty subtractions)" do
+      # A CONFIG macro with only the module name and no function args is a degenerate but valid case
+      input = <<~C
+        TEST_PARTIAL_ALL_MODULE("foo")
+        TEST_PARTIAL_CONFIG("foo")
+      C
+      expect { extract(input) }.not_to raise_error
+    end
+
+    it "allows TEST_PARTIAL_ALL_MODULE and MOCK_PARTIAL_PUBLIC_MODULE together for the same module" do
+      input = <<~C
+        TEST_PARTIAL_ALL_MODULE(widget)
+        MOCK_PARTIAL_PUBLIC_MODULE(widget)
+      C
+      result = extract(input)
+      expect( result['widget'].tests.type ).to eq Partials::DEDUCT
+      expect( result['widget'].mocks.type ).to eq Partials::PUBLIC
+    end
+
+    # --- MODULE macro overwrite raises (extended to ALL_MODULE variants) ---
+
+    it "raises when TEST_PARTIAL_ALL_MODULE and TEST_PARTIAL_MODULE both target the same module" do
+      input = "TEST_PARTIAL_ALL_MODULE(calc) TEST_PARTIAL_MODULE(calc)"
+      expect { extract(input) }.to raise_error(CeedlingException, /calc/)
+    end
+
+    it "raises when TEST_PARTIAL_ALL_MODULE and TEST_PARTIAL_PUBLIC_MODULE both target the same module" do
+      input = "TEST_PARTIAL_ALL_MODULE(calc) TEST_PARTIAL_PUBLIC_MODULE(calc)"
+      expect { extract(input) }.to raise_error(CeedlingException, /calc/)
+    end
+
+    it "raises when TEST_PARTIAL_ALL_MODULE and TEST_PARTIAL_PRIVATE_MODULE both target the same module" do
+      input = "TEST_PARTIAL_ALL_MODULE(calc) TEST_PARTIAL_PRIVATE_MODULE(calc)"
+      expect { extract(input) }.to raise_error(CeedlingException, /calc/)
+    end
+
+    it "raises when MOCK_PARTIAL_ALL_MODULE and MOCK_PARTIAL_MODULE both target the same module" do
+      input = "MOCK_PARTIAL_ALL_MODULE(calc) MOCK_PARTIAL_MODULE(calc)"
+      expect { extract(input) }.to raise_error(CeedlingException, /calc/)
+    end
+
+    it "raises when MOCK_PARTIAL_ALL_MODULE and MOCK_PARTIAL_PUBLIC_MODULE both target the same module" do
+      input = "MOCK_PARTIAL_ALL_MODULE(calc) MOCK_PARTIAL_PUBLIC_MODULE(calc)"
+      expect { extract(input) }.to raise_error(CeedlingException, /calc/)
+    end
+
+    it "raises when MOCK_PARTIAL_ALL_MODULE and MOCK_PARTIAL_PRIVATE_MODULE both target the same module" do
+      input = "MOCK_PARTIAL_ALL_MODULE(calc) MOCK_PARTIAL_PRIVATE_MODULE(calc)"
+      expect { extract(input) }.to raise_error(CeedlingException, /calc/)
     end
 
     # --- MODULE macro overwrite raises ---

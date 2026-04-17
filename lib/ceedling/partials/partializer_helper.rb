@@ -30,11 +30,18 @@ class PartializerHelper
     @declaration_extractor = @c_extractor_declarations
   end
 
-  # 1. Filter functions by visibility (:private | :public)
+  # 1. Filter functions by visibility (:private | :public | :deduct) or seed an empty list (:accumulate)
   # 2. Transform functions to appropriate container (:impl | :interface) → `FunctionDefinition[]` or `FunctionDeclaration[]`
   def filter_and_transform_funcs(funcs, visibility, output_type)
+    # DEDUCT starts with all functions regardless of visibility; subtractions are applied later by the caller
+    if visibility == DEDUCT
+      return funcs.filter_map { |func| @utils.transform_function(func, func.signature_stripped, output_type) }
+    end
+
+    # ACCUMULATE starts with an empty list; the caller then injects explicitly named additions
     return [] unless [PRIVATE, PUBLIC].include?(visibility)
 
+    # PUBLIC or PRIVATE: filter to matching visibility, then transform
     funcs.filter_map do |func|
       next unless @utils.matches_visibility?(func.decorators, visibility)
 

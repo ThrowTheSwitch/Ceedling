@@ -25,6 +25,8 @@ class PartializerConfig
     'MOCK_PARTIAL_PRIVATE_MODULE',
     'TEST_PARTIAL_MODULE',
     'MOCK_PARTIAL_MODULE',
+    'TEST_PARTIAL_ALL_MODULE',
+    'MOCK_PARTIAL_ALL_MODULE',
     'TEST_PARTIAL_CONFIG',
     'MOCK_PARTIAL_CONFIG',
   ].freeze
@@ -38,9 +40,17 @@ class PartializerConfig
       super
     end
 
+    # Returns true if this PartialFunctions entry has enough configuration to be processed.
+    # Used to gate downstream work: a nil type means the feature is disabled; an ACCUMULATE
+    # type with no additions has no functions to include; all other cases are meaningful.
     def present?
+      # Feature is disabled for this test/mock side of the module
       return false if type.nil?
+      # ACCUMULATE starts empty and relies entirely on explicit additions; without any,
+      # there is nothing to include, so the config has no effect
       return false if type == ACCUMULATE && additions.empty?
+      # PUBLIC, PRIVATE: always have a base set of functions to filter
+      # DEDUCT: starts with all functions; zero subtractions is valid ("include everything")
       return true
     end
   end
@@ -112,6 +122,12 @@ class PartializerConfig
       when 'MOCK_PARTIAL_MODULE'
         _check_type_unset!(configs[mod].mocks, mod, macro_name)
         configs[mod].mocks.type = ACCUMULATE
+      when 'TEST_PARTIAL_ALL_MODULE'
+        _check_type_unset!(configs[mod].tests, mod, macro_name)
+        configs[mod].tests.type = DEDUCT
+      when 'MOCK_PARTIAL_ALL_MODULE'
+        _check_type_unset!(configs[mod].mocks, mod, macro_name)
+        configs[mod].mocks.type = DEDUCT
       end
     end
 
@@ -161,6 +177,16 @@ class PartializerConfig
         if pf.type == ACCUMULATE && !pf.subtractions.empty?
           raise CeedlingException.new(
             "#{label} configuration for '#{mod}' Partial cannot contain subtractions because only additions are available with PARTIAL_#{label}_MODULE()"
+          )
+        end
+      end
+
+      # Rule 2: additions are illegal with DEDUCT
+      [[:tests, 'TEST'], [:mocks, 'MOCK']].each do |field, label|
+        pf = config.send(field)
+        if pf.type == DEDUCT && !pf.additions.empty?
+          raise CeedlingException.new(
+            "#{label} configuration for '#{mod}' Partial cannot contain additions because only subtractions are available with #{label}_PARTIAL_ALL_MODULE()"
           )
         end
       end
