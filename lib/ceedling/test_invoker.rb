@@ -598,38 +598,32 @@ class TestInvoker
             interface: interface
           )
 
-          @partializer.log_extracted_functions(
-            test:           name,
-            module_name:    config.module,
-            impl:           implementation,
-            interface:      interface
-          )
-
-          @partializer.log_extracted_variable_decls(
-            test:           name,
-            module_name:    config.module,
-            decls:          module_contents.variable_declarations
-          )
+          # Collect all user-defined types, macros, variable declarations, etc.
+          # These will be injected into the testable Partials implementation header file and source file
+          user_defined =
+            module_contents.variable_declarations +
+            module_contents.macro_definitions     +
+            module_contents.type_definitions      +
+            module_contents.aggregate_definitions
 
           arg_hash = {
             test:                  name,
             partial:               config.module,
             function_definitions:  implementation,
-            c_statements:          module_contents.variable_declarations +
-                                   module_contents.macro_definitions     +
-                                   module_contents.type_definitions      +
-                                   module_contents.aggregate_definitions,
+            c_statements:          user_defined,
             header_includes:       @partializer.remap_implementation_header_includes(
                                     name: config.module,
                                     includes: (config.source.includes + config.header.includes),
                                     # All partials configurations to remap includes for partials to be generated
-                                    partials: testable[:partials][:configs]
+                                    partials: testable[:partials][:configs],
+                                    test:     name
                                    ),
             source_includes:       @partializer.remap_implementation_source_includes(
                                     name: config.module,
                                     includes: (config.source.includes + config.header.includes),
                                     # All partials configurations to remap includes for partials to be generated
-                                    partials: testable[:partials][:configs]
+                                    partials: testable[:partials][:configs],
+                                    test:     name
                                    ),
             input_filepath:        config.source.filepath,
             output_path:           testable[:paths][:partials]
@@ -637,46 +631,32 @@ class TestInvoker
 
           # Partial implementation generation
           unless implementation.nil?
-            @partializer.log_implementation_includes(
-              label:          'Source',
-              test:           testable[:name],
-              module_name:    config.module,
-              includes:       arg_hash[:source_includes]
-            )
-
-            @partializer.log_implementation_includes(
-              label:          'Header',
-              test:           testable[:name],
-              module_name:    config.module,
-              includes:       arg_hash[:header_includes]
-            )
-
             @generator.generate_partial_implementation(**arg_hash)
           end
+
+          # Collect all user-defined types, macros, etc. (not variable declarations)
+          # These will be injected into the mockable Partials interface header file
+          user_defined =
+            module_contents.macro_definitions     +
+            module_contents.type_definitions      +
+            module_contents.aggregate_definitions
 
           arg_hash = {
             test:                    name,
             partial:                 config.module,
             function_declarations:   interface,
             includes:                @partializer.sanitize_includes(
-                                       name: config.module,
-                                       includes: (config.source.includes + config.header.includes)
+                                       name:     config.module,
+                                       includes: (config.source.includes + config.header.includes),
+                                       test:     name
                                      ),
-            c_statements:            module_contents.macro_definitions  +
-                                     module_contents.type_definitions   +
-                                     module_contents.aggregate_definitions,
+            c_statements:            user_defined,
             input_filepath:          config.header.filepath,
             output_path:             testable[:paths][:partials]
           }
 
           # Partial interface generation
           unless interface.nil?
-            @partializer.log_interface_includes(
-              test:           testable[:name],
-              module_name:    config.module,
-              includes:       arg_hash[:includes]
-            )
-
             @generator.generate_partial_interface(**arg_hash)
           end
         end

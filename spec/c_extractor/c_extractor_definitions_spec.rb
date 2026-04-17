@@ -56,21 +56,21 @@ describe CExtractorDefinitions do
     it "extracts a simple scalar typedef" do
       input = "typedef int MyInt;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a pointer typedef" do
       input = "typedef char* StringPtr;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a const pointer typedef" do
       input = "typedef const char* CStringPtr;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
@@ -86,14 +86,14 @@ describe CExtractorDefinitions do
     it "extracts a function pointer typedef" do
       input = "typedef int (*Fn)(int, char*);\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a void function pointer typedef with no parameters" do
       input = "typedef void (*Callback)(void);\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
@@ -102,56 +102,56 @@ describe CExtractorDefinitions do
     it "extracts a single-line struct typedef" do
       input = "typedef struct { int x; int y; } Point;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a multiline struct typedef" do
       input = "typedef struct {\n  int x;\n  int y;\n} Point;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a struct typedef with a tag name" do
       input = "typedef struct Foo { int x; } Foo;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts an enum typedef" do
       input = "typedef enum { RED, GREEN, BLUE } Color;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a multiline enum typedef" do
       input = "typedef enum {\n  RED,\n  GREEN,\n  BLUE\n} Color;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a union typedef" do
       input = "typedef union { int i; float f; } Number;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a forward-declaration struct typedef" do
       input = "typedef struct Foo Foo;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a struct with nested brace initializer in a member" do
       input = "typedef struct { int flags; struct { int a; int b; } nested; } Outer;\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
@@ -161,7 +161,7 @@ describe CExtractorDefinitions do
       input    = "typedef struct {\n  int x; // x coordinate\n  int y; // y coordinate\n} Point;\n"
       # Line comment (including its trailing \n) is replaced by one space;
       # following two-space indent is preserved, so 4 chars between x; and int y
-      expected = "typedef struct {\n  int x;    int y;  } Point;\n"
+      expected = "typedef struct {\n  int x;    int y;  } Point;"
       result, pos = try_typedef(input)
       expect(result).to eq [true, expected]
       expect(pos).to eq input.length
@@ -171,7 +171,7 @@ describe CExtractorDefinitions do
       input    = "typedef struct { int x; /* width */ int y; /* height */ } Rect;\n"
       # Each block comment → one space; the surrounding spaces are preserved
       # so 3 chars between x; and int y (original space + comment space + space-after-comment)
-      expected = "typedef struct { int x;   int y;   } Rect;\n"
+      expected = "typedef struct { int x;   int y;   } Rect;"
       result, pos = try_typedef(input)
       expect(result).to eq [true, expected]
       expect(pos).to eq input.length
@@ -180,7 +180,7 @@ describe CExtractorDefinitions do
     it "replaces a block comment containing a semicolon with a space — does not terminate early" do
       input    = "typedef int /* looks; like; semicolons */ MyInt;\n"
       # original space before comment + comment space + space after comment = 3 spaces
-      expected = "typedef int   MyInt;\n"
+      expected = "typedef int   MyInt;"
       result, pos = try_typedef(input)
       expect(result).to eq [true, expected]
       expect(pos).to eq input.length
@@ -191,7 +191,7 @@ describe CExtractorDefinitions do
     it "handles a string literal containing a semicolon" do
       input = "typedef char Delim[sizeof(\";\")];\n"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
@@ -200,7 +200,7 @@ describe CExtractorDefinitions do
     it "stops at the semicolon and does not consume following code" do
       input = "typedef int MyInt;\nint x = 0;"
       result, pos = try_typedef(input)
-      expect(result).to eq [true, "typedef int MyInt;\n"]
+      expect(result).to eq [true, "typedef int MyInt;"]
       expect(pos).to eq "typedef int MyInt;\n".length
     end
 
@@ -277,7 +277,7 @@ describe CExtractorDefinitions do
     it "extracts a named struct with a single-line body" do
       input = "struct Foo { int x; int y; };\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
@@ -291,14 +291,14 @@ describe CExtractorDefinitions do
     it "extracts a named struct with a multiline body" do
       input = "struct Point {\n  int x;\n  int y;\n};\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts an anonymous struct (no tag name)" do
       input = "struct { int x; int y; };\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
@@ -307,21 +307,21 @@ describe CExtractorDefinitions do
     it "extracts a named enum with a single-line body" do
       input = "enum Color { RED, GREEN, BLUE };\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts a named enum with a multiline body" do
       input = "enum Direction {\n  NORTH,\n  SOUTH,\n  EAST,\n  WEST\n};\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts an anonymous enum" do
       input = "enum { A, B, C };\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
@@ -330,7 +330,7 @@ describe CExtractorDefinitions do
     it "extracts a named union with a single-line body" do
       input = "union Data { int i; float f; };\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
@@ -339,14 +339,14 @@ describe CExtractorDefinitions do
     it "extracts a struct with a nested struct member body" do
       input = "struct Outer { struct Inner { int n; } inner; };\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
     it "extracts deeply nested struct bodies" do
       input = "struct A { struct B { struct C { int x; } c; } b; };\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 
@@ -355,7 +355,7 @@ describe CExtractorDefinitions do
     it "replaces a line comment inside the body with a space" do
       input    = "struct Foo {\n  int x; // x field\n  int y; // y field\n};\n"
       # Same space-count logic as typedef: orig space + comment space + 2-space indent = 4 before int y
-      expected = "struct Foo {\n  int x;    int y;  };\n"
+      expected = "struct Foo {\n  int x;    int y;  };"
       result, pos = try_aggregate(input)
       expect(result).to eq [true, expected]
       expect(pos).to eq input.length
@@ -364,7 +364,7 @@ describe CExtractorDefinitions do
     it "replaces a block comment inside the body with a space" do
       input    = "struct Foo { int x; /* width */ int y; /* height */ };\n"
       # Same as typedef: 3 chars between x; and int y (orig + comment + space-after-comment)
-      expected = "struct Foo { int x;   int y;   };\n"
+      expected = "struct Foo { int x;   int y;   };"
       result, pos = try_aggregate(input)
       expect(result).to eq [true, expected]
       expect(pos).to eq input.length
@@ -383,7 +383,7 @@ describe CExtractorDefinitions do
     it "handles a string literal containing ';' in a member" do
       input = "struct Foo { char delim[sizeof(\";\")]; };\n"
       result, pos = try_aggregate(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.chomp]
       expect(pos).to eq input.length
     end
 

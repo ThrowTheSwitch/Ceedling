@@ -183,7 +183,7 @@ describe CExtractor do
       expect( contents.function_definitions[1].line_count ).to eq 1
 
       expect( contents.macro_definitions.length ).to eq 2
-      expect( contents.macro_definitions[0].text ).to eq "#define FOO 123\n"
+      expect( contents.macro_definitions[0].text ).to eq "#define FOO 123"
       expect( contents.macro_definitions[0].line_num ).to eq 12
       expect( contents.macro_definitions[1].text ).to start_with("#define MACRO(x) \\\n")
       expect( contents.macro_definitions[1].line_num ).to eq 13
@@ -488,9 +488,9 @@ describe CExtractor do
       expect( contents.function_definitions[1].line_num ).to eq 92
 
       expect( contents.macro_definitions.length ).to eq 2
-      expect( contents.macro_definitions[0].text ).to eq "#define MAX_SIZE 100\n"
+      expect( contents.macro_definitions[0].text ).to eq "#define MAX_SIZE 100"
       expect( contents.macro_definitions[0].line_num ).to eq 4
-      expect( contents.macro_definitions[1].text ).to eq "#define PROCESS(x) do { process_data(x); } while(0)\n"
+      expect( contents.macro_definitions[1].text ).to eq "#define PROCESS(x) do { process_data(x); } while(0)"
       expect( contents.macro_definitions[1].line_num ).to eq 5
     end
 
@@ -549,9 +549,9 @@ describe CExtractor do
       contents = extract_from.call(file_contents)
 
       expect( contents.macro_definitions.length ).to eq 3
-      expect( contents.macro_definitions[0].text ).to eq "#define SIMPLE 1\n"
+      expect( contents.macro_definitions[0].text ).to eq "#define SIMPLE 1"
       expect( contents.macro_definitions[0].line_num ).to eq 1
-      expect( contents.macro_definitions[1].text ).to eq "#define WITH_ARGS(x, y) ((x) + (y))\n"
+      expect( contents.macro_definitions[1].text ).to eq "#define WITH_ARGS(x, y) ((x) + (y))"
       expect( contents.macro_definitions[1].line_num ).to eq 2
       expect( contents.macro_definitions[2].text ).to start_with("#define MULTILINE(a) \\\n")
       expect( contents.macro_definitions[2].line_num ).to eq 3
@@ -614,16 +614,16 @@ describe CExtractor do
 
       expect( contents.type_definitions.length ).to eq 5
 
-      expect( contents.type_definitions[0].text ).to eq "typedef int MyInt;\n"
+      expect( contents.type_definitions[0].text ).to eq "typedef int MyInt;"
       expect( contents.type_definitions[0].line_num ).to eq 1
-      expect( contents.type_definitions[1].text ).to eq "typedef const char* CStr;\n"
+      expect( contents.type_definitions[1].text ).to eq "typedef const char* CStr;"
       expect( contents.type_definitions[1].line_num ).to eq 2
-      expect( contents.type_definitions[2].text ).to eq "typedef void (*Callback)(int, void*);\n"
+      expect( contents.type_definitions[2].text ).to eq "typedef void (*Callback)(int, void*);"
       expect( contents.type_definitions[2].line_num ).to eq 3
-      expect( contents.type_definitions[3].text ).to eq "typedef enum { RED, GREEN, BLUE } Color;\n"
+      expect( contents.type_definitions[3].text ).to eq "typedef enum { RED, GREEN, BLUE } Color;"
       expect( contents.type_definitions[3].line_num ).to eq 4
       expect( contents.type_definitions[4].text ).to start_with("typedef struct {\n")
-      expect( contents.type_definitions[4].text ).to end_with("} Point;\n")
+      expect( contents.type_definitions[4].text ).to end_with("} Point;")
       expect( contents.type_definitions[4].line_num ).to eq 5
 
       expect( contents.function_definitions.length ).to eq 0
@@ -653,13 +653,13 @@ describe CExtractor do
       contents = extract_from.call(file_contents)
 
       expect( contents.type_definitions.length ).to eq 2
-      expect( contents.type_definitions[0].text ).to eq "typedef uint8_t Byte;\n"
+      expect( contents.type_definitions[0].text ).to eq "typedef uint8_t Byte;"
       expect( contents.type_definitions[0].line_num ).to eq 5
-      expect( contents.type_definitions[1].text ).to eq "typedef struct { int x; int y; } Point;\n"
+      expect( contents.type_definitions[1].text ).to eq "typedef struct { int x; int y; } Point;"
       expect( contents.type_definitions[1].line_num ).to eq 6
 
       expect( contents.macro_definitions.length ).to eq 1
-      expect( contents.macro_definitions[0].text ).to eq "#define MAX_VAL 255\n"
+      expect( contents.macro_definitions[0].text ).to eq "#define MAX_VAL 255"
       expect( contents.macro_definitions[0].line_num ).to eq 3
 
       expect( contents.variable_declarations.length ).to eq 1
@@ -707,7 +707,7 @@ describe CExtractor do
       expect( contents.aggregate_definitions[0].text ).to start_with('struct Point')
       expect( contents.aggregate_definitions[0].text ).to include('int x;')
       expect( contents.aggregate_definitions[0].line_num ).to eq 3
-      expect( contents.aggregate_definitions[1].text ).to eq "enum Color { RED, GREEN, BLUE };\n"
+      expect( contents.aggregate_definitions[1].text ).to eq "enum Color { RED, GREEN, BLUE };"
       expect( contents.aggregate_definitions[1].line_num ).to eq 8
       expect( contents.aggregate_definitions[2].text ).to start_with('union Number')
       expect( contents.aggregate_definitions[2].line_num ).to eq 10

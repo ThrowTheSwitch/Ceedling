@@ -30,6 +30,7 @@ class Partializer
     @helper.validate_function_names_exist(c_module, config, name)
     @helper.validate_no_additions_subtractions_overlap(config, name)
     @helper.validate_additions_subtractions_visibility(c_module, config, name)
+    @loginator.log("Validated Partial config for '#{name}'", Verbosity::DEBUG)
   end
 
   def validate_extracted_functions(name:, partial:, impl:, interface:)
@@ -48,6 +49,8 @@ class Partializer
         "#{name}: Partial '#{partial}' ⏩️ Function '#{func_name}' cannot be both testable and mockable"
       )
     end
+
+    @loginator.log("Validated Partial functions for #{name}::#{partial}", Verbosity::DEBUG)
   end
 
   def populate_filepaths(configs)
@@ -64,27 +67,43 @@ class Partializer
     return configs
   end
 
-  # Ensure no original headers for the module being partialized
-  def sanitize_includes(name:, includes:)    
+  # Ensure no original headers for the module being partialized.
+  # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
+  def sanitize_includes(name:, includes:, test: nil)
     _includes = remove_matching_includes(includes: includes, modules: [name])
     Includes.sanitize!(_includes)
+    @loginator.log_list(
+      _includes,
+      "Includes to inject for mockable Partial #{test}::#{name}",
+      Verbosity::OBNOXIOUS
+    ) if test
     return _includes
   end
 
-  def remap_implementation_header_includes(name:, includes:, partials:)
+  # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
+  def remap_implementation_header_includes(name:, includes:, partials:, test: nil)
     _includes = includes.clone()
 
     # Get list of all partialized module names
     partialized_modules = partials.keys
-    
+
     # Remove includes for all partialized modules
     _includes = remove_matching_includes(includes: _includes, modules: partialized_modules)
 
     # Ensure original module header is not in the list and also remove any duplicate includes
-    return sanitize_includes(name: name, includes: _includes)
+    _includes = sanitize_includes(name: name, includes: _includes)
+
+    @loginator.log_list(
+      _includes,
+      "Header includes to inject for testable Partial #{test}::#{name}",
+      Verbosity::OBNOXIOUS
+    ) if test
+
+    return _includes
   end
 
-  def remap_implementation_source_includes(name:, includes:, partials:)
+  # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
+  def remap_implementation_source_includes(name:, includes:, partials:, test: nil)
     _includes = includes.clone()
 
     # Add implementation header
@@ -112,7 +131,15 @@ class Partializer
     _includes = remove_matching_includes(includes: _includes, modules: mockable_modules)
 
     # Ensure original module header is not in the list and remove any duplicates
-    return sanitize_includes(name: name, includes: _includes)
+    _includes = sanitize_includes(name: name, includes: _includes)
+
+    @loginator.log_list(
+      _includes,
+      "Source includes to inject for testable Partial #{test}::#{name}",
+      Verbosity::OBNOXIOUS
+    ) if test
+
+    return _includes
   end
 
   # Extracts and combines C code contents from header and source files
@@ -167,7 +194,11 @@ class Partializer
     end
 
     # Use `+` operator for CModule to merge everything
-    return contents.reduce(&:+)
+    contents = contents.reduce(&:+)
+
+    _log_module_contents(name, config.module, contents)
+
+    return contents
   end
 
   # Returns Array<Partials::FunctionDefinition> for the testable partial implementation.
@@ -189,6 +220,12 @@ class Partializer
   def extract_implementation_functions(test:, partial:, definitions:, config:)
     pf = config.tests
     return nil if pf.type.nil?
+
+    @loginator.log(
+      "Extracting testable Partial functions for #{test}::#{partial}: " \
+      "type=#{pf.type} additions=#{pf.additions} subtractions=#{pf.subtractions}",
+      Verbosity::DEBUG
+    )
 
     # Build initial list by visibility; ACCUMULATE yields []
     funcs = @helper.filter_and_transform_funcs(definitions, pf.type, :impl)
@@ -216,7 +253,11 @@ class Partializer
     end
 
     # Remove any functions explicitly claimed by the mock side
-    return @helper.subtract_funcs(funcs: result, names: config.mocks.additions)
+    result = @helper.subtract_funcs(funcs: result, names: config.mocks.additions)
+
+    _log_impl_functions(test, partial, result)
+
+    return result
   end
 
   # Returns Array<Partials::FunctionDeclaration> for the mockable partial interface.
@@ -240,6 +281,12 @@ class Partializer
   def extract_interface_functions(test:, partial:, definitions:, declarations:, config:)
     pf = config.mocks
     return nil if pf.type.nil?
+
+    @loginator.log(
+      "Extracting mockable Partial functions for #{test}::#{partial}: " \
+      "type=#{pf.type} additions=#{pf.additions} subtractions=#{pf.subtractions}",
+      Verbosity::DEBUG
+    )
 
     # Build initial list by visibility; ACCUMULATE yields []
     funcs = @helper.filter_and_transform_funcs(definitions, pf.type, :interface)
@@ -267,53 +314,68 @@ class Partializer
     end
 
     # Remove any functions explicitly claimed by the test side
-    return @helper.subtract_funcs(funcs: result, names: config.tests.additions)
+    result = @helper.subtract_funcs(funcs: result, names: config.tests.additions)
+
+    _log_interface_functions(test, partial, result)
+
+    return result
   end
 
-  def log_extracted_functions(test:, module_name:, impl:, interface:)
-    # Get function signatures
-    _impl = impl.nil? ? [] : impl.map { |func| "`#{func.signature}`" }
-    _interface = interface.nil? ? [] : interface.map { |func| "`#{func.signature}`" }
-    
-    @loginator.log_list(
-      _interface,
-      "Mockable functions for Partial #{test}::#{module_name}",
-      Verbosity::OBNOXIOUS
-    )
-    
-    @loginator.log_list(
-      _impl,
-      "Testable functions for Partial #{test}::#{module_name}",
-      Verbosity::OBNOXIOUS
-    )
-  end
-
-  def log_extracted_variable_decls(test:, module_name:, decls:)
-    _decls = decls.map { |v| "`#{v.text}`" }
-    @loginator.log_list(
-      _decls,
-      "Variable declarations for Partial #{test}::#{module_name}",
-      Verbosity::OBNOXIOUS
-    )
-  end
-
-  def log_implementation_includes(test:, module_name:, label:, includes:)    
-    @loginator.log_list(
-      includes,
-      "#{label} includes to inject for testable Partial #{test}::#{module_name}",
-      Verbosity::OBNOXIOUS
-    )
-  end
-
-  def log_interface_includes(test:, module_name:, includes:)    
-    @loginator.log_list(
-      includes,
-      "Includes to inject for mockable Partial #{test}::#{module_name}",
-      Verbosity::OBNOXIOUS
-    )
-  end
- 
   private
+
+  # Log all user-defined C content extracted from a module's source/header at OBNOXIOUS level.
+  # Covers the four categories that are injected into generated Partial files:
+  # variable declarations, type definitions, macro definitions, and aggregate definitions
+  # (structs, unions, enums not wrapped in a typedef).
+  def _log_module_contents(name, module_name, contents)
+    _vars = contents.variable_declarations.map { |v| "`#{v.text}`" }
+    @loginator.log_list(
+      _vars,
+      "Variable declarations for Partial #{name}::#{module_name}",
+      Verbosity::OBNOXIOUS
+    )
+
+    _types = contents.type_definitions.map { |t| "`#{t.text}`" }
+    @loginator.log_list(
+      _types,
+      "Type definitions for Partial #{name}::#{module_name}",
+      Verbosity::OBNOXIOUS
+    )
+
+    _macros = contents.macro_definitions.map { |m| "`#{m.text}`" }
+    @loginator.log_list(
+      _macros,
+      "Macro definitions for Partial #{name}::#{module_name}",
+      Verbosity::OBNOXIOUS
+    )
+
+    _aggregates = contents.aggregate_definitions.map { |a| "`#{a.text}`" }
+    @loginator.log_list(
+      _aggregates,
+      "Aggregate definitions (structs/unions/enums) for Partial #{name}::#{module_name}",
+      Verbosity::OBNOXIOUS
+    )
+  end
+
+  # Log testable (implementation) functions at OBNOXIOUS level.
+  def _log_impl_functions(test, partial, funcs)
+    _funcs = funcs.nil? ? [] : funcs.map { |f| "`#{f.signature}`" }
+    @loginator.log_list(
+      _funcs,
+      "Testable functions for Partial #{test}::#{partial}",
+      Verbosity::OBNOXIOUS
+    )
+  end
+
+  # Log mockable (interface) functions at OBNOXIOUS level.
+  def _log_interface_functions(test, partial, funcs)
+    _funcs = funcs.nil? ? [] : funcs.map { |f| "`#{f.signature}`" }
+    @loginator.log_list(
+      _funcs,
+      "Mockable functions for Partial #{test}::#{partial}",
+      Verbosity::OBNOXIOUS
+    )
+  end
 
   # Remove includes that match the given module names (case-insensitive)
   # Returns a new array with matching includes removed

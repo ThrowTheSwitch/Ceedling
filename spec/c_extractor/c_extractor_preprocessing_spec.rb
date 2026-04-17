@@ -248,25 +248,25 @@ describe CExtractorPreprocessing do
 
     it "extracts a simple #pragma directive" do
       result, pos = try_directive("#pragma once\n")
-      expect(result).to eq [true, "#pragma once\n"]
+      expect(result).to eq [true, "#pragma once"]
       expect(pos).to eq "#pragma once\n".length
     end
 
     it "extracts a simple #include directive" do
       result, pos = try_directive("#include <stdio.h>\n")
-      expect(result).to eq [true, "#include <stdio.h>\n"]
+      expect(result).to eq [true, "#include <stdio.h>"]
       expect(pos).to eq "#include <stdio.h>\n".length
     end
 
     it "extracts a simple single-line #define macro" do
       result, pos = try_directive("#define FOO 42\n")
-      expect(result).to eq [true, "#define FOO 42\n"]
+      expect(result).to eq [true, "#define FOO 42"]
       expect(pos).to eq "#define FOO 42\n".length
     end
 
     it "extracts a #define with whitespace after #" do
       result, pos = try_directive("# define FOO\n")
-      expect(result).to eq [true, "# define FOO\n"]
+      expect(result).to eq [true, "# define FOO"]
       expect(pos).to eq "# define FOO\n".length
     end
 
@@ -279,21 +279,21 @@ describe CExtractorPreprocessing do
     it "extracts a multiline #define with single backslash continuation" do
       input = "#define MAX(a,b) \\\n  ((a)>(b)?(a):(b))\n"
       result, pos = try_directive(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.rstrip]
       expect(pos).to eq input.length
     end
 
     it "extracts a multiline #define with multiple backslash continuations" do
       input = "#define MULTI \\\n  line1 \\\n  line2\n"
       result, pos = try_directive(input)
-      expect(result).to eq [true, input]
+      expect(result).to eq [true, input.rstrip]
       expect(pos).to eq input.length
     end
 
     it "stops at end of directive and does not consume following code" do
       input = "#define FOO 1\nint x = 0;"
       result, pos = try_directive(input)
-      expect(result).to eq [true, "#define FOO 1\n"]
+      expect(result).to eq [true, "#define FOO 1"]
       expect(pos).to eq "#define FOO 1\n".length
     end
 

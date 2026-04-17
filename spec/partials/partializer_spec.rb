@@ -30,6 +30,13 @@ describe Partializer do
         :loginator          => @loginator
       }
     )
+
+    # Logging happens in production use only and is not directly tested.
+    # Silence all private logging helpers so that test doubles for extracted
+    # functions and variable declarations do not need .signature / .text stubs.
+    allow(@partializer).to receive(:_log_module_contents)
+    allow(@partializer).to receive(:_log_impl_functions)
+    allow(@partializer).to receive(:_log_interface_functions)
   end
 
   ###

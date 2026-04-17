@@ -231,6 +231,7 @@ class CExtractorPreprocessing
 
   # Collect and return the full text of a preprocessing directive starting at '#'.
   # Returns nil if not positioned at '#'. Handles backslash-newline continuations.
+  # Trailing whitespace and newlines are stripped from the returned text.
   def _collect_directive(scanner)
     return nil unless scanner.check(/#/)
 
@@ -249,7 +250,7 @@ class CExtractorPreprocessing
       end
     end
 
-    text
+    text.rstrip
   end
 
   # Collapse any run of whitespace (spaces, tabs, newlines) to a single space

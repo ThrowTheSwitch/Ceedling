@@ -51,8 +51,8 @@ class CExtractorDefinitions
 
       elsif depth == 0 && scanner.scan(/;/)
         text << ';'
-        text << (scanner.scan(/[ \t]*\n/) || '')  # absorb optional trailing newline
-        return [true, text]
+        scanner.scan(/[ \t]*\n/)                  # absorb optional trailing newline
+        return [true, text.rstrip]
 
       else
         text << scanner.getch
@@ -128,8 +128,8 @@ class CExtractorDefinitions
             # Standalone type definition — commit
             text << scanner.string[ws_start...scanner.pos]  # include whitespace before ';'
             text << scanner.scan(/;/)
-            text << (scanner.scan(/[ \t]*\n/) || '')         # absorb optional trailing newline
-            return [true, text]
+            scanner.scan(/[ \t]*\n/)                         # absorb optional trailing newline
+            return [true, text.rstrip]
           else
             # Declarator present (variable name, '*', '[', etc.) — not a standalone type definition.
             # Rollback entirely so the variable extractor sees the full text.

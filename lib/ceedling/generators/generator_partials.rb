@@ -69,7 +69,7 @@ class GeneratorPartials
     sorted.each do |item|
       if item.is_a?(CExtractorTypes::CStatement)
         # Macro, typedef, or aggregate definition — emit text as-is
-        io << item.text.chomp
+        io << item.text
         io << "\n"
       else
         # CVariableDeclaration — emit extern declaration
