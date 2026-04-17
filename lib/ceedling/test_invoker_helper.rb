@@ -6,23 +6,29 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
+require 'ceedling/partials/partials'
+require 'ceedling/includes/includes'
 
 class TestInvokerHelper
 
-  constructor :configurator,
-              :loginator,
-              :batchinator,
-              :task_invoker,
-              :test_context_extractor,
-              :include_pathinator,
-              :preprocessinator,
-              :defineinator,
-              :flaginator,
-              :file_finder,
-              :file_path_utils,
-              :file_wrapper,
-              :generator,
-              :test_runner_manager
+  constructor(
+    :configurator,
+    :loginator,
+    :reportinator,
+    :batchinator,
+    :task_invoker,
+    :test_context_extractor,
+    :include_pathinator,
+    :preprocessinator,
+    :defineinator,
+    :flaginator,
+    :file_finder,
+    :file_path_utils,
+    :file_wrapper,
+    :partializer,
+    :generator,
+    :test_runner_manager
+  )
 
   def setup()
   end
@@ -33,12 +39,36 @@ class TestInvokerHelper
     @include_pathinator.augment_environment_header_files( headers )
   end
 
-  def extract_include_directives(arg_hash)
-    # Run test file through preprocessor to parse out include statements and then collect header files, mocks, etc.
-    includes = @preprocessinator.preprocess_includes( **arg_hash )
+  def generate_test_includes_standins(test, includes)
+    mocks = Includes.filter(includes, /^#{@configurator.cmock_mock_prefix}/)
+    partials = Includes.filter(includes, /^#{PARTIAL_FILENAME_PREFIX}/)
 
-    # Store the include statements we found
-    @test_context_extractor.ingest_includes( arg_hash[:filepath], includes )
+    mocks.each do |include|
+      # Use #include directive path for mock and not just its filename
+      # This selectively supports #include "<subdir>/mock_header.h" until paths in includes are fully supported
+      filepath = @file_path_utils.form_mock_header_filepath(test, include.filepath)
+      msg = @reportinator.generate_module_progress(
+        operation: 'Generating stand-in header for',
+        module_name: test,
+        filename: include.filename
+      )
+      @loginator.log( msg, Verbosity::DEBUG )
+      # Create containing directory if needed
+      @file_wrapper.mkdir(File.dirname(filepath))
+      # Create the blank file
+      @file_wrapper.write_blank_file(filepath)
+    end
+
+    partials.each do |include|
+      filepath = @file_path_utils.form_partial_header_filepath(test, include.filename)
+      msg = @reportinator.generate_module_progress(
+        operation: 'Generating stand-in header for',
+        module_name: test,
+        filename: include.filename
+      )
+      @loginator.log( msg, Verbosity::DEBUG )
+      @file_wrapper.write_blank_file(filepath)
+    end
   end
 
   def validate_build_directive_source_files(test:, filepath:)
@@ -73,20 +103,53 @@ class TestInvokerHelper
     end
   end
 
-  def search_paths(filepath, subdir)
-    paths = []
+  def validate_mocks_in_use(filename:, mocks:)
+    if !@configurator.project_use_mocks and !mocks.empty?
+      _mocks = mocks.map { |include| include.filename }
+
+      # Redefine _mocks as a single items versus multiple entry string
+      if _mocks.length > 1
+        _mocks = "[#{_mocks.join(', ')}]"
+      else
+        _mocks = _mocks[0]
+      end
+
+      msg = "Your project is not configured for mocking, but #{filename} #includes #{_mocks}"
+      raise CeedlingException.new( msg )
+    end
+  end
+
+  def validate_partials_in_use(filename:, partials_in_use:, includes:)
+    partials_header_in_use = Includes.contains?( includes, CEEDLING_HEADER_FILENAME )
+
+    # If a test has Partials configuration and/or #includes the Partials header file but Partials aren't enabled, complain about it
+    if partials_in_use && !@configurator.project_use_partials
+      msg = "Your project is not configured for Partials, but #{filename} is attempting to use Partial features"
+      raise CeedlingException.new( msg )
+    end
+
+    # If a test has Partials configuration but does not include the Partials header file, complain about it
+    if partials_in_use && !partials_header_in_use
+      msg = "Your test file #{filename} is attempting to use Partial features without #including #{CEEDLING_HEADER_FILENAME}"
+      raise CeedlingException.new( msg )
+    end
+  end
+
+  def search_paths(filepath, paths)
+    _paths = []
 
     # Start with mock path to ensure any CMock-reworked header files are encountered first
-    paths << File.join( @configurator.cmock_mock_path, subdir ) if @configurator.project_use_mocks
-    paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
-    paths += @include_pathinator.collect_test_include_paths()
-    paths += @configurator.collection_paths_support
-    paths += @configurator.collection_paths_include
-    paths += @configurator.collection_paths_libraries
-    paths += @configurator.collection_paths_vendor
-    paths += @configurator.collection_paths_test_toolchain_include
+    _paths << paths[:mocks] if paths[:mocks]
+    _paths << paths[:partials] if paths[:partials]
+    _paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
+    _paths += @include_pathinator.collect_test_include_paths()
+    _paths += @configurator.collection_paths_support
+    _paths += @configurator.collection_paths_include
+    _paths += @configurator.collection_paths_libraries
+    _paths += @configurator.collection_paths_vendor
+    _paths += @configurator.collection_paths_test_toolchain_include
     
-    return paths.uniq
+    return _paths.uniq
   end
 
   def framework_defines()
@@ -187,6 +250,11 @@ class TestInvokerHelper
     return preprocessing_flags
   end
 
+  def assemble_partials_config(filepath:)
+    configs = @test_context_extractor.lookup_partials_config( filepath )
+    return @partializer.populate_filepaths( configs )
+  end
+
   def collect_test_framework_sources(mocks)
     sources = []
 
@@ -207,26 +275,31 @@ class TestInvokerHelper
     return sources
   end
 
-  def extract_sources(test_filepath)
+  def extract_sources(context, test_filepath, partials_configs)
     sources = []
 
     # Get any additional source files specified by TEST_SOURCE_FILE() in test file
-    _sources = @test_context_extractor.lookup_build_directive_sources_list(test_filepath)
+    _sources = @test_context_extractor.lookup_build_directive_sources_list( test_filepath )
     _sources.each do |source|
-      sources << @file_finder.find_build_input_file(filepath: source, complain: :ignore, context: TEST_SYM)
+      sources << @file_finder.find_build_input_file( filepath: source, complain: :ignore, context: context )
     end
 
     _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename(filepath).ext(EXTENSION_HEADER) }
 
     # Get all #include .h files from test file so we can find any source files by convention
-    includes = @test_context_extractor.lookup_full_header_includes_list(test_filepath)
+    includes = @test_context_extractor.lookup_all_header_includes_list(test_filepath)
     includes.each do |include|
-      _basename = File.basename(include)
-      next if _basename == UNITY_H_FILE                # Ignore Unity in this list
-      next if _basename.start_with?(CMOCK_MOCK_PREFIX) # Ignore mocks in this list
-      next if _support_headers.include?(_basename)     # Ignore any sources in our support files list
+      _basename = include.filename
+      next if _basename == UNITY_H_FILE                      # Ignore Unity in this list
+      next if _basename.start_with?(CMOCK_MOCK_PREFIX)       # Ignore mocks in this list
+      next if _support_headers.include?(_basename)           # Ignore any sources in our support files list
 
-      sources << @file_finder.find_build_input_file(filepath: include, complain: :ignore, context: TEST_SYM)
+      sources << @file_finder.find_build_input_file(filepath: include.filename, complain: :ignore, context: context)
+    end
+
+    # TODO: Conditionally add these sources when there's a well-managed means to query a coverage build
+    partials_configs.each do |_module, _|
+      sources << @file_finder.find_build_input_file(filepath: _module, complain: :ignore, context: context)      
     end
 
     # Remove any nil or duplicate entries in list
@@ -241,23 +314,38 @@ class TestInvokerHelper
     return @test_context_extractor.lookup_include_paths_list(test_filepath)
   end
 
-  # TODO: Use search_paths to find/match header file from which to generate mock
-  # Today, this is just a pass-through wrapper
-  def find_header_input_for_mock(mock, search_paths)
-    return @file_finder.find_header_input_for_mock( mock )
+  def find_header_input_for_mock(mock)
+    return @file_finder.find_header_input_for_mock( mock.filename )
   end
 
-  # Transform list of mock names into filenames with source extension
-  def form_mock_filenames(mocklist)
-    return mocklist.map {|mock| mock + @configurator.extension_source}
+  def is_mock_partial?(mock)
+    return mock.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
   end
 
-  def remove_mock_original_headers( filelist, mocklist )
+  def gnerate_header_input_for_mock_partial(mock, test)
+    return @file_path_utils.form_partial_header_filepath(
+      test,
+      mock.filename.delete_prefix( @configurator.cmock_mock_prefix )
+    )
+  end
+
+  def form_partials_filenames(partials)
+    return partials.map { |partial| @file_path_utils.form_partial_implementation_source_filename(partial) }
+  end
+
+  def remove_mock_original_headers(filelist, mocklist)
     filelist.delete_if do |filepath|
-      # Create a simple mock name from the filepath => mock prefix + filepath base name with no extension
-      mock_name = @configurator.cmock_mock_prefix + File.basename( filepath, '.*' )
-      # Tell `delete_if()` logic to remove inspected filepath if simple mocklist includes the name we just generated
-      mocklist.include?( mock_name )
+      # Tell `delete_if()` logic to remove inspected filepath if simple mocklist includes a mock version of filepath
+      mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ).ext( EXTENSION_CORE_HEADER ) )
+    end
+  end
+
+  def remove_partials_source_objects(objects, configs)
+    modules = configs.keys
+
+    objects.delete_if do |filepath|
+      # Remove any object filepath that was formed from an orginal source module partialized
+      modules.include?( File.basename(filepath).ext() )
     end
   end
 
