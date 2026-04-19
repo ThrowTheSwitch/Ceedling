@@ -6,8 +6,8 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/generator_test_results_sanity_checker'
-require 'ceedling/generator_test_results'
+require 'ceedling/generators/generator_test_results_sanity_checker'
+require 'ceedling/generators/generator_test_results'
 require 'ceedling/yaml_wrapper'
 require 'ceedling/constants'
 require 'ceedling/loginator'
