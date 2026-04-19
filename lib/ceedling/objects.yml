@@ -368,6 +368,7 @@ partializer:
     - file_finder
     - c_extractor
     - file_path_utils
+    - reportinator
     - loginator
 
 batchinator:

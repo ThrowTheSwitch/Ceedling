@@ -19,7 +19,7 @@ class Partializer
 
   include Partials
 
-  constructor :partializer_helper, :file_finder, :c_extractor, :file_path_utils, :loginator
+  constructor :partializer_helper, :file_finder, :c_extractor, :file_path_utils, :reportinator, :loginator
 
   def setup()
     # Alias
@@ -27,10 +27,11 @@ class Partializer
   end
 
   def validate_config(c_module:, config:, name:)
+    msg = @reportinator.generate_progress("Validating Partial config for '#{name}'")
+    @loginator.log(msg, Verbosity::DEBUG)
     @helper.validate_function_names_exist(c_module, config, name)
     @helper.validate_no_additions_subtractions_overlap(config, name)
     @helper.validate_additions_subtractions_visibility(c_module, config, name)
-    @loginator.log("Validated Partial config for '#{name}'", Verbosity::DEBUG)
   end
 
   def validate_extracted_functions(name:, partial:, impl:, interface:)
@@ -43,14 +44,19 @@ class Partializer
     impl_names      = Set.new(impl.map(&:name))
     interface_names = Set.new(interface.map(&:name))
 
+    msg = @reportinator.generate_module_progress(
+      module_name: name,
+      filename: partial,
+      operation: 'Validating Partial functions for'
+    )
+    @loginator.log(msg, Verbosity::DEBUG)
+
     overlap = impl_names & interface_names
     overlap.each do |func_name|
       raise CeedlingException.new(
         "#{name}: Partial '#{partial}' ⏩️ Function '#{func_name}' cannot be both testable and mockable"
       )
     end
-
-    @loginator.log("Validated Partial functions for #{name}::#{partial}", Verbosity::DEBUG)
   end
 
   def populate_filepaths(configs)

@@ -10,6 +10,7 @@ require 'spec_helper'
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partializer'
 require 'ceedling/partials/partials'
+require 'ceedling/reportinator'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ostruct'
 
@@ -19,6 +20,7 @@ describe Partializer do
     @file_finder        = double("FileFinder")
     @c_extractor        = double("CExtractor")
     @file_path_utils    = double("FilePathUtils")
+    @reportinator       = Reportinator.new
     @loginator          = double("Loginator").as_null_object
 
     @partializer = described_class.new(
@@ -27,6 +29,7 @@ describe Partializer do
         :file_finder        => @file_finder,
         :c_extractor        => @c_extractor,
         :file_path_utils    => @file_path_utils,
+        :reportinator       => @reportinator,
         :loginator          => @loginator
       }
     )
