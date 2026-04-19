@@ -322,9 +322,9 @@ describe GeneratorPartials do
       CONTENTS
 
       c_statements = [
-        make_stmt(text: "#define MAX_SIZE 100\n"),
-        make_stmt(text: "typedef uint8_t Byte;\n"),
-        make_stmt(text: "struct Point { int x; int y; };\n")
+        make_stmt(text: "#define MAX_SIZE 100"),
+        make_stmt(text: "typedef uint8_t Byte;"),
+        make_stmt(text: "struct Point { int x; int y; };")
       ]
 
       @generator.send(:generate_header, buf, 'defs', [], [], c_statements)
@@ -348,8 +348,8 @@ describe GeneratorPartials do
       # Items intentionally out of source order — sorted by line_num
       c_statements = [
         make_var(name: 'counter', type: 'int', text: 'int counter;', line_num: 2),
-        make_stmt(text: "typedef uint8_t Byte;\n", line_num: 3),
-        make_stmt(text: "#define FOO 1\n", line_num: 1)
+        make_stmt(text: "typedef uint8_t Byte;", line_num: 3),
+        make_stmt(text: "#define FOO 1", line_num: 1)
       ]
 
       @generator.send(:generate_header, buf, 'mixed', [], [], c_statements)
@@ -371,9 +371,9 @@ describe GeneratorPartials do
       CONTENTS
 
       c_statements = [
-        make_stmt(text: "#define UNKNOWN_A 1\n"),        # nil line_num — first in input
-        make_stmt(text: "#define UNKNOWN_B 2\n"),        # nil line_num — second in input
-        make_stmt(text: "#define KNOWN 42\n", line_num: 1)
+        make_stmt(text: "#define UNKNOWN_A 1"),        # nil line_num — first in input
+        make_stmt(text: "#define UNKNOWN_B 2"),        # nil line_num — second in input
+        make_stmt(text: "#define KNOWN 42", line_num: 1)
       ]
 
       @generator.send(:generate_header, buf, 'ordering', [], [], c_statements)
