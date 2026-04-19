@@ -403,7 +403,7 @@ describe PartializerHelper do
       it "returns empty array and makes no calls when funcs is empty" do
         expect(@c_extractor_declarations).not_to receive(:try_extract_variable)
 
-        result = @helper.extract_function_scope_static_vars([])
+        result = @helper.extract_function_scope_static_vars([], name: 'test', module_name: 'mod', file_type: 'source')
         expect(result).to eq([])
       end
 
@@ -420,7 +420,7 @@ describe PartializerHelper do
         expect(@partializer_utils).not_to receive(:replace_declaration_with_noop)
         expect(@partializer_utils).not_to receive(:rename_c_identifier)
 
-        result = @helper.extract_function_scope_static_vars([func])
+        result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
         expect(result).to eq([])
       end
 
@@ -444,7 +444,7 @@ describe PartializerHelper do
         expect(@partializer_utils).not_to receive(:replace_declaration_with_noop)
         expect(@partializer_utils).not_to receive(:rename_c_identifier)
 
-        result = @helper.extract_function_scope_static_vars([func])
+        result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
         expect(result).to eq([])
       end
 
@@ -473,7 +473,7 @@ describe PartializerHelper do
         allow(@partializer_utils).to receive(:rename_c_identifier)
           .and_return('')
 
-        result = @helper.extract_function_scope_static_vars([func])
+        result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
 
         expect(@partializer_utils).to have_received(:replace_declaration_with_noop).exactly(2).times
         expect(@partializer_utils).to have_received(:rename_c_identifier).exactly(3).times
@@ -513,7 +513,7 @@ describe PartializerHelper do
         allow(@partializer_utils).to receive(:rename_c_identifier)
           .and_return('')
 
-        result = @helper.extract_function_scope_static_vars([func])
+        result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
 
         expect(@partializer_utils).to have_received(:replace_compound_declaration_with_noops)
           .with(anything, shared_original, placeholder, 2)
@@ -551,7 +551,7 @@ describe PartializerHelper do
           code_block: "void process(void) {\n  static int count;\n  return count;\n}"
         )
 
-        result = real_helper.extract_function_scope_static_vars([func])
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
 
         # One var returned with renamed identifier
         expect(result.length).to eq(1)
@@ -576,7 +576,7 @@ describe PartializerHelper do
           code_block: original_code_block.dup
         )
 
-        result = real_helper.extract_function_scope_static_vars([func])
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
 
         expect(result).to eq([])
         expect(func.code_block).to eq(original_code_block)
@@ -589,7 +589,7 @@ describe PartializerHelper do
           code_block: "void empty_func(void) {\n  return;\n}"
         )
 
-        result = real_helper.extract_function_scope_static_vars([func])
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
         expect(result).to eq([])
       end
 
@@ -600,7 +600,7 @@ describe PartializerHelper do
           code_block: "void calc(void) {\n  static int a, b;\n  a = 0;\n  b = 1;\n}"
         )
 
-        result = real_helper.extract_function_scope_static_vars([func])
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
 
         # Two vars returned, both renamed
         expect(result.length).to eq(2)

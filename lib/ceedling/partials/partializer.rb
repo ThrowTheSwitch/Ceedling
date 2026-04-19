@@ -189,7 +189,10 @@ class Partializer
       # 1. Find any function-scope static variable declarations.
       # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
       # 3. Promote the function-scoped variables to be module-level variables.
-      decls = @helper.extract_function_scope_static_vars( c_module.function_definitions )
+      decls = @helper.extract_function_scope_static_vars(
+        c_module.function_definitions,
+        name: name, module_name: config.module, file_type: file_type
+      )
       @helper.collect_module_variables(c_module.variable_declarations, decls)
 
       contents << c_module

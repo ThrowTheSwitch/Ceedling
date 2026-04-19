@@ -153,12 +153,15 @@ class PartializerHelper
   #      containing function name to prevent name collisions at module-scope.
   #   4. Collects all promoted declarations and returns them for inclusion at module scope.
   #
-  # @param funcs [Array<CFunctionDefinition>] Function definitions to scan. Each matched
+  # @param funcs       [Array<CFunctionDefinition>] Function definitions to scan. Each matched
   #   function's `code_block` and `body` fields are mutated in place.
+  # @param name        [String] Test name, used in log messages.
+  # @param module_name [String] Module name, used in log messages.
+  # @param file_type   [String] "source" or "header", used in log messages.
   #
   # @return [Array<CVariableDeclaration>] All function-scoped static variable declarations
   #   found across all supplied functions, suitable for emission at module scope.
-  def extract_function_scope_static_vars(funcs)
+  def extract_function_scope_static_vars(funcs, name:, module_name:, file_type:)
     decls = []
 
     # Process each function definition looking for function-scoped static variables.
@@ -167,7 +170,7 @@ class PartializerHelper
       # Remove containing brackets of function body
       func_body = func.body.dup
       func_body.delete_prefix!( '{' )
-      func_body.delete_prefix!( '}' )
+      func_body.delete_suffix!( '}' )
 
       scanner = StringScanner.new( func_body )
       _decls = []
@@ -222,6 +225,13 @@ class PartializerHelper
         func.code_block = func.code_block.sub(placeholder) { _original }
         func.body       = func.body.sub(placeholder)       { _original }
       end
+
+      _decls_log = _decls.map { |d| "`#{d.original.strip}`" }
+      @loginator.log_list(
+        _decls_log,
+        "Function-scope static variables in #{func.name}() in #{file_type} to be promoted for Partial #{name}::#{module_name}",
+        Verbosity::OBNOXIOUS
+      ) unless _decls_log.empty?
 
       decls += _decls
     end
