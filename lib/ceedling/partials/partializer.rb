@@ -167,11 +167,13 @@ class Partializer
     contents = [CExtractorTypes::CModule.new()]
 
     # Process the C module source and/or header associated with the Partial config
-    [config.source, config.header].each do |c_file|
+    [config.source, config.header].zip(['source', 'header']).each do |c_file, file_type|
       # Do nothing if there's no preprocessed filepath (e.g. no source only header for a Partial mock)
       next unless c_file.preprocessed_filepath
 
       c_module = @c_extractor.from_file( c_file.preprocessed_filepath )
+
+      _log_module_contents(name, config.module, file_type, c_module)
 
       # Align extracted function definitions with line markers in preprocessor output.
       # This perfectly remaps functions found in expanded preprocessor output with 
@@ -195,8 +197,6 @@ class Partializer
 
     # Use `+` operator for CModule to merge everything
     contents = contents.reduce(&:+)
-
-    _log_module_contents(name, config.module, contents)
 
     return contents
   end
@@ -323,36 +323,36 @@ class Partializer
 
   private
 
-  # Log all user-defined C content extracted from a module's source/header at OBNOXIOUS level.
+  # Log all user-defined (non-function) C content extracted from a module's source/header at OBNOXIOUS level.
   # Covers the four categories that are injected into generated Partial files:
   # variable declarations, type definitions, macro definitions, and aggregate definitions
   # (structs, unions, enums not wrapped in a typedef).
-  def _log_module_contents(name, module_name, contents)
+  def _log_module_contents(name, module_name, source, contents)
     _vars = contents.variable_declarations.map { |v| "`#{v.text}`" }
     @loginator.log_list(
       _vars,
-      "Variable declarations for Partial #{name}::#{module_name}",
+      "Variable declarations for Partial #{name}::#{module_name} from #{source}",
       Verbosity::OBNOXIOUS
     )
 
     _types = contents.type_definitions.map { |t| "`#{t.text}`" }
     @loginator.log_list(
       _types,
-      "Type definitions for Partial #{name}::#{module_name}",
+      "Type definitions for Partial #{name}::#{module_name} from #{source}",
       Verbosity::OBNOXIOUS
     )
 
     _macros = contents.macro_definitions.map { |m| "`#{m.text}`" }
     @loginator.log_list(
       _macros,
-      "Macro definitions for Partial #{name}::#{module_name}",
+      "Macro definitions for Partial #{name}::#{module_name} from #{source}",
       Verbosity::OBNOXIOUS
     )
 
     _aggregates = contents.aggregate_definitions.map { |a| "`#{a.text}`" }
     @loginator.log_list(
       _aggregates,
-      "Aggregate definitions (structs/unions/enums) for Partial #{name}::#{module_name}",
+      "Aggregate definitions (structs/unions/enums) for Partial #{name}::#{module_name} from #{source}",
       Verbosity::OBNOXIOUS
     )
   end
