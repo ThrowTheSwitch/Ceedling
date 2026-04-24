@@ -14,30 +14,30 @@ Partials are useful when a module under test contains:
 * **Function-scoped `static` variables** — Partials promotes these from
   within function scope to module scope so they can be accessed in your
   test code. Apart from a necessary renaming, these work identically to
-  the preceding.
+  file-scoped `static` variables.
+
+## What Is a Partial?
+
+Ceedling reads your real source and header files, extracts their C contents,
+and generates new C files that comprise a Partial:
+
+| Generated file | Role | Default filename pattern |
+|---|---|---|
+| **Partial implementation** header | Declares selected testable functions and `extern`s file-scope variables stripped of `static` | `ceedling_partial_<module>_impl.h` |
+| **Partial implementation** source | Defines selected testable functions and variables stripped of `static` | `ceedling_partial_<module>_impl.c` |
+| **Partial interface** header | Declares selected mockable function signatures | `ceedling_partial_<module>_interface.h` |
 
 When creating a Partial, Ceedling:
 
-1. Copies your source code under test as a set of new C files in a special
-   build directory. 
-1. Reorganizes and slightly alters your code so it can be accessed externally.
-1. Structures the test build to omit the original source code from the 
+1. Extracts your source code under test into a set of new C files in a special
+   build directory.
+1. Reorganizes and slightly alters your code so it can be accessed by your test.
+1. Structures the test build to omit the original source file from the 
    resulting test executable. Generated Partials are self-sufficient stand-ins 
    for the original C code from which the Partials are derived.
 1. Maps the reorganized functions in generated Partials back to the 
    original source module’s filepath and line numbers (using GCC’s `#line` 
    directive) for correct test coverage reporting.
-
-## What Is a Partial?
-
-Ceedling reads your real source and header files, extracts their C contents,
-and generates new C files for each partialized module:
-
-| Generated file | Role | Default filename pattern |
-|---|---|---|
-| **Partial implementation** header | Declares selected testable functions and externs file-scope variables stripped of `static` | `ceedling_partial_<module>_impl.h` |
-| **Partial implementation** source | Defines selected testable functions and variables stripped of `static` | `ceedling_partial_<module>_impl.c` |
-| **Partial interface** header | Declares selected mockable function signatures | `ceedling_partial_<module>_interface.h` |
 
 These generated Partials files `#include` the same header files as the 
 original files from which they are generated. They also contain all macros,
@@ -47,8 +47,8 @@ Ceedling uses CMock to generate mocks from Partials interface header files
 just as it does for any other mockable header files.
 
 When a test file references a Partial, Ceedling excludes the original source
-file from that test executable‘s build. Only the generated implementation
-source is compiled in its place.
+file from that test executable‘s build. Only the generated Partial 
+source is compiled and linked in its place.
 
 ## A Simple Partials Example (Temperature Sensor Module)
 
@@ -112,7 +112,6 @@ void test_ConvertRawToMilliCelsius(void)
     // _ConvertRawToMilliCelsius is accessible in the Partial linked in this test executable build
     TEST_ASSERT_EQUAL_INT(-40000, _ConvertRawToMilliCelsius(0));
 }
-
 ```
 ### Ceedling‘s Partials handling for testable `static` functions
 
@@ -179,12 +178,11 @@ void test_Sensor_ReadCelsius(void)
    symbols and includes of `sensor.h` and `sensor.c` are duplicated in the 
    Partials while the original `sensor.c` is omitted from the build.
 
-
 ## Conventions and Terminology
 
 ### Modules
 
-In Ceedling, a _module_ is a C source file, a C header file, or a matched
+In Ceedling Partials, a _module_ is a C source file, a C header file, or a matched
 source + header pair sharing the same base filename. The base filename —
 without its extension — is the _module name_.
 
@@ -202,8 +200,9 @@ All Partial directive macros take a module name — a bare filename stem with
 no extension and no path:
 
 ```c
-#include TEST_PARTIAL_PRIVATE_MODULE(sensor)   // module name: sensor
-                                               // NOT "sensor.c", NOT "path/to/sensor"
+// Module name: 'sensor'
+// Not "sensor.c" or "path/to/sensor"
+#include TEST_PARTIAL_PRIVATE_MODULE(sensor)
 ```
 
 ### Public and Private Functions
@@ -253,7 +252,8 @@ The `_MODULE` macros each expand to a **string literal** that names a
 generated header file. This means you use them as the argument to `#include`:
 
 ```c
-#include "ceedling.h"  // Must come first -- defines all Partial macros
+// Must come first -- defines all Partial macros
+#include "ceedling.h"
 
 **_NOTE:_** In practice, you as the test author will never directly interact
 with the generated Partials C files. Do not reference them or modify them.
@@ -274,7 +274,7 @@ The filters in place of `*` — `PUBLIC`, `PRIVATE`, `ALL`, and none — tell
 Ceedling how to initialize internal function lists (that can be optionally 
 modified) towards injecting the collected functions into each Partial. 
 
-### Partials function-selection by macros
+### Partials function-selection by macro
 
 Each test or mock Partial is independently configured by exactly
 one `_MODULE` macro call. The macro determines the _base set_ of
@@ -322,17 +322,17 @@ sections, each function name argument is treated as an **addition** or a
 
 | Prefix | Meaning |
 |---|---|
-| _(none)_ or `+` | Addition — add this function to the Partial |
-| `-` | Subtraction — exclude this function from the Partial |
+| _(none)_ or `+` | Addition — add this function to the Partial (`+func`) |
+| `-` | Subtraction — exclude this function from the Partial (`-func`) |
 
-**Subtraction rules by mode:**
+**Addition & subtraction rules by mode:**
 
-| Mode | Subtraction target | Addition target |
-|---|---|---|
-| PUBLIC | Public functions only | Private functions |
-| PRIVATE | Private functions only | Public functions |
-| ACCUMULATE | Forbidden | Any function (at least one required) |
-| DEDUCT | Any function | Forbidden |
+| Macro | Filter | Subtraction target | Addition target |
+|---|---|---|---|
+| `*_PARTIAL_PUBLIC_MODULE` | Public | Public functions only | Private functions |
+| `*_PARTIAL_PRIVATE_MODULE` | Private | Private functions only | Public functions |
+| `*_PARTIAL_MODULE` | Accumulate | Forbidden | Any function (one required) |
+| `*_PARTIAL_ALL_MODULE` | Deduct | Any function | Forbidden |
 
 ### Cross-side `TEST_` / `MOCK_` Partials exclusion
 
