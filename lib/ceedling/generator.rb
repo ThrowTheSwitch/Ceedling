@@ -53,8 +53,26 @@ class Generator
       #  - Add option to CMock to generate mock to any destination path
       #  - Make CMock thread-safe
 
+      #TODO: mock_key = normalize_mock_include_target( mock )
+      # def normalize_mock_include_target(mock)
+      #   mock
+      #     .to_s
+      #     .strip
+      #     .sub(/^.*[\\\/]/, '')
+      #     .sub(/#{Regexp.escape(@configurator.extension_header)}$/, '')
+      # end
+
+      mock_include_config = @test_context_extractor.lookup_mock_includes_for_mock( test, mock )
+
+      if !mock_include_config_empty?(mock_include_config)
+        @loginator.log(
+          "Applying test-specific mock includes for #{mock_key} in #{test}\n",
+          Verbosity::DEBUG
+        )
+      end
+
       # Get default config created by Ceedling and customize it
-      config = @generator_mocks.build_configuration( output_path )
+      config = @generator_mocks.build_configuration( output_path, mock_include_config )
   
       # Generate mock
       msg = @reportinator.generate_module_progress(
@@ -359,6 +377,24 @@ class Generator
     @plugin_manager.post_test_fixture_execute( arg_hash )
 
     shell_result
+  end
+
+  private
+
+  def normalize_mock_include_target(mock)
+    mock
+      .to_s
+      .strip
+      .sub(/^.*[\\\/]/, '')
+      .sub(/#{Regexp.escape(@configurator.extension_header)}$/, '')
+  end
+
+  def mock_include_config_empty?(mock_include_config)
+    return true if mock_include_config.nil? || mock_include_config.empty?
+
+    mock_include_config.all? do |_key, headers|
+      headers.nil? || headers.empty?
+    end
   end
 
 end

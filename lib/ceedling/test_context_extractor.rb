@@ -22,6 +22,7 @@ class TestContextExtractor
     @source_extras       = {} # C source files outside of header convention added to test build by TEST_SOURCE_FILE()
     @test_runner_details = {} # Test case lists & Unity runner generator instances
     @mocks               = {} # List of mocks by name without header file extension
+    @mock_includes       = {} # Additional mock includes added to a test build via TEST_MOCK_INCLUDE_*()
     @include_paths       = {} # Additional search paths added to a test build via TEST_INCLUDE_PATH()
     
     # Arrays
@@ -35,6 +36,7 @@ class TestContextExtractor
     all_options = [
       :build_directive_include_paths,
       :build_directive_source_files,
+      :build_directive_mock_includes,
       :includes,
       :test_runner_details
     ]
@@ -52,6 +54,7 @@ class TestContextExtractor
     include_paths = []
     source_extras = []
     includes = []
+    mock_includes = {}
 
     @parsing_parcels.code_lines( input ) do |line|
       if args.include?( :build_directive_include_paths )
@@ -64,6 +67,14 @@ class TestContextExtractor
         source_extras += extract_build_directive_source_files( line )
       end
 
+      if args.include?( :build_directive_mock_includes )
+        # Scan for build directives: TEST_MOCK_INCLUDE_*()
+        mock_includes = merge_mock_includes(
+          mock_includes,
+          extract_build_directive_mock_includes( line )
+        )
+      end
+
       if args.include?( :includes )
         # Scan for contents of #include directives
         includes += _extract_includes( line )
@@ -72,6 +83,7 @@ class TestContextExtractor
 
     collect_build_directive_include_paths( filepath, include_paths ) if args.include?( :build_directive_include_paths )
     collect_build_directive_source_files( filepath, source_extras ) if args.include?( :build_directive_source_files )
+    collect_build_directive_mock_includes( filepath, mock_includes ) if args.include?( :build_directive_mock_includes )
     collect_includes( filepath, includes ) if args.include?( :includes )
 
     # Different code processing pattern for test runner
@@ -180,6 +192,27 @@ class TestContextExtractor
     return val
   end
 
+  # Mock-specific includes of test file specified with TEST_MOCK_INCLUDE_*()
+  def lookup_mock_includes(filepath)
+    val = nil
+    @lock.synchronize do
+      val = @mock_includes[form_file_key( filepath )] || {}
+    end
+    return val
+  end
+
+  # Includes for one mock within one test file
+  def lookup_mock_includes_for_mock(filepath, mock)
+    val = nil
+    mock_key = normalize_mock_include_target( mock )
+
+    @lock.synchronize do
+      val = (@mock_includes[form_file_key( filepath )] || {})[mock_key] || empty_mock_include_config
+    end
+
+    return val
+  end
+
   def lookup_all_include_paths
     val = nil
     @lock.synchronize do
@@ -280,6 +313,16 @@ class TestContextExtractor
     debug_log_list( "Test cases found ", filepath, test_cases )
   end
 
+  def collect_build_directive_mock_includes(filepath, mock_includes)
+    ingest_build_directive_mock_includes( filepath, mock_includes )
+
+    debug_log_mock_includes(
+      "Mock includes found via TEST_MOCK_INCLUDE_*()",
+      filepath,
+      mock_includes
+    )
+  end
+
   def extract_build_directive_source_files(line)
     source_extras = []
 
@@ -302,6 +345,40 @@ class TestContextExtractor
     end
 
     return include_paths
+  end
+
+  def extract_build_directive_mock_includes(line)
+    mock_includes = {}
+
+    {
+      :includes_h_pre_orig_header  => [
+        PATTERNS::TEST_MOCK_INCLUDE,
+        PATTERNS::TEST_MOCK_INCLUDE_H_PRE_ORIG_HEADER
+      ],
+      :includes_h_post_orig_header => [
+        PATTERNS::TEST_MOCK_INCLUDE_H_POST_ORIG_HEADER
+      ],
+      :includes_c_pre_header       => [
+        PATTERNS::TEST_MOCK_INCLUDE_C_PRE_HEADER
+      ],
+      :includes_c_post_header      => [
+        PATTERNS::TEST_MOCK_INCLUDE_C_POST_HEADER
+      ]
+    }.each do |include_location, patterns|
+      patterns.each do |pattern|
+        results = line.scan(pattern)
+
+        results.each do |result|
+          mock   = normalize_mock_include_target( result[0] )
+          header = FilePathUtils.standardize( result[1] )
+
+          mock_includes[mock] ||= empty_mock_include_config
+          mock_includes[mock][include_location] << header
+        end
+      end
+    end
+
+    return mock_includes
   end
 
   def _extract_includes(line)
@@ -353,12 +430,63 @@ class TestContextExtractor
     end
   end
 
+  def ingest_build_directive_mock_includes(filepath, mock_includes)
+    return if mock_includes.empty?
+
+    key = form_file_key( filepath )
+
+    mock_includes.each do |_mock, include_config|
+      include_config.each do |_include_location, headers|
+        headers.uniq!
+      end
+    end
+
+    @lock.synchronize do
+      @mock_includes[key] = mock_includes
+    end
+  end
+
   ##
   ## Utility methods
   ##
 
   def form_file_key( filepath )
     return filepath.to_s.to_sym
+  end
+
+  def empty_mock_include_config
+    {
+      :includes_h_pre_orig_header  => [],
+      :includes_h_post_orig_header => [],
+      :includes_c_pre_header       => [],
+      :includes_c_post_header      => []
+    }
+  end
+
+  def merge_mock_includes(left, right)
+    merged = {}
+
+    [left, right].each do |mock_includes|
+      mock_includes.each do |mock, include_config|
+        merged[mock] ||= empty_mock_include_config
+
+        include_config.each do |include_location, headers|
+          merged[mock][include_location] ||= []
+          merged[mock][include_location] += headers
+          merged[mock][include_location].uniq!
+        end
+      end
+    end
+
+    return merged
+  end
+
+  def normalize_mock_include_target(mock)
+    mock
+      .to_s
+      .strip
+      .sub(/^.*[\\\/]/, '')
+      .sub(/#{Regexp.escape(@configurator.extension_header)}$/, '')
   end
 
   def debug_log_list(message, filepath, list)
@@ -369,6 +497,31 @@ class TestContextExtractor
       msg += "\n"
       list.each do |item|
         msg += " - #{item}\n"
+      end
+    end
+
+    @loginator.log( "#{msg}\n\n", Verbosity::DEBUG )
+  end
+
+  def debug_log_mock_includes(message, filepath, mock_includes)
+    msg = "#{message} in #{filepath}:"
+
+    if mock_includes.empty?
+      msg += " <none>"
+    else
+      msg += "\n"
+
+      mock_includes.each do |mock, include_config|
+        msg += " - #{mock}\n"
+
+        include_config.each do |include_location, headers|
+          next if headers.empty?
+
+          msg += "   #{include_location}:\n"
+          headers.each do |header|
+            msg += "    - #{header}\n"
+          end
+        end
       end
     end
 

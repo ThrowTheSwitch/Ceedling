@@ -96,7 +96,7 @@ class TestInvoker
             # Just build directive macro using simple text scanning.
             # Other context collected in later steps with help of preprocessing.
             @file_wrapper.open( filepath, 'r' ) do |input|
-              @context_extractor.collect_simple_context( filepath, input, :build_directive_include_paths )
+              @context_extractor.collect_simple_context( filepath, input, :build_directive_include_paths, :build_directive_mock_includes )
             end
           else
             msg = @reportinator.generate_progress( "Parsing #{File.basename(filepath)} for build directive macros, #includes, and test case names" )

@@ -1393,6 +1393,93 @@ _**Notes:**_
   order of any Mixins. Paths specified with Mixins will be added to 
   path lists in your project configuration in the order of merging.
 
+## Test-specific mock include directives
+
+Ceedling supports build directive macros that can be placed in test files to provide additional build context. These macros do not affect the compiled test code directly, but Ceedling scans them and uses them while preparing the test executable.
+
+In addition to `TEST_INCLUDE_PATH(...)` and `TEST_SOURCE_FILE(...)`, test files can request additional headers to be injected into generated mocks for that specific test executable.
+
+### `TEST_MOCK_INCLUDE(...)`
+
+```c
+TEST_MOCK_INCLUDE("mock_driver.h", "test_driver_types.h")
+```
+
+This injects `test_driver_types.h` into the generated mock for `mock_driver.h` for the current test executable only.
+
+This is useful when a mock needs additional test-specific types, macros, or configuration headers, but those headers should not be added globally to every generated mock.
+
+Example:
+
+```c
+#include "unity.h"
+#include "mock_driver.h"
+
+TEST_MOCK_INCLUDE("mock_driver.h", "test_driver_types.h")
+
+void test_driver_initializes(void)
+{
+    driver_init_Expect();
+    system_init();
+}
+```
+
+The directive above affects only the generated mock for `mock_driver.h` in this test executable.
+
+### Location-specific variants
+
+For finer control, the include location can be selected explicitly:
+
+```c
+TEST_MOCK_INCLUDE_H_PRE_ORIG_HEADER("mock_driver.h", "test_driver_types.h")
+TEST_MOCK_INCLUDE_H_POST_ORIG_HEADER("mock_driver.h", "test_driver_types.h")
+TEST_MOCK_INCLUDE_C_PRE_HEADER("mock_driver.h", "test_driver_config.h")
+TEST_MOCK_INCLUDE_C_POST_HEADER("mock_driver.h", "test_driver_config.h")
+```
+
+The generic form:
+
+```c
+TEST_MOCK_INCLUDE("mock_driver.h", "test_driver_types.h")
+```
+
+is equivalent to:
+
+```c
+TEST_MOCK_INCLUDE_H_PRE_ORIG_HEADER("mock_driver.h", "test_driver_types.h")
+```
+
+### Difference from global CMock include options
+
+CMock also supports global include configuration options such as:
+
+```yaml
+:cmock:
+  :includes_h_pre_orig_header:
+    - some_global_header.h
+  :includes_h_post_orig_header: []
+  :includes_c_pre_header: []
+  :includes_c_post_header: []
+```
+
+Those options apply globally to generated mocks.
+
+`TEST_MOCK_INCLUDE(...)` is different: it is scoped to the test file and mock where it is declared. This prevents unrelated mocks from receiving unnecessary or conflicting includes.
+
+### Notes
+
+The mock argument should be written as a quoted mock header or mock name:
+
+```c
+TEST_MOCK_INCLUDE("mock_driver.h", "test_driver_types.h")
+TEST_MOCK_INCLUDE("mock_driver", "test_driver_types.h")
+```
+
+Both forms refer to the same generated mock.
+
+Header paths are interpreted the same way as normal include paths used by the test build.
+
+
 ## Search Paths for Release Builds
 
 Unlike test builds, release builds are relatively straightforward. Each

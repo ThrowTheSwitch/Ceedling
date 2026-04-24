@@ -97,6 +97,25 @@ describe TestContextExtractor do
     end
   end
 
+  context "#lookup_mock_includes" do
+    it "should provide empty hash when no context extraction has occurred" do
+      expect( @extractor.lookup_mock_includes( "path" ) ).to eq({})
+    end
+  end
+
+  context "#lookup_mock_includes_for_mock" do
+    it "should provide empty mock include config when no context extraction has occurred" do
+      expected = {
+        :includes_h_pre_orig_header  => [],
+        :includes_h_post_orig_header => [],
+        :includes_c_pre_header       => [],
+        :includes_c_post_header      => []
+      }
+
+      expect( @extractor.lookup_mock_includes_for_mock( "path", "mock_driver" ) ).to eq expected
+    end
+  end
+
   context "#extract_includes" do
     it "should extract #include directives from code" do
       # Complex comments tested in `clean_code_line()` test case
