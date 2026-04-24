@@ -1,55 +1,56 @@
 # Partials
 
-> **Draft** — proposed new top-level section for `CeedlingPacket.md`.
-> Insert before the **Build Directive Macros** section.
-> Update the **Contents** table and its anchor links accordingly.
+A _Partial_ is your C code under test sliced and diced to expose functional
+elements for testing that you could not otherwise access without rewriting
+your source code.
 
----
+Partials are useful when a module under test contains:
 
-A _Partial_ is a pair of generated C files that Ceedling synthesises from an
-existing C module (source + header) so that otherwise inaccessible parts of
-the module can be cleanly tested and mocked within a single test build.
+* **`static` or `inline` functions** — With Partials these become easily 
+  accessible within your test code.
+* **File-scoped `static` variables** — With Partials the `static` keyword 
+  is stripped and the variable is automatically made `extern` so it can 
+  be easily accessed within your test code.
+* **Function-scoped `static` variables** — Partials promotes these from
+  within function scope to module scope so they can be accessed in your
+  test code. Apart from a necessary renaming, these work identically to
+  the preceding.
 
-Partials are useful when a module contains:
+When creating a Partial, Ceedling:
 
-* **Private functions** — declared `static` or `inline`, invisible to the
-  linker and therefore to CMock.
-* **Public functions** that you want to mock in one test but exercise directly
-  in another, all within the same test executable.
-* **Function-scoped `static` variables** — Ceedling promotes these to
-  module scope in the generated implementation so that linker and coverage
-  tools see them correctly.
+1. Copies your source code under test as a set of new C files in a special
+   build directory. 
+1. Reorganizes and slightly alters your code so it can be accessed externally.
+1. Structures the test build to omit the original source code from the 
+   resulting test executable. Generated Partials are self-sufficient stand-ins 
+   for the original C code from which the Partials are derived.
+1. Maps the reorganized functions in generated Partials back to the 
+   original source module’s filepath and line numbers (using GCC’s `#line` 
+   directive) for correct test coverage reporting.
 
 ## What Is a Partial?
 
 Ceedling reads your real source and header files, extracts their C contents,
-and writes two generated files for each partialized module:
+and generates new C files for each partialized module:
 
 | Generated file | Role | Default filename pattern |
 |---|---|---|
-| **Partial implementation** header | Declares the selected testable functions | `ceedling_partial_<module>_impl.h` |
-| **Partial implementation** source | Defines the selected testable functions | `ceedling_partial_<module>_impl.c` |
-| **Partial interface** header | Declares the selected mockable function signatures | `ceedling_partial_<module>_interface.h` |
+| **Partial implementation** header | Declares selected testable functions and externs file-scope variables stripped of `static` | `ceedling_partial_<module>_impl.h` |
+| **Partial implementation** source | Defines selected testable functions and variables stripped of `static` | `ceedling_partial_<module>_impl.c` |
+| **Partial interface** header | Declares selected mockable function signatures | `ceedling_partial_<module>_interface.h` |
 
-CMock generates a mock from the interface header using the same convention
-it uses for ordinary headers:
+These generated Partials files `#include` the same header files as the 
+original files from which they are generated. They also contain all macros,
+`typedef`s, user-defined types, etc. discovered in the original C code.
 
-| Mock file | Default filename pattern |
-|---|---|
-| Generated CMock mock | `mock_ceedling_partial_<module>_interface.h` / `.c` |
-
-> **Note:** The `ceedling_partial_` prefix and the `mock_` prefix are
-> configurable via `CEEDLING_PARTIALS_PREFIX` and `CMOCK_MOCK_PREFIX` in
-> your project compilation symbols. The defaults shown here match those
-> defaults.
+Ceedling uses CMock to generate mocks from Partials interface header files
+just as it does for any other mockable header files.
 
 When a test file references a Partial, Ceedling excludes the original source
-file from that test executable's build. Only the generated implementation
+file from that test executable‘s build. Only the generated implementation
 source is compiled in its place.
 
-## A Simple Example
-
-Consider a temperature sensor module:
+## A Simple Partials Example (Temperature Sensor Module)
 
 ```c
 // sensor.h -----------------------------------------------
@@ -60,9 +61,9 @@ int  Sensor_ReadCelsius(void);
 ```c
 // sensor.c -----------------------------------------------
 #include "sensor.h"
-#include "hal.h"        // hardware abstraction layer — to be mocked
+#include "hal.h" // Hardware Abstraction Layer (to be mocked)
 
-// Private helper — static, not visible outside this translation unit
+// Private helper -- static, not visible outside this translation unit
 static int _ConvertRawToMilliCelsius(uint16_t raw)
 {
     return (int)raw * 10 - 40000;
@@ -80,54 +81,104 @@ int Sensor_ReadCelsius(void)
 }
 ```
 
-A test file that wants to:
-1. **Test** `_ConvertRawToMilliCelsius()` directly (it is private / `static`)
-2. **Mock** the public API `Sensor_Init` and `Sensor_ReadCelsius` when testing
-   a higher-level module that calls them
+### You as a test author want to test and mock the `static` helper
+
+1. **Test** `_ConvertRawToMilliCelsius()` directly, but it is private / `static`
+2. **Mock** `_ConvertRawToMilliCelsius()` while testing `Sensor_ReadCelsius()`
+
+Partials allows you to accomplish both of these goals with no changes to
+_sensor.c_.
+
+**_NOTE:_** A core restriction of the C language remains here!
+`_ConvertRawToMilliCelsius()` cannot be both tested and mocked in the same test.
+Attempting to do so would duplicate the function and cause a doubly-defined
+symbol failure during linking. We solve this by simply creating two peer test
+files for the different Partials usage scenarios.
+
+### Example Testable Partial
 
 ```c
-// test_sensor_partial.c -----------------------------------
+// test_sensor_partials_test.c -----------------------------------
 #include "unity.h"
-#include "ceedling.h"   // Required: defines Partial directive macros
+#include "ceedling.h" // Required: defines Partial directive macros
+#include "mock_hal.h" // Traditional mocking still available
 
-// Make private functions available for direct testing
-#include TEST_PARTIAL_PRIVATE_MODULE("sensor")
+// Make all functions in the sensor module available for direct testing
+#include TEST_PARTIAL_ALL_MODULE(sensor)
 
-// Make the public API available as a mock
-#include MOCK_PARTIAL_PUBLIC_MODULE("sensor")
-
-void setUp(void)    {}
-void tearDown(void) {}
-
-// Test the private conversion helper directly
-void test_ConvertRawToMilliCelsius_at_zero_raw(void)
+// Test the `static` conversion helper internal to source module under test
+void test_ConvertRawToMilliCelsius(void)
 {
-    // _ConvertRawToMilliCelsius is now visible because it is in the
-    // generated partial implementation that was compiled into this build.
+    // _ConvertRawToMilliCelsius is accessible in the Partial linked in this test executable build
     TEST_ASSERT_EQUAL_INT(-40000, _ConvertRawToMilliCelsius(0));
 }
 
-// Test the higher-level caller using a mock of the public API
-void test_Application_uses_sensor(void)
+```
+### Ceedling‘s Partials handling for testable `static` functions
+
+1. Reads `sensor.c` and `sensor.h` and extracts all function definitions.
+1. `TEST_PARTIAL_ALL_MODULE()` instructs Partial generation to gather and 
+   expose all functions from the `sensor` module to be made testable.
+1. Generates `ceedling_partial_sensor_impl.c` containing all source functions
+   including `_ConvertRawToMilliCelsius()` (stripped of `static` decorator).
+1. Compiles and links the Partial implementation source (in place of the original 
+   `sensor` source module) and the test file into the test executable. The 
+   symbols and includes of `sensor.h` and `sensor.c` are duplicated in the 
+   Partials while the original `sensor.c` is omitted from the build.
+
+### Example Mockable Partial
+
+```c
+// test_sensor_partials_mocks.c -----------------------------------
+#include "unity.h"
+#include "ceedling.h" // Required: defines Partial directive macros
+#include "mock_hal.h" // Traditional mocking still available
+
+// Create two complementary Partials:
+//  1. All the non-static functions for testing
+//  2. Mocked static functions to be used in test cases
+//
+// We need both Partials with non-overlapping lists of functions in
+// order to separate the testable functions from the mocked functions
+// extracted from the same source module.
+
+// Make all the non-static functions available for testing
+#include TEST_PARTIAL_PUBLIC_MODULE(sensor)
+
+// Make the static helper function available as a mock
+#include MOCK_PARTIAL_PRIVATE_MODULE(sensor)
+
+// Test Sensor_ReadCelsius() using a mock of the helper function
+void test_Sensor_ReadCelsius(void)
 {
-    Sensor_ReadCelsius_ExpectAndReturn(25);   // from mock_ceedling_partial_sensor_interface
-    // ... call the code under test that uses Sensor_ReadCelsius() ...
+    // Traditional mock of external HAL interface
+    HAL_SensorRead_ExpectAndReturn(1234);
+
+    // Partial mock of `static` function internal to source module under test
+    _ConvertRawToMilliCelsius_ExpectAndReturn(1234, 1000);
+
+    TEST_ASSERT_EQUAL_INT(1, Sensor_ReadCelsius());
 }
 ```
 
-### What Ceedling does with this test file
+### Ceedling‘s Partials handling for mockable `static` functions
 
 1. Reads `sensor.c` and `sensor.h`, extracts all function definitions.
-2. Classifies `_ConvertRawToMilliCelsius` as **private** (it is `static`)
-   and `Sensor_Init`/`Sensor_ReadCelsius` as **public**.
-3. Generates `ceedling_partial_sensor_impl.c` containing only
-   `_ConvertRawToMilliCelsius` (the private function requested for testing).
-4. Generates `ceedling_partial_sensor_interface.h` containing declarations
-   for `Sensor_Init` and `Sensor_ReadCelsius` (the public functions to mock).
-5. Runs CMock on the interface header to produce mock source.
-6. Compiles the partial implementation source, the mock source, and the test
-   file into the test executable — **without** compiling the original
-   `sensor.c`.
+1. Classifies `_ConvertRawToMilliCelsius` as **private** (from the `static`
+   decorator).
+1. Generates `ceedling_partial_sensor_interface.h` containing only
+   `_ConvertRawToMilliCelsius()`.
+1. Collects all non-static functions in the `sensor` module and
+   generates `ceedling_partial_sensor_impl.h` and 
+   `ceedling_partial_sensor_impl.c` containing those functions segragated
+   from the mockable function signature organized in (3).
+1. Runs CMock on the Partial interface header to produce mock source.
+1. Compiles and links the mocked Partial interface source from (3), the 
+   Partial implementation source from (4) in place of the original `sensor` 
+   source module, and the test file into the test executable. The 
+   symbols and includes of `sensor.h` and `sensor.c` are duplicated in the 
+   Partials while the original `sensor.c` is omitted from the build.
+
 
 ## Conventions and Terminology
 
@@ -144,25 +195,23 @@ without its extension — is the _module name_.
 | `sensor.c` only | `sensor` |
 
 When both a source file and a header file share a name, Ceedling treats them
-as a single module. Both files are read when generating a Partial: the source
-file supplies function definitions (with bodies) and the header file supplies
-any additional declarations. When only one file is present, only that file is
-read.
+as a single unit. Both files are read when generating a Partial. When only 
+one file is present, only that file is read.
 
 All Partial directive macros take a module name — a bare filename stem with
 no extension and no path:
 
 ```c
-#include TEST_PARTIAL_PRIVATE_MODULE("sensor")   // module name: sensor
-                                                 // NOT "sensor.c", NOT "path/to/sensor"
+#include TEST_PARTIAL_PRIVATE_MODULE(sensor)   // module name: sensor
+                                               // NOT "sensor.c", NOT "path/to/sensor"
 ```
 
 ### Public and Private Functions
 
 C has no access modifiers. Every function with external linkage is — from the
-language's perspective — equally visible at link time. In the context of
-Partials, Ceedling uses the terms _public_ and _private_ to describe a
-practical distinction based on function decorators:
+language‘s perspective — equally visible at link time. In the context of
+Partials, Ceedling uses the more modern terms _public_ and _private_ to 
+describe a practical distinction based on function decorators:
 
 **Private functions** carry one or more of the following keywords anywhere in
 their declaration or definition:
@@ -172,25 +221,31 @@ their declaration or definition:
 * `__inline`
 * `__inline__`
 
-A `static` function has internal linkage: it is invisible to the linker
-outside its translation unit, and therefore cannot be called or mocked from a
-test build without special handling. Inline functions may be folded away by the
-compiler entirely. Partials surface both kinds so that they can be tested or
-mocked directly.
+A `static` function has internal linkage. It is invisible to the linker
+outside its containing translation unit, and therefore cannot be called or 
+mocked from a test build without special handling. Inline functions may be 
+folded away by the compiler entirely. Partials use decorators to organize
+lists of functions for testing and mocking, but the decorators are stripped
+in the resulting generated code.
 
 **Public functions** are everything else — functions with no visibility-
 restricting decorator and ordinary external linkage.
 
-This public/private distinction determines the base set of functions that
-each `_MODULE` macro selects. It is documented in detail in the
+This public/private distinction is one set of filters for assembling a list
+of functions each `_MODULE` macro selects. The filtering and collection is 
+documented in detail in the 
 [Function-selection modes](#function-selection-modes) section below.
 
 ## Partial Directive Macros
 
 All Partial configuration is expressed through C preprocessor macros directly
 in your test file. No separate configuration file is required. The macros
-require `#include "ceedling.h"` — or equivalently `#include <ceedling.h>` —
-to be present in the test file.
+require `#include "ceedling.h"` in the test file.
+
+The Partial `_MODULE` macros accomplish the following:
+
+1. Expand to a filename for the preceding `#include` directive.
+1. Provide a module name for Ceedling to process for the resulting Partial.
 
 ### `#include` conventions for Partial macros
 
@@ -198,154 +253,238 @@ The `_MODULE` macros each expand to a **string literal** that names a
 generated header file. This means you use them as the argument to `#include`:
 
 ```c
-#include "ceedling.h"  // Must come first — defines all Partial macros
+#include "ceedling.h"  // Must come first -- defines all Partial macros
 
-#include TEST_PARTIAL_PRIVATE_MODULE("sensor")
+**_NOTE:_** In practice, you as the test author will never directly interact
+with the generated Partials C files. Do not reference them or modify them.
+These examples and explanation are solely for education and awareness.
+
+#include TEST_PARTIAL_*_MODULE(sensor)
 //  ↑ expands to: #include "ceedling_partial_sensor_impl.h"
 
-#include MOCK_PARTIAL_PUBLIC_MODULE("sensor")
+A `TEST_PARTIAL_*_MODULE` macro always names an implementation header.
+
+#include MOCK_PARTIAL_*_MODULE(sensor)
 //  ↑ expands to: #include "mock_ceedling_partial_sensor_interface.h"
 ```
 
-A `TEST_PARTIAL_*_MODULE` macro always names an implementation header;
-a `MOCK_PARTIAL_*_MODULE` macro always names a CMock mock header. The mode
-(`PUBLIC`, `PRIVATE`, `MODULE`, `ALL_MODULE`) tells Ceedling _which_ functions
-to put into each generated file — the `#include` path itself is identical for
-all modes on the same side.
+A `MOCK_PARTIAL_*_MODULE` macro always names a mockable header.
 
-### Function-selection modes
+The filters in place of `*` — `PUBLIC`, `PRIVATE`, `ALL`, and none — tell 
+Ceedling how to initialize internal function lists (that can be optionally 
+modified) towards injecting the collected functions into each Partial. 
 
-Each side (test / mock) of a Partial is independently configured by exactly
-one `_MODULE` macro call. The macro name determines the _base set_ of
-functions that Ceedling places in the generated file before any explicit
-additions or subtractions are applied.
+### Partials function-selection by macros
 
-**"Private" functions** are those decorated with any of `static`, `inline`,
-`__inline`, or `__inline__`. **"Public" functions** are everything else.
+Each test or mock Partial is independently configured by exactly
+one `_MODULE` macro call. The macro determines the _base set_ of
+functions that Ceedling collects towards generating a Partial. Once
+the base set of functions is determined, explicit additions or 
+subtractions can be applied.
 
-#### Test side (`TEST_PARTIAL_*_MODULE`)
+This scheme gives you the, test author, full control of which functions
+are injected into which type of Partial while avoiding laboriously
+listing each function individually.
 
-| Macro | Mode | Base set | Additions | Subtractions |
+#### Partials base function filters (`[TEST/MOCK]_PARTIAL_*_MODULE`)
+
+| Macro | Mode | Base set of functions | Additions | Subtractions |
 |---|---|---|---|---|
-| `TEST_PARTIAL_PUBLIC_MODULE(mod)` | PUBLIC | All public functions | Cross-visibility (private) | Same-visibility (public) only |
-| `TEST_PARTIAL_PRIVATE_MODULE(mod)` | PRIVATE | All private functions | Cross-visibility (public) | Same-visibility (private) only |
-| `TEST_PARTIAL_MODULE(mod)` | ACCUMULATE | _(empty — additions-only)_ | Required; any function | Forbidden |
-| `TEST_PARTIAL_ALL_MODULE(mod)` | DEDUCT | All functions (public + private) | Forbidden | Any function |
+| `*_PARTIAL_PUBLIC_MODULE(mod)` | PUBLIC | All public functions | Add private | Remove public |
+| `*_PARTIAL_PRIVATE_MODULE(mod)` | PRIVATE | All private functions | Add public | Remove private |
+| `*_PARTIAL_MODULE(mod)` | ACCUMULATE | Empty | Required -- Any function | Forbidden |
+| `*_PARTIAL_ALL_MODULE(mod)` | DEDUCT | All functions | Forbidden | Any function |
 
-#### Mock side (`MOCK_PARTIAL_*_MODULE`)
+**Notes:**
+* `*_PARTIAL_MODULE` requires at least one addition via `*_PARTIAL_CONFIG` 
+  (see next section).
+* `*_PARTIAL_ALL_MODULE`with no subtractions adds every module function to
+  base set of functions.
+* Each module can appear in **at most one** `TEST_PARTIAL_*_MODULE` and 
+  `MOCK_PARTIAL_*_MODULE` macro within a given test file.
 
-| Macro | Mode | Base set | Additions | Subtractions |
-|---|---|---|---|---|
-| `MOCK_PARTIAL_PUBLIC_MODULE(mod)` | PUBLIC | All public functions | Cross-visibility (private) | Same-visibility (public) only |
-| `MOCK_PARTIAL_PRIVATE_MODULE(mod)` | PRIVATE | All private functions | Cross-visibility (public) | Same-visibility (private) only |
-| `MOCK_PARTIAL_MODULE(mod)` | ACCUMULATE | _(empty — additions-only)_ | Required; any function | Forbidden |
-| `MOCK_PARTIAL_ALL_MODULE(mod)` | DEDUCT | All functions (public + private) | Forbidden | Any function |
+### Partials function list configuration macros
 
-> **Notes:**
-> * `TEST_PARTIAL_MODULE` (ACCUMULATE) requires at least one addition via
->   `TEST_PARTIAL_CONFIG`; the same applies to `MOCK_PARTIAL_MODULE`.
-> * `TEST_PARTIAL_ALL_MODULE` / `MOCK_PARTIAL_ALL_MODULE` (DEDUCT) with no
->   subtractions means "include every function".
-> * Each module can appear in **at most one** `_MODULE` macro call per side
->   within a given test file.
+`TEST_PARTIAL_CONFIG` and `MOCK_PARTIAL_CONFIG` refine the base set of functions
+filtered by the corresponding `_MODULE` macro. Both `_CONFIG` macros require at 
+least one function name argument beyond the module name.
 
-### Configuration macros
-
-`TEST_PARTIAL_CONFIG` and `MOCK_PARTIAL_CONFIG` refine the base set selected
-by the corresponding `_MODULE` macro. Both macros require at least one function
-name argument beyond the module name.
+Note that no quotation marks are needed.
 
 ```c
-TEST_PARTIAL_CONFIG("module", func1, func2, ...)
-MOCK_PARTIAL_CONFIG("module", func1, func2, ...)
+TEST_PARTIAL_CONFIG(module, func1, func2, ...)
+MOCK_PARTIAL_CONFIG(module, func1, func2, ...)
 ```
 
-Each function name argument is treated as an **addition** or a **subtraction**
-depending on an optional prefix character:
+Similar to the convenion in Ceedling’s `paths:` and `files:` YAML configuration 
+sections, each function name argument is treated as an **addition** or a 
+**subtraction** depending on an optional prefix character:
 
-| Prefix | Meaning | Allowed modes |
-|---|---|---|
-| _(none)_ or `+` | Addition — include this function | PUBLIC, PRIVATE, ACCUMULATE |
-| `-` | Subtraction — exclude this function | PUBLIC, PRIVATE, DEDUCT |
+| Prefix | Meaning |
+|---|---|
+| _(none)_ or `+` | Addition — add this function to the Partial |
+| `-` | Subtraction — exclude this function from the Partial |
 
 **Subtraction rules by mode:**
 
 | Mode | Subtraction target | Addition target |
 |---|---|---|
-| PUBLIC | Public functions only | Private functions (cross-visibility) |
-| PRIVATE | Private functions only | Public functions (cross-visibility) |
-| ACCUMULATE | Forbidden | Any function (required) |
+| PUBLIC | Public functions only | Private functions |
+| PRIVATE | Private functions only | Public functions |
+| ACCUMULATE | Forbidden | Any function (at least one required) |
 | DEDUCT | Any function | Forbidden |
 
-### Cross-side exclusion
+### Cross-side `TEST_` / `MOCK_` Partials exclusion
 
-Any function explicitly added on one side via `_CONFIG` is **automatically
-removed** from the other side's result. This prevents the same function from
-appearing both in the partial implementation (compiled into the test build) and
-in the mock (also compiled into the test build), which would produce a duplicate
-symbol linker error.
-
-```c
-// _InternalHelper is added to the test side — Ceedling automatically
-// removes it from the mock side even if it would otherwise be included there.
-#include TEST_PARTIAL_PRIVATE_MODULE("mymodule")
-TEST_PARTIAL_CONFIG("mymodule", "_InternalHelper")
-
-#include MOCK_PARTIAL_PUBLIC_MODULE("mymodule")
-// _InternalHelper will NOT appear in the mock regardless of its visibility
-```
-
-### Combining macros — worked examples
-
-#### Test private functions; mock all public functions
+Any function explicitly added on one side via a Partial `_CONFIG` macro is 
+**automatically removed** from the complementary function list (if it exists).
+This prevents the same function from accidentally appearing both in a Partial 
+implementation and Partial mock, which would produce a duplicate symbol linker 
+error.
 
 ```c
-#include "ceedling.h"
-#include TEST_PARTIAL_PRIVATE_MODULE("sensor")   // base: all private functions
-#include MOCK_PARTIAL_PUBLIC_MODULE("sensor")    // base: all public functions
+// _InternalHelper added to the test side while automatically removed from the mock side.
+#include TEST_PARTIAL_PRIVATE_MODULE(mymodule)
+TEST_PARTIAL_CONFIG(mymodule, _InternalHelper)
+
+// _InternalHelper will NOT appear in the mock
+#include MOCK_PARTIAL_PUBLIC_MODULE(mymodule)
 ```
 
-#### Test a specific private function; mock everything else
+### Partials configuration examples
 
-```c
-#include "ceedling.h"
-#include TEST_PARTIAL_MODULE("sensor")           // ACCUMULATE: starts empty
-TEST_PARTIAL_CONFIG("sensor", "_ConvertRaw")    // add exactly this one function
-
-#include MOCK_PARTIAL_ALL_MODULE("sensor")       // DEDUCT: starts with all functions
-// _ConvertRaw is automatically excluded from mock because it was added to tests
-```
-
-#### Test all functions except one; mock nothing
-
-```c
-#include "ceedling.h"
-#include TEST_PARTIAL_ALL_MODULE("sensor")       // DEDUCT: all functions
-TEST_PARTIAL_CONFIG("sensor", "-Sensor_Init")   // subtract one
-// No MOCK_PARTIAL_*_MODULE call — mock side disabled for this module
-```
-
-#### Test public functions plus one private helper; mock selected privates
+#### Test a specific private function; Mock everything else
 
 ```c
 #include "ceedling.h"
 
-// Test: start with all public functions, add one private
-#include TEST_PARTIAL_PUBLIC_MODULE("sensor")
-TEST_PARTIAL_CONFIG("sensor", "_ConvertRaw")
+#include TEST_PARTIAL_MODULE(sensor)     // Starts empty
+TEST_PARTIAL_CONFIG(sensor, _ConvertRaw) // Add exactly this one function
 
-// Mock: start with all private functions, remove the one claimed by tests
-#include MOCK_PARTIAL_PRIVATE_MODULE("sensor")
-// _ConvertRaw is automatically excluded from mock (cross-side exclusion)
+#include MOCK_PARTIAL_ALL_MODULE(sensor) // Starts with all functions
+// _ConvertRaw is automatically excluded from the Partial mock
 ```
 
-## Accessing Function-Scoped Static Variables
+#### Test all functions except one; Mock nothing
+
+```c
+#include "ceedling.h"
+
+#include TEST_PARTIAL_ALL_MODULE(sensor)  // All functions
+TEST_PARTIAL_CONFIG(sensor, -Sensor_Init) // Subtract one
+```
+
+#### Test public functions plus one private helper; Mock selected private functions
+
+```c
+#include "ceedling.h"
+
+// Test: start with all public functions, add one private function
+#include TEST_PARTIAL_PUBLIC_MODULE(sensor)
+TEST_PARTIAL_CONFIG(sensor, _ConvertRaw)
+
+// Mock: Start with no functions, add a private function
+#include MOCK_PARTIAL_MODULE(sensor)
+MOCK_PARTIAL_CONFIG(sensor, _ReadIOValue)
+```
+
+## Accessing Static Variables with Partials
+
+### File-Scoped Static Variables
+
+A file-scoped `static` variable is declared at the top level of a `.c` file
+with the `static` keyword. Like a `static` function, it has _internal linkage_ 
+-- the linker cannot see it outside the translation unit in which it is defined.
+This means test code in a separate translation unit cannot read or write it,
+making it impossible to inspect state or reset it between test cases without
+modifying the production source.
+
+When Ceedling generates a Partial it automatically copies every file-scoped 
+`static` variable found in the source module into the Partial and strips the 
+`static` keyword. The resulting definition in the generated `_impl.c` file 
+has external linkage. A matching `extern` declaration is emitted in the 
+generated `_impl.h` header. Including any `TEST_PARTIAL_*_MODULE` macro brings 
+that `extern` declaration into scope, causing the variable to accessible in 
+test code directly by its **original name** — no renaming or helper macro is 
+required.
+
+#### Partial file-scoped static variable example
+
+Extending the sensor module with a file-scoped error counter:
+
+```c
+// sensor.c -----------------------------------------------
+static uint32_t g_error_count = 0; // File-scoped; invisible outside sensor.c
+
+int Sensor_ReadCelsius(void)
+{
+    uint16_t raw = HAL_SensorRead();
+    if (raw == 0xFFFF) { // sentinel value signals hardware error
+        g_error_count++;
+        return -1;
+    }
+    return _ConvertRawToMilliCelsius(raw) / 1000;
+}
+```
+
+Ceedling strips `static` when generating the test Partial:
+
+```c
+// ceedling_partial_sensor_impl.c (generated) ---------------
+uint32_t g_error_count = 0; // `static` stripped -- now has external linkage
+// ...
+int Sensor_ReadCelsius(void)
+{
+    uint16_t raw = HAL_SensorRead();
+    if (raw == 0xFFFF) {
+        g_error_count++;
+        return -1;
+    }
+    return _ConvertRawToMilliCelsius(raw) / 1000;
+}
+```
+
+```c
+// ceedling_partial_sensor_impl.h (generated) ---------------
+extern uint32_t g_error_count; // `extern` declaration -- immediately available in test code
+// ...
+```
+
+Because `#include TEST_PARIAL_*_MODULE()` automatically causes the generated
+Partial header file to be included in your test, the `extern`ed variable is
+immediately available to you in your test.
+
+In the test file, the variable is accessed directly by its original name:
+
+```c
+// test_sensor_partial.c -----------------------------------
+#include "unity.h"
+#include "ceedling.h"
+#include "mock_hal.h"
+
+// Brings `extern g_error_count` into scope
+#include TEST_PARTIAL_ALL_MODULE(sensor)
+
+void setUp(void) {
+    g_error_count = 0; // Reset to known state before each test
+}
+
+void test_ReadCelsius_counts_hardware_errors(void)
+{
+    HAL_SensorRead_ExpectAndReturn(0xFFFF); // Simulate hardware error
+    TEST_ASSERT_EQUAL_INT(-1, Sensor_ReadCelsius());
+    // Access the previously inaccessible `g_error_count`
+    TEST_ASSERT_EQUAL_UINT32(1, g_error_count);
+}
+```
+
+### Function-scoped static variables
 
 C allows variables to be declared `static` inside a function body. Unlike a
 local variable, a function-scoped `static` variable persists across calls —
 its storage is allocated once and retains its value for the lifetime of the
-program. This persistence makes these variables useful for things like call
-counters, cached state, and accumulated error totals.
+program. This persistence makes these variables useful for call counters, 
+cached state, accumulated error totals, etc.
 
 In ordinary C, a function-scoped `static` variable is completely inaccessible
 outside its containing function; the C standard does not provide any way to
@@ -357,21 +496,22 @@ When Ceedling generates a Partial, it automatically promotes all function-scoped
 The original declaration inside the function body is replaced with a no-op
 statement so that source line mappings for coverage reporting remain accurate.
 
-### Renaming to prevent collisions
+#### Renaming to prevent collisions
 
 Multiple functions in the same module may each contain a function-scoped
 `static` variable with the same name — for example, both `Foo_Init()` and
 `Foo_Reset()` might each have `static uint32_t call_count = 0;`. Promoting
-both to module scope without renaming would produce a duplicate symbol error.
+both to module scope without renaming would produce a duplicate symbol error
+at compilation.
 
 Ceedling resolves this by prepending a prefix of `partial_` and the containing
-function's name to each promoted variable's name:
+function’s name to each promoted variable’s name:
 
 ```
 partial_<function_name>_<variable_name>
 ```
 
-For example:
+Example renaming:
 
 | Original declaration (inside function) | Containing function | Promoted name |
 |---|---|---|
@@ -385,7 +525,7 @@ implementation header (`ceedling_partial_<module>_impl.h`). Including the
 implementation header via a `TEST_PARTIAL_*_MODULE` macro therefore makes all
 promoted variables available to your test code.
 
-### The `PARTIAL_LOCAL_VAR` macro
+#### Using the `PARTIAL_LOCAL_VAR()` macro to access promoted function-scoped static variables
 
 Typing `partial_Sensor_ReadCelsius_call_count` throughout a test file is
 error-prone. The `PARTIAL_LOCAL_VAR` macro, defined in `ceedling.h`, assembles
@@ -393,23 +533,23 @@ the promoted name from its two components:
 
 ```c
 PARTIAL_LOCAL_VAR(function_name, variable_name)
-// expands to:
-//   partial_##function_name##_##variable_name
+// expands to: partial_<function_name>_<variable_name>
 ```
 
-`PARTIAL_LOCAL_VAR` is not a function call — it expands to a plain C identifier.
-It can appear anywhere a variable name is legal: in expressions, assertions,
-and assignments.
+`PARTIAL_LOCAL_VAR()` is not a function call. The macro expands to a simple 
+C identifier. It can appear anywhere a variable name is legal — in expressions, 
+assertions, and assignments.
 
-### Example
+#### Example use of `PARTIAL_LOCAL_VAR()`
 
-Extending the sensor module from the earlier example:
+Extending the sensor module from earlier examples:
 
 ```c
 // sensor.c -----------------------------------------------
 int Sensor_ReadCelsius(void)
 {
-    static uint32_t sample_count = 0;  // tracks total calls
+    // Function-scoped static variable that tracks total calls
+    static uint32_t sample_count = 0;
     sample_count++;
 
     uint16_t raw = HAL_SensorRead();
@@ -417,8 +557,11 @@ int Sensor_ReadCelsius(void)
 }
 ```
 
-Ceedling promotes `sample_count` to `partial_Sensor_ReadCelsius_sample_count`
-and replaces the declaration inside the function with a no-op:
+Ceedling promotes `sample_count` to `partial_Sensor_ReadCelsius_sample_count`.
+
+In the copy of `Sensor_ReadCelsius()` organized in a generated Partial, 
+Ceedling replaces the variable declaration inside the function with a no-op
+to preserve code coverage line tracking.
 
 ```c
 // ceedling_partial_sensor_impl.c (generated) ---------------
@@ -432,6 +575,8 @@ int Sensor_ReadCelsius(void)
     return _ConvertRawToMilliCelsius(raw) / 1000;
 }
 ```
+Ceedling simultaneously organizes an `extern` statement in the generated 
+Partial header file.
 
 ```c
 // ceedling_partial_sensor_impl.h (generated) ---------------
@@ -440,23 +585,24 @@ extern uint32_t partial_Sensor_ReadCelsius_sample_count;
 // ...
 ```
 
-In the test file, `PARTIAL_LOCAL_VAR` makes the variable accessible for both
+Because `#include TEST_PARIAL_*_MODULE()` automatically causes the generated
+Partial header file to be included in your test, the promoted, renamed, and
+`extern`ed variable is immediately available to you in your test.
+
+In your test file, `PARTIAL_LOCAL_VAR()` makes the variable accessible for both
 reset and assertion:
 
 ```c
 // test_sensor_partial.c -----------------------------------
 #include "unity.h"
 #include "ceedling.h"
-#include TEST_PARTIAL_PRIVATE_MODULE("sensor")
-#include MOCK_PARTIAL_PUBLIC_MODULE("sensor")
+#include TEST_PARTIAL_PRIVATE_MODULE(sensor)
 
 void setUp(void)
 {
     // Reset promoted static back to its initial value before each test
     PARTIAL_LOCAL_VAR(Sensor_ReadCelsius, sample_count) = 0;
 }
-
-void tearDown(void) {}
 
 void test_ReadCelsius_increments_sample_count_on_each_call(void)
 {
@@ -470,7 +616,7 @@ void test_ReadCelsius_increments_sample_count_on_each_call(void)
 }
 ```
 
-### What `PARTIAL_LOCAL_VAR` cannot do
+#### What `PARTIAL_LOCAL_VAR()` cannot do
 
 `PARTIAL_LOCAL_VAR` is a token-pasting macro — it constructs a C identifier at
 compile time. It cannot be used with a runtime string or a variable holding a
