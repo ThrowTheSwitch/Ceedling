@@ -307,19 +307,19 @@ This scheme gives you the, test author, full control of which functions
 are injected into which type of Partial while avoiding laboriously
 listing each function individually.
 
-#### Partials base function filters (`[TEST/MOCK]_PARTIAL_*_MODULE`)
+#### Partials base function filters
 
 | Macro | Base set of functions | Additions | Subtractions |
 |---|---|---|---|
-| `*_PARTIAL_PUBLIC_MODULE(mod)` | All public functions | Add private | Remove public |
-| `*_PARTIAL_PRIVATE_MODULE(mod)` | All private functions | Add public | Remove private |
-| `*_PARTIAL_MODULE(mod)` | Empty | Any function (at least one) | Forbidden |
-| `*_PARTIAL_ALL_MODULE(mod)` | All functions | Forbidden | Any function |
+| `[TEST/MOCK]_PARTIAL_PUBLIC_MODULE(mod)` | All public functions | Add private | Remove public |
+| `[TEST/MOCK]_PARTIAL_PRIVATE_MODULE(mod)` | All private functions | Add public | Remove private |
+| `[TEST/MOCK]_PARTIAL_MODULE(mod)` | Empty | Any function (at least one) | Forbidden |
+| `[TEST/MOCK]_PARTIAL_ALL_MODULE(mod)` | All functions | Forbidden | Any function |
 
 **Notes:**
 * `*_PARTIAL_MODULE` requires at least one addition via `*_PARTIAL_CONFIG` 
   (see next section).
-* `*_PARTIAL_ALL_MODULE`with no subtractions adds every module function to
+* `*_PARTIAL_ALL_MODULE` with no subtractions adds every module function to
   base set of functions.
 * Each module can appear in **at most one** `TEST_PARTIAL_*_MODULE` and 
   `MOCK_PARTIAL_*_MODULE` macro within a given test file.
@@ -350,10 +350,10 @@ sections, each function name argument is treated as an **addition** or a
 
 | Macro | Filter | Subtraction target | Addition target |
 |---|---|---|---|
-| `*_PARTIAL_PUBLIC_MODULE` | Public | Public functions only | Private functions |
-| `*_PARTIAL_PRIVATE_MODULE` | Private | Private functions only | Public functions |
-| `*_PARTIAL_MODULE` | Accumulate | Forbidden | Any function (one required) |
-| `*_PARTIAL_ALL_MODULE` | Deduct | Any function | Forbidden |
+| `[TEST/MOCK]_PARTIAL_PUBLIC_MODULE` | Public | Public functions only | Private functions |
+| `[TEST/MOCK]_PARTIAL_PRIVATE_MODULE` | Private | Private functions only | Public functions |
+| `[TEST/MOCK]_PARTIAL_MODULE` | Accumulate | Forbidden | Any function (one required) |
+| `[TEST/MOCK]_PARTIAL_ALL_MODULE` | Deduct | Any function | Forbidden |
 
 ### Cross-side `TEST_` / `MOCK_` Partials exclusion
 
