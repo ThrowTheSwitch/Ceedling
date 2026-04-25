@@ -1,8 +1,8 @@
 # Partials
 
-A _Partial_ is your C code under test sliced and diced to expose functional
-elements for testing that you could not otherwise access without rewriting
-your source code.
+A _Partial_ is your C code sliced and diced to expose functional elements 
+for testing that you could not otherwise access without rewriting your 
+source code. Think of Partials as a scalpel for testing your code.
 
 Partials are useful when a module under test contains:
 
@@ -271,24 +271,29 @@ generated header file. This means you use them as the argument to `#include`:
 // Must come first -- defines all Partial macros
 #include "ceedling.h"
 
-**_NOTE:_** In practice, you as the test author will never directly interact
-with the generated Partials C files. Do not reference them or modify them.
-These examples and explanation are solely for education and awareness.
-
 #include TEST_PARTIAL_*_MODULE(sensor)
 //  ↑ expands to: #include "ceedling_partial_sensor_impl.h"
+```
 
 A `TEST_PARTIAL_*_MODULE` macro always names an implementation header.
+
+```c
+#include "ceedling.h"
 
 #include MOCK_PARTIAL_*_MODULE(sensor)
 //  ↑ expands to: #include "mock_ceedling_partial_sensor_interface.h"
 ```
 
-A `MOCK_PARTIAL_*_MODULE` macro always names a mockable header.
+A `MOCK_PARTIAL_*_MODULE` macro always names a mockable interface header.
 
-The filters in place of `*` — `PUBLIC`, `PRIVATE`, `ALL`, and none — tell 
-Ceedling how to initialize internal function lists (that can be optionally 
-modified) towards injecting the collected functions into each Partial. 
+**_NOTE:_** In practice, you as the test author will never directly interact
+with the generated Partials C files. Do not reference them or modify them.
+These examples and explanation are solely for education and awareness.
+
+The filters in place of `*` in the macro names — `PUBLIC`, `PRIVATE`, `ALL`, 
+and none — tell Ceedling how to initialize internal function lists (that 
+can be optionally modified) towards injecting the collected functions into 
+each Partial. 
 
 ### Partials function-selection by macro
 
