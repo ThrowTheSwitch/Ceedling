@@ -21,23 +21,25 @@ Partials are useful when a module under test contains:
 Ceedling reads your real source and header files, extracts their C contents,
 and generates new C files that comprise a Partial:
 
-| Generated file | Role | Default filename pattern |
-|---|---|---|
-| **Partial implementation** header | Declares selected testable functions and `extern`s file-scope variables stripped of `static` | `ceedling_partial_<module>_impl.h` |
-| **Partial implementation** source | Defines selected testable functions and variables stripped of `static` | `ceedling_partial_<module>_impl.c` |
-| **Partial interface** header | Declares selected mockable function signatures | `ceedling_partial_<module>_interface.h` |
-
 When creating a Partial, Ceedling:
 
 1. Extracts your source code under test into a set of new C files in a special
    build directory.
 1. Reorganizes and slightly alters your code so it can be accessed by your test.
+   Functions are stripped of `static` and `inline`. Variables are stripped of
+   `static`.
 1. Structures the test build to omit the original source file from the 
    resulting test executable. Generated Partials are self-sufficient stand-ins 
    for the original C code from which the Partials are derived.
 1. Maps the reorganized functions in generated Partials back to the 
    original source module’s filepath and line numbers (using GCC’s `#line` 
    directive) for correct test coverage reporting.
+
+| Generated file | Role | Default filename pattern |
+|---|---|---|
+| **Partial implementation** header | Declares testable functions and `extern`s file-scope variables | `ceedling_partial_<module>_impl.h` |
+| **Partial implementation** source | Defines testable functions and `static`-less variables | `ceedling_partial_<module>_impl.c` |
+| **Partial interface** header | Declares mockable function signatures | `ceedling_partial_<module>_interface.h` |
 
 These generated Partials files `#include` the same header files as the 
 original files from which they are generated. They also contain all macros,
@@ -100,7 +102,7 @@ files for the different Partials usage scenarios.
 ```c
 // test_sensor_partials_test.c -----------------------------------
 #include "unity.h"
-#include "ceedling.h" // Required: defines Partial directive macros
+#include "ceedling.h" // Required -- defines Partial directive macros
 #include "mock_hal.h" // Traditional mocking still available
 
 // Make all functions in the sensor module available for direct testing
@@ -113,7 +115,7 @@ void test_ConvertRawToMilliCelsius(void)
     TEST_ASSERT_EQUAL_INT(-40000, _ConvertRawToMilliCelsius(0));
 }
 ```
-### Ceedling‘s Partials handling for testable `static` functions
+### Ceedling‘s Partials handling for "sensor" module functions
 
 1. Reads `sensor.c` and `sensor.h` and extracts all function definitions.
 1. `TEST_PARTIAL_ALL_MODULE()` instructs Partial generation to gather and 
@@ -130,7 +132,7 @@ void test_ConvertRawToMilliCelsius(void)
 ```c
 // test_sensor_partials_mocks.c -----------------------------------
 #include "unity.h"
-#include "ceedling.h" // Required: defines Partial directive macros
+#include "ceedling.h" // Required -- defines Partial directive macros
 #include "mock_hal.h" // Traditional mocking still available
 
 // Create two complementary Partials:
@@ -160,7 +162,7 @@ void test_Sensor_ReadCelsius(void)
 }
 ```
 
-### Ceedling‘s Partials handling for mockable `static` functions
+### Ceedling‘s Partials handling for mockable "sensor" module functions
 
 1. Reads `sensor.c` and `sensor.h`, extracts all function definitions.
 1. Classifies `_ConvertRawToMilliCelsius` as **private** (from the `static`
@@ -237,7 +239,7 @@ documented in detail in the
 
 ## Partial Directive Macros
 
-All Partial configuration is expressed through C preprocessor macros directly
+All Partial configuration is expressed through C macros placed
 in your test file. No separate configuration file is required. The macros
 require `#include "ceedling.h"` in the test file.
 
@@ -245,6 +247,20 @@ The Partial `_MODULE` macros accomplish the following:
 
 1. Expand to a filename for the preceding `#include` directive.
 1. Provide a module name for Ceedling to process for the resulting Partial.
+1. Assemble a gross, base set of functions to test or mock.
+
+The optional Partial `_CONFIG` macros modify the base set of functions 
+from (3).
+
+Example:
+
+```c
+#include "ceedling.h"
+
+// Mock all `static` and/or `inline` functions of "mymodule" except `InternalHelper()`
+#include MOCK_PARTIAL_PRIVATE_MODULE(mymodule)
+MOCK_PARTIAL_CONFIG(mymodule, -_InternalHelper)
+```
 
 ### `#include` conventions for Partial macros
 
@@ -288,12 +304,12 @@ listing each function individually.
 
 #### Partials base function filters (`[TEST/MOCK]_PARTIAL_*_MODULE`)
 
-| Macro | Mode | Base set of functions | Additions | Subtractions |
-|---|---|---|---|---|
-| `*_PARTIAL_PUBLIC_MODULE(mod)` | PUBLIC | All public functions | Add private | Remove public |
-| `*_PARTIAL_PRIVATE_MODULE(mod)` | PRIVATE | All private functions | Add public | Remove private |
-| `*_PARTIAL_MODULE(mod)` | ACCUMULATE | Empty | Required -- Any function | Forbidden |
-| `*_PARTIAL_ALL_MODULE(mod)` | DEDUCT | All functions | Forbidden | Any function |
+| Macro | Base set of functions | Additions | Subtractions |
+|---|---|---|---|
+| `*_PARTIAL_PUBLIC_MODULE(mod)` | All public functions | Add private | Remove public |
+| `*_PARTIAL_PRIVATE_MODULE(mod)` | All private functions | Add public | Remove private |
+| `*_PARTIAL_MODULE(mod)` | Empty | Any function (at least one) | Forbidden |
+| `*_PARTIAL_ALL_MODULE(mod)` | All functions | Forbidden | Any function |
 
 **Notes:**
 * `*_PARTIAL_MODULE` requires at least one addition via `*_PARTIAL_CONFIG` 
@@ -322,8 +338,8 @@ sections, each function name argument is treated as an **addition** or a
 
 | Prefix | Meaning |
 |---|---|
-| _(none)_ or `+` | Addition — add this function to the Partial (`+func`) |
-| `-` | Subtraction — exclude this function from the Partial (`-func`) |
+| _(none)_ or `+` | Add this function to the Partial (`+<function>`) |
+| `-` | Exclude this function from the Partial (`-<function>`) |
 
 **Addition & subtraction rules by mode:**
 
