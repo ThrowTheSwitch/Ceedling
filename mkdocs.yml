@@ -5,6 +5,8 @@ site_url: https://throwtheswitch.github.io/Ceedling/
 repo_url: https://github.com/ThrowTheSwitch/Ceedling
 repo_name: ThrowTheSwitch/Ceedling
 
+docs_dir: docs/mkdocs/
+
 # Footer copyright notice
 copyright: >-
   &copy; 2010-2026 M. Karlesky, M. VanderVoord, and G. Williams &mdash;
@@ -61,19 +63,6 @@ markdown_extensions:
 # maintained separately from the versioned documentation bundle.
 exclude_docs: |
   snapshot.yml
-  CeedlingPacket.md
-  CeedlingUpgrade.md
-  ReleaseNotes.md
-  BreakingChanges.md
-  Changelog.md
-  CONTRIBUTING.md
-  CODE_OF_CONDUCT.md
-  SECURITY.md
-  ThrowTheSwitchCodingStandard.md
-  CeedlingPullRequestChecklist.md
-  Ceedling Basic Porting.pdf
-  Ceedling Managing Release Code.pdf
-  Ceedling Working with IDEs.pdf
 
 # Site navigation tree
 nav:

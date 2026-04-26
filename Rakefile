@@ -62,10 +62,10 @@ namespace :docs do
 
   desc "Snapshot versioned project files into docs/snapshot/ for documentation"
   task :snapshot do
-    snapshot_dir = 'docs/snapshot/'
+    snapshot_dir = 'docs/mkdocs/snapshot/'
     # Ensure the snapshot directory is empty before writing new files (to clear out anything stale)
     FileUtils.rm_rf(snapshot_dir)
-    ruby "lib/snapshot.rb", "docs/snapshot.yml", snapshot_dir
+    ruby "lib/snapshot.rb", "docs/mkdocs/snapshot.yml", snapshot_dir
   end
 
   namespace :build do
