@@ -235,7 +235,7 @@ restricting decorator and ordinary external linkage.
 This public/private distinction is one set of filters for assembling a list
 of functions each `_MODULE` macro selects. The filtering and collection is 
 documented in detail in the 
-[Function-selection modes](#function-selection-modes) section below.
+[Partials function-selection by macro](#partials-function-selection-by-macro) section below.
 
 ## Partial Directive Macros
 

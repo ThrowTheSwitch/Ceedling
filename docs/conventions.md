@@ -7,7 +7,7 @@
 Much of Ceedling's functionality is driven by collecting files
 matching certain patterns inside the paths it's configured
 to search. See the documentation for the `:extension` section
-of your configuration file (found in the [configuration reference](configuration-reference.md)) to
+of your configuration file (found in the [configuration reference](configuration/index.md)) to
 configure the file extensions Ceedling uses to match and collect
 files. Test file naming is covered later in this section.
 
@@ -35,7 +35,7 @@ and function declarations.
 
 Ceedling provides two mechanisms for configuring search paths:
 
-1. The [`:paths` ↳ `:include`](configuration-reference.md#paths--include) section within your 
+1. The [`:paths` ↳ `:include`](configuration/reference/paths.md) section within your 
    project file (or mixin files).
 1. The [`TEST_INCLUDE_PATH(...)`](build-directives.md#test_include_path) build directive 
    macro. This is only available within test files.
@@ -117,7 +117,7 @@ directories. At present only source files with a single (configurable)
 extension are recognized. That is, `*.c` and `*.cc` files will not
 both be recognized - only one or the other. See the configuration
 options and defaults in the documentation for the `:extension`
-sections of your configuration file (found in the [configuration reference](configuration-reference.md)).
+sections of your configuration file (found in the [configuration reference](configuration/index.md)).
 
 ## Conventions for Test Files & Executable Test Fixtures
 
@@ -130,7 +130,7 @@ Ceedling recognizes test files by a naming convention — a (configurable)
 prefix such as "`test_`" at the beginning of the file name with the same 
 file extension as used by your C source files. See the configuration options
 and defaults in the documentation for the `:project` and `:extension`
-sections of your configuration file (found in the [configuration reference](configuration-reference.md)).
+sections of your configuration file (found in the [configuration reference](configuration/index.md)).
 
 Depending on your configuration options, Ceedling can recognize
 a variety of test file naming patterns in your test search paths.
@@ -230,7 +230,7 @@ not be redefined for other toolchains. It is highly unlikely to work for you.
 Future Ceedling improvements will allow for a plugin-style ability to use your 
 own tools in this highly specialized capacity.**
 
-[project-settings]: configuration-reference.md#project-global-project-settings
+[project-settings]: configuration/reference/project.md
 
 ### Ceedling preprocessing limitations and gotchas
 
@@ -524,7 +524,7 @@ These features have been temporarily disabled and/or removed for
 test suites and remain in limited form for release build while
 Ceedling undergoes a major overhaul.
 
-Please see the [Release Notes](ReleaseNotes.md).
+Please see the [Release Notes](https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/ReleaseNotes.md).
 
 ### Notes on (Not So) Smart Rebuids
 
@@ -543,7 +543,7 @@ Ceedling requires a top-level build directory for all the stuff
 that it, the accompanying test tools, and your toolchain generate.
 That build directory's location is configured in the top-level 
 `:project` section of your configuration file (discussed in the
-[configuration reference](configuration-reference.md)). There
+[configuration reference](configuration/index.md)). There
 can be a ton of generated files. By and large, you can live a full
 and meaningful life knowing absolutely nothing at all about
 the files and directories generated below the root build directory.

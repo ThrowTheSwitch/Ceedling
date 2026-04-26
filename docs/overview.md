@@ -57,7 +57,7 @@ reporting, build artifact packaging, and much more. A variety of
 built-in plugins come with Ceedling.
 
 [example-config-file]: snapshot/assets/project.yml
-[project-configuration]: configuration-reference.md
+[project-configuration]: configuration/index.md
 
 ## What's with This Name?
 

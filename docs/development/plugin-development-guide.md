@@ -13,7 +13,7 @@ Ceedling plugins or by simply searching for code examples online.
 ## Contents
 
 * [Custom Plugins Overview](#custom-plugins-overview)
-* [Plugin Conventions & Architecture](#plugin-conventions--architecture)
+* [Plugin Conventions & Architecture](#plugin-conventions-architecture)
    1. [Configuration Plugin](#plugin-option-1-configuration)
    1. [Programmatic `Plugin` subclass](#plugin-option-2-plugin-subclass)
    1. [Rake Tasks Plugin](#plugin-option-3-rake-tasks)
@@ -50,9 +50,9 @@ reporting.
 See the [`:plugins` configuration reference][plugins-config] for details of operation
 and the [plugins overview][plugins-directory] for a directory of built-in plugins.
 
-[plugins-config]: ../configuration-reference.md#plugins-ceedling-extensions
+[plugins-config]: ../configuration/reference/plugins.md
 [plugins-directory]: ../plugins/index.md#ceedlings-built-in-plugins-a-directory
-[string-expansion]: ../configuration-reference.md#inline-ruby-string-expansion
+[string-expansion]: ../configuration/project-file.md#inline-ruby-string-expansion
 [preprocessing]: ../conventions.md#ceedling-preprocessing-behavior-for-your-tests
 
 # Plugin Conventions & Architecture

@@ -17,7 +17,7 @@ summaries printed to the console after a `gcov:` test task is executed.
 This document details configuration, reporting options, and provides basic
 [troubleshooting help][troubleshooting].
 
-[troubleshooting]: #advanced-configuration--troubleshooting
+[troubleshooting]: #advanced-configuration-troubleshooting
 
 # Simple Coverage Summaries
 

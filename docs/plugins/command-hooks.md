@@ -156,7 +156,7 @@ The parameter available to a tool (`${1}`) when the hook is called is the filepa
 
 See _[CeedlingPacket][ceedling-packet]_ for details on how Ceedling preprocessing operates.
 
-[ceedling-packet]: ../configuration-reference.md
+[ceedling-packet]: ../configuration/index.md
 
 ## `:post_mock_preprocess`
 

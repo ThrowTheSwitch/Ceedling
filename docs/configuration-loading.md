@@ -427,6 +427,6 @@ Relating the above example to command line `--mixin` flag handling:
   last in the mixin precedence.
 
 [YAML]: http://en.wikipedia.org/wiki/Yaml
-[inline-ruby-string-expansion]: configuration-reference.md#inline-ruby-string-expansion
+[inline-ruby-string-expansion]: configuration/project-file.md#inline-ruby-string-expansion
 
 <br/>

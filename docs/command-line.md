@@ -1,4 +1,6 @@
-# Now What? How Do I Make It _GO_? The Command Line.
+# Ceedling’s Command Line
+
+Now what? How do I make it _Go_?
 
 We're getting a little ahead of ourselves here, but it's good
 context on how to drive this bus. Everything is done via the command

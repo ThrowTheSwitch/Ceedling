@@ -131,7 +131,7 @@ YAML configuration (Ceedling also uses CMock's configuration, though).
 See the documentation for the top-level [`:cmock`][cmock-yaml-config] 
 section within Ceedling's project file.
 
-[cmock-yaml-config]: configuration-reference.md#cmock-configure-cmocks-code-generation--compilation
+[cmock-yaml-config]: configuration/reference/cmock.md
 
 Like Unity and CException, CMock's C components are configured at 
 compilation with symbols managed in your Ceedling project file's 
