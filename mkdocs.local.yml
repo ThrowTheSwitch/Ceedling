@@ -1,0 +1,11 @@
+INHERIT: mkdocs.yml
+
+use_directory_urls: false
+site_dir: site-local
+# Blank — prevents absolute URLs being baked in that point back to the live site.
+site_url: ''
+
+plugins:
+  # Disable client-side search.
+  # Browser security restrictions prevent loading the search index from the local filesystem.
+  search: null

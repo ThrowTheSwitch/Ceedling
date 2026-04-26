@@ -16,6 +16,9 @@ plugins/dependencies/example/boss/build/
 plugins/dependencies/example/boss/third_party/
 plugins/dependencies/example/supervisor/build/
 
+site/
+site-local/
+
 ceedling.sublime-project
 ceedling.sublime-workspace
 ceedling-*.gem

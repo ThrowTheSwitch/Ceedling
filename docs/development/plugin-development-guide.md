@@ -20,7 +20,7 @@ Ceedling plugins or by simply searching for code examples online.
 
 ## Development Roadmap & Notes
 
-(See Ceedling's _[release notes](ReleaseNotes.md)_ for more.)
+(See Ceedling's _[release notes](https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/ReleaseNotes.md)_ for more.)
 
 * Ceedling 1.0 marks the beginning of moving all of Ceedling away from relying
   on Rake. New, Rake-based plugins should not be developed. Rake dependencies
@@ -47,11 +47,13 @@ Plugins provide the ability to customize the behavior of Ceedling at various
 stages of a build — preprocessing, compiling, linking, building, testing, and
 reporting.
 
-See _[CeedlingPacket]_ for basic details of operation (`:plugins` configuration
-section) and for a [directory of built-in plugins][plugins-directory].
+See the [`:plugins` configuration reference][plugins-config] for details of operation
+and the [plugins overview][plugins-directory] for a directory of built-in plugins.
 
-[CeedlingPacket]: CeedlingPacket.md
-[plugins-directory]: CeedlingPacket.md#ceedlings-built-in-plugins-a-directory
+[plugins-config]: ../configuration-reference.md#plugins-ceedling-extensions
+[plugins-directory]: ../plugins/index.md#ceedlings-built-in-plugins-a-directory
+[string-expansion]: ../configuration-reference.md#inline-ruby-string-expansion
+[preprocessing]: ../conventions.md#ceedling-preprocessing-behavior-for-your-tests
 
 # Plugin Conventions & Architecture
 
@@ -188,7 +190,7 @@ already set at the time the plugin attempts to set it, it will not be
 redefined.
 
 YAML values are static apart from Ceedling's ability to perform string
-substitution at configuration load time (see _[CeedlingPacket]_ for more).
+substitution at configuration load time (see the [configuration reference][string-expansion] for more).
 Programmatic Ruby defaults (next section) are more flexible but more
 complicated.
 
@@ -232,7 +234,7 @@ already set at the time the plugin attempts to set it, it will not be
 redefined.
 
 YAML values are static apart from Ceedling's ability to perform string
-substitution at configuration load time (see _[CeedlingPacket]_ for more).
+substitution at configuration load time (see the [configuration reference][string-expansion] for more).
 Programmatic Ruby defaults (next section) are more flexible but more
 complicated.
 
@@ -378,7 +380,7 @@ pipeline with toolchains other than GCC.
 ## `Plugin` hook methods `pre_mock_preprocess(arg_hash)` and `post_mock_preprocess(arg_hash)`
 
 These methods are called before and after execution of preprocessing for header
-files to be mocked (see [CeedlingPacket] to understand preprocessing). If a
+files to be mocked (see [Conventions & Behaviors][preprocessing] for preprocessing details). If a
 project does not enable preprocessing or a build does not include tests, these
 are not called. This pair of methods is called a number of times equal to the
 number of mocks in a test build.
@@ -405,7 +407,7 @@ arg_hash = {
 ## `Plugin` hook methods `pre_test_preprocess(arg_hash)` and `post_test_preprocess(arg_hash)`
 
 These methods are called before and after execution of test file preprocessing
-(see [CeedlingPacket] to understand preprocessing). If a project does not
+(see [Conventions & Behaviors][preprocessing] for preprocessing details). If a project does not
 enable preprocessing or a build does not include tests, these are not called.
 This pair of methods is called a number of times equal to the number of test
 files in a test build.
@@ -487,7 +489,7 @@ The argument `arg_hash` follows the structure below:
 ```ruby
 arg_hash = {
   :tool => {
-    # Hash holding compiler tool elements (see CeedlingPacket)
+    # Hash holding compiler tool properties — see ':tools' in the Project Configuration Reference
   },
   # Symbol of the operation being performed, e.g. :compile, :assemble or :link
   :operation => :<operation>,
@@ -525,7 +527,7 @@ The argument `arg_hash` follows the structure below:
 arg_hash = {
   # Hash holding linker tool properties.
   :tool => {
-    # Hash holding compiler tool elements (see CeedlingPacket)
+    # Hash holding compiler tool properties — see ':tools' in the Project Configuration Reference
   },
   # Additional context passed by the calling function.
   # Ceedling provides :test or :release by default while plugins may provide another.
@@ -558,7 +560,7 @@ The argument `arg_hash` follows the structure below:
 arg_hash = {
   # Hash holding execution tool properties.
   :tool => {
-    # Hash holding compiler tool elements (see CeedlingPacket)
+    # Hash holding compiler tool properties — see ':tools' in the Project Configuration Reference
   },
   # Additional context passed by the calling function.
   # Ceedling provides :test or :release by default while plugins may provide another.

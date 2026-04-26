@@ -1,0 +1,90 @@
+site_name: Ceedling
+site_description: Test-Centered Build System for C
+site_url: https://throwtheswitch.github.io/Ceedling/
+repo_url: https://github.com/ThrowTheSwitch/Ceedling
+repo_name: ThrowTheSwitch/Ceedling
+
+theme:
+  name: material
+  palette:
+    - scheme: default 
+      primary: green
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+extra:
+  version:
+    provider: mike
+    default: latest
+
+plugins:
+  - search
+  - mike:
+      alias_type: symlink
+      canonical_version: latest
+
+# Exclude files intentionally kept in docs/ but not part of the generated site.
+# These are standalone reference documents, developer files, PDFs, or historical records
+# maintained separately from the versioned documentation bundle.
+exclude_docs: |
+  snapshot.yml
+  CeedlingPacket.md
+  CeedlingUpgrade.md
+  ReleaseNotes.md
+  BreakingChanges.md
+  Changelog.md
+  CONTRIBUTING.md
+  CODE_OF_CONDUCT.md
+  SECURITY.md
+  ThrowTheSwitchCodingStandard.md
+  CeedlingPullRequestChecklist.md
+  Ceedling Basic Porting.pdf
+  Ceedling Managing Release Code.pdf
+  Ceedling Working with IDEs.pdf
+
+nav:
+  - Home: index.md
+  - Overview: overview.md
+  - Getting Started:
+    - Installation: installation.md
+    - Command Line: command-line.md
+  - Testing Guide:
+    - Tests & Test Suites: test-guide.md
+    - Conventions & Behaviors: conventions.md
+    - Unity, CMock & CException: frameworks.md
+    - Build Directive Macros: build-directives.md
+    - Partials: partials.md
+  - Configuration:
+    - Loading Configuration: configuration-loading.md
+    - Project Configuration Reference: configuration-reference.md
+    - Which Ceedling: which-ceedling.md
+    - Global Collections: global-collections.md
+  - Plugins:
+    - Overview: plugins/index.md
+    - GCov (Coverage): plugins/gcov.md
+    - FFF (Fake Functions): plugins/fff.md
+    - Command Hooks: plugins/command-hooks.md
+    - Module Generator: plugins/module-generator.md
+    - Dependencies: plugins/dependencies.md
+    - Subprojects: plugins/subprojects.md
+    - Bullseye (Coverage): plugins/bullseye.md
+    - Test Report — Pretty: plugins/report-tests-pretty-stdout.md
+    - Test Report — IDE: plugins/report-tests-ide-stdout.md
+    - Test Report — TeamCity: plugins/report-tests-teamcity-stdout.md
+    - Test Report — GTest-like: plugins/report-tests-gtestlike-stdout.md
+    - Test Report Log Factory: plugins/report-tests-log-factory.md
+    - Test Report — Raw Output: plugins/report-tests-raw-output-log.md
+    - Build Warnings Log: plugins/report-build-warnings-log.md
+    - Compile Commands JSON DB: plugins/compile-commands-json-db.md
+    - Beep: plugins/beep.md
+  - Release History:
+    - History Documents: project/release-history.md
+    - Upgrading: project/upgrade.md
+  - Ceedling Development:
+    - Plugin Development Guide: development/plugin-development-guide.md

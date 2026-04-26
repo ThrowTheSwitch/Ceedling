@@ -8,6 +8,7 @@
 
 require 'bundler'
 require 'rspec/core/rake_task'
+require 'fileutils'
 
 desc "Run all specs"
 RSpec::Core::RakeTask.new('specs:all') do |t|
@@ -52,3 +53,45 @@ end
 
 task :default => ['specs:all']
 task :ci => ['specs:all']
+
+namespace :docs do
+  desc "Install Python documentation tooling (mkdocs-material, mike)"
+  task :install do
+    sh "pip3 install --break-system-packages -r requirements-docs.txt"
+  end
+
+  desc "Snapshot versioned project files into docs/snapshot/ for documentation"
+  task :snapshot do
+    snapshot_dir = 'docs/snapshot/'
+    # Ensure the snapshot directory is empty before writing new files (to clear out anything stale)
+    FileUtils.rm_rf(snapshot_dir)
+    ruby "lib/snapshot.rb", "docs/snapshot.yml", snapshot_dir
+  end
+
+  namespace :build do
+    desc "Build deployable documentation site in strict mode — fails on broken links or warnings"
+    task :deploy => [:snapshot] do
+      sh "mkdocs build --strict"
+    end
+
+    desc "Build local documentation site in strict mode — fails on broken links or warnings"
+    task :local => [:snapshot] do
+      sh "mkdocs build -f mkdocs.local.yml --strict"
+    end
+  end
+
+  desc "Serve documentation site locally on port 8000"
+  task :serve do
+    sh "mkdocs serve"
+  end
+
+  desc "Browse versioned documentation site locally on port 8000"
+  task :preview do
+    sh "mike serve"
+  end
+
+  desc "Deploy 'dev' version to local gh-pages branch (no remote push)"
+  task :deploy do
+    sh "mike deploy dev"
+  end
+end
