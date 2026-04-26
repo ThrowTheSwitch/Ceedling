@@ -7,7 +7,7 @@
 Much of Ceedling's functionality is driven by collecting files
 matching certain patterns inside the paths it's configured
 to search. See the documentation for the `:extension` section
-of your configuration file (found in the [configuration reference](configuration/index.md)) to
+of your configuration file (found in the [configuration reference](../configuration/index.md)) to
 configure the file extensions Ceedling uses to match and collect
 files. Test file naming is covered later in this section.
 
@@ -35,7 +35,7 @@ and function declarations.
 
 Ceedling provides two mechanisms for configuring search paths:
 
-1. The [`:paths` ↳ `:include`](configuration/reference/paths.md) section within your 
+1. The [`:paths` ↳ `:include`](../configuration/reference/paths.md) section within your 
    project file (or mixin files).
 1. The [`TEST_INCLUDE_PATH(...)`](build-directives.md#test_include_path) build directive 
    macro. This is only available within test files.
@@ -117,7 +117,7 @@ directories. At present only source files with a single (configurable)
 extension are recognized. That is, `*.c` and `*.cc` files will not
 both be recognized - only one or the other. See the configuration
 options and defaults in the documentation for the `:extension`
-sections of your configuration file (found in the [configuration reference](configuration/index.md)).
+sections of your configuration file (found in the [configuration reference](../configuration/index.md)).
 
 ## Conventions for Test Files & Executable Test Fixtures
 
@@ -130,7 +130,7 @@ Ceedling recognizes test files by a naming convention — a (configurable)
 prefix such as "`test_`" at the beginning of the file name with the same 
 file extension as used by your C source files. See the configuration options
 and defaults in the documentation for the `:project` and `:extension`
-sections of your configuration file (found in the [configuration reference](configuration/index.md)).
+sections of your configuration file (found in the [configuration reference](../configuration/index.md)).
 
 Depending on your configuration options, Ceedling can recognize
 a variety of test file naming patterns in your test search paths.
@@ -230,7 +230,7 @@ not be redefined for other toolchains. It is highly unlikely to work for you.
 Future Ceedling improvements will allow for a plugin-style ability to use your 
 own tools in this highly specialized capacity.**
 
-[project-settings]: configuration/reference/project.md
+[project-settings]: ../configuration/reference/project.md
 
 ### Ceedling preprocessing limitations and gotchas
 
@@ -462,7 +462,7 @@ Ceedling operations completed in 1.03 seconds
 ### Ceedling test suite and Unity test executable run durations
 
 A test suite comprises one or more Unity test executables (see 
-[Anatomy of a Test Suite](test-guide.md#anatomy-of-a-test-suite)). Ceedling times indvidual Unity 
+[Anatomy of a Test Suite](test-suite-anatomy.md)). Ceedling times indvidual Unity 
 test executable run durations. It also sums these into a total test suite 
 execution time. These duration values are typically used in generating test 
 reports via plugins.
@@ -543,7 +543,7 @@ Ceedling requires a top-level build directory for all the stuff
 that it, the accompanying test tools, and your toolchain generate.
 That build directory's location is configured in the top-level 
 `:project` section of your configuration file (discussed in the
-[configuration reference](configuration/index.md)). There
+[configuration reference](../configuration/index.md)). There
 can be a ton of generated files. By and large, you can live a full
 and meaningful life knowing absolutely nothing at all about
 the files and directories generated below the root build directory.
@@ -613,7 +613,7 @@ could have a successful build but failing tests.
 ### Notes on Unity Test Executable Exit Codes
 
 Ceedling works by collecting multiple Unity test executables together 
-into a test suite (more here: [Anatomy of a Test Suite](test-guide.md#anatomy-of-a-test-suite)).
+into a test suite (more here: [Anatomy of a Test Suite](test-suite-anatomy.md)).
 
 A Unity test executable's exit code is the number of failed tests. An
 exit code of `0` means all tests passed while anything larger than zero

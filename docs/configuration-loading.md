@@ -161,7 +161,7 @@ _**Note:**_ That second bullet can have a significant impact on how your
 various project configuration paths — including those used for header 
 search paths — are ordered. In brief, the contents of your `:paths` 
 from your base configuration will come first followed by any additions
-from your mixins. See the section [Search Paths for Test Builds](conventions.md#search-paths-for-test-builds)
+from your mixins. See the section [Search Paths for Test Builds](testing-guide/conventions.md#search-paths-for-test-builds)
 for more.
 
 ## Mixins Example: Our Example Scenario

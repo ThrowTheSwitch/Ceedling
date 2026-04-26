@@ -50,21 +50,21 @@
 
 <div class="grid cards" markdown>
 
--   **[How Does a Test Case Even Work?][test-guide]**
+-   **[How Does a Test Case Even Work?][test-cases]**
 
     ---
 
     A brief overview of what a test case is with simple examples illustrating
     how test cases work.
 
--   **[Commented Sample Test File][test-guide-sample]**
+-   **[Commented Sample Test File][test-sample]**
 
     ---
 
     A sample test file illustrating test case creation and the conventions
     that make it work. Includes a discussion of how test executables get built.
 
--   **[Anatomy of a Test Suite][test-guide-anatomy]**
+-   **[Anatomy of a Test Suite][test-suite-anatomy]**
 
     ---
 
@@ -141,16 +141,16 @@
 </div>
 
 [overview]:                overview.md
-[test-guide]:              test-guide.md
-[test-guide-sample]:       test-guide.md#commented-sample-test-file
-[test-guide-anatomy]:      test-guide.md#anatomy-of-a-test-suite
+[test-cases]:              testing-guide/test-cases.md
+[test-sample]:       testing-guide/test-sample.md
+[test-suite-anatomy]:      testing-guide/test-suite-anatomy.md
 [installation]:            installation.md
 [command-line]:            command-line.md
-[conventions]:             conventions.md
-[frameworks]:              frameworks.md
+[conventions]:             testing-guide/conventions.md
+[frameworks]:              testing-guide/frameworks.md
 [configuration-loading]:   configuration-loading.md
 [configuration-reference]: configuration/index.md
 [which-ceedling]:          which-ceedling.md
-[build-directives]:        build-directives.md
+[build-directives]:        testing-guide/build-directives.md
 [plugins]:                 plugins/index.md
 [global-collections]:      global-collections.md

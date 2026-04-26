@@ -43,5 +43,5 @@ Example configuration:
     - Bar.h
 ```
 
-[ceedling-conventions]: ../../conventions.md
+[ceedling-conventions]: ../../testing-guide/conventions.md
 [unity-runner-options]: https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityHelperScriptsGuide.md#options-accepted-by-generate_test_runnerrb

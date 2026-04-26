@@ -51,9 +51,9 @@ See the [`:plugins` configuration reference][plugins-config] for details of oper
 and the [plugins overview][plugins-directory] for a directory of built-in plugins.
 
 [plugins-config]: ../configuration/reference/plugins.md
-[plugins-directory]: ../plugins/index.md#ceedlings-built-in-plugins-a-directory
+[plugins-directory]: ../plugins/index.md
 [string-expansion]: ../configuration/project-file.md#inline-ruby-string-expansion
-[preprocessing]: ../conventions.md#ceedling-preprocessing-behavior-for-your-tests
+[preprocessing]: ../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests
 
 # Plugin Conventions & Architecture
 
@@ -125,7 +125,7 @@ Project configuration file:
     - zoom_zap
 ```
 
-Ceedling project directory sturcture:
+Ceedling project directory structure:
 
 (Third flavor of configuration plugin shown.)
 
@@ -295,7 +295,7 @@ Project configuration file:
     - whiz_bang
 ```
 
-Ceedling project directory sturcture:
+Ceedling project directory structure:
 
 ```
 project/
@@ -754,7 +754,7 @@ Project configuration file:
     - hello_world
 ```
 
-Ceedling project directory sturcture:
+Ceedling project directory structure:
 
 ```
 project/

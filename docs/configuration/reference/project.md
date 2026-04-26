@@ -60,7 +60,7 @@ and migrated to the `:test_build` and `:release_build` sections.
    * `:mocks` enables only preprocessing of header files that are to be mocked.
    * `:tests` enables only preprocessing of your test files.
 
-  [test-preprocessing]: ../../conventions.md#ceedling-preprocessing-behavior-for-your-tests
+  [test-preprocessing]: ../../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests
 
   **Default**: `:none`
 

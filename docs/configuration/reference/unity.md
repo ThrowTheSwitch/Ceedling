@@ -5,7 +5,7 @@
   Adds list of symbols used to configure Unity's features in its source and header files
   at compile time.
   
-  See [Using Unity, CMock & CException](../../frameworks.md) for much more on
+  See [Using Unity, CMock & CException](../../testing-guide/frameworks.md) for much more on
   configuring and making use of these frameworks in your build.
   
   To manage overall command line length, these symbols are only added to compilation when
@@ -33,6 +33,6 @@
   See Unity documentation for more on parameterized test cases.
 
   _**Note:**_ Unity's parameterized tests are incompatible with Ceedling's preprocessing
-  features enabled for test files. See more in [Ceedling's preprocessing documentation](../../conventions.md#preprocessing-gotchas) .
+  features enabled for test files. See more in [Ceedling's preprocessing documentation](../../testing-guide/conventions.md#preprocessing-gotchas) .
   
   **Default**: false

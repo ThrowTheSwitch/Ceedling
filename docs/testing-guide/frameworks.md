@@ -2,7 +2,7 @@
 
 If you jumped ahead to this section but do not follow some of the 
 lingo here, please jump back to an [earlier section for definitions
-and helpful links](overview.md#hold-on-back-up-ruby-rake-yaml-unity-cmock-cexception).
+and helpful links](../overview.md#hold-on-back-up-ruby-rake-yaml-unity-cmock-cexception).
 
 ## An overview of how Ceedling supports, well, its supporting frameworks
 
@@ -131,7 +131,7 @@ YAML configuration (Ceedling also uses CMock's configuration, though).
 See the documentation for the top-level [`:cmock`][cmock-yaml-config] 
 section within Ceedling's project file.
 
-[cmock-yaml-config]: configuration/reference/cmock.md
+[cmock-yaml-config]: ../configuration/reference/cmock.md
 
 Like Unity and CException, CMock's C components are configured at 
 compilation with symbols managed in your Ceedling project file's 

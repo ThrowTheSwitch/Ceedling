@@ -93,7 +93,7 @@ create test file matchers that create symbol definitions for some subset of your
   
   Preprocessing here refers to handling macros, conditional includes, etc. in header files 
   that are mocked and in complex test files before runners are generated from them.
-  (See more about the [Ceedling preprocessing](../../conventions.md#ceedling-preprocessing-behavior-for-your-tests) 
+  (See more about the [Ceedling preprocessing](../../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests) 
   feature.)
   
   Like the `:test` context, compilation symbols may be represented in a simple YAML list 

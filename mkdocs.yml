@@ -84,11 +84,14 @@ nav:
     - Installation: installation.md         # Prerequisites and install steps
     - Command Line: command-line.md         # Ceedling's command line reference
   - Testing Guide:
-    - Tests & Test Suites: test-guide.md              # Test case anatomy and suite structure
-    - Conventions & Behaviors: conventions.md         # File/path/name conventions and preprocessing
-    - Unity, CMock & CException: frameworks.md        # Framework configuration and usage
-    - Build Directive Macros: build-directives.md     # In-code macros for controlling builds
-    - Partials: partials.md                           # Partial test file inclusion
+    - testing-guide/index.md                                                    # Testing Guide section landing page
+    - How Does a Test Case Work?: testing-guide/test-cases.md                  # Assertions, mocks, test case basics
+    - Commented Sample Test File: testing-guide/test-sample.md           # Annotated example test file
+    - Anatomy of a Test Suite: testing-guide/test-suite-anatomy.md             # Test executables and suite structure
+    - Conventions & Behaviors: testing-guide/conventions.md                    # File/path/name conventions and preprocessing
+    - Unity, CMock & CException: testing-guide/frameworks.md                   # Framework configuration and usage
+    - Build Directive Macros: testing-guide/build-directives.md                # In-code macros for controlling builds
+    - Partials: testing-guide/partials.md                                       # Partial test file inclusion
   - Configuration:
     - configuration/index.md                  # Configuration section landing page
     - Loading Configuration: configuration-loading.md     # Base config, env vars, mixins

@@ -1,0 +1,72 @@
+# Testing Guide
+
+## Test Cases & Test Suites
+
+<div class="grid cards" markdown>
+
+-   **[How Does a Test Case Even Work?][test-cases]**
+
+    ---
+
+    A brief overview of how test cases work with simple examples illustrating
+    assertions and mocks.
+
+-   **[Commented Sample Test File][test-sample]**
+
+    ---
+
+    A sample test file illustrating the Ceedling conventions that make it go. 
+    Includes a discussion of what gets compiled and linked into a test executable.
+
+-   **[Anatomy of a Test Suite][test-suite-anatomy]**
+
+    ---
+
+    How a unit test grows up to become a test suite — what a test executable
+    is, why there are multiple, and Ceedling’s role in building and running them.
+
+</div>
+
+## Testing with Ceedling
+
+<div class="grid cards" markdown>
+
+-   **[Important Conventions & Behaviors][conventions]**
+
+    ---
+
+    Much of what Ceedling accomplishes is by convention. Code and file structures 
+    and naming trigger sophisticated test build features. Also covers search paths, 
+    file extensions, preprocessing, and more.
+
+-   **[Using Unity, CMock & CException][frameworks]**
+
+    ---
+
+    Ceedling connects the Unity, CMock, and CException frameworks — each of which 
+    can require configuration of its own. Ceedling facilitates this.
+
+-   **[Partials][partials]**
+
+    ---
+
+    Partials are like a scalpel for your source code. A generated partial allows 
+    you to test and mock parts of your code you could not otherwise access
+    without rewriting it first.
+
+-   **[Build Directive Macros][build-directives]**
+
+    ---
+
+    In-test macros to accomplish build goals when Ceedling’s conventions aren’t
+    quite enough — adding source files, handling include paths, and more.
+
+</div>
+
+[test-cases]:      test-cases.md
+[test-sample]: test-sample.md
+[test-suite-anatomy]: test-suite-anatomy.md
+[conventions]:     conventions.md
+[frameworks]:      frameworks.md
+[build-directives]: build-directives.md
+[partials]:        partials.md

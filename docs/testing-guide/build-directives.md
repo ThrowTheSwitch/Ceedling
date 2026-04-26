@@ -57,7 +57,7 @@ present within Ceedling's source file collection.
 To understand your source file collection:
 
 - See the documentation for project file configuration section 
-  [`:paths`](configuration/reference/paths.md).
+  [`:paths`](../configuration/reference/paths.md).
 - Dump a listing your project's source files with the command line task
   `ceedling files:source`.
 
