@@ -1,0 +1,12 @@
+
+/* Fix sidebar container sizing to prevent funky scrollbars for local docs bundles.
+ * This is a workaround for a quirk in the Material theme's height calculations when no site URL is set.
+ */
+.md-sidebar__scrollwrap {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge */
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar {
+  display: none;                /* Chrome/Safari */
+}

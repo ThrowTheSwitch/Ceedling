@@ -37,6 +37,13 @@ extra:
   version:
     provider: mike  # Versioned documentation deployment via mike
     default: latest
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sponsors/ThrowTheSwitch
+      name: Sponsor ThrowTheSwitch on GitHub
+
+extra_css:
+  - stylesheets/extra.css  # Custom CSS for styling overrides and additions
 
 # Plugins
 plugins:
@@ -127,5 +134,6 @@ nav:
   - Releases:
     - History Documents: project/release-history.md  # Links to release notes, changelog, and breaking changes
     - Upgrading: project/upgrade.md                  # Upgrade guidance between major versions
+  - Help: help.md  # Support resources
   - Development:
     - Plugin Development Guide: development/plugin-development-guide.md  # Guide to building custom plugins

@@ -1,7 +1,3 @@
----
-toc_depth: 3
----
-
 # Configuration
 
 !!! tip "Annotated Sample Configuration"

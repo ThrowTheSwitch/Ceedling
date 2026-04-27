@@ -4,14 +4,14 @@ Ceedling is a fancypants build system that greatly simplifies building
 C projects. While it can certainly build release targets, it absolutely 
 shines at running unit test suites.
 
-## Steps
+## Quick Start Steps
 
 Below is a quick overview of how to get started from Ceedling installation 
 through running build tasks. Jump down just a teeny bit to see what the Ceedling 
 command line looks like and navigate to all the documentation for the steps 
 listed immediately below.
 
-1. Install Ceedling
+1. [Install Ceedling][quick-start-1]
 1. Create a project
    * Use Ceedling to generate an example project, or
    * Add a Ceedling project file to the root of an existing project, or
@@ -34,7 +34,7 @@ GCC for test builds (more on all this [here][overview]).
 [MinGW]: http://www.mingw.org/
 [overview]: overview.md
 
-## Ceedling Command Line & Build Tasks
+## Command Line & Build Tasks
 
 Once you have Ceedling installed, you always have access to `ceedling help`.
 
@@ -58,9 +58,9 @@ code, Ceedling build tasks go like this:
 
 * [Installation][quick-start-1]
 * [Sample test code file + Example Ceedling projects][quick-start-2]
-* [Simple Ceedling project file][quick-start-3]
+* [Simple project file][quick-start-3]
 * [Ceedling at the command line][quick-start-4]
-* [All your Ceedling project configuration file options][quick-start-5]
+* [All your project configuration file options][quick-start-5]
 
 [quick-start-1]: installation.md
 [quick-start-2]: testing-guide/test-sample.md

@@ -44,6 +44,16 @@ and migrated to the `:test_build` and `:release_build` sections.
 
   **Default**: TRUE
 
+* `:use_partials`
+
+  Enables Ceedling Partials. [Partials][partials] allow you to test and mock
+  inaccessible functions and variables in the C code under test without 
+  rewriting your source code.
+
+  **Default**: FALSE
+
+  [partials]: ../../testing-guide/partials.md
+
 * `:use_test_preprocessor`
 
   This option allows Ceedling to work with test files that contain

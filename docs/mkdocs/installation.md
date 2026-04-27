@@ -19,7 +19,7 @@ Docker images will get you started with Ceedling and all the accompanying
 tools lickety split. Install Docker, pull down one of the _MadScienceLab_
 images and go.
 
-## Local Installation As a [Ruby Gem][ruby-gem]:
+## Installation as a [Ruby Gem][ruby-gem]
 
 1. [Download and install Ruby][ruby-install]. Ruby 3 is required.
 
@@ -71,7 +71,7 @@ See the Docker Hub pages linked above for more documentation on these images.
 
 Just to be clear here, most users of the _MadScienceLab_ Docker images will probably care about the ability to run unit tests on your own host. If you are one of those users, no matter what host platform you are on — Intel or ARM — you'll want to go with (1) or (2) above. The tools within the image will automatically do the right thing within your environment. Options (3) and (4) are most useful for specialized cross-compilation scenarios.
 
-### _MadScienceLab_ Docker Image usage basics
+### Usage basics
 
 To use a _MadScienceLab_ image from your local terminal:
 
@@ -87,7 +87,7 @@ See the command line examples in the following two sections.
 
 Note that all of these somewhat lengthy command lines lend themselves well to being wrapped up in simple helper scripts specific to your project and directory structure.
 
-### Run a _MadScienceLab_ Docker Image as an interactive terminal
+### Run as an interactive terminal
 
 When the container launches as shown below, it will drop you into a Z-shell command line that has access to all the tools and utilities available within the container. In this usage, the Docker container becomes just another terminal, including ending its execution with `exit`.
 
@@ -109,7 +109,7 @@ Once the _MadScienceLab_ container's command line is available, to run Ceedling,
  ~/project > ceedling test:all
 ```
 
-### Run a _MadScienceLab_ Docker Image as a command line utility
+### Run as a command line utility
 
 Alternatively, you can run Ceedling through the _MadScienceLab_ Docker container directly from the command line as a command line utility. The general pattern is immediately below.
 
@@ -133,7 +133,16 @@ In this usage, the container starts, executes Ceedling, and then ends.
 [docker-image-arm]: https://hub.docker.com/repository/docker/throwtheswitch/madsciencelab-arm-none-eabi
 [docker-image-arm-plugins]: https://hub.docker.com/repository/docker/throwtheswitch/madsciencelab-arm-none-eabi-plugins
 
-## Getting Started after Ceedling is Installed
+## Getting Started after installation
+
+1. Certain advanced features of Ceedling rely on `gcc` and `cpp` as
+   preprocessing tools. In most Linux systems, these tools are already available.
+   For Windows environments, we recommend the 
+   [MinGW project](http://www.mingw.org/) (Minimalist GNU for Windows). This 
+   represents an optional, additional setup / installation step to complement 
+   the list above. Upon installing MinGW ensure your system path is updated or 
+   set `:environment` ↳ `:path` in your project configuration (see `:environment`
+   section).
 
 1. Once Ceedling is installed, you'll want to start to integrate it with new
    and old projects alike. If you wanted to start to work on a new project
@@ -147,22 +156,3 @@ In this usage, the container starts, executes Ceedling, and then ends.
    `module_generator` in your project configuration file and create a source +
    test code module to get accustomed to Ceedling by issuing the command 
    `ceedling 'module:create[name]'`.
-
-## Grab Bag of Ceedling Notes
-
-1. Certain advanced features of Ceedling rely on `gcc` and `cpp` as
-   preprocessing tools. In most Linux systems, these tools are already available.
-   For Windows environments, we recommend the 
-   [MinGW project](http://www.mingw.org/) (Minimalist GNU for Windows). This 
-   represents an optional, additional setup / installation step to complement 
-   the list above. Upon installing MinGW ensure your system path is updated or 
-   set `:environment` ↳ `:path` in your project configuration (see `:environment`
-   section).
-
-1. When using Ceedling in Windows environments, a test filename should not
-   include the sequences "patch" or "setup". After a test build these test
-   filenames will become test executables. Windows Installer Detection Technology
-   (part of UAC) requires administrator privileges to execute filenames including
-   these strings.
-
-<br/>
