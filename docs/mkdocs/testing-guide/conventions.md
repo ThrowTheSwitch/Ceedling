@@ -524,7 +524,7 @@ These features have been temporarily disabled and/or removed for
 test suites and remain in limited form for release build while
 Ceedling undergoes a major overhaul.
 
-Please see the [Release Notes](https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/ReleaseNotes.md).
+Please see the [Release Notes](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md).
 
 ### Notes on (Not So) Smart Rebuids
 

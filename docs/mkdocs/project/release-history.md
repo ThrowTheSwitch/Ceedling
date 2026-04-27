@@ -30,6 +30,6 @@ upgrading to understand what in your project configuration or test code may need
 A concise, chronological log of [all changes][changelog]. Useful for a quick scan of what changed 
 in any given release.
 
-[release-notes]: https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/ReleaseNotes.md
-[breaking-changes]: https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/BreakingChanges.md
-[changelog]: https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/Changelog.md
+[release-notes]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md
+[breaking-changes]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/BreakingChanges.md
+[changelog]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md

@@ -20,7 +20,7 @@ Ceedling plugins or by simply searching for code examples online.
 
 ## Development Roadmap & Notes
 
-(See Ceedling's _[release notes](https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/ReleaseNotes.md)_ for more.)
+(See Ceedling's _[release notes](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md)_ for more.)
 
 * Ceedling 1.0 marks the beginning of moving all of Ceedling away from relying
   on Rake. New, Rake-based plugins should not be developed. Rake dependencies

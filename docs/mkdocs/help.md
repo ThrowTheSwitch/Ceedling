@@ -56,5 +56,5 @@
 [ceedling-issues]:  https://github.com/ThrowTheSwitch/Ceedling/issues
 [forums]:           https://www.throwtheswitch.org/forums
 [ceedling-assist]:  https://www.thingamabyte.com/ceedlingassist
-[code-of-conduct]:  https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/CODE_OF_CONDUCT.md
-[contributing]:     https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/CONTRIBUTING.md
+[code-of-conduct]:  https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CODE_OF_CONDUCT.md
+[contributing]:     https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CONTRIBUTING.md

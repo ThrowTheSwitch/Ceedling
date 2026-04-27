@@ -7,7 +7,7 @@
 # Ceedling Packet
 
 !!! warning "Upgrading Ceedling?"
-    Be sure to review [breaking changes](https://github.com/ThrowTheSwitch/Ceedling/blob/main/docs/BreakingChanges.md).
+    Be sure to review [breaking changes](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/BreakingChanges.md).
 
 ## Overview
 
