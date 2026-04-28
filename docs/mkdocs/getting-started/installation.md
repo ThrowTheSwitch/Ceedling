@@ -152,7 +152,7 @@ In this usage, the container starts, executes Ceedling, and then ends.
    <destination>`, and Ceedling will create any files and directories it needs.
 
 1. Now that you have Ceedling integrated with a project, you can start using it.
-   A good starting point is to enable the [plugin](plugins/index.md) 
+   A good starting point is to enable the [plugin](../plugins/index.md) 
    `module_generator` in your project configuration file and create a source +
    test code module to get accustomed to Ceedling by issuing the command 
    `ceedling 'module:create[name]'`.

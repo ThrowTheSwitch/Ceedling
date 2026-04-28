@@ -1,11 +1,10 @@
 # Ceedling’s Command Line
 
-Now what? How do I make it _Go_?
+**Now what? How do I make it _Go_?**
 
-We're getting a little ahead of ourselves here, but it's good
-context on how to drive this bus. Everything is done via the command
-line. We'll cover project conventions and how to actually configure
-your project in later sections.
+Every action in Ceedling is accomplished via the command line. We'll 
+cover project conventions and how to actually configure your project 
+in other sections.
 
 For now, let's talk about the command line.
 
@@ -268,7 +267,7 @@ command (but the `build` keyword can be omitted — see above).
   runners, mocks, preprocessor output. Clobber produces no output at the
   command line unless verbosity has been set to an appreciable level.
 
-## Ceedling Command Line Tasks, Extra Credit
+## Command Line Tasks, Extra Credit
 
 ### Combining Tasks At the Command Line
 
@@ -291,32 +290,4 @@ anything Ceedling & its accompanying tools generate out of source
 control (but go ahead and add the top-level build directory that
 holds all that stuff if you want).
 
-### Logging decorators
 
-Ceedling attempts to bring more joy to your console logging. This may include
-fancy Unicode characters, emoji, or color.
-
-Example:
-```
------------------------
-❌ OVERALL TEST SUMMARY
------------------------
-TESTED:  6
-PASSED:  5
-FAILED:  1
-IGNORED: 0
-```
-
-By default, Ceedling makes an educated guess as to which platforms can best
-support this. Some platforms (we're looking at you, Windows) do not typically
-have default font support in their terminals for these features. So, by default
-this feature is disabled on problematic platforms while enabled on others.
-
-An environment variable `CEEDLING_DECORATORS` forces decorators on or off with a
-`true` (`1`) or `false` (`0`) string value.
-
-If you find a monospaced font that provides emojis, etc. and works with Windows'
-command prompt, you can (1) Install the font (2) change your command prompt's
-font (3) set `CEEDLING_DECORATORS` to `true`.
-
-<br/>

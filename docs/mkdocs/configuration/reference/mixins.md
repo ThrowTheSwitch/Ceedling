@@ -1,4 +1,7 @@
-# `:mixins` Configuring mixins to merge
+# `:mixins` Configuring Mixins to merge
+
+Mixins allow you to merge configuration with your project configuration
+just after the base project file is loaded.
 
 This section of a project configuration file is documented in the
 [discussion of project files and mixins][mixins-config-section].
@@ -13,5 +16,5 @@ This section of a project configuration file is documented in the
 * A `:mixins` section supports [inline Ruby string expansion][inline-ruby-string-expansion].
   See the full documetation on Mixins for details.
 
-[mixins-config-section]: ../../configuration-loading.md
+[mixins-config-section]: ../loading.md#applying-mixins-to-your-base-project-configuration
 [inline-ruby-string-expansion]: ../project-file.md#inline-ruby-string-expansion

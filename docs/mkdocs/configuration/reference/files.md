@@ -14,51 +14,53 @@ On occasion you may need to remove from or add individual files to Ceedling's
 file collections.
 
 The path grammar documented in the `:paths` configuration section largely
-applies to `:files` path entries - albeit with regard to filepaths and not
+applies to `:files` path entries — albeit with regard to filepaths and not
 directory paths. The `:files` grammar and YAML examples are documented below.
 
-* <h3><code>:files</code> ↳ <code>:test</code></h3>
+## `:files` ↳ `:test`
 
-  Modify the collection of unit test C files.
-  
-  **Default**: `[]` (empty)
+Modify the collection of unit test C files.
 
-* <h3><code>:files</code> ↳ <code>:source</code></h3>
+**Default**: `[]` (empty)
 
-  Modify the collection of all source files used in unit test builds and release builds.
-  
-  **Default**: `[]` (empty)
+## `:files` ↳ `:source`
 
-* <h3><code>:files</code> ↳ <code>:assembly</code></h3>
+Modify the collection of all source files used in unit test builds and release
+builds.
 
-  Modify the (optional) collection of assembly files used in release builds.
-  
-  **Default**: `[]` (empty)
+**Default**: `[]` (empty)
 
-* <h3><code>:files</code> ↳ <code>:include</code></h3>
+## `:files` ↳ `:assembly`
 
-  Modify the collection of all source header files used in unit test builds (e.g. for mocking) and release builds.
-  
-  **Default**: `[]` (empty)
+Modify the (optional) collection of assembly files used in release builds.
 
-* <h3><code>:files</code> ↳ <code>:support</code></h3>
+**Default**: `[]` (empty)
 
-  Modify the collection of supporting C files available to unit tests builds.
-  
-  **Default**: `[]` (empty)
+## `:files` ↳ `:include`
 
-* <h3><code>:files</code> ↳ <code>:libraries</code></h3>
+Modify the collection of all source header files used in unit test builds
+(e.g. for mocking) and release builds.
 
-  Add a collection of library paths to be included when linking.
-  
-  **Default**: `[]` (empty)
+**Default**: `[]` (empty)
+
+## `:files` ↳ `:support`
+
+Modify the collection of supporting C files available to unit tests builds.
+
+**Default**: `[]` (empty)
+
+## `:files` ↳ `:libraries`
+
+Add a collection of library paths to be included when linking.
+
+**Default**: `[]` (empty)
 
 ## `:files` configuration options & notes
 
 1. A path can be absolute (fully qualified) or relative.
 1. A path can include a glob matcher (more on this below).
 1. A path can use [inline Ruby string expansion][inline-ruby-string-expansion].
-1. Subtractive paths prepended with a `-:` decorator are possible and useful. 
+1. Subtractive paths prepended with a `-:` decorator are possible and useful.
    See the documentation below.
 
 ## `:files` Globs
@@ -95,8 +97,7 @@ Glob operators include the following: `*`, `**`, `?`, `[-]`, `{,}`.
 Tailoring a file collection includes adding to it but also subtracting from it.
 
 Put simply, with an optional preceding decorator `-:`, you can instruct Ceedling
-to remove certain file paths from a collection after it builds that
-collection.
+to remove certain file paths from a collection after it builds that collection.
 
 By default, paths are additive. For pretty alignment in your YAML, you may also
 use `+:`, but strictly speaking, it's not necessary.

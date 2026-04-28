@@ -1,13 +1,10 @@
 !!! tip "New to Ceedling?"
-    Jump straight to the [Quick Start](quick-start.md) — installation,
+    Jump straight to the [Quick Start](getting-started/quick-start.md) — installation,
     project set up, and your first build tasks all in one place.
 
 ---
 
 # Ceedling Packet
-
-!!! warning "Upgrading Ceedling?"
-    Be sure to review [breaking changes](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/BreakingChanges.md).
 
 ## Overview
 
@@ -144,13 +141,13 @@
 [test-cases]:              testing-guide/test-cases.md
 [test-sample]:       testing-guide/test-sample.md
 [test-suite-anatomy]:      testing-guide/test-suite-anatomy.md
-[installation]:            installation.md
-[command-line]:            command-line.md
+[installation]:            getting-started/installation.md
+[command-line]:            getting-started/command-line.md
 [conventions]:             testing-guide/conventions.md
 [frameworks]:              testing-guide/frameworks.md
-[configuration-loading]:   configuration-loading.md
+[configuration-loading]:   configuration/loading.md
 [configuration-reference]: configuration/index.md
-[which-ceedling]:          which-ceedling.md
+[which-ceedling]:          configuration/which-ceedling.md
 [build-directives]:        testing-guide/build-directives.md
 [plugins]:                 plugins/index.md
-[global-collections]:      global-collections.md
+[global-collections]:      configuration/global-collections.md

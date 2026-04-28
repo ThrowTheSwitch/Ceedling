@@ -73,67 +73,69 @@ exclude_docs: |
 
 # Site navigation tree
 nav:
-  - Home: index.md                  # Landing page / annotated table of contents
-  - Overview: overview.md           # Background, definitions, and framework links
+  - Home: index.md                  
+  - Overview: overview.md           
   - Getting Started:
-    - Quick Start: quick-start.md           # Installation through first build, all in one place
-    - Installation: installation.md         # Prerequisites and install steps
-    - Command Line: command-line.md         # Ceedling's command line reference
+    - getting-started/index.md
+    - Quick Start: getting-started/quick-start.md
+    - Installation: getting-started/installation.md
+    - Command Line: getting-started/command-line.md
+    - Environment Variables: getting-started/environment-vars.md
   - Testing Guide:
-    - testing-guide/index.md                                                    # Testing Guide section landing page
-    - How Does a Test Case Work?: testing-guide/test-cases.md                  # Assertions, mocks, test case basics
-    - Commented Sample Test File: testing-guide/test-sample.md           # Annotated example test file
-    - Anatomy of a Test Suite: testing-guide/test-suite-anatomy.md             # Test executables and suite structure
-    - Conventions & Behaviors: testing-guide/conventions.md                    # File/path/name conventions and preprocessing
-    - Unity, CMock & CException: testing-guide/frameworks.md                   # Framework configuration and usage
-    - Build Directive Macros: testing-guide/build-directives.md                # In-code macros for controlling builds
-    - Partials: testing-guide/partials.md                                       # Partial test file inclusion
+    - testing-guide/index.md                                                    
+    - How Does a Test Case Work?: testing-guide/test-cases.md                  
+    - Commented Sample Test File: testing-guide/test-sample.md           
+    - Anatomy of a Test Suite: testing-guide/test-suite-anatomy.md             
+    - Conventions & Behaviors: testing-guide/conventions.md                    
+    - Unity, CMock & CException: testing-guide/frameworks.md                   
+    - Build Directive Macros: testing-guide/build-directives.md                
+    - Partials: testing-guide/partials.md                                       
   - Configuration:
-    - configuration/index.md                  # Configuration section landing page
-    - Loading Configuration: configuration-loading.md     # Base config, env vars, mixins
-    - Project File Basics: configuration/project-file.md  # YAML conventions and special Ceedling handling
-    - Which Ceedling: which-ceedling.md               # Pointing to a specific Ceedling install
-    - Global Collections: global-collections.md       # Globally available Ruby path/file lists
+    - configuration/index.md                  
+    - Loading Configuration: configuration/loading.md
+    - Project File Basics: configuration/project-file.md
+    - Which Ceedling: configuration/which-ceedling.md
+    - Global Collections: configuration/global-collections.md
     - Configuration Reference:
-      - configuration/reference/index.md                               # Reference section landing page
-      - Global Project Settings: configuration/reference/project.md   # :project — build root, threads, preprocessor, etc.
-      - Mixins: configuration/reference/mixins.md                      # :mixins — merging additional configs
-      - Test Build Settings: configuration/reference/test-build.md    # :test_build — assembly support for tests
-      - Release Build Settings: configuration/reference/release-build.md  # :release_build — output, assembly, artifacts
-      - Search Paths: configuration/reference/paths.md                # :paths — directory lists for all file collections
-      - File Collections: configuration/reference/files.md            # :files — fine-grained file list tailoring
-      - Environment Variables: configuration/reference/environment.md # :environment — shell env vars for tool runs
-      - File Extensions: configuration/reference/extension.md         # :extension — source, header, object, etc.
-      - Compilation Symbols: configuration/reference/defines.md       # :defines — -D symbols per context and test matcher
-      - Libraries: configuration/reference/libraries.md               # :libraries — test, release, and system libraries
-      - Compilation & Link Flags: configuration/reference/flags.md    # :flags — per-context and per-test flag matchers
-      - CException: configuration/reference/cexception.md             # :cexception — CException compile-time config
-      - CMock: configuration/reference/cmock.md                       # :cmock — CMock code generation and compilation
-      - Unity: configuration/reference/unity.md                       # :unity — Unity compile-time config
-      - Test Runner: configuration/reference/test-runner.md           # :test_runner — runner generation options
-      - Tools: configuration/reference/tools.md                       # :tools — full tool definitions and shortcuts
-      - Plugins: configuration/reference/plugins.md                   # :plugins — enabling and loading plugins
+      - configuration/reference/index.md                               
+      - Global Project Settings: configuration/reference/project.md   
+      - Mixins: configuration/reference/mixins.md                      
+      - Test Build Settings: configuration/reference/test-build.md    
+      - Release Build Settings: configuration/reference/release-build.md  
+      - Search Paths: configuration/reference/paths.md                
+      - File Collections: configuration/reference/files.md            
+      - Environment Variables: configuration/reference/environment.md 
+      - File Extensions: configuration/reference/extension.md         
+      - Compilation Symbols: configuration/reference/defines.md       
+      - Libraries: configuration/reference/libraries.md               
+      - Compilation & Link Flags: configuration/reference/flags.md    
+      - CException: configuration/reference/cexception.md             
+      - CMock: configuration/reference/cmock.md                       
+      - Unity: configuration/reference/unity.md                       
+      - Test Runner: configuration/reference/test-runner.md           
+      - Tools: configuration/reference/tools.md                       
+      - Plugins: configuration/reference/plugins.md                   
   - Plugins:
-    - Overview: plugins/index.md                                              # Plugin directory and overview
-    - FFF (Fake Functions): plugins/fff.md                                    # Fake Function Framework integration
-    - GCov (Coverage): plugins/gcov.md                                        # GNU gcov code coverage
-    - Bullseye (Coverage): plugins/bullseye.md                                # Bullseye commercial coverage tool
-    - Command Hooks: plugins/command-hooks.md                                 # Hook scripts to build steps
-    - Module Generator: plugins/module-generator.md                           # Scaffold source/test/mock file sets
-    - Dependencies: plugins/dependencies.md                                   # External dependency fetching and building
-    - Subprojects: plugins/subprojects.md                                     # Build libraries as sub-builds
-    - Test Report Log Factory: plugins/report-tests-log-factory.md            # Configurable file-based report logging
-    - Test Report — Pretty: plugins/report-tests-pretty-stdout.md             # Formatted stdout test results
-    - Test Report — IDE: plugins/report-tests-ide-stdout.md                   # IDE-friendly stdout test results
-    - Test Report — TeamCity: plugins/report-tests-teamcity-stdout.md         # TeamCity service messages
-    - Test Report — GTest-like: plugins/report-tests-gtestlike-stdout.md      # Google Test-style output
-    - Test Report — Raw Output: plugins/report-tests-raw-output-log.md        # Raw test output log files
-    - Build Warnings Log: plugins/report-build-warnings-log.md                # Collect build warnings to file
-    - Compile Commands JSON DB: plugins/compile-commands-json-db.md           # compile_commands.json for tooling
-    - Beep: plugins/beep.md                                                   # Audible build completion notification
+    - Overview: plugins/index.md                                              
+    - FFF (Fake Functions): plugins/fff.md                                    
+    - GCov (Coverage): plugins/gcov.md                                        
+    - Bullseye (Coverage): plugins/bullseye.md                                
+    - Command Hooks: plugins/command-hooks.md                                 
+    - Module Generator: plugins/module-generator.md                           
+    - Dependencies: plugins/dependencies.md                                   
+    - Subprojects: plugins/subprojects.md                                     
+    - Test Report Log Factory: plugins/report-tests-log-factory.md            
+    - Test Report — Pretty: plugins/report-tests-pretty-stdout.md             
+    - Test Report — IDE: plugins/report-tests-ide-stdout.md                   
+    - Test Report — TeamCity: plugins/report-tests-teamcity-stdout.md         
+    - Test Report — GTest-like: plugins/report-tests-gtestlike-stdout.md      
+    - Test Report — Raw Output: plugins/report-tests-raw-output-log.md        
+    - Build Warnings Log: plugins/report-build-warnings-log.md                
+    - Compile Commands JSON DB: plugins/compile-commands-json-db.md           
+    - Beep: plugins/beep.md                                                   
   - Releases:
-    - History Documents: project/release-history.md  # Links to release notes, changelog, and breaking changes
-    - Upgrading: project/upgrade.md                  # Upgrade guidance between major versions
-  - Help: help.md  # Support resources
+    - History Documents: project/release-history.md  
+    - Upgrading: project/upgrade.md                  
+  - Help: help.md  
   - Development:
-    - Plugin Development Guide: development/plugin-development-guide.md  # Guide to building custom plugins
+    - Plugin Development Guide: development/plugin-development-guide.md  

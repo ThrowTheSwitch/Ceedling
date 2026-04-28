@@ -32,7 +32,7 @@ GCC for test builds (more on all this [here][overview]).
 
 [GCC]: https://gcc.gnu.org
 [MinGW]: http://www.mingw.org/
-[overview]: overview.md
+[overview]: ../overview.md
 
 ## Command Line & Build Tasks
 
@@ -63,7 +63,7 @@ code, Ceedling build tasks go like this:
 * [All your project configuration file options][quick-start-5]
 
 [quick-start-1]: installation.md
-[quick-start-2]: testing-guide/test-sample.md
-[quick-start-3]: overview.md#simple-sample-project-file
+[quick-start-2]: ../testing-guide/test-sample.md
+[quick-start-3]: ../overview.md#simple-sample-project-file
 [quick-start-4]: command-line.md
-[quick-start-5]: configuration/index.md
+[quick-start-5]: ../configuration/index.md

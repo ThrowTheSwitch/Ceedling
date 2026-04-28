@@ -2,53 +2,53 @@
 
 Ceedling uses path lists and wildcard matching against filename extensions to collect file lists.
 
-* `:header`:
+## `:header`
 
-  C header files
+C header files
 
-  **Default**: .h
+**Default**: .h
 
-* `:source`:
+## `:source`
 
-  C code files (whether source or test files)
+C code files (whether source or test files)
 
-  **Default**: .c
+**Default**: .c
 
-* `:assembly`:
+## `:assembly`
 
-  Assembly files (contents wholly assembler instructions)
+Assembly files (contents wholly assembler instructions)
 
-  **Default**: .s
+**Default**: .s
 
-* `:object`:
+## `:object`
 
-  Resulting binary output of C code compiler (and assembler)
+Resulting binary output of C code compiler (and assembler)
 
-  **Default**: .o
+**Default**: .o
 
-* `:executable`:
+## `:executable`
 
-  Binary executable to be loaded and executed upon target hardware
+Binary executable to be loaded and executed upon target hardware
 
-  **Default**: .exe or .out (Win or Linux)
+**Default**: .exe or .out (Win or Linux)
 
-* `:testpass`:
+## `:testpass`
 
-  Test results file (not likely to ever need a redefined value)
+Test results file (not likely to ever need a redefined value)
 
-  **Default**: .pass
+**Default**: .pass
 
-* `:testfail`:
+## `:testfail`
 
-  Test results file (not likely to ever need a redefined value)
+Test results file (not likely to ever need a redefined value)
 
-  **Default**: .fail
+**Default**: .fail
 
-* `:dependencies`:
+## `:dependencies`
 
-  File containing make-style dependency rules created by the `gcc` preprocessor
+File containing make-style dependency rules created by the `gcc` preprocessor
 
-  **Default**: .d
+**Default**: .d
 
 ## Example `:extension` YAML blurb
 

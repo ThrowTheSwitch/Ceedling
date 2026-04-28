@@ -4,76 +4,78 @@ Ceedling sets values for a subset of CMock settings. All CMock options are
 available to be set, but only those options set by Ceedling in an automated
 fashion are documented below. See [CMock documentation][cmock-docs].
 
-* `:enforce_strict_ordering`:
+## `:enforce_strict_ordering`
 
-  Tests fail if expected call order is not same as source order
+Tests fail if expected call order is not same as source order
 
-  **Default**: TRUE
+**Default**: TRUE
 
-* `:verbosity`:
+## `:verbosity`
 
-  If not set, defaults to Ceedling's verbosity level
+If not set, defaults to Ceedling's verbosity level
 
-* `:defines`:
+## `:defines`
 
-  Adds list of symbols used to configure CMock's C code features in its source and header 
-  files at compile time.
-  
-  See [Using Unity, CMock & CException](../../testing-guide/frameworks.md) for much more on
-  configuring and making use of these frameworks in your build.
-  
-  To manage overall command line length, these symbols are only added to compilation when
-  a CMock C source file is compiled.
-  
-  No symbols must be set unless CMock's defaults are inappropriate for your environment 
-  and needs.
-  
-  **Default**: `[]` (empty)
+Adds list of symbols used to configure CMock's C code features in its source
+and header files at compile time.
 
-* `:plugins`:
+See [Using Unity, CMock & CException](../../testing-guide/frameworks.md) for
+much more on configuring and making use of these frameworks in your build.
 
-  To enable CMock's optional and advanced features available via CMock plugin, simply add 
-  `:cmock` ↳ `:plugins` to your configuration and specify your desired additional CMock 
-  plugins as a simple list of the plugin names.
+To manage overall command line length, these symbols are only added to
+compilation when a CMock C source file is compiled.
 
-  See [CMock's documentation][cmock-docs] to understand plugin options.
+No symbols must be set unless CMock's defaults are inappropriate for your
+environment and needs.
 
-  **Default**: `[]` (empty)
+**Default**: `[]` (empty)
 
-* `:unity_helper_path`:
-  
-  A Unity helper is a simple header file used by convention to support your specialized
-  test case needs. For example, perhaps you want a Unity assertion macro for the 
-  contents of a struct used throughout your project. Write the macro you need in a Unity
-  helper header file and `#include` that header file in your test file.
+## `:plugins`
 
-  When a Unity helper is provided to CMock, it takes on more significance, and more
-  magic happens. CMock parses Unity helper header files and uses macros of a certain
-  naming convention to extend CMock's handling of mocked parameters.
+To enable CMock's optional and advanced features available via CMock plugin,
+simply add `:cmock` ↳ `:plugins` to your configuration and specify your desired
+additional CMock plugins as a simple list of the plugin names.
 
-  See the Unity and CMock documentation for more details.
+See [CMock's documentation][cmock-docs] to understand plugin options.
 
-  `:unity_helper_path` may be a single string or a list. Each value must be a relative
-  path from your Ceedling working directory to a Unity helper header file (these are 
-  typically organized within containing Ceedling `:paths` ↳ `:support` directories).
+**Default**: `[]` (empty)
 
-  **Default**: `[]` (empty)
+## `:unity_helper_path`
 
-* `:includes`:
+A Unity helper is a simple header file used by convention to support your
+specialized test case needs. For example, perhaps you want a Unity assertion
+macro for the contents of a struct used throughout your project. Write the macro
+you need in a Unity helper header file and `#include` that header file in your
+test file.
 
-  In certain advanced testing scenarios, you may need to inject additional header files 
-  into generated mocks. The filenames in this list will be transformed into `#include` 
-  directives created at the top of every generated mock.
+When a Unity helper is provided to CMock, it takes on more significance, and
+more magic happens. CMock parses Unity helper header files and uses macros of a
+certain naming convention to extend CMock's handling of mocked parameters.
 
-  If `:unity_helper_path` is in use (see preceding), the filenames at the end of any 
-  Unity helper file paths will be automatically injected into this list provided to 
-  CMock.
+See the Unity and CMock documentation for more details.
 
-  **Default**: `[]` (empty)
+`:unity_helper_path` may be a single string or a list. Each value must be a
+relative path from your Ceedling working directory to a Unity helper header file
+(these are typically organized within containing Ceedling `:paths` ↳ `:support`
+directories).
+
+**Default**: `[]` (empty)
+
+## `:includes`
+
+In certain advanced testing scenarios, you may need to inject additional header
+files into generated mocks. The filenames in this list will be transformed into
+`#include` directives created at the top of every generated mock.
+
+If `:unity_helper_path` is in use (see preceding), the filenames at the end of
+any Unity helper file paths will be automatically injected into this list
+provided to CMock.
+
+**Default**: `[]` (empty)
 
 ## Notes on Ceedling's nudges for CMock strict ordering
 
-The preceding settings are tied to other Ceedling settings; hence, why they are 
+The preceding settings are tied to other Ceedling settings; hence, why they are
 documented here.
 
 The first setting above, `:enforce_strict_ordering`, defaults to `FALSE` within

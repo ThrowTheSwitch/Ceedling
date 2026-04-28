@@ -1,4 +1,6 @@
-# How to Load a Project Configuration. You Have Options, My Friend.
+# How to Load a Project Configuration
+
+** You have options, my friend **
 
 Ceedling needs a project configuration to accomplish anything for you.
 Ceedling's project configuration is a large in-memory data structure.
@@ -29,7 +31,7 @@ help you catch a broken configuration and problematic combinations of
 settings.
 
 For nitty-gritty details on plugin configuration behavior, see the
-_[Plugin Development Guide](development/plugin-development-guide.md)_
+_[Plugin Development Guide](../development/plugin-development-guide.md)_
 
 ## Options for Loading Your Base Project Configuration
 
@@ -43,7 +45,7 @@ precedence. If an option higher in the list is present, it is used.
 
 ### `--project` command line flags
 
-Many of Ceedling's [application commands](command-line.md) include an 
+Many of Ceedling's [application commands](../getting-started/command-line.md) include an 
 optional `--project` flag. When provided, Ceedling will load as its base 
 configuration the YAML filepath provided.
 
@@ -161,7 +163,7 @@ _**Note:**_ That second bullet can have a significant impact on how your
 various project configuration paths — including those used for header 
 search paths — are ordered. In brief, the contents of your `:paths` 
 from your base configuration will come first followed by any additions
-from your mixins. See the section [Search Paths for Test Builds](testing-guide/conventions.md#search-paths-for-test-builds)
+from your mixins. See the section [Search Paths for Test Builds](../testing-guide/conventions.md#search-paths-for-test-builds)
 for more.
 
 ## Mixins Example: Our Example Scenario
@@ -427,6 +429,6 @@ Relating the above example to command line `--mixin` flag handling:
   last in the mixin precedence.
 
 [YAML]: http://en.wikipedia.org/wiki/Yaml
-[inline-ruby-string-expansion]: configuration/project-file.md#inline-ruby-string-expansion
+[inline-ruby-string-expansion]: project-file.md#inline-ruby-string-expansion
 
 <br/>

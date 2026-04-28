@@ -53,7 +53,7 @@ Ceedling provides Mixins for applying configurations settings on top of your
 base project configuraiton file. 
 See the [Mixins documentation][ceedling-mixins] for full details.
 
-[ceedling-mixins]: ../configuration-loading.md#base-project-configuration-file-mixins-section-entries
+[ceedling-mixins]: ../configuration/loading.md#base-project-configuration-file-mixins-section-entries
 
 As an example, you might enable the plugin in the main project file that is
 committed to your repository while disabling the plugin in your local user

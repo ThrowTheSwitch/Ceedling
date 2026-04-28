@@ -193,10 +193,10 @@ All top-level keys of the Ceedling project configuration file, each documented o
 
 </div>
 
-[configuration-loading]:  ../configuration-loading.md
+[configuration-loading]:  loading.md
 [project-file]:           project-file.md
-[which-ceedling]:         ../which-ceedling.md
-[global-collections]:     ../global-collections.md
+[which-ceedling]:         which-ceedling.md
+[global-collections]:     global-collections.md
 
 [ref-project]:       reference/project.md
 [ref-mixins]:        reference/mixins.md
