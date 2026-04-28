@@ -2,7 +2,7 @@
 
 If you jumped ahead to this section but do not follow some of the 
 lingo here, please jump back to an [earlier section for definitions
-and helpful links](../overview.md#hold-on-back-up-ruby-rake-yaml-unity-cmock-cexception).
+and helpful links](../overview/tools-and-frameworks.md#so-many-tools-and-acronyms).
 
 ## An overview of how Ceedling supports, well, its supporting frameworks
 

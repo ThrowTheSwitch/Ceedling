@@ -371,11 +371,12 @@ whose associated value is itself a hash with the following contents:
 }
 ```
 
-_**Note:**_ Test preprocessing steps are quite sophissticated and involve various 
-combination of tool executions. The `post_` preprocessing hooks do not inlucde shell 
-results. Future updates to Ceedling’s plugin system will create a more robust means 
-of attaching custom behaviors to test preprocessing or connecting your own preprocessing
-pipeline with toolchains other than GCC.
+!!! warning "Preprocessing Hook Limitations"
+    Test preprocessing steps are quite sophisticated and involve various combinations
+    of tool executions. The `post_` preprocessing hooks do not include shell results.
+    Future updates to Ceedling’s plugin system will create a more robust means of
+    attaching custom behaviors to test preprocessing or connecting your own
+    preprocessing pipeline with toolchains other than GCC.
 
 ## `Plugin` hook methods `pre_mock_preprocess(arg_hash)` and `post_mock_preprocess(arg_hash)`
 

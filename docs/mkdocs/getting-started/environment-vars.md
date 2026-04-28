@@ -2,6 +2,11 @@
 
 Ceedling recognizes several environment variables that control its behavior independently of your project configuration file.
 
+## Project configuration filepath
+
+The environment variable `CEEDLING_PROJECT_FILE` is [one option](../configuration/loading.md)
+to point Ceedling at your project configuration file.
+
 ## Logging decorators
 
 Ceedling attempts to bring more joy to your console logging. This may include
@@ -24,9 +29,9 @@ have default font support in their terminals for these features. So, by default
 this feature is disabled on problematic platforms while enabled on others.
 
 !!! warning "`CEEDLING_DECORATORS` cannot be set with `:environment`"
-    The logger necessary to report on any kind of environment variable problem
-    loads before any environment variables are processed. As such,
-    `CEEDLING_DECORATORS` must be set before Ceedling runs.
+    Ceedling’s logger must load before any environment variables are processed 
+    in your project configuration. As such, `CEEDLING_DECORATORS` can only be set 
+    in your environment before Ceedling runs.
 
 An environment variable `CEEDLING_DECORATORS` forces decorators on or off with a
 `true` (`1`) or `false` (`0`) string value.

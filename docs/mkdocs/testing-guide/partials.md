@@ -91,11 +91,12 @@ int Sensor_ReadCelsius(void)
 Partials allows you to accomplish both of these goals with no changes to
 _sensor.c_.
 
-**_NOTE:_** A core restriction of the C language remains here!
-`_ConvertRawToMilliCelsius()` cannot be both tested and mocked in the same test.
-Attempting to do so would duplicate the function and cause a doubly-defined
-symbol failure during linking. We solve this by simply creating two peer test
-files for the different Partials usage scenarios.
+!!! warning "A Function Cannot Be Both Tested and Mocked"
+    A core restriction of the C language remains here! `_ConvertRawToMilliCelsius()`
+    cannot be both tested and mocked in the same test. Attempting to do so would
+    duplicate the function and cause a doubly-defined symbol failure during linking.
+    We solve this by simply creating two peer test files for the different Partials
+    usage scenarios.
 
 ### Example Testable Partial
 
@@ -286,9 +287,10 @@ A `TEST_PARTIAL_*_MODULE` macro always names an implementation header.
 
 A `MOCK_PARTIAL_*_MODULE` macro always names a mockable interface header.
 
-**_NOTE:_** In practice, you as the test author will never directly interact
-with the generated Partials C files. Do not reference them or modify them.
-These examples and explanation are solely for education and awareness.
+!!! warning "Do Not Touch Generated Partials Files"
+    In practice, you as the test author will never directly interact with the
+    generated Partials C files. Do not reference them or modify them. These
+    examples and explanation are solely for education and awareness.
 
 The filters in place of `*` in the macro names — `PUBLIC`, `PRIVATE`, `ALL`, 
 and none — tell Ceedling how to initialize internal function lists (that 

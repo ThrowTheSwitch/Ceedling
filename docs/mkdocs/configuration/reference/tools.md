@@ -37,7 +37,7 @@ You can and sometimes must run a Ceedling test suite in an emulator or on
 target, and Ceedling allows you to do this through tool definitions documented
 here. Generally, you'll likely want to rely on the default definitions.
 
-[sweet-suite]: ../../overview.md#all-your-sweet-sweet-test-suite-options
+[sweet-suite]: ../../overview/test-environments.md#test-suite-execution-environments
 
 ## Ceedling tools for release builds
 
@@ -100,11 +100,12 @@ command line for `:tools` ↳ `:power_drill` would look like this:
 
 ## Ceedling's default build step tool definitions
 
-**_NOTE:_** Ceedling's tool definitions for its preprocessing and backtrace
-features are not documented here. Ceedling's use of tools for these features are
-tightly coupled to the options and output of those tools. Drop-in replacements
-using other tools are not practically possible. Eventually, an improved plugin
-system will provide options for integrating alternative tools.
+!!! warning "Preprocessing & Backtrace Tools Are Not Configurable"
+    Ceedling's tool definitions for its preprocessing and backtrace features are
+    not documented here. Ceedling's use of tools for these features are tightly
+    coupled to the options and output of those tools. Drop-in replacements using
+    other tools are not practically possible. Eventually, an improved plugin
+    system will provide options for integrating alternative tools.
 
 ## `:test_compiler`
 

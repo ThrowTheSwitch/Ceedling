@@ -1,4 +1,4 @@
-# A Fake Function Framework Plugin for Ceedling
+# Fake Function Framework for Ceedling
 
 This plugin causes Ceedling to use the [Fake Function Framework](https://github.com/meekrosoft/fff) for mocking instead of CMock, the default mocking framework packages with Ceedling.
 
@@ -6,12 +6,12 @@ Using _FFF_ provides less strict mocking than CMock and affords more loosely-cou
 
 This Ceedling 1.x plugin incorporates a snapshot of _FFF_ version 0.1.1 and supersedes a separately available [FFF Ceedling plugin project](https://github.com/ElectronVector/fake_function_framework). The built-in _FFF_ plugin that now comes with Ceedling was derived from the ElectronVector project and is now maintained along with Ceedling and tracks its updates.
 
-### Thanks
+!!! note "Special thanks to Matt Chernosky"
+    [Matt Chernosky](http://www.electronvector.com) originally developed this plugin 
+    as an adapter for _FFF_. It's a well-loved piece of the Ceedling ecosystem,
+    and we really appreciate his support through the years.
 
-A special thanks to [Matt Chernosky](http://www.electronvector.com) for developing this plugin originally. It's a well-loved piece of the Ceedling 
-ecosystem and we really appreciate his support through the years.
-
-### Enable the plug-in.
+## Enable the plugin
 
 The plug-in is enabled from within your project.yml file.
 
@@ -19,17 +19,11 @@ In the `:plugins` configuration, add `fff` to the list of enabled plugins:
 
 ```yaml
 :plugins:
-  :load_paths:
-    - vendor/ceedling/plugins
   :enabled:
-    - report_tests_pretty_stdout
-    - module_generator
     - fff
 ```
-*Note that you could put the plugin source in some other loaction.
-In that case you'd need to add a new path the `:load_paths`.*
 
-## How to use it
+## How to use
 
 You use fff with Ceedling the same way you used to use CMock.
 
@@ -77,7 +71,7 @@ test_whenThePowerReadingIsLessThan5_thenTheStatusLedIsNotTurnedOn(void)
 }
 ```
 
-## Test that a single function was called with the correct argument
+### Test that a single function was called with the correct argument
 
 ```c
 void
@@ -92,7 +86,7 @@ test_whenTheVolumeKnobIsMaxed_thenVolumeDisplayIsSetTo11(void)
 }
 ```
 
-## Test that calls are made in a particular sequence
+### Test that calls are made in a particular sequence
 
 ```c
 void
@@ -110,7 +104,7 @@ test_whenTheModeSelectButtonIsPressed_thenTheDisplayModeIsCycled(void)
 }
 ```
 
-## Fake a return value from a function
+### Fake a return value from a function
 
 ```c
 void
@@ -127,7 +121,7 @@ test_givenTheDisplayHasAnError_whenTheDeviceIsPoweredOn_thenTheDisplayIsPoweredD
 }
 ```
 
-## Fake a function with a value returned by reference
+### Fake a function with a value returned by reference
 
 ```c
 void
@@ -152,9 +146,9 @@ test_givenTheUserHasTypedSleep_whenItIsTimeToCheckTheKeyboard_theDisplayIsPowere
 }
 ```
 
-## Fake a function with a function pointer parameter
+### Fake a function with a function pointer parameter
 
-```
+```c
 void
 test_givenNewDataIsAvailable_whenTheDisplayHasUpdated_thenTheEventIsComplete(void)
 {
@@ -213,19 +207,19 @@ All of the fake functions, and any fff global state are all reset automatically 
 
 ## CMock configuration
 
-Use still use some of the CMock configuration options for setting things like the mock prefix, and for including additional header files in the mock files.
+We still use some CMock configuration options for setting things like the mock prefix and for including additional header files in the mock files.
 
 ```yaml
 :cmock:
     :mock_prefix: mock_
         :includes:
-            -
+            - ...
         :includes_h_pre_orig_header:
-            -
+            - ...
         :includes_h_post_orig_header:
-            -
+            - ...
         :includes_c_pre_header:
-            -
+            - ...
         :includes_c_post_header:
 ```
 
@@ -233,10 +227,8 @@ Use still use some of the CMock configuration options for setting things like th
 
 There are unit and integration tests for the plug-in itself.
 These are run with the default `rake` task.
-The integration test runs the tests for the example project in examples/fff_example.
-For the integration tests to succeed, this repository must be placed in a Ceedling tree in the plugins folder.
+The integration test runs the tests for the example project in _examples/fff_example_.
 
 ## More examples
 
-There is an example project in examples/fff_example.
-It shows how to use the plug-in with some full-size examples.
+There is an example project in _examples/fff_example_. This project illustrates how to use the plugin with full-size examples.

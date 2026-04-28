@@ -43,7 +43,8 @@ extra:
       name: Sponsor ThrowTheSwitch on GitHub
 
 extra_css:
-  - stylesheets/extra.css  # Custom CSS for styling overrides and additions
+  - stylesheets/fixes.css        # Styling overrides and layout fixes
+  - stylesheets/admonitions.css  # Custom admonition types
 
 # Plugins
 plugins:
@@ -74,7 +75,12 @@ exclude_docs: |
 # Site navigation tree
 nav:
   - Home: index.md                  
-  - Overview: overview.md           
+  - Overview:
+    - overview/index.md
+    - Build System: overview/build-system.md
+    - Tools & Frameworks: overview/tools-and-frameworks.md
+    - Testing Abilities: overview/testing-abilities.md
+    - Test Environments: overview/test-environments.md
   - Getting Started:
     - getting-started/index.md
     - Quick Start: getting-started/quick-start.md
@@ -87,9 +93,9 @@ nav:
     - Commented Sample Test File: testing-guide/test-sample.md           
     - Anatomy of a Test Suite: testing-guide/test-suite-anatomy.md             
     - Conventions & Behaviors: testing-guide/conventions.md                    
-    - Unity, CMock & CException: testing-guide/frameworks.md                   
-    - Build Directive Macros: testing-guide/build-directives.md                
+    - Unity, CMock & CException: testing-guide/frameworks.md
     - Partials: testing-guide/partials.md                                       
+    - Build Directive Macros: testing-guide/build-directives.md                
   - Configuration:
     - configuration/index.md                  
     - Loading Configuration: configuration/loading.md

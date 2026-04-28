@@ -1,8 +1,8 @@
-# Ceedling Plugin: GTest-like Test Suite Console Report
+# GTest-like Console Report
 
 Prints to the console ($stdout) test suite results in a GTest-like format.
 
-# Plugin Overview
+## Plugin Overview
 
 This plugin is intended to be used in place of the more commonly used "pretty" 
 test report plugin. Like its sibling, this plugin ollects raw test results from
@@ -12,7 +12,7 @@ readable summary form — specifically the GoogleTest format.
 This plugin is most useful when using an IDE or working with a CI system that
 understands the GTest console logging format.
 
-# Setup
+## Setup
 
 Enable the plugin in your Ceedling project by adding 
 `report_tests_gtestlike_stdout` to the list of enabled plugins instead of any 
@@ -24,13 +24,13 @@ other `report_tests_*_stdout` plugin.
     - report_tests_gtestlike_stdout
 ```
 
-# Configuration
+## Configuration
 
 No additional configuration is needed once the plugin is enabled.
 
-# Plugin Output
+## Plugin Output
 
-## Ceedling mapped to GoogleTest reporting elements
+### Ceedling mapped to GoogleTest reporting elements
 
 Ceedling's conventions and output map to GTest format as the following:
 
@@ -47,7 +47,7 @@ collect and format statistics until the end of a build. This plugin duplicates
 the tense of the wording in a GTest report, but it is unintentionally somewhat 
 misleading.
 
-## Example output (snippet)
+### Example output (snippet)
 
 The GTest format is verbose. It lists all tests with success and failure results.
 

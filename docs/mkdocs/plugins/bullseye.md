@@ -1,19 +1,13 @@
-Bullseye Code Coverage Plugin
-=============================
-
-# June 1, 2024 Bullseye Plugin Disabled
-
-Until the Bullseye Plugin can be updated for compatibility with Ceedling >= 1.0.0,
-it has been disabled.
-
-(The key hurdle is access to a license for the proprietary Bullseye coverage tooling.)
-
-# Plugin Overview
+# Bullseye
 
 Plugin for integrating Bullseye code coverage tool into Ceedling projects.
 This plugin requires a working license to Bullseye code coverage tools. The tools
 must be within the path or the path should be added to the environment in the 
-`project.yml file`.
+project configuration.
+
+!!! warning "Bullseye Plugin Disabled"
+    [June 1, 2024] Until the Bullseye Plugin can be updated for compatibility 
+    with Ceedling >= 1.0.0, it has been disabled.
 
 ## Configuration
 

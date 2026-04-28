@@ -1,8 +1,8 @@
-# Ceedling Plugin: Build Warnings Log
+# Build Warnings Log
 
 Capture build process warnings from command tools to a plain text log file.
 
-# Plugin Overview
+## Overview
 
 This plugin captures warning messages output by command line tools throughout a
 build. At the end of a build, any collected warning messages are written to one 
@@ -19,7 +19,7 @@ linking.
 
 Log files are written to `<build root>/artifacts/<context>/`.
 
-# Setup
+## Setup
 
 Enable the plugin in your Ceedling project file:
 
@@ -29,7 +29,7 @@ Enable the plugin in your Ceedling project file:
     - report_build_warnings_log
 ```
 
-# Configuration
+## Configuration
 
 To change the default filename of `warning.log`, add your desired filename to
 your configuration file using `:report_build_warnings_log:` ↳ `:filename`.

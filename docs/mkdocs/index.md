@@ -1,5 +1,5 @@
 !!! tip "New to Ceedling?"
-    Jump straight to the [Quick Start](getting-started/quick-start.md) — installation,
+    Jump straight to the [Quick Start][quick-start] — installation,
     project set up, and your first build tasks all in one place.
 
 ---
@@ -10,18 +10,34 @@
 
 <div class="grid cards" markdown>
 
--   **[A C Build System for All Your Mad Scientisting Needs][overview]**
+-   :material-hammer-wrench: **[A Build System for C][build-system]**
 
     ---
 
-    Background, definitions, and links for Ceedling and its bundled frameworks.
-    Includes a simple example project file.
+    Generate a complete test and release build from a single YAML file.
+    Provides a minimal sample project configuration and an explanation of Ceedling’s
+    design philosophy.
 
--   **[Ceedling, Unity, and CMock’s Testing Abilities][overview]**
+-   :material-toolbox: **[Tools & Frameworks][tools-and-frameworks]**
 
     ---
 
-    Philosophy and practical options for unit testing C code in a variety of scenarios.
+    Ruby, Rake, YAML, Unity, CMock, and CException explained — the pieces that make
+    Ceedling possible and how they fit together.
+
+-   :material-test-tube: **[Testing Abilities][testing-abilities]**
+
+    ---
+
+    How Ceedling, Unity, and CMock support unit testing across host systems,
+    emulators, and target hardware platforms.
+
+-   :material-monitor: **[Test Environments][test-environments]**
+
+    ---
+
+    Native host builds, emulator-based runs, and on-target execution — choose the
+    right test suite strategy for your project.
 
 </div>
 
@@ -29,13 +45,19 @@
 
 <div class="grid cards" markdown>
 
--   **[Ceedling Installation & Set Up][installation]**
+-   :material-rocket-launch: **[Quick Start][quick-start]**
+
+    ---
+
+    Ready to go? Let’s go.
+
+-   :material-download: **[Ceedling Installation & Set Up][installation]**
 
     ---
 
     Installing Ceedling and its prerequisites.
 
--   **[Ceedling’s Command Line.][command-line]**
+-   :material-console: **[Ceedling’s Command Line.][command-line]**
 
     ---
 
@@ -47,34 +69,34 @@
 
 <div class="grid cards" markdown>
 
--   **[How Does a Test Case Even Work?][test-cases]**
+-   :material-help-circle: **[How Does a Test Case Even Work?][test-cases]**
 
     ---
 
     A brief overview of what a test case is with simple examples illustrating
     how test cases work.
 
--   **[Commented Sample Test File][test-sample]**
+-   :material-file-code: **[Commented Sample Test File][test-sample]**
 
     ---
 
     A sample test file illustrating test case creation and the conventions
     that make it work. Includes a discussion of how test executables get built.
 
--   **[Anatomy of a Test Suite][test-suite-anatomy]**
+-   :material-layers: **[Anatomy of a Test Suite][test-suite-anatomy]**
 
     ---
 
     How a unit test grows up to become a test suite.
 
--   **[Using Unity, CMock & CException][frameworks]**
+-   :material-link-variant: **[Using Unity, CMock & CException][frameworks]**
 
     ---
 
     Ceedling links together Unity, CMock, and CException — each of which can
     require configuration of their own. Ceedling facilitates this.
 
--   **[Important Conventions & Behaviors][conventions]**
+-   :material-book-open-page-variant: **[Important Conventions & Behaviors][conventions]**
 
     ---
 
@@ -82,27 +104,41 @@
     Code and files structured and named in certain ways trigger sophisticated build
     features.
 
+-   :material-content-cut: **[Partials][partials]**
+
+    ---
+
+    Partials are like a scalpel for your source code. A generated partial allows 
+    you to test and mock parts of your code you could not otherwise access
+    without rewriting it first.
 </div>
 
 ## Project Configuration
 
 <div class="grid cards" markdown>
 
--   **[How to Load a Project Configuration][configuration-loading]**
+-   :material-file-import: **[How to Load a Project Configuration][configuration-loading]**
 
     ---
     You have options, my friend. Load your base configuration via command line 
     flag, environment variable, or default file. Add Mixins to merge configuration 
     for different build scenarios.
 
--   **[The Mighty Project Configuration File][configuration-reference]**
+-   :material-file-cog: **[The Mighty Project Configuration File][configuration-project-file]**
 
     ---
 
-    Exhaustive documentation for all project file configuration options — project
-    paths, command line tools, plugins, and much more. All in glorious YAML.
+    Everything you need to know about the project configuration file. All in 
+    glorious YAML.
 
--   **[Which Ceedling][which-ceedling]**
+-   :material-book-open-variant: **[Project Configuration Reference][configuration-reference]**
+
+    ---
+
+    Exhaustive documentation for all project configuration options — project
+    paths, testing features, plugins, and much more.
+
+-   :material-directions-fork: **[Which Ceedling?][which-ceedling]**
 
     ---
 
@@ -114,21 +150,21 @@
 
 <div class="grid cards" markdown>
 
--   **[Build Directive Macros][build-directives]**
+-   :material-code-tags: **[Build Directive Macros][build-directives]**
 
     ---
 
     Code macros to accomplish build goals when Ceedling's conventions aren't
     quite enough.
 
--   **[Ceedling Plugins][plugins]**
+-   :material-puzzle-plus: **[Ceedling Plugins][plugins]**
 
     ---
 
     Ceedling is extensible with built-in plugins for code coverage, test reporting,
     CI integration, file scaffolding, sophisticated release builds, and more.
 
--   **[Global Collections][global-collections]**
+-   :material-database: **[Global Collections][global-collections]**
 
     ---
 
@@ -137,17 +173,23 @@
 
 </div>
 
-[overview]:                overview.md
-[test-cases]:              testing-guide/test-cases.md
-[test-sample]:       testing-guide/test-sample.md
-[test-suite-anatomy]:      testing-guide/test-suite-anatomy.md
-[installation]:            getting-started/installation.md
-[command-line]:            getting-started/command-line.md
-[conventions]:             testing-guide/conventions.md
-[frameworks]:              testing-guide/frameworks.md
-[configuration-loading]:   configuration/loading.md
-[configuration-reference]: configuration/index.md
-[which-ceedling]:          configuration/which-ceedling.md
-[build-directives]:        testing-guide/build-directives.md
-[plugins]:                 plugins/index.md
-[global-collections]:      configuration/global-collections.md
+[quick-start]:                 getting-started/quick-start.md
+[build-system]:                overview/build-system.md
+[tools-and-frameworks]:        overview/tools-and-frameworks.md
+[testing-abilities]:           overview/testing-abilities.md
+[test-environments]:           overview/test-environments.md
+[test-cases]:                  testing-guide/test-cases.md
+[test-sample]:                 testing-guide/test-sample.md
+[test-suite-anatomy]:          testing-guide/test-suite-anatomy.md
+[partials]:                    testing-guide/partials.md
+[installation]:                getting-started/installation.md
+[command-line]:                getting-started/command-line.md
+[conventions]:                 testing-guide/conventions.md
+[frameworks]:                  testing-guide/frameworks.md
+[configuration-loading]:       configuration/loading.md
+[configuration-project-file]:  configuration/project-file.md
+[configuration-reference]:     configuration/reference/index.md
+[which-ceedling]:              configuration/which-ceedling.md
+[build-directives]:            testing-guide/build-directives.md
+[plugins]:                     plugins/index.md
+[global-collections]:          configuration/global-collections.md

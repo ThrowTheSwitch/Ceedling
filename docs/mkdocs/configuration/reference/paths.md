@@ -28,11 +28,12 @@ Ceedling project files use lists broken up per line.
 Examples that illustrate the many `:paths` entry features follow all the
 various path-related documentation sections.
 
-_**Note:**_ If you use Mixins to build up path lists in your project
-configuration, the merge order of those Mixins will dictate the ordering of
-your path lists. Particularly given that the search path list built with
-`:paths` ↳ `:include` you will want to pay attention to ordering issues
-involved in specifying path lists in Mixins.
+!!! warning "Mixin Order Controls Path List Order"
+    If you use Mixins to build up path lists in your project configuration,
+    the merge order of those Mixins will dictate the ordering of your path
+    lists. Particularly given that the search path list built with
+    `:paths` ↳ `:include` you will want to pay attention to ordering issues
+    involved in specifying path lists in Mixins.
 
 ## `:paths` ↳ `:test`
 
@@ -192,12 +193,13 @@ Subtractive paths may be simple paths or globs just like any other path entry.
 
 See examples below.
 
-_**Note:**_ The resolution of subtractive paths happens after your full paths
-lists are assembled. So, if you use `:paths` entries in Mixins to build up your
-project configuration, subtractive paths will only be processed after the final
-mixin is merged. That is, you can merge in additive and subtractive paths with
-Mixins to your heart's content. The subtractive paths are not removed until all
-Mixins have been merged.
+!!! note "Subtractive Paths Resolve After All Mixins Merge"
+    The resolution of subtractive paths happens after your full paths lists are
+    assembled. So, if you use `:paths` entries in Mixins to build up your
+    project configuration, subtractive paths will only be processed after the
+    final mixin is merged. That is, you can merge in additive and subtractive
+    paths with Mixins to your heart's content. The subtractive paths are not
+    removed until all Mixins have been merged.
 
 ## Example `:paths` YAML blurbs
 

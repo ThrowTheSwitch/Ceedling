@@ -1,8 +1,10 @@
-# Ceedling Plugin: Subprojects
+# Subprojects
 
 The `subprojects` plugin supports subproject release builds of static libraries.
 It manages differing sets of compiler flags and linker flags that fit the needs
 of different library builds.
+
+## Overview
 
 This plugin enables Ceedling to manage complex release builds that involve
 multiple separate library subprojects — each potentially with its own build

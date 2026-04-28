@@ -1,12 +1,12 @@
-# Ceedling Plugin: Command Hooks
+# Command Hooks
 
 Easily run command line tools and scripts at various points in a Ceedling build.
 
-# Plugin Overview
+## Plugin Overview
 
 This plugin allows you to skip creating a full Ceedling plugin for many common use cases. It links Ceedling's programmatic `Plugin` code hooks to easily managed tool definitions. 
 
-# Setup
+## Setup
 
 To use this plugin, it must be enabled:
 
@@ -16,9 +16,9 @@ To use this plugin, it must be enabled:
     - command_hooks
 ```
 
-# Configuration
+## Configuration
 
-## Overview
+### Overview
 
 To connect utilties or scripts to build step hooks, Ceedling tools must be defined.
 
@@ -26,7 +26,7 @@ A Ceedling tool is just a YAML blob that gathers together a handful of settings 
 
 Example Ceedling tools follow. When enabled, this plugin ensures any tools you define are executed by the corresponding build step hook they are organized beneath. The configurtion of enabled hooks and tools happens in a top-level `:command_hooks:` block within your project configuration. One or more tools can be attached to a build step hook.
 
-## Tool lists
+### Tool lists
 
 A command hook can execute one or more tools.
 
@@ -36,7 +36,7 @@ If multiple tools are needed, they must be organized as entries in a YAML list.
 
 See the commented examples below.
 
-## Tool definitions
+### Tool definitions
 
 Each Ceedling tool requires an `:executable` string and an optional `:arguments` list. See _[CeedlingPacket][ceedling-packet]_ documentation for project configuration [`:tools`][tools-doc] entries to understand how to craft your argument list and other tool options.
 
@@ -44,7 +44,7 @@ At present, this plugin passes at most one runtime parameter for use in a hook's
 
 [tools-doc]: https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#tools-configuring-command-line-tools-used-for-build-steps
 
-## Hook logging
+### Hook logging
 
 In addition to the standard Ceedling tool definition elements, a hook configuration entry may optionally include a `:logging` setting.
 
@@ -56,7 +56,7 @@ When logging is enabled and logging conditions are appropriate, any output from 
 * Debug logging naturally displays hook output as part of normal tool execution logging. It is not duplicated by hook logging.
 * At Normal verbosity, blank hook output is not logged at all; Obnoxious verbosity will display blank output as `<empty>`.
 
-## Command Hooks example configuration YAML
+### Command Hooks example configuration YAML
 
 ```yaml
 :command_hooks:
@@ -89,7 +89,7 @@ When logging is enabled and logging conditions are appropriate, any output from 
         - memory_report.txt
 ```
 
-# Available Build Step Hooks
+## Available Build Step Hooks
 
 Define any of the following entries within a top-level `:command_hooks:` section of your Ceedling project file to automagically connect utilities or scripts to build process steps.
 
@@ -106,49 +106,49 @@ As an example, consider a Ceedling project with ten test files and seventeen moc
 * 10 occurences of the `:pre_test_fixture_execute` and `:post_test_fixture_execute` hooks for running test executables and gathering the results of the tests cases they contain.
 * 1 occurence of the `:post_build` hook unless a build error occurred (`:post_error` would be called isntead).
 
-## `:pre_build`
+### `:pre_build`
 
 Called once just before Ceedling executes any tasks.
 
 No parameters are provided for a tool's argument list when the hook is called.
 
-## `:post_build`
+### `:post_build`
 
 Called once just before Ceedling terminates.
 
 No parameters are provided for a tool's argument list when the hook is called.
 
-## `:post_error`
+### `:post_error`
 
 Called once just after any build failure and just before Ceedling terminates.
 
 No parameters are provided for a tool's argument list when the hook is called.
 
-## `:pre_test`
+### `:pre_test`
 
 Called just before each test begins its build pipeline and just after all context for that build has been gathered.
 
 The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
 
-## `:post_test`
+### `:post_test`
 
 Called just after each test completes its build and execution.
 
 The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
 
-## `:pre_release`
+### `:pre_release`
 
 Called once just before a release build begins.
 
 No parameters are provided for a tool's argument list when the hook is called.
 
-## `:post_release`
+### `:post_release`
 
 Called once just after a release build finishes.
 
 No parameters are provided for a tool's argument list when the hook is called.
 
-## `:pre_mock_preprocess`
+### `:pre_mock_preprocess`
 
 If mocks are enabled and preprocessing is in use, this is called just before each header file to be mocked is preprocessed.
 
@@ -158,25 +158,25 @@ See _[CeedlingPacket][ceedling-packet]_ for details on how Ceedling preprocessin
 
 [ceedling-packet]: ../configuration/index.md
 
-## `:post_mock_preprocess`
+### `:post_mock_preprocess`
 
 If mocks are enabled and preprocessing is in use, this is called just after each header file to be mocked is preprocessed.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the header file to be mocked.
 
-## `:pre_mock_generate`
+### `:pre_mock_generate`
 
 If mocks are enabled, this is called just before each header file to be mocked is processed by mock generation.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the header file to be mocked.
 
-## `:post_mock_generate`
+### `:post_mock_generate`
 
 If mocks are enabled, this is called just after each mock generation.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the header file to be mocked.
 
-## `:pre_test_preprocess`
+### `:pre_test_preprocess`
 
 If preprocessing is in use, this is called just before each test file is preprocessed before runner generation.
 
@@ -184,7 +184,7 @@ The parameter available to a tool (`${1}`) when the hook is called is the test's
 
 See _[CeedlingPacket][ceedling-packet]_ for details on how Ceedling preprocessing operates.
 
-## `:post_test_preprocess`
+### `:post_test_preprocess`
 
 If preprocessing is in use, this is called just after each test file is preprocessed.
 
@@ -192,49 +192,49 @@ The parameter available to a tool (`${1}`) when the hook is called is the test's
 
 See _[CeedlingPacket][ceedling-packet]_ for details on how Ceedling preprocessing operates.
 
-## `:pre_runner_generate`
+### `:pre_runner_generate`
 
 Called just before each test file is processed by test runner generation.
 
 The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
 
-## `:post_runner_generate`
+### `:post_runner_generate`
 
 Called just after each test runner is generated.
 
 The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
 
-## `:pre_compile_execute`
+### `:pre_compile_execute`
 
 Called just before each C or assembly file is compiled.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the file to be compiled.
 
-## `:post_compile_execute`
+### `:post_compile_execute`
 
 Called just after each file compilation.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the input file that was compiled.
 
-## `:pre_link_execute`
+### `:pre_link_execute`
 
 Called just before any binary artifact—test or release—is linked.
 
 The parameter available to a tool (`${1}`) when the hook is called is the binary output artifact's filepath.
 
-## `:post_link_execute`
+### `:post_link_execute`
 
 Called just after a binary artifact is linked.
 
 The parameter available to a tool (`${1}`) when the hook is called is the binary output artifact's filepath.
 
-## `:pre_test_fixture_execute`
+### `:pre_test_fixture_execute`
 
 Called just before each test is executed in its corresponding test fixture.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the binary artifact to be executed by the fixture.
 
-## `:post_test_fixture_execute`
+### `:post_test_fixture_execute`
 
 Called just after each test's fixture is executed and test results are collected.
 

@@ -1,9 +1,9 @@
-# Ceedling Plugin: Raw Test Output Logs
+# Raw Test Output Logs
 
 Capture extra console output — typically `printf()`-style statements — from 
 test cases to log files.
 
-# Plugin Overview
+## Plugin Overview
 
 This plugin gathers and filters console output from test executables into log 
 files. Though not required, it is usually used in addition to the 
@@ -14,7 +14,7 @@ Debugging in unit tested code is often accomplished with simple `printf()`-
 style calls to dump information to the console. This plugin's log files can be 
 helpful in supporting debugging efforts or quality validation.
 
-## Test executable output
+### Test executable output
 
 Ceedling and Unity cooperate to extract console statements from test executable
 runs. Unity-based test executables print test case pass/fail status messages
@@ -25,7 +25,7 @@ output, to format it and present summaries at the console.
 
 This plugin captures the unrecognized output to log files.
 
-## Log files
+### Log files
 
 Log files are only created if test executables produce console output apart from
 expected Unity test results as described above. Log files are named for the
@@ -35,7 +35,7 @@ Builds are differentiated by build context — `test`, `release`, or
 plugin-modified build (e.g. `gcov`). Log files are written to `<build
 root>/artifacts/<context>/<test file>.raw.log`.
 
-# Setup
+## Setup
 
 Enable the plugin in your Ceedling project:
 
@@ -45,6 +45,6 @@ Enable the plugin in your Ceedling project:
     - report_tests_raw_output_log
 ```
 
-# Configuration
+## Configuration
 
 No additional configuration is needed once the plugin is enabled.

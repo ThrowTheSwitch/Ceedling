@@ -1,13 +1,13 @@
-# Ceedling Plugin: Beep
+# Beep
 
 Hear a useful beep at the end of a build.
 
-# Plugin Overview
+## Plugin Overview
 
 Are you getting too distracted surfing the internet, chatting with coworkers, or swordfighting while a long build runs? A friendly beep will let you know
 it's time to pay attention again.
 
-# Setup
+## Setup
 
 To use this plugin, it must be enabled:
 
@@ -17,14 +17,14 @@ To use this plugin, it must be enabled:
     - beep
 ```
 
-# Configuration
+## Configuration
 
 Beep includes a default configuration. By just enabling the plugin, the simplest cross-platform sound mechanism (`:bell` below) is automatically enabled for both
 build completion and build error events.
 
 If you would like to customize your beeps, the following explains your options.
 
-## Events
+### Events
 
 When this plugin is enabled, a beep is sounded when:
 
@@ -33,7 +33,7 @@ When this plugin is enabled, a beep is sounded when:
 
 To change the default sound for each event, define `:on_done` and `:on_error` beneath a top-level `:beep` entry in your configuration file. See example below.
 
-## Sound options
+### Sound options
 
 The following options are fixed. At present, this plugin does not expose customization settings.
 
@@ -77,7 +77,7 @@ The following options are fixed. At present, this plugin does not expose customi
 
   [say]: https://ss64.com/mac/say.html
 
-## Adding arguments to a beep tool
+### Adding arguments to a beep tool
 
 Each of the sound options above map to a command line tool that Ceedling executes.
 
@@ -93,7 +93,7 @@ To add additional arguments, a feature of Ceedling's project file handling allow
     - ...                   # Add any aguments as a list of strings
 ```
 
-## Example beep configurations in YAML
+### Example beep configurations in YAML
 
 Enabling the plugin and event handlers with beep tool selections:
 
@@ -127,7 +127,7 @@ Adding an argument to a beep tool:
 
 ```
 
-# Notes
+## Notes
 
 * Some terminal emulators intercept and/or silence beeps. Remote terminal sessions can add further complication. Be sure to check relevant configuration options to accomplish what you want.
 

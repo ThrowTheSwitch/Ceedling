@@ -1,8 +1,8 @@
-# Ceedling Plugin: Test Suite Report Log Factory
+# Test Suite Report Log Factory
 
 Generate one or more built-in test suite reports — JSON, JUnit XML, CppUnit XML, or HTML — or create your own.
 
-# Plugin Overview
+## Plugin Overview
 
 Test reports are handy for all sorts of reasons. Various build and reporting tools are able to generate, visualize, or otherwise process results encoded in handy container formats including JSON and XML.
 
@@ -17,7 +17,7 @@ This plugin generates reports after test builds, storing them in your project `a
 
 With a limited amount of Ruby code, you can also create your own report without creating an entire Ceedling plugin.
 
-# _User Beware_
+## _User Beware_
 
 Test reports often lack well managed standards or even much documentation at all. Different revisions of the formats exist as do different flavors of the same version produced by different tools.
 
@@ -26,7 +26,7 @@ If a test report produced by this plugin does not work for your needs or is not 
 1. Use a script or other tool to post-process the report into a format that works for you. You might be surprised how many of these hacks are commonly necessary and exist peppered throughout online forums. You can incorporate any such post-processing step by enabling the `command_hooks` Ceedling plugin (lower in the plugin list than this plugin) and configuring a Ceedling tool to run the needed transformation.
 1. Use Ceedling's abilities plus features of this plugin (documented below) to generate your own test report with a minimal amount of Ruby code.
 
-# Setup
+## Setup
 
 Enable the plugin in your Ceedling project file by adding `report_tests_log_factory` to the list of enabled plugins.
 
@@ -38,7 +38,7 @@ Enable the plugin in your Ceedling project file by adding `report_tests_log_fact
 
 All generated reports are written to `<build root>/artifacts/<context>`. Your Ceedling project file specifies `<build root>` as a required entry for any build. Your build's context defaults to `test`. Certain other test build plugins (e.g. GCov) provide a different context (e.g. `gcov`) for test builds, generally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than `test/`, `gcov/`.
 
-# Configuration
+## Configuration
 
 Enable the reports you wish to generate — `json`, `junit`, and/or `cppunit` — within the `:report_tests_log_factory` ↳ `:reports` configuration list.
 
@@ -71,9 +71,9 @@ To change the output filename, specify it with the `:filename` key beneath the r
     :filename: 'more_better_filename.ext'
 ```
 
-# Built-in Reports
+## Built-in Reports
 
-## Execution duration values
+### Execution duration values
 
 Some test reporting formats include the execution time (duration) for aspects of a test suite run. Various granularities exist from the total time for all tests to the time of each suite (per the relevant defition of a suite) to the time required to run individual test cases. See _CeedlingPacket_ for the details on time duration values.
 
@@ -91,7 +91,7 @@ _Note:_ Most test cases are quite short, and most computers are quite fast. As s
 
 [Unity]: https://github.com/ThrowTheSwitch/Unity
 
-## JSON Format
+### JSON Format
 
 [JSON] is “a lightweight data-interchange format.” JSON serializes common data structures into a human readable form. The format has several pros, including the ability for entirely different programming languages to ingest JSON and recreate these data structures. As such, this makes JSON a good report generation option as the result can be easily programmatically manipulated and put to use.
 
@@ -99,7 +99,7 @@ Something like XML is a general purpose structure for, well, structuring data. X
 
 The JSON this plugin generates uses an ad hoc set of data structures following no standard — though any other test framework outputting test results in JSON may look fairly similar.
 
-### Example JSON configuration YAML
+#### Example JSON configuration YAML
 
 ```yaml
 :plugins:
@@ -117,7 +117,7 @@ The JSON this plugin generates uses an ad hoc set of data structures following n
 
 [JSON]: https://www.json.org/
 
-### Example JSON test report
+#### Example JSON test report
 
 In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored.
 
@@ -160,14 +160,14 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
 }
 ```
 
-## JUnit XML Format
+### JUnit XML Format
 
 [JUnit] holds a certain position among testing tools. While it is an xUnit-style framework specific to unit testing Java, it has influenced how Continuous Integration build tools operate, and its [JUnit XML report format][junit-xml-format] has become something of a defacto standard for test reports in any language. The JUnit XML format has been revised in various ways over time but generally has more available documentation than some other formats.
 
 [JUnit]: https://junit.org/
 [junit-xml-format]: https://docs.getxray.app/display/XRAY/Taking+advantage+of+JUnit+XML+reports
 
-### Example JUnit configuration YAML
+#### Example JUnit configuration YAML
 
 ```yaml
 :plugins:
@@ -183,7 +183,7 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
     :filename: junit_tests_report.xml
 ```
 
-### Example JUnit test report
+#### Example JUnit test report
 
 In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored (a.k.a. “skipped” in JUnit lingo).
 
@@ -209,13 +209,13 @@ In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ bec
 </testsuites>
 ```
 
-## CppUnit XML Format
+### CppUnit XML Format
 
 [CppUnit] is an xUnit-style port of the JUnit framework to C/C++. Documentation for its XML test report is scattered and not easily linked.
 
 [CppUnit]: https://freedesktop.org/wiki/Software/cppunit/
 
-### Example CppUnit configuration YAML
+#### Example CppUnit configuration YAML
 
 ```yaml
 :plugins:
@@ -231,7 +231,7 @@ In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ bec
     :filename: cppunit_tests_report.xml
 ```
 
-### Example CppUnit test report
+#### Example CppUnit test report
 
 In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored.
 
@@ -278,11 +278,11 @@ In mapping a Ceedling test suite to CppUnit convetions, a CppUnit test name is t
 </TestRun>
 ```
 
-## HTML Format
+### HTML Format
 
 This plugin creates an adhoc HTML page in a single file.
 
-### Example HTML configuration YAML
+#### Example HTML configuration YAML
 
 ```yaml
 :plugins:
@@ -298,11 +298,11 @@ This plugin creates an adhoc HTML page in a single file.
     :filename: tests_report.html
 ```
 
-### Example HTML test report
+#### Example HTML test report
 
 ![](sample_html_report.png)
 
-# Creating Your Own Custom Report
+## Creating Your Own Custom Report
 
 Creating your own report requires three steps:
 
@@ -310,7 +310,7 @@ Creating your own report requires three steps:
 1. Create a Ruby file in the directory from (1) per instructions that follow.
 1. Enable your new report in your `:report_tests_log_factory` Ceedling configuration.
 
-## Custom report configuration
+### Custom report configuration
 
 Configuration steps, (1) and (3) above, are documented by example below. Conventions simplify the Ruby programming and require certain naming rules that extend into your project configuration.
 
@@ -326,7 +326,7 @@ Configuration steps, (1) and (3) above, are documented by example below. Convent
     - fancy_shmancy         # Your custom report must follow naming rules (below)
 ```
 
-## Custom `TestsReporter` Ruby code
+### Custom `TestsReporter` Ruby code
 
 To create a custom report, here's what you gotta do:
 
@@ -343,7 +343,7 @@ Overriding the default filename of your custom report happens just as it does fo
 
 You may access `:report_tests_log_factory` configuration for your custom report using a handy utility method documented in a later section.
 
-### Sample `TestReporter` custom subclass
+#### Sample `TestReporter` custom subclass
 
 The following code creates a simple, dummy report of the _FancyShmancy_ variety (note the name correspondence to the example configuration YAML above).
 
@@ -404,7 +404,7 @@ class FancyShmancyTestsReporter < TestsReporter
 end
 ```
 
-### Plugin hooks & test results data structure
+#### Plugin hooks & test results data structure
 
 See [_PluginDevelopmentGuide_][custom-plugins] for documentation of the test results data structure (i.e. the `results` method arguments in above sample code).
 
@@ -412,9 +412,9 @@ See this plugin's built-in `TestsReports` subclasses — `json_tests_reporter.rb
 
 [custom-plugins]: ../development/plugin-development-guide.md
 
-### `TestsReporter` utility methods
+#### `TestsReporter` utility methods
 
-#### Configuration access: `fetch_config_value(*keys)`
+##### Configuration access: `fetch_config_value(*keys)`
 
 You may call the private method `fetch_config_value(*keys)` of the parent class `TestReporters` from your custom subclass to retrieve configuration entries.
 
@@ -422,7 +422,7 @@ This method automatically indexes into `:report_tests_log_factory` configuration
 
 `fetch_config_value(*keys)` expects a list of keys and only accesses configuration beneath `:report_tests_log_factory` ↳ `:<custom_report>`.
 
-##### Example _FancyShmancy_ configuration + `TestsReporter.fetch_config_value()` calls
+###### Example _FancyShmancy_ configuration + `TestsReporter.fetch_config_value()` calls
 
 ```yaml
 report_tests_log_factory:

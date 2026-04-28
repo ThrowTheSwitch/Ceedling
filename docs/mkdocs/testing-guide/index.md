@@ -10,21 +10,21 @@
 
 <div class="grid cards" markdown>
 
--   **[How Does a Test Case Even Work?][test-cases]**
+-   :material-help-circle: **[How Does a Test Case Even Work?][test-cases]**
 
     ---
 
     A brief overview of how test cases work with simple examples illustrating
     assertions and mocks.
 
--   **[Commented Sample Test File][test-sample]**
+-   :material-file-code: **[Commented Sample Test File][test-sample]**
 
     ---
 
     A sample test file illustrating the Ceedling conventions that make it go. 
     Includes a discussion of what gets compiled and linked into a test executable.
 
--   **[Anatomy of a Test Suite][test-suite-anatomy]**
+-   :material-layers: **[Anatomy of a Test Suite][test-suite-anatomy]**
 
     ---
 
@@ -37,7 +37,7 @@
 
 <div class="grid cards" markdown>
 
--   **[Important Conventions & Behaviors][conventions]**
+-   :material-book-open-page-variant: **[Important Conventions & Behaviors][conventions]**
 
     ---
 
@@ -45,14 +45,14 @@
     and naming trigger sophisticated test build features. Also covers search paths, 
     file extensions, preprocessing, and more.
 
--   **[Using Unity, CMock & CException][frameworks]**
+-   :material-link-variant: **[Using Unity, CMock & CException][frameworks]**
 
     ---
 
     Ceedling connects the Unity, CMock, and CException frameworks — each of which 
     can require configuration of its own. Ceedling facilitates this.
 
--   **[Partials][partials]**
+-   :material-content-cut: **[Partials][partials]**
 
     ---
 
@@ -60,7 +60,7 @@
     you to test and mock parts of your code you could not otherwise access
     without rewriting it first.
 
--   **[Build Directive Macros][build-directives]**
+-   :material-code-tags: **[Build Directive Macros][build-directives]**
 
     ---
 
@@ -69,10 +69,10 @@
 
 </div>
 
-[test-cases]:      test-cases.md
-[test-sample]: test-sample.md
+[test-cases]:         test-cases.md
+[test-sample]:        test-sample.md
 [test-suite-anatomy]: test-suite-anatomy.md
-[conventions]:     conventions.md
-[frameworks]:      frameworks.md
-[build-directives]: build-directives.md
-[partials]:        partials.md
+[conventions]:        conventions.md
+[frameworks]:         frameworks.md
+[build-directives]:   build-directives.md
+[partials]:           partials.md

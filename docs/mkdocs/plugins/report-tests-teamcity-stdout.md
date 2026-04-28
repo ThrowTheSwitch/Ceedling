@@ -1,8 +1,8 @@
-# Ceedling Plugin: TeamCity Test Suite Console Report
+# TeamCity Test Suite Console Report
 
 Prints to the console ($stdout) test suite build events and results in a format understood by the CI product TeamCity.
 
-# Plugin Overview
+## Plugin Overview
 
 This plugin is intended to be used within [TeamCity] Continuous Integration
 (CI) builds. It processes Ceedling test suites and executable output into
@@ -18,7 +18,7 @@ options on enabling the build in CI but disabling it locally.
 [service-messages]:
 https://www.jetbrains.com/help/teamcity/service-messages.html
 
-# Setup
+## Setup
 
 Enable the plugin in your Ceedling project file by adding 
 `report_tests_teamcity_stdout`.
@@ -29,7 +29,7 @@ Enable the plugin in your Ceedling project file by adding
     - report_tests_teamcity_stdout
 ```
 
-# Configuration
+## Configuration
 
 All the `report_tests_*_stdout` plugins may be enabled in various combinations.
 But, some combinations may not make a great deal of sense. The TeamCity
@@ -60,7 +60,7 @@ committed to your repository while disabling the plugin in your local user
 project file that is ignored by your repository. In this way, the plugin would
 run on a TeamCity build server but not in your local development environment.
 
-# Example Output
+## Example Output
 
 TeamCity's convention for identifying tests uses the naming convention of the
 underlying Java language in which TeamCity is written,

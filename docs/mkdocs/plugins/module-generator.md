@@ -1,18 +1,17 @@
-ceedling-module-generator
-=========================
+# Module Generator
 
-## Plugin Overview
+This plugin adds a pair of new commands to Ceedling allowing you to generate or remove 
+module skeletons according to predefined templates.
 
-The module_generator plugin adds a pair of new commands to Ceedling, allowing
-you to make or remove modules according to predefined templates. With a single call,
-Ceedling can generate a source, header, and test file for a new module. If given a
-pattern, it can even create a series of submodules to support specific design patterns.
-Finally, it can just as easily remove related modules, avoiding the need to delete
-each individually.
+## Overview
+With a single call, Ceedling can generate a source, header, and test file for a new 
+module. If given a pattern, it can even create a series of submodules to support 
+specific design patterns. Finally, it can just as easily remove related modules, 
+avoiding the need to delete each individually.
 
 Let's say, for example, that you want to create a single module named `MadScience`.
 
-```
+```sh
 ceedling module:create[MadScience]
 ```
 
@@ -22,12 +21,12 @@ specified a different default (see configuration). It will create three files:
 `MadScience.c`, `MadScience.h`, and `TestMadScience.c`. *NOTE* that it is important that
 there are no spaces between the brackets. We know, it's annoying... but it's the rules.
 
-### Patterns
+## Patterns
 
 You can also create an entire pattern of files. To do that, just add a second argument
 to the pattern ID. Something like this:
 
-```
+```sh
 ceedling module:create[SecretLair,mch]
 ```
 
@@ -44,10 +43,11 @@ The module generator understands the following patterns:
  - `mch` -- generate 9 files for the model-conductor-hardware pattern
  - `mvp` -- generate 9 files for the model-view-presenter pattern
 
-### Paths
+## Paths
 
 The directories found in the project `:paths:` are reused. You can also specify an alternative default generation path using: 
-```
+
+```yaml
 :module_generator:
   :path_src: src/
   :path_inc: src/
@@ -60,13 +60,13 @@ It can do that too! You can give it a hint as to where to find your files. The p
 here is fairly basic, but it is usually sufficient. It works perfectly if your directory structure
 matches a common pattern. For example, let's say you issue this command:
 
-```
+```sh
 ceedling module:create[lab:SecretLair,mch]
 ```
 
 Say your directory structure looks like this:
 
-```
+```yaml
 :paths:
   :source:
     - lab/src
@@ -86,7 +86,7 @@ In this case, the `lab:` hint would make the module generator guess you want you
 
 Instead, if your directory structure looks like this:
 
-```
+```yaml
 :paths:
   :source:
     - src/**   #this might contain subfolders lab, lair, and other
@@ -129,7 +129,7 @@ subdirectory is supposed to be there. If the subdir is NOT there, it will automa
 
 Let's try an example with our previous path specification:
 
-```
+```yaml
 :paths:
   :source:
     - src/**   #this might contain subfolders lab, lair, and other
@@ -141,7 +141,7 @@ Let's try an example with our previous path specification:
 
 Then, use the following command:
 
-```
+```sh
 ceedling module:create[newlab/SecretLair]
 ```
 
@@ -166,7 +166,7 @@ a file that Ceedling can see, when it can't.
 Similarly, you can create stubs for all functions in a header file just by making a single call
 to your handy `stub` feature, like this:
 
-```
+```sh
 ceedling module:stub[SecretLair]
 ```
 
@@ -184,7 +184,7 @@ defaults for your own needs. For example, new source and header files will be au
 placed in the `src/` folder while tests will go in the `test/` folder. That's great if your project
 follows the default ceedling structure... but what if you have a different structure?
 
-```
+```yaml
 :module_generator:
   :naming: :bumpy
   :includes: 
@@ -204,7 +204,7 @@ Now I've redirected the location where modules are going to be generated.
 You can make it so that all of your files are generated with a standard include list. This is done
 by adding to the `:includes` array. For example:
 
-```
+```yaml
 :module_generator:
   :includes:
     :tst:
@@ -222,7 +222,7 @@ put that corporate copyright notice (or maybe a copyleft notice, if that's your 
 Notice there is a separate template for source files, include files, and test files. Also, 
 your boilerplates can optionally contain `%1$s` which will inject the filename into that spot.
 
-```
+```yaml
 :module_generator:
   :boilerplates: 
     :src: |
@@ -246,7 +246,7 @@ your boilerplates can optionally contain `%1$s` which will inject the filename i
 You can specify the "#ifdef TEST" at the top of the test files with a custom define.
 This example will put a "#ifdef CEEDLING_TEST" at the top of the test files.  
 
-```
+```yaml
 :module_generator:
   :test_define: CEEDLING_TEST
 ```

@@ -1,6 +1,6 @@
 # Help & Community
 
-!!! tip "Please consider sponsoring this project"
+!!! sponsorship "Please consider sponsoring this project"
     Ceedling, Unity, CMock, and CException are free and open source, 
     maintained by volunteers. [GitHub Sponsors](https://github.com/sponsors/ThrowTheSwitch) 
     help fund ongoing maintenance, new features, and the infrastructure 
@@ -10,21 +10,21 @@
 
 <div class="grid cards" markdown>
 
--   **[Submit an Issue][ceedling-issues]**
+-   :material-bug: **[Submit an Issue][ceedling-issues]**
 
     ---
 
     Found a bug or want to suggest a feature? Open an issue in the Ceedling
     GitHub repository.
 
--   **[Discussion Forums][forums]**
+-   :material-forum: **[Discussion Forums][forums]**
 
     ---
 
     Trying to understand a feature or work through a testing problem?
     The ThrowTheSwitch community forums are the place to ask.
 
--   **[Ceedling Assist][ceedling-assist]**
+-   :material-handshake: **[Ceedling Assist][ceedling-assist]**
 
     ---
 
@@ -37,14 +37,14 @@
 
 <div class="grid cards" markdown>
 
--   **[Code of Conduct][code-of-conduct]**
+-   :material-scale-balance: **[Code of Conduct][code-of-conduct]**
 
     ---
 
     The ThrowTheSwitch community follows a shared code of conduct.
     Please familiarize yourself with it before participating.
 
--   **[Contributing][contributing]**
+-   :material-source-pull: **[Contributing][contributing]**
 
     ---
 

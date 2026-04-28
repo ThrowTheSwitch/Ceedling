@@ -1,7 +1,10 @@
-# The Almighty Ceedling Project Configuration File (in Glorious YAML)
+# The Mighty Ceedling Project Configuration File
 
-See this [commented project file][example-config-file] for a nice 
-example of a complete project configuration.
+**In glorious YAML**
+
+!!! tip "Complete Project File Example"
+    See this [commented project file][example-config-file] for a nice 
+    example of a complete project configuration.
 
 ## Some YAML Learnin'
 

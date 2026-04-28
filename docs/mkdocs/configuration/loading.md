@@ -51,10 +51,11 @@ configuration the YAML filepath provided.
 
 Example: `ceedling --project=my/path/build.yml test:all`
 
-_NOTE:_ Ceedling loads any relative paths within your configuration in
-relation to your working directory. This can cause a disconnect between
-configuration paths, working directory, and the path to your project 
-file.
+!!! warning "Path relationships"
+    Ceedling loads any relative paths within your configuration in
+    relation to your working directory. This can cause a disconnect between
+    configuration paths, working directory, and the path to your project 
+    file.
 
 If the filepath does not exist, Ceedling terminates with an error.
 
@@ -105,10 +106,11 @@ your head.
 The brief sections that follow provide an overview of our recommended
 design approach and the merge rules at play.
 
-_**Note:**_ `ceedling dumpconfig` can be invaluable in developing and 
-troubleshooting your mixins. The `dumpconfig` application command will 
-load your mixins just as a build would but produce the resulting merged
-configuration for inspection in a YAML file you specify.
+!!! tip "Use `dumpconfig` to Debug Mixins"
+    `ceedling dumpconfig` can be invaluable in developing and troubleshooting
+    your mixins. The `dumpconfig` application command will load your mixins
+    just as a build would but produce the resulting merged configuration for
+    inspection in a YAML file you specify.
 
 ### Design for additive Mixin merges
 
@@ -159,12 +161,13 @@ follows a few basic rules:
   by the mixin value being merged. That merge is accompanied with a 
   warning log entry to highlight what has happened.
 
-_**Note:**_ That second bullet can have a significant impact on how your
-various project configuration paths — including those used for header 
-search paths — are ordered. In brief, the contents of your `:paths` 
-from your base configuration will come first followed by any additions
-from your mixins. See the section [Search Paths for Test Builds](../testing-guide/conventions.md#search-paths-for-test-builds)
-for more.
+!!! warning "Mixin Merge Order Affects Path Ordering"
+    That second bullet can have a significant impact on how your various
+    project configuration paths — including those used for header search
+    paths — are ordered. In brief, the contents of your `:paths` from your
+    base configuration will come first followed by any additions from your
+    mixins. See the section [Search Paths for Test Builds](../testing-guide/conventions.md#search-paths-for-test-builds)
+    for more.
 
 ## Mixins Example: Our Example Scenario
 

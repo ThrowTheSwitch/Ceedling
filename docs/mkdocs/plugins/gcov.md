@@ -1,10 +1,10 @@
-# Ceedling Plugin: Gcov
+# Gcov
 
 This plugin integrates the code coverage abilities of the GNU compiler 
 collection with test builds. It provides simple coverage metrics by default and
 can optionally produce sophisticated coverage reports.
 
-# Plugin Overview
+## Plugin Overview
 
 When enabled, this plugin creates a new set of `gcov:` tasks that mirror
 Ceedling's existing `test:` tasks. A `gcov:` task executes one or more tests
@@ -19,7 +19,7 @@ This document details configuration, reporting options, and provides basic
 
 [troubleshooting]: #advanced-configuration-troubleshooting
 
-# Simple Coverage Summaries
+## Simple Coverage Summaries
 
 In its simplest usage, this plugin outputs coverage statistics to the console
 for each source file exercised by a test. These console-based coverage 
@@ -60,7 +60,7 @@ TimerModel.c | No branches
 TimerModel.c | No calls
 ```
 
-# Advanced Coverage Reports
+## Advanced Coverage Reports
 
 For more advanced visualizations and reporting, this plugin also supports a 
 variety of report generation options.
@@ -80,14 +80,14 @@ on demand after test suite runs.
 [gcovr]: https://www.gcovr.com/
 [ReportGenerator]: https://reportgenerator.io
 
-# Important Notes on Coverage Summaries vs. Coverage Reports
+## Important Notes on Coverage Summaries vs. Coverage Reports
 
 Coverage summaries and coverage reports provide different levels of fidelity
 and usability. Summaries are relatively unsophisticated while reports are 
 sophisticated. As such, both provide different capabilities and levels of 
 usability.
 
-## Coverage summaries
+### Coverage summaries
 
 Optional coverage summaries are intentionally simple. They require no
 configuration and, to oversimplify, are largely filtered output from the `gcov`
@@ -111,7 +111,7 @@ may be listed in the coverage summaries more than once. That said, its coverage
 statistics will be the same each time — the aggregate result of all tests that
 exercised it.
 
-## Coverage reports
+### Coverage reports
 
 Coverage reports provide both much more detail and better overviews of coverage
 than the console-based coverage summaries. However, with this comes the need
@@ -137,9 +137,9 @@ work to implement for both reporting utilities. At present, running
 `ceedling clobber` before generating reports is the best option to ensure 
 accurate reports.
 
-# Plugin Set Up & Configuration
+## Plugin Set Up & Configuration
 
-## Supported tool versions [May 10, 2024]
+### Supported tool versions [May 10, 2024]
 
 At the time of the last major updates to the Gcov plugin, the following notes
 on version compatibility were known to be accurate.
@@ -154,7 +154,7 @@ may be sufficient for your needs:
 1. `gcov` + `reportgenerator`
 1. `gcov` + `gcovr` + `reportgenerator`
 
-### `gcov`
+#### `gcov`
 
 The Gcov plugin is known to work with `gcov` packaged with GNU Compiler
 Collection 12.2 and should work with versions through at least 14.
@@ -180,22 +180,22 @@ do not recommend using `gcov` version 6 and earlier. And, in fact, because of
 the Gcov plugin’s dependence on the `gcov` `-x` flag, attempting to use it will
 fail.
 
-### `gcovr`
+#### `gcovr`
 
 The Gcov plugin is known to work with `gcovr` 5.2 through `gcovr` 6.x. The
 Gcov plugin supports `gcovr` command line conventions since version 4.2 and
 attempts to support `gcovr` command lines before version 4.2. We recommend 
 using `gcovr` 5 and later. 
 
-### `reportgenerator`
+#### `reportgenerator`
 
 The Gcov plugin is known to work with `reportgenerator` 5.2.4. The command line
 for executing `reportgenerator` that the Gcov plugin relies on has largely been
 stable since version 4. We recommend using `reportgenerator` 5.0 and later.
 
-## Toolchain dependencies
+### Toolchain dependencies
 
-### GNU Compiler Collection
+#### GNU Compiler Collection
 
 This plugin relies on the GNU compiler collection. Coverage instrumentation
 is enabled through `gcc` compiler flags. Coverage-insrumented executables 
@@ -211,7 +211,7 @@ release builds you will need to install the GNU compiler collection to use
 this plugin. Depending on your needs you may also need to install the reporting
 utilities, `gcovr` and/or `reportgenerator`.
 
-### `gcovr` and `reportgenerator`’s dependence on `gcov`
+#### `gcovr` and `reportgenerator`’s dependence on `gcov`
 
 Both the `gcovr` and `reportgenerator` tools depend on the `gcov` tool. This
 dependency plays out in two different ways. In both cases, the report
@@ -236,7 +236,7 @@ such, `gcov` must be available in your environment if using report generation.
    You can use Ceedling's features to modify how `gcov` is run before 
    `reportgenerator`.
 
-## Enable this plugin
+### Enable this plugin
 
 To use this plugin it must be enabled in your Ceedling project file:
 
@@ -249,7 +249,7 @@ To use this plugin it must be enabled in your Ceedling project file:
 This simple configuration will create new `gcov:` tasks to run tests with 
 source coverage and output simple coverage summaries to the console as above.
 
-## Disabling automatic coverage summaries
+### Disabling automatic coverage summaries
 
 To disable the coverage summaries generated immediately following `gcov:` tasks,
 simply add the following to a top-level `:gcov:` section in your project
@@ -264,7 +264,7 @@ configuration file.
   :summaries: FALSE
 ```
 
-## Report generation
+### Report generation
 
 To generate reports:
 
@@ -275,7 +275,7 @@ To generate reports:
 
 The next sections explain each of these steps.
 
-### Installation of report generation utilities
+#### Installation of report generation utilities
 
 [gcovr] is available on any platform supported by Python.
 
@@ -296,7 +296,7 @@ The next sections explain each of these steps.
 Either or both of `gcovr` or `ReportGenerator` may be used. Only one must 
 be installed for advanced report generation.
 
-## Enabling report generation utilities
+### Enabling report generation utilities
 
 If reports are configured (see next sections) but no `:utilities:` subsection 
 exists, this plugin defaults to using `gcovr` for report generation.
@@ -310,7 +310,7 @@ Otherwise, enable Gcovr and / or ReportGenerator to create coverage reports.
     - ReportGenerator # Use `ReportGenerator` to create reports.
 ```
 
-## Automatic and manual report generation
+### Automatic and manual report generation
 
 By default, if reports are specified, this plugin automatically generates 
 reports after any `gcov:` task is executed. To disable this behavior, add
@@ -330,12 +330,12 @@ Enabling the manual report generation task looks like this:
   :report_task: TRUE
 ```
 
-# Example Usage
+## Example Usage
 
 _Note_: Unless disabled, basic coverage summaries are always printed to the 
 console regardless of report generation options.
 
-## Automatic report generation (default)
+### Automatic report generation (default)
 
 If coverage report generation is configured, the plugin defaults to running 
 reports after any `gcov:` task.
@@ -360,7 +360,7 @@ reports after any `gcov:` task.
  > ceedling gcov:all
 ```
 
-## Report generation configured as manual task
+### Report generation configured as manual task
 
 If the `:report_task:` configuration option is enabled, reports are not 
 automatically generaed after test suite coverage builds. Instead, report 
@@ -396,7 +396,7 @@ or
  > ceedling report:gcov
 ```
 
-### Full report generation configuration example
+#### Full report generation configuration example
 
 ```yaml
 :plugins:
@@ -420,7 +420,7 @@ or
     :keep: FALSE
 ```
 
-# Report Generation Configuration
+## Report Generation Configuration
 
 Various reports are available. Each must be enabled in `:gcov` ↳ `:reports`.
 
@@ -530,11 +530,11 @@ These are detailed in the sections that follow. See the
     - XmlSummary
 ```
 
-## Gcovr report output
+### Gcovr report output
 
 All reports generated by `gcovr` are found in `<build root>/artifacts/gcov/gcovr/`.
 
-## Gcovr HTML reports
+### Gcovr HTML reports
 
 Generation of HTML reports may be modified with the following configuration items.
 
@@ -568,7 +568,7 @@ Generation of HTML reports may be modified with the following configuration item
     :html_encoding: <html_encoding>
 ```
 
-## Gcovr Cobertura XML reports
+### Gcovr Cobertura XML reports
 
 Generation of Cobertura XML reports may be modified with the following configuration items.
 
@@ -583,7 +583,7 @@ Generation of Cobertura XML reports may be modified with the following configura
     :cobertura_artifact_filename: <filename>
 ```
 
-## Gcovr SonarQube XML reports
+### Gcovr SonarQube XML reports
 
 Generation of SonarQube XML reports may be modified with the following configuration items.
 
@@ -594,7 +594,7 @@ Generation of SonarQube XML reports may be modified with the following configura
     :sonarqube_artifact_filename: <filename>
 ```
 
-## Gcovr JSON reports
+### Gcovr JSON reports
 
 Generation of JSON reports may be modified with the following configuration items.
 
@@ -609,7 +609,7 @@ Generation of JSON reports may be modified with the following configuration item
     :json_artifact_filename: <filename>
 ```
 
-## Gcovr text reports
+### Gcovr text reports
 
 Generation of text reports may be modified with the following configuration items.
 Text reports may be printed to the console or output to a file.
@@ -621,20 +621,21 @@ Text reports may be printed to the console or output to a file.
     :text_artifact_filename: <filename>
 ```
 
-## Common gcovr options
+### Common gcovr options
 
 A number of options exist to control which files are considered part of a 
 coverage report. This Ceedling gcov plugin itself handles the most important 
 aspect — only source files under test are compiled with coverage. Tests, mocks,
 and test runners, are not compiled with coverage.
 
-**Note:** `gcovr` will only accept a single path for `:report_root`. In typical
-usage, this is of no concern as it is handled automatically. In unusual project
-layouts, you may need to specify a folder that encompasses _all_ build folders 
-containing coverage result files and optionally, selectively exclude patterns
-of paths or files. For instance, if your Ceedling project file is not at the 
-root of your project, you may need set `:report_root` as well as 
-`:report_exclude` and `:exclude_directories`.
+!!! note "`gcovr` Accepts Only One Report Root Path"
+    `gcovr` will only accept a single path for `:report_root`. In typical usage,
+    this is of no concern as it is handled automatically. In unusual project
+    layouts, you may need to specify a folder that encompasses _all_ build folders
+    containing coverage result files and optionally, selectively exclude patterns
+    of paths or files. For instance, if your Ceedling project file is not at the
+    root of your project, you may need set `:report_root` as well as
+    `:report_exclude` and `:exclude_directories`.
 
 ```yaml
 :gcov:
@@ -748,7 +749,7 @@ root of your project, you may need set `:report_root` as well as
     :threads: <count>
 ```
 
-## ReportGenerator configuration
+### ReportGenerator configuration
 
 The `ReportGenerator` utility may be configured with the following configuration items.
 
@@ -805,7 +806,7 @@ All generated reports are found in `<build root>/artifacts/gcov/ReportGenerator/
       - ...
 ```
 
-# Advanced Configuration & Troubleshooting
+## Advanced Configuration & Troubleshooting
 
 See the _Ceedling Cookbook_ for options on how to use Ceedling's advanced 
 features to modify how this plugin is configured, especially tool 
@@ -815,14 +816,14 @@ Details of interest for this plugin to be modified or made use of using
 Ceedling's advanced features are primarily contained in 
 [defaults_gcov.rb](../snapshot/plugins/gcov/config/defaults_gcov.rb) and [defaults.yml](../snapshot/plugins/gcov/config/defaults.yml).
 
-## “gcovr not found”
+### “gcovr not found”
 
 `gcovr` is a Python-based application. Depending on the particulars of its 
 installation and your platform, you may encounter a “gcovr not found” error. 
 This is usually related to complications of running a Python script as an 
 executable.
 
-### Check your `PATH`
+#### Check your `PATH`
 
 The problem may be as simple to solve as ensuring your user or system path 
 include the path to `python` and/or the `gcovr` script. `gcovr` may be 
@@ -844,7 +845,7 @@ Options:
      - "#{ENV['PATH']}"  # Fetch existing path entries
 ```
 
-### Redefine `gcovr` to call Python directly
+#### Redefine `gcovr` to call Python directly
 
 Another solution is simple in concept. Instead of calling `gcovr` directly, call 
 `python` with the `gcovr` script as a command line argument (followed by all of 
@@ -884,7 +885,7 @@ environment and packages:
   - :gcovr: python -m gcovr # Call the gcovr module
 ```
 
-# References
+## References
 
 Much of the text describing report generations options in this document was 
 taken from the [Gcovr User Guide][gcovr-user-guide] and the

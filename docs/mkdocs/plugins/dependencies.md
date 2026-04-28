@@ -1,5 +1,4 @@
-ceedling-dependencies
-=====================
+# Dependencies
 
 Plugin for supporting release dependencies. It's rare for an embedded project to
 be built completely free of other libraries and modules. Some of these may be
@@ -22,7 +21,7 @@ will make it happen whenever it notices that the output artifacts are missing.
 Output artifacts? Sure! Things like static and dynamic libraries, or folders
 containing header files that might want to be included by your release project.
 
-So how does all this magic work?
+## So how does all this magic work?
 
 First, you need to add the Dependencies plugin to your list of enabled plugins. Then, we'll 
 add a new comfiguration section called `:dependencies`. There, you can list as many 
@@ -63,10 +62,7 @@ it! In the end, it'll look something like this:
           - include/**
 ```
 
-Let's take a deeper look at each of these features.
-
-The Starting Dash & Name
-------------------------
+## Starting Dash & Name
 
 Yes, that opening dash tells the dependencies plugin that the rest of these fields
 belong to our first dependency. If we had a second dependency, we'd have another
@@ -79,8 +75,7 @@ it easier for us to see the name of each dependency with starting dash.
 The name field is only used to print progress while we're running Ceedling. You may
 call the name of the field whatever you wish.
 
-Working Paths
--------------
+## Working Paths
 
 All paths are collected under `:dependencies` ↳ `:paths`. The `:source` field allows us 
 to specify where the source code for each of our dependencies is stored. By default, it's
@@ -106,8 +101,7 @@ source for your dependency in you repo.
 All artifacts are relative to the appropriate `:artifact` path. So if there are multiple 
 include dirs, choose the highest level and make the rest relative from there. 
 
-Fetching Dependencies
----------------------
+## Fetching Dependencies
 
 The `:dependencies` plugin supports the ability to automatically fetch your dependencies
 for you... using some common methods of fetching source. This section contains only a
@@ -127,12 +121,10 @@ couple of fields:
 - `:executable` -- This is a YAML list of commands to execute when using the `:custom` method
 
 Some notes:
-
-The `:source` location for fetching a `:zip` or `:gzip` file is relative to the `:paths` ↳ `:source`
+* The `:source` location for fetching a `:zip` or `:gzip` file is relative to the `:paths` ↳ `:source`
 folder. 
 
-Environment Variables
----------------------
+## Environment Variables
 
 Many build systems support customization through environment variables. By specifying
 an array of environment variables, the Dependencies plugin will customize the shell environment 
@@ -173,8 +165,7 @@ Second, removing an argument will have no effect on the argument if that argumen
 precisely. It's case sensitive and the entire string must match. If symbol doesn't already exist,
 it WILL after executing this command... however it will be assigned to nothing.
 
-Building Dependencies
----------------------
+## Building Dependencies
 
 The heart of the `:dependencies` plugin is the ability for you, the developer, to specify the
 build process for each of your dependencies. You will need to have any required tools installed
@@ -184,8 +175,7 @@ The steps are specified as an array of strings. Ceedling will execute those step
 specified, moving from step to step unless an error is encountered. By the end of the process,
 the artifacts should have been created by your process... otherwise an error will be produced.
 
-Artifacts
----------
+## Artifacts
 
 These are the outputs of the build process. There are there types of artifacts. Any dependency
 may have none or some of these. Calling out these files tells Ceedling that they are important.
@@ -225,8 +215,7 @@ It's possible that your external dependency will just produce additional C files
 In this case, Ceedling is able to automatically add these to its internal source list. This allows
 these files to be used while building your release code.
 
-Tasks
-=====
+## Tasks
 
 Once configured correctly, the `:dependencies` plugin should integrate seamlessly into your
 workflow and you shouldn't have to think about it. In the real world, that doesn't always happen.
@@ -267,8 +256,7 @@ dependencies.
 Maybe you want to take that query further and actually get a list of ALL the header files
 Ceedling has found, including those belonging to your dependencies.
 
-Custom Tools
-============
+## Custom Tools
 
 You can optionally specify a compiler, assembler, and linker, just as you would a release build:
 
@@ -317,5 +305,3 @@ source and/or assembly files into the specified library:
       :defines:
         - THESE_GET_USED_DURING_COMPILATION
 ```
-
-Happy Testing!

@@ -312,10 +312,11 @@ statements in test files before extracting `#include` conventions and test case
 signatures. That is, preprocessing output is used to generate test runners 
 and assemble the components of a test executable build.
 
-**_NOTE:_** Conditional directives _inside_ test case functions generally do 
-not require Ceedling's test preprocessing ability. Assuming your code is correct,
-the C preprocessor within your toolchain will do the right thing for you
-in your test build. Read on for more details and the other cases of interest.
+!!! tip "Preprocessing Not Needed Inside Test Functions"
+    Conditional directives _inside_ test case functions generally do not require
+    Ceedling's test preprocessing ability. Assuming your code is correct, the C
+    preprocessor within your toolchain will do the right thing for you in your
+    test build. Read on for more details and the other cases of interest.
 
 Test file preprocessing by Ceedling is applicable primarily when conditional
 preprocessor directives generate the `#include` statements for your test file

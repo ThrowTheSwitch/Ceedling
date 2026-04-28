@@ -1,8 +1,8 @@
-# Ceedling Plugin: JSON Compilation Database
+# JSON Compilation Database
 
 Language Server Protocol (LSP) support for Clang tooling.
 
-# Background
+## Background
 
 Syntax highlighting and code completion are hard. Historically each editor or IDE has implemented their own and then competed amongst themselves to offer the best experience for developers. Good syntax highlighting can be so valuable as to outweigh the consideration of alternate editors. If implementing sytnax highlighting and related features in a tool is hard for one language — and it is — imagine doing it for dozens of them. Further, on the flip side, imagine the complexities involved for a developer working with multiple languages at once.
 
@@ -12,7 +12,7 @@ In June of 2016, Microsoft with Red Hat and Codenvy got together to create the [
 [lsp-community]: https://langserver.org/
 [lsp-tools]: https://microsoft.github.io/language-server-protocol/implementors/tools/
 
-# Plugin Overview
+## Plugin Overview
 
 For C and C++ projects, perhaps the most popular LSP server is the [`clangd`][clangd] backend. In order to provide features like _go to definition_, `clangd` needs to understand how to build a project so that it can discover all the pieces to the puzzle. Because of the various flavors of builds Ceedling supports and especially because of the complexities of test suite builds, components of a build can easily go missing from the view of `clangd`.
 
@@ -23,7 +23,7 @@ Once enabled, this plugin generates the database as `<build root>/artifacts/comp
 [clangd]: https://clangd.llvm.org
 [json-compilation-database]: https://clang.llvm.org/docs/JSONCompilationDatabase.html
 
-# Setup
+## Setup
 
 Enable the plugin in your Ceedling project file by adding `compile_commands_json_db` to the list of enabled plugins.
 
@@ -33,7 +33,7 @@ Enable the plugin in your Ceedling project file by adding `compile_commands_json
     - compile_commands_json_db
 ```
 
-# Configuration
+## Configuration
 
 There is no additional configuration necessary to run this plugin.
 

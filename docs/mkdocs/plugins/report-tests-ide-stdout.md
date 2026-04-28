@@ -1,8 +1,8 @@
-# Ceedling Plugin: IDE Test Suite Console Report
+# IDE Test Suite Console Report
 
 Prints to the console ($stdout) test suite results with a test failure filepath and line number format understood by nearly any IDE.
 
-# Plugin Overview
+## Plugin Overview
 
 This plugin is intended to be used in place of the more commonly used "pretty" 
 test report plugin. Like its sibling, this plugin ollects raw test results from
@@ -18,23 +18,23 @@ standard of a sort recognized almost universally.
 The end result is that test failures in your IDE's build window can become 
 links that jump directly to failing test cases.
 
-# Setup
+## Setup
 
 Enable the plugin in your project.yml by adding `report_tests_ide_stdout` to 
 the list of enabled plugins instead of any other `report_tests_*_stdout` 
 plugin.
 
-``` YAML
+```YAML
 :plugins:
   :enabled:
     - report_tests_ide_stdout
 ```
 
-# Configuration
+## Configuration
 
 No additional configuration is needed once the plugin is enabled.
 
-# Example Output
+## Example Output
 
 ```sh
  > ceedling test:Model
