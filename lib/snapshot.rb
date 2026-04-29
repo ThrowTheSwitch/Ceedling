@@ -16,6 +16,8 @@
 #                preserving directory structure.
 #
 # Invoked via `rake docs:snapshot` (or automatically by `rake docs:build`).
+# 
+# This script assumes the destination directory does not exist.
 
 require 'fileutils'
 require 'yaml'
@@ -31,8 +33,10 @@ files.each do |relative_path|
   src  = File.join(PROJECT_ROOT, relative_path)
   dest = File.join(SNAPSHOT_DIR, relative_path)
 
+  # Create the destnation directory
   FileUtils.mkdir_p(File.dirname(dest))
-  FileUtils.cp(src, dest)
+  # Copy the path, including recursive copying for directories
+  FileUtils.cp_r(src, dest)
   puts "  snapshot: #{relative_path}"
 end
 
