@@ -1,6 +1,6 @@
 # Fake Function Framework for Ceedling
 
-This plugin causes Ceedling to use the [Fake Function Framework](https://github.com/meekrosoft/fff) for mocking instead of CMock, the default mocking framework packages with Ceedling.
+This plugin causes Ceedling to use the [Fake Function Framework](https://github.com/meekrosoft/fff) for mocking instead of CMock, the default mocking framework packaged with Ceedling.
 
 Using _FFF_ provides less strict mocking than CMock and affords more loosely-coupled tests.
 
@@ -13,7 +13,7 @@ This Ceedling 1.x plugin incorporates a snapshot of _FFF_ version 0.1.1 and supe
 
 ## Enable the plugin
 
-The plug-in is enabled from within your project.yml file.
+The plugin is enabled from within your project.yml file.
 
 In the `:plugins` configuration, add `fff` to the list of enabled plugins:
 
@@ -203,7 +203,7 @@ test_whenTheDeviceIsReset_thenTheStatusLedIsTurnedOff()
 
 ## Test setup
 
-All of the fake functions, and any fff global state are all reset automatically between each test.
+All of the fake functions and any fff global state are all reset automatically between each test.
 
 ## CMock configuration
 
@@ -223,12 +223,23 @@ We still use some CMock configuration options for setting things like the mock p
         :includes_c_post_header:
 ```
 
-## Running the tests
+## FFF examples
 
-There are unit and integration tests for the plug-in itself.
-These are run with the default `rake` task.
-The integration test runs the tests for the example project in _examples/fff_example_.
+See the [FFF example project][fff-example-project]. This project illustrates how to use the plugin with full-size examples.
 
-## More examples
+!!! warning "Versioning"
+    The example project link is to the latest in the repository.
+    It is not explicitly versioned to correspond to this documentation.
+    That said, FFF and the plugin are relatively stable.
 
-There is an example project in _examples/fff_example_. This project illustrates how to use the plugin with full-size examples.
+### Running example tests
+
+Unit and integration tests exist for the plugin itself.
+
+These tests are run with the default `rake` task packaged in the [FFF plugin][fff-plugin].
+
+The integration test runs the FFF-based unit tests within the [example project][fff-example-project].
+That is, the FFF examples are executed as part of Ceedling continuous integration.
+
+[fff-example-project]: https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff/examples/fff_example
+[fff-plugin]:          https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff
