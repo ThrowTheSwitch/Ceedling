@@ -19,13 +19,13 @@ theme:
   palette:
     - scheme: default
       primary: green
-  toc_depth: 2
   features:
     - navigation.tabs        # Top-level nav rendered as tabs
     - navigation.sections    # Sections rendered as groups in left sidebar
     - navigation.top         # Back-to-top button
     - navigation.indexes     # Section index pages (first item in section = section landing page)
     - navigation.path        # Breadcrumb trail below page title
+    - navigation.instant     # Instant navigation with page content swaps (without page reloads)
     - search.suggest         # Autocomplete suggestions in search
     - search.highlight       # Highlight search terms on result pages
     - content.code.copy      # Copy button on code blocks
@@ -43,7 +43,6 @@ extra:
       name: Sponsor ThrowTheSwitch on GitHub
 
 extra_css:
-  - stylesheets/fixes.css        # Styling overrides and layout fixes
   - stylesheets/admonitions.css  # Custom admonition types
 
 # Plugins
@@ -123,22 +122,22 @@ nav:
       - Plugins: configuration/reference/plugins.md                   
   - Plugins:
     - Overview: plugins/index.md                                              
-    - FFF (Fake Functions): plugins/fff.md                                    
-    - GCov (Coverage): plugins/gcov.md                                        
-    - Bullseye (Coverage): plugins/bullseye.md                                
-    - Command Hooks: plugins/command-hooks.md                                 
-    - Module Generator: plugins/module-generator.md                           
-    - Dependencies: plugins/dependencies.md                                   
-    - Subprojects: plugins/subprojects.md                                     
-    - Test Report Log Factory: plugins/report-tests-log-factory.md            
     - Test Report — Pretty: plugins/report-tests-pretty-stdout.md             
     - Test Report — IDE: plugins/report-tests-ide-stdout.md                   
-    - Test Report — TeamCity: plugins/report-tests-teamcity-stdout.md         
     - Test Report — GTest-like: plugins/report-tests-gtestlike-stdout.md      
+    - Test Report — TeamCity: plugins/report-tests-teamcity-stdout.md         
+    - Test Report Log Factory: plugins/report-tests-log-factory.md            
     - Test Report — Raw Output: plugins/report-tests-raw-output-log.md        
     - Build Warnings Log: plugins/report-build-warnings-log.md                
+    - GCov (Coverage): plugins/gcov.md                                        
+    - Bullseye (Coverage): plugins/bullseye.md                                
+    - FFF (Fake Functions): plugins/fff.md                                    
+    - Command Hooks: plugins/command-hooks.md                                 
     - Compile Commands JSON DB: plugins/compile-commands-json-db.md           
     - Beep: plugins/beep.md                                                   
+    - Module Generator: plugins/module-generator.md                           
+    - Dependencies: plugins/dependencies.md                                   
+    - Subprojects: plugins/subprojects.md
   - Releases:
     - History Documents: project/release-history.md  
     - Upgrading: project/upgrade.md                  
@@ -147,6 +146,6 @@ nav:
     - development/index.md
     - Plugin Development:
       - development/plugins/index.md
-      - Configuration: development/plugins/configuration.md
+      - Configuration Plugin: development/plugins/configuration.md
       - Plugin Subclass: development/plugins/plugin-subclass.md
-      - Rake Tasks: development/plugins/rake-tasks.md  
+      - Rake Task Plugin: development/plugins/rake-tasks.md  

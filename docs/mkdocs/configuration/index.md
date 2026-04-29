@@ -4,19 +4,11 @@
     See the [annotated sample project configuration file](../snapshot/assets/project.yml)
     for a commented example of available settings.
 
-## Loading & Basics
+## Project File
 
 <div class="grid cards" markdown>
 
--   :material-file-import: **[How to Load a Project Configuration][configuration-loading]**
-
-    ---
-
-    Load your base configuration via command line flag, environment variable, or
-    default file. Add Mixins to merge additional configuration for different
-    build scenarios.
-
--   :material-file-cog: **[Project Configuration File Basics][project-file]**
+-   :material-file-cog: **[Project File Basics][project-file]**
 
     ---
 
@@ -29,6 +21,14 @@
 
     Exhaustive documentation for all project configuration options —
     organized by section.
+
+-   :material-file-import: **[How to Load a Project Configuration][configuration-loading]**
+
+    ---
+
+    Load your base configuration via command line flag, environment variable, or
+    default file. Add Mixins to merge additional configuration for different
+    build scenarios.
 
 </div>
 
