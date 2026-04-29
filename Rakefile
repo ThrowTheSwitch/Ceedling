@@ -9,6 +9,11 @@
 require 'bundler'
 require 'rspec/core/rake_task'
 require 'fileutils'
+require 'open3'
+
+##
+## Testing tasks
+##
 
 desc "Run all specs"
 RSpec::Core::RakeTask.new('specs:all') do |t|
@@ -51,13 +56,66 @@ RSpec::Core::RakeTask.new('spec:filter:match', [:regex]) do |t, args|
   t.rspec_opts = "--format documentation --pattern '#{regex}'"
 end
 
+##
+## Default & CI tasks
+##
+
 task :default => ['specs:all']
 task :ci => ['specs:all']
 
+##
+## Documentation tasks
+##
+
+# Docs tasks Python virtual environment activate / deactivate wrapper
+def venv_sh(cmd)
+  puts "Running: #{cmd}"
+  script = <<~SHELL
+    _activated=0
+    if [ -z "$VIRTUAL_ENV" ]; then
+      source .docsenv/bin/activate
+      _activated=1
+    fi
+    #{cmd}
+    [ "$_activated" = "1" ] && deactivate
+  SHELL
+  sh('bash', '-c', script, verbose: false) do |ok, res|
+    raise "ERROR: '#{cmd}' failed (exit #{res.exitstatus})" unless ok
+  end
+end
+
 namespace :docs do
-  desc "Install Python documentation tooling (mkdocs-material, mike)"
+  desc "Install documentation tooling (mkdocs-material, mike) in a Python virtual environment"
   task :install do
-    sh "pip3 install --break-system-packages -r requirements-docs.txt"
+    venv_dir = '.docsenv'
+
+    if File.directory?(venv_dir)
+      puts "Python virtual environment '#{venv_dir}/' already exists — skipping creation."
+    else
+      puts "Creating Python virtual environment '#{venv_dir}/'..."
+      output, status = Open3.capture2e("python3 -m venv #{venv_dir}")
+      unless status.success?
+        $stderr.puts output
+        raise "Failed to create Python virtual environment '#{venv_dir}/'"
+      end
+      puts "Python virtual environment '#{venv_dir}/' created."
+    end
+
+    puts "Installing documentation packages (mkdocs, mkdocs-material, mike)..."
+    output, status = Open3.capture2e('bash', '-c', <<~SHELL)
+      _activated=0
+      if [ -z "$VIRTUAL_ENV" ]; then
+        source #{venv_dir}/bin/activate
+        _activated=1
+      fi
+      pip install 'mkdocs>=1.6' 'mkdocs-material>=9.5' 'mike>=2.0'
+      [ "$_activated" = "1" ] && deactivate
+    SHELL
+    unless status.success?
+      $stderr.puts output
+      raise "Failed to install documentation packages"
+    end
+    puts "Documentation packages installed."
   end
 
   desc "Snapshot versioned project files into docs/snapshot/ for documentation"
@@ -69,29 +127,29 @@ namespace :docs do
   end
 
   namespace :build do
-    desc "Build deployable documentation site in strict mode — fails on broken links or warnings"
-    task :deploy => [:snapshot] do
-      sh "mkdocs build --strict"
+    desc "Build documentation site for web deployment"
+    task :web => [:snapshot] do
+      venv_sh "mkdocs build --strict"
     end
 
-    desc "Build local documentation site in strict mode — fails on broken links or warnings"
+    desc "Build documentation site as local HTML files bundle"
     task :local => [:snapshot] do
-      sh "mkdocs build -f mkdocs.local.yml --strict"
+      venv_sh "mkdocs build -f mkdocs.local.yml --strict"
     end
   end
 
-  desc "Serve documentation site locally on port 8000"
+  desc "Serve web deploy docs site locally on port 8000"
   task :serve do
-    sh "mkdocs serve"
+    venv_sh "mkdocs serve"
   end
 
-  desc "Browse versioned documentation site locally on port 8000"
+  desc "Browse versioned docs site locally on port 8000"
   task :preview do
-    sh "mike serve"
+    venv_sh "mike serve"
   end
 
-  desc "Deploy 'dev' version to local gh-pages branch (no remote push)"
+  desc "Deploy 'dev' version to branch and push to Github Pages"
   task :deploy do
-    sh "mike deploy dev"
+    venv_sh "mike deploy --push dev"
   end
 end

@@ -1,10 +1,13 @@
 # mkdocs uses a simple overwrite merge -- must rewrite entire sections to make small changes.
 INHERIT: mkdocs.yml
 
+# Produce index.html files with internal links for local HTML bundle.
+# The default is to produce directory URLs where a web server silently serves a directory index.html file
 use_directory_urls: false
-site_dir: site-local
 # Blank — prevents absolute URLs being baked in that point back to the live site.
 site_url: ''
+
+site_dir: site-local
 
 # Material theme configuration
 theme:

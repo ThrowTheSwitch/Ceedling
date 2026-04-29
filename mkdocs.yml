@@ -7,11 +7,13 @@ repo_name: ThrowTheSwitch/Ceedling
 
 docs_dir: docs/mkdocs/
 
+site_dir: site-web
+
 # Footer copyright notice
 copyright: >-
   &copy; 2010-2026 M. Karlesky, M. VanderVoord, and G. Williams &mdash;
-  Documentation licensed
-  <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">Creative Commons 4.0 Attribution Share-Alike</a>
+  Documentation license: 
+  <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">CC BY-SA 4.0</a>
 
 # Material theme configuration
 theme:
