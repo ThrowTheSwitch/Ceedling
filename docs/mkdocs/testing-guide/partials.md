@@ -52,7 +52,9 @@ When a test file references a Partial, Ceedling excludes the original source
 file from that test executable‘s build. Only the generated Partial 
 source is compiled and linked in its place.
 
-## A Simple Partials Example (Temperature Sensor Module)
+## Simple Partials Example
+
+Imagine a temperature sensor module.
 
 ```c
 // sensor.h -----------------------------------------------
@@ -83,13 +85,15 @@ int Sensor_ReadCelsius(void)
 }
 ```
 
-### You as a test author want to test and mock the `static` helper
+### Testing & mocking `static` helper
 
-1. **Test** `_ConvertRawToMilliCelsius()` directly, but it is private / `static`
+You as a test author want to test and mock the `static` helper `_ConvertRawToMilliCelsius()`.
+
+1. **Test** `_ConvertRawToMilliCelsius()` directly
 2. **Mock** `_ConvertRawToMilliCelsius()` while testing `Sensor_ReadCelsius()`
 
 Partials allows you to accomplish both of these goals with no changes to
-_sensor.c_.
+_sensor.c_ even though `_ConvertRawToMilliCelsius()` is static.
 
 !!! warning "A Function Cannot Be Both Tested and Mocked"
     A core restriction of the C language remains here! `_ConvertRawToMilliCelsius()`
@@ -116,7 +120,7 @@ void test_ConvertRawToMilliCelsius(void)
     TEST_ASSERT_EQUAL_INT(-40000, _ConvertRawToMilliCelsius(0));
 }
 ```
-### Ceedling‘s Partials handling for "sensor" module functions
+#### Partials processing step-by-step
 
 1. Reads `sensor.c` and `sensor.h` and extracts all function definitions.
 1. `TEST_PARTIAL_ALL_MODULE()` instructs Partial generation to gather and 
@@ -163,7 +167,7 @@ void test_Sensor_ReadCelsius(void)
 }
 ```
 
-### Ceedling‘s Partials handling for mockable "sensor" module functions
+#### Partials processing step-by-step
 
 1. Reads `sensor.c` and `sensor.h`, extracts all function definitions.
 1. Classifies `_ConvertRawToMilliCelsius` as **private** (from the `static`
@@ -263,7 +267,7 @@ Example:
 MOCK_PARTIAL_CONFIG(mymodule, -_InternalHelper)
 ```
 
-### `#include` conventions for Partial macros
+### `#include` conventions
 
 The `_MODULE` macros each expand to a **string literal** that names a
 generated header file. This means you use them as the argument to `#include`:
@@ -303,7 +307,7 @@ Each test or mock Partial is independently configured by exactly
 one `_MODULE` macro call. The macro determines the _base set_ of
 functions that Ceedling collects towards generating a Partial. Once
 the base set of functions is determined, explicit additions or 
-subtractions can be applied.
+subtractions can be applied with `_CONFIG` macros.
 
 This scheme gives you the, test author, full control of which functions
 are injected into which type of Partial while avoiding laboriously
@@ -326,7 +330,7 @@ listing each function individually.
 * Each module can appear in **at most one** `TEST_PARTIAL_*_MODULE` and 
   `MOCK_PARTIAL_*_MODULE` macro within a given test file.
 
-### Partials function list configuration macros
+#### Partials function list configuration macros
 
 `TEST_PARTIAL_CONFIG` and `MOCK_PARTIAL_CONFIG` refine the base set of functions
 filtered by the corresponding `_MODULE` macro. Both `_CONFIG` macros require at 
@@ -357,7 +361,7 @@ sections, each function name argument is treated as an **addition** or a
 | `[TEST/MOCK]_PARTIAL_MODULE` | Accumulate | Forbidden | Any function (one required) |
 | `[TEST/MOCK]_PARTIAL_ALL_MODULE` | Deduct | Any function | Forbidden |
 
-### Cross-side `TEST_` / `MOCK_` Partials exclusion
+### `TEST_` / `MOCK_` Partials exclusion
 
 Any function explicitly added on one side via a Partial `_CONFIG` macro is 
 **automatically removed** from the complementary function list (if it exists).
@@ -548,7 +552,7 @@ implementation header (`ceedling_partial_<module>_impl.h`). Including the
 implementation header via a `TEST_PARTIAL_*_MODULE` macro therefore makes all
 promoted variables available to your test code.
 
-#### Using the `PARTIAL_LOCAL_VAR()` macro to access promoted function-scoped static variables
+#### `PARTIAL_LOCAL_VAR()` macro to access promoted function-scoped static variables
 
 Typing `partial_Sensor_ReadCelsius_call_count` throughout a test file is
 error-prone. The `PARTIAL_LOCAL_VAR` macro, defined in `ceedling.h`, assembles

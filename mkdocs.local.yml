@@ -1,3 +1,4 @@
+# mkdocs uses a simple overwrite merge -- must rewrite entire sections to make small changes.
 INHERIT: mkdocs.yml
 
 use_directory_urls: false
