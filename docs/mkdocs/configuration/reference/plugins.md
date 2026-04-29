@@ -55,6 +55,6 @@ If no reporting plugins are specified, Ceedling will print to `$stdout` the
 
 ```
 
-[custom-plugins]: ../../development/plugin-development-guide.md
+[custom-plugins]: ../../development/plugins/index.md
 [ceedling-plugins]: ../../plugins/index.md
 [command-hooks]: ../../plugins/command-hooks.md

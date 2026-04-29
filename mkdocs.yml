@@ -144,4 +144,9 @@ nav:
     - Upgrading: project/upgrade.md                  
   - Help: help.md  
   - Development:
-    - Plugin Development Guide: development/plugin-development-guide.md  
+    - development/index.md
+    - Plugin Development:
+      - development/plugins/index.md
+      - Configuration: development/plugins/configuration.md
+      - Plugin Subclass: development/plugins/plugin-subclass.md
+      - Rake Tasks: development/plugins/rake-tasks.md  

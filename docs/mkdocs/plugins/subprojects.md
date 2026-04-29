@@ -24,7 +24,7 @@ list of enabled plugins.
 
 ## Documentation
 
-See the [Plugin Development Guide](../development/plugin-development-guide.md) for context on
+See the [Plugin Development Guide](../development/plugins/index.md) for context on
 how Ceedling plugins work.
 
 For full details on configuring the `subprojects` plugin, see the plugin's

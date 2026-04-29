@@ -31,7 +31,7 @@ help you catch a broken configuration and problematic combinations of
 settings.
 
 For nitty-gritty details on plugin configuration behavior, see the
-_[Plugin Development Guide](../development/plugin-development-guide.md)_
+_[Plugin Development Guide](../development/plugins/index.md)_
 
 ## Options for Loading Your Base Project Configuration
 

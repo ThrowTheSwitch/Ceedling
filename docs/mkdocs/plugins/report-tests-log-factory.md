@@ -410,7 +410,7 @@ See [_PluginDevelopmentGuide_][custom-plugins] for documentation of the test res
 
 See this plugin's built-in `TestsReports` subclasses — `json_tests_reporter.rb`, `junit_tests_reporter.rb`, and `cppunit_tests_reporter.rb` — for examples of using test results.
 
-[custom-plugins]: ../development/plugin-development-guide.md
+[custom-plugins]: ../development/plugins/index.md
 
 #### `TestsReporter` utility methods
 

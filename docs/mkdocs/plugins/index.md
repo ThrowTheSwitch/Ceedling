@@ -11,7 +11,7 @@ includes full documentation of its capabilities and configuration options.
     Many find the handy-dandy [Command Hooks plugin](command-hooks.md)
     is often enough as it allows you to connect your own scripts and tools 
     to Ceedling build steps. Alternatively, you can 
-    [create your own plugins](../development/plugin-development-guide.md).
+    [create your own plugins](../development/plugins/index.md).
 
 See the [`:plugins` configuration reference](../configuration/reference/plugins.md) 
 for how to enable built-in plugins and load custom plugins in your project.

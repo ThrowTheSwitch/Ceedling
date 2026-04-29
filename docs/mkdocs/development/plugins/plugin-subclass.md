@@ -1,258 +1,16 @@
-# Developing Plugins for Ceedling
-
-This guide walks you through the process of creating custom plugins for
-[Ceedling](https://github.com/ThrowTheSwitch/Ceedling).
-
-It is assumed that the reader has a working installation of Ceedling and some
-basic usage experience, *i.e.* project creation/configuration and running tasks.
-
-Some experience with Ruby and Rake will be helpful but not absolutely required.
-You can learn the basics as you go — often by looking at other, existing 
-Ceedling plugins or by simply searching for code examples online.
-
-## Contents
-
-* [Custom Plugins Overview](#custom-plugins-overview)
-* [Plugin Conventions & Architecture](#plugin-conventions-architecture)
-   1. [Configuration Plugin](#plugin-option-1-configuration)
-   1. [Programmatic `Plugin` subclass](#plugin-option-2-plugin-subclass)
-   1. [Rake Tasks Plugin](#plugin-option-3-rake-tasks)
-
-## Development Roadmap & Notes
-
-(See Ceedling's _[release notes](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md)_ for more.)
-
-* Ceedling 1.0 marks the beginning of moving all of Ceedling away from relying
-  on Rake. New, Rake-based plugins should not be developed. Rake dependencies
-  among built-in plugins will be refactored as the transition occurs.
-* Ceedling's entire plugin architecture will be overhauled in future releases.
-  The current structure is too dependent on Rake and provides both too little
-  and too much access to Ceedling's core.
-* Certain aspects of Ceedling's plugin structure have developed organically.
-  Consistency, coherence, and usability may not be high — particularly for 
-  build step hook argument hashes and test results data structures used in 
-  programmatic plugins.
-* Because of iterating on Ceedling's core design and features, documentation
-  here may not always be perfectly up to date.
-
 ---
-
-# Custom Plugins Overview
-
-Ceedling plugins extend Ceedling without modifying its core code. They are
-implemented in YAML and the Ruby programming language and are loaded by 
-Ceedling at runtime.
-
-Plugins provide the ability to customize the behavior of Ceedling at various
-stages of a build — preprocessing, compiling, linking, building, testing, and
-reporting.
-
-See the [`:plugins` configuration reference][plugins-config] for details of operation
-and the [plugins overview][plugins-directory] for a directory of built-in plugins.
-
-[plugins-config]: ../configuration/reference/plugins.md
-[plugins-directory]: ../plugins/index.md
-[string-expansion]: ../configuration/project-file.md#inline-ruby-string-expansion
-[preprocessing]: ../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests
-
-# Plugin Conventions & Architecture
-
-Plugins are enabled and configured from within a Ceedling project's YAML
-configuration file (`:plugins` section).
-
-Conventions & requirements:
-
-* Plugin configuration names, the containing directory names, and filenames 
-  must:
-   * All match (i.e. identical names)
-   * Be snake_case (lowercase with connecting underscores).
-* Plugins must be organized in a containing directory (the name of the plugin
-  as used in the project configuration `:plugins` ↳ `:enabled` list is its 
-  containing directory name).
-* A plugin's containing directory must be located in a Ruby load path. Load
-  paths may be added to a Ceedling project using the `:plugins` ↳ `:load_paths`
-  list.
-* Rake plugins place their Rakefiles in the root of thecontaining plugin 
-  directory.
-* Programmatic plugins must contain either or both `config/` and `lib/`
-  subdirectories within their containing directories.
-* Configuration plugins must place their files within a `config/` subdirectory
-  within the plugin's containing directory.
-
-Ceedling provides 3 options to customize its behavior through a plugin. Each
-strategy is implemented with source files conforming to location and naming
-conventions. These approaches can be combined.
-
-1. Configuration (YAML & Ruby)
-1. `Plugin` subclass (Ruby)
-1. Rake tasks (Ruby)
-
-# Plugin Option 1: Configuration
-
-The configuration option, surprisingly enough, provides Ceedling configuration
-values. Configuration plugin values can supplement or override project
-configuration values.
-
-Not long after Ceedling plugins were developed the `option:` feature was added
-to Ceedling to merge in secondary configuration files. This feature is
-typically a better way to manage nultiple configurations and in many ways
-supersedes a configuration plugin.
-
-That said, a configuration plugin is more capable than the `option:` feature and
-can be appropriate in some circumstances. Further, Ceedling's configuration
-pluging abilities are often a great way to provide configuration to
-programmatic `Plugin` subclasses (Ceedling plugins options #2).
-
-## Three flavors of configuration plugins exist
-
-1. **YAML defaults.** The data of a simple YAML file is incorporated into
-   Ceedling's configuration defaults during startup.
-1. **Programmatic (Ruby) defaults.** Ruby code creates a configuration hash 
-   that Ceedling incorporates into its configuration defaults during startup. 
-   This provides the greatest flexibility in creating configuration values.
-1. **YAML configurations.** The data of a simple YAML file is incorporated into
-   Ceedling's configuration much like your project configuration file.
-
-## Example configuration plugin layout
-
-Project configuration file:
-
-```yaml
-:plugins:
-  :load_paths:
-    - support/plugins
-  :enabled:
-    - zoom_zap
-```
-
-Ceedling project directory structure:
-
-(Third flavor of configuration plugin shown.)
-
-```
-project/
-├── project.yml
-└── support/
-    └── plugins/
-        └── zoom_zap/
-            └── config/
-                └── zoom_zap.yml
-```
-
-## Ceedling configuration build & use
-
-Configuration is developed at startup by assembling defaults, collecting 
-user-configured settings, and then populating any missing values with defaults.
-
-Defaults:
-
-1. Ceedling loads its own defaults separately from your project configuration
-1. Supporting framework defaults such as for CMock are populated into (1)
-1. Any plugin defaults are merged with (2).
-
-Final project configuration:
-
-1. Your project file is loaded and any mixins merged
-1. Supporting framework settings that depend on project configuration are populated
-1. Plugin configurations are merged with the result of (1) and (2)
-1. Defaults are populated into your project configuration
-1. Path standardization, string replacement, and related occur throughout the final 
-   configuration
-
-Merging means that existing simple configuration valuees are replaced or, in the 
-case of containers such as lists and hashes, values are added to. If no such 
-key/value pairs already exist, they are simply inserted into the configuration. 
-
-Populating means inserting a configuration value if none already exists. As an 
-example, if Ceedling finds no compiler defined for test builds in your project
-configuration, it populates your configuration with its own internal tool definition.
-
-A plugin may implement its own code to use extract custom configuration from
-the Ceedling project file. See the built-in plugins for examples. For instance, the
-Beep plugin makes use of a top-level `:beep` section in project configuration. In 
-such cases, it's typically wise to make use of a plugin's option for defining 
-default values. Configuration handling code is greatly simplified if values are 
-guaranteed to exist in some form. This elimiates a great deal of presence checking
-and related code.
-
-## Configuration Plugin Flavors
-
-### Configuration Plugin Flvaor A: YAML Defaults
-
-Naming and location convention: `<plugin_name>/config/defaults.yml`
-
-Configuration values are defined inside a YAML file just as the Ceedling project
-configuration file.
-
-Keys and values are defined in Ceedling's “base” configuration along with all
-default values Ceedling loads at startup. If a particular key/value pair is
-already set at the time the plugin attempts to set it, it will not be
-redefined.
-
-YAML values are static apart from Ceedling's ability to perform string
-substitution at configuration load time (see the [configuration reference][string-expansion] for more).
-Programmatic Ruby defaults (next section) are more flexible but more
-complicated.
-
-```yaml
-# Any valid YAML is appropriate
-:key:
-  :value: <setting>
-```
-
-### Configuration Plugin Flvaor B: Programmatic (Ruby) Defaults
-
-Naming and location convention: `<plugin_name>/config/defaults_<plugin_name>.rb`
-
-Configuration values are defined in a Ruby hash returned by a “naked” function
-`get_default_config()` in a Ruby file. The Ruby file is loaded and evaluated at
-Ceedling startup. It can contain anything allowed in a Ruby script file but
-must contain the accessor function. The returned hash's top-level keys will
-live in Ceedling's configuration at the same level in the configuration
-hierarchy as a Ceedling project file's top-level keys ('top-level' refers to
-the left-most keys in the YAML, not to how “high” the keys are towards the top
-of the file).
-
-Keys and values are defined in Ceedling's “base” configuration along with all
-default values Ceedling loads at startup. If a particular key/value pair is
-already set at the time the plugin attempts to set it, it will not be
-redefined.
-
-This configuration option is more flexible than that documented in the previous
-section as full Ruby execution is possible in creating the defaults hash.
-
-### Configuration Plugin Flvaor C: YAML Values
-
-Naming and location convention: `<plugin_name>/config/<plugin_name>.yml`
-
-Configuration values are defined inside a YAML file just as the Ceedling project
-configuration file.
-
-Keys and values are defined in Ceedling's “base” configuration along with all
-default values Ceedling loads at startup. If a particular key/value pair is
-already set at the time the plugin attempts to set it, it will not be
-redefined.
-
-YAML values are static apart from Ceedling's ability to perform string
-substitution at configuration load time (see the [configuration reference][string-expansion] for more).
-Programmatic Ruby defaults (next section) are more flexible but more
-complicated.
-
-```yaml
-# Any valid YAML is appropriate
-:key:
-  :value: <setting>
-```
+toc_depth: 3
+---
 
 # Plugin Option 2: `Plugin` Subclass
 
 Naming and location conventions:
 
 * `<plugin_name>/lib/<plugin_name>.rb`
-* The plugin's class name must be the camelized version (a.k.a. “bumpy case")
+* The plugin's class name must be the camelized version (a.k.a. "bumpy case")
   of the plugin filename — `whiz_bang.rb` ➡️ `WhizBang`.
 
-This plugin option allows full programmatic ability connceted to any of a number
+This plugin option allows full programmatic ability connected to any of a number
 of predefined Ceedling build steps.
 
 The contents of `<plugin_name>.rb` must implement a class that subclasses
@@ -260,7 +18,7 @@ The contents of `<plugin_name>.rb` must implement a class that subclasses
 
 ## Example `Plugin` subclass
 
-An incomplete `Plugin` subclass follows to illustate the basics.
+An incomplete `Plugin` subclass follows to illustrate the basics.
 
 ```ruby
 # whiz_bang/lib/whiz_bang.rb
@@ -310,11 +68,11 @@ project/
 It is possible and often convenient to add more `.rb` files to the containing 
 `lib/` directory to allow good organization of plugin code. No Ceedling 
 conventions exist for these supplemental code files. Only standard Ruby 
-constaints exists for these filenames and content.
+constraints exist for these filenames and content.
 
 ## `Plugin` instance variables
 
-Each `Plugin` sublcass has access to the following instance variables:
+Each `Plugin` subclass has access to the following instance variables:
 
 * `@name`
 * `@ceedling`
@@ -343,7 +101,7 @@ subclass.
 ### Multi-threaded protections
 
 Because Ceedling can run build operations in multiple threads, build step hook
-handliers must be thread safe. Practically speaking, this generally requires
+handlers must be thread safe. Practically speaking, this generally requires
 a `Mutex` object `synchronize()`d around any code that writes to or reads from
 a common data structure instantiated within a plugin.
 
@@ -374,7 +132,7 @@ whose associated value is itself a hash with the following contents:
 !!! warning "Preprocessing Hook Limitations"
     Test preprocessing steps are quite sophisticated and involve various combinations
     of tool executions. The `post_` preprocessing hooks do not include shell results.
-    Future updates to Ceedling’s plugin system will create a more robust means of
+    Future updates to Ceedling's plugin system will create a more robust means of
     attaching custom behaviors to test preprocessing or connecting your own
     preprocessing pipeline with toolchains other than GCC.
 
@@ -607,7 +365,7 @@ This method is called when invoking the summary task, `ceedling summary`. This
 method facilitates logging the results of the last build without running the
 previous build again.
 
-## Validating a plugin’s tools
+## Validating a plugin's tools
 
 By default, Ceedling validates configured tools at startup according to a 
 simple setting within the tool definition. This works just fine for default
@@ -618,7 +376,7 @@ Ceedling can't find it in your `$PATH`. Similarly, it's irresponsible to skip
 validating a tool just because it may not be needed.
 
 Ceedling provides optional, programmatic tool validation for these cases.
-`@ceedling]:tool_validator].validate()` can be forced to ignore a tool's 
+`@ceedling[:tool_validator].validate()` can be forced to ignore a tool's 
 `required:` setting to validate it. In such a scenario, a plugin should 
 configure its own tools as `:optional => true` but forcibly validate them at 
 plugin startup if the plugin's configuration options require said tool.
@@ -652,7 +410,7 @@ correspond directly to the collection of test files Ceedling processed in a
 given test build. It's common for this list of filepaths to be assembled from
 the `post_test_fixture_execute` build step execution hook.
 
-The data that `assemble_test_results()` returns hss a structure as follows. In 
+The data that `assemble_test_results()` returns has a structure as follows. In 
 this example, actual results from a single, real test file are presented as 
 hash/array Ruby code with comments and with some edits to reduce line length.
 
@@ -720,48 +478,4 @@ hash/array Ruby code with comments and with some edits to reduce line length.
 }
 ```
 
-# Plugin Option 3: Rake Tasks
-
-This plugin type adds custom Rake tasks to your project that can be run with `ceedling <custom_task>`.
-
-Naming and location conventions: `<plugin_name>/<plugin_name>.rake`
-
-## Example Rake task
-
-```ruby
-# Only tasks with description are listed by `ceedling -T`
-desc "Print hello world to console"
-task :hello_world do
-  sh "echo Hello World!"
-end
-```
-
-Resulting, example command line:
-
-```shell
- > ceedling hello_world
- > Hello World!
-```
-
-## Example Rake plugin layout
-
-Project configuration file:
-
-```yaml
-:plugins:
-  :load_paths:
-    - support/plugins
-  :enabled:
-    - hello_world
-```
-
-Ceedling project directory structure:
-
-```
-project/
-├── project.yml
-└── support/
-    └── plugins/
-        └── hello_world/
-            └── hello_world.rake
-```
+[preprocessing]: ../../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests
