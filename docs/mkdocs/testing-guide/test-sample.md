@@ -2,6 +2,12 @@
 
 **Here is a beautiful test file to help get you started…**
 
+!!! note "This sample test only illustrates basic assertions and mocks"
+    Dealing with complex and legacy code may require the use of
+    [Partials](partials/index.md) for accessing `static` / `inline` 
+    functions and `static` variables. Partials allow you to test these 
+    C elements without rewriting your source code.
+
 ## Core concepts in code
 
 After absorbing this sample code, you'll have context for much

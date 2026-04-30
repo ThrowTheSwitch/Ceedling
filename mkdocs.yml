@@ -98,7 +98,12 @@ nav:
     - Anatomy of a Test Suite: testing-guide/test-suite-anatomy.md
     - Conventions & Behaviors: testing-guide/conventions.md
     - Unity, CMock & CException: testing-guide/frameworks.md
-    - Partials: testing-guide/partials.md
+    - Partials:
+      - testing-guide/partials/index.md
+      - What Is a Partial?: testing-guide/partials/overview.md
+      - Conventions & Terminology: testing-guide/partials/conventions.md
+      - Partial Directive Macros: testing-guide/partials/directives.md
+      - Accessing Static Variables: testing-guide/partials/variables.md
     - Build Directive Macros: testing-guide/build-directives.md
   - Configuration:
     - configuration/index.md

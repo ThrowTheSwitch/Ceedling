@@ -49,7 +49,7 @@ Enables Ceedling Partials. [Partials][partials] allow you to test and mock
 inaccessible functions and variables in the C code under test without rewriting
 your source code.
 
-[partials]: ../../testing-guide/partials.md
+[partials]: ../../testing-guide/partials/index.md
 
 **Default**: FALSE
 

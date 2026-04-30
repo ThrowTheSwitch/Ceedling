@@ -60,7 +60,7 @@
     you to test and mock parts of your code you could not otherwise access
     without rewriting it first.
 
--   :material-code-tags: **[Build Directive Macros][build-directives]**
+-   :material-pound: **[Build Directive Macros][build-directives]**
 
     ---
 
@@ -75,4 +75,4 @@
 [conventions]:        conventions.md
 [frameworks]:         frameworks.md
 [build-directives]:   build-directives.md
-[partials]:           partials.md
+[partials]:           partials/index.md
