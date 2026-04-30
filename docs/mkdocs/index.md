@@ -2,6 +2,12 @@
     Jump straight to the [Quick Start][quick-start] — installation,
     project set up, and your first build tasks all in one place.
 
+!!! feature "New in Ceedling 1.1.0 — Partials"
+    A [_Partial_](testing-guide/partials/index.md) is your C code sliced and diced
+    to expose functional elements for testing that you could not otherwise 
+    access without rewriting your source code. Think of Partials as a scalpel 
+    for testing your code.
+
 ---
 
 # Ceedling Packet
@@ -181,7 +187,7 @@
 [test-cases]:                  testing-guide/test-cases.md
 [test-sample]:                 testing-guide/test-sample.md
 [test-suite-anatomy]:          testing-guide/test-suite-anatomy.md
-[partials]:                    testing-guide/partials.md
+[partials]:                    testing-guide/partials/index.md
 [installation]:                getting-started/installation.md
 [command-line]:                getting-started/command-line.md
 [conventions]:                 testing-guide/conventions.md
