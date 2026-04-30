@@ -1092,9 +1092,40 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../testing-guide/partials/" class="md-nav__link">
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../testing-guide/partials/" class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
@@ -1108,7 +1139,143 @@
   
   
 
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Partials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing-guide/partials/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What Is a Partial?
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing-guide/partials/conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Conventions & Terminology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing-guide/partials/directives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Partial Directive Macros
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing-guide/partials/variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Accessing Static Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2491,24 +2658,30 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-the-tests" class="md-nav__link">
+  <a href="#fff-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running the tests
+        FFF examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FFF examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-example-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running example tests
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#more-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        More examples
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3250,24 +3423,30 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-the-tests" class="md-nav__link">
+  <a href="#fff-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running the tests
+        FFF examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FFF examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-example-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running example tests
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#more-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        More examples
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3340,7 +3519,7 @@
 
 
 <h1 id="fake-function-framework-for-ceedling">Fake Function Framework for Ceedling</h1>
-<p>This plugin causes Ceedling to use the <a href="https://github.com/meekrosoft/fff">Fake Function Framework</a> for mocking instead of CMock, the default mocking framework packages with Ceedling.</p>
+<p>This plugin causes Ceedling to use the <a href="https://github.com/meekrosoft/fff">Fake Function Framework</a> for mocking instead of CMock, the default mocking framework packaged with Ceedling.</p>
 <p>Using <em>FFF</em> provides less strict mocking than CMock and affords more loosely-coupled tests.</p>
 <p>This Ceedling 1.x plugin incorporates a snapshot of <em>FFF</em> version 0.1.1 and supersedes a separately available <a href="https://github.com/ElectronVector/fake_function_framework">FFF Ceedling plugin project</a>. The built-in <em>FFF</em> plugin that now comes with Ceedling was derived from the ElectronVector project and is now maintained along with Ceedling and tracks its updates.</p>
 <div class="admonition note">
@@ -3350,7 +3529,7 @@ as an adapter for <em>FFF</em>. It's a well-loved piece of the Ceedling ecosyste
 and we really appreciate his support through the years.</p>
 </div>
 <h2 id="enable-the-plugin">Enable the plugin</h2>
-<p>The plug-in is enabled from within your project.yml file.</p>
+<p>The plugin is enabled from within your project.yml file.</p>
 <p>In the <code>:plugins</code> configuration, add <code>fff</code> to the list of enabled plugins:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:plugins</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
@@ -3503,7 +3682,7 @@ Each example uses fakes for a "display" module, created from a display.h file wi
 <a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="p">}</span>
 </code></pre></div>
 <h2 id="test-setup">Test setup</h2>
-<p>All of the fake functions, and any fff global state are all reset automatically between each test.</p>
+<p>All of the fake functions and any fff global state are all reset automatically between each test.</p>
 <h2 id="cmock-configuration">CMock configuration</h2>
 <p>We still use some CMock configuration options for setting things like the mock prefix and for including additional header files in the mock files.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">:cmock</span><span class="p">:</span>
@@ -3518,12 +3697,19 @@ Each example uses fakes for a "display" module, created from a display.h file wi
 <a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
 <a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">        </span><span class="nt">:includes_c_post_header</span><span class="p">:</span>
 </code></pre></div>
-<h2 id="running-the-tests">Running the tests</h2>
-<p>There are unit and integration tests for the plug-in itself.
-These are run with the default <code>rake</code> task.
-The integration test runs the tests for the example project in <em>examples/fff_example</em>.</p>
-<h2 id="more-examples">More examples</h2>
-<p>There is an example project in <em>examples/fff_example</em>. This project illustrates how to use the plugin with full-size examples.</p>
+<h2 id="fff-examples">FFF examples</h2>
+<p>See the <a href="https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff/examples/fff_example">FFF example project</a>. This project illustrates how to use the plugin with full-size examples.</p>
+<div class="admonition warning">
+<p class="admonition-title">Versioning</p>
+<p>The example project link is to the latest in the repository.
+It is not explicitly versioned to correspond to this documentation.
+That said, FFF and the plugin are relatively stable.</p>
+</div>
+<h3 id="running-example-tests">Running example tests</h3>
+<p>Unit and integration tests exist for the plugin itself.</p>
+<p>These tests are run with the default <code>rake</code> task packaged in the <a href="https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff">FFF plugin</a>.</p>
+<p>The integration test runs the FFF-based unit tests within the <a href="https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff/examples/fff_example">example project</a>.
+That is, the FFF examples are executed as part of Ceedling continuous integration.</p>
 
 
 
@@ -3559,7 +3745,7 @@ The integration test runs the tests for the example project in <em>examples/fff_
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      &copy; 2010-2026 M. Karlesky, M. VanderVoord, and G. Williams &mdash; Documentation licensed <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">Creative Commons 4.0 Attribution Share-Alike</a>
+      &copy; 2010-2026 M. Karlesky, M. VanderVoord, and G. Williams &mdash; Documentation license:  <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">CC BY-SA 4.0</a>
     </div>
   
   
