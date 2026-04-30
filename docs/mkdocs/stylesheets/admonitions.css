@@ -35,3 +35,39 @@
   -webkit-mask-image: var(--md-admonition-icon--sponsorship);
           mask-image: var(--md-admonition-icon--sponsorship);
 }
+
+/* ── Feature ────────────────────────────────────────────────────────────────
+   Usage:  !!! feature "New in 1.0"
+               Body text here.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Icon: Material Design Icons 'star-four-points'
+   Source: material/templates/.icons/material/star-four-points.svg
+   (Only available at time of site-generation in a container)
+
+   CSS mask-image requires an SVG data URL but the :material-star-four-points: shortcode
+   is Markdown-only and is not available to CSS.
+
+   The SVG path recreates the 'star-four-points' icon from Material Design Icons as
+   the file is unavailable outside the site-generation container.
+  */
+:root {
+  --md-admonition-icon--feature: url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12,1L9,9L1,12L9,15L12,23L15,15L23,12L15,9Z'/></svg>");
+}
+
+.md-typeset .admonition.feature,
+.md-typeset details.feature {
+  border-color: rgb(103, 58, 183);
+}
+
+.md-typeset .feature > .admonition-title,
+.md-typeset .feature > summary {
+  background-color: rgba(103, 58, 183, .15);
+}
+
+.md-typeset .feature > .admonition-title::before,
+.md-typeset .feature > summary::before {
+  background-color: rgb(103, 58, 183);
+  -webkit-mask-image: var(--md-admonition-icon--feature);
+          mask-image: var(--md-admonition-icon--feature);
+}
