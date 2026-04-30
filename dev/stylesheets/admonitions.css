@@ -1,4 +1,15 @@
-/* Custom admonition types */
+/* Restore older style of Admonitions (nicer) */
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-width: 0;
+  border-left-width: 4px;
+}
+
+/* 
+ Custom Admonition Types
+ =======================
+ */
 
 /* ── Sponsorship ────────────────────────────────────────────────────────────
    Usage:  !!! sponsorship "Title"
