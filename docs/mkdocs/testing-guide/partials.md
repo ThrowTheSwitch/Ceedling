@@ -35,11 +35,11 @@ When creating a Partial, Ceedling:
    original source module’s filepath and line numbers (using GCC’s `#line` 
    directive) for correct test coverage reporting.
 
-| Generated file | Role | Default filename pattern |
+| Partial | Purpose | Generated filename pattern |
 |---|---|---|
-| **Partial implementation** header | Declares testable functions and `extern`s file-scope variables | `ceedling_partial_<module>_impl.h` |
-| **Partial implementation** source | Defines testable functions and `static`-less variables | `ceedling_partial_<module>_impl.c` |
-| **Partial interface** header | Declares mockable function signatures | `ceedling_partial_<module>_interface.h` |
+| Testable header | <ul><li>Declares functions</li><li>`extern`s variables</li></ul> | `ceedling_partial_<module>_impl.h` |
+| Testable source | <ul><li>Defines functions</li><li>Defines `static`-less variables</li></ul> | `ceedling_partial_<module>_impl.c` |
+| Mockable header | <ul><li>Declares function signatures</li></ul> | `ceedling_partial_<module>_interface.h` |
 
 These generated Partials files `#include` the same header files as the 
 original files from which they are generated. They also contain all macros,
@@ -48,9 +48,14 @@ original files from which they are generated. They also contain all macros,
 Ceedling uses CMock to generate mocks from Partials interface header files
 just as it does for any other mockable header files.
 
+!!! warning "Do not directly access generated Partials files"
+    You as the test author will never directly interact with generated 
+    Partials C files. Do not modify these generated files or 
+    incorporate them into your tests except with the accompanying macros.
+
 When a test file references a Partial, Ceedling excludes the original source
-file from that test executable‘s build. Only the generated Partial 
-source is compiled and linked in its place.
+file from that test executable‘s build. The generated Partial 
+source is compiled and linked in place of the original source C.
 
 ## Simple Partials Example
 
@@ -85,7 +90,7 @@ int Sensor_ReadCelsius(void)
 }
 ```
 
-### Testing & mocking `static` helper
+### Testing & mocking a `static` helper
 
 You as a test author want to test and mock the `static` helper `_ConvertRawToMilliCelsius()`.
 
@@ -291,11 +296,6 @@ A `TEST_PARTIAL_*_MODULE` macro always names an implementation header.
 
 A `MOCK_PARTIAL_*_MODULE` macro always names a mockable interface header.
 
-!!! warning "Do Not Touch Generated Partials Files"
-    In practice, you as the test author will never directly interact with the
-    generated Partials C files. Do not reference them or modify them. These
-    examples and explanation are solely for education and awareness.
-
 The filters in place of `*` in the macro names — `PUBLIC`, `PRIVATE`, `ALL`, 
 and none — tell Ceedling how to initialize internal function lists (that 
 can be optionally modified) towards injecting the collected functions into 
@@ -315,14 +315,29 @@ listing each function individually.
 
 #### Partials base function filters
 
+* `[TEST/MOCK]_PARTIAL_ALL_MODULE()`
+* `[TEST/MOCK]_PARTIAL_PUBLIC_MODULE()`
+* `[TEST/MOCK]_PARTIAL_PRIVATE_MODULE()`
+* `[TEST/MOCK]_PARTIAL_MODULE()`
+
 | Macro | Base set of functions | Additions | Subtractions |
 |---|---|---|---|
-| `[TEST/MOCK]_PARTIAL_PUBLIC_MODULE(mod)` | All public functions | Add private | Remove public |
-| `[TEST/MOCK]_PARTIAL_PRIVATE_MODULE(mod)` | All private functions | Add public | Remove private |
-| `[TEST/MOCK]_PARTIAL_MODULE(mod)` | Empty | Any function (at least one) | Forbidden |
-| `[TEST/MOCK]_PARTIAL_ALL_MODULE(mod)` | All functions | Forbidden | Any function |
+| `_ALL_MODULE` | All functions | Forbidden | Any function |
+| `_PUBLIC_MODULE` | All public functions | Add private | Remove public |
+| `_PRIVATE_MODULE` | All private functions | Add public | Remove private |
+| `_MODULE` | Empty | Any function (at least one) | Forbidden |
+
+##### Example base sets of function by filter
+
+| Functions | `ALL` | `PUBLIC` | `PRIVATE` | None |
+|---|---|---|---|---|
+| void foo(void) | foo | foo | bar | |
+| static void bar(void) | bar | baz | oof | |
+| int baz(void) | baz | | | |
+| inline int oof(int) | oof | | | |
 
 **Notes:**
+
 * `*_PARTIAL_MODULE` requires at least one addition via `*_PARTIAL_CONFIG` 
   (see next section).
 * `*_PARTIAL_ALL_MODULE` with no subtractions adds every module function to
@@ -352,14 +367,14 @@ sections, each function name argument is treated as an **addition** or a
 | _(none)_ or `+` | Add this function to the Partial (`+<function>`) |
 | `-` | Exclude this function from the Partial (`-<function>`) |
 
-**Addition & subtraction rules by mode:**
+##### Addition & subtraction rules by mode
 
 | Macro | Filter | Subtraction target | Addition target |
 |---|---|---|---|
-| `[TEST/MOCK]_PARTIAL_PUBLIC_MODULE` | Public | Public functions only | Private functions |
-| `[TEST/MOCK]_PARTIAL_PRIVATE_MODULE` | Private | Private functions only | Public functions |
-| `[TEST/MOCK]_PARTIAL_MODULE` | Accumulate | Forbidden | Any function (one required) |
-| `[TEST/MOCK]_PARTIAL_ALL_MODULE` | Deduct | Any function | Forbidden |
+| `_PUBLIC_MODULE` | Public | Public functions only | Private functions |
+| `_PRIVATE_MODULE` | Private | Private functions only | Public functions |
+| `_MODULE` | Accumulate | Forbidden | Any function (one required) |
+| `_ALL_MODULE` | Deduct | Any function | Forbidden |
 
 ### `TEST_` / `MOCK_` Partials exclusion
 
