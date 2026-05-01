@@ -3491,9 +3491,9 @@ promoted variables available to your test code.</p>
 error-prone. The <code>PARTIAL_LOCAL_VAR</code> macro, defined in <code>ceedling.h</code>, assembles
 the promoted name from its two components:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">PARTIAL_LOCAL_VAR</span><span class="p">(</span><span class="n">function_name</span><span class="p">,</span><span class="w"> </span><span class="n">variable_name</span><span class="p">)</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// expands to: partial_&lt;function_name&gt;_&lt;variable_name&gt;</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// Expands to: partial_&lt;function_name&gt;_&lt;variable_name&gt;</span>
 </code></pre></div>
-<p><code>PARTIAL_LOCAL_VAR()</code> is not a function call. The macro expands to a simple 
+<p><code>PARTIAL_LOCAL_VAR()</code> is not a function call. The macro Expands to a simple 
 C identifier. It can appear anywhere a variable name is legal — in expressions, 
 assertions, and assignments.</p>
 <h3 id="example-use-of-partial_local_var">Example use of <code>PARTIAL_LOCAL_VAR()</code></h3>

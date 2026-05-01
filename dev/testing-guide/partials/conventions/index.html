@@ -3254,7 +3254,7 @@ without its extension — is the <em>module name</em>.</p>
 as a single unit. Both files are read when generating a Partial. When only 
 one file is present, only that file is read.</p>
 <p>All Partial directive macros take a module name — a bare filename stem with
-no extension and no path:</p>
+no extension, no path, and no quotation marks:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// Module name: &#39;sensor&#39;</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// Not &quot;sensor.c&quot; or &quot;path/to/sensor&quot;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="cp">#include TEST_PARTIAL_PRIVATE_MODULE(sensor)</span>
