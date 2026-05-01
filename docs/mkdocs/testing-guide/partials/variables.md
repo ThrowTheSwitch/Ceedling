@@ -143,10 +143,10 @@ the promoted name from its two components:
 
 ```c
 PARTIAL_LOCAL_VAR(function_name, variable_name)
-// expands to: partial_<function_name>_<variable_name>
+// Expands to: partial_<function_name>_<variable_name>
 ```
 
-`PARTIAL_LOCAL_VAR()` is not a function call. The macro expands to a simple 
+`PARTIAL_LOCAL_VAR()` is not a function call. The macro Expands to a simple 
 C identifier. It can appear anywhere a variable name is legal — in expressions, 
 assertions, and assignments.
 

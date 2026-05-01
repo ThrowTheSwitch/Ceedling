@@ -5,7 +5,7 @@ in your test file. No separate configuration file is required. The macros
 require `#include "ceedling.h"` present in the test file above and before
 their use.
 
-The Partial `_MODULE` macros accomplish the following:
+The [Partial `_MODULE` macros](#partials-function-selection-by-macro) accomplish the following:
 
 1. Expand to a filename for the preceding `#include` directive.
 1. Provide a module name for Ceedling to process for the resulting Partial.
@@ -16,13 +16,16 @@ from (3). Modifying a base set of functions is documented in detail in the
 [Partials function list configuration macros](#partials-function-list-configuration-macros)
 section.
 
-Example:
+## Directive Macros Example
 
 ```c
+// Required before we can use the Partials directive macros
 #include "ceedling.h"
 
-// Mock all `static` and/or `inline` functions of "mymodule" except `InternalHelper()`
+// Mock all `static` and/or `inline` functions of `mymodule`
 #include MOCK_PARTIAL_PRIVATE_MODULE(mymodule)
+
+// But, remove `InternalHelper()` from the mocks
 MOCK_PARTIAL_CONFIG(mymodule, -_InternalHelper)
 ```
 
@@ -42,7 +45,7 @@ generated header file. This means you use them as the argument to `#include`:
 #include "ceedling.h"
 
 #include TEST_PARTIAL_*_MODULE(sensor)
-//  ↑ expands to: #include "ceedling_partial_sensor_impl.h"
+// ↑ Expands to: #include "ceedling_partial_sensor_impl.h"
 ```
 
 A `TEST_PARTIAL_*_MODULE` macro always names an implementation header.
@@ -51,7 +54,7 @@ A `TEST_PARTIAL_*_MODULE` macro always names an implementation header.
 #include "ceedling.h"
 
 #include MOCK_PARTIAL_*_MODULE(sensor)
-//  ↑ expands to: #include "mock_ceedling_partial_sensor_interface.h"
+// ↑ Expands to: #include "mock_ceedling_partial_sensor_interface.h"
 ```
 
 A `MOCK_PARTIAL_*_MODULE` macro always names a mockable interface header.
@@ -81,7 +84,7 @@ listing each function individually.
 * `[TEST/MOCK]_PARTIAL_MODULE()`
 
 | Macro | Base set of functions | Additions | Subtractions |
-|---|---|---|---|
+|---:|---|---|---|
 | `_ALL_MODULE` | All functions | Forbidden | Any function |
 | `_PUBLIC_MODULE` | All public functions | Add private | Remove public |
 | `_PRIVATE_MODULE` | All private functions | Add public | Remove private |
@@ -90,7 +93,7 @@ listing each function individually.
 #### Example base sets of function by filter
 
 | Functions | `ALL` | `PUBLIC` | `PRIVATE` | None |
-|---|---|---|---|---|
+|---:|---|---|---|---|
 | void foo(void) | foo | foo | bar | |
 | static void bar(void) | bar | baz | oof | |
 | int baz(void) | baz | | | |
@@ -118,19 +121,24 @@ TEST_PARTIAL_CONFIG(module, func1, func2, ...)
 MOCK_PARTIAL_CONFIG(module, func1, func2, ...)
 ```
 
-Similar to the convenion in Ceedling's `paths:` and `files:` YAML configuration 
+Similar to the convenion in Ceedling‘s `paths:` and `files:` YAML configuration 
 sections, each function name argument is treated as an **addition** or a 
 **subtraction** depending on an optional prefix character:
 
 | Prefix | Meaning |
-|---|---|
-| _(none)_ or `+` | Add this function to the Partial (`+<function>`) |
-| `-` | Exclude this function from the Partial (`-<function>`) |
+|---:|---|
+| _(none)_ or `+` | Add this function to the Partial<br/>(`<function>` or `+<function>`) |
+| `-` | Exclude this function from the Partial<br/>(`-<function>`) |
+
+```c
+TEST_PARTIAL_CONFIG(module, +func1, +func2, -func3)
+MOCK_PARTIAL_CONFIG(module,  func1,  func2, -func3)
+```
 
 #### Addition & subtraction rules by mode
 
 | Macro | Filter | Subtraction target | Addition target |
-|---|---|---|---|
+|---:|---|---|---|
 | `_PUBLIC_MODULE` | Public | Public functions only | Private functions |
 | `_PRIVATE_MODULE` | Private | Private functions only | Public functions |
 | `_MODULE` | Accumulate | Forbidden | Any function (one required) |
@@ -145,11 +153,12 @@ implementation and Partial mock, which would produce a duplicate symbol linker
 error.
 
 ```c
-// _InternalHelper added to the test side while automatically removed from the mock side.
+// `_InternalHelper()` added to the test side
+// while automatically removed from the mock side.
 #include TEST_PARTIAL_PRIVATE_MODULE(mymodule)
 TEST_PARTIAL_CONFIG(mymodule, _InternalHelper)
 
-// _InternalHelper will NOT appear in the mock
+// `_InternalHelper()` will NOT appear in the mock.
 #include MOCK_PARTIAL_PUBLIC_MODULE(mymodule)
 ```
 
@@ -164,7 +173,7 @@ TEST_PARTIAL_CONFIG(mymodule, _InternalHelper)
 TEST_PARTIAL_CONFIG(sensor, _ConvertRaw) // Add exactly this one function
 
 #include MOCK_PARTIAL_ALL_MODULE(sensor) // Starts with all functions
-// _ConvertRaw is automatically excluded from the Partial mock
+// `_ConvertRaw()` is automatically excluded from the Partial mock
 ```
 
 ### Test all functions except one; Mock nothing
@@ -181,11 +190,13 @@ TEST_PARTIAL_CONFIG(sensor, -Sensor_Init) // Subtract one
 ```c
 #include "ceedling.h"
 
-// Test: start with all public functions, add one private function
+// Test: Start with all public functions
+//       and add one private function
 #include TEST_PARTIAL_PUBLIC_MODULE(sensor)
 TEST_PARTIAL_CONFIG(sensor, _ConvertRaw)
 
-// Mock: Start with no functions, add a private function
+// Mock: Start with no functions
+//       and add a private function
 #include MOCK_PARTIAL_MODULE(sensor)
 MOCK_PARTIAL_CONFIG(sensor, _ReadIOValue)
 ```

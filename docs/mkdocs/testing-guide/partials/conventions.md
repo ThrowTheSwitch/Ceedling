@@ -17,7 +17,7 @@ as a single unit. Both files are read when generating a Partial. When only
 one file is present, only that file is read.
 
 All Partial directive macros take a module name — a bare filename stem with
-no extension and no path:
+no extension, no path, and no quotation marks:
 
 ```c
 // Module name: 'sensor'
