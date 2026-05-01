@@ -1137,7 +1137,7 @@
   <a href="#routing-unitys-report-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Routing Unity‘s report output
+        Routing Unity’s report output
       
     </span>
   </a>
@@ -3235,7 +3235,7 @@
   <a href="#routing-unitys-report-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Routing Unity‘s report output
+        Routing Unity’s report output
       
     </span>
   </a>
@@ -3382,16 +3382,16 @@ It cannot be disabled.</p>
 <p>If you want to use mocks in your test cases, you'll need to enable mocking 
 and configure CMock with <code>:project</code> ↳ <code>:use_mocks</code> and the <code>:cmock</code> section 
 of your project configuration respectively. CMock is fully supported by 
-Ceedling but generally requires some set up for your project‘s needs.</p>
+Ceedling but generally requires some set up for your project’s needs.</p>
 <p>If you are incorporating CException into your release artifact, you'll need 
 to enable exceptions and configure CException with <code>:project</code> ↳ 
 <code>:use_exceptions</code> and the <code>:cexception</code> section of your project 
 configuration respectively. Enabling CException makes it available in both 
 release builds and test builds.</p>
 <p>This section provides a high-level view of how the various tools become
-part of your builds and fit into Ceedling‘s configuration file. Ceedling‘s 
+part of your builds and fit into Ceedling’s configuration file. Ceedling’s 
 configuration file is discussed in detail in the next section.</p>
-<p>See <a href="http://github.com/ThrowTheSwitch/Unity">Unity</a>, <a href="http://github.com/ThrowTheSwitch/CMock">CMock</a>, and <a href="http://github.com/ThrowTheSwitch/CException">CException</a>‘s project documentation for all 
+<p>See <a href="http://github.com/ThrowTheSwitch/Unity">Unity</a>, <a href="http://github.com/ThrowTheSwitch/CMock">CMock</a>, and <a href="http://github.com/ThrowTheSwitch/CException">CException</a>’s project documentation for all 
 your configuration options. Ceedling offers facilities for providing these
 frameworks their compilation and configuration settings. Discussing 
 these tools and all their options in detail is beyond the scope of Ceedling 
@@ -3399,7 +3399,7 @@ documentation.</p>
 <h2 id="unity-configuration">Unity Configuration</h2>
 <p>Unity is wholly compiled C code. As such, its configuration is entirely 
 controlled by a variety of compilation symbols. These can be configured
-in Ceedling‘s <code>:unity</code> project settings.</p>
+in Ceedling’s <code>:unity</code> project settings.</p>
 <h3 id="example-unity-configurations">Example Unity configurations</h3>
 <h4 id="itty-bitty-processor-toolchain-with-limited-test-execution-options">Itty bitty processor &amp; toolchain with limited test execution options</h4>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:unity</span><span class="p">:</span>
@@ -3437,8 +3437,8 @@ driving you bonkers.</p>
 <a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
 <a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="cp">#endif</span>
 </code></pre></div>
-<h3 id="routing-unitys-report-output">Routing Unity‘s report output</h3>
-<p>Unity defaults to using <code>putchar()</code> from C‘s standard library to 
+<h3 id="routing-unitys-report-output">Routing Unity’s report output</h3>
+<p>Unity defaults to using <code>putchar()</code> from C’s standard library to 
 display test results.</p>
 <p>For more exotic environments than a desktop with a terminal — e.g. 
 running tests directly on a non-PC target — you have options.</p>
@@ -3460,17 +3460,17 @@ section on <a href="../conventions/">Ceedling conventions and behaviors</a> for 
 <p>You are welcome to disable CMock in the <code>:project</code> block of your Ceedling
 configuration file. This is typically only useful in special debugging
 scenarios or for Ceedling development itself.</p>
-<p>CMock is a mixture of Ruby and C code. CMock‘s Ruby components generate
-C code for your unit tests. CMock‘s base C code is compiled and linked into 
+<p>CMock is a mixture of Ruby and C code. CMock’s Ruby components generate
+C code for your unit tests. CMock’s base C code is compiled and linked into 
 a test executable in the same way that any C file is — including Unity, 
 CException, and generated mock C code, for that matter. </p>
-<p>CMock‘s code generation can be configured using YAML similar to Ceedling 
-itself. Ceedling‘s project file is something of a container for CMock‘s 
-YAML configuration (Ceedling also uses CMock‘s configuration, though).</p>
+<p>CMock’s code generation can be configured using YAML similar to Ceedling 
+itself. Ceedling’s project file is something of a container for CMock’s 
+YAML configuration (Ceedling also uses CMock’s configuration, though).</p>
 <p>See the documentation for the top-level <a href="../../configuration/reference/cmock/"><code>:cmock</code></a> 
-section within Ceedling‘s project file.</p>
-<p>Like Unity and CException, CMock‘s C components are configured at 
-compilation with symbols managed in your Ceedling project file‘s 
+section within Ceedling’s project file.</p>
+<p>Like Unity and CException, CMock’s C components are configured at 
+compilation with symbols managed in your Ceedling project file’s 
 <code>:cmock</code> ↳ <code>:defines</code> section.</p>
 <h3 id="example-cmock-configurations">Example CMock configurations</h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">:project</span><span class="p">:</span>
@@ -3495,7 +3495,7 @@ compilation with symbols managed in your Ceedling project file‘s
 <h2 id="cexception-configuration">CException Configuration</h2>
 <p>Like Unity, CException is wholly compiled C code. As such, its 
 configuration is entirely controlled by a variety of <code>#define</code> symbols. 
-These can be configured in Ceedling‘s <code>:cexception</code> ↳ <code>:defines</code> project 
+These can be configured in Ceedling’s <code>:cexception</code> ↳ <code>:defines</code> project 
 settings.</p>
 <p>Unlike Unity which is always available in test builds and CMock that 
 defaults to available in test builds, CException must be enabled
