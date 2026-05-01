@@ -12,6 +12,8 @@ site_dir: site-local
 # Material theme configuration
 theme:
   name: material
+  favicon: assets/images/favicon.png
+  # logo: assets/images/ceedling-icon.png
   palette:
     - scheme: default
       primary: green
@@ -28,8 +30,8 @@ theme:
     - content.code.annotate  # Inline annotation support in code blocks
 
 extra_css:
-  - stylesheets/local-fixes.css  # Local site styling overrides and layout fixes
-  - stylesheets/admonitions.css  # Custom admonition types
+  - assets/stylesheets/local-fixes.css  # Local site styling overrides and layout fixes
+  - assets/stylesheets/admonitions.css  # Custom admonition types
 
 plugins:
   # Disable client-side search.

@@ -18,6 +18,8 @@ copyright: >-
 # Material theme configuration
 theme:
   name: material
+  favicon: assets/images/favicon.png
+  # logo: assets/images/ceedling-icon.png
   palette:
     - scheme: default
       primary: green
@@ -45,7 +47,7 @@ extra:
       name: Sponsor ThrowTheSwitch on GitHub
 
 extra_css:
-  - stylesheets/admonitions.css  # Custom admonition types
+  - assets/stylesheets/admonitions.css  # Custom admonition types
 
 # Plugins
 plugins:
@@ -83,7 +85,6 @@ nav:
     - overview/index.md
     - Build System: overview/build-system.md
     - Tools & Frameworks: overview/tools-and-frameworks.md
-    - Testing Abilities: overview/testing-abilities.md
     - Test Environments: overview/test-environments.md
   - Getting Started:
     - getting-started/index.md
