@@ -2,16 +2,16 @@
 
 **In glorious YAML**
 
-!!! tip "Complete Project File Example"
+!!! tip "Complete project file example"
     See this [commented project file][example-config-file] for a nice 
     example of a complete project configuration.
 
-## Some YAML Learnin'
+## Some YAML Learnin’
 
 Please consult YAML documentation for the finer points of format
 and to understand details of our YAML-based configuration file.
 
-We recommend [Wikipedia's entry on YAML](http://en.wikipedia.org/wiki/Yaml)
+We recommend [Wikipedia’s entry on YAML](http://en.wikipedia.org/wiki/Yaml)
 for this. A few highlights from that reference page:
 
 * YAML streams are encoded using the set of printable Unicode
@@ -44,7 +44,7 @@ for this. A few highlights from that reference page:
   thereafter referenced with an asterisk (`*`). These are known as
   anchors and aliases in YAML speak.
 
-## Notes on Project File Structure and Documentation That Follows
+## Notes on Project File Structure
 
 * Each of the following sections represent top-level entries
   in the YAML configuration file. Top-level means the named entries
@@ -55,15 +55,15 @@ for this. A few highlights from that reference page:
   Ceedling uses default values for settings.
 
 * At minimum, these settings must be specified for a test suite:
-  * `:project` ↳ `:build_root`
-  * `:paths` ↳ `:source`
-  * `:paths` ↳ `:test`
-  * `:paths` ↳ `:include` and/or use of `TEST_INCLUDE_PATH(...)` 
-    build directive macro within your test files
+    * `:project` ↳ `:build_root`
+    * `:paths` ↳ `:source`
+    * `:paths` ↳ `:test`
+    * `:paths` ↳ `:include` and/or use of `TEST_INCLUDE_PATH(...)` 
+      build directive macro within your test files
 
 * At minimum, these settings must be specified for a release build:
-  * `:project` ↳ `:build_root`
-  * `:paths` ↳ `:source`
+    * `:project` ↳ `:build_root`
+    * `:paths` ↳ `:source`
 
 * As much as is possible, Ceedling validates your settings in
   properly formed YAML.
@@ -89,7 +89,7 @@ for this. A few highlights from that reference page:
 
 [MinGW]: http://www.mingw.org/
 
-## Ceedling-specific YAML Handling & Conventions
+## Ceedling YAML Handling & Conventions
 
 ### Inline Ruby string expansion
 
@@ -164,7 +164,7 @@ Any second tier setting keys anywhere in YAML whose names end in `_path` or
 YAML to have consistent directory separators (i.e. `/`) and to take advantage
 of inline Ruby string expansion (see preceding section for details).
 
-## Let's Be Careful Out There
+## Let’s Be Careful Out There
 
 Ceedling performs validation of the values you set in your 
 configuration file (this assumes your YAML is correct and will 

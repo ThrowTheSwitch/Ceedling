@@ -1,6 +1,6 @@
 # `:project`: Global project settings
 
-!!! warning "`:project` Settings Will Be Reorganized"
+!!! warning "`:project` settings will be reorganized"
     In future versions of Ceedling, test-specific and release-specific build
     settings presently organized beneath `:project` will likely be renamed and
     migrated to the `:test_build` and `:release_build` sections.

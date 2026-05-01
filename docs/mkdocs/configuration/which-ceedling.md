@@ -5,14 +5,14 @@ Typically, Ceedling developers need this ability. But, it could come in
 handy in certain advanced Continuous Integration build scenarios or some
 sort of version behavior comparison.
 
-It's not uncommon in Ceedling development work to have the last production 
+It’s not uncommon in Ceedling development work to have the last production 
 gem installed while modifying the application code in a locally cloned 
 repository. Or, you may be bouncing between local versions of Ceedling to
 troubleshoot changes.
 
 Which Ceedling handling gives you options on what gets run.
 
-## Which Ceedling background
+## Background
 
 Ceedling is usually packaged and installed as a Ruby Gem. This gem ends
 up installed in an appropriate place by the `gem` package installer.
@@ -25,17 +25,18 @@ configuration. Ultimately, it then launches the main application code from
 The features and conventions controlling _which ceedling_ dictate which
 application code the `ceedling` command line handler launches.
 
-_NOTE:_ If you are a developer working on the code in Ceedling's `bin/` 
-and want to run it while a gem is installed, you must take the additional 
-step of specifying the path to the `ceedling` launcher in your file system.
+!!! note "Ceedling development in `bin/`"
+    Working on the code in Ceedling’s `bin/` and need to run it while a gem is 
+    installed? You must take the additional step of specifying the path to the 
+    `ceedling` launcher in your filesystem.
 
-In Unix-like systems, this will look like:
-`> my/ceedling/changes/bin/ceedling <args>`.
+    In Unix-like systems:
+    `> my/ceedling/changes/bin/ceedling <args>`.
 
-On Windows systems, you may need to run:
-`> ruby my\ceedling\changes\bin\ceedling <args>`.
+    On Windows systems:
+    `> ruby my\ceedling\changes\bin\ceedling <args>`.
 
-## Which Ceedling options and precedence
+## Options and precedence
 
 When Ceedling starts up, it evaluates a handful of conditions to determine
 which Ceedling location to launch.
@@ -54,14 +55,14 @@ The following are evaluated in order:
    `ceedling` launcher is running. In the typical case this is the default 
    gem installation.
 
-_NOTE:_ Configuration entry (2) does not make sense in some scenarios.
-When running `ceedling new`, `ceedling examples`, or `ceedling example` 
-there is no project file to read. Similarly, `ceedling upgrade` does not 
-load a project file; it merely works with the directory structure and 
-contets of a project. In these cases, the environment variable is your
-only option to set which Ceedling to launch.
+!!! note "Configuration entry (2) does not make sense in some scenarios"
+    When running `ceedling new`, `ceedling examples`, or `ceedling example` 
+    there is no project file to read. Similarly, `ceedling upgrade` does not 
+    load a project file; it merely works with the directory structure and 
+    contents of a project. In these cases, the environment variable is your
+    only option to set which Ceedling to launch.
 
-## Which Ceedling settings
+## Settings
 
 The environment variable and configuration entry for _Which Ceedling_ can
 contain two values:
@@ -70,7 +71,7 @@ contain two values:
    should run the application packaged alongside it in `lib/` (these 
    paths are typically found in the gem installation location).
 1. A relative or absolute path in your file system. Such a path should 
-   point to the top-level directory that contains Ceedling's `bin/` and 
+   point to the top-level directory that contains Ceedling’s `bin/` and 
    `lib/` sub-directories.
 
 <br/>

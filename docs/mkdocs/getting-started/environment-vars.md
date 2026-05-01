@@ -57,4 +57,4 @@ before `CEEDLING_MIXIN_99`).
 See [_Loading Configuration_](../configuration/loading.md#mixin-environment-variables)
 for the full details on Mixin environment variables.
 
-[mixins-config-section]: ../configuration/loading.md#applying-mixins-to-your-base-project-configuration
+[mixins-config-section]: ../configuration/loading.md#applying-mixins-to-base-configuration

@@ -1,6 +1,8 @@
-# `:defines` Command line symbols used in compilation
+# `:defines`
 
-Ceedling's internal, default compiler tool configurations (see later `:tools`
+**Command line symbols used in compilation**
+
+Ceedling’s internal, default compiler tool configurations (see later `:tools`
 section) execute compilation of test and source C files.
 
 These default tool configurations are a one-size-fits-all approach. If you need
@@ -23,18 +25,18 @@ Entries in `:defines` modify the command lines for compilers used at build time.
 In the default case, symbols listed beneath `:defines` become `-D<symbol>`
 arguments.
 
-## `:defines` verification (Ceedling does none)
+## `:defines` verification (none)
 
 Ceedling does no verification of your configured `:define` symbols.
 
 Unity, CMock, and CException conditional compilation statements, your
-toolchain's preprocessor, and/or your toolchain's compiler will complain
+toolchain’s preprocessor, and/or your toolchain’s compiler will complain
 appropriately if your specified symbols are incorrect, incomplete, or
 incompatible.
 
 Ceedling _does_ validate your `:defines` block in your project configuration.
 
-## `:defines` organization: Contexts and Matchers
+## Contexts and Matchers
 
 The basic layout of `:defines` involves the concept of contexts.
 
@@ -51,11 +53,11 @@ Advanced matching for **_test_** or **_preprocess_** build handling only:
 :defines:
   :test:
     :<matcher>   # Matches a subset of test executables
-      - <symbol> # List of symbols added to that subset's compilation
+      - <symbol> # List of symbols added to that subset’s compilation
       - ...
   :preprocess:   # Only applicable if :project ↳ :use_test_preprocessor enabled
     :<matcher>   # Matches a subset of test executables
-      - <symbol> # List of symbols added to that subset's compilation
+      - <symbol> # List of symbols added to that subset’s compilation
       - ...
 ```
 
@@ -64,7 +66,7 @@ or `:test`. Plugins can also hook into `:defines` with their own context.
 
 You specify the symbols you want to add to a build step beneath a `:<context>`.
 In many cases this is a simple YAML list of strings that will become symbols
-defined in a compiler's command line.
+defined in a compiler’s command line.
 
 Specifically in the `:test` and `:preprocess` contexts you also have the option
 to create test file matchers that create symbol definitions for some subset of
@@ -80,7 +82,7 @@ symbols to the compilation of every C file in a release build.
 ## `:defines` ↳ `:test`
 
 This project configuration entry adds the specified items as symbols to
-compilation of C components in a test executable's build.
+compilation of C components in a test executable’s build.
 
 Symbols may be represented in a simple YAML list or with a more sophisticated
 file matcher YAML key plus symbol list. Both are documented below.
@@ -93,7 +95,7 @@ symbols configured that match the test filename itself.
 ## `:defines` ↳ `:preprocess`
 
 This project configuration entry adds the specified items as symbols to any
-needed preprocessing of components in a test executable's build. Preprocessing
+needed preprocessing of components in a test executable’s build. Preprocessing
 must be enabled for this matching to have any effect. (See `:project` ↳
 `:use_test_preprocessor`.)
 
@@ -107,10 +109,11 @@ Like the `:test` context, compilation symbols may be represented in a simple
 YAML list or with a more sophisticated file matcher YAML key plus symbol list.
 Both are documented below.
 
-_NOTE:_ Left unspecified, `:preprocess` symbols default to be identical to
-`:test` symbols. Override this behavior by adding `:defines` ↳ `:preprocess`
-symbols. If you want no additional symbols for preprocessing regardless of
-`test` symbols, specify an empty list `[]` in your `:preprocess` matcher.
+!!! note "Default `:preprocess` symbols"
+    Left unspecified, `:preprocess` symbols default to be identical to
+    `:test` symbols. Override this behavior by adding `:defines` ↳ `:preprocess`
+    symbols. If you want no additional symbols for preprocessing regardless of
+    `test` symbols, specify an empty list `[]` in your `:preprocess` matcher.
 
 **Default**: Identical to `:test` context unless specified
 
@@ -118,7 +121,7 @@ symbols. If you want no additional symbols for preprocessing regardless of
 
 Some advanced plugins make use of build contexts as well. For instance, the
 Ceedling Gcov plugin uses a context of `:gcov`, surprisingly enough. For any
-plugins with tools that take advantage of Ceedling's internal mechanisms, you
+plugins with tools that take advantage of Ceedling’s internal mechanisms, you
 can add to those tools' compilation symbols in the same manner as the built-in
 contexts.
 
@@ -173,7 +176,7 @@ Thus, in fact, with separate test files unit testing the same source C file, you
 may exercise different conditional compilations of the same source. See the
 example in the section below.
 
-### `:defines` per-test matcher examples with YAML
+### Per-test matcher examples
 
 Before detailing matcher capabilities and limits, here are examples to
 illustrate the basic ideas of test file name matching.
@@ -220,13 +223,13 @@ This example illustrates each of the test file name matcher types.
       - THANKS       #            between 'Comms' and 'Model'
 ```
 
-### Using `:defines` per-test matchers
+### Per-test matchers types
 
 These matchers are available:
 
 1. Wildcard (`*`) 
-   1. If specified in isolation, matches all tests.
-   1. If specified within a string, matches any test filename with that 
+    1. If specified in isolation, matches all tests.
+    1. If specified within a string, matches any test filename with that 
       wildcard expansion.
 1. Substring — Matches on part of a test filename (up to all of it, including 
    full path).
@@ -269,7 +272,7 @@ This simple list format for `:test` and `:preprocess` contexts…
       - A
 ```
 
-### Distinguishing similar or identical filenames with `:defines` per-test matchers
+### Distinguishing similar / identical filenames
 
 You may find yourself needing to distinguish test files with the same name or
 test files with names whose base naming is identical.
@@ -287,7 +290,7 @@ different directories. As such, your matching must include the path.
       - B
 ```
 
-It's common in C file naming to use the same base name for multiple files.
+It’s common in C file naming to use the same base name for multiple files.
 Given the following example list, care must be given to matcher construction to
 single out test_comm_startup.c.
 
@@ -305,7 +308,7 @@ single out test_comm_startup.c.
 The preceding examples use substring matching, but, regular expression matching
 could also be appropriate.
 
-### Using YAML anchors & aliases for complex testing scenarios with `:defines`
+### YAML anchors & aliases
 
 See the short but helpful article on [YAML anchors & aliases][yaml-anchors-aliases]
 to understand these features of YAML.

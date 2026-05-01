@@ -1,6 +1,6 @@
 # How to Load a Project Configuration
 
-** You have options, my friend **
+**You have options, my friend**
 
 Ceedling needs a project configuration to accomplish anything for you.
 Ceedling's project configuration is a large in-memory data structure.
@@ -11,7 +11,7 @@ The next section details Ceedling's project configuration options in
 available through YAML. This section explains all your options for 
 loading and modifying the project configuration itself.
 
-## Overview of Project Configuration Loading & Smooshing
+## Loading & Smooshing Overview
 
 Ceedling has a certain pipeline for loading and manipulating the 
 configuration it uses to build your projects. It goes something like
@@ -33,7 +33,7 @@ settings.
 For nitty-gritty details on plugin configuration behavior, see the
 _[Plugin Development Guide](../development/plugins/index.md)_
 
-## Options for Loading Your Base Project Configuration
+## Base Configuration Loading Options
 
 You have three options for telling Ceedling what single base project 
 configuration to load. These options are ordered below according to their
@@ -76,7 +76,7 @@ named _project.yml_ in your working directory.
 
 If this file does not exist, Ceedling terminates with an error.
 
-## Applying Mixins to Your Base Project Configuration
+## Applying Mixins to Base Configuration
 
 Once you have a base configuation loaded, you may want to modify it for
 any number of reasons. Some example scenarios:
@@ -97,7 +97,7 @@ just after the base project file is loaded. The merge is so low-level
 and generic that you can, in fact, load an empty base configuration 
 and merge in entire project configurations through mixins.
 
-## Desgning for Mixins Plus Merging Rules
+## Designing for Mixins merge rules
 
 Merging of any sort tends to be hard to do well. It's tricky at a 
 code-level, yes, but, just as importantly, merging can be hard to grasp in
@@ -106,13 +106,13 @@ your head.
 The brief sections that follow provide an overview of our recommended
 design approach and the merge rules at play.
 
-!!! tip "Use `dumpconfig` to Debug Mixins"
+!!! tip "Use `dumpconfig` to debug mixins"
     `ceedling dumpconfig` can be invaluable in developing and troubleshooting
     your mixins. The `dumpconfig` application command will load your mixins
     just as a build would but produce the resulting merged configuration for
     inspection in a YAML file you specify.
 
-### Design for additive Mixin merges
+### Additive Mixin merges
 
 Generally speaking, the simplest way to conceive of managing your project
 configuration with mixins is to design for an additive merge. This means
@@ -161,7 +161,7 @@ follows a few basic rules:
   by the mixin value being merged. That merge is accompanied with a 
   warning log entry to highlight what has happened.
 
-!!! warning "Mixin Merge Order Affects Path Ordering"
+!!! warning "Mixin merge order affects path ordering"
     That second bullet can have a significant impact on how your various
     project configuration paths — including those used for header search
     paths — are ordered. In brief, the contents of your `:paths` from your
@@ -169,8 +169,8 @@ follows a few basic rules:
     mixins. See the section [Search Paths for Test Builds](../testing-guide/conventions.md#search-paths-for-test-builds)
     for more.
 
-## Mixins Example: Our Example Scenario
-
+## Mixins Example
+### Our Example Scenario
 Let's start with an example that helps explain how mixins are merged.
 Then, the documentation sections that follow will discuss everything
 in detail.
@@ -188,9 +188,9 @@ configuration file.
 
 `ceedling --project=base.yml --mixin=support/mixins/cmdline.yml <tasks>`
 
-_NOTE:_ The `--mixin` flag supports more than filepaths and can be used 
-multiple times in the same command line for multiple mixins (see later 
-documentation section). 
+!!! info "The `--mixin` flag supports more than filepaths"
+    The [`--mixin` flag](#-mixin-command-line-flags) can be used multiple times 
+    in the same command line to smoosh together multiple mixins. 
 
 The example command line above will produce the following logging output
 when verbosity is increased beyond the default.
@@ -202,7 +202,7 @@ when verbosity is increased beyond the default.
  + Merging project configuration mixin using ./enabled.yml
 ```
 
-_Notes_
+_Notes:_
 
 * The logging output above referencing _enabled.yml_ comes from the 
   `:mixins` section within the base project configuration file provided below.
@@ -210,7 +210,7 @@ _Notes_
   by Ceedling. This will cause a validation build error that is not shown
   here.
 
-### Mixins Example: Configuration files
+### Example Configuration files
 
 #### _base.yml_ — Our base project configuration file
 
@@ -277,7 +277,7 @@ rules (noted after the examples).
     - gcov
 ```
 
-### Mixins Example: Resulting project configuration
+### Example resulting configuration
 
 Behold the project configuration following mixin merges:
 
@@ -292,11 +292,10 @@ Behold the project configuration following mixin merges:
     - report_tests_pretty_stdout  # From base.yml
     - compile_commands_json_db    # From env.yml
     - gcov                        # From support/mixins/enabled.yml
-
-# NOTE: Original :mixins section is removed from resulting config
 ```
+!!! note "Original `:mixins` section is removed from resulting config"
 
-## Options for Loading Mixins
+## Options for loading Mixins
 
 You have three options for telling Ceedling what mixins to load. These 
 options are ordered below according to their precedence. A Mixin higher
@@ -347,7 +346,7 @@ If the `--mixin` filename or filepath does not exist, Ceedling
 terminates with an error. If Ceedling cannot find a mixin name in 
 any load paths, it terminates with an error.
 
-[mixins-config-section]: #base-project-configuration-file-mixins-section-entries
+[mixins-config-section]: #base-configuration-file-mixins-entries
 
 ### Mixin environment variables
 
@@ -366,7 +365,7 @@ relative (in relation to the working directory) or absolute.
 If the filepath specified by an environment variable does not exist,
 Ceedling terminates with an error.
 
-### Base project configuration file `:mixins` section entries
+### Base configuration file `:mixins` entries
 
 Ceedling only recognizes a `:mixins` section in your base project
 configuration file. A `:mixins` section in a mixin is ignored. In addition,
@@ -378,36 +377,36 @@ Each subsection is optional.
 
 * `:enabled`
 
-  An optional array comprising (A) mixin filenames/filepaths and/or 
-  (B) simple mixin names.
+    An optional array comprising (A) mixin filenames/filepaths and/or 
+    (B) simple mixin names.
 
-  1. A filename contains a file extension. A filepath includes a 
-     directory path. The file content is YAML.
-  1. A simple name (no file extension and no path) is used
-     as a file lookup among any configured load paths (see next
-     section) and as a lookup name among Ceedling's built-in mixins
-     (currently none).
+    1. A filename contains a file extension. A filepath includes a 
+      directory path. The file content is YAML.
+    1. A simple name (no file extension and no path) is used
+      as a file lookup among any configured load paths (see next
+      section) and as a lookup name among Ceedling's built-in mixins
+      (currently none).
 
-  Enabled entries support [inline Ruby string expansion][inline-ruby-string-expansion].
+    Enabled entries support [inline Ruby string expansion][inline-ruby-string-expansion].
 
-  **Default**: `[]`
+    **Default**: `[]`
 
 * `:load_paths`
 
-  Paths containing mixin files to be searched via mixin names. A mixin
-  filename in a load path has the form _<name>.yml_ by default. If
-  an alternate filename extension has been specified in your project
-  configuration (`:extension` ↳ `:yaml`) it will be used for file
-  lookups in the mixin load paths instead of _.yml_.
+    Paths containing mixin files to be searched via mixin names. A mixin
+    filename in a load path has the form _<name>.yml_ by default. If
+    an alternate filename extension has been specified in your project
+    configuration (`:extension` ↳ `:yaml`) it will be used for file
+    lookups in the mixin load paths instead of _.yml_.
 
-  Searches start in the path at the top of the list.
+    Searches start in the path at the top of the list.
 
-  Both mixin names in the `:enabled` list (above) and on the command
-  line via `--mixin` flag use this list of load paths for searches.
+    Both mixin names in the `:enabled` list (above) and on the command
+    line via `--mixin` flag use this list of load paths for searches.
 
-  Load paths entries support [inline Ruby string expansion][inline-ruby-string-expansion].
-  
-  **Default**: `[]`
+    Load paths entries support [inline Ruby string expansion][inline-ruby-string-expansion].
+    
+    **Default**: `[]`
 
 Example `:mixins` YAML blurb:
 

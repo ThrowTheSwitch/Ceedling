@@ -16,5 +16,5 @@ This section of a project configuration file is documented in the
 * A `:mixins` section supports [inline Ruby string expansion][inline-ruby-string-expansion].
   See the full documetation on Mixins for details.
 
-[mixins-config-section]: ../loading.md#applying-mixins-to-your-base-project-configuration
+[mixins-config-section]: ../loading.md#applying-mixins-to-base-configuration
 [inline-ruby-string-expansion]: ../project-file.md#inline-ruby-string-expansion
