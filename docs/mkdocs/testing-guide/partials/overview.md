@@ -107,7 +107,8 @@ _sensor.c_ even though `_ConvertRawToMilliCelsius()` is static.
 // Test the `static` conversion helper internal to source module under test
 void test_ConvertRawToMilliCelsius(void)
 {
-    // _ConvertRawToMilliCelsius is accessible in the Partial linked in this test executable build
+    // `_ConvertRawToMilliCelsius()` is accessible in the Partial 
+    // linked in this test executable build
     TEST_ASSERT_EQUAL_INT(-40000, _ConvertRawToMilliCelsius(0));
 }
 ```
