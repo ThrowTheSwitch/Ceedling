@@ -117,6 +117,9 @@ for how to enable built-in plugins and load custom plugins in your project.
     [Fake Function Framework][FFF] — an alternative approach to
     [test doubles][test-doubles] using simple fake functions.
 
+<!--Spacer so the single fff card does not stretch across multiple grid columns-->
+<div style="visibility:hidden"></div>
+
 </div>
 
 ### Build Integration
