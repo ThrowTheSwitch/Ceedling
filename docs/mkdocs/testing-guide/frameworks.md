@@ -13,7 +13,7 @@ It cannot be disabled.
 If you want to use mocks in your test cases, you'll need to enable mocking 
 and configure CMock with `:project` ↳ `:use_mocks` and the `:cmock` section 
 of your project configuration respectively. CMock is fully supported by 
-Ceedling but generally requires some set up for your project‘s needs.
+Ceedling but generally requires some set up for your project’s needs.
 
 If you are incorporating CException into your release artifact, you'll need 
 to enable exceptions and configure CException with `:project` ↳ 
@@ -22,10 +22,10 @@ configuration respectively. Enabling CException makes it available in both
 release builds and test builds.
 
 This section provides a high-level view of how the various tools become
-part of your builds and fit into Ceedling‘s configuration file. Ceedling‘s 
+part of your builds and fit into Ceedling’s configuration file. Ceedling’s 
 configuration file is discussed in detail in the next section.
 
-See [Unity], [CMock], and [CException]‘s project documentation for all 
+See [Unity], [CMock], and [CException]’s project documentation for all 
 your configuration options. Ceedling offers facilities for providing these
 frameworks their compilation and configuration settings. Discussing 
 these tools and all their options in detail is beyond the scope of Ceedling 
@@ -35,7 +35,7 @@ documentation.
 
 Unity is wholly compiled C code. As such, its configuration is entirely 
 controlled by a variety of compilation symbols. These can be configured
-in Ceedling‘s `:unity` project settings.
+in Ceedling’s `:unity` project settings.
 
 ### Example Unity configurations
 
@@ -87,9 +87,9 @@ driving you bonkers.
 #endif
 ```
 
-### Routing Unity‘s report output
+### Routing Unity’s report output
 
-Unity defaults to using `putchar()` from C‘s standard library to 
+Unity defaults to using `putchar()` from C’s standard library to 
 display test results.
 
 For more exotic environments than a desktop with a terminal — e.g. 
@@ -119,22 +119,22 @@ You are welcome to disable CMock in the `:project` block of your Ceedling
 configuration file. This is typically only useful in special debugging
 scenarios or for Ceedling development itself.
 
-CMock is a mixture of Ruby and C code. CMock‘s Ruby components generate
-C code for your unit tests. CMock‘s base C code is compiled and linked into 
+CMock is a mixture of Ruby and C code. CMock’s Ruby components generate
+C code for your unit tests. CMock’s base C code is compiled and linked into 
 a test executable in the same way that any C file is — including Unity, 
 CException, and generated mock C code, for that matter. 
 
-CMock‘s code generation can be configured using YAML similar to Ceedling 
-itself. Ceedling‘s project file is something of a container for CMock‘s 
-YAML configuration (Ceedling also uses CMock‘s configuration, though).
+CMock’s code generation can be configured using YAML similar to Ceedling 
+itself. Ceedling’s project file is something of a container for CMock’s 
+YAML configuration (Ceedling also uses CMock’s configuration, though).
 
 See the documentation for the top-level [`:cmock`][cmock-yaml-config] 
-section within Ceedling‘s project file.
+section within Ceedling’s project file.
 
 [cmock-yaml-config]: ../configuration/reference/cmock.md
 
-Like Unity and CException, CMock‘s C components are configured at 
-compilation with symbols managed in your Ceedling project file‘s 
+Like Unity and CException, CMock’s C components are configured at 
+compilation with symbols managed in your Ceedling project file’s 
 `:cmock` ↳ `:defines` section.
 
 ### Example CMock configurations
@@ -164,7 +164,7 @@ compilation with symbols managed in your Ceedling project file‘s
 
 Like Unity, CException is wholly compiled C code. As such, its 
 configuration is entirely controlled by a variety of `#define` symbols. 
-These can be configured in Ceedling‘s `:cexception` ↳ `:defines` project 
+These can be configured in Ceedling’s `:cexception` ↳ `:defines` project 
 settings.
 
 Unlike Unity which is always available in test builds and CMock that 
