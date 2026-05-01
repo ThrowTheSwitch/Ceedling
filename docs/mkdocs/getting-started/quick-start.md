@@ -1,9 +1,5 @@
 # Quick Start
 
-Ceedling is a fancypants build system that greatly simplifies building 
-C projects. While it can certainly build release targets, it absolutely 
-shines at running unit test suites.
-
 ## Quick Start Steps
 
 Below is a quick overview of how to get started from Ceedling installation 

@@ -1,11 +1,53 @@
 # So Many Tools and Acronyms
 
-**Hold on. Back up. Ruby? Rake? YAML? Unity? CMock? CException?**
+**Hold on. Back up. Unity? CMock? CException? Ruby? Rake? YAML?**
 
-Seems overwhelming? It's not bad at all. And, for the benefits testing
-bring us, it's all worth it.
+## Ceedling suite frameworks
 
-## Ruby
+### Unity
+
+[Unity] is a [unit test framework][unit-testing] for C. It provides facilities
+for test assertions, executing tests, and collecting / reporting test
+results. Unity derives its name from its implementation in a single C
+source file (plus two C header files) and from the nature of its
+implementation - Unity will build in any C toolchain and is configurable
+for even the very minimalist of processors.
+
+[Unity]: http://github.com/ThrowTheSwitch/Unity
+[unit-testing]: http://en.wikipedia.org/wiki/Unit_testing
+
+### CMock
+
+[CMock]<sup>†</sup> is a tool written in Ruby able to generate [function mocks & stubs][test-doubles] 
+in C code from a given C header file. Mock functions are invaluable in 
+[interaction-based unit testing][interaction-based-tests].
+CMock's generated C code uses Unity.
+
+<sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports
+[FFF], _Fake Function Framework_, for [fake functions][test-doubles] as an
+alternative to CMock's mocks and stubs.
+
+[CMock]: http://github.com/ThrowTheSwitch/CMock
+[test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
+[FFF]: https://github.com/meekrosoft/fff
+[FFF-plugin]: ../plugins/fff.md
+[interaction-based-tests]: http://martinfowler.com/articles/mocksArentStubs.html
+
+### CException
+
+[CException] is a C source and header file that provide a simple
+[exception mechanism][exn] for C by way of wrapping up the
+[setjmp / longjmp][setjmp] standard library calls. Exceptions are a much
+cleaner and preferable alternative to managing and passing error codes
+up your return call trace.
+
+[CException]: http://github.com/ThrowTheSwitch/CException
+[exn]: http://en.wikipedia.org/wiki/Exception_handling
+[setjmp]: http://en.wikipedia.org/wiki/Setjmp.h
+
+## Core tools
+
+### Ruby
 
 [Ruby] is a handy scripting language like Perl or Python. It's a modern, 
 full featured language that happens to be quite handy for accomplishing 
@@ -14,7 +56,7 @@ in a compiled language such as C.
 
 [Ruby]: http://www.ruby-lang.org/en/
 
-## Rake
+### Rake
 
 !!! warning "Migrating away from Rake"
     Ceedling would not exist today if not for the help Rake provided to
@@ -33,7 +75,7 @@ your Rakefile).
 [Rake]: http://rubyrake.org/
 [Make]: http://en.wikipedia.org/wiki/Make_(software)
 
-## YAML
+### YAML
 
 [YAML] is a "human friendly data serialization standard for all
 programming languages." It's kinda like a markup language but don't
@@ -53,46 +95,7 @@ aliasing one list inside another.
 [serialize]: http://en.wikipedia.org/wiki/Serialization
 [yaml-anchors-aliases]: https://blog.daemonl.com/2016/02/yaml.html
 
-## Unity
-
-[Unity] is a [unit test framework][unit-testing] for C. It provides facilities
-for test assertions, executing tests, and collecting / reporting test
-results. Unity derives its name from its implementation in a single C
-source file (plus two C header files) and from the nature of its
-implementation - Unity will build in any C toolchain and is configurable
-for even the very minimalist of processors.
-
-[Unity]: http://github.com/ThrowTheSwitch/Unity
-[unit-testing]: http://en.wikipedia.org/wiki/Unit_testing
-
-## CMock
-
-[CMock]<sup>†</sup> is a tool written in Ruby able to generate [function mocks & stubs][test-doubles] 
-in C code from a given C header file. Mock functions are invaluable in 
-[interaction-based unit testing][interaction-based-tests].
-CMock's generated C code uses Unity.
-
-<sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports
-[FFF], _Fake Function Framework_, for [fake functions][test-doubles] as an
-alternative to CMock's mocks and stubs.
-
-[CMock]: http://github.com/ThrowTheSwitch/CMock
-[test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
-[FFF]: https://github.com/meekrosoft/fff
-[FFF-plugin]: ../plugins/fff.md
-[interaction-based-tests]: http://martinfowler.com/articles/mocksArentStubs.html
-
-## CException
-
-[CException] is a C source and header file that provide a simple
-[exception mechanism][exn] for C by way of wrapping up the
-[setjmp / longjmp][setjmp] standard library calls. Exceptions are a much
-cleaner and preferable alternative to managing and passing error codes
-up your return call trace.
-
-[CException]: http://github.com/ThrowTheSwitch/CException
-[exn]: http://en.wikipedia.org/wiki/Exception_handling
-[setjmp]: http://en.wikipedia.org/wiki/Setjmp.h
+---
 
 ## Dependencies and Bundled Tools
 

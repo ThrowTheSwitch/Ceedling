@@ -1,3 +1,14 @@
+# Ceedling Packet
+
+Ceedling is a fancypants build system that greatly simplifies building 
+C projects. While it can certainly build release targets, it absolutely 
+shines at running unit test suites.
+
+Ceedling and its suite of frameworks, including Unity and CMock, were developed 
+for use on platforms from heavy duty workstations to teeny tiny microcontrollers. 
+Features handy for low-level development have made these tools popular with 
+embedded systems developers.
+
 !!! tip "New to Ceedling?"
     Jump straight to the [Quick Start][quick-start] — installation,
     project set up, and your first build tasks all in one place.
@@ -7,10 +18,6 @@
     to expose functional elements for testing that you could not otherwise 
     access without rewriting your source code. Think of Partials as a scalpel 
     for testing your code.
-
----
-
-# Ceedling Packet
 
 ## Overview
 
@@ -31,14 +38,7 @@
     Ruby, Rake, YAML, Unity, CMock, and CException explained — the pieces that make
     Ceedling possible and how they fit together.
 
--   :material-test-tube: **[Testing Abilities][testing-abilities]**
-
-    ---
-
-    How Ceedling, Unity, and CMock support unit testing across host systems,
-    emulators, and target hardware platforms.
-
--   :material-monitor: **[Test Environments][test-environments]**
+-   :material-test-tube: **[Test Environments][test-environments]**
 
     ---
 
@@ -156,7 +156,7 @@
 
 <div class="grid cards" markdown>
 
--   :material-code-tags: **[Build Directive Macros][build-directives]**
+-   :material-pound: **[Build Directive Macros][build-directives]**
 
     ---
 
