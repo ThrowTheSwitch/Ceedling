@@ -1255,6 +1255,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Public / Private Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#private-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Private functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#public-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -3135,6 +3163,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Public / Private Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#private-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Private functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#public-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Public functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -3256,7 +3312,7 @@ one file is present, only that file is read.</p>
 <p>All Partial directive macros take a module name — a bare filename stem with
 no extension, no path, and no quotation marks:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// Module name: &#39;sensor&#39;</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// Not &quot;sensor.c&quot; or &quot;path/to/sensor&quot;</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// Not &quot;sensor.c&quot; (no quotation marks) or &quot;path/to/sensor&quot;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="cp">#include TEST_PARTIAL_PRIVATE_MODULE(sensor)</span>
 </code></pre></div>
 <h2 id="public-private-functions">Public / Private Functions</h2>
@@ -3264,7 +3320,8 @@ no extension, no path, and no quotation marks:</p>
 language's perspective — equally visible at link time. In the context of
 Partials, Ceedling uses the more modern terms <em>public</em> and <em>private</em> to 
 describe a practical distinction based on function decorators:</p>
-<p><strong>Private functions</strong> carry one or more of the following keywords anywhere in
+<h3 id="private-functions">Private functions</h3>
+<p>“Private” functions carry one or more of the following keywords anywhere in
 their declaration or definition:</p>
 <ul>
 <li><code>static</code></li>
@@ -3278,7 +3335,8 @@ mocked from a test build without special handling. Inline functions may be
 folded away by the compiler entirely. Partials use decorators to organize
 lists of functions for testing and mocking, but the decorators are stripped
 in the resulting generated code.</p>
-<p><strong>Public functions</strong> are everything else — functions with no visibility-
+<h3 id="public-functions">Public functions</h3>
+<p>“Public” functions are everything else — functions with no visibility-
 restricting decorator and ordinary external linkage.</p>
 <p>This public/private distinction is one set of filters for assembling a list
 of functions each <code>_MODULE</code> macro selects. The filtering and collection is 
