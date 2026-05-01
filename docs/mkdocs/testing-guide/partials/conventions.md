@@ -21,7 +21,7 @@ no extension, no path, and no quotation marks:
 
 ```c
 // Module name: 'sensor'
-// Not "sensor.c" or "path/to/sensor"
+// Not "sensor.c" (no quotation marks) or "path/to/sensor"
 #include TEST_PARTIAL_PRIVATE_MODULE(sensor)
 ```
 
@@ -32,7 +32,8 @@ language's perspective — equally visible at link time. In the context of
 Partials, Ceedling uses the more modern terms _public_ and _private_ to 
 describe a practical distinction based on function decorators:
 
-**Private functions** carry one or more of the following keywords anywhere in
+### Private functions
+“Private” functions carry one or more of the following keywords anywhere in
 their declaration or definition:
 
 * `static`
@@ -47,7 +48,8 @@ folded away by the compiler entirely. Partials use decorators to organize
 lists of functions for testing and mocking, but the decorators are stripped
 in the resulting generated code.
 
-**Public functions** are everything else — functions with no visibility-
+### Public functions
+“Public” functions are everything else — functions with no visibility-
 restricting decorator and ordinary external linkage.
 
 This public/private distinction is one set of filters for assembling a list

@@ -24,12 +24,14 @@ Extending the sensor module with a file-scoped error counter:
 
 ```c
 // sensor.c -----------------------------------------------
-static uint32_t g_error_count = 0; // File-scoped; invisible outside sensor.c
+// File-scoped; invisible outside sensor.c
+static uint32_t g_error_count = 0;
 
 int Sensor_ReadCelsius(void)
 {
     uint16_t raw = HAL_SensorRead();
-    if (raw == 0xFFFF) { // sentinel value signals hardware error
+    // Sentinel value signals hardware error
+    if (raw == 0xFFFF) {
         g_error_count++;
         return -1;
     }
@@ -41,7 +43,8 @@ Ceedling strips `static` when generating the test Partial:
 
 ```c
 // ceedling_partial_sensor_impl.c (generated) ---------------
-uint32_t g_error_count = 0; // `static` stripped -- now has external linkage
+// `static` stripped -- now has external linkage
+uint32_t g_error_count = 0;
 // ...
 int Sensor_ReadCelsius(void)
 {
@@ -56,7 +59,8 @@ int Sensor_ReadCelsius(void)
 
 ```c
 // ceedling_partial_sensor_impl.h (generated) ---------------
-extern uint32_t g_error_count; // `extern` declaration -- immediately available in test code
+// `extern` declaration -- immediately available in test code
+extern uint32_t g_error_count;
 // ...
 ```
 
@@ -76,12 +80,14 @@ In the test file, the variable is accessed directly by its original name:
 #include TEST_PARTIAL_ALL_MODULE(sensor)
 
 void setUp(void) {
-    g_error_count = 0; // Reset to known state before each test
+    // Reset to known state before each test
+    g_error_count = 0;
 }
 
 void test_ReadCelsius_counts_hardware_errors(void)
 {
-    HAL_SensorRead_ExpectAndReturn(0xFFFF); // Simulate hardware error
+    // Simulate hardware error
+    HAL_SensorRead_ExpectAndReturn(0xFFFF);
     TEST_ASSERT_EQUAL_INT(-1, Sensor_ReadCelsius());
     // Access the previously inaccessible `g_error_count`
     TEST_ASSERT_EQUAL_UINT32(1, g_error_count);
