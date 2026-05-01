@@ -3437,9 +3437,10 @@ usage scenarios.</p>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">// Test the `static` conversion helper internal to source module under test</span>
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="kt">void</span><span class="w"> </span><span class="nf">test_ConvertRawToMilliCelsius</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="p">{</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="c1">// _ConvertRawToMilliCelsius is accessible in the Partial linked in this test executable build</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span><span class="n">TEST_ASSERT_EQUAL_INT</span><span class="p">(</span><span class="mi">-40000</span><span class="p">,</span><span class="w"> </span><span class="n">_ConvertRawToMilliCelsius</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="p">}</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="c1">// `_ConvertRawToMilliCelsius()` is accessible in the Partial </span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span><span class="c1">// linked in this test executable build</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span><span class="n">TEST_ASSERT_EQUAL_INT</span><span class="p">(</span><span class="mi">-40000</span><span class="p">,</span><span class="w"> </span><span class="n">_ConvertRawToMilliCelsius</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="p">}</span>
 </code></pre></div>
 <h4 id="partials-processing-step-by-step">Partials processing step-by-step</h4>
 <ol>
