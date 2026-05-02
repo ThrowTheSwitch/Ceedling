@@ -1,20 +1,26 @@
 # Partials
 
-A _Partial_ is your C code sliced and diced to expose functional elements 
-for testing that you could not otherwise access without rewriting your 
-source code. Think of Partials as a scalpel for testing your code.
+A _Partial_ is your C code sliced and diced to expose elements for testing 
+that you could not otherwise access without rewriting your source code. 
+Think of Partials as a unit testing scalpel.
 
 Partials are useful when a module under test contains:
 
-* **`static` or `inline` functions** — With Partials these become easily 
-  accessible within your test code.
-* **File-scoped `static` variables** — With Partials the `static` keyword 
-  is stripped and the variable is automatically made `extern` so it can 
-  be easily accessed within your test code.
-* **Function-scoped `static` variables** — Partials promotes these from
-  within function scope to module scope so they can be accessed in your
-  test code. Apart from a necessary renaming, these work identically to
+* **`static` or `inline` functions** — These become accessible within 
+  your test code.
+* **File-scoped `static` variables** — The `static` keyword is stripped, 
+  and the variable is automatically made `extern` for easy access within 
+  your test code.
+* **Function-scoped `static` variables** — These are promoted from
+  function scope to module scope so they can be accessed in your
+  test code. Apart from necessary renaming, this works identically to
   file-scoped `static` variables.
+
+!!! warning "Limitations of Partials"
+    Partials are new to Ceedling with 1.1.0. Carving up C code is tricky
+    business. Complex code may break Ceedling’s lexing or its assumptions 
+    on symbol ordering. Some issues may be bugs to be reported while 
+    others may be complexities that Partials are simply unable to resolve.
 
 ---
 
