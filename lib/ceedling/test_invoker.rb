@@ -598,19 +598,11 @@ class TestInvoker
             interface: interface
           )
 
-          # Collect all user-defined types, macros, variable declarations, etc.
-          # These will be injected into the testable Partials implementation header file and source file
-          user_defined =
-            module_contents.variable_declarations +
-            module_contents.macro_definitions     +
-            module_contents.type_definitions      +
-            module_contents.aggregate_definitions
-
           arg_hash = {
             test:                  name,
             partial:               config.module,
             function_definitions:  implementation,
-            c_statements:          user_defined,
+            c_module:              module_contents,
             header_includes:       @partializer.remap_implementation_header_includes(
                                     name: config.module,
                                     includes: (config.source.includes + config.header.includes),
@@ -634,13 +626,6 @@ class TestInvoker
             @generator.generate_partial_implementation(**arg_hash)
           end
 
-          # Collect all user-defined types, macros, etc. (not variable declarations)
-          # These will be injected into the mockable Partials interface header file
-          user_defined =
-            module_contents.macro_definitions     +
-            module_contents.type_definitions      +
-            module_contents.aggregate_definitions
-
           arg_hash = {
             test:                    name,
             partial:                 config.module,
@@ -650,7 +635,7 @@ class TestInvoker
                                        includes: (config.source.includes + config.header.includes),
                                        test:     name
                                      ),
-            c_statements:            user_defined,
+            c_module:                module_contents,
             input_filepath:          config.header.filepath,
             output_path:             testable[:paths][:partials]
           }

@@ -619,36 +619,6 @@ describe PartializerHelper do
     end
   end
 
-  context "#collect_module_variables" do
-    it "returns empty array when both inputs are empty" do
-      result = @helper.collect_module_variables([], [])
-      expect(result).to eq([])
-    end
-
-    it "appends new variables to existing ones" do
-      existing = ['a']
-      result   = @helper.collect_module_variables(existing, ['b', 'c'])
-      expect(result).to eq(['a', 'b', 'c'])
-    end
-
-    it "mutates the existing array in place (concat semantics)" do
-      existing = ['a']
-      @helper.collect_module_variables(existing, ['b'])
-      expect(existing).to eq(['a', 'b'])
-    end
-
-    it "appends to empty existing array" do
-      result = @helper.collect_module_variables([], ['x', 'y'])
-      expect(result).to eq(['x', 'y'])
-    end
-
-    it "appends nothing when new array is empty" do
-      existing = ['a', 'b']
-      result   = @helper.collect_module_variables(existing, [])
-      expect(result).to eq(['a', 'b'])
-    end
-  end
-
   ###
   ### Validation helpers shared fixtures
   ###

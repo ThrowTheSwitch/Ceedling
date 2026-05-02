@@ -173,7 +173,7 @@ class Partializer
     contents = [CExtractorTypes::CModule.new()]
 
     # Process the C module source and/or header associated with the Partial config
-    [config.source, config.header].zip(['source', 'header']).each do |c_file, file_type|
+    [config.header, config.source].zip(['header', 'source']).each do |c_file, file_type|
       # Do nothing if there's no preprocessed filepath (e.g. no source only header for a Partial mock)
       next unless c_file.preprocessed_filepath
 
@@ -199,7 +199,8 @@ class Partializer
         c_module.function_definitions,
         name: name, module_name: config.module, file_type: file_type
       )
-      @helper.collect_module_variables(c_module.variable_declarations, decls)
+      c_module.variable_declarations.concat(decls)
+      c_module.element_sequence.concat(decls) unless decls.empty?
 
       contents << c_module
     end

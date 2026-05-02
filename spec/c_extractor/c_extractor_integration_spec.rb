@@ -762,6 +762,114 @@ describe CExtractor do
       expect( contents.type_definitions[0].text ).to include('typedef struct')
     end
 
+    it "should populate element_sequence in cross-type line order from a single file" do
+      # One item of each extractable type, ordered by line number.
+      # Blank lines ensure each item lands on a predictable, distinct line.
+      file_contents = <<~CONTENTS
+
+      typedef uint8_t Byte;
+
+      #define MAX 100
+
+      int global_var;
+
+      void helper(void);
+
+      void compute(int x) {
+        return x;
+      }
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect( contents.element_sequence.length ).to eq 5
+
+      expect( contents.element_sequence[0] ).to be_a( CExtractorTypes::CStatement )
+      expect( contents.element_sequence[0].line_num ).to eq 2   # typedef
+
+      expect( contents.element_sequence[1] ).to be_a( CExtractorTypes::CStatement )
+      expect( contents.element_sequence[1].line_num ).to eq 4   # macro
+
+      expect( contents.element_sequence[2] ).to be_a( CExtractorTypes::CVariableDeclaration )
+      expect( contents.element_sequence[2].line_num ).to eq 6
+
+      expect( contents.element_sequence[3] ).to be_a( CExtractorTypes::CFunctionDeclaration )
+      expect( contents.element_sequence[3].line_num ).to eq 8
+
+      expect( contents.element_sequence[4] ).to be_a( CExtractorTypes::CFunctionDefinition )
+      expect( contents.element_sequence[4].line_num ).to eq 10
+
+      # Spot-check that element_sequence holds the same object references as the typed arrays —
+      # no duplication, just an ordering index into the same structs.
+      expect( contents.element_sequence[0] ).to equal( contents.type_definitions[0] )
+      expect( contents.element_sequence[1] ).to equal( contents.macro_definitions[0] )
+      expect( contents.element_sequence[2] ).to equal( contents.variable_declarations[0] )
+      expect( contents.element_sequence[3] ).to equal( contents.function_declarations[0] )
+      expect( contents.element_sequence[4] ).to equal( contents.function_definitions[0] )
+    end
+
+    it "should place all header items before all source items in element_sequence after CModule merge" do
+      # Header has a typedef at line 1 and a function declaration at line 3.
+      header_string = <<~CONTENTS
+      typedef uint8_t Byte;
+
+      void helper(void);
+      CONTENTS
+
+      # Source has a macro at line 1, a variable at line 3, and a function definition at line 5.
+      # Line numbers intentionally overlap with the header (both start at 1) to prove that
+      # element_sequence order is governed by the + operand order — not by line-number sorting.
+      source_string = <<~CONTENTS
+      #define FOO 1
+
+      int counter = 0;
+
+      void helper(void) {
+        return;
+      }
+      CONTENTS
+
+      header_module = extract_from.call(header_string)
+      source_module = extract_from.call(source_string)
+
+      # Merge header-first (matching Partializer's extract_module_contents order)
+      merged = header_module + source_module
+
+      expect( merged.element_sequence.length ).to eq 5
+
+      # Header items first, in their within-file order
+      expect( merged.element_sequence[0] ).to be_a( CExtractorTypes::CStatement )
+      expect( merged.element_sequence[0].text ).to include( "typedef uint8_t Byte;" )
+      expect( merged.element_sequence[0].line_num ).to eq 1
+
+      expect( merged.element_sequence[1] ).to be_a( CExtractorTypes::CFunctionDeclaration )
+      expect( merged.element_sequence[1].name ).to eq 'helper'
+      expect( merged.element_sequence[1].line_num ).to eq 3
+
+      # Source items follow, also in their within-file order.
+      # element_sequence[2].line_num == 1 — same as element_sequence[0].line_num — but
+      # the source macro still appears after the header items, confirming that + ordering,
+      # not line-number sorting, determines the sequence.
+      expect( merged.element_sequence[2] ).to be_a( CExtractorTypes::CStatement )
+      expect( merged.element_sequence[2].text ).to include( "#define FOO 1" )
+      expect( merged.element_sequence[2].line_num ).to eq 1
+
+      expect( merged.element_sequence[3] ).to be_a( CExtractorTypes::CVariableDeclaration )
+      expect( merged.element_sequence[3].name ).to eq 'counter'
+      expect( merged.element_sequence[3].line_num ).to eq 3
+
+      expect( merged.element_sequence[4] ).to be_a( CExtractorTypes::CFunctionDefinition )
+      expect( merged.element_sequence[4].name ).to eq 'helper'
+      expect( merged.element_sequence[4].line_num ).to eq 5
+
+      # Confirm the typed arrays are unaffected by the merge
+      expect( merged.function_definitions.length  ).to eq 1
+      expect( merged.function_declarations.length ).to eq 1
+      expect( merged.variable_declarations.length ).to eq 1
+      expect( merged.type_definitions.length      ).to eq 1
+      expect( merged.macro_definitions.length     ).to eq 1
+    end
+
   end
 
 end

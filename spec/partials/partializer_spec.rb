@@ -866,7 +866,6 @@ describe Partializer do
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
       # static var extraction/promotion called for every file processed; stub by default
       allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
-      allow(@partializer_helper).to receive(:collect_module_variables)
     end
 
     it "returns empty CModule when both preprocessed_filepaths are nil" do
@@ -879,7 +878,6 @@ describe Partializer do
       expect(@c_extractor).not_to receive(:from_file)
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
       expect(@partializer_helper).not_to receive(:extract_function_scope_static_vars)
-      expect(@partializer_helper).not_to receive(:collect_module_variables)
 
       result = @partializer.extract_module_contents(@name, config, false)
 
@@ -964,8 +962,8 @@ describe Partializer do
 
       result = @partializer.extract_module_contents(@name, config, false)
 
-      expect(result.function_definitions).to eq(source_funcs + header_funcs)
-      expect(result.variable_declarations).to eq(source_contents.variable_declarations + header_contents.variable_declarations)
+      expect(result.function_definitions).to eq(header_funcs + source_funcs)
+      expect(result.variable_declarations).to eq(header_contents.variable_declarations + source_contents.variable_declarations)
     end
 
     it "calls associate_function_line_numbers with the preprocessed expansion filepath, not the preprocessed filepath" do
@@ -1025,6 +1023,28 @@ describe Partializer do
 
       expect(result.function_definitions).to eq([])
       expect(result.variable_declarations).to eq([])
+    end
+
+    it "appends promoted function-scope static variables to element_sequence" do
+      promoted_var1 = CExtractorTypes::CVariableDeclaration.new(text: 'static int counter = 0;', type: 'int', name: 'counter')
+      promoted_var2 = CExtractorTypes::CVariableDeclaration.new(text: 'static bool flag = false;', type: 'bool', name: 'flag')
+
+      source_contents = CExtractorTypes::CModule.new(function_definitions: [], variable_declarations: [])
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', preprocessed_filepath: '/build/preproc/module1.i')
+      )
+
+      allow(@c_extractor).to receive(:from_file).and_return(source_contents)
+      allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([promoted_var1, promoted_var2])
+
+      result = @partializer.extract_module_contents(@name, config, false)
+
+      expect(result.element_sequence).to eq([promoted_var1, promoted_var2])
+      expect(result.element_sequence[0]).to equal(promoted_var1)
+      expect(result.element_sequence[1]).to equal(promoted_var2)
     end
   end
 

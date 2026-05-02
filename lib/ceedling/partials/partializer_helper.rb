@@ -239,10 +239,6 @@ class PartializerHelper
     return decls
   end
 
-  def collect_module_variables(existing, new)
-    existing.concat( new )
-  end
-
   # Validate that every function name in additions and subtractions exists in c_module.
   # Case-sensitive match; if a name matches case-insensitively but not exactly, raise
   # a specific case-mismatch exception.

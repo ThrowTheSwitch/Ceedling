@@ -40,6 +40,27 @@ describe GeneratorPartials do
     CExtractorTypes::CStatement.new(text: text, line_num: line_num)
   end
 
+  # Helper to create a CModule whose element_sequence is exactly `items` (in the given order).
+  # The typed arrays are populated from the items for completeness but generation uses element_sequence.
+  def make_module(*items)
+    vars   = items.select { |i| i.is_a?(CExtractorTypes::CVariableDeclaration) }
+    macros = items.select { |i| i.is_a?(CExtractorTypes::CStatement) }
+    fdefs  = items.select { |i| i.is_a?(CExtractorTypes::CFunctionDefinition) }
+    fdecls = items.select { |i| i.is_a?(CExtractorTypes::CFunctionDeclaration) }
+    CExtractorTypes::CModule.new(
+      variable_declarations: vars,
+      macro_definitions:     macros,
+      function_definitions:  fdefs,
+      function_declarations: fdecls,
+      element_sequence:      items
+    )
+  end
+
+  # Empty CModule — used when tests only care about function_list or includes
+  def empty_module
+    CExtractorTypes::CModule.new()
+  end
+
   context "#generate_implementation" do
     it "should call generate_header() and generate_source() with correct parameters" do
       # Setup
@@ -85,10 +106,10 @@ describe GeneratorPartials do
       ]
       source_includes = [UserInclude.new('types.h'), UserInclude.new('config.h')]
       header_includes = [SystemInclude.new('stdint.h'), SystemInclude.new('stdbool.h')]
-      c_statements = [
+      c_module = make_module(
         make_var(name: 'my_var', type: 'uint8_t', text: 'uint8_t my_var;'),
         make_stmt(text: "#define MAX_SIZE 100\n", line_num: 5)
-      ]
+      )
 
       # Execute
       result = @generator.generate_implementation(
@@ -97,7 +118,7 @@ describe GeneratorPartials do
         function_definitions: defns,
         source_includes: source_includes,
         header_includes: header_includes,
-        c_statements: c_statements,
+        c_module: c_module,
         output_path: output_path
       )
 
@@ -107,7 +128,8 @@ describe GeneratorPartials do
         header_filename,
         header_includes,
         defns,
-        c_statements
+        c_module,
+        true
       )
 
       # Verify generate_source was called with correct parameters
@@ -115,7 +137,7 @@ describe GeneratorPartials do
         source_file_handle,
         source_includes,
         defns,
-        c_statements
+        c_module
       )
 
       # Verify file path utilities were called
@@ -161,9 +183,9 @@ describe GeneratorPartials do
         )
       ]
       includes = [UserInclude.new('types.h'), UserInclude.new('config.h')]
-      c_statements = [
+      c_module = make_module(
         make_stmt(text: "typedef uint8_t Byte;\n", line_num: 3)
-      ]
+      )
 
       # Execute
       result = @generator.generate_interface(
@@ -171,7 +193,7 @@ describe GeneratorPartials do
         function_declarations: decls,
         name: name,
         includes: includes,
-        c_statements: c_statements,
+        c_module: c_module,
         output_path: output_path
       )
 
@@ -181,7 +203,8 @@ describe GeneratorPartials do
         header_filename,
         includes,
         decls,
-        c_statements
+        c_module,
+        false
       )
 
       # Verify file path utilities were called
@@ -209,7 +232,7 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      @generator.send(:generate_header, buf, 'foo_bar', [], [], [])
+      @generator.send(:generate_header, buf, 'foo_bar', [], [], empty_module, false)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -231,7 +254,7 @@ describe GeneratorPartials do
         buf,
         'Apples-and-Bananas',
         [UserInclude.new('foo.h'), UserInclude.new('bar.h')],
-        [], []
+        [], empty_module, false
       )
 
       expect( buf.string.strip() ).to eq file_contents.strip()
@@ -250,11 +273,11 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      c_statements = [
+      c_module = make_module(
         make_var(name: 'slices_of_bread', type: 'unsigned int', text: 'unsigned int slices_of_bread = 10;'),
         make_var(name: 'crumbs', type: 'char', text: 'char crumbs[10];')
-      ]
-      @generator.send(:generate_header, buf, 'pb-and-j', [], [], c_statements)
+      )
+      @generator.send(:generate_header, buf, 'pb-and-j', [], [], c_module, true)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -290,10 +313,16 @@ describe GeneratorPartials do
         signature: 'int razzleDazzle(void* ptr)'
       )
 
-      c_statements = [
+      # Raw CExtractor stubs for the lookup by name — only :name must match decls
+      foobarbaz_raw   = CExtractorTypes::CFunctionDeclaration.new(name: 'foobarbaz')
+      razzledazzle_raw = CExtractorTypes::CFunctionDeclaration.new(name: 'razzleDazzle')
+
+      c_module = make_module(
         make_var(name: 'apples', type: 'signed long int', text: 'signed long int apples;'),
-        make_var(name: 'bananas', type: 'double', text: 'double bananas;')
-      ]
+        make_var(name: 'bananas', type: 'double', text: 'double bananas;'),
+        foobarbaz_raw,
+        razzledazzle_raw
+      )
 
       @generator.send(
         :generate_header,
@@ -301,7 +330,8 @@ describe GeneratorPartials do
         'Apples-and-Bananas',
         [UserInclude.new('Eeny.h'), UserInclude.new('Meeny.h')],
         decls,
-        c_statements
+        c_module,
+        true
       )
 
       expect( buf.string.strip() ).to eq file_contents.strip()
@@ -321,17 +351,57 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      c_statements = [
+      c_module = make_module(
         make_stmt(text: "#define MAX_SIZE 100"),
         make_stmt(text: "typedef uint8_t Byte;"),
         make_stmt(text: "struct Point { int x; int y; };")
-      ]
+      )
 
-      @generator.send(:generate_header, buf, 'defs', [], [], c_statements)
+      @generator.send(:generate_header, buf, 'defs', [], [], c_module, false)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should sort mixed CStatement and CVariableDeclaration items by line_num in the header" do
+    it "should emit all four injectable statement categories correctly in element_sequence order" do
+      # One item of each category that can be injected into a generated Partial header:
+      #   macro_definitions    → CStatement emitted as-is
+      #   type_definitions     → CStatement emitted as-is
+      #   aggregate_definitions → CStatement emitted as-is
+      #   variable_declarations → CVariableDeclaration emitted as extern declaration
+      #
+      # Ordering is intentionally interleaved (not grouped by category) to confirm that
+      # element_sequence — not typed-array membership — governs emit order.
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+      #ifndef __ALL_STATEMENTS_H__
+      #define __ALL_STATEMENTS_H__
+
+      #define MAX_ITEMS 16
+      typedef uint8_t Byte;
+      extern int item_count;
+      struct Config { int id; int flags; };
+
+      #endif // __ALL_STATEMENTS_H__
+
+      CONTENTS
+
+      macro_stmt     = CExtractorTypes::CStatement.new(text: "#define MAX_ITEMS 16",              line_num: 1)
+      typedef_stmt   = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;",             line_num: 2)
+      var_decl       = make_var(name: 'item_count', type: 'int', text: 'int item_count;',         line_num: 3)
+      aggregate_stmt = CExtractorTypes::CStatement.new(text: "struct Config { int id; int flags; };", line_num: 4)
+
+      c_module = CExtractorTypes::CModule.new(
+        macro_definitions:     [macro_stmt],
+        type_definitions:      [typedef_stmt],
+        aggregate_definitions: [aggregate_stmt],
+        variable_declarations: [var_decl],
+        element_sequence:      [macro_stmt, typedef_stmt, var_decl, aggregate_stmt]
+      )
+
+      @generator.send(:generate_header, buf, 'all_statements', [], [], c_module, true)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should emit mixed CStatement and CVariableDeclaration items in element_sequence order" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
       #ifndef __MIXED_H__
@@ -345,38 +415,78 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      # Items intentionally out of source order — sorted by line_num
-      c_statements = [
-        make_var(name: 'counter', type: 'int', text: 'int counter;', line_num: 2),
-        make_stmt(text: "typedef uint8_t Byte;", line_num: 3),
-        make_stmt(text: "#define FOO 1", line_num: 1)
-      ]
+      # element_sequence dictates the order; line_num is informational only
+      c_module = make_module(
+        make_stmt(text: "#define FOO 1",      line_num: 1),
+        make_var( name: 'counter', type: 'int', text: 'int counter;', line_num: 2),
+        make_stmt(text: "typedef uint8_t Byte;", line_num: 3)
+      )
 
-      @generator.send(:generate_header, buf, 'mixed', [], [], c_statements)
+      @generator.send(:generate_header, buf, 'mixed', [], [], c_module, true)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should place nil line_num items after numbered items in their original order" do
+    it "should not emit variable declarations when include_variables is false" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
-      #ifndef __ORDERING_H__
-      #define __ORDERING_H__
+      #ifndef __INTERFACE_H__
+      #define __INTERFACE_H__
 
-      #define KNOWN 42
-      #define UNKNOWN_A 1
-      #define UNKNOWN_B 2
+      #define FOO 1
 
-      #endif // __ORDERING_H__
+      #endif // __INTERFACE_H__
 
       CONTENTS
 
-      c_statements = [
-        make_stmt(text: "#define UNKNOWN_A 1"),        # nil line_num — first in input
-        make_stmt(text: "#define UNKNOWN_B 2"),        # nil line_num — second in input
-        make_stmt(text: "#define KNOWN 42", line_num: 1)
-      ]
+      c_module = make_module(
+        make_stmt(text: "#define FOO 1", line_num: 1),
+        make_var( name: 'counter', type: 'int', text: 'int counter;', line_num: 2)
+      )
 
-      @generator.send(:generate_header, buf, 'ordering', [], [], c_statements)
+      @generator.send(:generate_header, buf, 'interface', [], [], c_module, false)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should interleave functions with other elements in element_sequence order" do
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+      #ifndef __INTERLEAVED_H__
+      #define __INTERLEAVED_H__
+
+      typedef uint8_t Byte;
+
+      void foo(void);
+
+      extern int counter;
+
+      int bar(int x);
+
+      #endif // __INTERLEAVED_H__
+
+      CONTENTS
+
+      typedef_stmt = make_stmt(text: "typedef uint8_t Byte;", line_num: 1)
+      var_decl     = make_var( name: 'counter', type: 'int', text: 'int counter;', line_num: 5)
+
+      foo_raw = CExtractorTypes::CFunctionDeclaration.new(
+        name: 'foo', signature: 'void foo(void)', line_num: 3
+      )
+      bar_raw = CExtractorTypes::CFunctionDeclaration.new(
+        name: 'bar', signature: 'int bar(int x)', line_num: 7
+      )
+
+      foo_decl = Partials.manufacture_function_declaration(name: 'foo', signature: 'void foo(void)')
+      bar_decl = Partials.manufacture_function_declaration(name: 'bar', signature: 'int bar(int x)')
+
+      # element_sequence captures original file order across all types
+      c_module = CExtractorTypes::CModule.new(
+        variable_declarations: [var_decl],
+        function_declarations: [foo_raw, bar_raw],
+        type_definitions:      [typedef_stmt],
+        element_sequence:      [typedef_stmt, foo_raw, var_decl, bar_raw]
+      )
+
+      @generator.send(:generate_header, buf, 'interleaved', [], [foo_decl, bar_decl], c_module, true)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -387,7 +497,7 @@ describe GeneratorPartials do
     let(:buf) { StringIO.new() }
 
     it "should generate a nearly empty source file" do
-      @generator.send(:generate_source, buf, [], [], [])
+      @generator.send(:generate_source, buf, [], [], empty_module)
       expect( buf.string.strip() ).to eq '// Ceeding generated file'
     end
 
@@ -403,7 +513,7 @@ describe GeneratorPartials do
         :generate_source,
         buf,
         [UserInclude.new('foo.h'), SystemInclude.new('bar.h')],
-        [], []
+        [], empty_module
       )
 
       expect( buf.string.strip() ).to eq file_contents.strip()
@@ -428,7 +538,10 @@ describe GeneratorPartials do
         code_block: "void foobar(int x, int y)\n\n{\n\n  int z = x+y;\n\n\n}"
       )
 
-      @generator.send(:generate_source, buf, [], defns, [])
+      # Raw CExtractor stub for the lookup by name
+      c_module = make_module( CExtractorTypes::CFunctionDefinition.new(name: 'foobar') )
+
+      @generator.send(:generate_source, buf, [], defns, c_module)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -447,23 +560,25 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      defns = []
-
-      defns << Partials.manufacture_function_definition(
-        name: 'fobar',
+      defn = Partials.manufacture_function_definition(
+        name: 'foobar',
         signature: 'void foobar(int x, int y)',
         code_block: "void foobar(int x, int y) {\n  int z = x+y;\n}"
       )
+
+      var_abc   = make_var(name: 'abc', type: 'int', text: 'int abc = 123;')
+      var_str   = make_var(name: 'str', type: 'char', text: 'char str[] = "Hello, World!";')
+      # Raw CExtractor stub for the lookup by name
+      foobar_raw = CExtractorTypes::CFunctionDefinition.new(name: 'foobar')
+
+      c_module = make_module(var_abc, var_str, foobar_raw)
 
       @generator.send(
         :generate_source,
         buf,
         [UserInclude.new('foobar.h'), UserInclude.new('baz.h')],
-        defns,
-        [
-          make_var(name: 'abc', type: 'int', text: 'int abc = 123;'),
-          make_var(name: 'str', type: 'char', text: 'char str[] = "Hello, World!";')
-        ]
+        [defn],
+        c_module
       )
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
@@ -505,11 +620,60 @@ describe GeneratorPartials do
         code_block: "int\nrazzleDazzle(void* ptr)\n{\n  global_var = ptr;\n  return 42;\n}"
       )
 
-      @generator.send(:generate_source, buf, [], defns, [])
+      # Raw CExtractor stubs for the lookup by name — in extraction order
+      c_module = make_module(
+        CExtractorTypes::CFunctionDefinition.new(name: 'foobarbaz'),
+        CExtractorTypes::CFunctionDefinition.new(name: 'razzleDazzle')
+      )
+
+      @generator.send(:generate_source, buf, [], defns, c_module)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should emit only CVariableDeclaration items from a mixed c_statements collection" do
+    it "should emit only variable declarations and function definitions from all four element_sequence categories" do
+      # Source generation emits two categories and silently skips two others:
+      #   CVariableDeclaration  → emitted as-is
+      #   CFunctionDefinition   → emitted (via filtered Partials lookup)
+      #   CStatement            → skipped (macros, typedefs, aggregates belong in headers)
+      #   CFunctionDeclaration  → skipped (forward declarations belong in headers)
+      #
+      # All four categories are present in element_sequence to confirm the full
+      # filtering and emission behavior in a single test.
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+
+      int counter = 0;
+
+      void compute(int x) {
+        return x;
+      }
+
+      CONTENTS
+
+      macro_stmt  = CExtractorTypes::CStatement.new(text: "#define MAX 100",      line_num: 1)
+      var_decl    = make_var(name: 'counter', type: 'int', text: 'int counter = 0;', line_num: 2)
+      func_decl   = CExtractorTypes::CFunctionDeclaration.new(name: 'compute',     line_num: 3)
+      func_def    = CExtractorTypes::CFunctionDefinition.new( name: 'compute',     line_num: 4)
+
+      c_module = CExtractorTypes::CModule.new(
+        macro_definitions:     [macro_stmt],
+        variable_declarations: [var_decl],
+        function_declarations: [func_decl],
+        function_definitions:  [func_def],
+        element_sequence:      [macro_stmt, var_decl, func_decl, func_def]
+      )
+
+      defn = Partials.manufacture_function_definition(
+        name: 'compute',
+        signature: 'void compute(int x)',
+        code_block: "void compute(int x) {\n  return x;\n}"
+      )
+
+      @generator.send(:generate_source, buf, [], [defn], c_module)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should emit only CVariableDeclaration items from element_sequence, skipping CStatement items" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
 
@@ -518,13 +682,62 @@ describe GeneratorPartials do
       CONTENTS
 
       # Mixed collection: one variable and two CStatements (macro + typedef)
-      c_statements = [
+      c_module = make_module(
         make_stmt(text: "#define MAX 100\n", line_num: 1),
-        make_var(name: 'counter', type: 'int', text: 'int counter = 0;'),
+        make_var( name: 'counter', type: 'int', text: 'int counter = 0;'),
         make_stmt(text: "typedef uint8_t Byte;\n", line_num: 3)
-      ]
+      )
 
-      @generator.send(:generate_source, buf, [], [], c_statements)
+      @generator.send(:generate_source, buf, [], [], c_module)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should interleave variables and functions in element_sequence order" do
+      file_contents = <<~CONTENTS
+      // Ceeding generated file
+
+      int x = 1;
+
+      void foo(void) {
+        x++;
+      }
+
+      int y = 2;
+
+      void bar(void) {
+        y++;
+      }
+
+      CONTENTS
+
+      var_x = make_var(name: 'x', type: 'int', text: 'int x = 1;', line_num: 1)
+      var_y = make_var(name: 'y', type: 'int', text: 'int y = 2;', line_num: 5)
+
+      foo_raw = CExtractorTypes::CFunctionDefinition.new(
+        name: 'foo', signature: 'void foo(void)', line_num: 3,
+        code_block: "void foo(void) {\n  x++;\n}", body: "{\n  x++;\n}"
+      )
+      bar_raw = CExtractorTypes::CFunctionDefinition.new(
+        name: 'bar', signature: 'void bar(void)', line_num: 7,
+        code_block: "void bar(void) {\n  y++;\n}", body: "{\n  y++;\n}"
+      )
+
+      foo_defn = Partials.manufacture_function_definition(
+        name: 'foo', signature: 'void foo(void)',
+        code_block: "void foo(void) {\n  x++;\n}"
+      )
+      bar_defn = Partials.manufacture_function_definition(
+        name: 'bar', signature: 'void bar(void)',
+        code_block: "void bar(void) {\n  y++;\n}"
+      )
+
+      c_module = CExtractorTypes::CModule.new(
+        variable_declarations: [var_x, var_y],
+        function_definitions:  [foo_raw, bar_raw],
+        element_sequence:      [var_x, foo_raw, var_y, bar_raw]
+      )
+
+      @generator.send(:generate_source, buf, [], [foo_defn, bar_defn], c_module)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 

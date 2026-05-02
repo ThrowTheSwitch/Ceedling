@@ -27,6 +27,7 @@ module CExtractorTypes
     :macro_definitions,     # Array of CStatement — raw #define text with source line number
     :type_definitions,      # Array of CStatement — raw typedef text with source line number
     :aggregate_definitions, # Array of CStatement — raw non-typedef struct/enum/union text with source line number
+    :element_sequence,      # Array of references to all items above in extraction order (cross-type ordering index)
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to empty arrays for convenience
@@ -36,13 +37,15 @@ module CExtractorTypes
         function_declarations: [],
         macro_definitions: [],
         type_definitions: [],
-        aggregate_definitions: []
+        aggregate_definitions: [],
+        element_sequence: []
       )
       super
     end
 
-    # Concatenate two CModule instances
-    # Returns a new CModule with combined arrays
+    # Concatenate two CModule instances.
+    # element_sequence preserves first operand's items before second operand's items,
+    # maintaining source-before-header ordering regardless of line numbers.
     def +(other)
       CModule.new(
         variable_declarations: (self.variable_declarations + other.variable_declarations),
@@ -50,7 +53,8 @@ module CExtractorTypes
         function_declarations: (self.function_declarations + other.function_declarations),
         macro_definitions:     (self.macro_definitions     + other.macro_definitions),
         type_definitions:      (self.type_definitions      + other.type_definitions),
-        aggregate_definitions: (self.aggregate_definitions + other.aggregate_definitions)
+        aggregate_definitions: (self.aggregate_definitions + other.aggregate_definitions),
+        element_sequence:      (self.element_sequence      + other.element_sequence)
       )
     end
   end

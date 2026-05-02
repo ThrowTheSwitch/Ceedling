@@ -95,6 +95,7 @@ class CExtractor
     macro_definitions     = []
     type_definitions      = []
     aggregate_definitions = []
+    sequence              = []
     cumulative_newlines   = 0
 
     # Ensure we're at the start of buffer
@@ -116,7 +117,11 @@ class CExtractor
         line_num, cumulative_newlines =
           _compute_line_info(io, call_start, dir_start, cumulative_newlines)
         macro_def = @preprocessing.filter_directive(directive, CExtractorPreprocessing::MACRO_DEFINITION)
-        macro_definitions << CStatement.new(text: macro_def, line_num: line_num) if macro_def
+        if macro_def
+          stmt = CStatement.new(text: macro_def, line_num: line_num)
+          macro_definitions << stmt
+          sequence << stmt
+        end
         next
       end
 
@@ -130,7 +135,9 @@ class CExtractor
       if typedef_def
         line_num, cumulative_newlines =
           _compute_line_info(io, call_start, td_start, cumulative_newlines)
-        type_definitions << CStatement.new(text: typedef_def, line_num: line_num)
+        stmt = CStatement.new(text: typedef_def, line_num: line_num)
+        type_definitions << stmt
+        sequence << stmt
         next
       end
 
@@ -158,7 +165,9 @@ class CExtractor
       if agg_def
         line_num, cumulative_newlines =
           _compute_line_info(io, call_start, agg_start, cumulative_newlines)
-        aggregate_definitions << CStatement.new(text: agg_def, line_num: line_num)
+        stmt = CStatement.new(text: agg_def, line_num: line_num)
+        aggregate_definitions << stmt
+        sequence << stmt
         next
       end
 
@@ -174,6 +183,7 @@ class CExtractor
           _compute_line_info(io, call_start, func_start, cumulative_newlines)
         func.line_num = line_num
         function_definitions << func
+        sequence << func
         next
       end
 
@@ -188,6 +198,7 @@ class CExtractor
           _compute_line_info(io, call_start, func_start, cumulative_newlines)
         func.line_num = line_num
         function_declarations << func
+        sequence << func
         next
       end
 
@@ -203,6 +214,7 @@ class CExtractor
           _compute_line_info(io, call_start, vars_start, cumulative_newlines)
         vars.each { |v| v.line_num = line_num }
         variable_declarations.concat(vars)
+        sequence.concat(vars)
         next
       end
 
@@ -217,7 +229,8 @@ class CExtractor
       variable_declarations: variable_declarations,
       macro_definitions:     macro_definitions,
       type_definitions:      type_definitions,
-      aggregate_definitions: aggregate_definitions
+      aggregate_definitions: aggregate_definitions,
+      element_sequence:      sequence
     )
   ensure
     io.close
