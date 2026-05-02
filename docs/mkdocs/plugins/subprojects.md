@@ -34,3 +34,5 @@ _Note:_ This plugin is especially useful for sophisticated release builds that
 are beyond the scope of Ceedling's standard release build configuration. If your
 project requires building multiple libraries with different toolchain settings,
 `subprojects` is the recommended approach.
+
+<br/><br/>

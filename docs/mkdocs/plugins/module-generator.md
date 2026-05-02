@@ -264,4 +264,4 @@ Your options for `:naming:` are as follows:
   - `:snake` - snake_case_is_all_lower_and_uses_underscores
   - `:caps`  - CAPS_FEELS_LIKE_YOU_ARE_SCREAMING
 
-
+<br/><br/>

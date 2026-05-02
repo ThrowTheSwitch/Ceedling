@@ -48,3 +48,5 @@ Enable the plugin in your Ceedling project:
 ## Configuration
 
 No additional configuration is needed once the plugin is enabled.
+
+<br/><br/>

@@ -92,3 +92,5 @@ This plugin maps Ceedling conventions to TeamCity test service messages as
 ##teamcity[testIgnored name='test.test/TestUsartModel.testShouldReturnWakeupMessage' flowId='15']
 ##teamcity[testSuiteFinished name='TestUsartModel' flowId='15']
 ```
+
+<br/><br/>

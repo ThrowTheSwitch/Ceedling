@@ -56,3 +56,5 @@ This public/private distinction is one set of filters for assembling a list
 of functions each `_MODULE` macro selects. The filtering and collection is 
 documented in detail in the 
 [Partials function-selection by macro](directives.md#partials-function-selection-by-macro) section.
+
+<br/><br/>

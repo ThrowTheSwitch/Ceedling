@@ -44,3 +44,5 @@
 [plugin-dev]:       plugins/index.md
 [code-of-conduct]:  https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CODE_OF_CONDUCT.md
 [contributing]:     https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CONTRIBUTING.md
+
+<br/><br/>

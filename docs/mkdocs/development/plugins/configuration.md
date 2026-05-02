@@ -160,3 +160,5 @@ complicated.
 ```
 
 [string-expansion]: ../../configuration/project-file.md#inline-ruby-string-expansion
+
+<br/><br/>

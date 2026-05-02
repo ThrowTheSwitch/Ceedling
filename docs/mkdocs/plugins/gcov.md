@@ -892,3 +892,5 @@ taken from the [Gcovr User Guide][gcovr-user-guide] and the
 [ReportGenerator Wiki][report-generator-wiki].
 
 The text is repeated here to provide as useful documenation as possible.
+
+<br/><br/>

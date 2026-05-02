@@ -199,3 +199,5 @@ embedded systems developers.
 [build-directives]:            testing-guide/build-directives.md
 [plugins]:                     plugins/index.md
 [global-collections]:          configuration/global-collections.md
+
+<br/><br/>

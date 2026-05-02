@@ -177,3 +177,5 @@ void test_Sensor_ReadCelsius(void)
    source module, and the test file into the test executable. The 
    symbols and includes of `sensor.h` and `sensor.c` are duplicated in the 
    Partials while the original `sensor.c` is omitted from the build.
+
+<br/><br/>

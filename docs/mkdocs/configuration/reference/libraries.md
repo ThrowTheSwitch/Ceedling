@@ -78,3 +78,5 @@ Library search paths may be added to your project with `:paths` ↳ `:libraries`
   your argument list in the position where library files should be added to the
   command line. For `gcc`, this is often at the very end. Other tools may vary.
   See the `:tools` section for more.
+
+<br/><br/>

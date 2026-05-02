@@ -190,3 +190,5 @@ and details on how everything fits together.
 [mocks]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [interaction-based-tests]: http://martinfowler.com/articles/mocksArentStubs.html
 [conventions-and-behaviors]: conventions.md
+
+<br/><br/>

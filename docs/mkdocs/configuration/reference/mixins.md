@@ -20,3 +20,5 @@ in the [discussion of project files and mixins][mixins-config-section].
 
 [mixins-config-section]: ../loading.md#applying-mixins-to-base-configuration
 [inline-ruby-string-expansion]: ../project-file.md#inline-ruby-string-expansion
+
+<br/><br/>

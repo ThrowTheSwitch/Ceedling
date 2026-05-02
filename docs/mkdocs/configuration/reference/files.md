@@ -148,3 +148,5 @@ Subtractive paths may be simple paths or globs just like any other path entry.
 [globs-tutorial]: http://ruby.about.com/od/beginningruby/a/dir2.htm
 [ruby-globs]: https://ruby-doc.org/core-3.0.0/Dir.html#method-c-glob
 [inline-ruby-string-expansion]: ../project-file.md#inline-ruby-string-expansion
+
+<br/><br/>

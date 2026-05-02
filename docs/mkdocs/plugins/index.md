@@ -193,3 +193,5 @@ for how to enable built-in plugins and load custom plugins in your project.
 [json-compilation-database]: https://clang.llvm.org/docs/JSONCompilationDatabase.html
 [clangd]: https://clangd.llvm.org
 [IDEs]: https://www.throwtheswitch.org/ide
+
+<br/><br/>

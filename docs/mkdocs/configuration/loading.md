@@ -433,4 +433,4 @@ Relating the above example to command line `--mixin` flag handling:
 [YAML]: http://en.wikipedia.org/wiki/Yaml
 [inline-ruby-string-expansion]: project-file.md#inline-ruby-string-expansion
 
-<br/>
+<br/><br/>

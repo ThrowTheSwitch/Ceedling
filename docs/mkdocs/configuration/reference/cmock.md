@@ -91,3 +91,5 @@ good practice. And, of course, you can always disable it by overriding the
 value in the Ceedling project configuration file.
 
 [cmock-docs]: https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMock_Summary.md
+
+<br/><br/>

@@ -239,3 +239,5 @@ The parameter available to a tool (`${1}`) when the hook is called is the filepa
 Called just after each test's fixture is executed and test results are collected.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the binary artifact that was executed by the fixture.
+
+<br/><br/>

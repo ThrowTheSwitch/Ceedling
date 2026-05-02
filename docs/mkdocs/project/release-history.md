@@ -33,3 +33,5 @@ in any given release.
 [release-notes]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md
 [breaking-changes]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/BreakingChanges.md
 [changelog]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md
+
+<br/><br/>

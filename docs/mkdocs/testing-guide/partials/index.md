@@ -60,3 +60,5 @@ Partials are useful when a module under test contains:
 [conventions]:  conventions.md
 [directives]:   directives.md
 [variables]:    variables.md
+
+<br/><br/>

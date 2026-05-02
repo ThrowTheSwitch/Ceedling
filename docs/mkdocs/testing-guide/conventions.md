@@ -628,4 +628,4 @@ much simpler exit code convention than Unity: `0` = 🙂 while `1` = ☹️.
 [CMock]: http://github.com/ThrowTheSwitch/CMock
 [Unity]: http://github.com/ThrowTheSwitch/Unity
 
-<br/>
+<br/><br/>

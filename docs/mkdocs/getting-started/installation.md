@@ -156,3 +156,5 @@ In this usage, the container starts, executes Ceedling, and then ends.
    `module_generator` in your project configuration file and create a source +
    test code module to get accustomed to Ceedling by issuing the command 
    `ceedling 'module:create[name]'`.
+
+<br/><br/>

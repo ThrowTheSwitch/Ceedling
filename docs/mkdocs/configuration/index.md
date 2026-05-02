@@ -56,3 +56,5 @@
 [configuration-reference]: reference/index.md
 [which-ceedling]:          which-ceedling.md
 [global-collections]:      global-collections.md
+
+<br/><br/>

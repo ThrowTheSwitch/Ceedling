@@ -183,3 +183,5 @@ or value and simply use the properly spelled default maintained
 internally — thus leading to unexpected behavior without warning.
 
 [example-config-file]: ../snapshot/assets/project.yml
+
+<br/><br/>

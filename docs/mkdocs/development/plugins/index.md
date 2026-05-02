@@ -80,3 +80,5 @@ conventions. These approaches can be combined.
 
 [plugins-config]: ../../configuration/reference/plugins.md
 [plugins-directory]: ../../plugins/index.md
+
+<br/><br/>

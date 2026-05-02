@@ -63,3 +63,5 @@ code, Ceedling build tasks go like this:
 [quick-start-3]: ../overview/build-system.md#simple-sample-project-file
 [quick-start-4]: command-line.md
 [quick-start-5]: ../configuration/index.md
+
+<br/><br/>
