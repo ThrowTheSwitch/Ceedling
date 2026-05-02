@@ -1466,7 +1466,7 @@
   <a href="#some-yaml-learnin" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Some YAML Learnin'
+        Some YAML Learnin’
       
     </span>
   </a>
@@ -1474,10 +1474,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#notes-on-project-file-structure-and-documentation-that-follows" class="md-nav__link">
+  <a href="#notes-on-project-file-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Notes on Project File Structure and Documentation That Follows
+        Notes on Project File Structure
       
     </span>
   </a>
@@ -1485,15 +1485,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ceedling-specific-yaml-handling-conventions" class="md-nav__link">
+  <a href="#ceedling-yaml-handling-conventions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ceedling-specific YAML Handling &amp; Conventions
+        Ceedling YAML Handling &amp; Conventions
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Ceedling-specific YAML Handling &amp; Conventions">
+    <nav class="md-nav" aria-label="Ceedling YAML Handling &amp; Conventions">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1527,7 +1527,7 @@
   <a href="#lets-be-careful-out-there" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Let's Be Careful Out There
+        Let’s Be Careful Out There
       
     </span>
   </a>
@@ -1941,7 +1941,7 @@
   <span class="md-ellipsis">
     
   
-    Compilation Symbols
+    Defines
   
 
     
@@ -3167,7 +3167,7 @@
   <a href="#some-yaml-learnin" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Some YAML Learnin'
+        Some YAML Learnin’
       
     </span>
   </a>
@@ -3175,10 +3175,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#notes-on-project-file-structure-and-documentation-that-follows" class="md-nav__link">
+  <a href="#notes-on-project-file-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Notes on Project File Structure and Documentation That Follows
+        Notes on Project File Structure
       
     </span>
   </a>
@@ -3186,15 +3186,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ceedling-specific-yaml-handling-conventions" class="md-nav__link">
+  <a href="#ceedling-yaml-handling-conventions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ceedling-specific YAML Handling &amp; Conventions
+        Ceedling YAML Handling &amp; Conventions
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Ceedling-specific YAML Handling &amp; Conventions">
+    <nav class="md-nav" aria-label="Ceedling YAML Handling &amp; Conventions">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3228,7 +3228,7 @@
   <a href="#lets-be-careful-out-there" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Let's Be Careful Out There
+        Let’s Be Careful Out There
       
     </span>
   </a>
@@ -3306,14 +3306,14 @@
 <h1 id="the-mighty-ceedling-project-configuration-file">The Mighty Ceedling Project Configuration File</h1>
 <p><strong>In glorious YAML</strong></p>
 <div class="admonition tip">
-<p class="admonition-title">Complete Project File Example</p>
+<p class="admonition-title">Complete project file example</p>
 <p>See this <a href="../../snapshot/assets/project.yml">commented project file</a> for a nice 
 example of a complete project configuration.</p>
 </div>
-<h2 id="some-yaml-learnin">Some YAML Learnin'</h2>
+<h2 id="some-yaml-learnin">Some YAML Learnin’</h2>
 <p>Please consult YAML documentation for the finer points of format
 and to understand details of our YAML-based configuration file.</p>
-<p>We recommend <a href="http://en.wikipedia.org/wiki/Yaml">Wikipedia's entry on YAML</a>
+<p>We recommend <a href="http://en.wikipedia.org/wiki/Yaml">Wikipedia’s entry on YAML</a>
 for this. A few highlights from that reference page:</p>
 <ul>
 <li>
@@ -3355,7 +3355,7 @@ for this. A few highlights from that reference page:</p>
   anchors and aliases in YAML speak.</p>
 </li>
 </ul>
-<h2 id="notes-on-project-file-structure-and-documentation-that-follows">Notes on Project File Structure and Documentation That Follows</h2>
+<h2 id="notes-on-project-file-structure">Notes on Project File Structure</h2>
 <ul>
 <li>
 <p>Each of the following sections represent top-level entries
@@ -3369,20 +3369,20 @@ for this. A few highlights from that reference page:</p>
 </li>
 <li>
 <p>At minimum, these settings must be specified for a test suite:</p>
-</li>
+<ul>
 <li><code>:project</code> ↳ <code>:build_root</code></li>
 <li><code>:paths</code> ↳ <code>:source</code></li>
 <li><code>:paths</code> ↳ <code>:test</code></li>
-<li>
-<p><code>:paths</code> ↳ <code>:include</code> and/or use of <code>TEST_INCLUDE_PATH(...)</code> 
-    build directive macro within your test files</p>
+<li><code>:paths</code> ↳ <code>:include</code> and/or use of <code>TEST_INCLUDE_PATH(...)</code> 
+  build directive macro within your test files</li>
+</ul>
 </li>
 <li>
 <p>At minimum, these settings must be specified for a release build:</p>
-</li>
+<ul>
 <li><code>:project</code> ↳ <code>:build_root</code></li>
-<li>
-<p><code>:paths</code> ↳ <code>:source</code></p>
+<li><code>:paths</code> ↳ <code>:source</code></li>
+</ul>
 </li>
 <li>
 <p>As much as is possible, Ceedling validates your settings in
@@ -3411,7 +3411,7 @@ for this. A few highlights from that reference page:</p>
   extending release build abilities.</p>
 </li>
 </ul>
-<h2 id="ceedling-specific-yaml-handling-conventions">Ceedling-specific YAML Handling &amp; Conventions</h2>
+<h2 id="ceedling-yaml-handling-conventions">Ceedling YAML Handling &amp; Conventions</h2>
 <h3 id="inline-ruby-string-expansion">Inline Ruby string expansion</h3>
 <p>Ceedling is able to execute inline Ruby string substitution code within the
 entries of certain project file configuration elements.</p>
@@ -3469,7 +3469,7 @@ string generated by a command line utility.</li>
 <code>_paths</code> are automagically processed like all Ceedling-specific paths in the
 YAML to have consistent directory separators (i.e. <code>/</code>) and to take advantage
 of inline Ruby string expansion (see preceding section for details).</p>
-<h2 id="lets-be-careful-out-there">Let's Be Careful Out There</h2>
+<h2 id="lets-be-careful-out-there">Let’s Be Careful Out There</h2>
 <p>Ceedling performs validation of the values you set in your 
 configuration file (this assumes your YAML is correct and will 
 not fail format parsing, of course).</p>

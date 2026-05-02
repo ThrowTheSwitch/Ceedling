@@ -1491,10 +1491,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#which-ceedling-background" class="md-nav__link">
+  <a href="#background" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Which Ceedling background
+        Background
       
     </span>
   </a>
@@ -1502,10 +1502,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#which-ceedling-options-and-precedence" class="md-nav__link">
+  <a href="#options-and-precedence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Which Ceedling options and precedence
+        Options and precedence
       
     </span>
   </a>
@@ -1513,10 +1513,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#which-ceedling-settings" class="md-nav__link">
+  <a href="#settings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Which Ceedling settings
+        Settings
       
     </span>
   </a>
@@ -1902,7 +1902,7 @@
   <span class="md-ellipsis">
     
   
-    Compilation Symbols
+    Defines
   
 
     
@@ -3125,10 +3125,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#which-ceedling-background" class="md-nav__link">
+  <a href="#background" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Which Ceedling background
+        Background
       
     </span>
   </a>
@@ -3136,10 +3136,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#which-ceedling-options-and-precedence" class="md-nav__link">
+  <a href="#options-and-precedence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Which Ceedling options and precedence
+        Options and precedence
       
     </span>
   </a>
@@ -3147,10 +3147,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#which-ceedling-settings" class="md-nav__link">
+  <a href="#settings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Which Ceedling settings
+        Settings
       
     </span>
   </a>
@@ -3230,12 +3230,12 @@
 Typically, Ceedling developers need this ability. But, it could come in
 handy in certain advanced Continuous Integration build scenarios or some
 sort of version behavior comparison.</p>
-<p>It's not uncommon in Ceedling development work to have the last production 
+<p>It’s not uncommon in Ceedling development work to have the last production 
 gem installed while modifying the application code in a locally cloned 
 repository. Or, you may be bouncing between local versions of Ceedling to
 troubleshoot changes.</p>
 <p>Which Ceedling handling gives you options on what gets run.</p>
-<h2 id="which-ceedling-background">Which Ceedling background</h2>
+<h2 id="background">Background</h2>
 <p>Ceedling is usually packaged and installed as a Ruby Gem. This gem ends
 up installed in an appropriate place by the <code>gem</code> package installer.
 Inside the gem installation is the entire Ceedling project. The <code>ceedling</code>
@@ -3245,14 +3245,17 @@ configuration. Ultimately, it then launches the main application code from
 <code>lib/</code>.</p>
 <p>The features and conventions controlling <em>which ceedling</em> dictate which
 application code the <code>ceedling</code> command line handler launches.</p>
-<p><em>NOTE:</em> If you are a developer working on the code in Ceedling's <code>bin/</code> 
-and want to run it while a gem is installed, you must take the additional 
-step of specifying the path to the <code>ceedling</code> launcher in your file system.</p>
-<p>In Unix-like systems, this will look like:
+<div class="admonition note">
+<p class="admonition-title">Ceedling development in <code>bin/</code></p>
+<p>Working on the code in Ceedling’s <code>bin/</code> and need to run it while a gem is 
+installed? You must take the additional step of specifying the path to the 
+<code>ceedling</code> launcher in your filesystem.</p>
+<p>In Unix-like systems:
 <code>&gt; my/ceedling/changes/bin/ceedling &lt;args&gt;</code>.</p>
-<p>On Windows systems, you may need to run:
+<p>On Windows systems:
 <code>&gt; ruby my\ceedling\changes\bin\ceedling &lt;args&gt;</code>.</p>
-<h2 id="which-ceedling-options-and-precedence">Which Ceedling options and precedence</h2>
+</div>
+<h2 id="options-and-precedence">Options and precedence</h2>
 <p>When Ceedling starts up, it evaluates a handful of conditions to determine
 which Ceedling location to launch.</p>
 <p>The following are evaluated in order:</p>
@@ -3269,13 +3272,15 @@ which Ceedling location to launch.</p>
    <code>ceedling</code> launcher is running. In the typical case this is the default 
    gem installation.</li>
 </ol>
-<p><em>NOTE:</em> Configuration entry (2) does not make sense in some scenarios.
-When running <code>ceedling new</code>, <code>ceedling examples</code>, or <code>ceedling example</code> 
+<div class="admonition note">
+<p class="admonition-title">Configuration entry (2) does not make sense in some scenarios</p>
+<p>When running <code>ceedling new</code>, <code>ceedling examples</code>, or <code>ceedling example</code> 
 there is no project file to read. Similarly, <code>ceedling upgrade</code> does not 
 load a project file; it merely works with the directory structure and 
-contets of a project. In these cases, the environment variable is your
+contents of a project. In these cases, the environment variable is your
 only option to set which Ceedling to launch.</p>
-<h2 id="which-ceedling-settings">Which Ceedling settings</h2>
+</div>
+<h2 id="settings">Settings</h2>
 <p>The environment variable and configuration entry for <em>Which Ceedling</em> can
 contain two values:</p>
 <ol>
@@ -3283,7 +3288,7 @@ contain two values:</p>
    should run the application packaged alongside it in <code>lib/</code> (these 
    paths are typically found in the gem installation location).</li>
 <li>A relative or absolute path in your file system. Such a path should 
-   point to the top-level directory that contains Ceedling's <code>bin/</code> and 
+   point to the top-level directory that contains Ceedling’s <code>bin/</code> and 
    <code>lib/</code> sub-directories.</li>
 </ol>
 <p><br/></p>

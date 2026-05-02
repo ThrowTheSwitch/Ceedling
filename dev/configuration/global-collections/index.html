@@ -1832,7 +1832,7 @@
   <span class="md-ellipsis">
     
   
-    Compilation Symbols
+    Defines
   
 
     
@@ -3126,149 +3126,150 @@ lower case methods).</p>
 <p>Global collections are typically used in Rakefiles, plugins, 
 and Ruby scripts where the contents tend to be especially 
 handy for crafting custom functionality.</p>
-<p>Once upon a time collections were a core component of Ceedling.
-As the tool has grown in sophistication and as many of its 
+<div class="admonition note">
+<p class="admonition-title">Collections are no longer a core component of Ceedling</p>
+<p>As Ceedling has grown in sophistication and as many of its 
 features now operate per test executable, the utility of and
-number of collections has dwindled. Previously, nearly all
-Ceedling actions happened in bulk and with the same 
-collections used for all tasks. This is no longer true.</p>
+number of collections has dwindled.</p>
+<p>Once upon a time, nearly all Ceedling actions happened in 
+bulk and with the same collections used for all tasks. This 
+is no longer true.</p>
+</div>
 <ul>
-<li><code>COLLECTION_PROJECT_OPTIONS</code>:</li>
-</ul>
+<li>
+<p><code>COLLECTION_PROJECT_OPTIONS</code>:</p>
 <p>All project option files with path found in the configured 
-  options paths having the configured YAML file extension.</p>
-<ul>
-<li><code>COLLECTION_ALL_TESTS</code>:</li>
-</ul>
+options paths having the configured YAML file extension.</p>
+</li>
+<li>
+<p><code>COLLECTION_ALL_TESTS</code>:</p>
 <p>All files with path found in the configured test paths 
-  having the configured source file extension. </p>
-<ul>
-<li><code>COLLECTION_ALL_ASSEMBLY</code>:</li>
-</ul>
+having the configured source file extension. </p>
+</li>
+<li>
+<p><code>COLLECTION_ALL_ASSEMBLY</code>:</p>
 <p>All files with path found in the configured source and 
-  test support paths having the configured assembly file 
-  extension. </p>
-<ul>
-<li><code>COLLECTION_ALL_SOURCE</code>:</li>
-</ul>
+test support paths having the configured assembly file 
+extension. </p>
+</li>
+<li>
+<p><code>COLLECTION_ALL_SOURCE</code>:</p>
 <p>All files with path found in the configured source paths 
-  having the configured source file extension. </p>
-<ul>
-<li><code>COLLECTION_ALL_HEADERS</code>:</li>
-</ul>
+having the configured source file extension. </p>
+</li>
+<li>
+<p><code>COLLECTION_ALL_HEADERS</code>:</p>
 <p>All files with path found in the configured include, 
-  support, and test paths having the configured header file 
-  extension. </p>
-<ul>
-<li><code>COLLECTION_ALL_SUPPORT</code>:</li>
-</ul>
+support, and test paths having the configured header file 
+extension. </p>
+</li>
+<li>
+<p><code>COLLECTION_ALL_SUPPORT</code>:</p>
 <p>All files with path found in the configured test support 
-  paths having the configured source file extension. </p>
-<ul>
-<li><code>COLLECTION_PATHS_INCLUDE</code>:</li>
-</ul>
+paths having the configured source file extension. </p>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_INCLUDE</code>:</p>
 <p>All configured include paths.</p>
-<ul>
-<li><code>COLLECTION_PATHS_SOURCE</code>:</li>
-</ul>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_SOURCE</code>:</p>
 <p>All configured source paths.</p>
-<ul>
-<li><code>COLLECTION_PATHS_SUPPORT</code>:</li>
-</ul>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_SUPPORT</code>:</p>
 <p>All configured support paths.</p>
-<ul>
-<li><code>COLLECTION_PATHS_TEST</code>:</li>
-</ul>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_TEST</code>:</p>
 <p>All configured test paths.</p>
-<ul>
-<li><code>COLLECTION_PATHS_SOURCE_AND_INCLUDE</code>:</li>
-</ul>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_SOURCE_AND_INCLUDE</code>:</p>
 <p>All configured source and include paths.</p>
-<ul>
-<li><code>COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR</code>:</li>
-</ul>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR</code>:</p>
 <p>All configured source and include paths plus applicable 
-  vendor paths (Unity's source path plus CMock and 
-  CException's source paths if mocks and exceptions are 
-  enabled).</p>
-<ul>
-<li><code>COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE</code>:</li>
-</ul>
+vendor paths (Unity’s source path plus CMock and 
+CException’s source paths if mocks and exceptions are 
+enabled).</p>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE</code>:</p>
 <p>All configured test, support, source, and include paths.</p>
-<ul>
-<li><code>COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR</code>:</li>
-</ul>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR</code>:</p>
 <p>All test, support, source, include, and applicable 
-  vendor paths (Unity's source path plus CMock and 
-  CException's source paths if mocks and exceptions are 
-  enabled).</p>
-<ul>
-<li><code>COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE</code>:</li>
-</ul>
+vendor paths (Unity’s source path plus CMock and 
+CException’s source paths if mocks and exceptions are 
+enabled).</p>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE</code>:</p>
 <p>All configured release toolchain include paths.</p>
-<ul>
-<li><code>COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE</code>:</li>
-</ul>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE</code>:</p>
 <p>All configured test toolchain include paths.</p>
-<ul>
-<li><code>COLLECTION_PATHS_VENDOR</code>:</li>
-</ul>
-<p>Unity's source path plus CMock and CException's source 
-  paths if mocks and exceptions are enabled.</p>
-<ul>
-<li><code>COLLECTION_VENDOR_FRAMEWORK_SOURCES</code>:</li>
-</ul>
-<p>Unity plus CMock, and CException's .c filenames (without 
-  paths) if mocks and exceptions are enabled.</p>
-<ul>
+</li>
+<li>
+<p><code>COLLECTION_PATHS_VENDOR</code>:</p>
+<p>Unity’s source path plus CMock and CException’s source 
+paths if mocks and exceptions are enabled.</p>
+</li>
+<li>
+<p><code>COLLECTION_VENDOR_FRAMEWORK_SOURCES</code>:</p>
+<p>Unity plus CMock, and CException’s .c filenames (without 
+paths) if mocks and exceptions are enabled.</p>
+</li>
 <li>
 <p><code>COLLECTION_RELEASE_BUILD_INPUT</code>:</p>
-</li>
-<li>
-<p>All files with path found in the configured source 
-     paths having the configured source file extension.</p>
-</li>
+<ul>
+<li>All files with path found in the configured source 
+  paths having the configured source file extension.</li>
 <li>If exceptions are enabled, the source files for 
-     CException.</li>
-<li>
-<p>If assembly support is enabled, all assembly files 
-     found in the configured paths having the configured 
-     assembly file extension.</p>
+  CException.</li>
+<li>If assembly support is enabled, all assembly files 
+  found in the configured paths having the configured 
+  assembly file extension.</li>
+</ul>
 </li>
 <li>
 <p><code>COLLECTION_EXISTING_TEST_BUILD_INPUT</code>:</p>
-</li>
-<li>
-<p>All files with path found in the configured source 
-     paths having the configured source file extension.</p>
-</li>
+<ul>
+<li>All files with path found in the configured source 
+  paths having the configured source file extension.</li>
 <li>All files with path found in the configured test 
-     paths having the configured source file extension.</li>
-<li>Unity's source files.</li>
+  paths having the configured source file extension.</li>
+<li>Unity’s source files.</li>
 <li>If exceptions are enabled, the source files for 
-     CException.</li>
+  CException.</li>
 <li>If mocks are enabled, the C source files for CMock.</li>
 <li>If assembly support is enabled, all assembly files 
-     found in the configured paths having the configured 
-     assembly file extension.</li>
+  found in the configured paths having the configured 
+  assembly file extension.</li>
 </ul>
 <p>This collection does not include .c files generated by 
-  Ceedling and its supporting frameworks at build time 
-  (e.g. test runners and mocks). Further, this collection 
-  does not include source files added to a test 
-  executable's build list with the <code>TEST_SOURCE_FILE()</code> 
-  build directive macro.</p>
-<ul>
-<li><code>COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS</code>:</li>
-</ul>
-<p>If exceptions are enabled, CException's .c filenames 
-  (without paths) remapped to configured object file 
-  extension.</p>
-<ul>
-<li><code>COLLECTION_TEST_FIXTURE_EXTRA_LINK_OBJECTS</code>:</li>
-</ul>
+Ceedling and its supporting frameworks at build time 
+(e.g. test runners and mocks). Further, this collection 
+does not include source files added to a test 
+executable’s build list with the <code>TEST_SOURCE_FILE()</code> 
+build directive macro.</p>
+</li>
+<li>
+<p><code>COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS</code>:</p>
+<p>If exceptions are enabled, CException’s .c filenames 
+(without paths) remapped to configured object file 
+extension.</p>
+</li>
+<li>
+<p><code>COLLECTION_TEST_FIXTURE_EXTRA_LINK_OBJECTS</code>:</p>
 <p>All test support source filenames (without paths) 
-  remapped to configured object file extension.</p>
+remapped to configured object file extension.</p>
+</li>
+</ul>
 <p><br/></p>
 
 

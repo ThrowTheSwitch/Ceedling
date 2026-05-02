@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#cmock-configure-cmocks-code-generation-compilation" class="md-skip">
+        <a href="#cmock" class="md-skip">
           Skip to content
         </a>
       
@@ -1824,7 +1824,7 @@
   <span class="md-ellipsis">
     
   
-    Compilation Symbols
+    Defines
   
 
     
@@ -2058,7 +2058,7 @@
   <a href="#notes-on-ceedlings-nudges-for-cmock-strict-ordering" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Notes on Ceedling's nudges for CMock strict ordering
+        Notes on Ceedling’s nudges for CMock strict ordering
       
     </span>
   </a>
@@ -3240,7 +3240,7 @@
   <a href="#notes-on-ceedlings-nudges-for-cmock-strict-ordering" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Notes on Ceedling's nudges for CMock strict ordering
+        Notes on Ceedling’s nudges for CMock strict ordering
       
     </span>
   </a>
@@ -3333,7 +3333,8 @@
   
 
 
-<h1 id="cmock-configure-cmocks-code-generation-compilation"><code>:cmock</code> Configure CMock's code generation &amp; compilation</h1>
+<h1 id="cmock"><code>:cmock</code></h1>
+<p><strong>Configure CMock’s code generation &amp; compilation</strong></p>
 <p>Ceedling sets values for a subset of CMock settings. All CMock options are
 available to be set, but only those options set by Ceedling in an automated
 fashion are documented below. See <a href="https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMock_Summary.md">CMock documentation</a>.</p>
@@ -3341,22 +3342,22 @@ fashion are documented below. See <a href="https://github.com/ThrowTheSwitch/CMo
 <p>Tests fail if expected call order is not same as source order</p>
 <p><strong>Default</strong>: TRUE</p>
 <h2 id="verbosity"><code>:verbosity</code></h2>
-<p>If not set, defaults to Ceedling's verbosity level</p>
+<p>If not set, defaults to Ceedling’s verbosity level</p>
 <h2 id="defines"><code>:defines</code></h2>
-<p>Adds list of symbols used to configure CMock's C code features in its source
+<p>Adds list of symbols used to configure CMock’s C code features in its source
 and header files at compile time.</p>
 <p>See <a href="../../../testing-guide/frameworks/">Using Unity, CMock &amp; CException</a> for
 much more on configuring and making use of these frameworks in your build.</p>
 <p>To manage overall command line length, these symbols are only added to
 compilation when a CMock C source file is compiled.</p>
-<p>No symbols must be set unless CMock's defaults are inappropriate for your
+<p>No symbols must be set unless CMock’s defaults are inappropriate for your
 environment and needs.</p>
 <p><strong>Default</strong>: <code>[]</code> (empty)</p>
 <h2 id="plugins"><code>:plugins</code></h2>
-<p>To enable CMock's optional and advanced features available via CMock plugin,
+<p>To enable CMock’s optional and advanced features available via CMock plugin,
 simply add <code>:cmock</code> ↳ <code>:plugins</code> to your configuration and specify your desired
 additional CMock plugins as a simple list of the plugin names.</p>
-<p>See <a href="https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMock_Summary.md">CMock's documentation</a> to understand plugin options.</p>
+<p>See <a href="https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMock_Summary.md">CMock’s documentation</a> to understand plugin options.</p>
 <p><strong>Default</strong>: <code>[]</code> (empty)</p>
 <h2 id="unity_helper_path"><code>:unity_helper_path</code></h2>
 <p>A Unity helper is a simple header file used by convention to support your
@@ -3366,8 +3367,9 @@ you need in a Unity helper header file and <code>#include</code> that header fil
 test file.</p>
 <p>When a Unity helper is provided to CMock, it takes on more significance, and
 more magic happens. CMock parses Unity helper header files and uses macros of a
-certain naming convention to extend CMock's handling of mocked parameters.</p>
-<p>See the Unity and CMock documentation for more details.</p>
+certain naming convention to extend CMock’s handling of mocked parameters.</p>
+<p>See the <a href="../../../testing-guide/frameworks/">Unity and CMock documentation</a> 
+for more details.</p>
 <p><code>:unity_helper_path</code> may be a single string or a list. Each value must be a
 relative path from your Ceedling working directory to a Unity helper header file
 (these are typically organized within containing Ceedling <code>:paths</code> ↳ <code>:support</code>
@@ -3381,14 +3383,14 @@ files into generated mocks. The filenames in this list will be transformed into
 any Unity helper file paths will be automatically injected into this list
 provided to CMock.</p>
 <p><strong>Default</strong>: <code>[]</code> (empty)</p>
-<h2 id="notes-on-ceedlings-nudges-for-cmock-strict-ordering">Notes on Ceedling's nudges for CMock strict ordering</h2>
+<h2 id="notes-on-ceedlings-nudges-for-cmock-strict-ordering">Notes on Ceedling’s nudges for CMock strict ordering</h2>
 <p>The preceding settings are tied to other Ceedling settings; hence, why they are
 documented here.</p>
 <p>The first setting above, <code>:enforce_strict_ordering</code>, defaults to <code>FALSE</code> within
 CMock. However, it is set to <code>TRUE</code> by default in Ceedling as our way of
 encouraging you to use strict ordering.</p>
 <p>Strict ordering is teeny bit more expensive in terms of code generated, test
-execution time, and complication in deciphering test failures. However, it's
+execution time, and complication in deciphering test failures. However, it’s
 good practice. And, of course, you can always disable it by overriding the
 value in the Ceedling project configuration file.</p>
 
