@@ -3125,21 +3125,28 @@
 
 
 <h1 id="partials">Partials</h1>
-<p>A <em>Partial</em> is your C code sliced and diced to expose functional elements 
-for testing that you could not otherwise access without rewriting your 
-source code. Think of Partials as a scalpel for testing your code.</p>
+<p>A <em>Partial</em> is your C code sliced and diced to expose elements for testing 
+that you could not otherwise access without rewriting your source code. 
+Think of Partials as a unit testing scalpel.</p>
 <p>Partials are useful when a module under test contains:</p>
 <ul>
-<li><strong><code>static</code> or <code>inline</code> functions</strong> — With Partials these become easily 
-  accessible within your test code.</li>
-<li><strong>File-scoped <code>static</code> variables</strong> — With Partials the <code>static</code> keyword 
-  is stripped and the variable is automatically made <code>extern</code> so it can 
-  be easily accessed within your test code.</li>
-<li><strong>Function-scoped <code>static</code> variables</strong> — Partials promotes these from
-  within function scope to module scope so they can be accessed in your
-  test code. Apart from a necessary renaming, these work identically to
+<li><strong><code>static</code> or <code>inline</code> functions</strong> — These become accessible within 
+  your test code.</li>
+<li><strong>File-scoped <code>static</code> variables</strong> — The <code>static</code> keyword is stripped, 
+  and the variable is automatically made <code>extern</code> for easy access within 
+  your test code.</li>
+<li><strong>Function-scoped <code>static</code> variables</strong> — These are promoted from
+  function scope to module scope so they can be accessed in your
+  test code. Apart from necessary renaming, this works identically to
   file-scoped <code>static</code> variables.</li>
 </ul>
+<div class="admonition warning">
+<p class="admonition-title">Limitations of Partials</p>
+<p>Partials are new to Ceedling with 1.1.0. Carving up C code is tricky
+business. Complex code may break Ceedling’s lexing or its assumptions 
+on symbol ordering. Some issues may be bugs to be reported while 
+others may be complexities that Partials are simply unable to resolve.</p>
+</div>
 <hr />
 <div class="grid cards">
 <ul>
