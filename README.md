@@ -63,7 +63,7 @@ awesomeness in the C language.
 For simple project structures, Ceedling can build and test an entire project
 from just a few lines in its project configuration file.
 
-Because it handles all the nitty-gritty of rebuilds and becuase of Unity and
+Because it handles all the nitty-gritty of rebuilds and because of Unity and
 CMock, Ceedling makes [Test-Driven Development][TDD] in C a breeze. It even 
 provides handy backtrace debugging options for finding the source of crashing
 code exercised by your unit tests.
