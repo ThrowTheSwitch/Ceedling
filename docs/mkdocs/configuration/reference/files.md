@@ -1,21 +1,61 @@
-# `:files` Modify file collections
+# `:files`
 
-**File listings for tailoring file collections**
+**Tailoring file collections**
 
 Ceedling relies on file collections to do its work. These file collections are
 automagically assembled from paths, matching globs / wildcards, and file
-extensions (see project configuration `:extension`).
+extensions. See [project configuration `:extension`](extension.md).
 
 Entries in `:files` accomplish filepath-oriented tailoring of the bulk file
 collections created from `:paths` directory listings and filename pattern
 matching.
 
-On occasion you may need to remove from or add individual files to Ceedling's
+On occasion you may need to remove from or add individual files to Ceedling’s
 file collections.
 
 The path grammar documented in the `:paths` configuration section largely
 applies to `:files` path entries — albeit with regard to filepaths and not
 directory paths. The `:files` grammar and YAML examples are documented below.
+
+## Example `:files` YAML
+
+### Simple tailoring
+
+```yaml
+:paths:
+  # All <dirs>/*.<source extension> => test/release compilation input
+  :source:
+    - src/**
+
+:files:
+  :source:
+    - +:callbacks/serial_comm.c  # Add source code outside src/
+    - -:src/board/atm134.c       # Remove board code
+```
+
+### Advanced tailoring
+
+```yaml
+:paths:
+  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
+  :test:
+     - test/**
+
+:files:
+  :test:
+    # Remove every test file anywhere beneath test/ whose name ends with 'Model'. 
+    # String replacement inserts a global constant that is the file extension for 
+    # a C file. This is an anchor for the end of the filename and automaticlly 
+    # uses file extension settings.
+    - "-:test/**/*Model#{EXTENSION_SOURCE}"
+
+    # Remove test files at depth 1 beneath test/ with 'analog' anywhere in their names.
+    - -:test/*{A,a}nalog*
+
+    # Remove test files at depth 1 beneath test/ that are of an "F series"
+    # test collection FAxxxx, FBxxxx, and FCxxxx where 'x' is any character.
+    - -:test/F[A-C]????
+```
 
 ## `:files` ↳ `:test`
 
@@ -55,7 +95,7 @@ Add a collection of library paths to be included when linking.
 
 **Default**: `[]` (empty)
 
-## `:files` configuration options & notes
+## `:files` options & notes
 
 1. A path can be absolute (fully qualified) or relative.
 1. A path can include a glob matcher (more on this below).
@@ -80,9 +120,9 @@ that they ignore directory paths. Only filepaths are recognized.
 Glob operators include the following: `*`, `**`, `?`, `[-]`, `{,}`.
 
 * `*`
-   * When used within a character string, `*` is simply a standard wildcard.
-   * When used after a path separator, `/*` matches all subdirectories of depth
-     1 below the parent path, not including the parent path.
+    * When used within a character string, `*` is simply a standard wildcard.
+    * When used after a path separator, `/*` matches all subdirectories of depth
+      1 below the parent path, not including the parent path.
 * `**`: All subdirectories recursively discovered below the parent path, not
   including the parent path. This pattern only makes sense after a path
   separator `/**`.
@@ -100,51 +140,10 @@ Put simply, with an optional preceding decorator `-:`, you can instruct Ceedling
 to remove certain file paths from a collection after it builds that collection.
 
 By default, paths are additive. For pretty alignment in your YAML, you may also
-use `+:`, but strictly speaking, it's not necessary.
+use `+:`, but strictly speaking, it’s not necessary.
 
 Subtractive paths may be simple paths or globs just like any other path entry.
 
-See examples below.
-
-## Example `:files` YAML blurbs
-
-### Simple `:files` tailoring
-
-```yaml
-:paths:
-  # All <dirs>/*.<source extension> => test/release compilation input
-  :source:
-    - src/**
-
-:files:
-  :source:
-    - +:callbacks/serial_comm.c  # Add source code outside src/
-    - -:src/board/atm134.c       # Remove board code
-```
-
-### Advanced `:files` tailoring
-
-```yaml
-:paths:
-  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
-  :test:
-     - test/**
-
-:files:
-  :test:
-    # Remove every test file anywhere beneath test/ whose name ends with 'Model'. 
-    # String replacement inserts a global constant that is the file extension for 
-    # a C file. This is an anchor for the end of the filename and automaticlly 
-    # uses file extension settings.
-    - "-:test/**/*Model#{EXTENSION_SOURCE}"
-
-    # Remove test files at depth 1 beneath test/ with 'analog' anywhere in their names.
-    - -:test/*{A,a}nalog*
-
-    # Remove test files at depth 1 beneath test/ that are of an "F series"
-    # test collection FAxxxx, FBxxxx, and FCxxxx where 'x' is any character.
-    - -:test/F[A-C]????
-```
 
 [globs-tutorial]: http://ruby.about.com/od/beginningruby/a/dir2.htm
 [ruby-globs]: https://ruby-doc.org/core-3.0.0/Dir.html#method-c-glob

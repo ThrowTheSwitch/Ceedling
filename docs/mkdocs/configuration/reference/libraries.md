@@ -1,7 +1,23 @@
 # `:libraries`
 
-Ceedling allows you to pull in specific libraries for release and test builds
-with a few levels of support.
+**Pull in specific libraries for release and test builds**
+
+## `:libraries` example YAML
+
+```yaml
+:paths:
+  :libraries:
+    - proj/libs     # Linker library search paths
+
+:libraries:
+  :test:
+    - test/commsstub.lib  # Imagined communication library that logs to console without traffic
+  :release:
+    - release/comms.lib   # Imagined production communication library
+  :system:
+    - math          # Add system math library to test & release builds 
+  :flag: -Lib=${1}  # This linker does not follow the gcc convention
+```
 
 ## `:libraries` ↳ `:test`
 
@@ -55,23 +71,6 @@ Command line argument format for adding a library search path.
 Library search paths may be added to your project with `:paths` ↳ `:libraries`.
 
 **Default**: `-L "${1}"` (GCC format)
-
-## `:libraries` example with YAML blurb
-
-```yaml
-:paths:
-  :libraries:
-    - proj/libs     # Linker library search paths
-
-:libraries:
-  :test:
-    - test/commsstub.lib  # Imagined communication library that logs to console without traffic
-  :release:
-    - release/comms.lib   # Imagined production communication library
-  :system:
-    - math          # Add system math library to test & release builds 
-  :flag: -Lib=${1}  # This linker does not follow the gcc convention
-```
 
 ## `:libraries` notes
 

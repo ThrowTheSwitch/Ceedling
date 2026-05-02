@@ -1,10 +1,10 @@
-# Project `:paths` configuration
+# `:paths`
 
 **Paths for build tools and building file collections**
 
 Ceedling relies on various path and file collections to do its work. File
 collections are automagically assembled from paths, matching globs / wildcards,
-and file extensions (see project configuration `:extension`).
+and file extensions. See [project configuration `:extension`](extension.md).
 
 Entries in `:paths` help create directory-based bulk file collections. The
 `:files` configuration section is available for filepath-oriented tailoring of
@@ -25,20 +25,92 @@ Ceedling project files use lists broken up per line.
 
 ```
 
-Examples that illustrate the many `:paths` entry features follow all the
-various path-related documentation sections.
-
-!!! warning "Mixin Order Controls Path List Order"
+!!! warning "Mixin order controls path list order"
     If you use Mixins to build up path lists in your project configuration,
     the merge order of those Mixins will dictate the ordering of your path
     lists. Particularly given that the search path list built with
     `:paths` ↳ `:include` you will want to pay attention to ordering issues
     involved in specifying path lists in Mixins.
 
+## Example `:paths` YAML
+
+!!! note "Path standardization"
+    Ceedling standardizes paths for you. Internally, all paths use forward
+    slash `/` path separators (including on Windows) and trailing path 
+    separators are cleaned up. This should have no impact on your project
+    regardless of platform, but you will see the effects in logging.
+
+### Simple entries
+
+```yaml
+:paths:
+  # All <dirs>/*.<source extension> => test/release compilation input
+  :source:
+    - project/src/            # Resulting source list has just two relative directory paths
+    - project/aux             # (Traversal goes no deeper than these simple paths)
+
+  # All <dirs> => compilation search paths + mock search paths
+  :include:                   # All <dirs> => compilation input
+    - project/src/inc         # Include paths are subdirectory of src/
+    - /usr/local/include/foo  # Header files for a prebuilt library at fully qualified path
+
+  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
+  :test:                
+    - ../tests                # Tests have parent directory above working directory
+```
+
+### Common globs with subtractive entries
+
+```yaml
+:paths:
+  :source:              
+    - +:project/src/**    # Recursive glob yields all subdirectories of any depth plus src/
+    - -:project/src/exp   # Exclude experimental code in exp/ from release or test builds
+                          # `+:` is decoration for pretty alignment; only `-:` changes a list
+
+  :include:
+    - +:project/src/**/inc   # Include every subdirectory inc/ beneath src/
+    - -:project/src/exp/inc  # Remove header files subdirectory for experimental code
+```
+
+### Advanced entries with globs and string expansion
+
+```yaml
+:paths:
+  :test:                             
+    - test/**/f???             # Every 4 character "f-series" subdirectory beneath test/
+
+  :my_things:                  # Custom path list
+    - "#{PROJECT_ROOT}/other"  # Inline Ruby string expansion using Ceedling global constant
+```
+
+```yaml
+:paths:
+  :test:                             
+    - test/{foo,b*,xyz}  # Path list will include test/foo/, test/xyz/, and any subdirectories 
+                         # beneath test/ beginning with 'b', including just test/b/
+```
+
+Globs and inline Ruby string expansion can require trial and error to arrive at
+your intended results. Ceedling provides as much validation of paths as is
+practical.
+
+!!! tip "Troubleshooting paths"
+    * Use the `ceedling paths:*` and `ceedling files:*` command line tasks to 
+      verify your settings. (Here `*` is shorthand for `test`, `source`, `include`,
+      etc. Confusing? Sorry.)
+    * `ceedling dumpconfig` can also help your troubleshoot your configuration. 
+      This application command causes Ceedling to fully process your configuration
+      (e.g. Mixins, any string expansion, etc.) and write the result to another 
+      YAML file for your inspection.
+
 ## `:paths` ↳ `:test`
 
-All C files containing unit test code. NOTE: this is one of the handful of
-configuration values that must be set for a test suite.
+All C files containing unit test code.
+
+!!! note "Test suite configuration requirement"
+  `:paths` ↳ `:test` is one of the handful of configuration values that must 
+  be set for a test suite.
 
 **Default**: `[]` (empty)
 
@@ -46,8 +118,9 @@ configuration values that must be set for a test suite.
 
 All C files containing release code (code to be tested).
 
-NOTE: this is one of the handful of configuration values that must be set for
-either a release build or test suite.
+!!! note "Build configuration requirement"
+  `:paths` ↳ `:source` must be set for any build — release build or test suite —
+  to run.
 
 **Default**: `[]` (empty)
 
@@ -77,7 +150,7 @@ files are intermixed with source files, you must duplicate some or all of your
 `:paths` ↳ `:source` entries here.
 
 In its simplest use, your include paths list can be exhaustive. That is, you
-list all path locations where your project's header files reside in this
+list all path locations where your project’s header files reside in this
 configuration list.
 
 However, if you have a complex project or many, many include paths that create
@@ -151,9 +224,9 @@ the `*` and `**` operators.
 Glob operators include the following: `*`, `**`, `?`, `[-]`, `{,}`.
 
 * `*`
-   * When used within a character string, `*` is simply a standard wildcard.
-   * When used after a path separator, `/*` matches all subdirectories of depth
-     1 below the parent path, not including the parent path.
+    * When used within a character string, `*` is simply a standard wildcard.
+    * When used after a path separator, `/*` matches all subdirectories of depth
+      1 below the parent path, not including the parent path.
 * `**`: All subdirectories recursively discovered below the parent path, not
   including the parent path. This pattern only makes sense after a path
   separator `/**`.
@@ -168,12 +241,10 @@ Special conventions:
 * If a globified path ends with `/*` or `/**`, the resulting list of
   directories also includes the parent directory.
 
-See the example `:paths` YAML blurb section.
-
 [globs-tutotrial]: http://ruby.about.com/od/beginningruby/a/dir2.htm
 [ruby-globs]: https://ruby-doc.org/core-3.0.0/Dir.html#method-c-glob
 
-## Subtractive `:paths` entries
+## Subtractive entries
 
 Globs are super duper helpful when you have many paths to list. But, what if a
 single glob gets you 20 nested paths, but you actually want to exclude 2 of
@@ -187,89 +258,17 @@ to remove certain directory paths from a collection after it builds that
 collection.
 
 By default, paths are additive. For pretty alignment in your YAML, you may also
-use `+:`, but strictly speaking, it's not necessary.
+use `+:`, but strictly speaking, it’s not necessary.
 
 Subtractive paths may be simple paths or globs just like any other path entry.
 
-See examples below.
-
-!!! note "Subtractive Paths Resolve After All Mixins Merge"
+!!! note "Subtractive paths resolve after all mixins merge"
     The resolution of subtractive paths happens after your full paths lists are
     assembled. So, if you use `:paths` entries in Mixins to build up your
     project configuration, subtractive paths will only be processed after the
     final mixin is merged. That is, you can merge in additive and subtractive
-    paths with Mixins to your heart's content. The subtractive paths are not
+    paths with Mixins to your heart’s content. The subtractive paths are not
     removed until all Mixins have been merged.
-
-## Example `:paths` YAML blurbs
-
-_NOTE:_ Ceedling standardizes paths for you. Internally, all paths use forward
-slash `/` path separators (including on Windows), and Ceedling cleans up
-trailing path separators to be consistent internally.
-
-### Simple `:paths` entries
-
-```yaml
-:paths:
-  # All <dirs>/*.<source extension> => test/release compilation input
-  :source:
-    - project/src/            # Resulting source list has just two relative directory paths
-    - project/aux             # (Traversal goes no deeper than these simple paths)
-
-  # All <dirs> => compilation search paths + mock search paths
-  :include:                   # All <dirs> => compilation input
-    - project/src/inc         # Include paths are subdirectory of src/
-    - /usr/local/include/foo  # Header files for a prebuilt library at fully qualified path
-
-  # All <dirs>/<test prefix>*.<source extension> => test compilation input + test suite executables
-  :test:                
-    - ../tests                # Tests have parent directory above working directory
-```
-
-### Common `:paths` globs with subtractive path entries
-
-```yaml
-:paths:
-  :source:              
-    - +:project/src/**    # Recursive glob yields all subdirectories of any depth plus src/
-    - -:project/src/exp   # Exclude experimental code in exp/ from release or test builds
-                          # `+:` is decoration for pretty alignment; only `-:` changes a list
-
-  :include:
-    - +:project/src/**/inc   # Include every subdirectory inc/ beneath src/
-    - -:project/src/exp/inc  # Remove header files subdirectory for experimental code
-```
-
-### Advanced `:paths` entries with globs and string expansion
-
-```yaml
-:paths:
-  :test:                             
-    - test/**/f???             # Every 4 character "f-series" subdirectory beneath test/
-
-  :my_things:                  # Custom path list
-    - "#{PROJECT_ROOT}/other"  # Inline Ruby string expansion using Ceedling global constant
-```
-
-```yaml
-:paths:
-  :test:                             
-    - test/{foo,b*,xyz}  # Path list will include test/foo/, test/xyz/, and any subdirectories 
-                         # beneath test/ beginning with 'b', including just test/b/
-```
-
-Globs and inline Ruby string expansion can require trial and error to arrive at
-your intended results. Ceedling provides as much validation of paths as is
-practical.
-
-Use the `ceedling paths:*` and `ceedling files:*` command line tasks —
-documented in a preceding section — to verify your settings. (Here `*` is
-shorthand for `test`, `source`, `include`, etc. Confusing? Sorry.)
-
-The command line option `ceedling dumpconfig` can also help your troubleshoot
-your configuration file. This application command causes Ceedling to process
-your configuration file and write the result to another YAML file for your
-inspection.
 
 [GCC]: https://gcc.gnu.org
 [inline-ruby-string-expansion]: ../project-file.md#inline-ruby-string-expansion

@@ -266,7 +266,7 @@ way needed. To use a literal `$`, escape it as `\\$`.
      itself (when using a local toolchain such as GCC) or a binary input file
      given to a simulator in its arguments.
 
-## Example `:tools` YAML blurb
+## Example `:tools` YAML
 
 ```yaml
 :tools:

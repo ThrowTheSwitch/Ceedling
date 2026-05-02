@@ -1,6 +1,16 @@
-# `:extension` Filename extensions used to collect lists of files searched in `:paths`
+# `:extension` 
+
+**Filename extensions used to collect lists of files searched in [`:paths`](paths.md)**
 
 Ceedling uses path lists and wildcard matching against filename extensions to collect file lists.
+
+## Example `:extension` YAML
+
+```yaml
+:extension:
+  :source: .cc
+  :executable: .bin
+```
 
 ## `:header`
 
@@ -49,11 +59,3 @@ Test results file (not likely to ever need a redefined value)
 File containing make-style dependency rules created by the `gcc` preprocessor
 
 **Default**: .d
-
-## Example `:extension` YAML blurb
-
-```yaml
-:extension:
-  :source: .cc
-  :executable: .bin
-```

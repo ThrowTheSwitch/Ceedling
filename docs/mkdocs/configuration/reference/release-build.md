@@ -45,7 +45,7 @@ is available in artifact paths.
 
 **Default**: `[]` (empty)
 
-## Example `:release_build` YAML blurb
+## Example `:release_build` YAML
 
 ```yaml
 :release_build:

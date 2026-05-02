@@ -24,7 +24,7 @@ inject assembly code into the build of a test executable:
 
 **Default**: FALSE
 
-## Example `:test_build` YAML blurb
+## Example `:test_build` YAML
 
 ```yaml
 :test_build:

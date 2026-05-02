@@ -283,7 +283,7 @@ You have three options for this setting, `:none`, `:simple` or `:gdb`:
 
 **Default**: `:simple`
 
-## Example `:project` YAML blurb
+## Example `:project` YAML
 
 ```yaml
 :project:

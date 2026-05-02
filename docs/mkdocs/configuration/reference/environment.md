@@ -1,13 +1,23 @@
-# `:environment:` Insert environment variables into shells running tools
+# `:environment:`
+
+**Insert environment variables into the shells running tools**
 
 Ceedling creates environment variables from any key / value pairs in the 
-environment section. Keys become an environment variable name in uppercase. The
-values are strings assigned to those environment variables. These value strings 
-are either simple string values in YAML or the concatenation of a YAML array
-of strings.
+`:environment` section of project configuration.
+
+Keys become an environment variable name in uppercase. Values are strings 
+assigned to those environment variables. These value strings are either simple 
+string values as provided in the YAML or they are a concatenation of a YAML 
+array of strings.
 
 `:environment` is a list of single key / value pair entries processed in the 
 configured list order.
+
+!!! note "`:environment` is a key / value YAML hash"
+    `:environment` is a list of key / value pairs. Only one key per entry
+    is allowed, and that key must be a `:`_<symbol>_. `:environment` is 
+    not unusual YAML, but it is a use of YAML unlike other sections of
+    project configuration.
 
 `:environment` variable value strings can include 
 [inline Ruby string expansion][inline-ruby-string-expansion]. Thus, later 
@@ -22,10 +32,7 @@ path separation character (i.e. `:` on Unix-variants, `;` on Windows).
 All other instances of environment keys assigned a value of a YAML array use 
 simple concatenation.
 
-## Example `:environment` YAML blurb
-
-Note that `:environment` is a list of key / value pairs. Only one key per entry
-is allowed, and that key must be a `:`_<symbol>_.
+## Example `:environment` YAML
 
 ```yaml
 :environment:

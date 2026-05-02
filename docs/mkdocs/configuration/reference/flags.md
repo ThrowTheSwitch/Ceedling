@@ -1,6 +1,8 @@
-# `:flags` Configure preprocessing, compilation & linking command line flags
+# `:flags`
 
-Ceedling's internal, default tool configurations execute compilation and linking
+**Configure preprocessing, compilation, and linking command line flags**
+
+Ceedling’s internal, default tool configurations execute compilation and linking
 of test and source files among a variety of other tooling needs. (See later
 `:tools` section.)
 
@@ -10,7 +12,7 @@ to add flags to the command line for individual tests or a release build, the
 
 Entries in `:flags` modify the command lines for tools used at build time.
 
-## Flags organization: Contexts, Operations, and Matchers
+## Contexts, Operations, and Matchers
 
 The basic layout of `:flags` involves the concepts of contexts and operations.
 
@@ -29,7 +31,7 @@ Advanced matching for **_test_** build handling only:
   :test:
     :<operation>:  # :preprocess, :compile, :assemble, or :link
       :<matcher>:  # Matches a subset of test executables 
-        - <flag>   # List of flags added to that subset's build operation command line
+        - <flag>   # List of flags added to that subset’s build operation command line
         - ...
 ```
 
@@ -46,7 +48,7 @@ An operation is the build step you wish to modify — `:preprocess`, `:compile`,
 
 You specify the flags you want to add to a build step beneath `:<context>` ↳
 `:<operation>`. In many cases this is a simple YAML list of strings that will
-become flags in a tool's command line.
+become flags in a tool’s command line.
 
 **_Specifically and only in the `:test` context_** you also have the option to
 create test file matchers that apply flags to some subset of your test build.
@@ -70,7 +72,7 @@ to the link step of a release build artifact.
 ## `:flags` ↳ `:test` ↳ `:compile`
 
 This project configuration entry adds the specified items as flags to
-compilation of C components in a test executable's build.
+compilation of C components in a test executable’s build.
 
 Flags may be represented in a simple YAML list or with a more sophisticated
 file matcher YAML key plus flag list. Both are documented below.
@@ -80,7 +82,7 @@ file matcher YAML key plus flag list. Both are documented below.
 ## `:flags` ↳ `:test` ↳ `:preprocess`
 
 This project configuration entry adds the specified items as flags to any
-needed preprocessing of components in a test executable's build. Preprocessing
+needed preprocessing of components in a test executable’s build. Preprocessing
 must be enabled for this matching to have any effect. (See `:project` ↳
 `:use_test_preprocessor`.)
 
@@ -93,10 +95,11 @@ feature.)
 Flags may be represented in a simple YAML list or with a more sophisticated
 file matcher YAML key plus flag list. Both are documented below.
 
-_NOTE:_ Left unspecified, `:preprocess` flags default to behaving identically
-to `:compile` flags. Override this behavior by adding `:test` ↳ `:preprocess`
-flags. If you want no additional flags for preprocessing regardless of test
-compilation flags, simply specify an empty list `[]`.
+!!! note "`:preprocess` flags default behavior"
+    Left unspecified, `:preprocess` flags default to behaving identically
+    to `:compile` flags. Override this behavior by adding `:test` ↳ `:preprocess`
+    flags. If you want no additional flags for preprocessing regardless of test
+    compilation flags, simply specify an empty list `[]`.
 
 **Default**: Same flags as specified for test compilation
 
@@ -114,7 +117,7 @@ file matcher YAML key plus flag list. Both are documented below.
 
 Some advanced plugins make use of build contexts as well. For instance, the
 Ceedling Gcov plugin uses a context of `:gcov`, surprisingly enough. For any
-plugins with tools that take advantage of Ceedling's internal mechanisms, you
+plugins with tools that take advantage of Ceedling’s internal mechanisms, you
 can add to those tools' flags in the same manner as the built-in contexts and
 operations.
 
@@ -127,13 +130,15 @@ example illustrates simple YAML lists for flags.
 :flags:
   :release:
     :compile:
-      - -std=c99  # Add `-std=c99` to compilation of all C files in the release build
+      # Add `-std=c99` to compilation of all C files in the release build
+      - -std=c99
   :test:
     :compile:
-      - -std=c99  # Add `-std=c99` to the compilation of all C files in all test executables
+      # Add `-std=c99` to the compilation of all C files in all test executables
+      - -std=c99
 ```
 
-Given the YAML blurb above, when test or release compilation occurs, the flag
+Given the YAML above, when test or release compilation occurs, the flag
 specifying the C standard will be in the command line for compilation of all C
 files.
 
@@ -183,8 +188,8 @@ illustrate the basic ideas of test file name matching.
 These matchers are available:
 
 1. Wildcard (`*`)
-   1. If specified in isolation, matches all tests.
-   1. If specified within a string, matches any test filename with that 
+    1. If specified in isolation, matches all tests.
+    1. If specified within a string, matches any test filename with that 
       wildcard expansion.
 1. Substring — Matches on part of a test filename (up to all of it, including
    full path).
@@ -230,7 +235,7 @@ This simple list format for the `:test` context…
         - -foo
 ```
 
-### Distinguishing similar or identical filenames with `:flags` per-test matchers
+### Distinguishing similar / identical filenames
 
 You may find yourself needing to distinguish test files with the same name or
 test files with names whose base naming is identical.
@@ -243,13 +248,15 @@ different directories. As such, your matching must include the path.
 :flags:
   :test:
     :compile:
-      :hardware/test_startup:  # Match any test names beginning with 'test_startup' in hardware/ directory
-        - A                  
-      :network/test_startup:   # Match any test names beginning with 'test_startup' in network/ directory
+      # Match any test names beginning with 'test_startup' in hardware/ directory
+      :hardware/test_startup:
+        - A                 
+      # Match any test names beginning with 'test_startup' in network/ directory 
+      :network/test_startup:
         - B
 ```
 
-It's common in C file naming to use the same base name for multiple files.
+It’s common in C file naming to use the same base name for multiple files.
 Given the following example list, care must be given to matcher construction to
 single out test_comm_startup.c.
 
@@ -261,14 +268,15 @@ single out test_comm_startup.c.
 :flags:
   :test:
     :compile:
-      :test_comm_startup.c: # Full filename with extension distinguishes this file test_comm_startup_timers.c
+      # Full filename with extension distinguishes this file test_comm_startup_timers.c
+      :test_comm_startup.c:
         - FOO
 ```
 
 The preceding examples use substring matching, but, regular expression matching
 could also be appropriate.
 
-### Using YAML anchors & aliases for complex testing scenarios with `:flags`
+### YAML anchors & aliases
 
 See the short but helpful article on [YAML anchors & aliases][yaml-anchors-aliases]
 to understand these features of YAML.

@@ -1,12 +1,14 @@
-# `:mixins` Configuring Mixins to merge
+# `:mixins`
+
+**Configuring your project by merging more configuration**
 
 Mixins allow you to merge configuration with your project configuration
 just after the base project file is loaded.
 
-This section of a project configuration file is documented in the
-[discussion of project files and mixins][mixins-config-section].
+This project configuration section is documented extensively 
+in the [discussion of project files and mixins][mixins-config-section].
 
-**_Notes:_**
+## Notes
 
 * A `:mixins` section is only recognized within a base project configuration 
   file. Any `:mixins` sections within mixin files are ignored.

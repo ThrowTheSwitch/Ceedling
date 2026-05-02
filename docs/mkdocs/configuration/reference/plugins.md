@@ -1,20 +1,33 @@
-# `:plugins` Ceedling extensions
+# `:plugins`
+
+**Ceedling extensions**
 
 See the section below dedicated to plugins for more information. This section
 pertains to enabling plugins in your project configuration.
 
-Ceedling includes a number of built-in plugins. See the collection within the
-project at [plugins/][ceedling-plugins] or the
-[plugins documentation][ceedling-plugins]. Each built-in plugin subdirectory
-includes thorough documentation covering its capabilities and configuration
-options.
+Ceedling includes a number of [built-in plugins][ceedling-plugins].
 
-_Note_: Many users find that the handy-dandy [Command Hooks plugin][command-hooks]
-is often enough to meet their needs. This plugin allows you to connect your own
-scripts and command line tools to Ceedling build steps.
+!!! tip "Handy-dandy Command Hooks plugin for custom needs"
+    Many users find the handy-dandy [Command Hooks plugin][command-hooks]
+    is often enough to meet their custom needs. This plugin allows you to 
+    connect your own scripts and command line tools to Ceedling build steps.
 
 For documentation on creating your own custom plugins, see the
 [Plugin Development Guide][custom-plugins].
+
+## Example `:plugins` YAML
+
+```yaml
+:plugins:
+  :load_paths:
+    - project/tools/ceedling/plugins  # Home to your collection of plugin directories.
+    - project/support                 # Home to some ruby code your custom plugins share.
+  :enabled:
+    - report_tests_pretty_stdout      # Nice test results at your command line.
+    - our_custom_code_metrics_report  # You created a plugin to scan all code to collect 
+                                      # line counts and complexity metrics. Its name is a
+                                      # subdirectory beneath the first `:load_path` entry.
+```
 
 ## `:load_paths`
 
@@ -39,21 +52,6 @@ test results (usually `report_tests_pretty_stdout`).
 
 If no reporting plugins are specified, Ceedling will print to `$stdout` the
 (quite readable) raw test results from all test fixtures executed.
-
-## Example `:plugins` YAML blurb
-
-```yaml
-:plugins:
-  :load_paths:
-    - project/tools/ceedling/plugins  # Home to your collection of plugin directories.
-    - project/support                 # Home to some ruby code your custom plugins share.
-  :enabled:
-    - report_tests_pretty_stdout      # Nice test results at your command line.
-    - our_custom_code_metrics_report  # You created a plugin to scan all code to collect 
-                                      # line counts and complexity metrics. Its name is a
-                                      # subdirectory beneath the first `:load_path` entry.
-
-```
 
 [custom-plugins]: ../../development/plugins/index.md
 [ceedling-plugins]: ../../plugins/index.md
