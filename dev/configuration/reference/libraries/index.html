@@ -1905,6 +1905,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#libraries-example-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :libraries example YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#libraries-test" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1953,17 +1964,6 @@
     <span class="md-ellipsis">
       
         :path_flag
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#libraries-example-with-yaml-blurb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        :libraries example with YAML blurb
       
     </span>
   </a>
@@ -3171,6 +3171,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#libraries-example-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :libraries example YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#libraries-test" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3219,17 +3230,6 @@
     <span class="md-ellipsis">
       
         :path_flag
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#libraries-example-with-yaml-blurb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        :libraries example with YAML blurb
       
     </span>
   </a>
@@ -3334,8 +3334,21 @@
 
 
 <h1 id="libraries"><code>:libraries</code></h1>
-<p>Ceedling allows you to pull in specific libraries for release and test builds
-with a few levels of support.</p>
+<p><strong>Pull in specific libraries for release and test builds</strong></p>
+<h2 id="libraries-example-yaml"><code>:libraries</code> example YAML</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:paths</span><span class="p">:</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:libraries</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proj/libs</span><span class="w">     </span><span class="c1"># Linker library search paths</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">:libraries</span><span class="p">:</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">:test</span><span class="p">:</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test/commsstub.lib</span><span class="w">  </span><span class="c1"># Imagined communication library that logs to console without traffic</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">:release</span><span class="p">:</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">release/comms.lib</span><span class="w">   </span><span class="c1"># Imagined production communication library</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">:system</span><span class="p">:</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">math</span><span class="w">          </span><span class="c1"># Add system math library to test &amp; release builds </span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="nt">:flag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-Lib=${1}</span><span class="w">  </span><span class="c1"># This linker does not follow the gcc convention</span>
+</code></pre></div>
 <h2 id="libraries-test"><code>:libraries</code> ↳ <code>:test</code></h2>
 <p>Libraries that should be injected into your test builds when linking occurs.</p>
 <p>These can be specified as naked library names or with relative paths if search
@@ -3367,20 +3380,6 @@ command line argument will be <code>-lm</code>.</p>
 <p>Command line argument format for adding a library search path.</p>
 <p>Library search paths may be added to your project with <code>:paths</code> ↳ <code>:libraries</code>.</p>
 <p><strong>Default</strong>: <code>-L "${1}"</code> (GCC format)</p>
-<h2 id="libraries-example-with-yaml-blurb"><code>:libraries</code> example with YAML blurb</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:paths</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:libraries</span><span class="p">:</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proj/libs</span><span class="w">     </span><span class="c1"># Linker library search paths</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">:libraries</span><span class="p">:</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">:test</span><span class="p">:</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test/commsstub.lib</span><span class="w">  </span><span class="c1"># Imagined communication library that logs to console without traffic</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">:release</span><span class="p">:</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">release/comms.lib</span><span class="w">   </span><span class="c1"># Imagined production communication library</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">:system</span><span class="p">:</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">math</span><span class="w">          </span><span class="c1"># Add system math library to test &amp; release builds </span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="nt">:flag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-Lib=${1}</span><span class="w">  </span><span class="c1"># This linker does not follow the gcc convention</span>
-</code></pre></div>
 <h2 id="libraries-notes"><code>:libraries</code> notes</h2>
 <ul>
 <li>If you've specified your own link step, you are going to want to add <code>${4}</code> to

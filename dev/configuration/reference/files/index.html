@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#files-modify-file-collections" class="md-skip">
+        <a href="#files" class="md-skip">
           Skip to content
         </a>
       
@@ -1793,6 +1793,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#example-files-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example :files YAML
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example :files YAML">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple-tailoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simple tailoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-tailoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced tailoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#files-test" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1859,10 +1898,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#files-configuration-options-notes" class="md-nav__link">
+  <a href="#files-options-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :files configuration options &amp; notes
+        :files options &amp; notes
       
     </span>
   </a>
@@ -1888,45 +1927,6 @@
       
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-files-yaml-blurbs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example :files YAML blurbs
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Example :files YAML blurbs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#simple-files-tailoring" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Simple :files tailoring
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#advanced-files-tailoring" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced :files tailoring
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -3232,6 +3232,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#example-files-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example :files YAML
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Example :files YAML">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple-tailoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simple tailoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-tailoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced tailoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#files-test" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3298,10 +3337,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#files-configuration-options-notes" class="md-nav__link">
+  <a href="#files-options-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :files configuration options &amp; notes
+        :files options &amp; notes
       
     </span>
   </a>
@@ -3327,45 +3366,6 @@
       
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-files-yaml-blurbs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example :files YAML blurbs
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Example :files YAML blurbs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#simple-files-tailoring" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Simple :files tailoring
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#advanced-files-tailoring" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced :files tailoring
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -3455,81 +3455,21 @@
   
 
 
-<h1 id="files-modify-file-collections"><code>:files</code> Modify file collections</h1>
-<p><strong>File listings for tailoring file collections</strong></p>
+<h1 id="files"><code>:files</code></h1>
+<p><strong>Tailoring file collections</strong></p>
 <p>Ceedling relies on file collections to do its work. These file collections are
 automagically assembled from paths, matching globs / wildcards, and file
-extensions (see project configuration <code>:extension</code>).</p>
+extensions. See <a href="../extension/">project configuration <code>:extension</code></a>.</p>
 <p>Entries in <code>:files</code> accomplish filepath-oriented tailoring of the bulk file
 collections created from <code>:paths</code> directory listings and filename pattern
 matching.</p>
-<p>On occasion you may need to remove from or add individual files to Ceedling's
+<p>On occasion you may need to remove from or add individual files to Ceedling’s
 file collections.</p>
 <p>The path grammar documented in the <code>:paths</code> configuration section largely
 applies to <code>:files</code> path entries — albeit with regard to filepaths and not
 directory paths. The <code>:files</code> grammar and YAML examples are documented below.</p>
-<h2 id="files-test"><code>:files</code> ↳ <code>:test</code></h2>
-<p>Modify the collection of unit test C files.</p>
-<p><strong>Default</strong>: <code>[]</code> (empty)</p>
-<h2 id="files-source"><code>:files</code> ↳ <code>:source</code></h2>
-<p>Modify the collection of all source files used in unit test builds and release
-builds.</p>
-<p><strong>Default</strong>: <code>[]</code> (empty)</p>
-<h2 id="files-assembly"><code>:files</code> ↳ <code>:assembly</code></h2>
-<p>Modify the (optional) collection of assembly files used in release builds.</p>
-<p><strong>Default</strong>: <code>[]</code> (empty)</p>
-<h2 id="files-include"><code>:files</code> ↳ <code>:include</code></h2>
-<p>Modify the collection of all source header files used in unit test builds
-(e.g. for mocking) and release builds.</p>
-<p><strong>Default</strong>: <code>[]</code> (empty)</p>
-<h2 id="files-support"><code>:files</code> ↳ <code>:support</code></h2>
-<p>Modify the collection of supporting C files available to unit tests builds.</p>
-<p><strong>Default</strong>: <code>[]</code> (empty)</p>
-<h2 id="files-libraries"><code>:files</code> ↳ <code>:libraries</code></h2>
-<p>Add a collection of library paths to be included when linking.</p>
-<p><strong>Default</strong>: <code>[]</code> (empty)</p>
-<h2 id="files-configuration-options-notes"><code>:files</code> configuration options &amp; notes</h2>
-<ol>
-<li>A path can be absolute (fully qualified) or relative.</li>
-<li>A path can include a glob matcher (more on this below).</li>
-<li>A path can use <a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>.</li>
-<li>Subtractive paths prepended with a <code>-:</code> decorator are possible and useful.
-   See the documentation below.</li>
-</ol>
-<h2 id="files-globs"><code>:files</code> Globs</h2>
-<p>Globs are effectively fancy wildcards. They are not as capable as full regular
-expressions but are easier to use. Various OSs and programming languages
-implement them differently.</p>
-<p>For a quick overview, see this <a href="http://ruby.about.com/od/beginningruby/a/dir2.htm">tutorial</a>.</p>
-<p>Ceedling supports globs so you can specify patterns of files as well as simple,
-ordinary filepaths.</p>
-<p>Ceedling <code>:files</code> globs operate identically to <a href="https://ruby-doc.org/core-3.0.0/Dir.html#method-c-glob">Ruby globs</a> except
-that they ignore directory paths. Only filepaths are recognized.</p>
-<p>Glob operators include the following: <code>*</code>, <code>**</code>, <code>?</code>, <code>[-]</code>, <code>{,}</code>.</p>
-<ul>
-<li><code>*</code></li>
-<li>When used within a character string, <code>*</code> is simply a standard wildcard.</li>
-<li>When used after a path separator, <code>/*</code> matches all subdirectories of depth
-     1 below the parent path, not including the parent path.</li>
-<li><code>**</code>: All subdirectories recursively discovered below the parent path, not
-  including the parent path. This pattern only makes sense after a path
-  separator <code>/**</code>.</li>
-<li><code>?</code>: Single alphanumeric character wildcard.</li>
-<li><code>[x-y]</code>: Single alphanumeric character as found in the specified range.</li>
-<li><code>{x, y, ...}</code>: Matching any of the comma-separated patterns. Two or more
-  patterns may be listed within the brackets. Patterns may be specific
-  character sequences or other glob operators.</li>
-</ul>
-<h2 id="subtractive-files-entries">Subtractive <code>:files</code> entries</h2>
-<p>Tailoring a file collection includes adding to it but also subtracting from it.</p>
-<p>Put simply, with an optional preceding decorator <code>-:</code>, you can instruct Ceedling
-to remove certain file paths from a collection after it builds that collection.</p>
-<p>By default, paths are additive. For pretty alignment in your YAML, you may also
-use <code>+:</code>, but strictly speaking, it's not necessary.</p>
-<p>Subtractive paths may be simple paths or globs just like any other path entry.</p>
-<p>See examples below.</p>
-<h2 id="example-files-yaml-blurbs">Example <code>:files</code> YAML blurbs</h2>
-<h3 id="simple-files-tailoring">Simple <code>:files</code> tailoring</h3>
+<h2 id="example-files-yaml">Example <code>:files</code> YAML</h2>
+<h3 id="simple-tailoring">Simple tailoring</h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:paths</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="c1"># All &lt;dirs&gt;/*.&lt;source extension&gt; =&gt; test/release compilation input</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">:source</span><span class="p">:</span>
@@ -3540,7 +3480,7 @@ use <code>+:</code>, but strictly speaking, it's not necessary.</p>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+:callbacks/serial_comm.c</span><span class="w">  </span><span class="c1"># Add source code outside src/</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-:src/board/atm134.c</span><span class="w">       </span><span class="c1"># Remove board code</span>
 </code></pre></div>
-<h3 id="advanced-files-tailoring">Advanced <code>:files</code> tailoring</h3>
+<h3 id="advanced-tailoring">Advanced tailoring</h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:paths</span><span class="p">:</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="c1"># All &lt;dirs&gt;/&lt;test prefix&gt;*.&lt;source extension&gt; =&gt; test compilation input + test suite executables</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">:test</span><span class="p">:</span>
@@ -3561,6 +3501,67 @@ use <code>+:</code>, but strictly speaking, it's not necessary.</p>
 <a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="c1"># test collection FAxxxx, FBxxxx, and FCxxxx where &#39;x&#39; is any character.</span>
 <a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-:test/F[A-C]????</span>
 </code></pre></div>
+<h2 id="files-test"><code>:files</code> ↳ <code>:test</code></h2>
+<p>Modify the collection of unit test C files.</p>
+<p><strong>Default</strong>: <code>[]</code> (empty)</p>
+<h2 id="files-source"><code>:files</code> ↳ <code>:source</code></h2>
+<p>Modify the collection of all source files used in unit test builds and release
+builds.</p>
+<p><strong>Default</strong>: <code>[]</code> (empty)</p>
+<h2 id="files-assembly"><code>:files</code> ↳ <code>:assembly</code></h2>
+<p>Modify the (optional) collection of assembly files used in release builds.</p>
+<p><strong>Default</strong>: <code>[]</code> (empty)</p>
+<h2 id="files-include"><code>:files</code> ↳ <code>:include</code></h2>
+<p>Modify the collection of all source header files used in unit test builds
+(e.g. for mocking) and release builds.</p>
+<p><strong>Default</strong>: <code>[]</code> (empty)</p>
+<h2 id="files-support"><code>:files</code> ↳ <code>:support</code></h2>
+<p>Modify the collection of supporting C files available to unit tests builds.</p>
+<p><strong>Default</strong>: <code>[]</code> (empty)</p>
+<h2 id="files-libraries"><code>:files</code> ↳ <code>:libraries</code></h2>
+<p>Add a collection of library paths to be included when linking.</p>
+<p><strong>Default</strong>: <code>[]</code> (empty)</p>
+<h2 id="files-options-notes"><code>:files</code> options &amp; notes</h2>
+<ol>
+<li>A path can be absolute (fully qualified) or relative.</li>
+<li>A path can include a glob matcher (more on this below).</li>
+<li>A path can use <a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>.</li>
+<li>Subtractive paths prepended with a <code>-:</code> decorator are possible and useful.
+   See the documentation below.</li>
+</ol>
+<h2 id="files-globs"><code>:files</code> Globs</h2>
+<p>Globs are effectively fancy wildcards. They are not as capable as full regular
+expressions but are easier to use. Various OSs and programming languages
+implement them differently.</p>
+<p>For a quick overview, see this <a href="http://ruby.about.com/od/beginningruby/a/dir2.htm">tutorial</a>.</p>
+<p>Ceedling supports globs so you can specify patterns of files as well as simple,
+ordinary filepaths.</p>
+<p>Ceedling <code>:files</code> globs operate identically to <a href="https://ruby-doc.org/core-3.0.0/Dir.html#method-c-glob">Ruby globs</a> except
+that they ignore directory paths. Only filepaths are recognized.</p>
+<p>Glob operators include the following: <code>*</code>, <code>**</code>, <code>?</code>, <code>[-]</code>, <code>{,}</code>.</p>
+<ul>
+<li><code>*</code><ul>
+<li>When used within a character string, <code>*</code> is simply a standard wildcard.</li>
+<li>When used after a path separator, <code>/*</code> matches all subdirectories of depth
+  1 below the parent path, not including the parent path.</li>
+</ul>
+</li>
+<li><code>**</code>: All subdirectories recursively discovered below the parent path, not
+  including the parent path. This pattern only makes sense after a path
+  separator <code>/**</code>.</li>
+<li><code>?</code>: Single alphanumeric character wildcard.</li>
+<li><code>[x-y]</code>: Single alphanumeric character as found in the specified range.</li>
+<li><code>{x, y, ...}</code>: Matching any of the comma-separated patterns. Two or more
+  patterns may be listed within the brackets. Patterns may be specific
+  character sequences or other glob operators.</li>
+</ul>
+<h2 id="subtractive-files-entries">Subtractive <code>:files</code> entries</h2>
+<p>Tailoring a file collection includes adding to it but also subtracting from it.</p>
+<p>Put simply, with an optional preceding decorator <code>-:</code>, you can instruct Ceedling
+to remove certain file paths from a collection after it builds that collection.</p>
+<p>By default, paths are additive. For pretty alignment in your YAML, you may also
+use <code>+:</code>, but strictly speaking, it’s not necessary.</p>
+<p>Subtractive paths may be simple paths or globs just like any other path entry.</p>
 
 
 

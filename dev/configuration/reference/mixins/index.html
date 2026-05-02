@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#mixins-configuring-mixins-to-merge" class="md-skip">
+        <a href="#mixins" class="md-skip">
           Skip to content
         </a>
       
@@ -1630,6 +1630,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mixins
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1646,6 +1664,36 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -3050,6 +3098,25 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -3134,12 +3201,13 @@
   
 
 
-<h1 id="mixins-configuring-mixins-to-merge"><code>:mixins</code> Configuring Mixins to merge</h1>
+<h1 id="mixins"><code>:mixins</code></h1>
+<p><strong>Configuring your project by merging more configuration</strong></p>
 <p>Mixins allow you to merge configuration with your project configuration
 just after the base project file is loaded.</p>
-<p>This section of a project configuration file is documented in the
-<a href="../../loading/#applying-mixins-to-base-configuration">discussion of project files and mixins</a>.</p>
-<p><strong><em>Notes:</em></strong></p>
+<p>This project configuration section is documented extensively 
+in the <a href="../../loading/#applying-mixins-to-base-configuration">discussion of project files and mixins</a>.</p>
+<h2 id="notes">Notes</h2>
 <ul>
 <li>A <code>:mixins</code> section is only recognized within a base project configuration 
   file. Any <code>:mixins</code> sections within mixin files are ignored.</li>

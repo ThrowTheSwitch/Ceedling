@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#environment-insert-environment-variables-into-shells-running-tools" class="md-skip">
+        <a href="#environment" class="md-skip">
           Skip to content
         </a>
       
@@ -1832,10 +1832,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-environment-yaml-blurb" class="md-nav__link">
+  <a href="#example-environment-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example :environment YAML blurb
+        Example :environment YAML
       
     </span>
   </a>
@@ -3127,10 +3127,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-environment-yaml-blurb" class="md-nav__link">
+  <a href="#example-environment-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example :environment YAML blurb
+        Example :environment YAML
       
     </span>
   </a>
@@ -3223,14 +3223,23 @@
   
 
 
-<h1 id="environment-insert-environment-variables-into-shells-running-tools"><code>:environment:</code> Insert environment variables into shells running tools</h1>
+<h1 id="environment"><code>:environment:</code></h1>
+<p><strong>Insert environment variables into the shells running tools</strong></p>
 <p>Ceedling creates environment variables from any key / value pairs in the 
-environment section. Keys become an environment variable name in uppercase. The
-values are strings assigned to those environment variables. These value strings 
-are either simple string values in YAML or the concatenation of a YAML array
-of strings.</p>
+<code>:environment</code> section of project configuration.</p>
+<p>Keys become an environment variable name in uppercase. Values are strings 
+assigned to those environment variables. These value strings are either simple 
+string values as provided in the YAML or they are a concatenation of a YAML 
+array of strings.</p>
 <p><code>:environment</code> is a list of single key / value pair entries processed in the 
 configured list order.</p>
+<div class="admonition note">
+<p class="admonition-title"><code>:environment</code> is a key / value YAML hash</p>
+<p><code>:environment</code> is a list of key / value pairs. Only one key per entry
+is allowed, and that key must be a <code>:</code><em><symbol></em>. <code>:environment</code> is 
+not unusual YAML, but it is a use of YAML unlike other sections of
+project configuration.</p>
+</div>
 <p><code>:environment</code> variable value strings can include 
 <a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>. Thus, later 
 entries can reference earlier entries.</p>
@@ -3240,9 +3249,7 @@ of string values will be concatenated with the appropriate platform-specific
 path separation character (i.e. <code>:</code> on Unix-variants, <code>;</code> on Windows).</p>
 <p>All other instances of environment keys assigned a value of a YAML array use 
 simple concatenation.</p>
-<h2 id="example-environment-yaml-blurb">Example <code>:environment</code> YAML blurb</h2>
-<p>Note that <code>:environment</code> is a list of key / value pairs. Only one key per entry
-is allowed, and that key must be a <code>:</code><em><symbol></em>.</p>
+<h2 id="example-environment-yaml">Example <code>:environment</code> YAML</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:environment</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">:license_server</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gizmo.intranet</span><span class="w">        </span><span class="c1"># LICENSE_SERVER set with value &quot;gizmo.intranet&quot;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">:license</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;#{`license.exe`}&quot;</span><span class="w">           </span><span class="c1"># LICENSE set to string generated from shelling out to</span>

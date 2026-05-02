@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#plugins-ceedling-extensions" class="md-skip">
+        <a href="#plugins" class="md-skip">
           Skip to content
         </a>
       
@@ -2101,6 +2101,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#example-plugins-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example :plugins YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#load_paths" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2116,17 +2127,6 @@
     <span class="md-ellipsis">
       
         :enabled
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-plugins-yaml-blurb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example :plugins YAML blurb
       
     </span>
   </a>
@@ -3127,6 +3127,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#example-plugins-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example :plugins YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#load_paths" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3142,17 +3153,6 @@
     <span class="md-ellipsis">
       
         :enabled
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-plugins-yaml-blurb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example :plugins YAML blurb
       
     </span>
   </a>
@@ -3245,19 +3245,30 @@
   
 
 
-<h1 id="plugins-ceedling-extensions"><code>:plugins</code> Ceedling extensions</h1>
+<h1 id="plugins"><code>:plugins</code></h1>
+<p><strong>Ceedling extensions</strong></p>
 <p>See the section below dedicated to plugins for more information. This section
 pertains to enabling plugins in your project configuration.</p>
-<p>Ceedling includes a number of built-in plugins. See the collection within the
-project at <a href="../../../plugins/">plugins/</a> or the
-<a href="../../../plugins/">plugins documentation</a>. Each built-in plugin subdirectory
-includes thorough documentation covering its capabilities and configuration
-options.</p>
-<p><em>Note</em>: Many users find that the handy-dandy <a href="../../../plugins/command-hooks/">Command Hooks plugin</a>
-is often enough to meet their needs. This plugin allows you to connect your own
-scripts and command line tools to Ceedling build steps.</p>
+<p>Ceedling includes a number of <a href="../../../plugins/">built-in plugins</a>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Handy-dandy Command Hooks plugin for custom needs</p>
+<p>Many users find the handy-dandy <a href="../../../plugins/command-hooks/">Command Hooks plugin</a>
+is often enough to meet their custom needs. This plugin allows you to 
+connect your own scripts and command line tools to Ceedling build steps.</p>
+</div>
 <p>For documentation on creating your own custom plugins, see the
 <a href="../../../development/plugins/">Plugin Development Guide</a>.</p>
+<h2 id="example-plugins-yaml">Example <code>:plugins</code> YAML</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:load_paths</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project/tools/ceedling/plugins</span><span class="w">  </span><span class="c1"># Home to your collection of plugin directories.</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project/support</span><span class="w">                 </span><span class="c1"># Home to some ruby code your custom plugins share.</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_pretty_stdout</span><span class="w">      </span><span class="c1"># Nice test results at your command line.</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">our_custom_code_metrics_report</span><span class="w">  </span><span class="c1"># You created a plugin to scan all code to collect </span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">                                      </span><span class="c1"># line counts and complexity metrics. Its name is a</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">                                      </span><span class="c1"># subdirectory beneath the first `:load_path` entry.</span>
+</code></pre></div>
 <h2 id="load_paths"><code>:load_paths</code></h2>
 <p>Base paths to search for plugin subdirectories or extra Ruby functionality.</p>
 <p>Ceedling maintains the Ruby load path for its built-in plugins. This list of
@@ -3273,17 +3284,6 @@ use, it's assumed that at least one reporting plugin will be used to format
 test results (usually <code>report_tests_pretty_stdout</code>).</p>
 <p>If no reporting plugins are specified, Ceedling will print to <code>$stdout</code> the
 (quite readable) raw test results from all test fixtures executed.</p>
-<h2 id="example-plugins-yaml-blurb">Example <code>:plugins</code> YAML blurb</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:plugins</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:load_paths</span><span class="p">:</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project/tools/ceedling/plugins</span><span class="w">  </span><span class="c1"># Home to your collection of plugin directories.</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project/support</span><span class="w">                 </span><span class="c1"># Home to some ruby code your custom plugins share.</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_pretty_stdout</span><span class="w">      </span><span class="c1"># Nice test results at your command line.</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">our_custom_code_metrics_report</span><span class="w">  </span><span class="c1"># You created a plugin to scan all code to collect </span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">                                      </span><span class="c1"># line counts and complexity metrics. Its name is a</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">                                      </span><span class="c1"># subdirectory beneath the first `:load_path` entry.</span>
-</code></pre></div>
 
 
 

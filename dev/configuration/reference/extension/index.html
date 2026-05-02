@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#extension-filename-extensions-used-to-collect-lists-of-files-searched-in-paths" class="md-skip">
+        <a href="#extension" class="md-skip">
           Skip to content
         </a>
       
@@ -1849,6 +1849,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#example-extension-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example :extension YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#header" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1930,17 +1941,6 @@
     <span class="md-ellipsis">
       
         :dependencies
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-extension-yaml-blurb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example :extension YAML blurb
       
     </span>
   </a>
@@ -3193,6 +3193,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#example-extension-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example :extension YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#header" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3274,17 +3285,6 @@
     <span class="md-ellipsis">
       
         :dependencies
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-extension-yaml-blurb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example :extension YAML blurb
       
     </span>
   </a>
@@ -3377,8 +3377,14 @@
   
 
 
-<h1 id="extension-filename-extensions-used-to-collect-lists-of-files-searched-in-paths"><code>:extension</code> Filename extensions used to collect lists of files searched in <code>:paths</code></h1>
+<h1 id="extension"><code>:extension</code></h1>
+<p><strong>Filename extensions used to collect lists of files searched in <a href="../paths/"><code>:paths</code></a></strong></p>
 <p>Ceedling uses path lists and wildcard matching against filename extensions to collect file lists.</p>
+<h2 id="example-extension-yaml">Example <code>:extension</code> YAML</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:extension</span><span class="p">:</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.cc</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.bin</span>
+</code></pre></div>
 <h2 id="header"><code>:header</code></h2>
 <p>C header files</p>
 <p><strong>Default</strong>: .h</p>
@@ -3403,11 +3409,6 @@
 <h2 id="dependencies"><code>:dependencies</code></h2>
 <p>File containing make-style dependency rules created by the <code>gcc</code> preprocessor</p>
 <p><strong>Default</strong>: .d</p>
-<h2 id="example-extension-yaml-blurb">Example <code>:extension</code> YAML blurb</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:extension</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.cc</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.bin</span>
-</code></pre></div>
 
 
 
