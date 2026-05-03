@@ -109,8 +109,8 @@ practical.
 All C files containing unit test code.
 
 !!! note "Test suite configuration requirement"
-  `:paths` ↳ `:test` is one of the handful of configuration values that must 
-  be set for a test suite.
+    `:paths` ↳ `:test` is one of the handful of configuration values that must 
+    be set for a test suite.
 
 **Default**: `[]` (empty)
 
@@ -119,8 +119,8 @@ All C files containing unit test code.
 All C files containing release code (code to be tested).
 
 !!! note "Build configuration requirement"
-  `:paths` ↳ `:source` must be set for any build — release build or test suite —
-  to run.
+    `:paths` ↳ `:source` must be set for any build — release build or test suite —
+    to run.
 
 **Default**: `[]` (empty)
 
