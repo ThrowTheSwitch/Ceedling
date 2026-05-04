@@ -75,6 +75,11 @@ class PATTERNS
   TEST_STDOUT_STATISTICS  = /\n-+\s*(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
   TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
   TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
+  TEST_MOCK_INCLUDE = /TEST_MOCK_INCLUDE\s*\(\s*\"\s*([^"]+)\s*\"\s*,\s*\"\s*([^"]+)\s*\"\s*\)/
+  TEST_MOCK_INCLUDE_H_PRE_ORIG_HEADER = /TEST_MOCK_INCLUDE_H_PRE_ORIG_HEADER\s*\(\s*\"\s*([^"]+)\s*\"\s*,\s*\"\s*([^"]+)\s*\"\s*\)/
+  TEST_MOCK_INCLUDE_H_POST_ORIG_HEADER = /TEST_MOCK_INCLUDE_H_POST_ORIG_HEADER\s*\(\s*\"\s*([^"]+)\s*\"\s*,\s*\"\s*([^"]+)\s*\"\s*\)/
+  TEST_MOCK_INCLUDE_C_PRE_HEADER = /TEST_MOCK_INCLUDE_C_PRE_HEADER\s*\(\s*\"\s*([^"]+)\s*\"\s*,\s*\"\s*([^"]+)\s*\"\s*\)/
+  TEST_MOCK_INCLUDE_C_POST_HEADER = /TEST_MOCK_INCLUDE_C_POST_HEADER\s*\(\s*\"\s*([^"]+)\s*\"\s*,\s*\"\s*([^"]+)\s*\"\s*\)/
 end
 
 GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
