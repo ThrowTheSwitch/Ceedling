@@ -5,7 +5,12 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'strscan'
+require 'ceedling/c_extractor/c_extractor_constants'
+
 class CExtractorCodeText
+
+  include CExtractorConstants
 
   # Collect the full text of a balanced delimiter pair starting AT open_char.
   # Nested pairs, string literals (verbatim), and comments (replaced with a
@@ -184,6 +189,95 @@ class CExtractorCodeText
     elsif scanner.scan(%r{/\*})
       scanner.skip_until(%r{\*/}) || scanner.terminate
     end
+  end
+
+  # Skip a single compiler extension at the current scanner position.
+  # Uses collect_balanced() for paren matching so all nesting depths are handled.
+  # Returns true and advances the scanner if an extension is found; returns false without
+  # moving if the current position is not the start of a known compiler extension.
+  #
+  # Handles:
+  #   __word__(…) — any double-underscore attribute form, e.g. __attribute__((…))
+  #   __declspec(…) — MSVC declaration specifier, including nested forms
+  #   Bare MSVC calling-convention keywords (__cdecl, __stdcall, etc.)
+  #
+  # Does NOT skip __int64, __int32, or any non-extension __ identifiers.
+  def skip_compiler_extension(scanner)
+    if scanner.check(/__\w+__\s*\(/)
+      scanner.skip(/__\w+__/)
+      skip_deadspace(scanner)
+      collect_balanced(scanner, '(', ')') if scanner.peek(1) == '('
+      return true
+    end
+
+    if scanner.check(/__declspec\s*\(/)
+      scanner.skip(/__declspec/)
+      skip_deadspace(scanner)
+      collect_balanced(scanner, '(', ')') if scanner.peek(1) == '('
+      return true
+    end
+
+    MSVC_CALLING_CONVENTIONS.each do |kw|
+      if scanner.check(/#{Regexp.escape(kw)}\b/)
+        scanner.skip(/#{Regexp.escape(kw)}/)
+        return true
+      end
+    end
+
+    false
+  end
+
+  # Strip all compiler extensions from a string and return the cleaned result.
+  # Uses an internal StringScanner plus collect_balanced() so all paren nesting depths
+  # are handled correctly (e.g. __declspec(align(8)), __attribute__((format(printf,1,2)))).
+  # Whitelist-based: only known forms are stripped; __int64, __int32, and any other
+  # non-extension __ identifiers are preserved verbatim.
+  # Whitespace is normalized to single spaces and the result is stripped.
+  #
+  # Handles:
+  #   __word__(…) — any double-underscore attribute form
+  #   __declspec(…) — MSVC declaration specifier (including nested parens)
+  #   Bare MSVC calling conventions, MSVC inline hints, C11 specifier keywords
+  def strip_compiler_extensions(text)
+    scanner = StringScanner.new(text)
+    result  = +""
+
+    bare_strip = MSVC_CALLING_CONVENTIONS +
+                 ['__forceinline', '__inline__', '__inline'] +
+                 C11_SPECIFIER_KEYWORDS
+
+    until scanner.eos?
+      # __word__(…) — any double-underscore attribute form including __attribute__((…))
+      if scanner.check(/__\w+__\s*\(/)
+        scanner.skip(/__\w+__/)
+        skip_deadspace(scanner)
+        collect_balanced(scanner, '(', ')') if scanner.peek(1) == '('
+        next
+      end
+
+      # __declspec(…) — handles nested forms like __declspec(align(8))
+      if scanner.check(/__declspec\s*\(/)
+        scanner.skip(/__declspec/)
+        skip_deadspace(scanner)
+        collect_balanced(scanner, '(', ')') if scanner.peek(1) == '('
+        next
+      end
+
+      # Whitelisted bare keywords (calling conventions, inline hints, C11 specifiers)
+      stripped = bare_strip.any? do |kw|
+        if scanner.check(/#{Regexp.escape(kw)}\b/)
+          scanner.skip(/#{Regexp.escape(kw)}/)
+          true
+        end
+      end
+      next if stripped
+
+      result << scanner.getch
+    end
+
+    result.gsub!(/\s+/, ' ')
+    result.strip!
+    result
   end
 
 end

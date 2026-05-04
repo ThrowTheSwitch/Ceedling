@@ -490,6 +490,30 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
+    it "emits function signature with __declspec(dllexport) verbatim in header" do
+      decl = Partials.manufacture_function_declaration(
+        name: 'exported_func',
+        signature: '__declspec(dllexport) void exported_func(void)'
+      )
+      raw = CExtractorTypes::CFunctionDeclaration.new(name: 'exported_func')
+      c_module = make_module(raw)
+
+      @generator.send(:generate_header, buf, 'mymod', [], [decl], c_module, false)
+
+      expect(buf.string).to include('__declspec(dllexport) void exported_func(void);')
+    end
+
+    it "emits extern variable declaration using clean type and name, not raw text with __attribute__" do
+      c_module = make_module(
+        make_var(name: 'counter', type: 'int', text: 'int counter __attribute__((aligned(16)));')
+      )
+
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, true)
+
+      expect(buf.string).to include('extern int counter;')
+      expect(buf.string).not_to include('__attribute__')
+    end
+
   end
 
   context "#generate_source (private method)" do
@@ -739,6 +763,36 @@ describe GeneratorPartials do
 
       @generator.send(:generate_source, buf, [], [foo_defn, bar_defn], c_module)
       expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "emits function code_block with __attribute__((noreturn)) verbatim in source" do
+      defn = Partials.manufacture_function_definition(
+        name: 'fatal_error',
+        signature: '__attribute__((noreturn)) void fatal_error(const char* msg)',
+        code_block: "__attribute__((noreturn)) void fatal_error(const char* msg)\n{\n  exit(1);\n}"
+      )
+      raw = CExtractorTypes::CFunctionDefinition.new(
+        name: 'fatal_error',
+        signature: '__attribute__((noreturn)) void fatal_error(const char* msg)',
+        code_block: "__attribute__((noreturn)) void fatal_error(const char* msg)\n{\n  exit(1);\n}",
+        body: "{\n  exit(1);\n}"
+      )
+      c_module = make_module(raw)
+
+      @generator.send(:generate_source, buf, [], [defn], c_module)
+
+      expect(buf.string).to include('__attribute__((noreturn)) void fatal_error(const char* msg)')
+      expect(buf.string).to include('exit(1);')
+    end
+
+    it "emits variable .text with __attribute__((aligned)) verbatim in source" do
+      c_module = make_module(
+        make_var(name: 'counter', type: 'int', text: 'int counter __attribute__((aligned(16)));')
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).to include('int counter __attribute__((aligned(16)));')
     end
 
   end

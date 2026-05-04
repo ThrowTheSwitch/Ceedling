@@ -1935,4 +1935,157 @@ describe CExtractorCodeText do
     end
   end
 
+  ###
+  ### skip_compiler_extension()
+  ###
+  describe "#skip_compiler_extension" do
+    let(:skip_ext) do
+      ->(content) do
+        scanner = StringScanner.new(content)
+        code_text = CExtractorCodeText.new
+        result = code_text.skip_compiler_extension(scanner)
+        [result, scanner.pos, scanner.rest]
+      end
+    end
+
+    it "returns false and does not advance on plain identifier" do
+      result, pos, rest = skip_ext.call("int foo")
+      expect(result).to be false
+      expect(rest).to eq("int foo")
+    end
+
+    it "returns false and does not advance on empty input" do
+      result, pos, rest = skip_ext.call("")
+      expect(result).to be false
+      expect(pos).to eq(0)
+    end
+
+    it "skips __cdecl calling convention" do
+      result, _pos, rest = skip_ext.call("__cdecl foo")
+      expect(result).to be true
+      expect(rest).to eq(" foo")
+    end
+
+    it "skips __stdcall calling convention" do
+      result, _pos, rest = skip_ext.call("__stdcall foo")
+      expect(result).to be true
+      expect(rest).to eq(" foo")
+    end
+
+    it "skips __fastcall calling convention" do
+      result, _pos, rest = skip_ext.call("__fastcall foo")
+      expect(result).to be true
+      expect(rest).to eq(" foo")
+    end
+
+    it "skips __declspec(dllexport)" do
+      result, _pos, rest = skip_ext.call("__declspec(dllexport) void")
+      expect(result).to be true
+      expect(rest).to eq(" void")
+    end
+
+    it "skips __declspec with nested parens" do
+      result, _pos, rest = skip_ext.call("__declspec(align(8)) void")
+      expect(result).to be true
+      expect(rest).to eq(" void")
+    end
+
+    it 'skips __declspec with nested parens and string argument' do
+      result, _pos, rest = skip_ext.call('__declspec(deprecated("msg")) void')
+      expect(result).to be true
+      expect(rest).to eq(" void")
+    end
+
+    it "skips __attribute__((interrupt))" do
+      result, _pos, rest = skip_ext.call("__attribute__((interrupt)) void")
+      expect(result).to be true
+      expect(rest).to eq(" void")
+    end
+
+    it "skips __attribute__ with deeply nested arguments" do
+      result, _pos, rest = skip_ext.call("__attribute__((format(printf,1,2))) void")
+      expect(result).to be true
+      expect(rest).to eq(" void")
+    end
+
+    it "returns false for __int64 (MSVC type — must not be skipped)" do
+      result, _pos, rest = skip_ext.call("__int64 x")
+      expect(result).to be false
+      expect(rest).to eq("__int64 x")
+    end
+  end
+
+  ###
+  ### strip_compiler_extensions()
+  ###
+  describe "#strip_compiler_extensions" do
+    let(:strip_ext) do
+      ->(text) { CExtractorCodeText.new.strip_compiler_extensions(text) }
+    end
+
+    it "returns input unchanged when there are no extensions" do
+      expect(strip_ext.call("int foo(void)")).to eq("int foo(void)")
+    end
+
+    it "returns empty string for empty input" do
+      expect(strip_ext.call("")).to eq("")
+    end
+
+    it "strips __declspec(dllexport)" do
+      expect(strip_ext.call("__declspec(dllexport) void foo(void)")).to eq("void foo(void)")
+    end
+
+    it "strips __declspec with nested parens" do
+      expect(strip_ext.call("__declspec(align(8)) int foo(void)")).to eq("int foo(void)")
+    end
+
+    it "strips __attribute__((interrupt)) in mid-signature position" do
+      expect(strip_ext.call("void __attribute__((interrupt)) ISR(void)")).to eq("void ISR(void)")
+    end
+
+    it "strips __attribute__ with deeply nested arguments" do
+      expect(strip_ext.call("__attribute__((format(printf,1,2))) int foo(char *fmt, ...)")).to eq("int foo(char *fmt, ...)")
+    end
+
+    it "strips __cdecl calling convention" do
+      expect(strip_ext.call("int __cdecl foo(void)")).to eq("int foo(void)")
+    end
+
+    it "strips __stdcall calling convention" do
+      expect(strip_ext.call("int __stdcall foo(void)")).to eq("int foo(void)")
+    end
+
+    it "strips __forceinline" do
+      expect(strip_ext.call("__forceinline void foo(void)")).to eq("void foo(void)")
+    end
+
+    it "strips __inline__" do
+      expect(strip_ext.call("__inline__ void foo(void)")).to eq("void foo(void)")
+    end
+
+    it "strips _Noreturn C11 specifier" do
+      expect(strip_ext.call("_Noreturn void exit_prog(int code)")).to eq("void exit_prog(int code)")
+    end
+
+    it "strips _Thread_local C11 specifier" do
+      expect(strip_ext.call("_Thread_local int counter")).to eq("int counter")
+    end
+
+    it "strips multiple extensions in one signature" do
+      expect(strip_ext.call("__declspec(dllexport) __cdecl void foo(void)")).to eq("void foo(void)")
+    end
+
+    it "preserves __int64 (MSVC type — must not be stripped)" do
+      expect(strip_ext.call("__int64 foo(void)")).to eq("__int64 foo(void)")
+    end
+
+    it "preserves __int32 (MSVC type — must not be stripped)" do
+      expect(strip_ext.call("static __int32 foo(void)")).to eq("static __int32 foo(void)")
+    end
+
+    it "normalizes whitespace left by stripping" do
+      expect(strip_ext.call("void  __cdecl  foo(void)")).to eq("void foo(void)")
+    end
+  end
+
 end

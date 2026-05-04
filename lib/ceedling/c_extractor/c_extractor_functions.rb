@@ -239,8 +239,10 @@ class CExtractorFunctions
           end
           
           # Additional check: ensure the pattern is identifier(...); not identifier[...]; or identifier;
-          # Extract the part before the semicolon and check if it ends with )
-          content_before_semicolon = cleaned.gsub(/\s*;$/, '')
+          # Strip compiler extensions (e.g. trailing __attribute__((...)) or __declspec(...)) before
+          # checking the closing paren — otherwise a trailing attribute's ')' fools the check into
+          # accepting a variable declaration like `int x __attribute__((aligned(16)));` as a function.
+          content_before_semicolon = @code_text.strip_compiler_extensions(cleaned.gsub(/\s*;$/, ''))
           unless content_before_semicolon.end_with?(')')
             # Doesn't end with closing paren - likely a variable declaration
             scanner.pos = start_pos
@@ -384,29 +386,7 @@ class CExtractorFunctions
       return $1
     end
     
-    # Handle attributes and other constructs with double parentheses
-    # Pattern: __attribute__((...)). We need to skip these and find the actual function name
-    # Remove all __attribute__((...)) and similar patterns
-    cleaned = signature.dup
-    
-    # Remove __attribute__((...)) patterns and similar decorators
-    loop do
-      before = cleaned.dup
-      # Match __word__((...)) patterns (like __attribute__((interrupt)))
-      cleaned.gsub!(/\b__\w+__\s*\(\([^)]*\)\)/, '')
-      # Match __word__(...) patterns (like __declspec(dllexport))
-      cleaned.gsub!(/\b__\w+__\s*\([^)]*\)/, '')
-      # Match __declspec(...) patterns
-      cleaned.gsub!(/\b__declspec\s*\([^)]*\)/, '')
-      # Match specific C11/C23 specifiers (not general _word pattern)
-      cleaned.gsub!(/\b_Noreturn\b/, '')
-      cleaned.gsub!(/\b_Thread_local\b/, '')
-      cleaned.gsub!(/\b_Atomic\b/, '')
-      cleaned.gsub!(/\b_Bool\b/, '')
-      cleaned.gsub!(/\b_Complex\b/, '')
-      cleaned.gsub!(/\b_Imaginary\b/, '')
-      break if cleaned == before  # No more changes
-    end
+    cleaned = @code_text.strip_compiler_extensions(signature.dup)
     
     # Now find the function name in the cleaned signature
     # Look for: identifier followed by '('

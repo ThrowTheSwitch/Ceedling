@@ -16,7 +16,13 @@ module CExtractorConstants
   DEFAULT_MAX_FUNCTION_LENGTH = (5 * 1024 * 1024)
 
   # C function decorators that indicate private (file-local) visibility
-  PRIVATE_KEYWORDS = ['static', 'inline', '__inline', '__inline__'].freeze
+  PRIVATE_KEYWORDS = ['static', 'inline', '__inline', '__inline__', '__forceinline'].freeze
+
+  # MSVC calling-convention keywords (appear between return type and function name)
+  MSVC_CALLING_CONVENTIONS = ['__cdecl', '__stdcall', '__fastcall', '__thiscall', '__vectorcall'].freeze
+
+  # C11/C23 bare specifier keywords (no argument list)
+  C11_SPECIFIER_KEYWORDS = ['_Noreturn', '_Thread_local', '_Atomic', '_Bool', '_Complex', '_Imaginary'].freeze
 
   # Common type keywords that are part of return type, not decorators
   TYPE_KEYWORDS = ['unsigned', 'signed', 'long', 'short', 'struct', 'union', 'enum'].freeze

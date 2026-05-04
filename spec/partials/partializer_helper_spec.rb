@@ -12,6 +12,7 @@ require 'ceedling/partials/partializer_helper'
 require 'ceedling/partials/partializer_utils'
 require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_declarations'
+require 'ceedling/c_extractor/c_extractor_code_text'
 require 'ostruct'
 
 describe PartializerHelper do
@@ -537,7 +538,7 @@ describe PartializerHelper do
         PartializerHelper.new(
           {
             :partializer_utils        => real_utils,
-            :c_extractor_declarations => CExtractorDeclarations.new,
+            :c_extractor_declarations => CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new() }).tap(&:setup),
             :file_path_utils          => double("FilePathUtils"),
             :loginator                => double("Loginator").as_null_object
           }

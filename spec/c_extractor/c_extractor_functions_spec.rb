@@ -1451,8 +1451,25 @@ describe CExtractorFunctions do
       it "return nil for signature with unbalanced parentheses" do
         signature = "void foo(int x"
         name = parse_name.call(signature)
-        
+
         expect(name).to be_nil
+      end
+    end
+
+    context "MSVC __forceinline specifier" do
+      it "extracts name from __forceinline prefixed function" do
+        name = parse_name.call("__forceinline void foo(void)")
+        expect(name).to eq("foo")
+      end
+
+      it "extracts name from static __forceinline function" do
+        name = parse_name.call("static __forceinline int compute(int x)")
+        expect(name).to eq("compute")
+      end
+
+      it "extracts name from __forceinline with pointer return type" do
+        name = parse_name.call("__forceinline char* getStr(void)")
+        expect(name).to eq("getStr")
       end
     end
   end
@@ -2669,6 +2686,18 @@ describe CExtractorFunctions do
       decorators, stripped = functions.send(:parse_decorators_and_strip, "extern struct Node* foo(void)", "foo")
       expect(decorators).to eq(["extern"])
       expect(stripped).to eq("struct Node* foo(void)")
+    end
+
+    it "recognizes __forceinline as a private decorator" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "__forceinline void foo(void)", "foo")
+      expect(decorators).to eq(["__forceinline"])
+      expect(stripped).to eq("void foo(void)")
+    end
+
+    it "recognizes static __forceinline combination" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "static __forceinline int foo(void)", "foo")
+      expect(decorators).to eq(["static", "__forceinline"])
+      expect(stripped).to eq("int foo(void)")
     end
   end
 

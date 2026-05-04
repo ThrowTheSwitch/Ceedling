@@ -43,10 +43,11 @@ describe CExtractor do
     let(:build_extractor) do
       ->() do
         code_text      = CExtractorCodeText.new
-        declarations   = CExtractorDeclarations.new
+        declarations   = CExtractorDeclarations.new({ c_extractor_code_text: code_text })
         functions      = CExtractorFunctions.new({ c_extractor_code_text: code_text })
         preprocessing  = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
         definitions    = CExtractorDefinitions.new({ c_extractor_code_text: code_text })
+        declarations.setup()
         functions.setup()
         extractor = CExtractor.new(
           {

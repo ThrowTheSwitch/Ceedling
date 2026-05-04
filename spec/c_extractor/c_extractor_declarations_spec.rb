@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/c_extractor/c_extractor_declarations'
+require 'ceedling/c_extractor/c_extractor_code_text'
 require 'stringio'
 
 describe CExtractorDeclarations do
@@ -20,7 +21,8 @@ describe CExtractorDeclarations do
     let(:extract_variable) do
       ->(content, max_line_length=1000) do
         scanner = StringScanner.new(content)
-        declarations = CExtractorDeclarations.new
+        declarations = CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new() })
+        declarations.setup()
         declarations.max_line_length = max_line_length
         success, variable = declarations.try_extract_variable(scanner)
         return [success, variable, scanner.pos, scanner.rest]
@@ -605,6 +607,80 @@ describe CExtractorDeclarations do
 
         expect(pos).to eq(20)
         expect(rest).to eq("")
+      end
+    end
+
+    context "compiler extensions on variable declarations" do
+      it "extracts name and type from variable with trailing __attribute__" do
+        content = "int x __attribute__((aligned(16)));"
+        success, variable, _, _ = extract_variable.call(content)
+        expect(success).to be true
+        check_single(variable, name: 'x', type: 'int', text: 'int x __attribute__((aligned(16)));')
+      end
+
+      it "extracts name and type with __attribute__ having nested args" do
+        content = 'char* buf __attribute__((section(".data")));'
+        success, variable, _, _ = extract_variable.call(content)
+        expect(success).to be true
+        check_single(variable, name: 'buf', type: 'char*', text: 'char* buf __attribute__((section(".data")));')
+      end
+
+      it "extracts clean name and type from variable with __declspec prefix" do
+        content = "__declspec(dllexport) int counter;"
+        success, variable, _, _ = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable[0].name).to eq('counter')
+        expect(variable[0].type).to eq('int')
+        # __declspec is not a DECORATOR_KEYWORD so it remains in .text
+        expect(variable[0].text).to include('int counter;')
+      end
+
+      it "preserves __attribute__ in .text field for correct compilation" do
+        content = "int x __attribute__((aligned(16)));"
+        _, variable, _, _ = extract_variable.call(content)
+        expect(variable[0].text).to eq('int x __attribute__((aligned(16)));')
+      end
+
+      it "extracts name from variable with __attribute__ and initializer" do
+        content = "int x __attribute__((unused)) = 0;"
+        success, variable, _, _ = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable[0].name).to eq('x')
+        expect(variable[0].type).to eq('int')
+      end
+
+      it "extracts name with static decorator and trailing __attribute__" do
+        content = 'static int counter __attribute__((section(".bss")));'
+        success, variable, _, _ = extract_variable.call(content)
+        expect(success).to be true
+        check_single(variable, name: 'counter', type: 'int', decorators: ['static'],
+                     text: 'int counter __attribute__((section(".bss")));')
+      end
+
+      it "extracts name and type from struct-type variable with trailing __attribute__" do
+        content = "struct Point my_point __attribute__((aligned(4)));"
+        success, variable, _, _ = extract_variable.call(content)
+        expect(success).to be true
+        check_single(variable, name: 'my_point', type: 'struct Point',
+                     text: 'struct Point my_point __attribute__((aligned(4)));')
+      end
+
+      it "extracts name and type from anonymous-struct variable with trailing __attribute__" do
+        content = "struct { int x; int y; } coords __attribute__((aligned(8)));"
+        success, variable, _, _ = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable[0].name).to eq('coords')
+        expect(variable[0].type).to eq('struct { int x; int y; }')
+        expect(variable[0].text).to eq('struct { int x; int y; } coords __attribute__((aligned(8)));')
+      end
+
+      it "extracts name and type when __attribute__ appears on a struct member inside the body" do
+        content = "struct Point { int x __attribute__((aligned(4))); int y; } my_point;"
+        success, variable, _, _ = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable[0].name).to eq('my_point')
+        expect(variable[0].type).to eq('struct Point { int x ; int y; }')
+        expect(variable[0].text).to eq('struct Point { int x __attribute__((aligned(4))); int y; } my_point;')
       end
     end
   end

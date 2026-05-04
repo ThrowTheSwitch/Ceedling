@@ -329,6 +329,8 @@ c_extractor_functions:
     - c_extractor_code_text
 
 c_extractor_declarations:
+  compose:
+    - c_extractor_code_text
 
 c_extractor_preprocessing:
   compose:

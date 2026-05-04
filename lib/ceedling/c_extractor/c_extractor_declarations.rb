@@ -14,11 +14,13 @@ class CExtractorDeclarations
   include CExtractorConstants
   include CExtractorTypes
 
-  # For testing access
+  constructor :c_extractor_code_text
+
   attr_writer :max_line_length
 
-  def initialize()
-    # Default
+  def setup()
+    # Aliases
+    @code_text       = @c_extractor_code_text
     @max_line_length = DEFAULT_MAX_LINE_LENGTH
   end
 
@@ -298,10 +300,13 @@ class CExtractorDeclarations
   #
   # Returns: CVariableDeclaration
   def parse_declaration(individual_text, original_text)
-    decorators = extract_decorators(individual_text)
-    clean_text  = strip_decorators(individual_text, decorators)
-    name        = extract_name(clean_text)
-    type        = extract_type(clean_text, name)
+    decorators      = extract_decorators(individual_text)
+    clean_text      = strip_decorators(individual_text, decorators)
+    # Strip compiler extensions for name/type extraction only;
+    # clean_text (stored as .text) retains attributes for correct compilation.
+    extraction_text = @code_text.strip_compiler_extensions(clean_text)
+    name            = extract_name(extraction_text)
+    type            = extract_type(extraction_text, name)
 
     CVariableDeclaration.new(
       original:    original_text,

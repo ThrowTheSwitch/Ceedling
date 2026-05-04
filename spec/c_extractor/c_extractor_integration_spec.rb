@@ -22,10 +22,11 @@ describe CExtractor do
 
   let(:extractor) do
     code_text     = CExtractorCodeText.new
-    declarations  = CExtractorDeclarations.new
+    declarations  = CExtractorDeclarations.new({ c_extractor_code_text: code_text })
     functions     = CExtractorFunctions.new({ c_extractor_code_text: code_text })
     preprocessing = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
     definitions   = CExtractorDefinitions.new({ c_extractor_code_text: code_text })
+    declarations.setup()
     functions.setup()
     extractor = CExtractor.new(
       {
@@ -868,6 +869,65 @@ describe CExtractor do
       expect( merged.variable_declarations.length ).to eq 1
       expect( merged.type_definitions.length      ).to eq 1
       expect( merged.macro_definitions.length     ).to eq 1
+    end
+
+    it "extracts function definitions and declarations with MSVC/GCC annotations" do
+      file_contents = <<~CONTENTS
+        __declspec(dllexport) void exported_func(int x) { return; }
+        int __cdecl cdecl_func(void) { return 0; }
+        void __attribute__((noreturn)) fatal_func(const char* msg) { while(1); }
+        static __forceinline int fast_add(int a, int b) { return a + b; }
+        void plain_func(void) { }
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect(contents.function_definitions.length).to eq 5
+
+      names = contents.function_definitions.map(&:name)
+      expect(names).to include('exported_func', 'cdecl_func', 'fatal_func', 'fast_add', 'plain_func')
+
+      # Signatures retain annotations verbatim
+      exported = contents.function_definitions.find { |f| f.name == 'exported_func' }
+      expect(exported.signature).to include('__declspec(dllexport)')
+
+      fast = contents.function_definitions.find { |f| f.name == 'fast_add' }
+      expect(fast.decorators).to include('static', '__forceinline')
+
+      plain = contents.function_definitions.find { |f| f.name == 'plain_func' }
+      expect(plain.decorators).to eq([])
+    end
+
+    it "extracts variable declarations with compiler extensions (including extraction bug fix)" do
+      file_contents = <<~CONTENTS
+        int counter __attribute__((aligned(16)));
+        char buf[] __attribute__((section(".data")));
+        struct Point my_pt __attribute__((aligned(4)));
+        struct { int x; int y; } coords __attribute__((aligned(8)));
+        __declspec(dllexport) extern int exported_var;
+        int plain_var;
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect(contents.variable_declarations.length).to eq 6
+
+      names = contents.variable_declarations.map(&:name)
+      expect(names).to include('counter', 'buf', 'my_pt', 'coords', 'exported_var', 'plain_var')
+
+      counter = contents.variable_declarations.find { |v| v.name == 'counter' }
+      expect(counter.type).to eq('int')
+      expect(counter.text).to include('__attribute__((aligned(16)))')
+
+      buf = contents.variable_declarations.find { |v| v.name == 'buf' }
+      expect(buf.type).to eq('char')
+
+      exported = contents.variable_declarations.find { |v| v.name == 'exported_var' }
+      expect(exported.name).to eq('exported_var')
+
+      plain = contents.variable_declarations.find { |v| v.name == 'plain_var' }
+      expect(plain.type).to eq('int')
+      expect(plain.decorators).to eq([])
     end
 
   end
