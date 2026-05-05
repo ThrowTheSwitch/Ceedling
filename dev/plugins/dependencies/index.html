@@ -16,7 +16,7 @@
         <link rel="prev" href="../module-generator/">
       
       
-        <link rel="next" href="../subprojects/">
+        <link rel="next" href="../../project/release-history/">
       
       
         
@@ -2142,8 +2142,6 @@
       
         
       
-        
-      
     
     
     
@@ -2889,34 +2887,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../subprojects/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Subprojects
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -3629,16 +3599,16 @@
 
 
 <h1 id="dependencies">Dependencies</h1>
-<p>Plugin for supporting release dependencies. It's rare for an embedded project to
+<p>Plugin for supporting release dependencies. It’s rare for an embedded project to
 be built completely free of other libraries and modules. Some of these may be
 standard internal libraries. Some of these may be 3rd party libraries. In either
-case, they become part of the project's ecosystem.</p>
+case, they become part of the project’s ecosystem.</p>
 <p>This plugin is intended to make that relationship easier. It allows you to specify
 a source for dependencies. If required, it will automatically grab the appropriate
 version of that dependency.</p>
-<p>Most 3rd party libraries have a method of building already in place. While we'd
+<p>Most 3rd party libraries have a method of building already in place. While we’d
 love to convert the world to a place where everything downloads with a test suite
-in Ceedling, that's not likely to happen anytime soon. Until then, this plugin
+in Ceedling, that’s not likely to happen anytime soon. Until then, this plugin
 will allow the developer to specify what calls Ceedling should make to oversee
 the build process of those third party utilities. Are they using Make? CMake? A
 custom series of scripts that only a mad scientist could possibly understand? No
@@ -3685,7 +3655,7 @@ it! In the end, it'll look something like this:</p>
 </code></pre></div>
 <h2 id="starting-dash-name">Starting Dash &amp; Name</h2>
 <p>Yes, that opening dash tells the dependencies plugin that the rest of these fields
-belong to our first dependency. If we had a second dependency, we'd have another
+belong to our first dependency. If we had a second dependency, we’d have another
 dash, lined up with the first, and followed by all the fields indented again.</p>
 <p>By convention, we use the <code>:name</code> field as the first field for each tool. Ceedling
 honestly doesn't care which order the fields are given... but as humans, it makes
@@ -3694,12 +3664,12 @@ it easier for us to see the name of each dependency with starting dash.</p>
 call the name of the field whatever you wish.</p>
 <h2 id="working-paths">Working Paths</h2>
 <p>All paths are collected under <code>:dependencies</code> ↳ <code>:paths</code>. The <code>:source</code> field allows us 
-to specify where the source code for each of our dependencies is stored. By default, it's
+to specify where the source code for each of our dependencies is stored. By default, it’s
 the same as the <code>:fetch</code> path, which is where source will be fetched TO when fetching the 
 dependency from elsewhere. All commands to build this dependency will be executed from
 the <code>:source</code> location. Temporary data will be placed in the <code>:build</code> location. Unless you're
-using one of Ceedling's built-in builders, you'll need to learn where the tool you're using to
-build places it's built artifacts , and list that here. Finally, the output
+using one of Ceedling’s built-in builders, you'll need to learn where the tool you're using to
+build places it’s built artifacts , and list that here. Finally, the output
 artifacts will be referenced to this location. You override this by specifying a <code>:artifact</code>
 path. In summary:</p>
 <ul>
@@ -3745,7 +3715,7 @@ The top-level <code>:environment</code> section is for all of Ceedling. The <cod
 within a specific dependency’s configuration is only for the shell environment used to process
 that dependency. The format and abilities of the two <code>:environment</code> configuration sections are
 also different.</p>
-<p>Environment variables may be specified in three ways. Let's look at one of each:</p>
+<p>Environment variables may be specified in three ways. Let’s look at one of each:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:dependencies</span><span class="p">:</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&lt;a dependency configuration&gt;</span><span class="p">:</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nt">:environment</span><span class="p">:</span>
@@ -3754,7 +3724,7 @@ also different.</p>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CFLAGS-=-DWASTE</span>
 </code></pre></div>
 <p>In the first example, you see the most straightforward method. The environment variable
-<code>ARCHITECTURE</code> is set to the value <code>ARM9</code>. That's it. Simple.</p>
+<code>ARCHITECTURE</code> is set to the value <code>ARM9</code>. That’s it. Simple.</p>
 <p>The next two options modify an existing symbol. In the first one, we use <code>+=</code>, which tells
 Ceedling to add the define <code>ADD_AWESOMENESS</code> to the environment variable <code>CFLAGS</code>. The second
 tells Ceedling to remove the define <code>WASTE</code> from the same environment variable.</p>
@@ -3764,7 +3734,7 @@ what delimiter you are expecting. In this example you can see we manually added 
 If we had been modifying <code>PATH</code> instead, we might have had to use a <code>:</code> on a unux or <code>;</code> on
 Windows.</p>
 <p>Second, removing an argument will have no effect on the argument if that argument isn't found
-precisely. It's case sensitive and the entire string must match. If symbol doesn't already exist,
+precisely. It’s case sensitive and the entire string must match. If symbol doesn't already exist,
 it WILL after executing this command... however it will be assigned to nothing.</p>
 <h2 id="building-dependencies">Building Dependencies</h2>
 <p>The heart of the <code>:dependencies</code> plugin is the ability for you, the developer, to specify the
@@ -3776,7 +3746,7 @@ the artifacts should have been created by your process... otherwise an error wil
 <h2 id="artifacts">Artifacts</h2>
 <p>These are the outputs of the build process. There are there types of artifacts. Any dependency
 may have none or some of these. Calling out these files tells Ceedling that they are important.
-Your dependency's build process may produce many other files... but these are the files that
+Your dependency’s build process may produce many other files... but these are the files that
 Ceedling understands it needs to act on.</p>
 <h3 id="static_libraries"><code>static_libraries</code></h3>
 <p>Specifying one or more static libraries will tell Ceedling where it should find static libraries
@@ -3792,13 +3762,13 @@ final release binary.</p>
 to produce them.</p>
 <h3 id="includes"><code>includes</code></h3>
 <p>Often when libraries are built, the same process will output a collection of includes so that
-your release code knows how to interact with that library. It's the public API for that library.
+your release code knows how to interact with that library. It’s the public API for that library.
 By specifying the directories that will contain these includes (don't specify the files themselves,
 Ceedling only needs the directories), Ceedling is able to automatically add these to its internal
 include list. This allows these files to be used while building your release code, as well we making
 them mockable during unit testing.</p>
 <h3 id="source"><code>source</code></h3>
-<p>It's possible that your external dependency will just produce additional C files as its output.
+<p>It’s possible that your external dependency will just produce additional C files as its output.
 In this case, Ceedling is able to automatically add these to its internal source list. This allows
 these files to be used while building your release code.</p>
 <h2 id="tasks">Tasks</h2>
@@ -3823,7 +3793,7 @@ name, like <code>dependencies:make:MyTunaBoat</code>.</p>
 build directory... just in case you clobbered them.</p>
 <h3 id="pathsinclude"><code>paths:include</code></h3>
 <p>Maybe you want to verify that all the include paths are correct. If you query Ceedling with this
-request, it will list all the header file paths that it's found, including those produced by
+request, it will list all the header file paths that it’s found, including those produced by
 dependencies.</p>
 <h3 id="filesinclude"><code>files:include</code></h3>
 <p>Maybe you want to take that query further and actually get a list of ALL the header files
