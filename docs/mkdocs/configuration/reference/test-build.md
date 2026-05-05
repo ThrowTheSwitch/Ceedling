@@ -1,8 +1,17 @@
-# `:test_build` Configuring a test build
+# `:test_build`
+
+**Configuring a test build**
 
 !!! warning "Future configuration reorganization"
     In future versions of Ceedling, test-related settings presently
     organized beneath `:project` will be renamed and migrated to this section.
+
+## Example `:test_build` YAML
+
+```yaml
+:test_build:
+  :use_assembly: TRUE
+```
 
 ## `:use_assembly`
 
@@ -20,15 +29,8 @@ inject assembly code into the build of a test executable:
    equivalent to C code files handled in the same ways.
 1. Ceedling must be told into which test executable build to insert a
    given assembly file. The easiest way to do so is with the
-   `TEST_SOURCE_FILE()` build directive macro (documented in a later section).
+   [`TEST_SOURCE_FILE()` build directive macro](../../testing-guide/build-directives.md).
 
 **Default**: FALSE
-
-## Example `:test_build` YAML
-
-```yaml
-:test_build:
-  :use_assembly: TRUE
-```
 
 <br/><br/>

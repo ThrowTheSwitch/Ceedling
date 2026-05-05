@@ -36,6 +36,13 @@
 
 <div class="grid cards" markdown>
 
+-   :material-clipboard-play-multiple-outline: **[Parallel Builds][parallel-builds]**
+
+    ---
+
+    Configure Ceedling to take advantage of multiple CPU cores for faster build
+    steps and test suite execution.
+
 -   :material-directions-fork: **[Which Ceedling?][which-ceedling]**
 
     ---
@@ -56,5 +63,6 @@
 [configuration-reference]: reference/index.md
 [which-ceedling]:          which-ceedling.md
 [global-collections]:      global-collections.md
+[parallel-builds]:         parallel-builds.md
 
 <br/><br/>

@@ -5,11 +5,25 @@
     settings presently organized beneath `:project` will likely be renamed and
     migrated to the `:test_build` and `:release_build` sections.
 
+## Example `:project` YAML
+
+```yaml
+:project:
+  :build_root: project_awesome/build
+  :use_exceptions: FALSE
+  :use_test_preprocessor: :all
+  :release_build: TRUE
+  :compile_threads: :auto
+```
+
 ## `:build_root`
 
 Top level directory into which generated path structure and files are placed.
-NOTE: this is one of the handful of configuration values that must be set. The
-specified path can be absolute or relative to your working directory.
+
+!!! note "Build configuration requirement"
+    This is one of the handful of configuration values that must be set for 
+    any project. `:project` ↳ `:build_root` must be set for any build — release 
+    build or test suite — to run.
 
 **Default**: (none)
 
@@ -18,11 +32,14 @@ specified path can be absolute or relative to your working directory.
 A list of default build / plugin tasks Ceedling should execute if none are
 provided at the command line.
 
-_NOTE:_ These are build & plugin tasks (e.g. `test:all` and `clobber`). These
-are not application commands (e.g. `dumpconfig`) or command line flags (e.g.
-`--verbosity`). See the documentation [on using the command line][command-line]
-to understand the distinction between application commands and build & plugin
-tasks.
+!!! note "Build & plugin tasks only"
+    Build & plugin tasks include tasks such as `test:all` and `clobber`. 
+    `:default_tasks` does not support application commands (e.g. `dumpconfig`) 
+    or command line flags (e.g. `--verbosity`).
+    
+    See the documentation [on using the command line][command-line]
+    to understand the distinction between application commands and build & 
+    plugin tasks.
 
 [command-line]: ../../getting-started/command-line.md
 
@@ -61,15 +78,16 @@ files containing conditional preprocessor directives and/or macros.
 
 See the [documentation on test preprocessing][test-preprocessing] for more.
 
-With any preprocessing enabled, the `gcc` & `cpp` tools must exist in an
-accessible system search path.
+!!! note
+    With any preprocessing enabled, the `gcc` & `cpp` tools must exist in an
+    accessible system search path.
 
 [test-preprocessing]: ../../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests
 
- * `:none` disables preprocessing.
- * `:all` enables preprocessing for all mockable header files and test C files.
- * `:mocks` enables only preprocessing of header files that are to be mocked.
- * `:tests` enables only preprocessing of your test files.
+* `:none` disables preprocessing.
+* `:all` enables preprocessing for all mockable header files and test C files.
+* `:mocks` enables only preprocessing of header files that are to be mocked.
+* `:tests` enables only preprocessing of your test files.
 
 **Default**: `:none`
 
@@ -167,105 +185,108 @@ Ceedling can iteratively identify which test cases are causing the crash or
 exercising release code that is causing the crash. Ceedling then assembles the
 final test reporting results from these individual test case runs.
 
-You have three options for this setting, `:none`, `:simple` or `:gdb`:
+You have three options for this setting, `:none`, `:simple`, or `:gdb`.
 
-1. `:none` will simply cause a test report to list each test case as failed
-   due to a test executable crash.
+### `:none`
+`:none` will simply cause a test report to list each test case as failed
+due to a test executable crash.
 
-   Sample Ceedling run output with backtrace `:none`:
+Sample Ceedling run output with backtrace `:none`:
 
-   ```
-   👟 Executing
-   ------------
-   Running TestUsartModel.out...
-   ☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
+```
+👟 Executing
+------------
+Running TestUsartModel.out...
+☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
 
-   -------------------
-   FAILED TEST SUMMARY
-   -------------------
-   [test/TestUsartModel.c]
-     Test: testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting
-     At line (24): "Test executable crashed"
+-------------------
+FAILED TEST SUMMARY
+-------------------
+[test/TestUsartModel.c]
+  Test: testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting
+  At line (24): "Test executable crashed"
 
-     Test: testCrash
-     At line (37): "Test executable crashed"
+  Test: testCrash
+  At line (37): "Test executable crashed"
 
-     Test: testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately
-     At line (44): "Test executable crashed"
+  Test: testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately
+  At line (44): "Test executable crashed"
 
-     Test: testShouldReturnErrorMessageUponInvalidTemperatureValue
-     At line (50): "Test executable crashed"
+  Test: testShouldReturnErrorMessageUponInvalidTemperatureValue
+  At line (50): "Test executable crashed"
 
-     Test: testShouldReturnWakeupMessage
-     At line (56): "Test executable crashed"
+  Test: testShouldReturnWakeupMessage
+  At line (56): "Test executable crashed"
 
-   -----------------------
-   ❌ OVERALL TEST SUMMARY
-   -----------------------
-   TESTED:  5
-   PASSED:  0
-   FAILED:  5
-   IGNORED: 0
-   ```
+-----------------------
+❌ OVERALL TEST SUMMARY
+-----------------------
+TESTED:  5
+PASSED:  0
+FAILED:  5
+IGNORED: 0
+```
 
-1. `:simple` causes Ceedling to re-run each test case in the test executable
-   individually to identify and report the problematic test case(s). This is
-   the default option and is described above.
+### `:simple`
+`:simple` causes Ceedling to re-run each test case in the test executable
+individually to identify and report the problematic test case(s). This is
+the default option and is described above.
 
-   Sample Ceedling run output with backtrace `:simple`:
+Sample Ceedling run output with backtrace `:simple`:
 
-   ```
-   👟 Executing
-   ------------
-   Running TestUsartModel.out...
-   ☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
-   
-   -------------------
-   FAILED TEST SUMMARY
-   -------------------
-   [test/TestUsartModel.c]
-     Test: testCrash
-     At line (37): "Test case crashed"
-   
-   -----------------------
-   ❌ OVERALL TEST SUMMARY
-   -----------------------
-   TESTED:  5
-   PASSED:  4
-   FAILED:  1
-   IGNORED: 0
-   ```
+```
+👟 Executing
+------------
+Running TestUsartModel.out...
+☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
 
-1. `:gdb` uses the [`gdb`][gdb] debugger to identify and report the troublesome
-   line of code triggering the crash. If this option is enabled, but `gdb` is
-   not available to Ceedling, project configuration validation will terminate
-   with an error at startup.
+-------------------
+FAILED TEST SUMMARY
+-------------------
+[test/TestUsartModel.c]
+  Test: testCrash
+  At line (37): "Test case crashed"
 
-   Sample Ceedling run output with backtrace `:gdb`:
+-----------------------
+❌ OVERALL TEST SUMMARY
+-----------------------
+TESTED:  5
+PASSED:  4
+FAILED:  1
+IGNORED: 0
+```
 
-   ```
-   👟 Executing
-   ------------
-   Running TestUsartModel.out...
-   ☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
-   
-   -------------------
-   FAILED TEST SUMMARY
-   -------------------
-   [test/TestUsartModel.c]
-     Test: testCrash
-     At line (40): "Test case crashed >> Program received signal SIGSEGV, Segmentation fault.
-                   0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
-                   40    uint32_t i = *nullptr;"
-   
-   -----------------------
-   ❌ OVERALL TEST SUMMARY
-   -----------------------
-   TESTED:  5
-   PASSED:  4
-   FAILED:  1
-   IGNORED: 0
-   ```
+### `:gdb`
+`:gdb` uses the [`gdb`][gdb] debugger to identify and report the troublesome
+line of code triggering the crash. If this option is enabled, but `gdb` is
+not available to Ceedling, project configuration validation will terminate
+with an error at startup.
+
+Sample Ceedling run output with backtrace `:gdb`:
+
+```
+👟 Executing
+------------
+Running TestUsartModel.out...
+☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
+
+-------------------
+FAILED TEST SUMMARY
+-------------------
+[test/TestUsartModel.c]
+  Test: testCrash
+  At line (40): "Test case crashed >> Program received signal SIGSEGV, Segmentation fault.
+                0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
+                40    uint32_t i = *nullptr;"
+
+-----------------------
+❌ OVERALL TEST SUMMARY
+-----------------------
+TESTED:  5
+PASSED:  4
+FAILED:  1
+IGNORED: 0
+```
 
 **_Notes:_**
 
@@ -282,16 +303,5 @@ You have three options for this setting, `:none`, `:simple` or `:gdb`:
 [gdb]: https://www.sourceware.org/gdb/
 
 **Default**: `:simple`
-
-## Example `:project` YAML
-
-```yaml
-:project:
-  :build_root: project_awesome/build
-  :use_exceptions: FALSE
-  :use_test_preprocessor: :all
-  :release_build: TRUE
-  :compile_threads: :auto
-```
 
 <br/><br/>

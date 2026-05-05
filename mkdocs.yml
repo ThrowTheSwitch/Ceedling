@@ -63,6 +63,7 @@ markdown_extensions:
                         # (H2 and H3 in reality since H1 is reserved for page titles)
   - admonition          # !!! note / tip / warning / etc. callout blocks
   - md_in_html          # Markdown inside raw HTML elements (required for card grids)
+  - footnotes
   - pymdownx.emoji:     # Emoji shortcodes (:material-icon:, :fontawesome-icon:, etc.)
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
@@ -110,6 +111,7 @@ nav:
     - configuration/index.md
     - Loading Configuration: configuration/loading.md
     - Project File Basics: configuration/project-file.md
+    - Parallel Builds: configuration/parallel-builds.md
     - Which Ceedling: configuration/which-ceedling.md
     - Global Collections: configuration/global-collections.md
     - Configuration Reference:
@@ -123,14 +125,14 @@ nav:
       - Environment Variables: configuration/reference/environment.md
       - File Extensions: configuration/reference/extension.md
       - Defines: configuration/reference/defines.md
-      - Libraries: configuration/reference/libraries.md
       - Compilation & Link Flags: configuration/reference/flags.md
-      - CException: configuration/reference/cexception.md
-      - CMock: configuration/reference/cmock.md
+      - Libraries: configuration/reference/libraries.md
       - Unity: configuration/reference/unity.md
+      - CMock: configuration/reference/cmock.md
       - Test Runner: configuration/reference/test-runner.md
-      - Tools: configuration/reference/tools.md
+      - CException: configuration/reference/cexception.md
       - Plugins: configuration/reference/plugins.md
+      - Tools: configuration/reference/tools.md
   - Plugins:
     - Overview: plugins/index.md
     - Test Report — Pretty: plugins/report-tests-pretty-stdout.md

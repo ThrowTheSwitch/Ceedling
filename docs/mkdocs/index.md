@@ -144,6 +144,13 @@ embedded systems developers.
     Exhaustive documentation for all project configuration options — project
     paths, testing features, plugins, and much more.
 
+-   :material-clipboard-play-multiple-outline: **[Parallel Builds][parallel-builds]**
+
+    ---
+
+    Configure Ceedling to take advantage of multiple CPU cores for faster build
+    steps and test suite execution.
+
 -   :material-directions-fork: **[Which Ceedling?][which-ceedling]**
 
     ---
@@ -195,6 +202,7 @@ embedded systems developers.
 [configuration-loading]:       configuration/loading.md
 [configuration-project-file]:  configuration/project-file.md
 [configuration-reference]:     configuration/reference/index.md
+[parallel-builds]:             configuration/parallel-builds.md
 [which-ceedling]:              configuration/which-ceedling.md
 [build-directives]:            testing-guide/build-directives.md
 [plugins]:                     plugins/index.md

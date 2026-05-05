@@ -1,25 +1,28 @@
-# `:tools` Configuring command line tools used for build steps
+# `:tools`
+
+**Configuring command line tools used for build steps**
 
 Ceedling requires a variety of tools to work its magic. By default, the GNU
 toolchain (`gcc`, `cpp`, `as` — and `gcov` via plugin) are configured and ready
 for use with no additions to your project configuration YAML file.
 
-A few items before we dive in:
+!!! tip "Mechanisms to configure tools without redefining them"
+    Sometimes Ceedling’s built-in tool configurations are _nearly_ what you need 
+    but not quite. 
 
-1. Sometimes Ceedling's built-in tools are _nearly_ what you need but not
-   quite. If you only need to add some arguments to all uses of tool's command
-   line, Ceedling offers a shortcut to do so. See the
-   [final section of the `:tools`][tool-definition-shortcuts] documentation for
-   details.
-1. If you need fine-grained control of the arguments Ceedling uses in the build
-   steps for test executables, see the documentation for [`:flags`][flags].
-   Ceedling allows you to control the command line arguments for each test
-   executable build — with a variety of pattern matching options.
-1. If you need to link libraries — your own or standard options — please see the
-   [top-level `:libraries` section][libraries] available for your configuration
-   file. Ceedling supports a number of useful options for working with
-   pre-compiled libraries. If your library linking needs are super simple, the
-   shortcut in (1) might be the simplest option.
+    1. If you only need to add some arguments to all uses of a tool’s command
+      line, Ceedling offers a shortcut to do so. See the
+      [shortcuts section of `:tools`][tool-definition-shortcuts] documentation for
+      details.
+    1. If you need fine-grained control of the arguments Ceedling uses in the build
+      steps for test executables, see the documentation for [`:flags`][flags].
+      Ceedling allows you to control the command line arguments for each test
+      executable build — with a variety of pattern matching options.
+    1. If you need to link libraries — your own or standard options — please see the
+      [top-level `:libraries` section][libraries] available for your project 
+      configuration. Ceedling supports a number of useful options for working with
+      pre-compiled libraries. If your library linking needs are super simple, the
+      shortcut in (1) might be the simplest option.
 
 [flags]: flags.md
 [tool-definition-shortcuts]: #ceedling-tool-modification-shortcuts
@@ -50,17 +53,17 @@ builds. You'll likely need your own definitions for `:release_compiler`,
 
 Ceedling plugins are free to define their own tools that are loaded into your
 project configuration at startup. Plugin tools are defined using the same
-mechanisms as Ceedling's built-in tools and are called the same way. That is,
+mechanisms as Ceedling’s built-in tools and are called the same way. That is,
 all features available to you for working with tools as an end user are
 generally available for working with plugin-based tools. This presumes a plugin
 author followed guidance and convention in creating any command line actions.
 
 ## Ceedling tool definitions
 
-Contained in this section are details on Ceedling's default tool definitions.
+Contained in this section are details on Ceedling’s default tool definitions.
 For sake of space, the entirety of a given definition is not shown. If you need
 to get in the weeds or want a full example, see the file `defaults.rb` in
-Ceedling's lib/ directory.
+Ceedling’s lib/ directory.
 
 ### Tool definition overview
 
@@ -91,18 +94,18 @@ A partial tool definition:
          - "--X${3}"
 ```
 
-Let's say that `${3}` is a list inside Ceedling, `[2, 3, 7]`. The expanded tool
+Let’s say that `${3}` is a list inside Ceedling, `[2, 3, 7]`. The expanded tool
 command line for `:tools` ↳ `:power_drill` would look like this:
 
 ```shell
  > dewalt.exe --X2 --X3 --X7
 ```
 
-## Ceedling's default build step tool definitions
+## Ceedling’s default build step tool definitions
 
 !!! warning "Preprocessing & Backtrace Tools Are Not Configurable"
-    Ceedling's tool definitions for its preprocessing and backtrace features are
-    not documented here. Ceedling's use of tools for these features are tightly
+    Ceedling’s tool definitions for its preprocessing and backtrace features are
+    not documented here. Ceedling’s use of tools for these features are tightly
     coupled to the options and output of those tools. Drop-in replacements using
     other tools are not practically possible. Eventually, an improved plugin
     system will provide options for integrating alternative tools.
@@ -189,36 +192,38 @@ Linker for release source code
 
 1. `:executable` - Command line executable (required).
 
-    NOTE: If an executable contains a space (e.g. `Code Cruncher`), and the
-    shell executing the command line generated from the tool definition needs
-    the name quoted, add escaped quotes in the YAML:
+    !!! tip "Spaces in an executable name"
+        If an executable contains a space (e.g. `Code Cruncher`), and the
+        shell executing the command line generated from the tool definition needs
+        the name quoted, add escaped quotes in the YAML:
 
-    ```yaml
-    :tools:
-      :test_compiler:
-        :executable: \"Code Cruncher\"
-    ```
+        ```yaml
+        :tools:
+          :test_compiler:
+            :executable: \"Code Cruncher\"
+        ```
 
 1. `:arguments` - List (array of strings) of command line arguments and
     substitutions (required).
 
 1. `:name` - Simple name (i.e. "nickname") of tool beyond its executable name.
    This is optional. If not explicitly set then Ceedling will form a name from
-   the tool's YAML entry key.
+   the tool’s YAML entry key.
 
 1. `:stderr_redirect` - Control of capturing `$stderr` messages
-   {`:none`, `:auto`, `:win`, `:unix`, `:tcsh`}.
-   Defaults to `:none` if unspecified. You may create a custom entry by
-   specifying a simple string instead of any of the recognized symbols. As an
-   example, the `:unix` symbol maps to the string `2>&1` that is automatically
-   inserted at the end of a command line.
+    {`:none`, `:auto`, `:win`, `:unix`, `:tcsh`}.
+    Defaults to `:none` if unspecified. You may create a custom entry by
+    specifying a simple string instead of any of the recognized symbols. As an
+    example, the `:unix` symbol maps to the string `2>&1` that is automatically
+    inserted at the end of a command line.
 
-   This option is rarely necessary. `$stderr` redirection was originally often
-   needed in early versions of Ceedling. Shell output stream handling is now
-   automatically handled. This option is preserved for possible edge cases.
+    !!! warning "`$stderr` is rarely necessary"
+        Originally, `$stderr` redirection was often needed in early versions of 
+        Ceedling. Shell output stream handling is now automatically handled. 
+        This option is preserved for possible edge cases.
 
 1. `:optional` - By default a tool you define is required for operation. This
-   means a build will be aborted if Ceedling cannot find your tool's executable
+   means a build will be aborted if Ceedling cannot find your tool’s executable
    in your environment. However, setting `:optional` to `true` causes this
    check to be skipped. This is most often needed in plugin scenarios where a
    tool is only needed if an accompanying configuration option requires it. In
@@ -229,7 +234,7 @@ Linker for release source code
 
 To accomplish useful work on multiple files, a configured tool will most often
 require that some number of its arguments or even the executable itself change
-for each run. Consequently, every tool's argument list and executable field
+for each run. Consequently, every tool’s argument list and executable field
 possess two means for substitution at runtime.
 
 Ceedling provides inline Ruby string expansion and a notation for populating
@@ -244,14 +249,14 @@ a tool configuration is executed during a build.
 
 #### Tool element runtime substitution: Notational substitution
 
-A Ceedling tool's other form of dynamic substitution relies on a `$` notation.
+A Ceedling tool’s other form of dynamic substitution relies on a `$` notation.
 These `$` operators can exist anywhere in a string and can be decorated in any
 way needed. To use a literal `$`, escape it as `\\$`.
 
 * `$`: Simple substitution for value(s) globally available within the runtime
   (most often a string or an array).
 
-* `${#}`: When a Ceedling tool's command line is expanded from its configured
+* `${#}`: When a Ceedling tool’s command line is expanded from its configured
   representation, runs of that tool will be made with a parameter list of
   substitution values. Each numbered substitution corresponds to a position in
   a parameter list.
@@ -372,11 +377,11 @@ Notes on test fixture tooling example:
    native executables instead of cross compiling. That is, if the output of the
    linker runs on the host system, then the test fixture _is_ `${1}`.
 1. We're using `$stderr` redirection to allow us to capture simulator error
-   messages to `$stdout` for display at the run's conclusion.
+   messages to `$stdout` for display at the run’s conclusion.
 
 ## Ceedling tool modification shortcuts
 
-Sometimes Ceedling's default tool definitions are _this close_ to being just
+Sometimes Ceedling’s default tool definitions are _this close_ to being just
 what you need. But, darn, you need one extra argument on the command line, or
 you just need to hack the tool executable. You'd love to get away without
 overriding an entire tool definition just in order to tweak it.

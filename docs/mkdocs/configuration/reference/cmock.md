@@ -6,6 +6,17 @@ Ceedling sets values for a subset of CMock settings. All CMock options are
 available to be set, but only those options set by Ceedling in an automated
 fashion are documented below. See [CMock documentation][cmock-docs].
 
+## Exmaple `:cmock` YAML
+
+```yaml
+:cmock:
+  :when_no_prototypes: :warn
+  :enforce_strict_ordering: TRUE
+  :defines:
+    # Memory alignment (packing) on 16 bit boundaries
+    - CMOCK_MEM_ALIGN=1
+```
+
 ## `:enforce_strict_ordering`
 
 Tests fail if expected call order is not same as source order
