@@ -10,29 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://throwtheswitch.github.io/Ceedling/latest/">
+        <link rel="canonical" href="https://throwtheswitch.github.io/Ceedling/latest/configuration/parallel-builds/">
       
       
+        <link rel="prev" href="../project-file/">
       
-        <link rel="next" href="overview/">
+      
+        <link rel="next" href="../which-ceedling/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Ceedling</title>
+        <title>Parallel Builds - Ceedling</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -51,9 +53,9 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/admonitions.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/admonitions.css">
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -78,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ceedling-packet" class="md-skip">
+        <a href="#parallel-build-steps" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +98,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="Ceedling" class="md-header__button md-logo" aria-label="Ceedling" data-md-component="logo">
+    <a href="../.." title="Ceedling" class="md-header__button md-logo" aria-label="Ceedling" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -116,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              Parallel Builds
             
           </span>
         </div>
@@ -213,11 +215,9 @@
   
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="." class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
         
   
   
@@ -238,7 +238,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="overview/" class="md-tabs__link">
+        <a href="../../overview/" class="md-tabs__link">
           
   
   
@@ -260,7 +260,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="getting-started/" class="md-tabs__link">
+        <a href="../../getting-started/" class="md-tabs__link">
           
   
   
@@ -282,7 +282,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="testing-guide/" class="md-tabs__link">
+        <a href="../../testing-guide/" class="md-tabs__link">
           
   
   
@@ -300,11 +300,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="configuration/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -326,7 +328,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="plugins/" class="md-tabs__link">
+        <a href="../../plugins/" class="md-tabs__link">
           
   
   
@@ -348,7 +350,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="project/release-history/" class="md-tabs__link">
+        <a href="../../project/release-history/" class="md-tabs__link">
           
   
   
@@ -368,7 +370,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="help/" class="md-tabs__link">
+      <a href="../../help/" class="md-tabs__link">
         
   
   
@@ -389,7 +391,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="development/" class="md-tabs__link">
+        <a href="../../development/" class="md-tabs__link">
           
   
   
@@ -425,7 +427,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="Ceedling" class="md-nav__button md-logo" aria-label="Ceedling" data-md-component="logo">
+    <a href="../.." title="Ceedling" class="md-nav__button md-logo" aria-label="Ceedling" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -452,37 +454,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -498,81 +473,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#getting-started" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Getting Started
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#unit-testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Testing
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#project-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Project Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-extending" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced &amp; Extending
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -613,7 +513,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="overview/" class="md-nav__link ">
+            <a href="../../overview/" class="md-nav__link ">
               
   
   
@@ -657,7 +557,7 @@
   
   
     <li class="md-nav__item">
-      <a href="overview/build-system/" class="md-nav__link">
+      <a href="../../overview/build-system/" class="md-nav__link">
         
   
   
@@ -685,7 +585,7 @@
   
   
     <li class="md-nav__item">
-      <a href="overview/tools-and-frameworks/" class="md-nav__link">
+      <a href="../../overview/tools-and-frameworks/" class="md-nav__link">
         
   
   
@@ -713,7 +613,7 @@
   
   
     <li class="md-nav__item">
-      <a href="overview/test-environments/" class="md-nav__link">
+      <a href="../../overview/test-environments/" class="md-nav__link">
         
   
   
@@ -779,7 +679,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="getting-started/" class="md-nav__link ">
+            <a href="../../getting-started/" class="md-nav__link ">
               
   
   
@@ -823,7 +723,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/quick-start/" class="md-nav__link">
+      <a href="../../getting-started/quick-start/" class="md-nav__link">
         
   
   
@@ -851,7 +751,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/installation/" class="md-nav__link">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -879,7 +779,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/command-line/" class="md-nav__link">
+      <a href="../../getting-started/command-line/" class="md-nav__link">
         
   
   
@@ -907,7 +807,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/environment-vars/" class="md-nav__link">
+      <a href="../../getting-started/environment-vars/" class="md-nav__link">
         
   
   
@@ -979,7 +879,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="testing-guide/" class="md-nav__link ">
+            <a href="../../testing-guide/" class="md-nav__link ">
               
   
   
@@ -1023,7 +923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/test-cases/" class="md-nav__link">
+      <a href="../../testing-guide/test-cases/" class="md-nav__link">
         
   
   
@@ -1051,7 +951,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/test-sample/" class="md-nav__link">
+      <a href="../../testing-guide/test-sample/" class="md-nav__link">
         
   
   
@@ -1079,7 +979,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/test-suite-anatomy/" class="md-nav__link">
+      <a href="../../testing-guide/test-suite-anatomy/" class="md-nav__link">
         
   
   
@@ -1107,7 +1007,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/conventions/" class="md-nav__link">
+      <a href="../../testing-guide/conventions/" class="md-nav__link">
         
   
   
@@ -1135,7 +1035,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/frameworks/" class="md-nav__link">
+      <a href="../../testing-guide/frameworks/" class="md-nav__link">
         
   
   
@@ -1194,7 +1094,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="testing-guide/partials/" class="md-nav__link ">
+            <a href="../../testing-guide/partials/" class="md-nav__link ">
               
   
   
@@ -1238,7 +1138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/partials/overview/" class="md-nav__link">
+      <a href="../../testing-guide/partials/overview/" class="md-nav__link">
         
   
   
@@ -1266,7 +1166,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/partials/conventions/" class="md-nav__link">
+      <a href="../../testing-guide/partials/conventions/" class="md-nav__link">
         
   
   
@@ -1294,7 +1194,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/partials/directives/" class="md-nav__link">
+      <a href="../../testing-guide/partials/directives/" class="md-nav__link">
         
   
   
@@ -1322,7 +1222,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/partials/variables/" class="md-nav__link">
+      <a href="../../testing-guide/partials/variables/" class="md-nav__link">
         
   
   
@@ -1358,7 +1258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing-guide/build-directives/" class="md-nav__link">
+      <a href="../../testing-guide/build-directives/" class="md-nav__link">
         
   
   
@@ -1390,6 +1290,8 @@
       
   
   
+    
+  
   
   
     
@@ -1415,20 +1317,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="configuration/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1446,13 +1351,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1472,7 +1377,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/loading/" class="md-nav__link">
+      <a href="../loading/" class="md-nav__link">
         
   
   
@@ -1500,7 +1405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/project-file/" class="md-nav__link">
+      <a href="../project-file/" class="md-nav__link">
         
   
   
@@ -1525,10 +1430,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="configuration/parallel-builds/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parallel Builds
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1544,6 +1476,87 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operating-system-restrictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operating System restrictions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parallel-execution-in-ruby" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parallel execution in Ruby
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parallel execution in Ruby">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#io-operations-thread-context-switching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I/O operations thread context switching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#process-spawning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process spawning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1556,7 +1569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/which-ceedling/" class="md-nav__link">
+      <a href="../which-ceedling/" class="md-nav__link">
         
   
   
@@ -1584,7 +1597,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/global-collections/" class="md-nav__link">
+      <a href="../global-collections/" class="md-nav__link">
         
   
   
@@ -1658,10 +1671,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -1669,7 +1685,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="configuration/reference/" class="md-nav__link ">
+            <a href="../reference/" class="md-nav__link ">
               
   
   
@@ -1687,7 +1703,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -1713,7 +1729,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/project/" class="md-nav__link">
+      <a href="../reference/project/" class="md-nav__link">
         
   
   
@@ -1741,7 +1757,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/mixins/" class="md-nav__link">
+      <a href="../reference/mixins/" class="md-nav__link">
         
   
   
@@ -1769,7 +1785,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/test-build/" class="md-nav__link">
+      <a href="../reference/test-build/" class="md-nav__link">
         
   
   
@@ -1797,7 +1813,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/release-build/" class="md-nav__link">
+      <a href="../reference/release-build/" class="md-nav__link">
         
   
   
@@ -1825,7 +1841,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/paths/" class="md-nav__link">
+      <a href="../reference/paths/" class="md-nav__link">
         
   
   
@@ -1853,7 +1869,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/files/" class="md-nav__link">
+      <a href="../reference/files/" class="md-nav__link">
         
   
   
@@ -1881,7 +1897,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/environment/" class="md-nav__link">
+      <a href="../reference/environment/" class="md-nav__link">
         
   
   
@@ -1909,7 +1925,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/extension/" class="md-nav__link">
+      <a href="../reference/extension/" class="md-nav__link">
         
   
   
@@ -1937,7 +1953,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/defines/" class="md-nav__link">
+      <a href="../reference/defines/" class="md-nav__link">
         
   
   
@@ -1965,7 +1981,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/flags/" class="md-nav__link">
+      <a href="../reference/flags/" class="md-nav__link">
         
   
   
@@ -1993,7 +2009,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/libraries/" class="md-nav__link">
+      <a href="../reference/libraries/" class="md-nav__link">
         
   
   
@@ -2021,7 +2037,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/unity/" class="md-nav__link">
+      <a href="../reference/unity/" class="md-nav__link">
         
   
   
@@ -2049,7 +2065,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/cmock/" class="md-nav__link">
+      <a href="../reference/cmock/" class="md-nav__link">
         
   
   
@@ -2077,7 +2093,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/test-runner/" class="md-nav__link">
+      <a href="../reference/test-runner/" class="md-nav__link">
         
   
   
@@ -2105,7 +2121,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/cexception/" class="md-nav__link">
+      <a href="../reference/cexception/" class="md-nav__link">
         
   
   
@@ -2133,7 +2149,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/plugins/" class="md-nav__link">
+      <a href="../reference/plugins/" class="md-nav__link">
         
   
   
@@ -2161,7 +2177,7 @@
   
   
     <li class="md-nav__item">
-      <a href="configuration/reference/tools/" class="md-nav__link">
+      <a href="../reference/tools/" class="md-nav__link">
         
   
   
@@ -2259,7 +2275,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="plugins/" class="md-nav__link ">
+            <a href="../../plugins/" class="md-nav__link ">
               
   
   
@@ -2303,7 +2319,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/report-tests-pretty-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-pretty-stdout/" class="md-nav__link">
         
   
   
@@ -2331,7 +2347,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/report-tests-ide-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-ide-stdout/" class="md-nav__link">
         
   
   
@@ -2359,7 +2375,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/report-tests-gtestlike-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-gtestlike-stdout/" class="md-nav__link">
         
   
   
@@ -2387,7 +2403,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/report-tests-teamcity-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-teamcity-stdout/" class="md-nav__link">
         
   
   
@@ -2415,7 +2431,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/report-tests-log-factory/" class="md-nav__link">
+      <a href="../../plugins/report-tests-log-factory/" class="md-nav__link">
         
   
   
@@ -2443,7 +2459,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/report-tests-raw-output-log/" class="md-nav__link">
+      <a href="../../plugins/report-tests-raw-output-log/" class="md-nav__link">
         
   
   
@@ -2471,7 +2487,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/report-build-warnings-log/" class="md-nav__link">
+      <a href="../../plugins/report-build-warnings-log/" class="md-nav__link">
         
   
   
@@ -2499,7 +2515,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/gcov/" class="md-nav__link">
+      <a href="../../plugins/gcov/" class="md-nav__link">
         
   
   
@@ -2527,7 +2543,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/bullseye/" class="md-nav__link">
+      <a href="../../plugins/bullseye/" class="md-nav__link">
         
   
   
@@ -2555,7 +2571,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/fff/" class="md-nav__link">
+      <a href="../../plugins/fff/" class="md-nav__link">
         
   
   
@@ -2583,7 +2599,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/command-hooks/" class="md-nav__link">
+      <a href="../../plugins/command-hooks/" class="md-nav__link">
         
   
   
@@ -2611,7 +2627,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/compile-commands-json-db/" class="md-nav__link">
+      <a href="../../plugins/compile-commands-json-db/" class="md-nav__link">
         
   
   
@@ -2639,7 +2655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/beep/" class="md-nav__link">
+      <a href="../../plugins/beep/" class="md-nav__link">
         
   
   
@@ -2667,7 +2683,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/module-generator/" class="md-nav__link">
+      <a href="../../plugins/module-generator/" class="md-nav__link">
         
   
   
@@ -2695,7 +2711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/dependencies/" class="md-nav__link">
+      <a href="../../plugins/dependencies/" class="md-nav__link">
         
   
   
@@ -2723,7 +2739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="plugins/subprojects/" class="md-nav__link">
+      <a href="../../plugins/subprojects/" class="md-nav__link">
         
   
   
@@ -2816,7 +2832,7 @@
   
   
     <li class="md-nav__item">
-      <a href="project/release-history/" class="md-nav__link">
+      <a href="../../project/release-history/" class="md-nav__link">
         
   
   
@@ -2844,7 +2860,7 @@
   
   
     <li class="md-nav__item">
-      <a href="project/upgrade/" class="md-nav__link">
+      <a href="../../project/upgrade/" class="md-nav__link">
         
   
   
@@ -2879,7 +2895,7 @@
   
   
     <li class="md-nav__item">
-      <a href="help/" class="md-nav__link">
+      <a href="../../help/" class="md-nav__link">
         
   
   
@@ -2931,7 +2947,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="development/" class="md-nav__link ">
+            <a href="../../development/" class="md-nav__link ">
               
   
   
@@ -3004,7 +3020,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="development/plugins/" class="md-nav__link ">
+            <a href="../../development/plugins/" class="md-nav__link ">
               
   
   
@@ -3048,7 +3064,7 @@
   
   
     <li class="md-nav__item">
-      <a href="development/plugins/configuration/" class="md-nav__link">
+      <a href="../../development/plugins/configuration/" class="md-nav__link">
         
   
   
@@ -3076,7 +3092,7 @@
   
   
     <li class="md-nav__item">
-      <a href="development/plugins/plugin-subclass/" class="md-nav__link">
+      <a href="../../development/plugins/plugin-subclass/" class="md-nav__link">
         
   
   
@@ -3104,7 +3120,7 @@
   
   
     <li class="md-nav__item">
-      <a href="development/plugins/rake-tasks/" class="md-nav__link">
+      <a href="../../development/plugins/rake-tasks/" class="md-nav__link">
         
   
   
@@ -3167,10 +3183,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Configuration
       
     </span>
   </a>
@@ -3178,10 +3194,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#getting-started" class="md-nav__link">
+  <a href="#operating-system-restrictions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Getting Started
+        Operating System restrictions
       
     </span>
   </a>
@@ -3189,35 +3205,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#unit-testing" class="md-nav__link">
+  <a href="#parallel-execution-in-ruby" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Unit Testing
+        Parallel execution in Ruby
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parallel execution in Ruby">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#io-operations-thread-context-switching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I/O operations thread context switching
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#project-configuration" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#process-spawning" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Project Configuration
+        Process spawning
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-extending" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced &amp; Extending
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3239,6 +3261,46 @@
   
 
 
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Configuration
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
               
               <article class="md-content__inner md-typeset">
                 
@@ -3249,171 +3311,95 @@
   
 
 
-<h1 id="ceedling-packet">Ceedling Packet</h1>
-<p>Ceedling is a fancypants build system that greatly simplifies building 
-C projects. While it can certainly build release targets, it absolutely 
-shines at running unit test suites.</p>
-<p>Ceedling and its suite of frameworks, including Unity and CMock, were developed 
-for use on platforms from heavy duty workstations to teeny tiny microcontrollers. 
-Features handy for low-level development have made these tools popular with 
-embedded systems developers.</p>
+<h1 id="parallel-build-steps">Parallel Build Steps</h1>
+<p>Beginning with version 1.0.0, Ceedling supports parallelization of tasks.</p>
+<h2 id="configuration">Configuration</h2>
+<p>To enable parallel builds, simply configure either or both of the following in
+your project configuration:</p>
+<ul>
+<li><a href="../reference/project/#compile_threads"><code>:project</code> ↳ <code>:compile_threads</code></a></li>
+<li><a href="../reference/project/#test_threads"><code>:project</code> ↳ <code>:test_threads</code></a></li>
+</ul>
+<p>These two settings allow you to separate build step parallelism from test suite
+execution parallelism. Why? A core reason is because some emulator setups
+necessary for test suite execution do not allow multiple instances running
+simultaneously.</p>
+<h2 id="operating-system-restrictions">Operating System restrictions</h2>
+<div class="admonition warning">
+<p class="admonition-title">Operating Systems security protections can limit parallelism</p>
+</div>
+<p>Modern versions of macOS and Windows both include security gatekeeping that can
+limit Ceedling’s ability to achieve speedups and true parallelism. These
+products can:</p>
+<ol>
+<li>Execute first-run security checks on newly built, unsgined executables
+(such as components of a test suite) that greatly slow down execution.</li>
+<li>Force one-at-a-time execution for any unsigned software attempting to 
+spawn multiple processes simultaneously.</li>
+</ol>
+<p>Signing the executables Ceedling generates is wildly complex and maybe even
+practically impossible.</p>
+<p>A current limitation of Ceedling since 1.0.0 also contributes to these
+bottlenecks. Namely, with the release of 1.0.0 Ceedling lost “delta” builds —
+the ability to only regenerate components of a test suite that have changed.
+This means Ceedling’s test suites are fully rebuilt each time with OS first-run
+security checks to fire at run time. Future versions of Ceedling will restore
+this ability.</p>
 <div class="admonition tip">
-<p class="admonition-title">New to Ceedling?</p>
-<p>Jump straight to the <a href="getting-started/quick-start/">Quick Start</a> — installation,
-project set up, and your first build tasks all in one place.</p>
+<p class="admonition-title">Configuring OS security restrictions</p>
+<p>Read up on your Operating System’s options for configuring the restrictions 
+noted above. For instance, you may be able to configure certain exceptions 
+for your terminal application that cascade to benefit Ceedling’s parallelism.</p>
 </div>
-<div class="admonition feature">
-<p class="admonition-title">New in Ceedling 1.1.0 — Partials</p>
-<p>A <a href="testing-guide/partials/"><em>Partial</em></a> is your C code sliced and diced
-to expose functional elements for testing that you could not otherwise 
-access without rewriting your source code. Think of Partials as a scalpel 
-for testing your code.</p>
+<h2 id="parallel-execution-in-ruby">Parallel execution in Ruby</h2>
+<p>You may have heard that Ruby is actually only single-threaded or may know of its
+Global Interpreter Lock (GIL) that prevents parallel execution
+<sup id="fnref:python-note"><a class="footnote-ref" href="#fn:python-note">1</a></sup>. This is true but not the whole story.</p>
+<p>To oversimplify a complicated subject, the Ruby implementations typically used
+to run Ceedling do afford concurrency and true parallelism speedups but only in
+certain circumstances. It so happens that these circumstances are precisely the
+workload that Ceedling manages.</p>
+<p>“Mainstream” Ruby implementations — not JRuby<sup id="fnref:jruby-note"><a class="footnote-ref" href="#fn:jruby-note">2</a></sup>, for example — offer
+ the following exceptions and abilities of which Ceedling takes advantage.</p>
+<h3 id="io-operations-thread-context-switching">I/O operations thread context switching</h3>
+<p>Since version 1.9, Ruby supports native threads and not only green threads.
+However, native threads are limited by the GIL to executing one at a time
+regardless of the number of cores in your processor. But, the key exception
+here is the GIL is “relaxed” for I/O operations.</p>
+<p>When a native thread blocks for I/O, Ruby allows the OS scheduler to context
+switch to a thread ready to execute. This is the original benefit of threads
+when they were first developed back when CPUs contained a single core and
+multi-processor systems were rare and special.</p>
+<p>Ceedling does a fair amount of file and standard stream I/O in its pure Ruby
+code. Thus, when multiple threads are enabled in the project configuration,
+execution can speed up for these operations because Ruby’s GIL allows those I/O
+operations to execute with true parallelism.</p>
+<h3 id="process-spawning">Process spawning</h3>
+<p>Ruby’s process spawning abilities have always mapped directly to OS
+capabilities. When a processor has multiple cores available, the OS tends to
+spread multiple child processes across those cores in true parallel execution.</p>
+<p>Much of Ceedling’s workload is executing a tool — such as a compiler — in a
+child process. With multiple threads enabled, each thread can spawn a child
+process for a build tool used by a build step. These child processes can be
+spread across multiple cores in true parallel execution.</p>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:python-note">
+<p>Python and most other scripting-style languages rely on the
+Global Interpreter Lock concept for managing parallelism. A class of languages
+that includes Go, Rust, and Java fully support true parallelism.&#160;<a class="footnote-backref" href="#fnref:python-note" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn:jruby-note">
+<p>JRuby implements the Ruby language by way of an underlying Java
+implementation. This allows Ruby to run in certain contexts it might not
+otherwise be able to — particularly in Enterprise systems. Ruby parallelism in
+JRuby is built atop Java’s true, native parallelism. Taking advantage of JRuby
+requires certain customization of the Ruby language, and Ceedling has never
+been tested for JRuby support.&#160;<a class="footnote-backref" href="#fnref:jruby-note" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+</ol>
 </div>
-<h2 id="overview">Overview</h2>
-<div class="grid cards">
-<ul>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m13.78 15.3 6 6 2.11-2.16-6-6zm3.72-5.2c-.39 0-.81-.05-1.14-.19L4.97 21.25l-2.11-2.11 7.41-7.4L8.5 9.96l-.72.7-1.45-1.41v2.86l-.7.7-3.52-3.56.7-.7h2.81l-1.4-1.41 3.56-3.56a2.976 2.976 0 0 1 4.22 0L9.89 5.74l1.41 1.4-.71.71 1.79 1.78 1.82-1.88c-.14-.33-.2-.75-.2-1.12a3.49 3.49 0 0 1 3.5-3.52c.59 0 1.11.14 1.58.42L16.41 6.2l1.5 1.5 2.67-2.67c.28.47.42.97.42 1.6 0 1.92-1.55 3.47-3.5 3.47"/></svg></span> <strong><a href="overview/build-system/">A Build System for C</a></strong></p>
-<hr />
-<p>Generate a complete test and release build from a single YAML file.
-Provides a minimal sample project configuration and an explanation of Ceedling’s
-design philosophy.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16h-2v-1H8v1H6v-1H2v5h20v-5h-4zm2-8h-3V6c0-1.1-.9-2-2-2H9c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v4h4v-2h2v2h8v-2h2v2h4v-4c0-1.1-.9-2-2-2m-5 0H9V6h6z"/></svg></span> <strong><a href="overview/tools-and-frameworks/">Tools &amp; Frameworks</a></strong></p>
-<hr />
-<p>Ruby, Rake, YAML, Unity, CMock, and CException explained — the pieces that make
-Ceedling possible and how they fit together.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 2v2h1v14a4 4 0 0 0 4 4 4 4 0 0 0 4-4V4h1V2zm4 14c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1m2-4c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1m1-5h-4V4h4z"/></svg></span> <strong><a href="overview/test-environments/">Test Environments</a></strong></p>
-<hr />
-<p>Native host builds, emulator-based runs, and on-target execution — choose the
-right test suite strategy for your project.</p>
-</li>
-</ul>
-</div>
-<h2 id="getting-started">Getting Started</h2>
-<div class="grid cards">
-<ul>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m13.13 22.19-1.63-3.83c1.57-.58 3.04-1.36 4.4-2.27zM5.64 12.5l-3.83-1.63 6.1-2.77C7 9.46 6.22 10.93 5.64 12.5M21.61 2.39S16.66.269 11 5.93c-2.19 2.19-3.5 4.6-4.35 6.71-.28.75-.09 1.57.46 2.13l2.13 2.12c.55.56 1.37.74 2.12.46A19.1 19.1 0 0 0 18.07 13c5.66-5.66 3.54-10.61 3.54-10.61m-7.07 7.07c-.78-.78-.78-2.05 0-2.83s2.05-.78 2.83 0c.77.78.78 2.05 0 2.83s-2.05.78-2.83 0m-5.66 7.07-1.41-1.41zM6.24 22l3.64-3.64c-.34-.09-.67-.24-.97-.45L4.83 22zM2 22h1.41l4.77-4.76-1.42-1.41L2 20.59zm0-2.83 4.09-4.08c-.21-.3-.36-.62-.45-.97L2 17.76z"/></svg></span> <strong><a href="getting-started/quick-start/">Quick Start</a></strong></p>
-<hr />
-<p>Ready to go? Let’s go.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z"/></svg></span> <strong><a href="getting-started/installation/">Ceedling Installation &amp; Set Up</a></strong></p>
-<hr />
-<p>Installing Ceedling and its prerequisites.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 19V7H4v12zm0-16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm-7 14v-2h5v2zm-3.42-4L5.57 9H8.4l3.3 3.3c.39.39.39 1.03 0 1.42L8.42 17H5.59z"/></svg></span> <strong><a href="getting-started/command-line/">Ceedling’s Command Line.</a></strong></p>
-<hr />
-<p>Now what? How do I make it <em>Go</em>?</p>
-</li>
-</ul>
-</div>
-<h2 id="unit-testing">Unit Testing</h2>
-<div class="grid cards">
-<ul>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m15.07 11.25-.9.92C13.45 12.89 13 13.5 13 15h-2v-.5c0-1.11.45-2.11 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41a2 2 0 0 0-2-2 2 2 0 0 0-2 2H8a4 4 0 0 1 4-4 4 4 0 0 1 4 4 3.2 3.2 0 0 1-.93 2.25M13 19h-2v-2h2M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10c0-5.53-4.5-10-10-10"/></svg></span> <strong><a href="testing-guide/test-cases/">How Does a Test Case Even Work?</a></strong></p>
-<hr />
-<p>A brief overview of what a test case is with simple examples illustrating
-how test cases work.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5zM6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m.12 13.5 3.74 3.74 1.42-1.41-2.33-2.33 2.33-2.33-1.42-1.41zm11.16 0-3.74-3.74-1.42 1.41 2.33 2.33-2.33 2.33 1.42 1.41z"/></svg></span> <strong><a href="testing-guide/test-sample/">Commented Sample Test File</a></strong></p>
-<hr />
-<p>A sample test file illustrating test case creation and the conventions
-that make it work. Includes a discussion of how test executables get built.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12 16 7.36-5.73L21 9l-9-7-9 7 1.63 1.27M12 18.54l-7.38-5.73L3 14.07l9 7 9-7-1.63-1.27z"/></svg></span> <strong><a href="testing-guide/test-suite-anatomy/">Anatomy of a Test Suite</a></strong></p>
-<hr />
-<p>How a unit test grows up to become a test suite.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10.59 13.41c.41.39.41 1.03 0 1.42-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0 5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.98 2.98 0 0 0 0-4.24 2.98 2.98 0 0 0-4.24 0l-3.53 3.53a2.98 2.98 0 0 0 0 4.24m2.82-4.24c.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0 5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.43l-.47.47a2.98 2.98 0 0 0 0 4.24 2.98 2.98 0 0 0 4.24 0l3.53-3.53a2.98 2.98 0 0 0 0-4.24.973.973 0 0 1 0-1.42"/></svg></span> <strong><a href="testing-guide/frameworks/">Using Unity, CMock &amp; CException</a></strong></p>
-<hr />
-<p>Ceedling links together Unity, CMock, and CException — each of which can
-require configuration of their own. Ceedling facilitates this.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m19 2-5 4.5v11l5-4.5zM6.5 5C4.55 5 2.45 5.4 1 6.5v14.66c0 .25.25.5.5.5.1 0 .15-.07.25-.07 1.35-.65 3.3-1.09 4.75-1.09 1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.31 4.75 1.06.1.05.15.03.25.03.25 0 .5-.25.5-.5V6.5c-.6-.45-1.25-.75-2-1V19c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V6.5C10.55 5.4 8.45 5 6.5 5"/></svg></span> <strong><a href="testing-guide/conventions/">Important Conventions &amp; Behaviors</a></strong></p>
-<hr />
-<p>Much of testing in Ceedling is accomplished by convention.
-Code and files structured and named in certain ways trigger sophisticated build
-features.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m19 3-6 6 2 2 7-7V3m-10 9.5a.5.5 0 0 1-.5-.5.5.5 0 0 1 .5-.5.5.5 0 0 1 .5.5.5.5 0 0 1-.5.5M6 20a2 2 0 0 1-2-2 2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 1-2 2M6 8a2 2 0 0 1-2-2 2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 1-2 2m3.64-.36c.23-.5.36-1.05.36-1.64a4 4 0 0 0-4-4 4 4 0 0 0-4 4 4 4 0 0 0 4 4c.59 0 1.14-.13 1.64-.36L10 12l-2.36 2.36C7.14 14.13 6.59 14 6 14a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4c0-.59-.13-1.14-.36-1.64L12 14l7 7h3v-1z"/></svg></span> <strong><a href="testing-guide/partials/">Partials</a></strong></p>
-<hr />
-<p>Partials are like a scalpel for your source code. A generated partial allows 
-you to test and mock parts of your code you could not otherwise access
-without rewriting it first.</p>
-</li>
-</ul>
-</div>
-<h2 id="project-configuration">Project Configuration</h2>
-<div class="grid cards">
-<ul>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6m-1 1.5L18.5 9H13m-2.95 2.22 2.83 2.83L15 11.93V19H7.93l2.12-2.12-2.83-2.83"/></svg></span> <strong><a href="configuration/loading/">How to Load a Project Configuration</a></strong></p>
-<hr />
-<p>You have options, my friend. Load your base configuration via command line 
-flag, environment variable, or default file. Add Mixins to merge configuration 
-for different build scenarios.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 2c-1.11 0-2 .89-2 2v16a2 2 0 0 0 2 2h6.68a7 7 0 0 1-.68-3 7 7 0 0 1 7-7 7 7 0 0 1 1 .08V8l-6-6zm7 1.5L18.5 9H13zM18 14a.26.26 0 0 0-.26.21l-.19 1.32c-.3.13-.59.29-.85.47l-1.24-.5c-.11 0-.24 0-.31.13l-1 1.73c-.06.11-.04.24.06.32l1.06.82a4.2 4.2 0 0 0 0 1l-1.06.82a.26.26 0 0 0-.06.32l1 1.73c.06.13.19.13.31.13l1.24-.5c.26.18.54.35.85.47l.19 1.32c.02.12.12.21.26.21h2c.11 0 .22-.09.24-.21l.19-1.32c.3-.13.57-.29.84-.47l1.23.5c.13 0 .26 0 .33-.13l1-1.73a.26.26 0 0 0-.06-.32l-1.07-.82c.02-.17.04-.33.04-.5s-.01-.33-.04-.5l1.06-.82a.26.26 0 0 0 .06-.32l-1-1.73c-.06-.13-.19-.13-.32-.13l-1.23.5c-.27-.18-.54-.35-.85-.47l-.19-1.32A.236.236 0 0 0 20 14zm1 3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5c-.84 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5"/></svg></span> <strong><a href="configuration/project-file/">The Mighty Project Configuration File</a></strong></p>
-<hr />
-<p>Everything you need to know about the project configuration file. All in 
-glorious YAML.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21.5c-1.35-.85-3.8-1.5-5.5-1.5-1.65 0-3.35.3-4.75 1.05-.1.05-.15.05-.25.05-.25 0-.5-.25-.5-.5V6c.6-.45 1.25-.75 2-1 1.11-.35 2.33-.5 3.5-.5 1.95 0 4.05.4 5.5 1.5 1.45-1.1 3.55-1.5 5.5-1.5 1.17 0 2.39.15 3.5.5.75.25 1.4.55 2 1v14.6c0 .25-.25.5-.5.5-.1 0-.15 0-.25-.05-1.4-.75-3.1-1.05-4.75-1.05-1.7 0-4.15.65-5.5 1.5M12 8v11.5c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5V7c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5m1 3.5c1.11-.68 2.6-1 4.5-1 .91 0 1.76.09 2.5.28V9.23c-.87-.15-1.71-.23-2.5-.23q-2.655 0-4.5.84zm4.5.17c-1.71 0-3.21.26-4.5.79v1.69c1.11-.65 2.6-.99 4.5-.99 1.04 0 1.88.08 2.5.24v-1.5c-.87-.16-1.71-.23-2.5-.23m2.5 2.9c-.87-.16-1.71-.24-2.5-.24-1.83 0-3.33.27-4.5.8v1.69c1.11-.66 2.6-.99 4.5-.99 1.04 0 1.88.08 2.5.24z"/></svg></span> <strong><a href="configuration/reference/">Project Configuration Reference</a></strong></p>
-<hr />
-<p>Exhaustive documentation for all project configuration options — project
-paths, testing features, plugins, and much more.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 7v14h14v2H4c-1.1 0-2-.9-2-2V7zm16-4c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H8c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h3.2c.4-1.2 1.5-2 2.8-2s2.4.8 2.8 2zm-6 0c-.6 0-1 .5-1 1s.4 1 1 1 1-.4 1-1-.4-1-1-1m-4 4V5H8v12h12V5h-2v2m-6 8V9l5 3"/></svg></span> <strong><a href="configuration/parallel-builds/">Parallel Builds</a></strong></p>
-<hr />
-<p>Configure Ceedling to take advantage of multiple CPU cores for faster build
-steps and test suite execution.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 4v8.5l3-3L9 13c1 1 1 2 1 2v6h4v-7s0-1-.53-2S12 10 12 10L9 6.58 11.5 4M18 4l-4.46 4.47L14 9s.93 1 1.47 2c.21.4.33.79.4 1.13L21 7"/></svg></span> <strong><a href="configuration/which-ceedling/">Which Ceedling?</a></strong></p>
-<hr />
-<p>Sometimes you may need to point to a different Ceedling to run.</p>
-</li>
-</ul>
-</div>
-<h2 id="advanced-extending">Advanced &amp; Extending</h2>
-<div class="grid cards">
-<ul>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m5.41 21 .71-4h-4l.35-2h4l1.06-6h-4l.35-2h4l.71-4h2l-.71 4h6l.71-4h2l-.71 4h4l-.35 2h-4l-1.06 6h4l-.35 2h-4l-.71 4h-2l.71-4h-6l-.71 4zM9.53 9l-1.06 6h6l1.06-6z"/></svg></span> <strong><a href="testing-guide/build-directives/">Build Directive Macros</a></strong></p>
-<hr />
-<p>Code macros to accomplish build goals when Ceedling's conventions aren't
-quite enough.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.04 19.61a2.68 2.68 0 0 0-2.54-1.81c-1.5 0-2.7 1.2-2.7 2.7V22H4a2 2 0 0 1-2-2v-3.8h1.5c1.5 0 2.7-1.2 2.7-2.7S5 10.8 3.5 10.8H2V7c0-1.1.9-2 2-2h4V3.5a2.5 2.5 0 0 1 5 0V5h4a2 2 0 0 1 2 2v4h1.5a2.5 2.5 0 0 1 2.5 2.5c0 .32-.06.62-.17.89A6 6 0 0 0 19 13c-3.31 0-6 2.69-6 6 0 .2 0 .41.04.61M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg></span> <strong><a href="plugins/">Ceedling Plugins</a></strong></p>
-<hr />
-<p>Ceedling is extensible with built-in plugins for code coverage, test reporting,
-CI integration, file scaffolding, sophisticated release builds, and more.</p>
-</li>
-<li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3C7.58 3 4 4.79 4 7s3.58 4 8 4 8-1.79 8-4-3.58-4-8-4M4 9v3c0 2.21 3.58 4 8 4s8-1.79 8-4V9c0 2.21-3.58 4-8 4s-8-1.79-8-4m0 5v3c0 2.21 3.58 4 8 4s8-1.79 8-4v-3c0 2.21-3.58 4-8 4s-8-1.79-8-4"/></svg></span> <strong><a href="configuration/global-collections/">Global Collections</a></strong></p>
-<hr />
-<p>Globally available Ruby lists of paths, files, and more — useful for advanced
-project customization and plugin development.</p>
-</li>
-</ul>
-</div>
-<p><br/><br/></p>
 
 
 
@@ -3481,10 +3467,10 @@ project customization and plugin development.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "navigation.path", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "navigation.path", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
