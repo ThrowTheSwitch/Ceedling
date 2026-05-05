@@ -3328,13 +3328,20 @@ their declaration or definition:</p>
 <li><code>inline</code></li>
 <li><code>__inline</code></li>
 <li><code>__inline__</code></li>
+<li><code>__forceinline</code></li>
 </ul>
 <p>A <code>static</code> function has internal linkage. It is invisible to the linker
 outside its containing translation unit, and therefore cannot be called or 
-mocked from a test build without special handling. Inline functions may be 
+mocked from a test build without special handling. <code>inline</code> functions may be 
 folded away by the compiler entirely. Partials use decorators to organize
 lists of functions for testing and mocking, but the decorators are stripped
 in the resulting generated code.</p>
+<div class="admonition note">
+<p class="admonition-title">Because of preproccesing only the “private” keywords are recognized</p>
+<p>The preprocesing steps that are part of generating Partials expand any
+macros (e.g. <code>INLINE</code> or <code>STATICINLINE</code>) to the actual keywords decorating
+function signatures. As such, only the keywords above must be handled.</p>
+</div>
 <h3 id="public-functions">Public functions</h3>
 <p>“Public” functions are everything else — functions with no visibility-
 restricting decorator and ordinary external linkage.</p>

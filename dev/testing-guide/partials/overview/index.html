@@ -1216,6 +1216,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Slicing and dicing your C code">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partials-creation-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partials creation step-by-step
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generated-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generated files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3174,6 +3202,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Slicing and dicing your C code">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partials-creation-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partials creation step-by-step
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generated-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generated files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3326,14 +3382,47 @@
 <h1 id="what-is-a-partial">What Is a Partial?</h1>
 <h2 id="slicing-and-dicing-your-c-code">Slicing and dicing your C code</h2>
 <p>Ceedling reads your real source and header files, extracts their C contents,
-and generates new C files that comprise a Partial:</p>
+and generates new C files that comprise a Partial.</p>
+<p>Ceedling can create two kinds of Partials:</p>
+<ol>
+<li>A <strong><em>Test Partial</em></strong> for exposing otherwise inaccessible functions and 
+   variables to your test case assertions.</li>
+<li>A <strong><em>Mock Partial</em></strong> for mocking otherwise inaccessible functions in your
+   source code.</li>
+</ol>
+<p>When a test file references a Partial, Ceedling excludes the original source
+file from that test executable's build. The generated Partial 
+source is compiled and linked in place of the original source C.</p>
+<div class="admonition note">
+<p class="admonition-title">Purpose-specific C language handling</p>
+<p>Ceedling includes its own custom, purpose-specific lexing for recognizing
+C language elements. This was the best way to handle all cases across
+platforms. This custom lexer even handles many compiler extensions 
+(e.g. Microsoft’s <code>__declspec</code> and GCC's <code>__attribute__()</code>).</p>
+<p>On the upside, this approach provides everything Partials need. On the 
+downside, until exercised by a great deal of real world code, this custom 
+C handling will likely have failings and gaps.</p>
+</div>
+<h3 id="partials-creation-step-by-step">Partials creation step-by-step</h3>
 <p>When creating a Partial, Ceedling:</p>
 <ol>
-<li>Extracts your source code under test into a set of new C files in a special
-   build directory.</li>
-<li>Reorganizes and slightly alters your code so it can be accessed by your test.
-   Functions are stripped of <code>static</code> and <code>inline</code>. Variables are stripped of
-   <code>static</code>.</li>
+<li>Runs your source code under test through the preprocessor to:<ol>
+<li>Handle <code>#ifdef</code> blocks and strip comments.</li>
+<li>Collect the <code>#include</code> directives.</li>
+<li>Expand decorator macros (e.g. <code>STATICINLINE</code>) in function signatures.</li>
+</ol>
+</li>
+<li>Lexes the code under test to collect its individual C language elements
+   (e.g. <code>typedef</code>s, macros, functions, variables, etc.).</li>
+<li>Generates a new set of C files in a <em>partials/</em> build directory. The 
+   contents of these new files are:<ol>
+<li>Reconstructed with the <code>#include</code> directives from (1) and elements 
+   from (2).</li>
+<li>Reorganized and slightly altered so the C elements can be accessed by 
+   assertions and mocks in your test cases. Functions are stripped of 
+   <code>static</code> and <code>inline</code>. Variables are stripped of <code>static</code> and <code>extern</code>ed.</li>
+</ol>
+</li>
 <li>Structures the test build to omit the original source file from the 
    resulting test executable. Generated Partials are self-sufficient stand-ins 
    for the original C code from which the Partials are derived.</li>
@@ -3341,6 +3430,7 @@ and generates new C files that comprise a Partial:</p>
    original source module's filepath and line numbers (using GCC's <code>#line</code> 
    directive) for correct test coverage reporting.</li>
 </ol>
+<h3 id="generated-files">Generated files</h3>
 <table>
 <thead>
 <tr>
@@ -3367,9 +3457,6 @@ and generates new C files that comprise a Partial:</p>
 </tr>
 </tbody>
 </table>
-<p>These generated Partials files <code>#include</code> the same header files as the 
-original files from which they are generated. They also contain all macros,
-<code>typedef</code>s, user-defined types, etc. discovered in the original C code.</p>
 <p>Ceedling uses CMock to generate mocks from Partials interface header files
 just as it does for any other mockable header files.</p>
 <div class="admonition danger">
@@ -3378,9 +3465,6 @@ just as it does for any other mockable header files.</p>
 Partials C files. Do not modify these generated files or 
 incorporate them into your tests except with the accompanying macros.</p>
 </div>
-<p>When a test file references a Partial, Ceedling excludes the original source
-file from that test executable's build. The generated Partial 
-source is compiled and linked in place of the original source C.</p>
 <h2 id="partials-walk-through-example">Partials walk-through example</h2>
 <h3 id="temperature-sensor-module">Temperature sensor module</h3>
 <p>Imagine a temperature sensor code module…</p>
