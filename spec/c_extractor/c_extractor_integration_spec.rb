@@ -871,7 +871,7 @@ describe CExtractor do
       expect( merged.macro_definitions.length     ).to eq 1
     end
 
-    it "extracts function definitions and declarations with MSVC/GCC annotations" do
+    it "extracts function definitions and declarations with MSVC/GCC compiler extensions" do
       file_contents = <<~CONTENTS
         __declspec(dllexport) void exported_func(int x) { return; }
         int __cdecl cdecl_func(void) { return 0; }
@@ -898,7 +898,7 @@ describe CExtractor do
       expect(plain.decorators).to eq([])
     end
 
-    it "extracts variable declarations with compiler extensions (including extraction bug fix)" do
+    it "extracts variable declarations with compiler extensions" do
       file_contents = <<~CONTENTS
         int counter __attribute__((aligned(16)));
         char buf[] __attribute__((section(".data")));
