@@ -150,7 +150,7 @@ nav:
     - Beep: plugins/beep.md
     - Module Generator: plugins/module-generator.md
     - Dependencies: plugins/dependencies.md
-    - Subprojects: plugins/subprojects.md
+
   - Releases:
     - History Documents: project/release-history.md
     - Upgrading: project/upgrade.md

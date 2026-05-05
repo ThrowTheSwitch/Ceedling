@@ -1,17 +1,17 @@
 # Dependencies
 
-Plugin for supporting release dependencies. It's rare for an embedded project to
+Plugin for supporting release dependencies. It’s rare for an embedded project to
 be built completely free of other libraries and modules. Some of these may be
 standard internal libraries. Some of these may be 3rd party libraries. In either
-case, they become part of the project's ecosystem.
+case, they become part of the project’s ecosystem.
 
 This plugin is intended to make that relationship easier. It allows you to specify
 a source for dependencies. If required, it will automatically grab the appropriate
 version of that dependency.
 
-Most 3rd party libraries have a method of building already in place. While we'd
+Most 3rd party libraries have a method of building already in place. While we’d
 love to convert the world to a place where everything downloads with a test suite
-in Ceedling, that's not likely to happen anytime soon. Until then, this plugin
+in Ceedling, that’s not likely to happen anytime soon. Until then, this plugin
 will allow the developer to specify what calls Ceedling should make to oversee
 the build process of those third party utilities. Are they using Make? CMake? A
 custom series of scripts that only a mad scientist could possibly understand? No
@@ -65,7 +65,7 @@ it! In the end, it'll look something like this:
 ## Starting Dash & Name
 
 Yes, that opening dash tells the dependencies plugin that the rest of these fields
-belong to our first dependency. If we had a second dependency, we'd have another
+belong to our first dependency. If we had a second dependency, we’d have another
 dash, lined up with the first, and followed by all the fields indented again.
 
 By convention, we use the `:name` field as the first field for each tool. Ceedling
@@ -78,12 +78,12 @@ call the name of the field whatever you wish.
 ## Working Paths
 
 All paths are collected under `:dependencies` ↳ `:paths`. The `:source` field allows us 
-to specify where the source code for each of our dependencies is stored. By default, it's
+to specify where the source code for each of our dependencies is stored. By default, it’s
 the same as the `:fetch` path, which is where source will be fetched TO when fetching the 
 dependency from elsewhere. All commands to build this dependency will be executed from
 the `:source` location. Temporary data will be placed in the `:build` location. Unless you're
-using one of Ceedling's built-in builders, you'll need to learn where the tool you're using to
-build places it's built artifacts , and list that here. Finally, the output
+using one of Ceedling’s built-in builders, you'll need to learn where the tool you're using to
+build places it’s built artifacts , and list that here. Finally, the output
 artifacts will be referenced to this location. You override this by specifying a `:artifact`
 path. In summary:
 
@@ -136,7 +136,7 @@ within a specific dependency’s configuration is only for the shell environment
 that dependency. The format and abilities of the two `:environment` configuration sections are
 also different.
 
-Environment variables may be specified in three ways. Let's look at one of each:
+Environment variables may be specified in three ways. Let’s look at one of each:
 
 ```yaml
 :dependencies:
@@ -148,7 +148,7 @@ Environment variables may be specified in three ways. Let's look at one of each:
 ```
 
 In the first example, you see the most straightforward method. The environment variable
-`ARCHITECTURE` is set to the value `ARM9`. That's it. Simple.
+`ARCHITECTURE` is set to the value `ARM9`. That’s it. Simple.
 
 The next two options modify an existing symbol. In the first one, we use `+=`, which tells
 Ceedling to add the define `ADD_AWESOMENESS` to the environment variable `CFLAGS`. The second
@@ -162,7 +162,7 @@ If we had been modifying `PATH` instead, we might have had to use a `:` on a unu
 Windows.
 
 Second, removing an argument will have no effect on the argument if that argument isn't found
-precisely. It's case sensitive and the entire string must match. If symbol doesn't already exist,
+precisely. It’s case sensitive and the entire string must match. If symbol doesn't already exist,
 it WILL after executing this command... however it will be assigned to nothing.
 
 ## Building Dependencies
@@ -179,7 +179,7 @@ the artifacts should have been created by your process... otherwise an error wil
 
 These are the outputs of the build process. There are there types of artifacts. Any dependency
 may have none or some of these. Calling out these files tells Ceedling that they are important.
-Your dependency's build process may produce many other files... but these are the files that
+Your dependency’s build process may produce many other files... but these are the files that
 Ceedling understands it needs to act on.
 
 ### `static_libraries`
@@ -203,7 +203,7 @@ to produce them.
 ### `includes`
 
 Often when libraries are built, the same process will output a collection of includes so that
-your release code knows how to interact with that library. It's the public API for that library.
+your release code knows how to interact with that library. It’s the public API for that library.
 By specifying the directories that will contain these includes (don't specify the files themselves,
 Ceedling only needs the directories), Ceedling is able to automatically add these to its internal
 include list. This allows these files to be used while building your release code, as well we making
@@ -211,7 +211,7 @@ them mockable during unit testing.
 
 ### `source`
 
-It's possible that your external dependency will just produce additional C files as its output.
+It’s possible that your external dependency will just produce additional C files as its output.
 In this case, Ceedling is able to automatically add these to its internal source list. This allows
 these files to be used while building your release code.
 
@@ -248,7 +248,7 @@ build directory... just in case you clobbered them.
 ### `paths:include`
 
 Maybe you want to verify that all the include paths are correct. If you query Ceedling with this
-request, it will list all the header file paths that it's found, including those produced by
+request, it will list all the header file paths that it’s found, including those produced by
 dependencies.
 
 ### `files:include`

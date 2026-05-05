@@ -84,7 +84,7 @@ for this. A few highlights from that reference page:
   of Ceedling itself is skewed towards supporting testing, though
   Ceedling can, of course, build your binary release artifact
   as well. Note that some complex binary release builds are beyond
-  Ceedling's abilities. See the Ceedling plugin [subprojects](../plugins/subprojects.md) for
+  Ceedling's abilities. See the [`dependencies`](../plugins/dependencies.md) plugin for
   extending release build abilities.
 
 [MinGW]: http://www.mingw.org/

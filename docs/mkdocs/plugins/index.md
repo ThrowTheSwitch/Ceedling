@@ -164,21 +164,14 @@ for how to enable built-in plugins and load custom plugins in your project.
     of source file, header file, and test file — scaffolded such that they
     refer to one another — with convenient command line tasks.
 
--   :material-package-variant-closed: **[`subprojects`](subprojects.md)**
-
-    ---
-
-    Supports subproject release builds of static libraries, managing
-    differing sets of compiler and linker flags that fit the needs of
-    different library builds.
-
 -   :material-package-variant-closed: **[`dependencies`](dependencies.md)**
 
     ---
 
-    Manages release build dependencies including fetching those dependencies
-    and calling a given dependency's build process to generate the components
-    needed by your Ceedling release build target.
+    Manages release build dependencies (e.g. static libraries) including 
+    fetching those dependencies and calling a given dependency‘s build 
+    process to generate the components needed by your Ceedling release 
+    build target.
 
 </div>
 

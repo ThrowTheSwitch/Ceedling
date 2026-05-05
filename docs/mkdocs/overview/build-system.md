@@ -103,7 +103,7 @@ That said, Ceedling is more powerful as a unit test build environment
 than it is a general purpose release build environment. Complicated 
 projects including separate bootloaders or multiple library builds, 
 etc. are not necessarily its strong suit (but the 
-[`subprojects`](../plugins/subprojects.md) plugin can 
+[`dependencies`](../plugins/dependencies.md) plugin can 
 accomplish quite a bit here).
 
 It's quite common and entirely workable to host Ceedling and your 

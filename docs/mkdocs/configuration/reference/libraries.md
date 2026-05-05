@@ -40,7 +40,7 @@ paths are specified with `:paths` ↳ `:libraries`. Otherwise, absolute paths
 may be used here.
 
 These library files **must** exist when the release build occurs **unless** you
-are using the _subprojects_ plugin. In that case, the plugin will attempt to
+are using the [`dependencies`](../../plugins/dependencies.md) plugin. In that case, the plugin will attempt to
 build the needed library for you as a dependency.
 
 **Default**: `[]` (empty)
