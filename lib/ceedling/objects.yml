@@ -383,38 +383,56 @@ test_invoker:
   compose:
     - application
     - configurator
-    - test_invoker_helper
+    - test_build_setup
+    - test_build_planner
+    - test_build_executor
     - plugin_manager
     - batchinator
-    - reportinator
     - loginator
-    - preprocessinator
-    - partializer
-    - generator
-    - test_context_extractor
-    - file_path_utils
-    - file_finder
-    - file_wrapper
     - verbosinator
 
-test_invoker_helper:
+test_build_setup:
   compose:
     - configurator
     - loginator
     - reportinator
     - batchinator
-    - task_invoker
     - test_context_extractor
     - include_pathinator
     - preprocessinator
     - defineinator
     - flaginator
+    - file_wrapper
+    - file_path_utils
+    - test_runner_manager
+
+test_build_planner:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - test_context_extractor
+    - partializer
     - file_finder
     - file_path_utils
     - file_wrapper
+    - plugin_manager
+
+test_build_executor:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
     - partializer
     - generator
-    - test_runner_manager
+    - test_context_extractor
+    - plugin_manager
+    - file_path_utils
+    - file_finder
+    - file_wrapper
 
 release_invoker:
   compose:
