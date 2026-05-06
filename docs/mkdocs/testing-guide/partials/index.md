@@ -18,9 +18,9 @@ Partials are useful when a module under test contains:
 
 !!! warning "Limitations of Partials"
     Partials are new to Ceedling with 1.1.0. Carving up C code is tricky
-    business. Complex code may break Ceedling’s lexing or its assumptions 
-    on symbol ordering. Some issues may be bugs to be reported while 
-    others may be complexities that Partials are simply unable to resolve.
+    business. Complex code _may_ break Ceedling’s lexing or its assumptions 
+    on symbol ordering. Some issues may be [bugs to be reported](../../help.md) 
+    while others may be complexities that Partials are simply unable to resolve.
 
 ---
 
