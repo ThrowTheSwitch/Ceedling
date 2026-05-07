@@ -1,0 +1,42 @@
+# mkdocs uses a simple overwrite merge -- must rewrite entire sections to make small changes.
+INHERIT: mkdocs.yml
+
+# Produce index.html files with internal links for local HTML bundle.
+# The default is to produce directory URLs where a web server silently serves a directory index.html file
+use_directory_urls: false
+# Blank — prevents absolute URLs being baked in that point back to the live site.
+site_url: ''
+
+site_dir: site-local
+
+# Material theme configuration
+theme:
+  name: material
+  favicon: assets/images/favicon.png
+  logo: assets/images/ceedling.svg
+  palette:
+    - scheme: default
+      primary: green
+      accent: deep_purple
+  features:
+    # No navigation.instant for local site
+    - navigation.tabs        # Top-level nav rendered as tabs
+    - navigation.sections    # Sections rendered as groups in left sidebar
+    - navigation.top         # Back-to-top button
+    - navigation.indexes     # Section index pages (first item in section = section landing page)
+    - navigation.path        # Breadcrumb trail below page title
+    - search.suggest         # Autocomplete suggestions in search
+    - search.highlight       # Highlight search terms on result pages
+    - content.code.copy      # Copy button on code blocks
+    - content.code.annotate  # Inline annotation support in code blocks
+
+extra_css:
+  - assets/stylesheets/styling.css      # Custom style tweaks
+  - assets/stylesheets/admonitions.css  # Custom admonition types
+  - assets/stylesheets/fixes-local.css  # Local site styling overrides and layout fixes
+
+plugins:
+  # Disable client-side search.
+  # Browser security restrictions prevent loading the search index from the local filesystem.
+  search: null
+  # No `mike` plugin (only used for versioned deployment to gh-pages)

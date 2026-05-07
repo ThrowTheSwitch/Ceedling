@@ -23,18 +23,18 @@ describe SystemUtils do
  
   describe '#setup' do
     it 'sets tcsh_shell to nil' do
-      expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to eq(nil)
+      expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to be_nil
     end
 
     it 'sets tcsh_shell to nil after being set' do
-      expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to eq(nil)
+      expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to be_nil
      
 
       allow(@loginator).to receive(:shell_backticks).with(@echo_test_cmd).and_return({:exit_code => 0, :output =>'tcsh 1234567890'})
       @sys_utils.tcsh_shell?
       
       @sys_utils.setup
-      expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to eq(nil)
+      expect(@sys_utils.instance_variable_get(:@tcsh_shell)).to be_nil
     end
   end
 
