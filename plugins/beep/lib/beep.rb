@@ -59,6 +59,7 @@ class Beep < Plugin
   def post_build
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_done],
+      # No additional arguments
       [],
       # Only used by tools with `${1}` replacement argument
       'ceedling build done'
@@ -73,6 +74,7 @@ class Beep < Plugin
   def post_error
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_error],
+      # No additional arguments
       [],
       # Only used by tools with `${1}` replacement argument
       'ceedling build error'
