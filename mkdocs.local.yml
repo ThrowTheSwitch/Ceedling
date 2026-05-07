@@ -35,8 +35,5 @@ extra_css:
   - assets/stylesheets/admonitions.css  # Custom admonition types
   - assets/stylesheets/fixes-local.css  # Local site styling overrides and layout fixes
 
-plugins:
-  # Disable client-side search.
-  # Browser security restrictions prevent loading the search index from the local filesystem.
-  search: null
-  # No `mike` plugin (only used for versioned deployment to gh-pages)
+# Remove all the optional plugins that we run on the server, including "search" and "mike"
+plugins: []

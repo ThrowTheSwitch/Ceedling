@@ -40,6 +40,9 @@
 }
 
 /* repository display */
+.md-header__inner {
+    justify-content: space-between;
+}
 .md-header__source {
     background-color: #3A0040;
     border-radius: 4px;
