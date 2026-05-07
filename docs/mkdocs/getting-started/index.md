@@ -2,39 +2,34 @@
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch: **[Quick Start][quick-start]**
+-   :material-rocket-launch: **[Quick Start](quick-start.md)**
 
     ---
 
     Steps from installation through running your first build tasks — 
     get up and running fast.
 
--   :material-download: **[Installation][installation]**
+-   :material-download: **[Installation](installation.md)**
 
     ---
 
     Install Ceedling as a Ruby Gem or use a prepackaged _MadScienceLab_
     Docker image with Ceedling, GCC, and supporting tools already bundled.
 
--   :material-console: **[Command Line][command-line]**
+-   :material-console: **[Command Line](command-line.md)**
 
     ---
 
     Application commands (project creation, help, config inspection) and
     build & plugin tasks (test runs, release builds, clean, and more).
 
--   :material-variable: **[Environment Variables][environment-vars]**
+-   :material-file-code: **[Commented Sample Test File](../testing-guide/test-sample.md)**
 
     ---
 
-    Ceedling can be configured by a small set of optional environment
-    variables.
+    A sample test file illustrating the Ceedling conventions that make it go. 
+    Includes a discussion of what gets compiled and linked into a test executable.
 
 </div>
-
-[quick-start]:      quick-start.md
-[installation]:     installation.md
-[command-line]:     command-line.md
-[environment-vars]: environment-vars.md
 
 <br/><br/>
