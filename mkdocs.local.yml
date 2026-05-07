@@ -31,8 +31,9 @@ theme:
     - content.code.annotate  # Inline annotation support in code blocks
 
 extra_css:
-  - assets/stylesheets/local-fixes.css  # Local site styling overrides and layout fixes
+  - assets/stylesheets/styling.css      # Custom style tweaks
   - assets/stylesheets/admonitions.css  # Custom admonition types
+  - assets/stylesheets/fixes-local.css  # Local site styling overrides and layout fixes
 
 plugins:
   # Disable client-side search.

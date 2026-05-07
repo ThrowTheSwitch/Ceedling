@@ -19,10 +19,11 @@ copyright: >-
 theme:
   name: material
   favicon: assets/images/favicon.png
-  # logo: assets/images/ceedling-icon.png
+  logo: assets/images/ceedling.svg
   palette:
     - scheme: default
       primary: green
+      accent: deep_purple
   features:
     - navigation.tabs        # Top-level nav rendered as tabs
     - navigation.sections    # Sections rendered as groups in left sidebar
@@ -47,6 +48,7 @@ extra:
       name: Sponsor ThrowTheSwitch on GitHub
 
 extra_css:
+  - assets/stylesheets/styling.css      # Custom style tweaks
   - assets/stylesheets/admonitions.css  # Custom admonition types
 
 # Plugins
@@ -92,7 +94,6 @@ nav:
     - Quick Start: getting-started/quick-start.md
     - Installation: getting-started/installation.md
     - Command Line: getting-started/command-line.md
-    - Environment Variables: getting-started/environment-vars.md
   - Testing Guide:
     - testing-guide/index.md
     - How Does a Test Case Work?: testing-guide/test-cases.md
@@ -112,6 +113,7 @@ nav:
     - Loading Configuration: configuration/loading.md
     - Project File Basics: configuration/project-file.md
     - Parallel Builds: configuration/parallel-builds.md
+    - Environment Variables: configuration/environment-vars.md
     - Which Ceedling: configuration/which-ceedling.md
     - Global Collections: configuration/global-collections.md
     - Configuration Reference:
@@ -150,7 +152,14 @@ nav:
     - Beep: plugins/beep.md
     - Module Generator: plugins/module-generator.md
     - Dependencies: plugins/dependencies.md
-
+  - Reference:
+    - reference/index.md
+    - Command Line: reference/command-line.md
+    - Project Configuration: reference/project-configuration.md
+    - Test Build Directives: reference/build-directives.md
+    - Partials Macros: reference/partials-macros.md
+    - Environment Variables: reference/environment-vars.md
+    - Global Collections: reference/global-collections.md
   - Releases:
     - History Documents: project/release-history.md
     - Upgrading: project/upgrade.md
