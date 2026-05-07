@@ -38,9 +38,17 @@ class Loginator
 
     @replace = {
       # Problematic characters pattern => Simple characters
-      /↳/ => '>>',   # Config sub-entry notation
-      /•/ => '*',    # Bulleted lists
-      /➡️/ => '>>',  # Right arrow
+
+      # Config sub-entry notation
+      /↳/ => '>>',
+      # Bulleted lists
+      /•/ => '*',
+      # Triangle
+      /▶️/ => '>',
+      # Right arrow
+      /➡️/ => '->',
+      # Double right arrow
+      /⏩️/ => '>>',
     }
 
     @project_logging = false
@@ -122,6 +130,7 @@ class Loginator
   # Write the given string to an optional log file and to the console
   #  - Logging statements to a file are always at the highest verbosity
   #  - Console logging is controlled by the verbosity level
+  #  - Ensure at least one newline at the end of each message but collapse multiple newlines as two (for extra whitespace)
   #
   # For default label of LogLabels::AUTO
   #  - If verbosity ERRORS, add ERROR: heading
@@ -151,8 +160,8 @@ class Loginator
     # Flatten if needed
     message = message.flatten.join("\n") if (message.class == Array)
 
-    # Message contatenated with "\n" (unless it aready ends with a newline)
-    message += "\n" unless message.end_with?( "\n" )
+    # Ensure at least one newline but no more than two newlines at the end
+    message = message.rstrip + (message.rstrip != message.chomp ? "\n\n" : "\n")
 
     # Add item to the queue
     item = {
@@ -164,6 +173,18 @@ class Loginator
     @queue << item
   end
 
+  def log_list(list, header='', verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
+    msg = (header.nil? or header.empty?) ? '' : header + ':'
+
+    if list.nil? or list.empty?
+      msg += ' ' if !msg.empty?
+      msg += "<empty>"
+    else
+      list.each { |item| msg += "\n - #{item}" }
+    end
+
+    log(msg + "\n\n", verbosity, label, stream)
+  end
 
   # This is a version of the log function which performs lazy evaluation of the message itself.
   # The purpose of this version is to improve performance by only building strings that are needed
