@@ -1,12 +1,72 @@
-
+/* sidebar logo and style */
 /* Fix sidebar scrollwrap overflow from bad JS height calculation.
    We can't set site_url for the local site, and this causes the header height to be miscalculated.
  */
+.md-sidebar {
+    top: 2.4rem !important;
+}
 .md-sidebar__scrollwrap {
     height: calc(100vh - 2.4rem) !important;  /* 100vh minus header height */
     overflow-y: auto;
 }
-
-.md-sidebar {
-    top: 2.4rem !important;
+.md-nav--primary .md-nav__title {
+    background-color: #EEEEEE !important;
+    font-size: 0;
 }
+
+/* header logo and style */
+.md-header {
+    background-color: #EEEEEE;
+}
+.md-header__title {
+  display: none;
+}
+.md-header__button.md-logo {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 4.0rem;
+}
+@media screen and (max-width: 76.1875em) {
+  .md-header__button.md-logo {
+    display: flex; /* force it to stay visible */
+  }
+}
+
+/* search bar */
+.md-search {
+    margin-left: auto;
+}
+.md-search__form {
+    background-color: #DDDDDD;
+    border-radius: 4px;
+}
+.md-search__input {
+    color: #3A0040; /* Replace with your desired color */
+}
+.md-search__input::placeholder {
+    color: #3A0040;
+}
+.md-search__icon {
+    color: #3A0040;
+}
+
+/* repository display */
+.md-header__source {
+    background-color: #3A0040;
+    border-radius: 4px;
+    padding: 0 0.5rem;
+}
+.md-source__repository {
+  color: #3fb04e;
+  font-weight: bold;
+}
+.md--source__facts {
+  color: #3fb04e;
+  font-size: 0.7rem;
+}
+

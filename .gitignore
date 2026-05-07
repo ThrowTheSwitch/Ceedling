@@ -18,6 +18,7 @@ plugins/dependencies/example/supervisor/build/
 # Generated documentation site builds
 site-web/
 site-local/
+.docsenv/
 
 # IDEs and related
 ceedling.sublime-project
