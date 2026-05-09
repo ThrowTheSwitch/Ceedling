@@ -417,6 +417,43 @@ module CeedlingTasks
     end
 
 
+    desc "check", "Process project configuration with full logging"
+    method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
+    method_option :debug, :type => :boolean, :default => false, :hide => true
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling check` loads and processes your project configuration with full
+      logging — the same loading, merging, manipulation, and validation a real
+      build would perform — but executes no build tasks and writes no files.
+
+      Use `check` to confirm a configuration is well-formed and to see all startup
+      logging, including which project file and Mixins were loaded and in what order.
+
+      Notes on Optional Flags:
+
+      • #{LONGDOC_MIXIN_FLAG}
+      LONGDESC
+    ) )
+    def check()
+      @handler.validate_string_param(
+        options[:project],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--project is missing a required filepath parameter"
+      )
+
+      # Get unfrozen copies so we can add / modify
+      _options = options.dup()
+      _options[:project] = options[:project].dup() if !options[:project].nil?
+      _options[:mixin] = []
+      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
+
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : Verbosity::OBNOXIOUS
+
+      @handler.check( ENV, @app_cfg, _options )
+    end
+
+
     desc "environment", "List all configured environment variable names with values."
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
                   :desc => DOC_PROJECT_FLAG

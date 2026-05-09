@@ -280,6 +280,36 @@ class CliHandler
   end
 
 
+  def check(env, app_cfg, options)
+    # Force obnoxious (or debug) verbosity, overriding any prior verbosity state
+    @helper.set_verbosity( options[:verbosity], override: true )
+
+    @path_validator.standardize_paths( options[:project], *options[:mixin] )
+
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+
+    # Save references; explicitly disable log file output
+    app_cfg.set_project_config( config )
+    app_cfg.set_logging_path( @helper.process_logging_path( config ) )
+    app_cfg.set_log_filepath( '' )
+
+    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
+
+    begin
+      @helper.load_ceedling(
+        config: config,
+        rakefile_path: path,
+        default_tasks: default_tasks
+      )
+    ensure
+      @loginator.log() # Blank line for readability
+      @loginator.log( "Project configuration processed.\n\n", Verbosity::NORMAL, LogLabels::TITLE )
+    end
+  end
+
+
   def environment(env, app_cfg, options)
     @helper.set_verbosity( options[:verbosity] )
 
