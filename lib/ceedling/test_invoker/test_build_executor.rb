@@ -161,24 +161,24 @@ class TestBuildExecutor
       )
 
       arg_hash = {
-        test:               name,
-        partial:            config.module,
+        test:                 name,
+        partial:              config.module,
         function_definitions: implementation,
-        c_module:           module_contents,
-        header_includes:    @partializer.remap_implementation_header_includes(
-                              name:     config.module,
-                              includes: (config.source.includes + config.header.includes),
-                              partials: testable.partials[:configs],
-                              test:     name
-                            ),
-        source_includes:    @partializer.remap_implementation_source_includes(
-                              name:     config.module,
-                              includes: (config.source.includes + config.header.includes),
-                              partials: testable.partials[:configs],
-                              test:     name
-                            ),
-        input_filepath:     config.source.filepath,
-        output_path:        testable.paths[:partials]
+        c_module:             module_contents,
+        header_includes:      @partializer.remap_implementation_header_includes(
+                                name:     config.module,
+                                includes: (config.source.includes + config.header.includes),
+                                partials: testable.partials[:configs],
+                                test:     name
+                              ),
+        source_includes:      @partializer.remap_implementation_source_includes(
+                                name:     config.module,
+                                includes: (config.source.includes + config.header.includes),
+                                partials: testable.partials[:configs],
+                                test:     name
+                              ),
+        input_filepath:       config.source.filepath,
+        output_path:          testable.paths[:partials]
       }
 
       unless implementation.nil?
@@ -189,9 +189,10 @@ class TestBuildExecutor
         test:                  name,
         partial:               config.module,
         function_declarations: interface,
-        includes:              @partializer.sanitize_includes(
+        includes:              @partializer.remap_interface_header_includes(
                                  name:     config.module,
                                  includes: (config.source.includes + config.header.includes),
+                                 partials: testable.partials[:configs],
                                  test:     name
                                ),
         c_module:              module_contents,

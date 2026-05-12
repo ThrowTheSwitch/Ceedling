@@ -240,81 +240,6 @@ describe Partializer do
   end
 
   ###
-  ### sanitize_includes()
-  ###
-
-  context "#sanitize_includes" do
-    it "returns empty array when input is empty" do
-      includes = []
-      result = @partializer.sanitize_includes(name: 'module', includes: includes)
-      
-      expect(result).to eq([])
-    end
-
-    it "removes the module's own header from includes list with case-insensitivity" do
-      includes = [UserInclude.new('header1.h'), UserInclude.new('module.h'), UserInclude.new('module.H'), UserInclude.new('MODULE.H'), UserInclude.new('header2.h')]
-      result = @partializer.sanitize_includes(name: 'module', includes: includes)
-      
-      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
-      expect(result).not_to include(UserInclude.new('module.h'))
-      expect(result).not_to include(UserInclude.new('module.H'))
-    end
-
-    it "returns empty array when only module header is present" do
-      includes = [UserInclude.new('module.h')]
-      result = @partializer.sanitize_includes(name: 'module', includes: includes)
-      
-      expect(result).to eq([])
-    end
-
-    it "removes duplicate includes" do
-      includes = [
-        UserInclude.new('header1.h'), 
-        UserInclude.new('header2.h'), 
-        UserInclude.new('header1.h'), 
-        UserInclude.new('header3.h')
-      ]
-      result = @partializer.sanitize_includes(name: 'module', includes: includes)
-      
-      expect(result).to match_array(
-        [
-          UserInclude.new('header1.h'),
-          UserInclude.new('header2.h'),
-          UserInclude.new('header3.h')
-        ]
-      )
-    end
-
-    it "removes duplicate module includes" do
-      includes = [
-        UserInclude.new('header1.h'), 
-        UserInclude.new('module.h'), 
-        UserInclude.new('header2.h'), 
-        UserInclude.new('module.h')
-      ]
-      result = @partializer.sanitize_includes(name: 'module', includes: includes)
-      
-      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
-    end
-
-    it "distinguishes includes with different extensions" do
-      includes = [UserInclude.new('header1.h'), UserInclude.new('header1.H'), UserInclude.new('header1.hh')]
-      result = @partializer.sanitize_includes(name: 'module', includes: includes)
-      
-      # Should only remove includes with exact filename match
-      expect(result.length).to eq(3)
-    end
-
-    it "is not fooled by uncommon file naming conventions" do
-      includes = [UserInclude.new('header1.12.h'), UserInclude.new('header1.13.h'), UserInclude.new('header1.14.h')]
-      result = @partializer.sanitize_includes(name: 'module', includes: includes)
-      
-      # Should only remove includes with extact filename match
-      expect(result.length).to eq(3)
-    end
-  end
-
-  ###
   ### remap_implementation_header_includes()
   ###
 
@@ -504,6 +429,167 @@ describe Partializer do
           UserInclude.new('header3.h')
         ]
       )
+      expect(result).not_to include(UserInclude.new('module.h'))
+      expect(result).not_to include(UserInclude.new('partial1.h'))
+      expect(result).not_to include(UserInclude.new('partial2.h'))
+    end
+  end
+
+  ###
+  ### remap_interface_header_includes()
+  ###
+
+  context "#remap_interface_header_includes" do
+    it "returns empty array when input is empty and no partials" do
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: [],
+        partials: {}
+      )
+      expect(result).to eq([])
+    end
+
+    it "removes module's own header from includes" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('module.h'), UserInclude.new('header2.h')]
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: {}
+      )
+      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+      expect(result).not_to include(UserInclude.new('module.h'))
+    end
+
+    it "removes partialized module headers from includes" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
+      partials = { 'partial_module' => nil }
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+      expect(result).not_to include(UserInclude.new('partial_module.h'))
+    end
+
+    it "removes multiple partialized module headers" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('partial1.h'),
+        UserInclude.new('partial2.h'),
+        UserInclude.new('header2.h')
+      ]
+      partials = { 'partial1' => nil, 'partial2' => nil }
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+      expect(result).not_to include(UserInclude.new('partial1.h'))
+      expect(result).not_to include(UserInclude.new('partial2.h'))
+    end
+
+    it "preserves includes that are not partialized" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('partial_module.h'),
+        UserInclude.new('header2.h'),
+        UserInclude.new('header3.h')
+      ]
+      partials = { 'partial_module' => nil }
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+      expect(result).to match_array([
+        UserInclude.new('header1.h'),
+        UserInclude.new('header2.h'),
+        UserInclude.new('header3.h')
+      ])
+    end
+
+    it "removes duplicates after removing partialized headers" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('partial_module.h'),
+        UserInclude.new('header1.h'),
+        UserInclude.new('header2.h')
+      ]
+      partials = { 'partial_module' => nil }
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+    end
+
+    it "handles case-insensitive module header removal" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('module.h'),
+        UserInclude.new('MODULE.H'),
+        UserInclude.new('header2.h')
+      ]
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: {}
+      )
+      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+      expect(result).not_to include(UserInclude.new('module.h'))
+      expect(result).not_to include(UserInclude.new('MODULE.H'))
+    end
+
+    it "handles partials with different configuration types" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('partial1.h'),
+        UserInclude.new('partial2.h'),
+        UserInclude.new('partial3.h')
+      ]
+      partials = { 'partial1' => nil, 'partial2' => nil, 'partial3' => nil }
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+      expect(result).to match_array([UserInclude.new('header1.h')])
+    end
+
+    it "handles empty partials hash" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('header2.h'), UserInclude.new('module.h')]
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: {}
+      )
+      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+    end
+
+    it "handles complex scenario with module header, partials, and duplicates" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('module.h'),
+        UserInclude.new('partial1.h'),
+        UserInclude.new('header2.h'),
+        UserInclude.new('partial2.h'),
+        UserInclude.new('header1.h'),
+        UserInclude.new('header3.h')
+      ]
+      partials = { 'partial1' => nil, 'partial2' => nil }
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+      expect(result).to match_array([
+        UserInclude.new('header1.h'),
+        UserInclude.new('header2.h'),
+        UserInclude.new('header3.h')
+      ])
       expect(result).not_to include(UserInclude.new('module.h'))
       expect(result).not_to include(UserInclude.new('partial1.h'))
       expect(result).not_to include(UserInclude.new('partial2.h'))

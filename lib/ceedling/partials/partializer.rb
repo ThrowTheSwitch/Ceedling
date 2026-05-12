@@ -73,19 +73,6 @@ class Partializer
     return configs
   end
 
-  # Ensure no original headers for the module being partialized.
-  # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def sanitize_includes(name:, includes:, test: nil)
-    _includes = remove_matching_includes(includes: includes, modules: [name])
-    Includes.sanitize!(_includes)
-    @loginator.log_list(
-      _includes,
-      "Includes to inject for mockable Partial #{test}::#{name}",
-      Verbosity::OBNOXIOUS
-    ) if test
-    return _includes
-  end
-
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
   def remap_implementation_header_includes(name:, includes:, partials:, test: nil)
     _includes = includes.clone()
@@ -94,10 +81,14 @@ class Partializer
     partialized_modules = partials.keys
 
     # Remove includes for all partialized modules
-    _includes = remove_matching_includes(includes: _includes, modules: partialized_modules)
+    # Remove our own orginal name as well
+    _includes = remove_matching_includes(
+      includes: _includes,
+      modules: ([name] + partialized_modules)
+    )
 
-    # Ensure original module header is not in the list and also remove any duplicate includes
-    _includes = sanitize_includes(name: name, includes: _includes)
+    # Remove any duplicates
+    Includes.sanitize!(_includes)
 
     @loginator.log_list(
       _includes,
@@ -134,14 +125,44 @@ class Partializer
     end
 
     # Remove the original module header now that it's remapped to mockable interface
-    _includes = remove_matching_includes(includes: _includes, modules: mockable_modules)
+    # Remove our own orginal name as well
+    _includes = remove_matching_includes(
+      includes: _includes,
+      modules: ([name] + mockable_modules)
+    )
 
-    # Ensure original module header is not in the list and remove any duplicates
-    _includes = sanitize_includes(name: name, includes: _includes)
+    # Remove any duplicates
+    Includes.sanitize!(_includes)
 
     @loginator.log_list(
       _includes,
       "Source includes to inject for testable Partial #{test}::#{name}",
+      Verbosity::OBNOXIOUS
+    ) if test
+
+    return _includes
+  end
+
+  # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
+  def remap_interface_header_includes(name:, includes:, partials:, test: nil)
+    _includes = includes.clone()
+
+    # Get list of all partialized module names
+    partialized_modules = partials.keys
+
+    # Remove includes for all partialized modules
+    # Remove our own orginal name as well
+    _includes = remove_matching_includes(
+      includes: _includes,
+      modules: ([name] + partialized_modules)
+    )
+
+    # Remove any duplicates
+    Includes.sanitize!(_includes)
+
+    @loginator.log_list(
+      _includes,
+      "Header includes to inject for mockable Partial #{test}::#{name}",
       Verbosity::OBNOXIOUS
     ) if test
 
