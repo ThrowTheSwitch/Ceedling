@@ -13,6 +13,8 @@ class GcovrReportinator
 
   attr_reader :artifacts_path
 
+  GCOVR_SETTING_PREFIX = "gcov_gcovr"
+
   def initialize(system_objects)
     @artifacts_path = GCOV_GCOVR_ARTIFACTS_PATH
     @ceedling = system_objects
@@ -28,6 +30,7 @@ class GcovrReportinator
     @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
     @tool_executor = @ceedling[:tool_executor]
+    @configurator = @ceedling[:configurator]
   end
 
   # Generate the gcovr report(s) specified in the options.
@@ -36,7 +39,7 @@ class GcovrReportinator
     gcovr_version = get_gcovr_version()
 
     # Get gcovr options from project configuration options
-    gcovr_opts = get_gcovr_opts(opts)
+    gcovr_opts = collect_gcovr_opts(opts)
 
     # Extract exception_on_fail setting
     exception_on_fail = !!gcovr_opts[:exception_on_fail]
@@ -67,7 +70,7 @@ class GcovrReportinator
       reports << "HTML" if not _args.empty?
       
       reports.each do |report|
-        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
+        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}/'")
         @loginator.log( msg )
       end
 
@@ -121,15 +124,13 @@ class GcovrReportinator
 
   private
 
-  GCOVR_SETTING_PREFIX = "gcov_gcovr"
-
   # Build the gcovr report generation common arguments.
   def args_builder_common(gcovr_opts, gcovr_version)
     args = ""
     args += "--root \"#{gcovr_opts[:report_root]}\" " unless gcovr_opts[:report_root].nil?
     args += "--config \"#{gcovr_opts[:config_file]}\" " unless gcovr_opts[:config_file].nil?
     args += "--filter \"#{gcovr_opts[:report_include]}\" " unless gcovr_opts[:report_include].nil?
-    args += "--exclude \"#{gcovr_opts[:report_exclude]}\" " unless gcovr_opts[:report_exclude].nil?
+    Array(gcovr_opts[:report_exclude]).each { |pat| args += "--exclude \"#{pat}\" " }
     args += "--gcov-filter \"#{gcovr_opts[:gcov_filter]}\" " unless gcovr_opts[:gcov_filter].nil?
     args += "--gcov-exclude \"#{gcovr_opts[:gcov_exclude]}\" " unless gcovr_opts[:gcov_exclude].nil?
     args += "--exclude-directories \"#{gcovr_opts[:exclude_directories]}\" " unless gcovr_opts[:exclude_directories].nil?
@@ -165,9 +166,9 @@ class GcovrReportinator
       # Value sanity checks for :fail_under_* settings
       if opt.to_s =~ /fail_/
         if not value.is_a? Integer
-          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} => '#{value}' must be an integer")
+          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} ➡️ '#{value}' must be an integer")
         elsif (value < 0) || (value > 100)
-          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} => '#{value}' must be an integer percentage 0 – 100")
+          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} ➡️ '#{value}' must be an integer percentage 0 – 100")
         end
       end
       
@@ -181,7 +182,7 @@ class GcovrReportinator
 
   # Build the gcovr Cobertura XML report generation arguments.
   def args_builder_cobertura(opts, use_output_option=false)
-    gcovr_opts = get_gcovr_opts(opts)
+    gcovr_opts = collect_gcovr_opts(opts)
     args = ""
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
@@ -202,7 +203,7 @@ class GcovrReportinator
 
   # Build the gcovr SonarQube report generation arguments.
   def args_builder_sonarqube(opts, use_output_option=false)
-    gcovr_opts = get_gcovr_opts(opts)
+    gcovr_opts = collect_gcovr_opts(opts)
     args = ""
 
     # Determine if the gcovr SonarQube XML report is enabled. Defaults to disabled.
@@ -222,7 +223,7 @@ class GcovrReportinator
 
   # Build the gcovr JSON report generation arguments.
   def args_builder_json(opts, use_output_option=false)
-    gcovr_opts = get_gcovr_opts( opts )
+    gcovr_opts = collect_gcovr_opts( opts )
     args = ""
 
     # Determine if the gcovr JSON report is enabled. Defaults to disabled.
@@ -245,7 +246,7 @@ class GcovrReportinator
 
   # Build the gcovr HTML report generation arguments.
   def args_builder_html(opts, use_output_option=false)
-    gcovr_opts = get_gcovr_opts(opts)
+    gcovr_opts = collect_gcovr_opts(opts)
     args = ""
 
     # Determine if the gcovr HTML report is enabled.
@@ -280,7 +281,7 @@ class GcovrReportinator
 
   # Generate a gcovr text report
   def generate_text_report(opts, args_common, boom)
-    gcovr_opts = get_gcovr_opts(opts)
+    gcovr_opts = collect_gcovr_opts(opts)
     args_text = ""
     message_text = "Generating a text coverage report"
 
@@ -299,8 +300,34 @@ class GcovrReportinator
 
 
   # Get the gcovr options from the project options.
-  def get_gcovr_opts(opts)
-    return opts[GCOVR_SETTING_PREFIX.to_sym]
+  def collect_gcovr_opts(opts)
+    _opts = opts[GCOVR_SETTING_PREFIX.to_sym]
+
+    # Build array of --exclude patterns: user-provided string (if any) + auto-generated per-file patterns
+    excludes = build_report_exclusions()
+    excludes.unshift( _opts[:report_exclude] ) if _opts[:report_exclude]
+    _opts[:report_exclude] = excludes unless excludes.empty?
+
+    return _opts
+  end
+
+
+  # Build a combined Python regex for gcovr's --exclude flag covering all
+  # non-production file categories: test files, mocks, partials, and framework.
+  def build_report_exclusions()
+    patterns = []
+
+    test_prefix = @configurator.project_test_file_prefix
+    @configurator.collection_paths_test.each do |path|
+      # Test files (e.g. test_foo.c)
+      patterns << ".*#{path}.*/#{test_prefix}.+\\#{@configurator.extension_source}$"      
+    end
+
+    # Any generated or vendored framework C source file below the root of the build directories
+    build_root = @configurator.project_build_root
+    patterns << ".*#{build_root}/.+\\#{EXTENSION_CORE_SOURCE}$"
+
+    return patterns
   end
 
 
