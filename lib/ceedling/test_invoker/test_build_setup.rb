@@ -10,8 +10,11 @@ require 'ceedling/exceptions'
 require 'ceedling/test_context_extractor'
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partials'
+require 'ceedling/test_invoker/test_invoker_types'
 
 class TestBuildSetup
+
+  include TestInvokerTypes
 
   constructor(
     :configurator,
@@ -49,7 +52,7 @@ class TestBuildSetup
       preprocess_files_path    = File.join( @configurator.project_test_preprocess_files_path, name )
 
       state.lock.synchronize do
-        state.testables[key] = TestInvoker::Testable.new(
+        state.testables[key] = Testable.new(
           filepath:  filepath,
           name:      name,
           preprocess: {},

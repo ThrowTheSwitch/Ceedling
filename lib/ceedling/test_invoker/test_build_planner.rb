@@ -6,8 +6,11 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/test_invoker/test_invoker_types'
 
 class TestBuildPlanner
+
+  include TestInvokerTypes
 
   constructor(
     :configurator,
@@ -71,7 +74,7 @@ class TestBuildPlanner
           input_filepath:  filepath
         }
         testable.mocks    = mocks
-        testable.partials = { configs: partials_configs }
+        testable.partials.configs = partials_configs
 
         @plugin_manager.pre_test( filepath )
       end
@@ -81,7 +84,7 @@ class TestBuildPlanner
   # Transform T1: Flatten partials into parallel-processing-friendly lists.
   def stage_flatten_partials_lists(state)
     state.testables.each do |_, testable|
-      testable.partials[:configs].each do |_, config|
+      testable.partials.configs.each do |_, config|
         state.partials_headers << {
           config:                   config.header,
           testable:                 testable,
@@ -117,7 +120,7 @@ class TestBuildPlanner
       filepath  = testable.filepath
       mock_list = @context_extractor.lookup_mock_header_includes_list( filepath )
 
-      test_sources = extract_sources( state.context, filepath, testable.partials[:configs] )
+      test_sources = extract_sources( state.context, filepath, testable.partials )
       test_core    = test_sources +
                      mock_list.map { |mock| mock.filename.ext( EXTENSION_CORE_SOURCE ) }
 
@@ -203,7 +206,7 @@ class TestBuildPlanner
     return sources
   end
 
-  def extract_sources(context, test_filepath, partials_configs)
+  def extract_sources(context, test_filepath, partials)
     sources = []
 
     _sources = @test_context_extractor.lookup_build_directive_sources_list( test_filepath )
@@ -223,7 +226,8 @@ class TestBuildPlanner
       sources << @file_finder.find_build_input_file( filepath: include.filename, complain: :ignore, context: context )
     end
 
-    partials_configs.each do |_module, _|
+    # Add to the source list any testable Partials (no mock Partials)
+    partials.tests.each do |_module|
       sources << @file_finder.find_build_input_file( filepath: _module, complain: :ignore, context: context )
     end
 

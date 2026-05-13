@@ -7,8 +7,11 @@
 
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/test_invoker/test_invoker_types'
 
 class TestBuildExecutor
+
+  include TestInvokerTypes
 
   constructor(
     :configurator,
@@ -119,8 +122,8 @@ class TestBuildExecutor
   def stage_generate_partials(state)
     partials = []
     state.testables.each do |_, testable|
-      next if testable.partials.empty?
-      testable.partials[:configs].each do |_, config|
+      next if testable.partials.configs.empty?
+      testable.partials.configs.each do |_, config|
         partials << { config: config, testable: testable }
       end
     end
@@ -168,13 +171,13 @@ class TestBuildExecutor
         header_includes:      @partializer.remap_implementation_header_includes(
                                 name:     config.module,
                                 includes: (config.source.includes + config.header.includes),
-                                partials: testable.partials[:configs],
+                                partials: testable.partials.configs,
                                 test:     name
                               ),
         source_includes:      @partializer.remap_implementation_source_includes(
                                 name:     config.module,
                                 includes: (config.source.includes + config.header.includes),
-                                partials: testable.partials[:configs],
+                                partials: testable.partials.configs,
                                 test:     name
                               ),
         input_filepath:       config.source.filepath,
@@ -183,6 +186,7 @@ class TestBuildExecutor
 
       unless implementation.nil?
         @generator.generate_partial_implementation( **arg_hash )
+        state.lock.synchronize { testable.partials.tests << config.module }
       end
 
       arg_hash = {
@@ -192,7 +196,7 @@ class TestBuildExecutor
         includes:              @partializer.remap_interface_header_includes(
                                  name:     config.module,
                                  includes: (config.source.includes + config.header.includes),
-                                 partials: testable.partials[:configs],
+                                 partials: testable.partials.configs,
                                  test:     name
                                ),
         c_module:              module_contents,
@@ -202,6 +206,7 @@ class TestBuildExecutor
 
       unless interface.nil?
         @generator.generate_partial_interface( **arg_hash )
+        state.lock.synchronize { testable.partials.mocks << config.module }
       end
     end
   end
@@ -377,7 +382,7 @@ class TestBuildExecutor
     lib_paths = get_library_paths_to_arguments()
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      remove_partials_source_objects( testable.objects, testable.partials[:configs] )
+      remove_partials_source_objects( testable.objects, testable.partials.configs )
 
       arg_hash = {
         context:    state.context,

@@ -6,50 +6,11 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/test_invoker/test_invoker_types'
 
 class TestInvoker
 
-  # -------------------------------------------------------------------------
-  # Inner types: state carrier, per-test record, and stage descriptor
-  # -------------------------------------------------------------------------
-
-  # Carries all mutable state across the pipeline stages.
-  PipelineState = Struct.new(
-    :tests,             # Array of test filepaths (input to stage 1)
-    :testables,         # Hash<Symbol, Testable> — accumulated across all stages
-    :context,
-    :options,
-    :partials_headers,  # Produced by T1; consumed by stages 6 & 7
-    :partials_sources,  # Produced by T1; consumed by stages 6 & 7
-    :mocks_list,        # Produced by T2; consumed by stages 9 & 10
-    :objects_list,      # Produced by T3; consumed by stage 15
-    :lock,              # Mutex for thread-safe testable writes
-    keyword_init: true
-  )
-
-  # Named record replacing the raw hash per test file. Fields are populated
-  # across multiple stages; nil fields are valid until their stage sets them.
-  Testable = Struct.new(
-    :filepath, :name,
-    :paths,                                    # Hash — build/results/mocks/partials/preprocess paths
-    :preprocess,                               # Hash — preprocessing scratch state
-    :search_paths,
-    :compile_flags, :preprocess_flags, :assembler_flags, :link_flags,
-    :compile_defines, :preprocess_defines,
-    :runner,                                   # Hash — {output_filepath:, input_filepath:}
-    :mocks,                                    # Hash — mock name → mock info
-    :partials,                                 # Hash — {configs: {}}
-    :sources, :frameworks, :core, :objects, :executable,
-    :no_link_objects, :results_pass, :results_fail, :tool,
-    keyword_init: true
-  )
-
-  # Describes one pipeline step — either a named build_step or a silent transform.
-  Stage = Struct.new(:name, :heading, :condition, :transform, :body, keyword_init: true) do
-    def run?(state)
-      condition.nil? || condition.call(state)
-    end
-  end
+  include TestInvokerTypes
 
   # -------------------------------------------------------------------------
   # Dependency injection
