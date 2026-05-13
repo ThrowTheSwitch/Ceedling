@@ -129,7 +129,8 @@ BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
 
 CEEDLING_HEADER_FILENAME = 'ceedling.h'
 CEEDLING_HEADER_FILEPATH = CEEDLING_HEADER_FILENAME # lib/ceedling/
-PARTIAL_FILENAME_PREFIX = 'ceedling_partial_'
+PARTIAL_FILENAME_PREFIX     = 'ceedling_partial_'
+PARTIAL_IMPL_FILENAME_REGEX = /\A#{PARTIAL_FILENAME_PREFIX}.+_impl#{Regexp.escape(EXTENSION_CORE_SOURCE)}\z/
 
 INPUT_CONFIGURATION_CACHE_FILE = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
 DEFINES_DEPENDENCY_CACHE_FILE  = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files

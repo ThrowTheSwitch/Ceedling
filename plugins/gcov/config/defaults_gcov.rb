@@ -96,14 +96,33 @@ DEFAULT_GCOV_REPORTGENERATOR_REPORT_TOOL = {
     ].freeze
   }
 
+# Used internally to query GCC version at startup
+DEFAULT_GCOV_GCC_VERSION_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
+  :name => 'default_gcov_gcc_version'.freeze,
+  :optional => false.freeze,
+  :arguments => ["--version"].freeze
+  }
+
+# Used internally to query gcovr version at startup
+DEFAULT_GCOV_GCOVR_VERSION_TOOL = {
+  # No extension handling -- `gcovr` is generally an extensionless Python script
+  :executable => 'gcovr'.freeze,
+  :name => 'default_gcov_gcovr_version'.freeze,
+  :optional => true.freeze,
+  :arguments => ["--version"].freeze
+  }
+
 def get_default_config
   return :tools => {
     :gcov_compiler => DEFAULT_GCOV_COMPILER_TOOL,
     :gcov_linker   => DEFAULT_GCOV_LINKER_TOOL,
     :gcov_fixture  => DEFAULT_GCOV_FIXTURE_TOOL,
     :gcov_summary  => DEFAULT_GCOV_SUMMARY_TOOL,
+    :gcov_gcc_version => DEFAULT_GCOV_GCC_VERSION_TOOL,
+    :gcov_gcovr_version => DEFAULT_GCOV_GCOVR_VERSION_TOOL,
     :gcov_report => DEFAULT_GCOV_REPORT_TOOL,
     :gcov_gcovr_report => DEFAULT_GCOV_GCOVR_REPORT_TOOL,
-    :gcov_reportgenerator_report => DEFAULT_GCOV_REPORTGENERATOR_REPORT_TOOL
+    :gcov_reportgenerator_report => DEFAULT_GCOV_REPORTGENERATOR_REPORT_TOOL,
   }
 end

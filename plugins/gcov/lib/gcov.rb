@@ -9,6 +9,7 @@ require 'ceedling/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'gcov_constants'
+require 'gcov_types'
 require 'gcovr_reportinator'
 require 'reportgenerator_reportinator'
 
@@ -50,6 +51,17 @@ class Gcov < Plugin
     @tool_executor = @ceedling[:tool_executor]
 
     @mutex = Mutex.new()
+
+    # Validate MC/DC configuration against GCC version (only incurs gcc --version when :mcdc: TRUE)
+    if @project_config[:gcov_mcdc]
+      gcc_version = get_gcc_version()
+      if gcc_version.major < 14
+        raise CeedlingException.new(
+          ":gcov ↳ :mcdc ➡️ Modified condition/decision coverage requires GCC 14 or higher " \
+          "(found #{gcc_version.major}.#{gcc_version.minor})"
+        )
+      end
+    end
   end
 
   # Called within class and also externally by plugin Rakefile
@@ -70,6 +82,7 @@ class Gcov < Plugin
           module_name: arg_hash[:module_name],
           filename: File.basename(source)
         )
+        arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
       end
     end
   end
@@ -78,6 +91,7 @@ class Gcov < Plugin
     if arg_hash[:context] == GCOV_SYM
       @cli_gcov_task = true
       arg_hash[:tool] = TOOLS_GCOV_LINKER
+      arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
     end
   end
 
@@ -189,11 +203,20 @@ class Gcov < Plugin
       heading = @plugin_reportinator.generate_heading( test )
       @loginator.log(heading)
 
-      sources.each do |source|
-        filename = File.basename(source)
+      # Remap sources: if Partial files are present, remove the original source file they replace.
+      # Coverage is then reported against the Partial implementation rather than the full module.
+      _partials = sources.select { |s| File.basename(s).match?(PARTIAL_IMPL_FILENAME_REGEX) }
+      _sources = if _partials.empty?
+        sources
+      else
+        # Extract module names covered by Partials (strip prefix and _impl suffix)
+        partialized = _partials.map { |p| File.basename(p, '.*').delete_prefix(PARTIAL_FILENAME_PREFIX).delete_suffix('_impl') }
+        # Drop any original source file whose module is now covered by a Partial
+        sources.reject { |s| partialized.include?( File.basename(s, '.*') ) }
+      end
 
-        # Skip Partials
-        next if filename.start_with?(PARTIAL_FILENAME_PREFIX)
+      _sources.each do |source|
+        filename = File.basename(source)
 
         command  = @tool_executor.build_command_line(
           TOOLS_GCOV_SUMMARY,
@@ -246,11 +269,15 @@ class Gcov < Plugin
           _source = File.expand_path(matches[1])
         end
 
-        # If gcov results include intended source (comparing absolute paths), report coverage details summaries
-        if _source == File.expand_path(source)
+        # If gcov results include intended source (comparing absolute paths), report coverage details summaries.
+        # For Partial files, #line directives remap to the original source so path comparison never matches;
+        # produce the report for any Partial that returned non-empty gcov output.
+        if _source == File.expand_path(source) || File.basename(source).match?(PARTIAL_IMPL_FILENAME_REGEX)
           # Reformat from first line as filename banner to each line of statistics labeled with the filename
           # Only extract the first four lines of the console report (to avoid spidering coverage reports through libs, etc.)
-          report = results.lines.to_a[1..4].map { |line| filename + ' | ' + line }.join('')
+          # For Partials, use the original source name from gcov output (_source) rather than the Partial filename
+          report_name = _source.empty? ? filename : File.basename(_source)
+          report = results.lines.to_a[1..4].map { |line| report_name + ' | ' + line }.join('')
           @loginator.log(report + "\n")
         
         # Otherwise, found no coverage results
@@ -288,6 +315,25 @@ class Gcov < Plugin
     end
 
     return reportinators
+  end
+
+  def get_gcc_version()
+    command = @tool_executor.build_command_line( TOOLS_GCOV_GCC_VERSION, [])
+
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress("Collecting GCC version for conditional feature handling")
+    end
+
+    shell_result = @tool_executor.exec( command )
+
+    # First line of gcc --version: "gcc (...platform info...) major.minor.patch"
+    version_match = shell_result[:output].match(/^gcc\s+.*\s+(\d+)\.(\d+)\.\d+/)
+
+    if version_match.nil? || version_match[1].nil? || version_match[2].nil?
+      raise CeedlingException.new("Could not collect `gcc` version from its command line")
+    end
+
+    return GcovToolVersion.new( version_match[1].to_i, version_match[2].to_i )
   end
 
 end
