@@ -62,16 +62,8 @@ class Gcov < Plugin
     if arg_hash[:context] == GCOV_SYM
       source = arg_hash[:source]
 
-      # If a source file or Partial (not unity, mocks, etc.) is to be compiled use code coverage compiler
-      if (
-          # Not assembly
-          (File.extname(source) != EXTENSION_ASSEMBLY) && 
-          (
-            # Ceedling partial file or file in project source collection
-            File.basename(source).start_with?(PARTIAL_FILENAME_PREFIX) || 
-            @configurator.collection_all_source.include?(source)
-          )
-        )
+      # Compile all non-assembly files with coverage; gcovr --exclude filters non-production files from reports
+      if File.extname(source) != EXTENSION_ASSEMBLY
         arg_hash[:tool] = TOOLS_GCOV_COMPILER
         arg_hash[:msg] = @reportinator.generate_module_progress(
           operation: "Compiling with coverage",

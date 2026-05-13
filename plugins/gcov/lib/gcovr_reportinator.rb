@@ -130,7 +130,7 @@ class GcovrReportinator
     args += "--root \"#{gcovr_opts[:report_root]}\" " unless gcovr_opts[:report_root].nil?
     args += "--config \"#{gcovr_opts[:config_file]}\" " unless gcovr_opts[:config_file].nil?
     args += "--filter \"#{gcovr_opts[:report_include]}\" " unless gcovr_opts[:report_include].nil?
-    args += "--exclude \"#{gcovr_opts[:report_exclude]}\" " unless gcovr_opts[:report_exclude].nil?
+    Array(gcovr_opts[:report_exclude]).each { |pat| args += "--exclude \"#{pat}\" " }
     args += "--gcov-filter \"#{gcovr_opts[:gcov_filter]}\" " unless gcovr_opts[:gcov_filter].nil?
     args += "--gcov-exclude \"#{gcovr_opts[:gcov_exclude]}\" " unless gcovr_opts[:gcov_exclude].nil?
     args += "--exclude-directories \"#{gcovr_opts[:exclude_directories]}\" " unless gcovr_opts[:exclude_directories].nil?
@@ -303,13 +303,31 @@ class GcovrReportinator
   def collect_gcovr_opts(opts)
     _opts = opts[GCOVR_SETTING_PREFIX.to_sym]
 
-    # Insert an exclusion for Ceedling Partials that will merge with any other exclusions
-    if @configurator.project_use_partials
-      partials_exclude = PARTIAL_FILENAME_PREFIX + '.+'
-      _opts[:gcov_exclude] = [_opts[:gcov_exclude], partials_exclude].compact.join('|').then { |s| s.empty? ? nil : s }
-    end
-    
+    # Build array of --exclude patterns: user-provided string (if any) + auto-generated per-file patterns
+    excludes = build_report_exclusions()
+    excludes.unshift( _opts[:report_exclude] ) if _opts[:report_exclude]
+    _opts[:report_exclude] = excludes unless excludes.empty?
+
     return _opts
+  end
+
+
+  # Build a combined Python regex for gcovr's --exclude flag covering all
+  # non-production file categories: test files, mocks, partials, and framework.
+  def build_report_exclusions()
+    patterns = []
+
+    test_prefix = @configurator.project_test_file_prefix
+    @configurator.collection_paths_test.each do |path|
+      # Test files (e.g. test_foo.c)
+      patterns << ".*#{path}.*/#{test_prefix}.+\\#{@configurator.extension_source}$"      
+    end
+
+    # Any generated or vendored framework C source file below the root of the build directories
+    build_root = @configurator.project_build_root
+    patterns << ".*#{build_root}/.+\\#{EXTENSION_CORE_SOURCE}$"
+
+    return patterns
   end
 
 
