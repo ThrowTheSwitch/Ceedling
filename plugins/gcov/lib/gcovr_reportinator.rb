@@ -143,7 +143,6 @@ class GcovrReportinator
     args += "--gcov-exclude \"#{gcovr_opts[:gcov_exclude]}\" " unless gcovr_opts[:gcov_exclude].nil?
     args += "--exclude-directories \"#{gcovr_opts[:exclude_directories]}\" " unless gcovr_opts[:exclude_directories].nil?
     args += "--branches " if gcovr_opts[:branches]
-    args += "--conditions " if gcovr_opts[:mcdc]
     args += "--sort-uncovered " if gcovr_opts[:sort_uncovered]
     args += "--sort-percentage " if gcovr_opts[:sort_percentage]
     args += "--print-summary " if gcovr_opts[:print_summary]

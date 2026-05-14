@@ -53,10 +53,10 @@ DEFAULT_GCOV_SUMMARY_TOOL = {
   :name => 'default_gcov_summary'.freeze,
   :optional => true.freeze,
   :arguments => [
-    "-n".freeze,
-    "-p".freeze,
-    "-b".freeze,
-    "-o \"${2}\"".freeze,
+    "-n".freeze,          # --no-output
+    "-p".freeze,          # --preserve-paths
+    "-b".freeze,          # --branch-probabilities
+    "-o \"${2}\"".freeze, # --object-directory
     "\"${1}\"".freeze
     ].freeze
   }
@@ -67,10 +67,10 @@ DEFAULT_GCOV_REPORT_TOOL = {
   :name => 'default_gcov_report'.freeze,
   :optional => true.freeze,
   :arguments => [
-    "-b".freeze,
-    "-c".freeze,
-    "-r".freeze,
-    "-x".freeze,
+    "-b".freeze,   # --branch-probabilities
+    "-c".freeze,   # --branch-counts
+    "-r".freeze,   # --relative-only
+    "-x".freeze,   # --hash-filenames
     "${1}".freeze
     ].freeze
   }

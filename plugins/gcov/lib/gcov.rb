@@ -10,6 +10,7 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'gcov_constants'
 require 'gcov_types'
+require 'console_reportinator'
 require 'gcovr_reportinator'
 require 'reportgenerator_reportinator'
 
@@ -134,7 +135,7 @@ class Gcov < Plugin
     end
 
     # Print summary of coverage to console for each source file exercised by a test
-    console_coverage_summaries() if summaries_enabled?( @project_config )
+    @console_reportinator&.generate_reports( @project_config )
 
     # Run full coverage report generation
     generate_coverage_reports() if automatic_reporting_enabled?
@@ -171,7 +172,7 @@ class Gcov < Plugin
 
     @reportinators.each do |reportinator|
       # Create the artifacts output directory.
-      @file_wrapper.mkdir( reportinator.artifacts_path )
+      @file_wrapper.mkdir( reportinator.artifacts_path ) if reportinator.artifacts_path
 
       # Generate reports
       reportinator.generate_reports( @configurator.project_config_hash )
@@ -194,104 +195,14 @@ class Gcov < Plugin
     return opts.map(&:upcase).include?( utility_name.upcase )
   end
 
-  def console_coverage_summaries()
-    banner = @plugin_reportinator.generate_banner( "#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
-    @loginator.log "\n" + banner
-
-    # Iterate over each test run and its list of source files
-    @test_invoker.each_test_with_sources do |test, sources|
-      heading = @plugin_reportinator.generate_heading( test )
-      @loginator.log(heading)
-
-      # Remap sources: if Partial files are present, remove the original source file they replace.
-      # Coverage is then reported against the Partial implementation rather than the full module.
-      _partials = sources.select { |s| File.basename(s).match?(PARTIAL_IMPL_FILENAME_REGEX) }
-      _sources = if _partials.empty?
-        sources
-      else
-        # Extract module names covered by Partials (strip prefix and _impl suffix)
-        partialized = _partials.map { |p| File.basename(p, '.*').delete_prefix(PARTIAL_FILENAME_PREFIX).delete_suffix('_impl') }
-        # Drop any original source file whose module is now covered by a Partial
-        sources.reject { |s| partialized.include?( File.basename(s, '.*') ) }
-      end
-
-      _sources.each do |source|
-        filename = File.basename(source)
-
-        command  = @tool_executor.build_command_line(
-          TOOLS_GCOV_SUMMARY,
-          # No additional arguments
-          [],
-          # Argument replacement
-          filename, # .c source file that should have been compiled with coverage
-          File.join(GCOV_BUILD_OUTPUT_PATH, test) # <build>/gcov/out/<test name> for coverage data files
-        )
-
-        # Do not raise an exception if `gcov` terminates with a non-zero exit code, just note it and move on.
-        # Recent releases of `gcov` have become more strict and vocal about errors and exit codes.
-        command[:options][:boom] = false
-
-        # Run the gcov tool and collect the raw coverage report
-        shell_results  = @tool_executor.exec( command )
-        results        = shell_results[:output].strip
-
-        # Handle errors instead of raising a shell exception
-        if shell_results[:exit_code] != 0
-          @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do 
-            "gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
-          end
-          @loginator.lazy( Verbosity::COMPLAIN ) do 
-            "gcov was unable to process coverage for #{filename}"
-          end
-          next # Skip to next loop iteration
-        end
-
-        # A source component may have been compiled with coverage but none of its code actually called in a test.
-        # In this case, versions of gcov may not produce an error, only blank results.
-        if results.empty?
-          @loginator.lazy( msg, Verbosity::COMPLAIN, LogLabels::NOTICE ) do 
-            "No functions called or code paths exercised by test for #{filename}"
-          end
-          next # Skip to next loop iteration
-        end
-
-        # Source filepath to be extracted from gcov coverage results via regex
-        _source = ''
-
-        # Extract (relative) filepath from results and expand to absolute path
-        matches = results.match(/File\s+'(.+)'/)
-        if matches.nil? or matches.length() != 2
-          @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do 
-            "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
-          end
-        else
-          # Expand to full path from likely partial path to ensure correct matches on source component within gcov results
-          _source = File.expand_path(matches[1])
-        end
-
-        # If gcov results include intended source (comparing absolute paths), report coverage details summaries.
-        # For Partial files, #line directives remap to the original source so path comparison never matches;
-        # produce the report for any Partial that returned non-empty gcov output.
-        if _source == File.expand_path(source) || File.basename(source).match?(PARTIAL_IMPL_FILENAME_REGEX)
-          # Reformat from first line as filename banner to each line of statistics labeled with the filename
-          # Only extract the first four lines of the console report (to avoid spidering coverage reports through libs, etc.)
-          # For Partials, use the original source name from gcov output (_source) rather than the Partial filename
-          report_name = _source.empty? ? filename : File.basename(_source)
-          report = results.lines.to_a[1..4].map { |line| report_name + ' | ' + line }.join('')
-          @loginator.log(report + "\n")
-        
-        # Otherwise, found no coverage results
-        else
-          @loginator.lazy( Verbosity::COMPLAIN ) { "Found no coverage results for #{test}::#{File.basename(source)}" }
-        end
-      end
-    end
-  end
-
   def build_reportinators(config, enabled)
     reportinators = []
 
-    # Do not instantiate reportinators (and tool validation) unless reports enabled
+    # Instantiate console summary reportinator if summaries enabled
+    @console_reportinator = summaries_enabled?(@project_config) ?
+      ConsoleReportinator.new(@ceedling) : nil
+
+    # Do not instantiate file reportinators (and tool validation) unless reports enabled
     return reportinators if (!enabled)
 
     config.each do |reportinator|
