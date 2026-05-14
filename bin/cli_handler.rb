@@ -65,7 +65,7 @@ class CliHandler
       )
     else
       # If no project configuration is available then note why we aren't displaying more
-      msg = "Run help commands in a directory with a project file to list additional options"
+      msg = "Run help commands in a directory with a project file to list additional options\n\n"
       @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
     end
 
@@ -130,8 +130,7 @@ class CliHandler
       @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
-    @loginator.log() # Blank line
-    @loginator.log( "New project created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\nNew project created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -168,8 +167,7 @@ class CliHandler
       @helper.copy_docs( app_cfg[:ceedling_root_path], path )
     end
 
-    @loginator.log() # Blank line
-    @loginator.log( "Upgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\nUpgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -277,8 +275,37 @@ class CliHandler
     ensure
       @helper.dump_yaml( config, filepath, sections )
 
-      @loginator.log() # Blank line
-      @loginator.log( "Dumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
+      @loginator.log( "\nDumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
+    end
+  end
+
+
+  def check(env, app_cfg, options)
+    # Force obnoxious (or debug) verbosity, overriding any prior verbosity state
+    @helper.set_verbosity( options[:verbosity], override: true )
+
+    @path_validator.standardize_paths( options[:project], *options[:mixin] )
+
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+
+    # Save references; explicitly disable log file output
+    app_cfg.set_project_config( config )
+    app_cfg.set_logging_path( @helper.process_logging_path( config ) )
+    app_cfg.set_log_filepath( '' )
+
+    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
+
+    begin
+      @helper.load_ceedling(
+        config: config,
+        rakefile_path: path,
+        default_tasks: default_tasks
+      )
+    ensure
+      @loginator.log() # Blank line for readability
+      @loginator.log( "Project configuration processed.\n\n", Verbosity::NORMAL, LogLabels::TITLE )
     end
   end
 
@@ -324,8 +351,7 @@ class CliHandler
       output << " • #{line}\n"
     end
 
-    @loginator.log() # Blank line
-    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\n#{output}\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -343,8 +369,7 @@ class CliHandler
 
     examples.each {|example| output << " • #{example}\n" }
 
-    @loginator.log() # Blank line
-    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\n#{output}\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 
@@ -387,8 +412,7 @@ class CliHandler
     # Copy in documentation
     @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
-    @loginator.log() # Blank line
-    @loginator.log( "Example project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.log( "\nExample project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
   end
 
 

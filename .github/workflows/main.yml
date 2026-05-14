@@ -34,15 +34,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # TODO: Add 3.4 with resolution of bundler permission issue
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
       # Use a cache for our tools to speed up testing
       - uses: actions/cache@v4
         with:
           path: vendor/bundle
-          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
 
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
@@ -50,18 +51,23 @@ jobs:
         with:
           submodules: recursive
 
-      # Setup Ruby to run test & build steps on multiple ruby versions
-      - name: Setup Ruby Version Matrix
+      # Set up Ruby to run test & build steps on multiple ruby versions
+      # This action install Ruby and the Bundler gem using the version captured in Gemfile.lock
+      - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          
-      # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
-      - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
+
+      # Workaround: Fix Ruby toolcache Gem directory permissions (Bundler exit 38)
+      # Issue: https://github.com/rubygems/rubygems/issues/7983
+      - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
         run: |
-          gem install rubocop -v 0.57.2
-          gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
-          bundle update
+          sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
+
+      # Install Gem Dependencies
+      - name: Install Gem Dependencies
+        # Ensure local installation to prevent system directory permission problems
+        run: |
           bundle install
 
       # Install gdb for backtrace feature testing
@@ -136,9 +142,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: vendor/bundle
-          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
 
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
@@ -146,19 +152,17 @@ jobs:
         with:
           submodules: recursive
 
-      # Setup Ruby to run test & build steps on multiple ruby versions
-      - name: Setup Ruby Version Matrix
+      # Set up Ruby to run test & build steps on multiple ruby versions
+      # This action install Ruby and the Bundler gem using the version captured in Gemfile.lock
+      - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          
-      # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
-      - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
-        shell: bash
+
+      # Install Gem Dependencies
+      - name: Install Gem Dependencies
+        # Ensure local installation to prevent system directory permission problems
         run: |
-          gem install rubocop -v 0.57.2
-          gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
-          bundle update
           bundle install
 
       # Install GCovr for Gcov plugin test
