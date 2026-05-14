@@ -17,7 +17,7 @@ class FileWrapper
   def self.generate_include_guard(name)
     # abc-XYZ.h --> _ABC_XYZ_H_
     base = File.basename(name, '.*') # Remove any extension
-    guard = '__' + base.gsub(/\W/, '_').upcase + '_H__'
+    guard = '__' + CEEDLING_GENERATED + '_' + base.gsub(/\W/, '_').upcase + '_H__'
     return guard
   end
 

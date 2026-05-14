@@ -121,7 +121,7 @@ class PreprocessinatorFileAssembler
     # ----------------------------------------------------------
     @file_wrapper.open( preprocessed_filepath, 'w' ) do |file|
       # Add include guards and extra blank lines to beginning of file contents
-      file << "#ifndef #{guardname} // Ceedling-generated include guard\n"
+      file << "#ifndef #{guardname}\n"
       file << "#define #{guardname}\n\n"
 
       # Reinsert #include statements into stripped down file

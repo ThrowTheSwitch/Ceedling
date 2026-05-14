@@ -141,6 +141,8 @@ class TestBuildExecutor
 
       @partializer.validate_config( c_module: module_contents, config: config, name: name )
 
+      @partializer.sanitize( module_contents )
+
       implementation = @partializer.extract_implementation_functions(
         test:        name,
         partial:     config.module,

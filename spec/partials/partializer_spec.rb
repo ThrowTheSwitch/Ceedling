@@ -159,6 +159,95 @@ describe Partializer do
   end
 
   ###
+  ### sanitize()
+  ###
+
+  context "#sanitize" do
+    def make_macro(text)
+      CExtractorTypes::CStatement.new(text: text, line_num: 1)
+    end
+
+    def make_module(macros: [], sequence: nil)
+      m = CExtractorTypes::CModule.new
+      m.macro_definitions = macros.dup
+      m.element_sequence  = sequence || macros.dup
+      m
+    end
+
+    it "leaves macro_definitions unchanged when no macros contain CEEDLING_GENERATED" do
+      macro = make_macro('#define MY_GUARD_H')
+      mod   = make_module(macros: [macro])
+
+      @partializer.sanitize(mod)
+
+      expect(mod.macro_definitions).to eq([macro])
+    end
+
+    it "leaves element_sequence unchanged when no macros contain CEEDLING_GENERATED" do
+      macro = make_macro('#define MY_GUARD_H')
+      mod   = make_module(macros: [macro])
+
+      @partializer.sanitize(mod)
+
+      expect(mod.element_sequence).to eq([macro])
+    end
+
+    it "removes macros whose text includes CEEDLING_GENERATED from macro_definitions" do
+      generated = make_macro('#ifndef CEEDLING_GENERATED_FOO_H')
+      kept      = make_macro('#define MY_DEFINE 1')
+      mod       = make_module(macros: [generated, kept])
+
+      @partializer.sanitize(mod)
+
+      expect(mod.macro_definitions).to eq([kept])
+      expect(mod.macro_definitions).not_to include(generated)
+    end
+
+    it "removes the same macro objects from element_sequence" do
+      generated = make_macro('#ifndef CEEDLING_GENERATED_BAR_H')
+      kept      = make_macro('#define MY_DEFINE 2')
+      mod       = make_module(macros: [generated, kept])
+
+      @partializer.sanitize(mod)
+
+      expect(mod.element_sequence).not_to include(generated)
+      expect(mod.element_sequence).to include(kept)
+    end
+
+    it "removes all macros when every macro contains CEEDLING_GENERATED" do
+      m1  = make_macro('#ifndef CEEDLING_GENERATED_A_H')
+      m2  = make_macro('#define CEEDLING_GENERATED_A_H')
+      mod = make_module(macros: [m1, m2])
+
+      @partializer.sanitize(mod)
+
+      expect(mod.macro_definitions).to be_empty
+      expect(mod.element_sequence).to be_empty
+    end
+
+    it "does not remove non-macro elements from element_sequence" do
+      generated  = make_macro('#ifndef CEEDLING_GENERATED_C_H')
+      other_elem = double('CFunction', text: 'void foo(void){}')
+      mod = CExtractorTypes::CModule.new
+      mod.macro_definitions = [generated]
+      mod.element_sequence  = [generated, other_elem]
+
+      @partializer.sanitize(mod)
+
+      expect(mod.element_sequence).to include(other_elem)
+      expect(mod.element_sequence).not_to include(generated)
+    end
+
+    it "handles empty macro_definitions without error" do
+      mod = make_module(macros: [])
+
+      expect { @partializer.sanitize(mod) }.not_to raise_error
+      expect(mod.macro_definitions).to be_empty
+      expect(mod.element_sequence).to be_empty
+    end
+  end
+
+  ###
   ### validate_extracted_functions()
   ###
 

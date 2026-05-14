@@ -100,6 +100,9 @@ EXTENSION_NONWIN_EXE  = '.out'
 EXTENSION_CORE_HEADER = '.h'
 EXTENSION_CORE_SOURCE = '.c'
 
+# String used in generated include guards
+CEEDLING_GENERATED = 'CEEDLING_GENERATED'
+
 PREPROCESS_SYM = :preprocess
 
 CEXCEPTION_SYM       = :cexception

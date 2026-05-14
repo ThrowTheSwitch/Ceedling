@@ -224,11 +224,10 @@ describe GeneratorPartials do
 
     it "should generate a nearly empty header file" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
-      #ifndef __FOO_BAR_H__
-      #define __FOO_BAR_H__
+      #ifndef __CEEDLING_GENERATED_FOO_BAR_H__
+      #define __CEEDLING_GENERATED_FOO_BAR_H__
 
-      #endif // __FOO_BAR_H__
+      #endif // __CEEDLING_GENERATED_FOO_BAR_H__
 
       CONTENTS
 
@@ -238,14 +237,13 @@ describe GeneratorPartials do
 
     it "should generate a header file with #include statements but nothing else" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
-      #ifndef __APPLES_AND_BANANAS_H__
-      #define __APPLES_AND_BANANAS_H__
+      #ifndef __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #define __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
 
       #include "foo.h"
       #include "bar.h"
 
-      #endif // __APPLES_AND_BANANAS_H__
+      #endif // __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
 
       CONTENTS
 
@@ -262,14 +260,13 @@ describe GeneratorPartials do
 
     it "should generate a header file with variable declarations (extern prefix added automatically)" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
-      #ifndef __PB_AND_J_H__
-      #define __PB_AND_J_H__
+      #ifndef __CEEDLING_GENERATED_PB_AND_J_H__
+      #define __CEEDLING_GENERATED_PB_AND_J_H__
 
       extern unsigned int slices_of_bread;
       extern char crumbs;
 
-      #endif // __PB_AND_J_H__
+      #endif // __CEEDLING_GENERATED_PB_AND_J_H__
 
       CONTENTS
 
@@ -283,9 +280,8 @@ describe GeneratorPartials do
 
     it "should generate a header file with #include statements, variable declarations, and function signatures" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
-      #ifndef __APPLES_AND_BANANAS_H__
-      #define __APPLES_AND_BANANAS_H__
+      #ifndef __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #define __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
 
       #include "Eeny.h"
       #include "Meeny.h"
@@ -297,7 +293,7 @@ describe GeneratorPartials do
 
       int razzleDazzle(void* ptr);
 
-      #endif // __APPLES_AND_BANANAS_H__
+      #endif // __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
 
       CONTENTS
 
@@ -339,15 +335,14 @@ describe GeneratorPartials do
 
     it "should emit CStatement text as-is in the header" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
-      #ifndef __DEFS_H__
-      #define __DEFS_H__
+      #ifndef __CEEDLING_GENERATED_DEFS_H__
+      #define __CEEDLING_GENERATED_DEFS_H__
 
       #define MAX_SIZE 100
       typedef uint8_t Byte;
       struct Point { int x; int y; };
 
-      #endif // __DEFS_H__
+      #endif // __CEEDLING_GENERATED_DEFS_H__
 
       CONTENTS
 
@@ -371,16 +366,15 @@ describe GeneratorPartials do
       # Ordering is intentionally interleaved (not grouped by category) to confirm that
       # element_sequence — not typed-array membership — governs emit order.
       file_contents = <<~CONTENTS
-      // Ceeding generated file
-      #ifndef __ALL_STATEMENTS_H__
-      #define __ALL_STATEMENTS_H__
+      #ifndef __CEEDLING_GENERATED_ALL_STATEMENTS_H__
+      #define __CEEDLING_GENERATED_ALL_STATEMENTS_H__
 
       #define MAX_ITEMS 16
       typedef uint8_t Byte;
       extern int item_count;
       struct Config { int id; int flags; };
 
-      #endif // __ALL_STATEMENTS_H__
+      #endif // __CEEDLING_GENERATED_ALL_STATEMENTS_H__
 
       CONTENTS
 
@@ -403,15 +397,14 @@ describe GeneratorPartials do
 
     it "should emit mixed CStatement and CVariableDeclaration items in element_sequence order" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
-      #ifndef __MIXED_H__
-      #define __MIXED_H__
+      #ifndef __CEEDLING_GENERATED_MIXED_H__
+      #define __CEEDLING_GENERATED_MIXED_H__
 
       #define FOO 1
       extern int counter;
       typedef uint8_t Byte;
 
-      #endif // __MIXED_H__
+      #endif // __CEEDLING_GENERATED_MIXED_H__
 
       CONTENTS
 
@@ -428,13 +421,12 @@ describe GeneratorPartials do
 
     it "should not emit variable declarations when include_variables is false" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
-      #ifndef __INTERFACE_H__
-      #define __INTERFACE_H__
+      #ifndef __CEEDLING_GENERATED_INTERFACE_H__
+      #define __CEEDLING_GENERATED_INTERFACE_H__
 
       #define FOO 1
 
-      #endif // __INTERFACE_H__
+      #endif // __CEEDLING_GENERATED_INTERFACE_H__
 
       CONTENTS
 
@@ -449,9 +441,8 @@ describe GeneratorPartials do
 
     it "should interleave functions with other elements in element_sequence order" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
-      #ifndef __INTERLEAVED_H__
-      #define __INTERLEAVED_H__
+      #ifndef __CEEDLING_GENERATED_INTERLEAVED_H__
+      #define __CEEDLING_GENERATED_INTERLEAVED_H__
 
       typedef uint8_t Byte;
 
@@ -461,7 +452,7 @@ describe GeneratorPartials do
 
       int bar(int x);
 
-      #endif // __INTERLEAVED_H__
+      #endif // __CEEDLING_GENERATED_INTERLEAVED_H__
 
       CONTENTS
 

@@ -70,7 +70,6 @@ class GeneratorPartials
   def generate_header(io, name, includes, function_list, c_module, include_variables)
     guard = FileWrapper.generate_include_guard( name )
 
-    io << "// Ceeding generated file\n"
     io << "#ifndef #{guard}\n"
     io << "#define #{guard}\n\n"
 
