@@ -1,5 +1,7 @@
-/* header logo and style */
-.md-header {
+/*-------------------------------------------------
+ * Header logo and style
+ *------------------------------------------------*/
+ .md-header {
     background-color: #EEEEEE;
 }
 .md-header__title {
@@ -21,8 +23,10 @@
   }
 }
 
-/* search bar */
-.md-search {
+/*-------------------------------------------------
+ * Search bar
+ *------------------------------------------------*/
+ .md-search {
     margin-left: auto;
 }
 .md-search__form {
@@ -39,7 +43,9 @@
     color: #3A0040;
 }
 
-/* repository display */
+/*-------------------------------------------------
+ * Repository display
+ *------------------------------------------------*/
 .md-header__inner {
     justify-content: space-between;
 }
@@ -57,3 +63,30 @@
   font-size: 0.7rem;
 }
 
+/*-------------------------------------------------
+ * Navigation section separators
+ *------------------------------------------------*/
+
+ /* Separator around nested subsections only */
+.md-nav__item--section .md-nav__item--section {
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+}
+
+/* No bottom border on last subsection */
+.md-nav__item--section .md-nav__item--section:last-child {
+  border-bottom: none;
+}
+
+/* Bottom border only on subsections that aren't last */
+.md-nav__item--section .md-nav__item--section:not(:last-child) {
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+/* Add breathing room inside subsection before the bottom border */
+.md-nav__item--section .md-nav__item--section:not(:last-child) > .md-nav {
+  padding-bottom: 0.6rem;
+}
