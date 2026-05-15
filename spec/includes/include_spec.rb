@@ -496,15 +496,121 @@ describe "Include equality" do
       include1 = UserInclude.new("header.h")
       include2 = UserInclude.new("header.h")
       include3 = SystemInclude.new("header.h")
-      
+
       set = Set.new
       set << include1
       set << include2  # Should not add duplicate
       set << include3  # Different type, should add
-      
+
       expect(set.size).to eq(2)
       expect(set).to include(include1)
       expect(set).to include(include3)
+    end
+  end
+end
+
+describe "Include regex matching" do
+  describe "=~ operator" do
+    it "returns a truthy match position when the pattern matches the filename" do
+      include_obj = UserInclude.new("mock_module.h")
+
+      expect(include_obj =~ /mock_/).not_to be_nil
+    end
+
+    it "returns nil when the pattern does not match the filename" do
+      include_obj = UserInclude.new("header.h")
+
+      expect(include_obj =~ /mock_/).to be_nil
+    end
+
+    it "matches against filename only, not the full path" do
+      include_obj = UserInclude.new("path/to/mock_module.h")
+
+      expect(include_obj =~ /mock_/).not_to be_nil
+      expect(include_obj =~ /path\/to/).to be_nil
+    end
+
+    it "works with SystemInclude" do
+      include_obj = SystemInclude.new("stdio.h")
+
+      expect(include_obj =~ /stdio/).not_to be_nil
+      expect(include_obj =~ /stdlib/).to be_nil
+    end
+
+    it "works with MockInclude" do
+      include_obj = MockInclude.new("mock_sensor.h")
+
+      expect(include_obj =~ /mock_/).not_to be_nil
+      expect(include_obj =~ /mock_sensor/).not_to be_nil
+    end
+
+    it "supports anchored patterns" do
+      include_obj = UserInclude.new("mock_module.h")
+
+      expect(include_obj =~ /\Amock_/).not_to be_nil
+      expect(include_obj =~ /\Amodule/).to be_nil
+    end
+
+    it "can be used in Array#select via block" do
+      includes = [
+        UserInclude.new("mock_sensor.h"),
+        UserInclude.new("module.h"),
+        UserInclude.new("mock_driver.h")
+      ]
+
+      mocks = includes.select { |inc| inc =~ /\Amock_/ }
+
+      expect(mocks.length).to eq(2)
+      expect(mocks).to include(UserInclude.new("mock_sensor.h"))
+      expect(mocks).to include(UserInclude.new("mock_driver.h"))
+    end
+  end
+
+  describe "!~ operator" do
+    it "returns true when the pattern does not match the filename" do
+      include_obj = UserInclude.new("header.h")
+
+      expect(include_obj !~ /mock_/).to be true
+    end
+
+    it "returns false when the pattern matches the filename" do
+      include_obj = UserInclude.new("mock_module.h")
+
+      expect(include_obj !~ /mock_/).to be false
+    end
+
+    it "matches against filename only, not the full path" do
+      include_obj = UserInclude.new("path/to/header.h")
+
+      expect(include_obj !~ /path\/to/).to be true
+      expect(include_obj !~ /header/).to be false
+    end
+
+    it "works with SystemInclude" do
+      include_obj = SystemInclude.new("stdio.h")
+
+      expect(include_obj !~ /stdlib/).to be true
+      expect(include_obj !~ /stdio/).to be false
+    end
+
+    it "works with MockInclude" do
+      include_obj = MockInclude.new("mock_sensor.h")
+
+      expect(include_obj !~ /driver/).to be true
+      expect(include_obj !~ /mock_/).to be false
+    end
+
+    it "can be used in Array#reject via block" do
+      includes = [
+        UserInclude.new("mock_sensor.h"),
+        UserInclude.new("module.h"),
+        UserInclude.new("mock_driver.h")
+      ]
+
+      non_mocks = includes.reject { |inc| inc =~ /\Amock_/ }
+
+      expect(non_mocks.length).to eq(1)
+      expect(non_mocks).to include(UserInclude.new("module.h"))
     end
   end
 end

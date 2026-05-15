@@ -268,6 +268,16 @@ class Include
     end
   end
 
+  # Matching operator for pattern matching on filename
+  def =~(pattern)
+    @filename =~ pattern
+  end
+
+  # Not matching operator for pattern matching on filename
+  def !~(pattern)
+    @filename !~ pattern
+  end
+
   # Hash method for use in sets and as hash keys
   def hash()
     include.hash
