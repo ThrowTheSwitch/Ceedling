@@ -358,7 +358,9 @@ class Loginator
     # Otherwise no headings for decorator-only messages
     end
 
-    return prepend + string
+    # Insert prepend after any leading newlines so labels appear on the content line
+    leading, rest = string.match(/\A(\n*)(.*)\z/m).captures
+    return leading + prepend + rest
   end
 
 

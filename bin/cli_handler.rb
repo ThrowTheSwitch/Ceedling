@@ -77,14 +77,14 @@ class CliHandler
 
   # Public to be used by `-T` ARGV hack handling
   def rake_help(env:, app_cfg:)
-    @helper.set_verbosity() # Default to normal
+    @helper.set_verbosity( Verbosity::ERRORS, override: true )
 
     list_rake_tasks( env:env, app_cfg:app_cfg )
   end
 
 
   def new_project(env, app_cfg, ceedling_tag, options, dest)
-    @helper.set_verbosity( options[:verbosity] )
+    @helper.set_verbosity( options[:verbosity], override: true )
 
     @path_validator.standardize_paths( dest )
 
@@ -135,7 +135,7 @@ class CliHandler
 
 
   def upgrade_project(env, app_cfg, options, path)
-    @helper.set_verbosity( options[:verbosity] )
+    @helper.set_verbosity( options[:verbosity], override: true )
 
     @path_validator.standardize_paths( path, options[:project] )
 
@@ -148,7 +148,7 @@ class CliHandler
     which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
     if (which == :gem)
       msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      @loginator.console( msg, LogLabels::NOTICE )
     end
 
     # Thor Actions for project tasks use paths in relation to this path
@@ -172,7 +172,7 @@ class CliHandler
 
 
   def build(env:, app_cfg:, options:{}, tasks:)
-    @helper.set_verbosity( options[:verbosity] )
+    @helper.set_verbosity( options[:verbosity] ) # No override
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
 
@@ -191,7 +191,7 @@ class CliHandler
     logging_path = @helper.process_logging_path( config )
     log_filepath = @helper.process_log_filepath( logging_path, options[:log], options[:logfile] )
 
-    @loginator.log( " > Logfile: #{log_filepath}" ) if !log_filepath.empty?
+    @loginator.console( " > Logfile: #{log_filepath}" ) if !log_filepath.empty?
 
     # Save references
     app_cfg.set_project_config( config )
@@ -246,7 +246,7 @@ class CliHandler
 
 
   def dumpconfig(env, app_cfg, options, filepath, sections)
-    @helper.set_verbosity( options[:verbosity] )
+    @helper.set_verbosity( options[:verbosity], override: true )
 
     @path_validator.standardize_paths( filepath, options[:project], *options[:mixin] )
 
@@ -270,12 +270,12 @@ class CliHandler
           default_tasks: default_tasks
         )
       else
-        @loginator.log( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
+        @loginator.console( " > Skipped loading Ceedling application" )
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
 
-      @loginator.log( "\nDumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
+      @loginator.console( "\nDumped project configuration to #{filepath}\n", LogLabels::TITLE )      
     end
   end
 
@@ -304,14 +304,13 @@ class CliHandler
         default_tasks: default_tasks
       )
     ensure
-      @loginator.log() # Blank line for readability
-      @loginator.log( "Project configuration processed.\n\n", Verbosity::NORMAL, LogLabels::TITLE )
+      @loginator.console( "\nProject configuration processed.\n\n", LogLabels::TITLE )
     end
   end
 
 
   def environment(env, app_cfg, options)
-    @helper.set_verbosity( options[:verbosity] )
+    @helper.set_verbosity( options[:verbosity], override: true )
 
     @path_validator.standardize_paths( options[:project], *options[:mixin] )
 
@@ -322,8 +321,6 @@ class CliHandler
     app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
-
-    @helper.set_verbosity( options[:verbosity], override: true )
 
     config = @helper.load_ceedling(
       config: config,
@@ -364,7 +361,7 @@ class CliHandler
 
 
   def list_examples(env, app_cfg, options)
-    @helper.set_verbosity( options[:verbosity] )
+    @helper.set_verbosity( options[:verbosity], override: true )
 
     # Process which_ceedling for app_cfg modifications but ignore return values
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
@@ -377,12 +374,12 @@ class CliHandler
 
     examples.each {|example| output << " • #{example}\n" }
 
-    @loginator.log( "\n#{output}\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( "#{output}\n", LogLabels::TITLE )
   end
 
 
   def create_example(env, app_cfg, options, name, dest)
-    @helper.set_verbosity( options[:verbosity] )
+    @helper.set_verbosity( options[:verbosity], override: true )
 
     @path_validator.standardize_paths( dest )
 
@@ -420,14 +417,14 @@ class CliHandler
     # Copy in documentation
     @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
-    @loginator.log( "\nExample project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( "Example project '#{name}' created at #{dest}/\n", LogLabels::TITLE )
   end
 
 
   def version(env, app_cfg)
     # Versionator is not needed to persist. So, it's not built in the DIY collection.
 
-    @helper.set_verbosity(Verbosity::ERRORS)
+    @helper.set_verbosity( Verbosity::ERRORS, override: true )
 
     # Ceedling bootloader
     launcher = Versionator.new( app_cfg[:ceedling_root_path] )

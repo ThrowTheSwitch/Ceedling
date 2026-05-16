@@ -101,7 +101,7 @@ class CliHelper
 
     # Environment variable
     if !env['WHICH_CEEDLING'].nil?
-      @loginator.log( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS ) 
+      @loginator.console( " > Set which Ceedling using environment variable WHICH_CEEDLING" ) 
       which_ceedling = env['WHICH_CEEDLING'].strip()
       which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
     end
@@ -120,14 +120,14 @@ class CliHelper
     if which_ceedling.nil?
       if @file_wrapper.directory?( 'vendor/ceedling' )
         which_ceedling = 'vendor/ceedling'
-        @loginator.log( " > Set which Ceedling to be vendored installation", Verbosity::OBNOXIOUS )
+        @loginator.console( " > Set which Ceedling to be vendored installation" )
       end
     end
 
     # Default to gem
     if which_ceedling.nil?
       which_ceedling = :gem
-      @loginator.log( " > Defaulting to running Ceedling from Gem", Verbosity::OBNOXIOUS )
+      @loginator.console( " > Defaulting to running Ceedling from Gem" )
     end
 
     # If we're launching from the gem, return :gem and initial Rakefile path
