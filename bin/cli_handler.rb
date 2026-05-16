@@ -130,7 +130,7 @@ class CliHandler
       @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
-    @loginator.log( "\nNew project created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( "\nNew project created at #{dest}/\n", LogLabels::TITLE )
   end
 
 
@@ -167,7 +167,7 @@ class CliHandler
       @helper.copy_docs( app_cfg[:ceedling_root_path], path )
     end
 
-    @loginator.log( "\nUpgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( "\nUpgraded project at #{path}/\n", LogLabels::TITLE )
   end
 
 
