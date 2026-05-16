@@ -222,10 +222,29 @@ class Loginator
   def log_debug_backtrace(exception)
       # Send backtrace to debug logging, formatted almost identically to how Ruby does it.
       # Don't log the exception message itself in the first `log()` call as it will already be logged elsewhere
-    lazy( Verbosity::DEBUG ) do 
+    lazy( Verbosity::DEBUG ) do
       "\nDebug Backtrace ==>\n#{exception.backtrace.first}: (#{exception.class})" +
       exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n")
     end
+  end
+
+
+  # Write directly to $stdout, bypassing the queue and all verbosity filtering.
+  # Applies emoji decorators (if enabled) but never text labels (INFO:, WARNING:, etc.).
+  # Applies the same character stripping as log() when decorators are disabled.
+  def console(message="\n", label=LogLabels::AUTO)
+    # Flatten if needed
+    message = message.flatten.join("\n") if (message.class == Array)
+
+    # Ensure at least one newline but no more than two newlines at the end
+    message = message.rstrip + (message.rstrip != message.chomp ? "\n\n" : "\n")
+
+    # Add emoji decorator if enabled; skip AUTO (no verbosity context) and NONE
+    prepend = ''
+    prepend = decorate( '', label ) if @decorators && label != LogLabels::AUTO && label != LogLabels::NONE
+
+    # Write directly to stdout — no queue, no verbosity check, no text labels
+    $stdout.print( sanitize( prepend + message, @decorators ) )
   end
 
 

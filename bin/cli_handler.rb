@@ -37,7 +37,7 @@ class CliHandler
 
   # Thor application help + Rake help (if available)
   def app_help(env, app_cfg, options, command, &thor_help)
-    verbosity = @helper.set_verbosity( options[:verbosity] )
+    verbosity = @helper.set_verbosity( options[:verbosity], override: true )
 
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
@@ -66,7 +66,7 @@ class CliHandler
     else
       # If no project configuration is available then note why we aren't displaying more
       msg = "Run help commands in a directory with a project file to list additional options\n\n"
-      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      @loginator.console( msg, LogLabels::NOTICE )
     end
 
     version = @helper.manufacture_app_version( app_cfg )
@@ -323,6 +323,8 @@ class CliHandler
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
+    @helper.set_verbosity( options[:verbosity], override: true )
+
     config = @helper.load_ceedling(
       config: config,
       rakefile_path: path
@@ -345,13 +347,19 @@ class CliHandler
       end
     end
 
-    output = "Environment variables:\n"
+    output = "Environment variables:"
 
     env_list.sort.each do |line|
-      output << " • #{line}\n"
+      output << "\n • #{line}"
     end
 
-    @loginator.log( "\n#{output}\n", Verbosity::NORMAL, LogLabels::TITLE )
+    if env_list.empty?
+      output << " <none>\n"
+    else
+      output << "\n"
+    end
+
+    @loginator.console( "#{output}\n", LogLabels::TITLE )
   end
 
 
@@ -419,7 +427,7 @@ class CliHandler
   def version(env, app_cfg)
     # Versionator is not needed to persist. So, it's not built in the DIY collection.
 
-    @helper.set_verbosity() # Default to normal
+    @helper.set_verbosity(Verbosity::ERRORS)
 
     # Ceedling bootloader
     launcher = Versionator.new( app_cfg[:ceedling_root_path] )
@@ -471,7 +479,7 @@ class CliHandler
     # Add a header
     version = "Welcome to Ceedling!\n\n" + version
 
-    @loginator.log( version, Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( version, LogLabels::TITLE )
   end
 
 
@@ -502,7 +510,7 @@ class CliHandler
     )
 
     msg = "Ceedling build & plugin tasks:\n(Parameterized tasks tend to need enclosing quotes or escape sequences in most shells)"
-    @loginator.log( msg, Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( msg, LogLabels::TITLE )
 
     @helper.print_rake_tasks()
   end

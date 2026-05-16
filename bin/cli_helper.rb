@@ -31,18 +31,20 @@ class CliHelper
 
 
   def help_footer(ceedling_tag='master')
+    @loginator.console() # Blank line for spacing
+
     # Documentation incorporating Ceedling version tag in URL
     msg = "Ceedling Packet User Manual (v#{ceedling_tag})\n" +
-          "https://github.com/ThrowTheSwitch/Ceedling/blob/#{ceedling_tag}/docs/CeedlingPacket.md\n\n"
-    @loginator.log( msg, Verbosity::NORMAL, LogLabels::DOCUMENTATION )
+          "https://throwtheswitch.github.io/Ceedling/#{ceedling_tag}/\n\n"
+    @loginator.console( msg, LogLabels::DOCUMENTATION )
 
     # Ceedling Suite
     msg = "Ceedling Suite can help you do more ➡️ https://www.thingamabyte.com/ceedling\n\n"
-    @loginator.log( msg, Verbosity::NORMAL, LogLabels::COMMERCIAL )
+    @loginator.console( msg, LogLabels::COMMERCIAL )
 
     # GitHub Sponsors
     msg = "Please consider supporting this work ➡️ https://github.com/sponsors/throwtheswitch\n\n"
-    @loginator.log( msg, Verbosity::NORMAL, LogLabels::REQUEST )
+    @loginator.console( msg, LogLabels::REQUEST )
   end
 
 
@@ -285,8 +287,8 @@ class CliHelper
     indentation = ' ' * 2
     rake_tasks.gsub!(/^/, indentation)
 
-    # Add Rake logging output to our logging handler
-    @loginator.log( rake_tasks )
+    # Print Rake task list directly to the console
+    @loginator.console( rake_tasks )
   end
 
 
@@ -333,27 +335,30 @@ class CliHelper
     # `override: true` bypasses this to allow forced re-configuration (check command).
     return PROJECT_VERBOSITY if !override && @system_wrapper.constants_include?('PROJECT_VERBOSITY')
 
-    verbosity = if verbosity.nil?
-                  Verbosity::NORMAL
-                elsif verbosity.is_a?( Integer )
-                  # Integer Verbosity constants (e.g. Verbosity::OBNOXIOUS) pass through directly
-                  verbosity
-                elsif verbosity.to_i.to_s == verbosity
-                  # Numeric string (e.g. '4') — convert to integer
-                  verbosity.to_i
-                elsif VERBOSITY_OPTIONS.include? verbosity.to_sym
-                  # Named string (e.g. 'debug', 'normal') — look up integer value
-                  VERBOSITY_OPTIONS[verbosity.to_sym]
-                else
-                  raise "Unkown Verbosity '#{verbosity}' specified"
-                end
+    verbosity = 
+      if verbosity.nil?
+        Verbosity::NORMAL
+      elsif verbosity.is_a?( Integer )
+        # Integer Verbosity constants (e.g. Verbosity::OBNOXIOUS) pass through directly
+        verbosity
+      elsif verbosity.to_i.to_s == verbosity
+        # Numeric string (e.g. '4') — convert to integer
+        verbosity.to_i
+      elsif VERBOSITY_OPTIONS.include? verbosity.to_sym
+        # Named string (e.g. 'debug', 'normal') — look up integer value
+        VERBOSITY_OPTIONS[verbosity.to_sym]
+      else
+        raise "Unkown Verbosity '#{verbosity}' specified"
+      end
 
     # Create global constant PROJECT_VERBOSITY
+    Object.send(:remove_const, 'PROJECT_VERBOSITY') if Object.const_defined?('PROJECT_VERBOSITY')
     Object.module_eval("PROJECT_VERBOSITY = verbosity")
     PROJECT_VERBOSITY.freeze()
 
     # Create global constant PROJECT_DEBUG
     debug = (verbosity == Verbosity::DEBUG)
+    Object.send(:remove_const, 'PROJECT_DEBUG') if Object.const_defined?('PROJECT_DEBUG')
     Object.module_eval("PROJECT_DEBUG = debug")
     PROJECT_DEBUG.freeze()
 
