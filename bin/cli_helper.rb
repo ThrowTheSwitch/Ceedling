@@ -31,27 +31,20 @@ class CliHelper
 
 
   def help_footer(ceedling_tag='master')
-    # Blank line
-    @loginator.log( "" )
+    @loginator.console() # Blank line for spacing
 
     # Documentation incorporating Ceedling version tag in URL
     msg = "Ceedling Packet User Manual (v#{ceedling_tag})\n" +
-          "https://github.com/ThrowTheSwitch/Ceedling/blob/#{ceedling_tag}/docs/CeedlingPacket.md"
-    @loginator.log( msg, Verbosity::NORMAL, LogLabels::DOCUMENTATION )
-
-    # Blank line
-    @loginator.log( "" )
+          "https://throwtheswitch.github.io/Ceedling/#{ceedling_tag}/\n\n"
+    @loginator.console( msg, LogLabels::DOCUMENTATION )
 
     # Ceedling Suite
-    msg = "Ceedling Suite can help you do more ➡️ https://www.thingamabyte.com/ceedling"
-    @loginator.log( msg, Verbosity::NORMAL, LogLabels::COMMERCIAL )
+    msg = "Ceedling Suite can help you do more ➡️ https://www.thingamabyte.com/ceedling\n\n"
+    @loginator.console( msg, LogLabels::COMMERCIAL )
 
     # GitHub Sponsors
-    msg = "Please consider supporting this work ➡️ https://github.com/sponsors/throwtheswitch"
-    @loginator.log( msg, Verbosity::NORMAL, LogLabels::REQUEST )
-
-    # Blank line
-    @loginator.log( "" )
+    msg = "Please consider supporting this work ➡️ https://github.com/sponsors/throwtheswitch\n\n"
+    @loginator.console( msg, LogLabels::REQUEST )
   end
 
 
@@ -294,8 +287,8 @@ class CliHelper
     indentation = ' ' * 2
     rake_tasks.gsub!(/^/, indentation)
 
-    # Add Rake logging output to our logging handler
-    @loginator.log( rake_tasks )
+    # Print Rake task list directly to the console
+    @loginator.console( rake_tasks )
   end
 
 
@@ -324,27 +317,48 @@ class CliHelper
   end
 
 
-  # Set global consts for verbosity and debug
-  def set_verbosity(verbosity=nil)
-    # If we have already set verbosity, there's nothing to do here
-    return PROJECT_VERBOSITY if @system_wrapper.constants_include?('PROJECT_VERBOSITY')
+  # Sets global PROJECT_VERBOSITY and PROJECT_DEBUG constants used throughout
+  # the Ceedling application. Once set, subsequent calls are no-ops — the method
+  # returns the already-established verbosity — unless `override:` is true.
+  #
+  # `verbosity` accepts:
+  #   - nil            → defaults to Verbosity::NORMAL
+  #   - Integer        → used directly as a Verbosity level (e.g. Verbosity::OBNOXIOUS)
+  #   - numeric string → parsed as an integer verbosity level (e.g. '4')
+  #   - named string   → looked up in VERBOSITY_OPTIONS hash (e.g. 'debug', 'normal')
+  #
+  # `override:` is intended only for the `check` command, which must force
+  # obnoxious verbosity regardless of any prior verbosity state. All other
+  # callers use the default (false) and rely on the idempotency guard.
+  def set_verbosity(verbosity=nil, override: false)
+    # Idempotency guard: if verbosity is already established, return it as-is.
+    # `override: true` bypasses this to allow forced re-configuration (check command).
+    return PROJECT_VERBOSITY if !override && @system_wrapper.constants_include?('PROJECT_VERBOSITY')
 
-    verbosity = if verbosity.nil?
-                  Verbosity::NORMAL
-                elsif verbosity.to_i.to_s == verbosity
-                  verbosity.to_i
-                elsif VERBOSITY_OPTIONS.include? verbosity.to_sym
-                  VERBOSITY_OPTIONS[verbosity.to_sym]
-                else
-                  raise "Unkown Verbosity '#{verbosity}' specified"
-                end
+    verbosity = 
+      if verbosity.nil?
+        Verbosity::NORMAL
+      elsif verbosity.is_a?( Integer )
+        # Integer Verbosity constants (e.g. Verbosity::OBNOXIOUS) pass through directly
+        verbosity
+      elsif verbosity.to_i.to_s == verbosity
+        # Numeric string (e.g. '4') — convert to integer
+        verbosity.to_i
+      elsif VERBOSITY_OPTIONS.include? verbosity.to_sym
+        # Named string (e.g. 'debug', 'normal') — look up integer value
+        VERBOSITY_OPTIONS[verbosity.to_sym]
+      else
+        raise "Unkown Verbosity '#{verbosity}' specified"
+      end
 
     # Create global constant PROJECT_VERBOSITY
+    Object.send(:remove_const, 'PROJECT_VERBOSITY') if Object.const_defined?('PROJECT_VERBOSITY')
     Object.module_eval("PROJECT_VERBOSITY = verbosity")
     PROJECT_VERBOSITY.freeze()
 
     # Create global constant PROJECT_DEBUG
     debug = (verbosity == Verbosity::DEBUG)
+    Object.send(:remove_const, 'PROJECT_DEBUG') if Object.const_defined?('PROJECT_DEBUG')
     Object.module_eval("PROJECT_DEBUG = debug")
     PROJECT_DEBUG.freeze()
 
