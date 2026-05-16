@@ -205,8 +205,8 @@ module CeedlingTasks
       @handler.app_help( ENV, @app_cfg, _options, command ) { |command| super(command) }
     end
 
-
-    desc "new NAME [DEST]", "Create a new project structure at optional DEST path"
+ 
+    desc "new [DEST]", "Create a new project structure at optional DEST path (default is current directory)"
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
     method_option :configs, :type => :boolean, :default => true, :desc => "Install starter project file in project root"
