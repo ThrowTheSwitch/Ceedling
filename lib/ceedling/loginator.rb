@@ -244,7 +244,7 @@ class Loginator
     prepend = decorate( '', label ) if @decorators && label != LogLabels::AUTO && label != LogLabels::NONE
 
     # Write directly to stdout — no queue, no verbosity check, no text labels
-    $stdout.print( sanitize( prepend + message, @decorators ) )
+    $stdout.print( sanitize( insert_prepend(prepend, message), @decorators ) )
   end
 
 
@@ -299,6 +299,12 @@ class Loginator
   ### Private ###
 
   private
+
+  def insert_prepend(prepend, string)
+    leading, rest = string.match(/\A(\n*)(.*)\z/m).captures
+    return leading + prepend + rest
+  end
+
 
   def get_stream(verbosity, stream)
     # If no stream has been specified, choose one based on the verbosity level of the prompt
@@ -358,9 +364,7 @@ class Loginator
     # Otherwise no headings for decorator-only messages
     end
 
-    # Insert prepend after any leading newlines so labels appear on the content line
-    leading, rest = string.match(/\A(\n*)(.*)\z/m).captures
-    return leading + prepend + rest
+    return insert_prepend( prepend, string )
   end
 
 

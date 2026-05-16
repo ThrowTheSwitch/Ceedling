@@ -120,19 +120,19 @@ class CliHelper
     if which_ceedling.nil?
       if @file_wrapper.directory?( 'vendor/ceedling' )
         which_ceedling = 'vendor/ceedling'
-        @loginator.console( " > Set which Ceedling to be vendored installation" )
+        @loginator.log( " > Set which Ceedling to be vendored installation", Verbosity::OBNOXIOUS )
       end
     end
 
     # Default to gem
     if which_ceedling.nil?
       which_ceedling = :gem
-      @loginator.console( " > Defaulting to running Ceedling from Gem" )
+      @loginator.log( " > Defaulting to running Ceedling from Gem", Verbosity::OBNOXIOUS )
     end
 
     # If we're launching from the gem, return :gem and initial Rakefile path
     if which_ceedling == :gem
-      @loginator.lazy( Verbosity::OBNOXIOUS ) { " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/" }
+      @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
       return which_ceedling, app_cfg[:ceedling_rakefile_filepath]
     end
 
@@ -154,7 +154,7 @@ class CliHelper
     # Update variable to full application start path
     ceedling_path = app_cfg[:ceedling_rakefile_filepath]
     
-    @loginator.lazy( Verbosity::OBNOXIOUS ) { " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/" }
+    @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
 
     return :path, ceedling_path
   end
@@ -326,11 +326,7 @@ class CliHelper
   #   - Integer        → used directly as a Verbosity level (e.g. Verbosity::OBNOXIOUS)
   #   - numeric string → parsed as an integer verbosity level (e.g. '4')
   #   - named string   → looked up in VERBOSITY_OPTIONS hash (e.g. 'debug', 'normal')
-  #
-  # `override:` is intended only for the `check` command, which must force
-  # obnoxious verbosity regardless of any prior verbosity state. All other
-  # callers use the default (false) and rely on the idempotency guard.
-  def set_verbosity(verbosity=nil, override: false)
+  def set_verbosity(verbosity=nil, override: true)
     # Idempotency guard: if verbosity is already established, return it as-is.
     # `override: true` bypasses this to allow forced re-configuration (check command).
     return PROJECT_VERBOSITY if !override && @system_wrapper.constants_include?('PROJECT_VERBOSITY')
@@ -338,15 +334,19 @@ class CliHelper
     verbosity = 
       if verbosity.nil?
         Verbosity::NORMAL
+
+      # Integer Verbosity constants (e.g. Verbosity::OBNOXIOUS) pass through directly
       elsif verbosity.is_a?( Integer )
-        # Integer Verbosity constants (e.g. Verbosity::OBNOXIOUS) pass through directly
         verbosity
+
+      # Numeric string (e.g. '4') — convert to integer
       elsif verbosity.to_i.to_s == verbosity
-        # Numeric string (e.g. '4') — convert to integer
         verbosity.to_i
+
+      # Named string (e.g. 'debug', 'normal') — look up integer value
       elsif VERBOSITY_OPTIONS.include? verbosity.to_sym
-        # Named string (e.g. 'debug', 'normal') — look up integer value
         VERBOSITY_OPTIONS[verbosity.to_sym]
+
       else
         raise "Unkown Verbosity '#{verbosity}' specified"
       end
@@ -424,7 +424,6 @@ class CliHelper
 
     # Add docs to list from Ceedling (docs/) and supporting projects (docs/<project>)
     { # Source path => docs/ destination path
-      'docs'                    => '.',
       'vendor/unity/docs'       => 'unity',
       'vendor/cmock/docs'       => 'cmock',
       'vendor/c_exception/docs' => 'c_exception'
@@ -439,17 +438,6 @@ class CliHelper
         _dest = File.join( dest, File.basename(filepath) )
         doc_files[ _dest ] = filepath
       end
-    end
-
-    # Add docs to list from Ceedling plugins (docs/plugins)
-    glob = File.join( ceedling_root, 'plugins/**/README.md' )
-    listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
-    listing.each do |path|
-      # 'README.md' => '<name>.md' where name extracted from containing path
-      rename = path.split(/\\|\//)[-2] + '.md'
-      # For each Ceedling plugin readme, add to hash
-      dest = File.join( 'plugins', rename )
-      doc_files[ dest ] = path
     end
 
     # Add licenses from Ceedling (docs/) and supporting projects (docs/<project>)
@@ -470,9 +458,17 @@ class CliHelper
       doc_files[ dest ] = filepath
     end
 
-    # Copy all documentation
+    # Copy all individual documentation files gathered up
     doc_files.each_pair do |dest, src|
-      @actions._copy_file(src, File.join( docs_path, dest ), :force => true)
+      @actions._copy_file(src, File.join( docs_path, dest ), :force => true )
+    end
+
+    # If present copy internl HTML documentation bundle (site-local/) to docs/ceedling/
+    site_local_path = File.join( ceedling_root, DOCS_SITE_LOCAL_PATH )
+    if @file_wrapper.directory?( site_local_path )
+      @actions._directory( site_local_path, File.join( docs_path, 'ceedling' ), :force => true )
+    else
+      @loginator.console( "Internal HTML documentation bundle not found", LogLabels::WARNING )
     end
   end
 

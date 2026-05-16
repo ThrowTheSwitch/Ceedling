@@ -68,6 +68,17 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
+EXTENSION_WIN_EXE     = '.exe'
+EXTENSION_NONWIN_EXE  = '.out'
+
+# Vendor frameworks, generated mocks, generated runners are always .c files
+EXTENSION_CORE_HEADER = '.h'
+EXTENSION_CORE_SOURCE = '.c'
+
+CEEDLING_HEADER_FILENAME = 'ceedling.h'
+CEEDLING_HEADER_FILEPATH = CEEDLING_HEADER_FILENAME # lib/ceedling/
+PARTIAL_FILENAME_PREFIX  = 'ceedling_partial_'
+
 class PATTERNS
   GLOB = /[\*\?\{\}\[\]]/
 
@@ -81,6 +92,8 @@ class PATTERNS
 
   TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
   TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
+
+  PARTIAL_IMPL_FILENAME = /\A#{PARTIAL_FILENAME_PREFIX}.+_impl#{Regexp.escape(EXTENSION_CORE_SOURCE)}\z/
 end
 
 GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
@@ -91,14 +104,9 @@ NEWLINE_TOKEN = '\\n'
 DEFAULT_PROJECT_FILENAME = 'project.yml'
 DEFAULT_BUILD_LOGS_PATH = 'logs'
 
+DOCS_SITE_LOCAL_PATH = 'site-local'
+
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
-
-EXTENSION_WIN_EXE     = '.exe'
-EXTENSION_NONWIN_EXE  = '.out'
-
-# Vendor frameworks, generated mocks, generated runners are always .c files
-EXTENSION_CORE_HEADER = '.h'
-EXTENSION_CORE_SOURCE = '.c'
 
 # String used in generated include guards
 CEEDLING_GENERATED = 'CEEDLING_GENERATED'
@@ -129,11 +137,6 @@ CMOCK_H_FILE    = 'cmock.h'
 DEFAULT_CEEDLING_LOGFILE = 'ceedling.log'
 
 BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
-
-CEEDLING_HEADER_FILENAME = 'ceedling.h'
-CEEDLING_HEADER_FILEPATH = CEEDLING_HEADER_FILENAME # lib/ceedling/
-PARTIAL_FILENAME_PREFIX     = 'ceedling_partial_'
-PARTIAL_IMPL_FILENAME_REGEX = /\A#{PARTIAL_FILENAME_PREFIX}.+_impl#{Regexp.escape(EXTENSION_CORE_SOURCE)}\z/
 
 INPUT_CONFIGURATION_CACHE_FILE = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
 DEFINES_DEPENDENCY_CACHE_FILE  = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files

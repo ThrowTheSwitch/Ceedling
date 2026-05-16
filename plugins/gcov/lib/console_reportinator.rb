@@ -43,7 +43,7 @@ class ConsoleReportinator
   def remap_partial_sources(sources)
     # Remap sources: if Partial files are present, remove the original source file they replace.
     # Coverage is then reported against the Partial implementation rather than the original module.
-    partials = sources.select { |s| File.basename(s).match?(PARTIAL_IMPL_FILENAME_REGEX) }
+    partials = sources.select { |s| File.basename(s).match?(Patterns::PARTIAL_IMPL_FILENAME_REGEX) }
     return sources if partials.empty?
 
     # Extract module names covered by Partials (strip prefix and _impl suffix)
@@ -124,7 +124,7 @@ class ConsoleReportinator
     # If gcov results include intended source (comparing absolute paths), report coverage details summaries.
     # For Partial files, #line directives remap to the original source so path comparison never matches;
     # produce the report for any Partial that returned non-empty gcov output.
-    if gcov_source == File.expand_path(source) || File.basename(source).match?(PARTIAL_IMPL_FILENAME_REGEX)
+    if gcov_source == File.expand_path(source) || File.basename(source).match?(PATTERNS::PARTIAL_IMPL_FILENAME)
       # For Partials, use the original source name from gcov output (gcov_source) rather than the Partial filename.
       report_name = gcov_source.empty? ? filename : File.basename(gcov_source)
 

@@ -37,7 +37,7 @@ class CliHandler
 
   # Thor application help + Rake help (if available)
   def app_help(env, app_cfg, options, command, &thor_help)
-    verbosity = @helper.set_verbosity( options[:verbosity], override: true )
+    verbosity = @helper.set_verbosity( options[:verbosity] )
 
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
@@ -77,14 +77,14 @@ class CliHandler
 
   # Public to be used by `-T` ARGV hack handling
   def rake_help(env:, app_cfg:)
-    @helper.set_verbosity( Verbosity::ERRORS, override: true )
+    @helper.set_verbosity( Verbosity::ERRORS )
 
     list_rake_tasks( env:env, app_cfg:app_cfg )
   end
 
 
   def new_project(env, app_cfg, ceedling_tag, options, dest)
-    @helper.set_verbosity( options[:verbosity], override: true )
+    @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( dest )
 
@@ -135,7 +135,7 @@ class CliHandler
 
 
   def upgrade_project(env, app_cfg, options, path)
-    @helper.set_verbosity( options[:verbosity], override: true )
+    @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( path, options[:project] )
 
@@ -172,7 +172,8 @@ class CliHandler
 
 
   def build(env:, app_cfg:, options:{}, tasks:)
-    @helper.set_verbosity( options[:verbosity] ) # No override
+    # No override, allow build verbosity to be set by config or command line
+    @helper.set_verbosity( options[:verbosity], override: false )
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
 
@@ -246,7 +247,7 @@ class CliHandler
 
 
   def dumpconfig(env, app_cfg, options, filepath, sections)
-    @helper.set_verbosity( options[:verbosity], override: true )
+    @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( filepath, options[:project], *options[:mixin] )
 
@@ -282,7 +283,7 @@ class CliHandler
 
   def check(env, app_cfg, options)
     # Force obnoxious (or debug) verbosity, overriding any prior verbosity state
-    @helper.set_verbosity( options[:verbosity], override: true )
+    @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( options[:project], *options[:mixin] )
 
@@ -310,7 +311,7 @@ class CliHandler
 
 
   def environment(env, app_cfg, options)
-    @helper.set_verbosity( options[:verbosity], override: true )
+    @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( options[:project], *options[:mixin] )
 
@@ -361,7 +362,7 @@ class CliHandler
 
 
   def list_examples(env, app_cfg, options)
-    @helper.set_verbosity( options[:verbosity], override: true )
+    @helper.set_verbosity( options[:verbosity] )
 
     # Process which_ceedling for app_cfg modifications but ignore return values
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
@@ -379,7 +380,7 @@ class CliHandler
 
 
   def create_example(env, app_cfg, options, name, dest)
-    @helper.set_verbosity( options[:verbosity], override: true )
+    @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( dest )
 
@@ -424,7 +425,7 @@ class CliHandler
   def version(env, app_cfg)
     # Versionator is not needed to persist. So, it's not built in the DIY collection.
 
-    @helper.set_verbosity( Verbosity::ERRORS, override: true )
+    @helper.set_verbosity( Verbosity::ERRORS )
 
     # Ceedling bootloader
     launcher = Versionator.new( app_cfg[:ceedling_root_path] )
