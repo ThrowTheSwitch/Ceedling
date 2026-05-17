@@ -628,7 +628,7 @@ coverage report. This Ceedling gcov plugin itself handles the most important
 aspect — only source files under test are compiled with coverage. Tests, mocks,
 and test runners, are not compiled with coverage.
 
-!!! note "`gcovr` Accepts Only One Report Root Path"
+!!! note "`gcovr` accepts only one report root path"
     `gcovr` will only accept a single path for `:report_root`. In typical usage,
     this is of no concern as it is handled automatically. In unusual project
     layouts, you may need to specify a folder that encompasses _all_ build folders
