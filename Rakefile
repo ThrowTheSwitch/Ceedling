@@ -68,11 +68,12 @@ task :ci => ['specs:all']
 ##
 
 # Docs tasks Python virtual environment activate / deactivate wrapper
+# This wrapper skips venv actions if no venv is in use (such as in CI)
 def venv_sh(cmd)
   puts "Running: #{cmd}"
   script = <<~SHELL
     _activated=0
-    if [ -z "$VIRTUAL_ENV" ]; then
+    if [ -z "$VIRTUAL_ENV" ] && [ -f ".docsenv/bin/activate" ]; then
       source .docsenv/bin/activate
       _activated=1
     fi
