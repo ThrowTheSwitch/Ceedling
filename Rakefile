@@ -78,9 +78,9 @@ def venv_sh(cmd)
       _activated=1
     fi
     #{cmd}
-    [ "$_activated" = "1" ] && deactivate
+    if [ "$_activated" = "1" ]; then deactivate; fi
   SHELL
-  sh('bash', '-c', script, verbose: false) do |ok, res|
+  sh('bash', '-c', script, verbose: true) do |ok, res|
     raise "ERROR: '#{cmd}' failed (exit #{res.exitstatus})" unless ok
   end
 end
@@ -110,7 +110,7 @@ namespace :docs do
         _activated=1
       fi
       pip install 'mkdocs>=1.6' 'mkdocs-material>=9.5' 'mike>=2.0'
-      [ "$_activated" = "1" ] && deactivate
+      if [ "$_activated" = "1" ]; then deactivate; fi
     SHELL
     unless status.success?
       $stderr.puts output
