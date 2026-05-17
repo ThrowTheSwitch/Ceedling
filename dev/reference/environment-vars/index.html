@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://throwtheswitch.github.io/Ceedling/latest/getting-started/environment-vars/">
+        <link rel="canonical" href="https://throwtheswitch.github.io/Ceedling/latest/reference/environment-vars/">
       
       
-        <link rel="prev" href="../command-line/">
+        <link rel="prev" href="../partials-macros/">
       
       
-        <link rel="next" href="../../testing-guide/">
+        <link rel="next" href="../global-collections/">
       
       
         
@@ -53,6 +53,8 @@
       
     
     
+      <link rel="stylesheet" href="../../assets/stylesheets/styling.css">
+    
       <link rel="stylesheet" href="../../assets/stylesheets/admonitions.css">
     
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
@@ -71,7 +73,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="green" data-md-color-accent="indigo">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="green" data-md-color-accent="deep_purple">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -80,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ceedlings-environment-variables" class="md-skip">
+        <a href="#environment-variables-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -100,8 +102,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="Ceedling" class="md-header__button md-logo" aria-label="Ceedling" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/images/ceedling.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -131,7 +132,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="green" data-md-color-accent="indigo"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="green" data-md-color-accent="deep_purple"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
     
   
 </form>
@@ -256,13 +257,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../getting-started/" class="md-tabs__link">
           
   
   
@@ -335,6 +334,30 @@
     
   
   Plugins
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
 
         </a>
       </li>
@@ -429,8 +452,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="Ceedling" class="md-nav__button md-logo" aria-label="Ceedling" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../../assets/images/ceedling.svg" alt="logo">
 
     </a>
     Ceedling
@@ -645,8 +667,6 @@
       
   
   
-    
-  
   
   
     
@@ -662,29 +682,24 @@
       
         
       
-        
-      
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../getting-started/" class="md-nav__link ">
               
   
   
@@ -702,13 +717,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -728,7 +743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quick-start/" class="md-nav__link">
+      <a href="../../getting-started/quick-start/" class="md-nav__link">
         
   
   
@@ -756,7 +771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -784,7 +799,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../command-line/" class="md-nav__link">
+      <a href="../../getting-started/command-line/" class="md-nav__link">
         
   
   
@@ -800,114 +815,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Environment Variables
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Environment Variables
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#project-configuration-filepath" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Project configuration filepath
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#logging-decorators" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Logging decorators
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mixins" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Mixins
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1396,6 +1303,8 @@
       
         
       
+        
+      
     
     
     
@@ -1541,6 +1450,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../configuration/environment-vars/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../configuration/which-ceedling/" class="md-nav__link">
         
   
@@ -1650,7 +1587,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -1672,14 +1609,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2710,6 +2647,362 @@
       
   
   
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../command-line/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project-configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../build-directives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Build Directives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../partials-macros/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Partials Macros
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#project-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Project configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ceedling_project_file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CEEDLING_PROJECT_FILE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling_mixin_" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CEEDLING_MIXIN_#
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#console-output-ceedling_decorators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Console output — CEEDLING_DECORATORS
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../global-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Global Collections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
   
   
     
@@ -2732,10 +3025,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
             
   
   
@@ -2753,8 +3046,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2882,7 +3175,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2904,14 +3197,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10" id="__nav_10_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2955,7 +3248,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -2977,14 +3270,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_9_2" id="__nav_9_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_2" id="__nav_10_2_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -3122,32 +3415,49 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#project-configuration-filepath" class="md-nav__link">
+  <a href="#project-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Project configuration filepath
+        Project configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Project configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ceedling_project_file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CEEDLING_PROJECT_FILE
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#logging-decorators" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#ceedling_mixin_" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Logging decorators
+        CEEDLING_MIXIN_#
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#mixins" class="md-nav__link">
+  <a href="#console-output-ceedling_decorators" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Mixins
+        Console output — CEEDLING_DECORATORS
       
     </span>
   </a>
@@ -3200,7 +3510,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Getting Started
+    Reference
   </span>
 
         </a>
@@ -3222,15 +3532,39 @@
   
 
 
-<h1 id="ceedlings-environment-variables">Ceedling's Environment Variables</h1>
-<p>Ceedling recognizes several environment variables that control its behavior independently of your project configuration file.</p>
-<h2 id="project-configuration-filepath">Project configuration filepath</h2>
-<p>The environment variable <code>CEEDLING_PROJECT_FILE</code> is <a href="../../configuration/loading/">one option</a>
-to point Ceedling at your project configuration file.</p>
-<h2 id="logging-decorators">Logging decorators</h2>
-<p>Ceedling attempts to bring more joy to your console logging. This may include
-fancy Unicode characters, emoji, or color.</p>
-<p>Example:
+<h1 id="environment-variables-reference">Environment Variables Reference</h1>
+<p>See <a href="../../configuration/environment-vars/">Getting Started → Environment Variables</a>
+for context on when and why to use these variables.</p>
+<h2 id="project-configuration">Project configuration</h2>
+<h3 id="ceedling_project_file"><code>CEEDLING_PROJECT_FILE</code></h3>
+<p>Points Ceedling at your project configuration file. This is
+<a href="../../configuration/loading/">one of several options</a> for specifying the
+project file location.</p>
+<h3 id="ceedling_mixin_"><code>CEEDLING_MIXIN_#</code></h3>
+<p>Environment variables named <code>CEEDLING_MIXIN_#</code> — where <code>#</code> is any positive
+integer — specify filepaths to mixin YAML files to be merged into your base
+project configuration. Multiple mixin environment variables are merged in
+ascending numeric order (e.g. <code>CEEDLING_MIXIN_1</code> before <code>CEEDLING_MIXIN_5</code>
+before <code>CEEDLING_MIXIN_99</code>).</p>
+<p>See <a href="../../configuration/loading/#mixin-environment-variables"><em>Loading Configuration</em></a>
+for the full details on Mixin environment variables.</p>
+<h2 id="console-output-ceedling_decorators">Console output — <code>CEEDLING_DECORATORS</code></h2>
+<p>Forces Ceedling's console logging decorators (fancy Unicode characters, emoji,
+and color) on or off.</p>
+<div class="admonition warning">
+<p class="admonition-title"><code>CEEDLING_DECORATORS</code> cannot be set with <code>:environment</code></p>
+<p>Ceedling's logger must load before any environment variables are processed 
+in your project configuration. As such, <code>CEEDLING_DECORATORS</code> can only be set 
+in your environment before Ceedling runs.</p>
+</div>
+<p>By default, Ceedling makes an educated guess as to which platforms can best
+support decorators. Some platforms (we're looking at you, Windows) do not
+typically have default font support in their terminals for these features. So,
+by default this feature is disabled on problematic platforms while enabled on
+others.</p>
+<p>Set <code>CEEDLING_DECORATORS</code> to <code>true</code> (<code>1</code>) to force decorators on, or <code>false</code>
+(<code>0</code>) to force them off.</p>
+<p>Example with decorators enabled:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>-----------------------
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>❌ OVERALL TEST SUMMARY
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>-----------------------
@@ -3238,34 +3572,10 @@ fancy Unicode characters, emoji, or color.</p>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>PASSED:  5
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>FAILED:  1
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>IGNORED: 0
-</code></pre></div></p>
-<p>By default, Ceedling makes an educated guess as to which platforms can best
-support this. Some platforms (we're looking at you, Windows) do not typically
-have default font support in their terminals for these features. So, by default
-this feature is disabled on problematic platforms while enabled on others.</p>
-<div class="admonition warning">
-<p class="admonition-title"><code>CEEDLING_DECORATORS</code> cannot be set with <code>:environment</code></p>
-<p>Ceedling’s logger must load before any environment variables are processed 
-in your project configuration. As such, <code>CEEDLING_DECORATORS</code> can only be set 
-in your environment before Ceedling runs.</p>
-</div>
-<p>An environment variable <code>CEEDLING_DECORATORS</code> forces decorators on or off with a
-<code>true</code> (<code>1</code>) or <code>false</code> (<code>0</code>) string value.</p>
+</code></pre></div>
 <p>If you find a monospaced font that provides emojis, etc. and works with Windows'
 command prompt, you can (1) Install the font (2) change your command prompt's
 font (3) set <code>CEEDLING_DECORATORS</code> to <code>true</code>.</p>
-<h2 id="mixins">Mixins</h2>
-<p><a href="../../configuration/loading/#applying-mixins-to-base-configuration">Mixins</a> allow you to merge configuration with your project 
-configuration just after the base project file is loaded.</p>
-<p>Mixins can be specified from the command line, in your project configuration file
-and via environment variables.</p>
-<p>Environment variables named <code>CEEDLING_MIXIN_#</code> — where <code>#</code> is any positive 
-integer — specify filepaths to mixin YAML files to be merged into your base 
-project configuration. Multiple mixin environment variables are merged in 
-ascending numeric order (e.g. <code>CEEDLING_MIXIN_1</code> before <code>CEEDLING_MIXIN_5</code> 
-before <code>CEEDLING_MIXIN_99</code>).</p>
-<p>See <a href="../../configuration/loading/#mixin-environment-variables"><em>Loading Configuration</em></a>
-for the full details on Mixin environment variables.</p>
 <p><br/><br/></p>
 
 

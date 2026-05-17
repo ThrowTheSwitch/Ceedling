@@ -7,12 +7,83 @@
 }
 
 /* 
+ Styling Built-In Admonition Types
+ =================================
+ */
+
+/* ── Note ──────────────────────────────────────────────────────────────────
+   Usage:  !!! note "This does not imply if the swallow is African or European"
+               Body text here.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Overrides default note style.
+  */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-color: rgb(58, 0, 64);
+}
+
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  background-color: rgba(58, 0, 64, .15);
+}
+
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+  background-color: rgb(58, 0, 64);
+}
+
+/* ── Tip ──────────────────────────────────────────────────────────────────
+   Usage:  !!! tip "You pronounce it 'potato'"
+               Body text here.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Overrides default tip style.
+  */
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-color: rgb(58, 0, 64);
+}
+
+.md-typeset .tip > .admonition-title,
+.md-typeset .tip > summary {
+  background-color: rgba(58, 0, 64, .15);
+}
+
+.md-typeset .tip > .admonition-title::before,
+.md-typeset .tip > summary::before {
+  background-color: rgb(58, 0, 64);
+}
+
+/* ── Info ──────────────────────────────────────────────────────────────────
+   Usage:  !!! info "The answer to Life, The Universe, and Everything is 42."
+               Body text here.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Overrides default info style.
+  */
+.md-typeset .admonition.info,
+.md-typeset details.info {
+  border-color: rgb(58, 0, 64);
+}
+
+.md-typeset .info > .admonition-title,
+.md-typeset .info > summary {
+  background-color: rgba(58, 0, 64, .15);
+}
+
+.md-typeset .info > .admonition-title::before,
+.md-typeset .info > summary::before {
+  background-color: rgb(58, 0, 64);
+}
+
+/* 
  Custom Admonition Types
  =======================
  */
 
 /* ── Sponsorship ────────────────────────────────────────────────────────────
-   Usage:  !!! sponsorship "Title"
+   Usage:  !!! sponsorship "ThingamaByte is a Great Sponsor"
                Body text here.
    ────────────────────────────────────────────────────────────────────────── */
 
@@ -32,17 +103,17 @@
 
 .md-typeset .admonition.sponsorship,
 .md-typeset details.sponsorship {
-  border-color: rgb(212, 175, 55);
+  border-color: rgb(63, 176, 78);
 }
 
 .md-typeset .sponsorship > .admonition-title,
 .md-typeset .sponsorship > summary {
-  background-color: rgba(212, 175, 55, .15);
+  background-color: rgb(91,255,113);
 }
 
 .md-typeset .sponsorship > .admonition-title::before,
 .md-typeset .sponsorship > summary::before {
-  background-color: rgb(212, 175, 55);
+  background-color: rgb(63, 176, 78);
   -webkit-mask-image: var(--md-admonition-icon--sponsorship);
           mask-image: var(--md-admonition-icon--sponsorship);
 }
@@ -65,17 +136,17 @@
 
 .md-typeset .admonition.feature,
 .md-typeset details.feature {
-  border-color: rgb(103, 58, 183);
+  border-color: rgb(63, 176, 78);
 }
 
 .md-typeset .feature > .admonition-title,
 .md-typeset .feature > summary {
-  background-color: rgba(103, 58, 183, .15);
+  background-color: rgb(91,255,113);
 }
 
 .md-typeset .feature > .admonition-title::before,
 .md-typeset .feature > summary::before {
-  background-color: rgb(103, 58, 183);
+  background-color: rgb(63, 176, 78);
   -webkit-mask-image: var(--md-admonition-icon--feature);
           mask-image: var(--md-admonition-icon--feature);
 }
