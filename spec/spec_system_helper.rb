@@ -260,7 +260,6 @@ module CeedlingTestCases
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
         expect(File.exist?("test")).to eq true
-        all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
       end
     end
   end
@@ -292,8 +291,8 @@ module CeedlingTestCases
   def contains_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        all_docs = Dir["docs/*.md"].length + Dir["vendor/ceedling/docs/*.md"].length
-        expect(all_docs).to be >= 4
+        all_docs = Dir["docs/"]
+        expect(all_docs).to contain_exactly('ceedling', 'unity', 'cmock', 'c_exception', 'license.txt')
       end
     end
   end
@@ -301,8 +300,7 @@ module CeedlingTestCases
   def does_not_contain_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        expect(File.exist?("vendor/ceedling/docs")).to eq false
-        expect(Dir["vendor/ceedling/**/*.pdf"].length).to eq 0
+        expect(Dir.exist?("docs/")).to eq false
       end
     end
   end
