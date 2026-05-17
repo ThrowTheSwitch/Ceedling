@@ -138,17 +138,17 @@ jobs:
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
-      # Run Tests
-      - name: Run All Self Tests
-        run: |
-          rake ci
-
       # Download HTML docs bundle built by generate-gem-docs job
       - name: Download HTML Documentation Bundle
         uses: actions/download-artifact@v4
         with:
           name: gem-docs-site-local
           path: site-local/
+
+      # Run Tests
+      - name: Run All Self Tests
+        run: |
+          rake ci
 
       # Build & Install Ceedling Gem
       - name: Build and Install Ceedling Gem
@@ -231,17 +231,17 @@ jobs:
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
-      # Run Tests
-      - name: Run All Self Tests
-        run: |
-          rake ci
-
       # Download HTML docs bundle built by generate-gem-docs job
       - name: Download HTML Documentation Bundle
         uses: actions/download-artifact@v4
         with:
           name: gem-docs-site-local
           path: site-local/
+
+      # Run Tests
+      - name: Run All Self Tests
+        run: |
+          rake ci
 
       # Build & Install Gem
       - name:  Build and Install Ceedling Gem
