@@ -291,8 +291,8 @@ module CeedlingTestCases
   def contains_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        all_docs = Dir["docs/"]
-        expect(all_docs).to contain_exactly('ceedling', 'unity', 'cmock', 'c_exception', 'license.txt')
+        all_docs = Dir["docs/*"]
+        expect(all_docs).to contain_exactly('docs/ceedling', 'docs/unity', 'docs/cmock', 'docs/c_exception', 'docs/license.txt')
       end
     end
   end
