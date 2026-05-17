@@ -43,7 +43,7 @@ class ConsoleReportinator
   def remap_partial_sources(sources)
     # Remap sources: if Partial files are present, remove the original source file they replace.
     # Coverage is then reported against the Partial implementation rather than the original module.
-    partials = sources.select { |s| File.basename(s).match?(Patterns::PARTIAL_IMPL_FILENAME_REGEX) }
+    partials = sources.select { |s| File.basename(s).match?(PATTERNS::PARTIAL_IMPL_FILENAME) }
     return sources if partials.empty?
 
     # Extract module names covered by Partials (strip prefix and _impl suffix)
