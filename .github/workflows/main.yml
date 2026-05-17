@@ -58,14 +58,13 @@ jobs:
         run: |
           bundle install
 
-      # We don't need `mike`, but it's in the mkdocs config as a dependency
-      - name: Install MkDocs, mkdocs-material, and mike
+      - name: Install MkDocs and mkdocs-material
         run: |
-          pip install mkdocs mkdocs-material mike
+          pip install mkdocs mkdocs-material
 
       - name: Build HTML Documentation Bundle
         run: |
-          rake docs:build:local
+          rake docs:build:local --trace
 
       - name: Upload HTML Documentation Bundle
         uses: actions/upload-artifact@v4
