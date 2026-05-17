@@ -68,13 +68,32 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
+EXTENSION_WIN_EXE     = '.exe'
+EXTENSION_NONWIN_EXE  = '.out'
+
+# Vendor frameworks, generated mocks, generated runners are always .c files
+EXTENSION_CORE_HEADER = '.h'
+EXTENSION_CORE_SOURCE = '.c'
+
+CEEDLING_HEADER_FILENAME = 'ceedling.h'
+CEEDLING_HEADER_FILEPATH = CEEDLING_HEADER_FILENAME # lib/ceedling/
+PARTIAL_FILENAME_PREFIX  = 'ceedling_partial_'
+
 class PATTERNS
   GLOB = /[\*\?\{\}\[\]]/
+
   RUBY_STRING_REPLACEMENT = /#\{.+\}/
   TOOL_EXECUTOR_ARGUMENT_REPLACEMENT = /(\$\{(\d+)\})/
+
   TEST_STDOUT_STATISTICS  = /\n-+\s*(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
+
+  USER_INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+\"\s*([\/\w\.\-]+)\s*\"/
+  SYSTEM_INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+<\s*([\/\w\.\-]+)\s*>/
+
   TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
   TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
+
+  PARTIAL_IMPL_FILENAME = /\A#{PARTIAL_FILENAME_PREFIX}.+_impl#{Regexp.escape(EXTENSION_CORE_SOURCE)}\z/
 end
 
 GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
@@ -85,12 +104,12 @@ NEWLINE_TOKEN = '\\n'
 DEFAULT_PROJECT_FILENAME = 'project.yml'
 DEFAULT_BUILD_LOGS_PATH = 'logs'
 
+DOCS_SITE_LOCAL_PATH = 'site-local'
+
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
 
-EXTENSION_WIN_EXE     = '.exe'
-EXTENSION_NONWIN_EXE  = '.out'
-# Vendor frameworks, generated mocks, generated runners are always .c files
-EXTENSION_CORE_SOURCE = '.c' 
+# String used in generated include guards
+CEEDLING_GENERATED = 'CEEDLING_GENERATED'
 
 PREPROCESS_SYM = :preprocess
 
@@ -139,15 +158,17 @@ OPERATION_COMPILE_SYM     = :compile    unless defined?(OPERATION_COMPILE_SYM)
 OPERATION_ASSEMBLE_SYM    = :assemble   unless defined?(OPERATION_ASSEMBLE_SYM)
 OPERATION_LINK_SYM        = :link       unless defined?(OPERATION_LINK_SYM)
 
+PREPROCESS_STANDINS_DIR  = 'standins'
 PREPROCESS_FULL_EXPANSION_DIR  = 'full_expansion'
 PREPROCESS_DIRECTIVES_ONLY_DIR = 'directives_only'
+PREPROCESS_RAW_DIRECTIVES_ONLY_DIR = 'directives_only/raw'
 
 NULL_FILE_PATH = '/dev/null'
 
 TESTS_BASE_PATH   = TEST_ROOT_NAME
 RELEASE_BASE_PATH = RELEASE_ROOT_NAME
 
-VENDORS_FILES = %w(unity UnityHelper cmock CException).freeze
+VENDORS_FILES = %w(unity UnityHelper cmock CException ceedling).freeze
 
 # Ruby Here
 UNITY_TEST_RESULTS_TEMPLATE = <<~UNITY_TEST_RESULTS
