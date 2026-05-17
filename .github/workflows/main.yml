@@ -27,9 +27,44 @@ permissions:
 
 
 jobs:
+  # Job: Build MkDocs HTML documentation bundle for gem inclusion
+  generate-gem-docs:
+    name: "Generate Gem Docs"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby: [3.3]
+    steps:
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
+      - name: Install MkDocs and mkdocs-material
+        run: |
+          pip install mkdocs mkdocs-material
+
+      - name: Build HTML Documentation Bundle
+        run: |
+          rake docs:build:local
+
+      - name: Upload HTML Documentation Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+          if-no-files-found: error
+
+
   # Job: Linux unit test suite
-  unit-tests-linux:
+  tests-linux:
     name: "Linux Test Suite"
+    needs: generate-gem-docs
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -95,6 +130,13 @@ jobs:
         run: |
           rake ci
 
+      # Download HTML docs bundle built by generate-gem-docs job
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+
       # Build & Install Ceedling Gem
       - name: Build and Install Ceedling Gem
         run: |
@@ -130,8 +172,9 @@ jobs:
           cd ../..
 
   # Job: Windows unit test suite
-  unit-tests-windows:
+  tests-windows:
     name: "Windows Test Suite"
+    needs: generate-gem-docs
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -180,6 +223,13 @@ jobs:
         run: |
           rake ci
 
+      # Download HTML docs bundle built by generate-gem-docs job
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+
       # Build & Install Gem
       - name:  Build and Install Ceedling Gem
         run: |
@@ -214,12 +264,14 @@ jobs:
           rake
           cd ../..
 
+
   # Job: Automatic Minor Release
   auto-release:
     name: "Automatic Minor Release"
     needs:
-      - unit-tests-linux
-      - unit-tests-windows
+      - generate-gem-docs
+      - tests-linux
+      - tests-windows
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -260,6 +312,13 @@ jobs:
         run: |
           echo "${{ env.sha_short }}" > ${{ github.workspace }}/GIT_COMMIT_SHA
 
+      # Download HTML docs bundle built by generate-gem-docs job
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+
       # Build Gem
       - name:  Build Gem
         run: |
@@ -288,4 +347,3 @@ jobs:
           asset_path: ./ceedling-${{ env.ceedling_tag }}.gem
           asset_name: ceedling-${{ env.ceedling_build }}.gem
           asset_content_type: test/x-gemfile
-
