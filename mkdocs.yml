@@ -104,6 +104,8 @@ nav:
     - Partials:
       - testing-guide/partials/index.md
       - What Is a Partial?: testing-guide/partials/overview.md
+      - Configuration: testing-guide/partials/configuration.md
+      - Walk-Through Example: testing-guide/partials/example.md
       - Conventions & Terminology: testing-guide/partials/conventions.md
       - Partial Directive Macros: testing-guide/partials/directives.md
       - Accessing Static Variables: testing-guide/partials/variables.md

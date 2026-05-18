@@ -40,6 +40,19 @@ Partials are useful when a module under test contains:
     What is a _module_? _“Public”_ and _“private”_ functions in a programming
     language that has no such terminology.
 
+-   :material-cog: **[Configuration][configuration]**
+
+    ---
+
+    How to enable Partials in your project, include `ceedling.h`, and an
+    overview of directive macro categories.
+
+-   :material-school: **[Walk-Through Example][example]**
+
+    ---
+
+    A complete end-to-end demonstration of Test Partials and Mock Partials.
+
 -   :material-pound: **[Partial Directive Macros][directives]**
 
     ---
@@ -56,9 +69,11 @@ Partials are useful when a module under test contains:
 
 </div>
 
-[overview]:     overview.md
-[conventions]:  conventions.md
-[directives]:   directives.md
-[variables]:    variables.md
+[overview]:        overview.md
+[conventions]:     conventions.md
+[directives]:      directives.md
+[variables]:       variables.md
+[configuration]:   configuration.md
+[example]:         example.md
 
 <br/><br/>

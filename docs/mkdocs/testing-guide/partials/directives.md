@@ -16,6 +16,9 @@ from (3). Modifying a base set of functions is documented in detail in the
 [Partials function list configuration macros](#partials-function-list-configuration-macros)
 section.
 
+!!! tip "Configuring Partials"
+    For enabling and configuring Partials, see [Configuring Partials](configuration.md).
+
 ## Directive Macros Example
 
 ```c

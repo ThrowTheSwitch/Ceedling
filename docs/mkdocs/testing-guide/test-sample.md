@@ -68,14 +68,14 @@ void test_Foo_Function2_should_Call_Baz_Tec(void)
 // end of test_foo.c ----------------------------------------
 ```
 
-## Ceedling actions from the sample test code
+## Ceedling actions
 
 From the test file specified above Ceedling will generate 
 `test_foo_runner.c`. This runner file will contain `main()` and will call 
 both of the example test case functions.
 
 The final test executable will be `test_foo.exe` (Windows) or `test_foo.out` 
-for Unix-based systems (extensions are configurable. Based on the `#include` 
+for Unix-based systems (extensions are configurable). Based on the `#include` 
 list and test directive macro above, the test executable will be the output 
 of the linker having processed `unity.o`, `foo.o`, `mock_bar.o`, `mock_baz.o`, 
 `more.o`, `test_foo.o`, and `test_foo_runner.o`. 
