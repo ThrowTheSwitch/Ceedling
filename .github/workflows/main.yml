@@ -28,8 +28,8 @@ permissions:
 
 jobs:
   # Job: Build MkDocs HTML documentation bundle for gem inclusion
-  generate-gem-docs:
-    name: "Generate Gem Docs"
+  generate-docs:
+    name: "Generate Local Docs Bundle for Gem Inclusion"
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -77,7 +77,7 @@ jobs:
   # Job: Linux unit test suite
   tests-linux:
     name: "Linux Test Suite"
-    needs: generate-gem-docs
+    needs: generate-docs
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -138,7 +138,7 @@ jobs:
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
-      # Download HTML docs bundle built by generate-gem-docs job
+      # Download HTML docs bundle built by generate-docs job
       - name: Download HTML Documentation Bundle
         uses: actions/download-artifact@v4
         with:
@@ -187,7 +187,7 @@ jobs:
   # Job: Windows unit test suite
   tests-windows:
     name: "Windows Test Suite"
-    needs: generate-gem-docs
+    needs: generate-docs
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -231,7 +231,7 @@ jobs:
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
-      # Download HTML docs bundle built by generate-gem-docs job
+      # Download HTML docs bundle built by generate-docs job
       - name: Download HTML Documentation Bundle
         uses: actions/download-artifact@v4
         with:
@@ -282,7 +282,7 @@ jobs:
   auto-release:
     name: "Automatic Minor Release"
     needs:
-      - generate-gem-docs
+      - generate-docs
       - tests-linux
       - tests-windows
     runs-on: ubuntu-latest
@@ -325,7 +325,7 @@ jobs:
         run: |
           echo "${{ env.sha_short }}" > ${{ github.workspace }}/GIT_COMMIT_SHA
 
-      # Download HTML docs bundle built by generate-gem-docs job
+      # Download HTML docs bundle built by generate-docs job
       - name: Download HTML Documentation Bundle
         uses: actions/download-artifact@v4
         with:
