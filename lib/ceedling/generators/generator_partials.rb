@@ -150,7 +150,7 @@ class GeneratorPartials
       if func.line_num and func.source_filepath
         io << "#line #{func.line_num} \"#{func.source_filepath}\"\n"
       end
-      io << cleanup_function( func.code_block ) << "\n\n"
+      io << func.code_block << "\n\n"
       emitted_funcs[func.name] = true
       last_was_func = true
       anything_emitted = true
@@ -172,17 +172,5 @@ class GeneratorPartials
 
   end
 
-  def cleanup_function(code_block)
-    # Collapse any unnecessary newlines between closing paren and opening function bracket
-    _code_block = code_block.gsub( /\)(\n){2,}\{/, ")\n{" )
-    # Collapse any unnecessary newlines between opening function bracket and code
-    _code_block.gsub!( /\{(\n){2,}/, "{\n" )
-    # Collapse any unnecessary newlines between code and closing function bracket
-    _code_block.gsub!( /(\n){2,}\}/, "\n}" )
-    # Collapse repeated blank lines
-    _code_block.gsub!( /(\h*\n){3,}/, "\n\n" )
-
-    return _code_block
-  end
 
 end

@@ -534,13 +534,17 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should generate a source file with (tidied up) functions" do
+    it "should preserve internal whitespace of function code block for coverage instrumentation line mapping" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
 
       void foobar(int x, int y)
+
       {
+
         int z = x+y;
+
+
       }
 
       CONTENTS
