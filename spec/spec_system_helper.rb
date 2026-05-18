@@ -11,6 +11,19 @@ require 'ceedling/yaml_wrapper'
 require 'spec_helper'
 require 'deep_merge'
 
+module CeedlingSystemSpecHelpers
+  # Helper method to convert method name to readable description
+  def test_case(method_name)
+    description = method_name.to_s.gsub('_', ' ').capitalize
+    it(description) { send(method_name) }
+  end
+end
+
+# Extend RSpec's DSL to include our helper above
+RSpec.configure do |config|
+  config.extend CeedlingSystemSpecHelpers
+end
+
 def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', 'assets', asset_file_name)
 end
@@ -247,7 +260,6 @@ module CeedlingTestCases
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
         expect(File.exist?("test")).to eq true
-        all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
       end
     end
   end
@@ -279,8 +291,8 @@ module CeedlingTestCases
   def contains_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        all_docs = Dir["docs/*.md"].length + Dir["vendor/ceedling/docs/*.md"].length
-        expect(all_docs).to be >= 4
+        all_docs = Dir["docs/*"]
+        expect(all_docs).to contain_exactly('docs/ceedling', 'docs/unity', 'docs/cmock', 'docs/c_exception', 'docs/license.txt')
       end
     end
   end
@@ -288,8 +300,7 @@ module CeedlingTestCases
   def does_not_contain_documentation
     @c.with_context do
       Dir.chdir @proj_name do
-        expect(File.exist?("vendor/ceedling/docs")).to eq false
-        expect(Dir["vendor/ceedling/**/*.pdf"].length).to eq 0
+        expect(Dir.exist?("docs/")).to eq false
       end
     end
   end
@@ -469,7 +480,7 @@ module CeedlingTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
-        settings = { :project => { :use_test_preprocessor => :all, :use_deep_preprocessor => :mocks },
+        settings = { :project => { :use_test_preprocessor => :all },
                      :unity => { :use_param_tests => true }
                    }
         @c.merge_project_yml_for_test(settings)

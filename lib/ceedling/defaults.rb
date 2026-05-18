@@ -73,15 +73,19 @@ DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
     ].freeze
   }
 
-DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
+
+# Extracts all dependencies as make-style rules.
+# We use this to extract a bare list includes (user + system) from files.
+DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_shallow_includes_preprocessor'.freeze,
+  :name => 'default_test_bare_includes_preprocessor'.freeze,
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,             # Run only through preprocessor stage with its output
-    '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
+    '-M'.freeze,             # Output make rule of dependencies including system includes
     '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
     '-MP'.freeze,            # Create make "phony" rules for each include dependency
+    "-I\"${4}\"".freeze,     # Per-test shallow includes essential search paths (e.g. Ceedling vendor path)
     "-D\"${2}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
     '-nostdinc'.freeze,      # Ignore standard include paths
@@ -90,24 +94,8 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
     ].freeze
   }
 
-DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_nested_includes_preprocessor'.freeze,
-  :optional => false.freeze,
-  :arguments => [
-    '-E'.freeze,             # Run only through preprocessor stage with its output
-    '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
-    '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
-    '-H'.freeze,             # Also output #include list with depth
-    "-I\"${2}\"".freeze,     # Per-test executable search paths
-    "-D\"${3}\"".freeze,     # Per-test executable defines
-    "-DGNU_COMPILER".freeze, # OSX clang
-    '-nostdinc'.freeze,      # Ignore standard include paths
-    "-x c".freeze,           # Force C language
-    "\"${1}\"".freeze
-    ].freeze
-  }
-
+# Fully expands a given file through the preprocessor
+# Processes #ifdefs, expands macros, etc.
 DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_file_full_preprocessor'.freeze,
@@ -124,6 +112,8 @@ DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
     ].freeze
   }
 
+# Expands a given file through the preprocessor, preserving directives (macros, includes, etc.).
+# Can be used to extract includes (differentiating system and user indludes) and non-code directives.
 DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_file_directives_only_preprocessor'.freeze,
@@ -249,10 +239,12 @@ DEFAULT_TOOLS_TEST_ASSEMBLER = {
 
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
-    :test_shallow_includes_preprocessor      => DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL,
-    :test_nested_includes_preprocessor       => DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL,
-    :test_file_full_preprocessor             => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
-    :test_file_directives_only_preprocessor  => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
+    # Extracts include directives as make-style depenedencies
+    :test_bare_includes_preprocessor  => DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL,
+    # Fully expands a given file through the preprocessor
+    :test_file_full_preprocessor              => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
+    # Expands a given file through the preprocessor, preserving directives (macros, includes, etc.)
+    :test_file_directives_only_preprocessor   => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
     }
   }
 
@@ -283,10 +275,10 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     # :build_root must be set by user
     :use_mocks => true,
     :use_exceptions => false,
+    :use_partials => false,
+    :use_test_preprocessor => :none,
     :compile_threads => 1,
     :test_threads => 1,
-    :use_test_preprocessor => :none,
-    :use_deep_preprocessor => :none,
     :test_file_prefix => 'test_',
     :release_build => false,
     :use_backtrace => :simple
