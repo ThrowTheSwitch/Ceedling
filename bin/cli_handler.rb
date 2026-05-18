@@ -114,11 +114,11 @@ class CliHandler
     # Vendor the tools and install command line helper scripts
     @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
 
-    # Copy in documentation
-    @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
-
     # Copy / set up project file
     @helper.create_project_file( dest, options[:local], ceedling_tag ) if options[:configs]
+    
+    # Copy in documentation
+    @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
 
     # Copy Git Ignore file 
     if options[:gitsupport]
@@ -130,7 +130,7 @@ class CliHandler
       @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
-    @loginator.console( "\nNew project created at #{dest}/\n", LogLabels::TITLE )
+    @loginator.console( "\nNew project created at #{File.absolute_path(dest)}/\n", LogLabels::TITLE )
   end
 
 

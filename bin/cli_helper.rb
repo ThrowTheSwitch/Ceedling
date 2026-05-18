@@ -415,7 +415,8 @@ class CliHelper
 
 
   def copy_docs(ceedling_root, dest)
-    docs_path = File.join( dest, 'docs' )
+    docs_path_root = File.join( dest, 'docs' )
+    docs_path_ceedling = File.join( docs_path_root, 'ceedling' )
 
     # Hash that will hold documentation copy paths
     #  - Key: (modified) destination documentation path
@@ -460,16 +461,26 @@ class CliHelper
 
     # Copy all individual documentation files gathered up
     doc_files.each_pair do |dest, src|
-      @actions._copy_file(src, File.join( docs_path, dest ), :force => true )
+      @actions._copy_file(src, File.join( docs_path_root, dest ), :force => true )
     end
 
     # If present copy internl HTML documentation bundle (site-local/) to docs/ceedling/
     site_local_path = File.join( ceedling_root, DOCS_SITE_LOCAL_PATH )
     if @file_wrapper.directory?( site_local_path )
-      @actions._directory( site_local_path, File.join( docs_path, 'ceedling' ), :force => true )
+      @actions._directory( site_local_path, docs_path_ceedling, :force => true )
     else
       @loginator.console( "Internal HTML documentation bundle not found", LogLabels::WARNING )
+      return
     end
+
+    ceedling_index_html_filepath = File.absolute_path( File.join( docs_path_ceedling, 'index.html' ) )
+    @loginator.console(
+      "\nCeedling documentation available at #{ceedling_index_html_filepath}",
+      LogLabels::DOCUMENTATION
+    )
+    
+    docs_path_root_abs = File.absolute_path( docs_path_root )
+    @loginator.console( " > All other documentation available at #{docs_path_root_abs}/\n" )
   end
 
 
