@@ -8,7 +8,7 @@
 class CExtractorPreprocessing
 
   # Directive type symbols for use with filter_directive()
-  MACRO_DEFINITION = :macro_definition
+  MACRO_DEFINITION = :macro_definition unless defined?(MACRO_DEFINITION)
 
   constructor :c_extractor_code_text
 
