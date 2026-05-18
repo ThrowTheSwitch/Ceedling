@@ -80,7 +80,7 @@ on demand after test suite runs.
 [gcovr]: https://www.gcovr.com/
 [ReportGenerator]: https://reportgenerator.io
 
-## Important Notes on Coverage Summaries vs. Coverage Reports
+## Coverage Summaries vs. Coverage Reports
 
 Coverage summaries and coverage reports provide different levels of fidelity
 and usability. Summaries are relatively unsophisticated while reports are 
@@ -139,7 +139,7 @@ accurate reports.
 
 ## Plugin Set Up & Configuration
 
-### Supported tool versions [May 10, 2024]
+### Supported tool versions [May 17, 2026]
 
 At the time of the last major updates to the Gcov plugin, the following notes
 on version compatibility were known to be accurate.
@@ -157,7 +157,7 @@ may be sufficient for your needs:
 #### `gcov`
 
 The Gcov plugin is known to work with `gcov` packaged with GNU Compiler
-Collection 12.2 and should work with versions through at least 14.
+Collection 12 through at least 15.
 
 The maintainers of `gcov` introduced significant behavioral changes for version
 12. Previous versions of `gcov` had a simple exit code scheme with only a
@@ -174,18 +174,21 @@ been compatible with it as far back as `gcov` version 7.
 Because long file paths are quite common in software development scenarios, by
 default, the Gcov plugin depends on the `gcov` `-x` flag. This flag hashes long
 file paths to ensure they are not a problem for certain platforms' file
-systems. This flag became available with `gcov` version 7. At the time of this
-README section’s last update, the GNU Compiler Collection was at version 14. We
-do not recommend using `gcov` version 6 and earlier. And, in fact, because of
-the Gcov plugin’s dependence on the `gcov` `-x` flag, attempting to use it will
-fail.
+systems. This flag became available with `gcov` version 7. We do not recommend 
+using `gcov` version 6 and earlier. And, in fact, because of the Gcov plugin’s 
+dependence on the `gcov` `-x` flag, attempting to use it will fail.
+
+GNU Compiler Collection 14 introduced changes in how coverage is instrumented.
+The `gcov` plugin implemented a revised means of processing coverage that is
+forward compatible with GCC 14+ and backwards compatible to the earliest
+versions of the collection.
 
 #### `gcovr`
 
-The Gcov plugin is known to work with `gcovr` 5.2 through `gcovr` 6.x. The
+The Gcov plugin is known to work with `gcovr` 5.2 through `gcovr` 8.x. The
 Gcov plugin supports `gcovr` command line conventions since version 4.2 and
 attempts to support `gcovr` command lines before version 4.2. We recommend 
-using `gcovr` 5 and later. 
+using `gcovr` 5 and later.
 
 #### `reportgenerator`
 
@@ -276,6 +279,10 @@ To generate reports:
 The next sections explain each of these steps.
 
 #### Installation of report generation utilities
+
+!!! tip "Variants of the `madsciencelab` Docker images come with these tools preinstalled
+    See [the Docker image options](../getting-started/installation.md#madsciencelab-docker-images)
+    for running Ceedling.
 
 [gcovr] is available on any platform supported by Python.
 
@@ -807,10 +814,6 @@ All generated reports are found in `<build root>/artifacts/gcov/ReportGenerator/
 ```
 
 ## Advanced Configuration & Troubleshooting
-
-See the _Ceedling Cookbook_ for options on how to use Ceedling's advanced 
-features to modify how this plugin is configured, especially tool 
-configurations.
 
 Details of interest for this plugin to be modified or made use of using 
 Ceedling's advanced features are primarily contained in 
