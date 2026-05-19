@@ -107,8 +107,11 @@ class Reportinator
   def generate_module_progress(module_name:, filename:, operation:)
     # <Operation [module_name::]filename>..."
 
+    # Sanitze -- ensure it's a string and strip any filename extension
+    _module_name = module_name.to_s().ext('')
+
     # If filename is the module name, don't add the module label
-    label = (File.basename(filename).ext('') == module_name.to_s) ? '' : "#{module_name}::"
+    label = (File.basename(filename).ext('') == _module_name) ? '' : "#{_module_name}::"
     return generate_progress("#{operation} #{label}#{filename}")
   end
 

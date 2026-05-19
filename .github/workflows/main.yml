@@ -27,22 +27,71 @@ permissions:
 
 
 jobs:
+  # Job: Build MkDocs HTML documentation bundle for gem inclusion
+  generate-docs:
+    name: "Generate Local Docs Bundle for Gem Inclusion"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby: [3.3]
+    steps:
+      # Use a cache for our tools to speed up testing
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
+
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
+      # This is overkill, but it's the sanest way to ensure all Rakefile dependencies are available when we run docs:build:local task
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      - name: Install MkDocs and mkdocs-material
+        run: |
+          pip install mkdocs mkdocs-material
+
+      - name: Build HTML Documentation Bundle
+        run: |
+          rake docs:build:local --trace
+
+      - name: Upload HTML Documentation Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+          if-no-files-found: error
+
+
   # Job: Linux unit test suite
-  unit-tests-linux:
+  tests-linux:
     name: "Linux Test Suite"
+    needs: generate-docs
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        # TODO: Add 3.4 with resolution of bundler permission issue
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
       # Use a cache for our tools to speed up testing
       - uses: actions/cache@v4
         with:
           path: vendor/bundle
-          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
 
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
@@ -50,18 +99,23 @@ jobs:
         with:
           submodules: recursive
 
-      # Setup Ruby to run test & build steps on multiple ruby versions
-      - name: Setup Ruby Version Matrix
+      # Set up Ruby to run test & build steps on multiple ruby versions
+      # This action install Ruby and the Bundler gem using the version captured in Gemfile.lock
+      - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          
-      # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
-      - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
+
+      # Workaround: Fix Ruby toolcache Gem directory permissions (Bundler exit 38)
+      # Issue: https://github.com/rubygems/rubygems/issues/7983
+      - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
         run: |
-          gem install rubocop -v 0.57.2
-          gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
-          bundle update
+          sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
+
+      # Install Gem Dependencies
+      - name: Install Gem Dependencies
+        # Ensure local installation to prevent system directory permission problems
+        run: |
           bundle install
 
       # Install gdb for backtrace feature testing
@@ -83,6 +137,13 @@ jobs:
           mkdir --parents $HOME/.dotnet/tools
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
           dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      # Download HTML docs bundle built by generate-docs job
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
 
       # Run Tests
       - name: Run All Self Tests
@@ -124,8 +185,9 @@ jobs:
           cd ../..
 
   # Job: Windows unit test suite
-  unit-tests-windows:
+  tests-windows:
     name: "Windows Test Suite"
+    needs: generate-docs
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -136,9 +198,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: vendor/bundle
-          key: bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-${{ hashFiles('**/Gemfile.lock') }}
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
           restore-keys: |
-            bundle-use-ruby-${{ matrix.os }}-${{ matrix.ruby-version }}-
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
 
       # Checks out repository under $GITHUB_WORKSPACE
       - name: Checkout Latest Repo
@@ -146,19 +208,17 @@ jobs:
         with:
           submodules: recursive
 
-      # Setup Ruby to run test & build steps on multiple ruby versions
-      - name: Setup Ruby Version Matrix
+      # Set up Ruby to run test & build steps on multiple ruby versions
+      # This action install Ruby and the Bundler gem using the version captured in Gemfile.lock
+      - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          
-      # Install Gem Depdencies (Bundler version should match the one in Gemfile.lock)
-      - name: Install Gem Dependencies for Testing and Ceedling Gem Builds
-        shell: bash
+
+      # Install Gem Dependencies
+      - name: Install Gem Dependencies
+        # Ensure local installation to prevent system directory permission problems
         run: |
-          gem install rubocop -v 0.57.2
-          gem install bundler -v "$(grep -A 1 "BUNDLED WITH" Gemfile.lock | tail -n 1)"
-          bundle update
           bundle install
 
       # Install GCovr for Gcov plugin test
@@ -170,6 +230,13 @@ jobs:
       - name: "Install ReportGenerator for Tests of Ceedling Plugin: Gcov"
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      # Download HTML docs bundle built by generate-docs job
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
 
       # Run Tests
       - name: Run All Self Tests
@@ -210,12 +277,14 @@ jobs:
           rake
           cd ../..
 
+
   # Job: Automatic Minor Release
   auto-release:
     name: "Automatic Minor Release"
     needs:
-      - unit-tests-linux
-      - unit-tests-windows
+      - generate-docs
+      - tests-linux
+      - tests-windows
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -256,6 +325,13 @@ jobs:
         run: |
           echo "${{ env.sha_short }}" > ${{ github.workspace }}/GIT_COMMIT_SHA
 
+      # Download HTML docs bundle built by generate-docs job
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+
       # Build Gem
       - name:  Build Gem
         run: |
@@ -284,4 +360,3 @@ jobs:
           asset_path: ./ceedling-${{ env.ceedling_tag }}.gem
           asset_name: ceedling-${{ env.ceedling_build }}.gem
           asset_content_type: test/x-gemfile
-

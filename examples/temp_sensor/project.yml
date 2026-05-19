@@ -14,9 +14,7 @@
   # optional features. If you don't need them, keep them turned off for performance
   :use_mocks: TRUE
   :use_test_preprocessor: :all   # options are :none, :mocks, :tests, or :all
-  :use_deep_preprocessor: :none  # options are :none, :mocks, :tests, or :all
   :use_backtrace: :none          # options are :none, :simple, or :gdb
-  :use_decorators: :auto         # decorate Ceedling's output text. options are :auto, :all, or :none
 
 
   # tweak the way ceedling handles automatic tasks
@@ -63,7 +61,6 @@
     #- command_hooks                  # write custom actions to be called at different points during the build process
     #- compile_commands_json_db          # generate a compile_commands.json file
     #- dependencies                   # automatically fetch 3rd party libraries, etc.
-    #- subprojects                    # managing builds and test for static libraries
     #- fake_function_framework        # use FFF instead of CMock
 
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
@@ -93,7 +90,6 @@
   :executable: .out
   #:testpass: .pass
   #:testfail: .fail
-  #:subprojects: .a
 
 # This is where Ceedling should look for your source and test files.
 # see documentation for the many options for specifying this.
@@ -253,16 +249,6 @@
 #           - lib/wolfssl.so
 #         :includes:
 #           - include/**
-
-# :subprojects:  
-#   :paths:
-#    - :name: libprojectA
-#      :source:
-#        - ./subprojectA/source
-#      :include:
-#        - ./subprojectA/include
-#      :build_root: ./subprojectA/build
-#      :defines: []
 
 # :command_hooks:
 #   :pre_mock_preprocess:
