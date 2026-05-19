@@ -36,15 +36,15 @@ class PartializerUtils
   def transform_function(func, signature, output_type)
     case output_type
     when :impl
+      # Strip decorators from the front of code_block and count how many newlines were removed.
+      # Adjust line_num upward so that emitted #line directives remain accurate.
+      new_code_block, stripped_newlines = extract_code_block(func.code_block, func.decorators)
       Partials.manufacture_function_definition(
-        name: func.name,
-        signature: signature,
+        name:            func.name,
+        signature:       signature,
         source_filepath: func.source_filepath,
-        line_num: func.line_num,
-        # Extract code block as beginning with the signature to end of original code block.
-        # This omits any decorators before signature in original code_block and preserves 
-        # original whitespace (i.e. indentation & newlines including connecting signature to body).
-        code_block: extract_code_block(func.code_block, signature)
+        line_num:        adjust_line_num(func.line_num, stripped_newlines),
+        code_block:      new_code_block
       )
     when :interface
       Partials.manufacture_function_declaration(
@@ -189,19 +189,34 @@ class PartializerUtils
     end
   end
 
-  # Extract code block starting from signature to end of original, omitting any decorators before signature.
-  # Preserves original function indentation and newlines.
-  def extract_code_block(code_block, signature)
-    start_index = code_block.index(signature)
-    
-    # Handle case where signature is not found in code_block
-    if start_index.nil?
-      # Raise Ruby ArgumentError not Constructor
-      raise ::ArgumentError, "Signature '#{signature}' not found in code block"
-    end
-    
-    # Return code block minus any decorators before signature
-    return code_block[start_index..-1]
+  # Strip decorator keywords from the front of code_block and count leading newlines removed.
+  #
+  # Removes the first occurrence of each decorator string, then strips any leading whitespace
+  # (including newlines). Returns the trimmed code block and a count of the newlines removed
+  # from the leading portion — used by the caller to adjust line_num so that emitted #line
+  # directives in generated source remain accurate.
+  #
+  # @param code_block  [String]        Raw function source text (decorators + signature + body)
+  # @param decorators  [Array<String>] Decorator keywords from CFunctionDefinition#decorators
+  # @return [Array(String, Integer)]   [trimmed_code_block, leading_newline_count]
+  def extract_code_block(code_block, decorators)
+    stripped = code_block.dup
+    decorators.each { |d| stripped.sub!(d, '') }
+    leading = stripped[/\A\s*/]
+    stripped.lstrip!
+    return stripped, leading.count("\n")
+  end
+
+  # Offset a source line number by the count of newlines stripped from the front of a code block.
+  #
+  # When decorator keywords occupy one or more lines before the function's return type, those
+  # lines are removed from the emitted code_block. The #line directive must be bumped forward
+  # by the same count so it still points at the return type in the original source file.
+  #
+  # Returns nil unchanged when line_num was not resolved.
+  def adjust_line_num(line_num, stripped_newlines)
+    return line_num if line_num.nil?
+    line_num + stripped_newlines
   end
 
 end
