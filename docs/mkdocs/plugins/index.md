@@ -86,7 +86,7 @@ for how to enable built-in plugins and load custom plugins in your project.
 
 <div class="grid cards" markdown>
 
--   :material-percent: **[`gcov`](gcov.md)**
+-   :material-percent: **[`gcov`](gcov/index.md)**
 
     ---
 

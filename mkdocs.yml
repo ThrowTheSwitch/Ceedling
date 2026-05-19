@@ -146,7 +146,16 @@ nav:
     - Test Report Log Factory: plugins/report-tests-log-factory.md
     - Test Report — Raw Output: plugins/report-tests-raw-output-log.md
     - Build Warnings Log: plugins/report-build-warnings-log.md
-    - GCov (Coverage): plugins/gcov.md
+    - GCov (Coverage):
+      - plugins/gcov/index.md
+      - Overview: plugins/gcov/overview.md
+      - Tool Versions: plugins/gcov/tool-versions.md
+      - Set Up & Configuration: plugins/gcov/setup.md
+      - Example Usage: plugins/gcov/examples.md
+      - Reporting Configuration: plugins/gcov/reporting.md
+      - GCovr Configuration: plugins/gcov/gcovr.md
+      - ReportGenerator Configuration: plugins/gcov/reportgenerator.md
+      - Advanced & Troubleshooting: plugins/gcov/troubleshooting.md
     - Bullseye (Coverage): plugins/bullseye.md
     - FFF (Fake Functions): plugins/fff.md
     - Command Hooks: plugins/command-hooks.md
@@ -161,6 +170,7 @@ nav:
     - Test Build Directives: reference/build-directives.md
     - Partials Macros: reference/partials-macros.md
     - Environment Variables: reference/environment-vars.md
+    - Coverage Reporting: reference/gcov-plugin.md
     - Global Collections: reference/global-collections.md
   - Releases:
     - History Documents: project/release-history.md

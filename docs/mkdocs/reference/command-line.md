@@ -21,11 +21,15 @@ tasks work together along with quick-start examples, see
     Because the built-in command line help is thorough, the following 
     reference includes brief entries.
 
+---
+
 ### `ceedling [no arguments]`
 
 Runs the default build tasks. Unless set in the project file, Ceedling 
 uses a default task of `test:all`. To override this behavior, set your 
 own default tasks in the project file (see later section). 
+
+---
 
 ### `ceedling build <tasks...>` or `ceedling <tasks...>`
 
@@ -38,11 +42,23 @@ See [next section](#build-plugin-tasks) to understand the build & plugin
 tasks this application command is able to execute. Run `ceedling help build` 
 to understand all the command line flags that work with build & plugin tasks.
 
+---
+
+### `ceedling check`
+
+Process project configuration for validity and to check for any warnings
+or automated overrides. No builds occur. Various option flags exist to 
+control project configuration loading and configuration manipulation.
+
+---
+
 ### `ceedling dumpconfig`
 
 Process project configuration and write final result to a YAML file. 
 Various option flags exist to control project configuration loading,
 configuration manipulation, and configuration sub-section extraction.
+
+---
 
 ### `ceedling environment`
 
@@ -56,6 +72,8 @@ Lists project related environment variables:
 * All existing Ceedling-related environment variables set before you
   ran Ceedling from the command line.
 
+---
+
 ### `ceedling example`
 
 Extracts an example project from within Ceedling to your local 
@@ -63,10 +81,14 @@ filesystem. The available examples are listed with
 `ceedling examples`. Various option flags control whether the example
 contains vendored Ceedling and/or a documentation bundle.
 
+---
+
 ### `ceedling examples`
 
 Lists the available examples within Ceedling. To extract an example,
 use `ceedling example`.
+
+---
 
 ### `ceedling help`
 
@@ -75,16 +97,22 @@ use `ceedling example`.
   configuration (if available) and lists all build tasks from it. 
   Various option flags control what project configuration is loaded.
 
+---
+
 ### `ceedling new`
 
   Creates a new project structure. Various option flags control whether 
   the new project contains vendored Ceedling, a documentation bundle,
   and/or a starter project configuration file.
 
+---
+
 ### `ceedling upgrade`
 
   Upgrade vendored installation of Ceedling for an existing project 
   along with any locally installed documentation bundles.
+
+---
 
 ### `ceedling version`
 
@@ -127,12 +155,16 @@ Ultimately, build & plugin tasks are executed by the
     to distinguish the parameter’s characters from shell command line
     operators.
 
+---
+
 ### `ceedling paths:*`
 
 List all paths collected from `paths` entries in your YAML config
 file where `*` is the name of any section contained in `paths`. This
 task is helpful in verifying the expansion of path wildcards / globs
 specified in the `paths` section of your config file.
+
+---
 
 ### `ceedling files:*`
 * `ceedling files:assembly`
@@ -149,9 +181,13 @@ is enabled in the [`:release_build`](../configuration/reference/release-build.md
 or [`:test_build`](../configuration/reference/test-build.md)
 sections of your configuration file.
 
+---
+
 ### `ceedling test:all`
 
 Run all unit tests.
+
+---
 
 ### `ceedling test:*`
 
@@ -195,11 +231,15 @@ For instance, if you have file test_gpio.c with defined 3 tests:
     Exclude matching follows the same sub-string logic as discussed in the
     preceding section.
 
+---
+
 ### `ceedling test:pattern[*]`
 
 Execute any tests whose name and/or path match the regular expression
 pattern (case sensitive). Example: `ceedling "test:pattern[(I|i)nit]"` 
 will execute all tests named for initialization testing.
+
+---
 
 ### `ceedling test:path[*]`
 
@@ -209,10 +249,14 @@ whose path contains foo/bar.
 
 Both directory separator characters `/` and `\` are valid.
 
+---
+
 ### `ceedling release`
 
 Build all source into a release artifact (if the release build option
 is configured).
+
+---
 
 ### `ceedling release:compile:*`
 
@@ -220,10 +264,14 @@ Sometimes you just need to compile a single file dagnabit.
 
 Example: `ceedling release:compile:foo.c`
 
+---
+
 ### `ceedling release:assemble:*`
 
 Sometimes you just need to assemble a single file doggonit. Example:
 `ceedling release:assemble:foo.s`
+
+---
 
 ### `ceedling summary`
 
@@ -232,11 +280,15 @@ any plugins supporting it. This task is intended to provide a quick
 roundup of build artifact metrics without re-running any part of the
 build.
 
+---
+
 ### `ceedling clean`
 
 Deletes all toolchain binary artifacts (object files, executables),
 test results, and any temporary files. Clean produces no output at the
 command line unless verbosity has been set to an appreciable level.
+
+---
 
 ### `ceedling clobber`
 

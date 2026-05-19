@@ -37,6 +37,12 @@ configuration section into compact, scannable lists.
 
     All `TEST_PARTIAL_*`, `MOCK_PARTIAL_*`, `*_CONFIG`, and `PARTIAL_LOCAL_VAR()` macros.
 
+-   :material-chart-bar: **[Coverage Reporting][coverage-reporting]**
+
+    ---
+
+    All `:gcov:`, `:gcovr:`, and `:report_generator:` YAML configuration options.
+
 -   :material-database: **[Global Collections][global-collections]**
 
     ---
@@ -51,5 +57,6 @@ configuration section into compact, scannable lists.
 [environment-vars]:      environment-vars.md
 [partials-macros]:       partials-macros.md
 [global-collections]:    global-collections.md
+[coverage-reporting]:    gcov-plugin.md
 
 <br/><br/>
