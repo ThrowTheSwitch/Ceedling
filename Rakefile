@@ -22,12 +22,39 @@ RSpec::Core::RakeTask.new('specs:all') do |t|
   t.rspec_opts = '--format progress'
 end
 
-Dir['spec/**/*_spec.rb'].each do |p|
+desc "Run unit specs only (excludes system specs)"
+RSpec::Core::RakeTask.new('specs:units') do |t|
+  t.pattern = 'spec/*_spec.rb'
+  t.rspec_opts = '--format progress'
+end
+
+desc "Run system specs only"
+RSpec::Core::RakeTask.new('specs:system') do |t|
+  t.pattern = 'spec/system/**/*_spec.rb'
+  t.rspec_opts = '--format documentation'
+end
+
+desc "Run system specs with artifact retention and per-test failure log files"
+task 'specs:system:debug' do
+  ENV['CEEDLING_SYSTEM_TEST_KEEP']             = '1'
+  ENV['CEEDLING_SYSTEM_TEST_FAILURE_LOGFILES'] = '1'
+  Rake::Task['specs:system'].invoke
+end
+
+Dir['spec/**/*_spec.rb'].reject { |p| p.start_with?('spec/system/') }.each do |p|
   base = File.basename(p,'.*').gsub('_spec','')
-  desc "rspec #{base}"
-  RSpec::Core::RakeTask.new("spec:file:#{base}") do |t|
+  desc "Run unit spec: #{base}"
+  RSpec::Core::RakeTask.new("spec:unit:#{base}") do |t|
     t.pattern = p
-    # Hierarchical listing of tests with names and contexts
+    t.rspec_opts = '--format documentation'
+  end
+end
+
+Dir['spec/system/**/*_spec.rb'].each do |p|
+  base = File.basename(p,'.*').gsub('_spec','')
+  desc "Run system spec: #{base}"
+  RSpec::Core::RakeTask.new("spec:system:#{base}") do |t|
+    t.pattern = p
     t.rspec_opts = '--format documentation'
   end
 end

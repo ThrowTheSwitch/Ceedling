@@ -8,7 +8,7 @@
 require 'spec_system_helper'
 
 describe "Ceedling" do
-  include CeedlingTestCases
+  include CeedlingSystemTestCases
 
   before :all do
     @c = SystemContext.new
@@ -29,7 +29,7 @@ describe "Ceedling" do
       # Ensure version commit file is cleaned up
       FileUtils.rm_rf( 'GIT_COMMIT_SHA' )
       @c.with_context do
-        `bundle exec ruby -S ceedling new --local --docs #{@proj_name} 2>&1`
+        @c.ceedling_manage("new --local --docs #{@proj_name}")
       end
     end
 
@@ -57,6 +57,7 @@ describe "Ceedling" do
       test_case :can_test_projects_with_fail_alias
       test_case :can_test_projects_with_fail_default
       test_case :can_test_projects_with_compile_error
+      test_case :can_test_projects_with_test_file_directly_including_source_file
     end
 
     describe "Test Builds with Preprocessing" do
@@ -114,7 +115,7 @@ describe "Ceedling" do
   describe "Deployed in a Project's `vendor` Directory with Git Support" do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --local --docs --gitsupport #{@proj_name} 2>&1`
+        @c.ceedling_manage("new --local --docs --gitsupport #{@proj_name}")
       end
     end
 
@@ -127,13 +128,14 @@ describe "Ceedling" do
 
     describe "Basic Test Execution" do
       test_case :can_test_projects_with_success
+      test_case :can_test_projects_with_test_file_directly_including_source_file
     end
   end
 
   describe "Deployed in a Project's `vendor` Directory Without Docs" do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --local #{@proj_name} 2>&1`
+        @c.ceedling_manage("new --local #{@proj_name}")
       end
     end
 
@@ -156,6 +158,7 @@ describe "Ceedling" do
       test_case :can_test_projects_with_fail_alias
       test_case :can_test_projects_with_fail_default
       test_case :can_test_projects_with_compile_error
+      test_case :can_test_projects_with_test_file_directly_including_source_file
     end
 
     describe "Test Builds with Preprocessing" do

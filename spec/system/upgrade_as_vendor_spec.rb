@@ -8,7 +8,7 @@
 require 'spec_system_helper'
 
 describe "Ceedling" do
-  include CeedlingTestCases
+  include CeedlingSystemTestCases
 
   before :all do
     @c = SystemContext.new
@@ -25,7 +25,7 @@ describe "Ceedling" do
   describe "Upgrade a Project's `vendor` Directory" do
     before do
       @c.with_context do
-        `bundle exec ruby -S ceedling new --local #{@proj_name} 2>&1`
+        @c.ceedling_manage("new --local #{@proj_name}")
       end
     end
 
@@ -49,6 +49,7 @@ describe "Ceedling" do
         test_case :can_test_projects_with_fail_alias
         test_case :can_test_projects_with_fail_default
         test_case :can_test_projects_with_compile_error
+        test_case :can_test_projects_with_test_file_directly_including_source_file
       end
 
       describe "Unity Features" do
@@ -84,6 +85,7 @@ describe "Ceedling" do
         test_case :can_test_projects_with_fail_alias
         test_case :can_test_projects_with_fail_default
         test_case :can_test_projects_with_compile_error
+        test_case :can_test_projects_with_test_file_directly_including_source_file
       end
 
       describe "Unity Features" do
