@@ -54,6 +54,7 @@
     #- command_hooks                  # write custom actions to be called at different points during the build process
     #- compile_commands_json_db          # generate a compile_commands.json file
     #- dependencies                   # automatically fetch 3rd party libraries, etc.
+    #- subprojects                    # managing builds and test for static libraries
     #- fake_function_framework        # use FFF instead of CMock
 
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
@@ -75,6 +76,7 @@
   :executable: .out
   #:testpass: .pass
   #:testfail: .fail
+  #:subprojects: .a
 
 # This is where Ceedling should look for your source and test files.
 # see documentation for the many options for specifying this.

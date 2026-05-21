@@ -733,42 +733,6 @@ local Ceedling repo, list those task like this:
 
 [RSpec]: https://rspec.info
 
-## Working with Documentation
-
-Ceedling's documentation is built with [MkDocs] + [Material theme] and versioned
-with [mike]. All Markdown source lives under `docs/`. The site configuration is
-in `mkdocs.yml`.
-
-**First-time setup** (installs MkDocs, Material, and mike into the container):
-
-```shell
- > rake docs:install
-```
-
-**Available Rake tasks:**
-
-| Task | Description |
-|---|---|
-| `rake docs:install` | Install Python documentation tooling |
-| `rake docs:build` | Build site in strict mode — fails on broken links or warnings |
-| `rake docs:serve` | Serve plain MkDocs site locally on port 8000 |
-| `rake docs:deploy` | Deploy `dev` version to local `gh-pages` branch (no remote push) |
-| `rake docs:preview` | Browse mike-versioned site locally on port 8000 |
-
-**Browser preview in VS Code:** When `mkdocs serve` or `mike serve` binds to 
-port 8000, VS Code detects it and shows a notification. The **Ports** panel also
-provides an **Open in Browser** button.
-
-**Hosted site:** [https://throwtheswitch.github.io/Ceedling/](https://throwtheswitch.github.io/Ceedling/)
-
-Versions are deployed automatically via GitHub Actions: `dev` on every push to
-`main`, and a per-minor-version alias (e.g. `1.0`) plus `latest` on each
-published release.
-
-[MkDocs]: https://www.mkdocs.org
-[Material theme]: https://squidfunk.github.io/mkdocs-material/
-[mike]: https://github.com/jimporter/mike
-
 ## Working in `bin/` vs. `lib/`
 
 Most of Ceedling’s functionality is contained in the application code residing 

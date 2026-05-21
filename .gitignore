@@ -1,5 +1,8 @@
 .*.swp
 .swp
+Gemfile.lock
+
+out.fail
 
 tags
 *.taghl
@@ -13,29 +16,11 @@ plugins/dependencies/example/boss/build/
 plugins/dependencies/example/boss/third_party/
 plugins/dependencies/example/supervisor/build/
 
-# Logs / test output
-out.fail
-*.fail.log
-
-# Generated documentation site builds
-site-web/
-site-local/
-.docsenv/
-
-# IDEs and related
 ceedling.sublime-project
 ceedling.sublime-workspace
+ceedling-*.gem
+.DS_Store
+.ruby-version
 /.idea
 /.vscode
-/.claude
-
-# Generated commit hash file for `--version` output
 /GIT_COMMIT_SHA
-
-# macOS junk
-.DS_Store
-
-# Ruby and Gem related
-.ruby-version
-ceedling-*.gem
-Gemfile.lock

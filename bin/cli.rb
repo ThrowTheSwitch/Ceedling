@@ -116,6 +116,7 @@ end
 module CeedlingTasks
 
   VERBOSITY_NORMAL = 'normal'
+  VERBOSITY_DEBUG = 'debug'
 
   DOC_LOCAL_FLAG = "Install Ceedling plus supporting tools to vendor/"
 
@@ -200,13 +201,14 @@ module CeedlingTasks
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+
       # Call application help with block to execute Thor's built-in help in the help logic
       @handler.app_help( ENV, @app_cfg, _options, command ) { |command| super(command) }
     end
 
- 
-    desc "new [DEST]", "Create a new project structure at optional DEST path (default is current directory)"
+
+    desc "new NAME [DEST]", "Create a new project structure at optional DEST path"
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
     method_option :configs, :type => :boolean, :default => true, :desc => "Install starter project file in project root"
@@ -235,7 +237,7 @@ module CeedlingTasks
       _options = options.dup()
       _dest = dest.dup() if !dest.nil?
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
       @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, _dest )
     end
@@ -279,7 +281,7 @@ module CeedlingTasks
       _options[:project] = options[:project].dup()
       _path = path.dup()
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
       @handler.upgrade_project( ENV, @app_cfg, _options, _path )
     end
@@ -361,7 +363,7 @@ module CeedlingTasks
       _options[:project] = options[:project].dup() if !options[:project].nil?
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
-      _options[:verbosity] = Verbosity::DEBUG if options[:debug]
+      _options[:verbosity] = VERBOSITY_DEBUG if options[:debug]
       _options[:logfile] = options[:logfile].dup()
 
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )
@@ -409,46 +411,9 @@ module CeedlingTasks
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
       _filepath = filepath.dup()
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
       @handler.dumpconfig( ENV, @app_cfg, _options, _filepath, sections )
-    end
-
-
-    desc "check", "Process project configuration with full logging"
-    method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
-    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
-    method_option :debug, :type => :boolean, :default => false, :hide => true
-    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
-      <<-LONGDESC
-      `ceedling check` loads and processes your project configuration with full
-      logging — the same loading, merging, manipulation, and validation a real
-      build would perform — but executes no build tasks and writes no files.
-
-      Use `check` to confirm a configuration is well-formed and to see all startup
-      logging, including which project file and Mixins were loaded and in what order.
-
-      Notes on Optional Flags:
-
-      • #{LONGDOC_MIXIN_FLAG}
-      LONGDESC
-    ) )
-    def check()
-      @handler.validate_string_param(
-        options[:project],
-        CLI_MISSING_PARAMETER_DEFAULT,
-        "--project is missing a required filepath parameter"
-      )
-
-      # Get unfrozen copies so we can add / modify
-      _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
-
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::NORMAL
-
-      @handler.check( ENV, @app_cfg, _options )
     end
 
 
@@ -479,7 +444,7 @@ module CeedlingTasks
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
       @handler.environment( ENV, @app_cfg, _options )
     end
@@ -499,7 +464,7 @@ module CeedlingTasks
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : nil
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
       @handler.list_examples( ENV, @app_cfg, _options )
     end
@@ -534,7 +499,7 @@ module CeedlingTasks
       _options = options.dup()
       _dest = dest.dup() if !dest.nil?
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : nil
+      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
 
       @handler.create_example( ENV, @app_cfg, _options, name, _dest )
     end

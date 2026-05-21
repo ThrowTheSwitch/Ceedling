@@ -14,20 +14,15 @@ class FileFinder
   constructor :configurator, :file_finder_helper, :cacheinator, :file_path_utils, :file_wrapper, :yaml_wrapper
 
 
-  def find_header_input_for_mock(mock)
-    # Mock name => <mock prefix><header filename (.h)>
-    # Examples: 'Mockfoo.h' or 'mock_Bar.h'
+  def find_header_input_for_mock(mock_name)
+    # Mock name => <mock prefix><header filename without extension>
+    # Examples: 'Mockfoo' or 'mock_Bar'
     # Note: In some rare cases, a mock name may include a dot (ex. Sensor.44) because of versioning file naming convention
     #       Be careful about assuming the end of the name has any sort of file extension
 
-    header = mock.delete_prefix(@configurator.cmock_mock_prefix)
+    header = mock_name.sub(/#{@configurator.cmock_mock_prefix}/, '') + @configurator.extension_header
 
-    found_path = @file_finder_helper.find_file_in_collection(
-      header,
-      @configurator.collection_all_headers,
-      :error,
-      header.ext()
-    )
+    found_path = @file_finder_helper.find_file_in_collection(header, @configurator.collection_all_headers, :error, mock_name)
 
     return found_path
   end
@@ -57,7 +52,7 @@ class FileFinder
 
     found_file = nil
 
-    # Extract filename without file extension
+    # Strip off file extension
     source_file = File.basename(filepath).ext('')
 
     # We only collect files that already exist when we start up.
@@ -70,8 +65,7 @@ class FileFinder
     #       If we use .ext() below we'll clobber the dotted portion of the filename
 
     # Generated test runners
-    if (!release) and
-       (source_file =~ /^#{@configurator.project_test_file_prefix}.+#{@configurator.test_runner_file_suffix}$/)
+    if (!release) and (source_file =~ /^#{@configurator.project_test_file_prefix}.+#{@configurator.test_runner_file_suffix}$/)
       _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(
@@ -81,30 +75,12 @@ class FileFinder
           filepath)
 
     # Generated mocks
-    elsif (!release) and 
-          (source_file.start_with?( @configurator.cmock_mock_prefix ))
+    elsif (!release) and (source_file =~ /^#{@configurator.cmock_mock_prefix}/)
       _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
-          @file_wrapper.directory_listing(
-            File.join(@configurator.cmock_mock_path,
-            ('**/*' + EXTENSION_CORE_SOURCE))
-          ),
-          complain,
-          filepath)
-
-    # Generated partials
-    elsif (!release) and 
-          (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
-      _source_file = source_file + EXTENSION_CORE_SOURCE
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @file_wrapper.directory_listing(
-            File.join(@configurator.project_test_partials_path,
-            ('**/*' + EXTENSION_CORE_SOURCE))
-          ),
+          @file_wrapper.directory_listing( File.join(@configurator.cmock_mock_path, '**/*') ),
           complain,
           filepath)
 
@@ -188,11 +164,6 @@ class FileFinder
     return found_file
   end
 
-
-  def find_header_file(filepath, complain = :error)
-    header_file = File.basename(filepath).ext(@configurator.extension_header)
-    return @file_finder_helper.find_file_in_collection(header_file, @configurator.collection_all_headers, complain, filepath)
-  end
 
   def find_source_file(filepath, complain = :error)
     source_file = File.basename(filepath).ext(@configurator.extension_source)

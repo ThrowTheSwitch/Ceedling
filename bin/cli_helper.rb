@@ -31,20 +31,27 @@ class CliHelper
 
 
   def help_footer(ceedling_tag='master')
-    @loginator.console() # Blank line for spacing
+    # Blank line
+    @loginator.log( "" )
 
     # Documentation incorporating Ceedling version tag in URL
     msg = "Ceedling Packet User Manual (v#{ceedling_tag})\n" +
-          "https://throwtheswitch.github.io/Ceedling/#{ceedling_tag}/\n\n"
-    @loginator.console( msg, LogLabels::DOCUMENTATION )
+          "https://github.com/ThrowTheSwitch/Ceedling/blob/#{ceedling_tag}/docs/CeedlingPacket.md"
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::DOCUMENTATION )
+
+    # Blank line
+    @loginator.log( "" )
 
     # Ceedling Suite
-    msg = "Ceedling Suite can help you do more ➡️ https://www.thingamabyte.com/ceedling\n\n"
-    @loginator.console( msg, LogLabels::COMMERCIAL )
+    msg = "Ceedling Suite can help you do more ➡️ https://www.thingamabyte.com/ceedling"
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::COMMERCIAL )
 
     # GitHub Sponsors
-    msg = "Please consider supporting this work ➡️ https://github.com/sponsors/throwtheswitch\n\n"
-    @loginator.console( msg, LogLabels::REQUEST )
+    msg = "Please consider supporting this work ➡️ https://github.com/sponsors/throwtheswitch"
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::REQUEST )
+
+    # Blank line
+    @loginator.log( "" )
   end
 
 
@@ -101,7 +108,7 @@ class CliHelper
 
     # Environment variable
     if !env['WHICH_CEEDLING'].nil?
-      @loginator.console( " > Set which Ceedling using environment variable WHICH_CEEDLING" ) 
+      @loginator.log( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS ) 
       which_ceedling = env['WHICH_CEEDLING'].strip()
       which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
     end
@@ -132,7 +139,7 @@ class CliHelper
 
     # If we're launching from the gem, return :gem and initial Rakefile path
     if which_ceedling == :gem
-      @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
+      @loginator.lazy( Verbosity::OBNOXIOUS ) { " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/" }
       return which_ceedling, app_cfg[:ceedling_rakefile_filepath]
     end
 
@@ -154,7 +161,7 @@ class CliHelper
     # Update variable to full application start path
     ceedling_path = app_cfg[:ceedling_rakefile_filepath]
     
-    @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS ) { " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/" }
 
     return :path, ceedling_path
   end
@@ -287,8 +294,8 @@ class CliHelper
     indentation = ' ' * 2
     rake_tasks.gsub!(/^/, indentation)
 
-    # Print Rake task list directly to the console
-    @loginator.console( rake_tasks )
+    # Add Rake logging output to our logging handler
+    @loginator.log( rake_tasks )
   end
 
 
@@ -317,48 +324,27 @@ class CliHelper
   end
 
 
-  # Sets global PROJECT_VERBOSITY and PROJECT_DEBUG constants used throughout
-  # the Ceedling application. Once set, subsequent calls are no-ops — the method
-  # returns the already-established verbosity — unless `override:` is true.
-  #
-  # `verbosity` accepts:
-  #   - nil            → defaults to Verbosity::NORMAL
-  #   - Integer        → used directly as a Verbosity level (e.g. Verbosity::OBNOXIOUS)
-  #   - numeric string → parsed as an integer verbosity level (e.g. '4')
-  #   - named string   → looked up in VERBOSITY_OPTIONS hash (e.g. 'debug', 'normal')
-  def set_verbosity(verbosity=nil, override: true)
-    # Idempotency guard: if verbosity is already established, return it as-is.
-    # `override: true` bypasses this to allow forced re-configuration (check command).
-    return PROJECT_VERBOSITY if !override && @system_wrapper.constants_include?('PROJECT_VERBOSITY')
+  # Set global consts for verbosity and debug
+  def set_verbosity(verbosity=nil)
+    # If we have already set verbosity, there's nothing to do here
+    return PROJECT_VERBOSITY if @system_wrapper.constants_include?('PROJECT_VERBOSITY')
 
-    verbosity = 
-      if verbosity.nil?
-        Verbosity::NORMAL
-
-      # Integer Verbosity constants (e.g. Verbosity::OBNOXIOUS) pass through directly
-      elsif verbosity.is_a?( Integer )
-        verbosity
-
-      # Numeric string (e.g. '4') — convert to integer
-      elsif verbosity.to_i.to_s == verbosity
-        verbosity.to_i
-
-      # Named string (e.g. 'debug', 'normal') — look up integer value
-      elsif VERBOSITY_OPTIONS.include? verbosity.to_sym
-        VERBOSITY_OPTIONS[verbosity.to_sym]
-
-      else
-        raise "Unkown Verbosity '#{verbosity}' specified"
-      end
+    verbosity = if verbosity.nil?
+                  Verbosity::NORMAL
+                elsif verbosity.to_i.to_s == verbosity
+                  verbosity.to_i
+                elsif VERBOSITY_OPTIONS.include? verbosity.to_sym
+                  VERBOSITY_OPTIONS[verbosity.to_sym]
+                else
+                  raise "Unkown Verbosity '#{verbosity}' specified"
+                end
 
     # Create global constant PROJECT_VERBOSITY
-    Object.send(:remove_const, 'PROJECT_VERBOSITY') if Object.const_defined?('PROJECT_VERBOSITY')
     Object.module_eval("PROJECT_VERBOSITY = verbosity")
     PROJECT_VERBOSITY.freeze()
 
     # Create global constant PROJECT_DEBUG
     debug = (verbosity == Verbosity::DEBUG)
-    Object.send(:remove_const, 'PROJECT_DEBUG') if Object.const_defined?('PROJECT_DEBUG')
     Object.module_eval("PROJECT_DEBUG = debug")
     PROJECT_DEBUG.freeze()
 
@@ -415,8 +401,7 @@ class CliHelper
 
 
   def copy_docs(ceedling_root, dest)
-    docs_path_root = File.join( dest, 'docs' )
-    docs_path_ceedling = File.join( docs_path_root, 'ceedling' )
+    docs_path = File.join( dest, 'docs' )
 
     # Hash that will hold documentation copy paths
     #  - Key: (modified) destination documentation path
@@ -425,6 +410,7 @@ class CliHelper
 
     # Add docs to list from Ceedling (docs/) and supporting projects (docs/<project>)
     { # Source path => docs/ destination path
+      'docs'                    => '.',
       'vendor/unity/docs'       => 'unity',
       'vendor/cmock/docs'       => 'cmock',
       'vendor/c_exception/docs' => 'c_exception'
@@ -439,6 +425,17 @@ class CliHelper
         _dest = File.join( dest, File.basename(filepath) )
         doc_files[ _dest ] = filepath
       end
+    end
+
+    # Add docs to list from Ceedling plugins (docs/plugins)
+    glob = File.join( ceedling_root, 'plugins/**/README.md' )
+    listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
+    listing.each do |path|
+      # 'README.md' => '<name>.md' where name extracted from containing path
+      rename = path.split(/\\|\//)[-2] + '.md'
+      # For each Ceedling plugin readme, add to hash
+      dest = File.join( 'plugins', rename )
+      doc_files[ dest ] = path
     end
 
     # Add licenses from Ceedling (docs/) and supporting projects (docs/<project>)
@@ -459,28 +456,10 @@ class CliHelper
       doc_files[ dest ] = filepath
     end
 
-    # Copy all individual documentation files gathered up
+    # Copy all documentation
     doc_files.each_pair do |dest, src|
-      @actions._copy_file(src, File.join( docs_path_root, dest ), :force => true )
+      @actions._copy_file(src, File.join( docs_path, dest ), :force => true)
     end
-
-    # If present copy internl HTML documentation bundle (site-local/) to docs/ceedling/
-    site_local_path = File.join( ceedling_root, DOCS_SITE_LOCAL_PATH )
-    if @file_wrapper.directory?( site_local_path )
-      @actions._directory( site_local_path, docs_path_ceedling, :force => true )
-    else
-      @loginator.console( "Internal HTML documentation bundle not found", LogLabels::WARNING )
-      return
-    end
-
-    ceedling_index_html_filepath = File.absolute_path( File.join( docs_path_ceedling, 'index.html' ) )
-    @loginator.console(
-      "\nCeedling documentation available at #{ceedling_index_html_filepath}",
-      LogLabels::DOCUMENTATION
-    )
-    
-    docs_path_root_abs = File.absolute_path( docs_path_root )
-    @loginator.console( " > All other documentation available at #{docs_path_root_abs}/\n" )
   end
 
 

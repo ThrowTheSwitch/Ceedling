@@ -7,8 +7,8 @@
 
 require 'spec_system_helper'
 
-ceedling_system_tests do
-  include CommonSystemTestCases
+describe "Ceedling" do
+  include CeedlingTestCases
 
   before :all do
     @c = SystemContext.new
@@ -22,10 +22,10 @@ ceedling_system_tests do
   before { @proj_name = "temp_sensor" }
   after { @c.with_context { FileUtils.rm_rf @proj_name } }
 
-  describe "Command: `ceedling examples`" do
+  describe "command: `ceedling examples`" do
     before do
       @c.with_context do
-        @output = @c.ceedling_appcmd_exec("examples")
+        @output = `bundle exec ruby -S ceedling examples 2>&1`
       end
     end
 
@@ -34,11 +34,11 @@ ceedling_system_tests do
     end
   end
 
-  describe "Command: `ceedling example temp_sensor`" do
+  describe "command: `ceedling example temp_sensor`" do
     describe "temp_sensor" do
       before do
         @c.with_context do
-          output = @c.ceedling_appcmd_exec("example temp_sensor")
+          output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
           expect(output).to match(/created/)
         end
       end
@@ -46,7 +46,7 @@ ceedling_system_tests do
       it "should be testable" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("test:all")
+            @output = `bundle exec ruby -S ceedling test:all 2>&1`
             expect(@output).to match(/TESTED:\s+51/)
             expect(@output).to match(/PASSED:\s+51/)
           end
@@ -56,7 +56,7 @@ ceedling_system_tests do
       it "should be able to test a single module (it includes file-specific flags)" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("test:TemperatureCalculator")
+            @output = `bundle exec ruby -S ceedling test:TemperatureCalculator 2>&1`
             expect(@output).to match(/TESTED:\s+2/)
             expect(@output).to match(/PASSED:\s+2/)
 
@@ -68,7 +68,7 @@ ceedling_system_tests do
       it "should be able to test multiple files matching a pattern" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("test:pattern[Temp]")
+            @output = `bundle exec ruby -S ceedling test:pattern[Temp] 2>&1`
             expect(@output).to match(/TESTED:\s+6/)
             expect(@output).to match(/PASSED:\s+6/)
 
@@ -81,7 +81,7 @@ ceedling_system_tests do
       it "should be able to test all files matching in a path" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("test:path[adc]")
+            @output = `bundle exec ruby -S ceedling test:path[adc] 2>&1`
             expect(@output).to match(/TESTED:\s+15/)
             expect(@output).to match(/PASSED:\s+15/)
 
@@ -95,7 +95,7 @@ ceedling_system_tests do
       it "should be able to test specific test cases in a file" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec('test:path[adc] --test-case="RunShouldNot"')
+            @output = `bundle exec ruby -S ceedling test:path[adc] --test-case="RunShouldNot" 2>&1`
             expect(@output).to match(/TESTED:\s+2/)
             expect(@output).to match(/PASSED:\s+2/)
 
@@ -109,7 +109,7 @@ ceedling_system_tests do
       it "should be able to test when using a custom Unity Helper file added by relative-path mixin" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("test:all --verbosity=obnoxious --mixin=mixin/add_unity_helper.yml")
+            @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious --mixin=mixin/add_unity_helper.yml 2>&1`
             expect(@output).to match(/Merging command line mixin using mixin\/add_unity_helper\.yml/)
             expect(@output).to match(/TESTED:\s+51/)
             expect(@output).to match(/PASSED:\s+51/)
@@ -120,7 +120,7 @@ ceedling_system_tests do
       it "should be able to test when using a custom Unity Helper file added by simple-named mixin" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("test:all --verbosity=obnoxious --mixin=add_unity_helper")
+            @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious --mixin=add_unity_helper 2>&1`
             expect(@output).to match(/Merging command line mixin using mixin\/add_unity_helper\.yml/)
             expect(@output).to match(/TESTED:\s+51/)
             expect(@output).to match(/PASSED:\s+51/)
@@ -132,7 +132,7 @@ ceedling_system_tests do
         @c.with_context do
           ENV['CEEDLING_MIXIN_1'] = 'mixin/add_unity_helper.yml'
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("test:all --verbosity=obnoxious")
+            @output = `bundle exec ruby -S ceedling test:all --verbosity=obnoxious 2>&1`
             expect(@output).to match(/Merging CEEDLING_MIXIN_1 mixin using mixin\/add_unity_helper\.yml/)
             expect(@output).to match(/TESTED:\s+51/)
             expect(@output).to match(/PASSED:\s+51/)
@@ -143,7 +143,7 @@ ceedling_system_tests do
       it "should be able to report the assembly files found in paths" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("files:assembly")
+            @output = `bundle exec ruby -S ceedling files:assembly 2>&1`
 
             expect(@output).to match(/Assembly files: None/i)
           end
@@ -153,7 +153,7 @@ ceedling_system_tests do
       it "should be able to report the header files found in paths" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("files:header")
+            @output = `bundle exec ruby -S ceedling files:header 2>&1`
 
             expect(@output).to match(/Header files:/i)
             expect(@output).to match(/src\/AdcModel\.h/i)
@@ -171,7 +171,7 @@ ceedling_system_tests do
       it "should be able to report the source files found in paths" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("files:source")
+            @output = `bundle exec ruby -S ceedling files:source 2>&1`
 
             expect(@output).to match(/Source files:/i)
             expect(@output).to match(/src\/AdcModel\.c/i)
@@ -189,7 +189,7 @@ ceedling_system_tests do
       it "should be able to report the support files found in paths" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("files:support")
+            @output = `bundle exec ruby -S ceedling files:support 2>&1`
 
             expect(@output).to match(/Support files:/i)
             expect(@output).to match(/test\/support\/UnityHelper\.c/i)
@@ -200,7 +200,7 @@ ceedling_system_tests do
       it "should be able to report the test files found in paths" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("files:test")
+            @output = `bundle exec ruby -S ceedling files:test 2>&1`
 
             expect(@output).to match(/Test files:/i)
             expect(@output).to match(/test\/adc\/TestAdcModel\.c/i)
@@ -215,7 +215,7 @@ ceedling_system_tests do
       it "should be able to report the header paths found in paths" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("paths:include")
+            @output = `bundle exec ruby -S ceedling paths:include 2>&1`
 
             expect(@output).to match(/Include paths:/i)
             expect(@output).to match(/src/i)
@@ -226,7 +226,7 @@ ceedling_system_tests do
       it "should be able to report the source paths found in paths" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("paths:source")
+            @output = `bundle exec ruby -S ceedling paths:source 2>&1`
 
             expect(@output).to match(/Source paths:/i)
             expect(@output).to match(/src/i)
@@ -237,7 +237,7 @@ ceedling_system_tests do
       it "should be able to report the support paths found in paths" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("paths:support")
+            @output = `bundle exec ruby -S ceedling paths:support 2>&1`
 
             expect(@output).to match(/Support paths:/i)
             expect(@output).to match(/test\/support/i)
@@ -248,7 +248,7 @@ ceedling_system_tests do
       it "should be able to report the test paths found in paths" do
         @c.with_context do
           Dir.chdir "temp_sensor" do
-            @output = @c.ceedling_build_exec("paths:test")
+            @output = `bundle exec ruby -S ceedling paths:test 2>&1`
 
             expect(@output).to match(/Test paths:/i)
             expect(@output).to match(/test/i)
