@@ -147,8 +147,20 @@ jobs:
 
       # Run Tests
       - name: Run All Self Tests
+        env:
+          # Set the RSpec formatter to condensed dots
+          CI_RSPEC_PROGRESS_FORMAT: true
         run: |
           rake ci
+
+      # Upload any system test failure logs on test job failure
+      - name: Upload system test failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: systest-failure-logs-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: systest.*.fail.log
+          if-no-files-found: ignore
 
       # Build & Install Ceedling Gem
       - name: Build and Install Ceedling Gem
@@ -240,8 +252,20 @@ jobs:
 
       # Run Tests
       - name: Run All Self Tests
+        env:
+          # Set the RSpec formatter to condensed dots
+          CI_RSPEC_PROGRESS_FORMAT: true
         run: |
           rake ci
+
+      # Upload any system test failure logs on test job failure
+      - name: Upload system test failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: systest-failure-logs-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: systest.*.fail.log
+          if-no-files-found: ignore
 
       # Build & Install Gem
       - name:  Build and Install Ceedling Gem
