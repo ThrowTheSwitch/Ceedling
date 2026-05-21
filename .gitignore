@@ -1,8 +1,6 @@
 .*.swp
 .swp
 
-out.fail
-
 tags
 *.taghl
 
@@ -14,6 +12,10 @@ plugins/module_generator/example/build/
 plugins/dependencies/example/boss/build/
 plugins/dependencies/example/boss/third_party/
 plugins/dependencies/example/supervisor/build/
+
+# Logs / test output
+out.fail
+*.fail.log
 
 # Generated documentation site builds
 site-web/

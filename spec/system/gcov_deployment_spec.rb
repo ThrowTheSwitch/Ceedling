@@ -6,12 +6,12 @@
 # =========================================================================
 
 require 'spec_system_helper'
-require 'gcov/gcov_test_cases_spec'
+require_relative 'support/gcov_common_test_cases'
 
 ceedling_system_tests do
   describe "Gcov" do
-    include CeedlingSystemTestCases
-    include GcovTestCases
+    include CommonSystemTestCases
+    include GcovCommonTestCases
     before :all do
       determine_reports_to_test
       @c = SystemContext.new

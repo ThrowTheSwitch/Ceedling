@@ -5,82 +5,10 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'fileutils'
-require 'tmpdir'
-require 'yaml'
-require 'spec_system_helper'
-require 'pp'
+require_relative 'gcov_helpers'
 
-
-module GcovTestCases
-
-  def determine_reports_to_test
-    @gcov_reports = []
-
-    begin
-      `gcovr --version 2>&1`
-      @gcov_reports << :gcovr if $?.exitstatus == 0
-    rescue
-      puts "No GCOVR exec to test against"
-    end
-
-    begin
-      `reportgenerator --version 2>&1`
-      @gcov_reports << :reportgenerator if $?.exitstatus == 0
-    rescue
-      puts "No ReportGenerator exec to test against"
-    end
-  end
-
-  def prep_project_yml_for_coverage
-    FileUtils.cp test_asset_path("project.yml"), "project.yml"
-    @c.uncomment_project_yml_option_for_test("- gcov")
-    @c.comment_project_yml_option_for_test("- gcovr") unless @gcov_reports.include? :gcovr
-    @c.uncomment_project_yml_option_for_test("- ReportGenerator") if @gcov_reports.include? :reportgenerator
-  end
-
-  def _add_gcov_section_in_project(project_file_path, name, values)
-    project_file_contents = File.readlines(project_file_path)
-    name_index = project_file_contents.index(":gcov:\n")
-
-    if name_index.nil?
-      # Something wrong with project.yml file, no project section?
-      return
-    end
-
-    project_file_contents.insert(name_index + 1, "  :#{name}:\n")
-    values.each.with_index(2) do |value, index|
-      project_file_contents.insert(name_index + index, "    - #{value}\n")
-    end
-
-    File.open(project_file_path, "w+") do |f|
-      f.puts(project_file_contents)
-    end
-  end
-  
-  def _add_gcov_option_in_project(project_file_path, option, value)
-    project_file_contents = File.readlines(project_file_path)
-    option_index = project_file_contents.index(":gcov:\n")
-
-    if option_index.nil?
-      # Something wrong with project.yml file, no project section?
-      return
-    end
-
-    project_file_contents.insert(option_index + 1, "  :#{option}: #{value}\n")
-  
-    File.open(project_file_path, "w+") do |f|
-      f.puts(project_file_contents)
-    end
-  end
-
-  def add_gcov_section(name, values)
-    _add_gcov_section_in_project("project.yml", name, values)
-  end
-
-  def add_gcov_option(option, value)
-    _add_gcov_option_in_project("project.yml", option, value)
-  end
+module GcovCommonTestCases
+  include GcovHelpers
 
   def can_test_projects_with_gcov_with_success
     @c.with_context do
@@ -316,7 +244,7 @@ module GcovTestCases
                         "{\n" \
                         "  TEST_ASSERT_EQUAL_INT(0, difference_between_numbers(1,1));\n" \
                         "}\n"
-        
+
         updated_test_file = File.read('test/test_example_file_crash.c').split("\n")
         updated_test_file.insert(updated_test_file.length(), add_test_case)
         File.write('test/test_example_file_crash.c', updated_test_file.join("\n"), mode: 'w')

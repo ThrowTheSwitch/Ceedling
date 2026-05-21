@@ -17,13 +17,12 @@ require 'open3'
 
 # Local developer gets hierarchical documentation output; CI gets compact progress output.
 # Most CI systems (GitHub Actions, GitLab CI, CircleCI, etc.) set CI=true automatically.
-RSPEC_FORMAT = ENV['CI'] ? '--format progress' : '--format documentation'
+RSPEC_FORMAT = ENV['CI_RSPEC_PROGRESS_FORMAT'] ? '--format progress' : '--format documentation'
 
-desc "Run unit specs only (excludes system specs)"
+desc "Run unit specs only"
 RSpec::Core::RakeTask.new('specs:units') do |t|
-  t.pattern         = 'spec/**/*_spec.rb'
-  t.exclude_pattern = 'spec/system/**/*_spec.rb'
-  t.rspec_opts      = RSPEC_FORMAT
+  t.pattern    = 'spec/units/**/*_spec.rb'
+  t.rspec_opts = RSPEC_FORMAT
 end
 
 desc "Run system specs only"
@@ -32,6 +31,7 @@ RSpec::Core::RakeTask.new('specs:system') do |t|
   t.rspec_opts = RSPEC_FORMAT
 end
 
+# Run unit tests first to fail on fast before running slower system tests
 desc "Run all specs: unit specs first, then system specs"
 task 'specs:all' => ['specs:units', 'specs:system']
 
@@ -41,7 +41,8 @@ task 'specs:system:debug' do
   Rake::Task['specs:system'].invoke
 end
 
-Dir['spec/**/*_spec.rb'].reject { |p| p.start_with?('spec/system/') }.each do |p|
+# Individual unit specs
+Dir['spec/units/**/*_spec.rb'].each do |p|
   base = File.basename(p,'.*').gsub('_spec','')
   desc "Run unit spec: #{base}"
   RSpec::Core::RakeTask.new("spec:unit:#{base}") do |t|
@@ -50,6 +51,7 @@ Dir['spec/**/*_spec.rb'].reject { |p| p.start_with?('spec/system/') }.each do |p
   end
 end
 
+# Individual system specs
 Dir['spec/system/**/*_spec.rb'].each do |p|
   base = File.basename(p,'.*').gsub('_spec','')
   desc "Run system spec: #{base}"
@@ -62,21 +64,21 @@ end
 desc "Run specs by filename matching a substring (e.g., rake \"spec:filter:filename[<substring>]\")"
 RSpec::Core::RakeTask.new('spec:filter:filename', [:pattern]) do |t, args|
   pattern = args[:pattern] || '*'
-  t.pattern    = "spec/**/*#{pattern}*_spec.rb"
+  t.pattern    = "spec/{units,system}/**/*#{pattern}*_spec.rb"
   t.rspec_opts = '--format documentation'
 end
 
-desc "Run specs matching an example's description (e.g., rake \"spec:filter:example[Version Reporting]\")"
+desc "Run specs matching an example's description (e.g., rake \"spec:filter:example[Version reporting]\")"
 RSpec::Core::RakeTask.new('spec:filter:example', [:description]) do |t, args|
   description = args[:description] || ''
-  t.pattern    = 'spec/**/*_spec.rb'
+  t.pattern    = 'spec/{units,system}/**/*_spec.rb'
   t.rspec_opts = "--format documentation --example '#{description}'"
 end
 
 desc "Run specs whose example's description matches a regex pattern (e.g., rake \"spec:filter:match[version|help]\")"
 RSpec::Core::RakeTask.new('spec:filter:match', [:regex]) do |t, args|
   regex = args[:regex] || ''
-  t.pattern    = 'spec/**/*_spec.rb'
+  t.pattern    = 'spec/{units,system}/**/*_spec.rb'
   t.rspec_opts = "--format documentation --pattern '#{regex}'"
 end
 

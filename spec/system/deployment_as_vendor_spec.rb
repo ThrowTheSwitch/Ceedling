@@ -8,7 +8,7 @@
 require 'spec_system_helper'
 
 ceedling_system_tests do
-  include CeedlingSystemTestCases
+  include CommonSystemTestCases
 
   before :all do
     @c = SystemContext.new
