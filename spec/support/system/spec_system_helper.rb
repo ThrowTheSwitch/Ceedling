@@ -88,8 +88,10 @@ RSpec.configure do |config|
     $stderr.puts "FAILED: #{format_description.call(example)}"
     $stderr.puts "Temp dir: #{@c.dir}"
     $stderr.puts "Log file: #{log_path}"
-    $stderr.puts "-" * 72
-    $stderr.puts @c.console_summary if @c.respond_to?(:console_summary) && !@c.console_summary.nil?
+    if @c.respond_to?(:console_summary) && !@c.console_summary.nil?
+      $stderr.puts "-" * 72
+      $stderr.puts @c.console_summary
+    end
     $stderr.puts "=" * 72 + "\n"
   end
 end
