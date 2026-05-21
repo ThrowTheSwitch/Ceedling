@@ -240,7 +240,13 @@ class Include
 
   # Method specialized by subclasses
   def to_s()
-    # Simple string with no additional formatting or #include decoration
+    # Simple string representation of class contents with no additional formatting or #include decoration
+    return @filename
+  end
+
+  def to_str()
+    # Coerce to string for implicit conversions (e.g., string interpolation, concatenation)
+    # For instance, Rake#FileList needs this to treat Include objects as strings when extending with #pathmap
     return @filename
   end
 

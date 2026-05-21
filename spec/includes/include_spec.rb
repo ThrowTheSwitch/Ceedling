@@ -509,6 +509,106 @@ describe "Include equality" do
   end
 end
 
+describe "Include string coercion (to_str)" do
+  # to_str is the Ruby implicit-coercion protocol. Any object that defines to_str
+  # is treated as a String by contexts that require one — string concatenation,
+  # File.join, Rake FileList#pathmap, etc. The base Include class defines to_str
+  # to return @filename; subclasses do NOT override it, so implicit coercion always
+  # yields the plain filename regardless of the subclass's to_s include directive.
+
+  describe "UserInclude" do
+    it "responds to to_str" do
+      expect(UserInclude.new("header.h")).to respond_to(:to_str)
+    end
+
+    it "returns the filename (not the include directive) for implicit coercion" do
+      include_obj = UserInclude.new("header.h")
+      expect(include_obj.to_str).to eq("header.h")
+    end
+
+    it "to_str and to_s return different values — filename vs. include directive" do
+      include_obj = UserInclude.new("header.h")
+      expect(include_obj.to_str).to eq("header.h")
+      expect(include_obj.to_s).to  eq('#include "header.h"')
+    end
+
+    it "can be implicitly concatenated with a string prefix" do
+      include_obj = UserInclude.new("header.h")
+      expect("path/" + include_obj).to eq("path/header.h")
+    end
+
+    it "can be passed to File.join as an implicit string" do
+      include_obj = UserInclude.new("header.h")
+      expect(File.join("build", include_obj)).to eq("build/header.h")
+    end
+
+    it "returns the filename without the directory component for a path-bearing include" do
+      include_obj = UserInclude.new("sub/dir/header.h")
+      expect(include_obj.to_str).to eq("header.h")
+    end
+
+    it "returns the full filepath when constructed with use_path: true" do
+      include_obj = UserInclude.new("sub/dir/header.h", use_path: true)
+      # to_str always returns @filename (the basename) regardless of use_path
+      expect(include_obj.to_str).to eq("header.h")
+    end
+  end
+
+  describe "SystemInclude" do
+    it "responds to to_str" do
+      expect(SystemInclude.new("stdio.h")).to respond_to(:to_str)
+    end
+
+    it "returns the filename (not the include directive) for implicit coercion" do
+      include_obj = SystemInclude.new("stdio.h")
+      expect(include_obj.to_str).to eq("stdio.h")
+    end
+
+    it "to_str and to_s return different values — filename vs. include directive" do
+      include_obj = SystemInclude.new("stdio.h")
+      expect(include_obj.to_str).to eq("stdio.h")
+      expect(include_obj.to_s).to  eq("#include <stdio.h>")
+    end
+
+    it "can be implicitly concatenated with a string prefix" do
+      include_obj = SystemInclude.new("stdio.h")
+      expect("sys/" + include_obj).to eq("sys/stdio.h")
+    end
+
+    it "can be passed to File.join as an implicit string" do
+      include_obj = SystemInclude.new("stdio.h")
+      expect(File.join("build", include_obj)).to eq("build/stdio.h")
+    end
+  end
+
+  describe "MockInclude" do
+    it "responds to to_str" do
+      expect(MockInclude.new("mock_sensor.h")).to respond_to(:to_str)
+    end
+
+    it "returns the filename (not the include directive) for implicit coercion" do
+      include_obj = MockInclude.new("mock_sensor.h")
+      expect(include_obj.to_str).to eq("mock_sensor.h")
+    end
+
+    it "to_str and to_s return different values — filename vs. include directive" do
+      include_obj = MockInclude.new("mock_sensor.h")
+      expect(include_obj.to_str).to eq("mock_sensor.h")
+      expect(include_obj.to_s).to  eq('#include "mock_sensor.h"')
+    end
+
+    it "can be implicitly concatenated with a string prefix" do
+      include_obj = MockInclude.new("mock_sensor.h")
+      expect("mocks/" + include_obj).to eq("mocks/mock_sensor.h")
+    end
+
+    it "returns filename from a path-bearing mock include" do
+      include_obj = MockInclude.new("mocks/subdir/mock_sensor.h")
+      expect(include_obj.to_str).to eq("mock_sensor.h")
+    end
+  end
+end
+
 describe "Include regex matching" do
   describe "=~ operator" do
     it "returns a truthy match position when the pattern matches the filename" do
