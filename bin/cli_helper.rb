@@ -415,8 +415,7 @@ class CliHelper
 
 
   def copy_docs(ceedling_root, dest)
-    docs_path_root = File.join( dest, 'docs' )
-    docs_path_ceedling = File.join( docs_path_root, 'ceedling' )
+    docs_path_ceedling = File.join( dest, 'ceedling' )
 
     # Hash that will hold documentation copy paths
     #  - Key: (modified) destination documentation path
@@ -460,8 +459,8 @@ class CliHelper
     end
 
     # Copy all individual documentation files gathered up
-    doc_files.each_pair do |dest, src|
-      @actions._copy_file(src, File.join( docs_path_root, dest ), :force => true )
+    doc_files.each_pair do |_dest, src|
+      @actions._copy_file(src, File.join( dest, _dest ), :force => true )
     end
 
     # If present copy internl HTML documentation bundle (site-local/) to docs/ceedling/
@@ -479,8 +478,8 @@ class CliHelper
       LogLabels::DOCUMENTATION
     )
     
-    docs_path_root_abs = File.absolute_path( docs_path_root )
-    @loginator.console( " > All other documentation available at #{docs_path_root_abs}/\n" )
+    dest_abs = File.absolute_path( dest )
+    @loginator.console( " > All other documentation available at #{dest_abs}/\n" )
   end
 
 

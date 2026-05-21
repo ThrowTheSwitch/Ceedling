@@ -540,6 +540,21 @@ module CeedlingTasks
     end
 
 
+    desc "docs [DEST]", "Export documentation at optional destination (default is current directory)"
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling docs` exports the Ceedling documentation bundle to the filesystem.
+
+      DEST is an optional destination path (e.g. <DEST>/).
+      The default is your working directory. A nonexistent path will be created.
+      LONGDESC
+    ) )
+    def docs(dest=nil)
+      _dest = dest.dup() if !dest.nil?
+      @handler.docs( @app_cfg, _dest )
+    end
+
+
     desc "version", "Display version details of Ceedling components"
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC

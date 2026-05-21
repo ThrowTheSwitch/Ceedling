@@ -12,6 +12,8 @@ require 'versionator' # Outisde DIY context
 
 class CliHandler
 
+  DOCS_SUBDIR = 'docs'
+
   constructor :configinator, :projectinator, :cli_helper, :path_validator, :actions_wrapper, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
@@ -118,7 +120,7 @@ class CliHandler
     @helper.create_project_file( dest, options[:local], ceedling_tag ) if options[:configs]
     
     # Copy in documentation
-    @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
+    @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( dest, DOCS_SUBDIR ) ) if options[:docs]
 
     # Copy Git Ignore file 
     if options[:gitsupport]
@@ -164,7 +166,7 @@ class CliHandler
     founds_docs = @helper.project_exists?( path, :&, File.join( 'docs', 'CeedlingPacket.md' ) )
     if founds_docs
       @actions.remove_dir( docs_path )
-      @helper.copy_docs( app_cfg[:ceedling_root_path], path )
+      @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( path, DOCS_SUBDIR ) )
     end
 
     @loginator.console( "\nUpgraded project at #{path}/\n", LogLabels::TITLE )
@@ -416,9 +418,21 @@ class CliHandler
     @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
 
     # Copy in documentation
-    @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
+    @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( dest, DOCS_SUBDIR ) ) if options[:docs]
 
     @loginator.console( "Example project '#{name}' created at #{dest}/\n", LogLabels::TITLE )
+  end
+
+
+  def docs(app_cfg, dest)
+    # Thor Actions file operations require an anchored source root
+    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+
+    # Default to current working directory when no destination is given
+    dest ||= '.'
+
+    # Written directly to chosen destination path
+    @helper.copy_docs( app_cfg[:ceedling_root_path], dest )
   end
 
 
