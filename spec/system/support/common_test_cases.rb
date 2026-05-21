@@ -11,7 +11,7 @@ module CommonSystemTestCases
       # Version without Git commit short SHA file in project
       output = @c.ceedling_appcmd_exec("version")
       expect(@c.last_exit_status).to eq(0)
-      expect(output).to match(/Ceedlingz => \d\.\d\.\d\n/)
+      expect(output).to match(/Ceedling => \d\.\d\.\d\n/)
     end
   end
 
