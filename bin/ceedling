@@ -21,8 +21,11 @@ CEEDLING_APPCFG = CeedlingAppConfig.new()
 # Add load paths for `require 'ceedling/*'` statements in bin/ code
 $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_base_path] )
 
-require 'constructor'  # Assumed installed via Ceedling gem dependencies
+# Assumed installed via Ceedling gem dependencies
+require 'constructor'
+# Commonly needed modules
 require 'ceedling/constants'
+require 'ceedling/array_patches' # intersect?() + overlap?()
 
 # Centralized exception handler for:
 #  1. Bootloader (bin/)

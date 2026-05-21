@@ -9,6 +9,8 @@ require 'ceedling/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'gcov_constants'
+require 'gcov_types'
+require 'console_reportinator'
 require 'gcovr_reportinator'
 require 'reportgenerator_reportinator'
 
@@ -42,6 +44,7 @@ class Gcov < Plugin
     # Convenient instance variable references
     @configurator = @ceedling[:configurator]
     @loginator = @ceedling[:loginator]
+    @reportinator = @ceedling[:reportinator]
     @test_invoker = @ceedling[:test_invoker]
     @plugin_reportinator = @ceedling[:plugin_reportinator]
     @file_path_utils = @ceedling[:file_path_utils]
@@ -49,6 +52,17 @@ class Gcov < Plugin
     @tool_executor = @ceedling[:tool_executor]
 
     @mutex = Mutex.new()
+
+    # Validate MC/DC configuration against GCC version (only incurs gcc --version when :mcdc: TRUE)
+    if @project_config[:gcov_mcdc]
+      gcc_version = get_gcc_version()
+      if gcc_version.major < 14
+        raise CeedlingException.new(
+          ":gcov ↳ :mcdc ➡️ Modified condition/decision coverage requires GCC 14 or higher " \
+          "(found #{gcc_version.major}.#{gcc_version.minor})"
+        )
+      end
+    end
   end
 
   # Called within class and also externally by plugin Rakefile
@@ -61,10 +75,15 @@ class Gcov < Plugin
     if arg_hash[:context] == GCOV_SYM
       source = arg_hash[:source]
 
-      # If a source file (not unity, mocks, etc.) is to be compiled use code coverage compiler
-      if (File.extname(source) != EXTENSION_ASSEMBLY) && @configurator.collection_all_source.include?(source)
+      # Compile all non-assembly files with coverage; gcovr --exclude filters non-production files from reports
+      if File.extname(source) != EXTENSION_ASSEMBLY
         arg_hash[:tool] = TOOLS_GCOV_COMPILER
-        arg_hash[:msg] = "Compiling #{File.basename(source)} with coverage..."
+        arg_hash[:msg] = @reportinator.generate_module_progress(
+          operation: "Compiling with coverage",
+          module_name: arg_hash[:module_name],
+          filename: File.basename(source)
+        )
+        arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
       end
     end
   end
@@ -73,6 +92,7 @@ class Gcov < Plugin
     if arg_hash[:context] == GCOV_SYM
       @cli_gcov_task = true
       arg_hash[:tool] = TOOLS_GCOV_LINKER
+      arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
     end
   end
 
@@ -115,7 +135,7 @@ class Gcov < Plugin
     end
 
     # Print summary of coverage to console for each source file exercised by a test
-    console_coverage_summaries() if summaries_enabled?( @project_config )
+    @console_reportinator&.generate_reports( @project_config )
 
     # Run full coverage report generation
     generate_coverage_reports() if automatic_reporting_enabled?
@@ -152,7 +172,7 @@ class Gcov < Plugin
 
     @reportinators.each do |reportinator|
       # Create the artifacts output directory.
-      @file_wrapper.mkdir( reportinator.artifacts_path )
+      @file_wrapper.mkdir( reportinator.artifacts_path ) if reportinator.artifacts_path
 
       # Generate reports
       reportinator.generate_reports( @configurator.project_config_hash )
@@ -175,92 +195,20 @@ class Gcov < Plugin
     return opts.map(&:upcase).include?( utility_name.upcase )
   end
 
-  def console_coverage_summaries()
-    banner = @plugin_reportinator.generate_banner( "#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
-    @loginator.log "\n" + banner
-
-    # Iterate over each test run and its list of source files
-    @test_invoker.each_test_with_sources do |test, sources|
-      heading = @plugin_reportinator.generate_heading( test )
-      @loginator.log(heading)
-
-      sources.each do |source|
-        filename = File.basename(source)
-        name     = filename.ext('')
-        command  = @tool_executor.build_command_line(
-                     TOOLS_GCOV_SUMMARY,
-                     [], # No additional arguments
-                     filename, # .c source file that should have been compiled with coverage
-                     File.join(GCOV_BUILD_OUTPUT_PATH, test) # <build>/gcov/out/<test name> for coverage data files
-                   )
-
-        # Do not raise an exception if `gcov` terminates with a non-zero exit code, just note it and move on.
-        # Recent releases of `gcov` have become more strict and vocal about errors and exit codes.
-        command[:options][:boom] = false
-
-        # Run the gcov tool and collect the raw coverage report
-        shell_results  = @tool_executor.exec( command )
-        results        = shell_results[:output].strip
-
-        # Handle errors instead of raising a shell exception
-        if shell_results[:exit_code] != 0
-          @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do 
-            "gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
-          end
-          @loginator.lazy( Verbosity::COMPLAIN ) do 
-            "gcov was unable to process coverage for #{filename}"
-          end
-          next # Skip to next loop iteration
-        end
-
-        # A source component may have been compiled with coverage but none of its code actually called in a test.
-        # In this case, versions of gcov may not produce an error, only blank results.
-        if results.empty?
-          @loginator.lazy( msg, Verbosity::COMPLAIN, LogLabels::NOTICE ) do 
-            "No functions called or code paths exercised by test for #{filename}"
-          end
-          next # Skip to next loop iteration
-        end
-
-        # Source filepath to be extracted from gcov coverage results via regex
-        _source = ''
-
-        # Extract (relative) filepath from results and expand to absolute path
-        matches = results.match(/File\s+'(.+)'/)
-        if matches.nil? or matches.length() != 2
-          @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do 
-            "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
-          end
-        else
-          # Expand to full path from likely partial path to ensure correct matches on source component within gcov results
-          _source = File.expand_path(matches[1])
-        end
-
-        # If gcov results include intended source (comparing absolute paths), report coverage details summaries
-        if _source == File.expand_path(source)
-          # Reformat from first line as filename banner to each line of statistics labeled with the filename
-          # Only extract the first four lines of the console report (to avoid spidering coverage reports through libs, etc.)
-          report = results.lines.to_a[1..4].map { |line| filename + ' | ' + line }.join('')
-          @loginator.log(report + "\n")
-        
-        # Otherwise, found no coverage results
-        else
-          @loginator.lazy( Verbosity::COMPLAIN ) { "Found no coverage results for #{test}::#{File.basename(source)}" }
-        end
-      end
-    end
-  end
-
   def build_reportinators(config, enabled)
     reportinators = []
 
-    # Do not instantiate reportinators (and tool validation) unless reports enabled
+    # Instantiate console summary reportinator if summaries enabled
+    @console_reportinator = summaries_enabled?(@project_config) ?
+      ConsoleReportinator.new(@ceedling) : nil
+
+    # Do not instantiate file reportinators (and tool validation) unless reports enabled
     return reportinators if (!enabled)
 
     config.each do |reportinator|
       if not GCOV_UTILITY_NAMES.map(&:upcase).include?( reportinator.upcase )
         options = GCOV_UTILITY_NAMES.map{ |utility| "'#{utility}'" }.join(', ')
-        msg = "Plugin configuration :gcov ↳ :utilities => `#{reportinator}` is not a recognized option {#{options}}."
+        msg = "Plugin configuration :gcov ↳ :utilities ➡️ `#{reportinator}` is not a recognized option {#{options}}."
         raise CeedlingException.new(msg)
       end
     end
@@ -278,6 +226,25 @@ class Gcov < Plugin
     end
 
     return reportinators
+  end
+
+  def get_gcc_version()
+    command = @tool_executor.build_command_line( TOOLS_GCOV_GCC_VERSION, [])
+
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress("Collecting GCC version for conditional feature handling")
+    end
+
+    shell_result = @tool_executor.exec( command )
+
+    # First line of gcc --version: "gcc (...platform info...) major.minor.patch"
+    version_match = shell_result[:output].match(/^gcc\s+.*\s+(\d+)\.(\d+)\.\d+/)
+
+    if version_match.nil? || version_match[1].nil? || version_match[2].nil?
+      raise CeedlingException.new("Could not collect `gcc` version from its command line")
+    end
+
+    return GcovToolVersion.new( version_match[1].to_i, version_match[2].to_i )
   end
 
 end
