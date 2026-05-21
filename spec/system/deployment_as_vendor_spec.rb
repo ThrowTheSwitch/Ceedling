@@ -7,7 +7,7 @@
 
 require 'spec_system_helper'
 
-describe "Ceedling" do
+ceedling_system_tests do
   include CeedlingSystemTestCases
 
   before :all do
@@ -24,32 +24,32 @@ describe "Ceedling" do
   before { @proj_name = "fake_project" }
   after { @c.with_context { FileUtils.rm_rf @proj_name } }
 
-  describe "Deployed in a Project's `vendor` Directory" do
+  describe "Deployed in a project's `vendor` directory" do
     before do
       # Ensure version commit file is cleaned up
       FileUtils.rm_rf( 'GIT_COMMIT_SHA' )
       @c.with_context do
-        @c.ceedling_manage("new --local --docs #{@proj_name}")
+        @c.ceedling_appcmd_exec("new --local --docs #{@proj_name}")
       end
     end
 
-    describe "Version Reporting" do
+    describe "Version reporting" do
       test_case :can_report_version_no_git_commit_sha
       test_case :can_report_version_with_git_commit_sha
     end
 
-    describe "Project Creation" do
+    describe "Project creation" do
       test_case :can_create_projects
       test_case :contains_a_vendor_directory
       test_case :contains_documentation
     end
 
-    describe "Help System" do
+    describe "Help system" do
       test_case :can_fetch_non_project_help
       test_case :can_fetch_project_help
     end
 
-    describe "Basic Test Execution" do
+    describe "Basic test execution" do
       test_case :can_test_projects_with_success
       test_case :can_test_projects_with_success_test_alias
       test_case :can_test_projects_with_success_default
@@ -60,7 +60,7 @@ describe "Ceedling" do
       test_case :can_test_projects_with_test_file_directly_including_source_file
     end
 
-    describe "Test Builds with Preprocessing" do
+    describe "Test builds with preprocessing" do
       test_case :can_test_projects_with_preprocessing_for_test_files_symbols_undefined
       test_case :can_test_projects_with_preprocessing_for_test_files_symbols_defined
       test_case :can_test_projects_with_preprocessing_for_mocks_success
@@ -68,29 +68,29 @@ describe "Ceedling" do
       test_case :can_test_projects_with_preprocessing_all
     end
 
-    describe "Defines and Configuration" do
+    describe "Defines and configuration" do
       test_case :can_test_projects_with_test_name_replaced_defines_with_success
       test_case :can_test_projects_with_test_and_vendor_defines_with_success
       test_case :can_test_projects_with_both_mock_and_real_header
     end
 
-    describe "Unity Features" do
+    describe "Unity features" do
       test_case :can_test_projects_unity_parameterized_test_cases_with_success
       #test_case :can_test_projects_unity_parameterized_test_cases_with_preprocessor_with_success
       test_case :can_test_projects_with_unity_exec_time
     end
 
-    describe "Edge Cases Parsing" do
+    describe "Edge cases parsing" do
       test_case :can_test_projects_with_success_when_space_appears_between_hash_and_include
     end
 
-    describe "Verbosity and Output" do
+    describe "Verbosity and output" do
       test_case :can_test_projects_with_named_verbosity
       test_case :can_test_projects_with_numerical_verbosity
       test_case :uses_report_tests_raw_output_log_plugin
     end
 
-    describe "Crash Handling" do
+    describe "Crash handling" do
       test_case :test_run_of_projects_fail_because_of_crash_without_report
       test_case :test_run_of_projects_fail_because_of_crash_with_report
       test_case :execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue
@@ -98,11 +98,7 @@ describe "Ceedling" do
       test_case :execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug
     end
 
-    describe "Command-line Argument Handling" do
-      test_case :confirm_if_notification_for_cmdline_args_not_enabled_is_disabled
-    end
-
-    describe "Test Filtering" do
+    describe "Test filtering" do
       test_case :can_run_single_test_with_full_test_case_name_from_test_file_with_success
       test_case :can_run_single_test_with_partial_test_case_name_from_test_file_with_success
       test_case :exclude_test_case_name_filter_works_and_only_one_test_case_is_executed
@@ -112,45 +108,45 @@ describe "Ceedling" do
     end
   end
 
-  describe "Deployed in a Project's `vendor` Directory with Git Support" do
+  describe "Deployed in a project's `vendor` directory with Git support" do
     before do
       @c.with_context do
-        @c.ceedling_manage("new --local --docs --gitsupport #{@proj_name}")
+        @c.ceedling_appcmd_exec("new --local --docs --gitsupport #{@proj_name}")
       end
     end
 
-    describe "Project Creation" do
+    describe "Project creation" do
       test_case :can_create_projects
       test_case :has_git_support
       test_case :contains_a_vendor_directory
       test_case :contains_documentation
     end
 
-    describe "Basic Test Execution" do
+    describe "Basic test execution" do
       test_case :can_test_projects_with_success
       test_case :can_test_projects_with_test_file_directly_including_source_file
     end
   end
 
-  describe "Deployed in a Project's `vendor` Directory Without Docs" do
+  describe "Deployed in a project's `vendor` directory without docs" do
     before do
       @c.with_context do
-        @c.ceedling_manage("new --local #{@proj_name}")
+        @c.ceedling_appcmd_exec("new --local #{@proj_name}")
       end
     end
 
-    describe "Project Creation" do
+    describe "Project creation" do
       test_case :can_create_projects
       test_case :contains_a_vendor_directory
       test_case :does_not_contain_documentation
     end
 
-    describe "Help System" do
+    describe "Help system" do
       test_case :can_fetch_non_project_help
       test_case :can_fetch_project_help
     end
 
-    describe "Basic Test Execution" do
+    describe "Basic test execution" do
       test_case :can_test_projects_with_success
       test_case :can_test_projects_with_success_test_alias
       test_case :can_test_projects_with_success_default
@@ -161,7 +157,7 @@ describe "Ceedling" do
       test_case :can_test_projects_with_test_file_directly_including_source_file
     end
 
-    describe "Test Builds with Preprocessing" do
+    describe "Test builds with preprocessing" do
       test_case :can_test_projects_with_preprocessing_for_test_files_symbols_undefined
       test_case :can_test_projects_with_preprocessing_for_test_files_symbols_defined
       test_case :can_test_projects_with_preprocessing_for_mocks_success
@@ -169,12 +165,12 @@ describe "Ceedling" do
       test_case :can_test_projects_with_preprocessing_all
     end
 
-    describe "Defines and Configuration" do
+    describe "Defines and configuration" do
       test_case :can_test_projects_with_test_name_replaced_defines_with_success
       test_case :can_test_projects_with_test_and_vendor_defines_with_success
     end
 
-    describe "Unity Features" do
+    describe "Unity features" do
       test_case :can_test_projects_unity_parameterized_test_cases_with_success
       test_case :can_test_projects_with_unity_exec_time
     end

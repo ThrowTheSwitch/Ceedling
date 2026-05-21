@@ -13,6 +13,8 @@ require 'spec_helper'
 require 'deep_merge'
 
 module CeedlingSystemSpecHelpers
+  SYSTEM_TESTS_LABEL = "Ceedling System Tests"
+
   # Helper method to convert method name to readable description
   def test_case(method_name)
     description = method_name.to_s.gsub('_', ' ').capitalize
@@ -20,30 +22,70 @@ module CeedlingSystemSpecHelpers
   end
 end
 
+# Top-level DSL wrapper — replaces `describe "Ceedling System Tests" do` in each spec file.
+# Must be a top-level def (not inside a module) because config.extend only injects methods
+# into the RSpec example group DSL (inside describe blocks), not into main:Object where
+# the outermost describe call in each spec file is made.
+def ceedling_system_tests(&block)
+  describe(CeedlingSystemSpecHelpers::SYSTEM_TESTS_LABEL, &block)
+end
+
 # Extend RSpec's DSL to include our helper above, and add system-test failure diagnostics
 RSpec.configure do |config|
   config.extend CeedlingSystemSpecHelpers
 
+  # Exclude any line that does NOT contain "system" and ends with .rb from backtraces
+  # This helps reduce RSpec backtrace noise that is irrelevant to system test failures
+  config.backtrace_formatter.exclusion_patterns = [
+    /\A(?!.*system.*\.rb)/
+  ]
+
+  # Rebuild the full description from the group hierarchy using " :: " as separator.
+  # example.full_description concatenates with spaces, which is unreadable at 3-4 levels deep.
+  format_description = lambda do |example|
+    groups = example.example_group.parent_groups.reverse.drop(1)
+    parts  = groups.map(&:description).reject(&:empty?)
+    parts << example.description               unless example.description.empty?
+    parts.join(' :: ')
+  end
+
   config.after(:each) do |example|
     next unless example.exception
-    next unless defined?(@c) && @c.respond_to?(:console_summary) && !@c.console_summary.nil?
+    next unless defined?(@c) && @c.respond_to?(:raw_output) && !@c.raw_output.nil?
+
+    test_name =
+      example.full_description
+             # Remove "ceedling" and "system test(s)" from the test name as redundant in the log filename
+             .gsub(/^ceedling/i, '')
+             .gsub(/system tests?/i, '')
+             .gsub(/systests?/i, '')
+             # Replace non-filesystem-safe chars with underscores
+             .gsub(/[^a-zA-Z0-9_-]/, '_')
+             # Collapse runs of underscores into a single underscore
+             .squeeze('_')
+             # Strip leading/trailing underscores
+             .gsub(/\A_+|_+\z/, '')
+             # Truncate long names by keeping the last 120 chars (preserves the specific end of the name).
+             # String#slice(negative, length) returns nil when the string is shorter than the offset;
+             # use a conditional instead.
+             # After slicing, strip any partial leading word 
+             # (e.g. "s_" from "Project's" -> "Project_s_" when the cut lands mid-segment).
+             .then { |s| s.length > 120 ? s[-120..].sub(/\A[^_]*_+/, '') : s }
+    timestamp = Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
+    log_path  = File.join(Dir.pwd, "systest.#{test_name}.#{timestamp}.fail.log")
+
+    log_content = ""
+    log_content << "Command: `#{@c.last_cmd}`\n\n" if @c.respond_to?(:last_cmd) && !@c.last_cmd.nil?
+    log_content << @c.raw_output.to_s
+    File.write(log_path, log_content)
 
     $stderr.puts "\n" + ("=" * 72)
-    $stderr.puts "FAILED: #{example.full_description}"
+    $stderr.puts "FAILED: #{format_description.call(example)}"
     $stderr.puts "Temp dir: #{@c.dir}"
+    $stderr.puts "Log file: #{log_path}"
     $stderr.puts "-" * 72
-    $stderr.puts @c.console_summary
+    $stderr.puts @c.console_summary if @c.respond_to?(:console_summary) && !@c.console_summary.nil?
     $stderr.puts "=" * 72 + "\n"
-
-    if ENV['CEEDLING_SYSTEM_TEST_FAILURE_LOGFILES']
-      log_name = example.full_description
-                         .gsub(/[^a-zA-Z0-9_-]/, '_')
-                         .squeeze('_')
-                         .delete_prefix('_')
-      log_path = File.join(Dir.pwd, "#{log_name}.log")
-      File.write(log_path, @c.raw_output.to_s)
-      $stderr.puts "Full Ceedling output written to: #{log_path}\n"
-    end
   end
 end
 
@@ -57,6 +99,22 @@ def convert_slashes(path)
   else
     path
   end
+end
+
+# Wraps Ceedling command output to suppress it in RSpec assertion failure messages.
+# RSpec formats the "actual" value via #inspect; this class returns a short sentinel
+# string so failures show only the expected pattern/substring, not thousands of lines.
+# All RSpec string matchers (match, include) continue to work unchanged at every call site.
+class SystemTestOutput
+  def initialize(output)
+    @output = output
+  end
+
+  def match(pattern) = @output.match(pattern)
+  def include?(str)  = @output.include?(str)
+  def to_s           = @output
+  def to_str         = @output
+  def inspect        = '(Ceedling build output — see log file)'
 end
 
 class GemDirLayout
@@ -77,7 +135,7 @@ class SystemContext
   class VerificationFailed < RuntimeError; end
   class InvalidBackupEnv < RuntimeError; end
 
-  attr_reader :dir, :gem, :console_summary, :raw_output, :last_exit_status
+  attr_reader :dir, :gem, :console_summary, :raw_output, :last_exit_status, :last_cmd
 
   def initialize
     @dir = Dir.mktmpdir
@@ -123,7 +181,7 @@ class SystemContext
           unless $?.success?
             raise VerificationFailed,
               "Ceedling does not appear to be installed or ready for use.\n" \
-              "Command: #{c}\n" \
+              "Command: `#{c}`\n" \
               "Output:\n#{result}"
           end
         end
@@ -222,30 +280,32 @@ class SystemContext
   ############################################################
   # Ceedling command execution with structured failure reporting:
 
-  # For build/test commands (Rake tasks): routes through the `build` subcommand
-  # which is the only subcommand that accepts --verbosity.
-  def ceedling_exec(*args)
-    cmd = "bundle exec ruby -S ceedling build --verbosity=debug #{args.join(' ')}"
+  # For build/test (Rake tasks): Routes through the Ceedling CLI application command `build`
+  # This is the only command that accepts --verbosity.
+  def ceedling_build_exec(*args)
+    cmd = "bundle exec ruby -S ceedling build --verbosity=debug #{args.join(' ')}".strip
     stdout, stderr, status = Open3.capture3(cmd)
 
+    @last_cmd         = cmd
     @last_exit_status = status.exitstatus
     @raw_output       = stdout + stderr
     @console_summary  = compose_failure_report(stdout, stderr)
 
-    stdout + stderr  # merged output for backward-compatible regex assertions
+    SystemTestOutput.new(@raw_output)
   end
 
-  # For management commands (new, upgrade, version, help, examples, example):
-  # these subcommands do not accept --verbosity, so we call them directly.
-  def ceedling_manage(*args)
-    cmd = "bundle exec ruby -S ceedling #{args.join(' ')}"
+  # All other Ceedling CLI application commands other than `build`
+  # (new, upgrade, version, help, examples, example, etc.)
+  def ceedling_appcmd_exec(*args)
+    cmd = "bundle exec ruby -S ceedling #{args.join(' ')}".strip
     stdout, stderr, status = Open3.capture3(cmd)
 
+    @last_cmd         = cmd
     @last_exit_status = status.exitstatus
     @raw_output       = stdout + stderr
     @console_summary  = compose_failure_report(stdout, stderr)
 
-    stdout + stderr
+    SystemTestOutput.new(@raw_output)
   end
 
   private
@@ -257,25 +317,27 @@ class SystemContext
     exception_lines = stdout.lines.select { |l| l.include?('EXCEPTION') }
 
     unless error_lines.empty? && exception_lines.empty?
-      sections << "--- Errors & Exceptions ---"
+      sections << ">> ERRORS & EXCEPTIONS"
       sections.concat(error_lines)
       sections.concat(exception_lines)
     end
 
     unless stderr.strip.empty?
-      sections << "--- Stderr ---"
+      sections << ">> STDERR"
       sections << stderr.strip
     end
 
-    failed_block = extract_section(stdout, 'FAILED TEST SUMMARY')
+    label = 'FAILED TEST SUMMARY'
+    failed_block = extract_section(stdout, label)
     unless failed_block.empty?
-      sections << "--- Failed Test Summary ---"
+      sections << ">> #{label}"
       sections.concat(failed_block)
     end
 
-    overall_block = extract_section(stdout, 'OVERALL TEST SUMMARY')
+    label = 'OVERALL TEST SUMMARY'
+    overall_block = extract_section(stdout, label)
     unless overall_block.empty?
-      sections << "--- Overall Test Summary ---"
+      sections << ">> #{label}"
       sections.concat(overall_block)
     end
 
@@ -301,7 +363,7 @@ module CeedlingSystemTestCases
   def can_report_version_no_git_commit_sha
     @c.with_context do
       # Version without Git commit short SHA file in project
-      output = @c.ceedling_manage("version")
+      output = @c.ceedling_appcmd_exec("version")
       expect(@c.last_exit_status).to eq(0)
       expect(output).to match(/Ceedling => \d\.\d\.\d\n/)
     end
@@ -315,7 +377,7 @@ module CeedlingSystemTestCases
     end
 
     @c.with_context do
-      output = @c.ceedling_manage("version")
+      output = @c.ceedling_appcmd_exec("version")
       expect(@c.last_exit_status).to eq(0)
       expect(output).to match(/Ceedling => \d\.\d\.\d----{-@\n/)
     end
@@ -343,7 +405,7 @@ module CeedlingSystemTestCases
 
   def can_upgrade_projects
     @c.with_context do
-      output = @c.ceedling_manage("upgrade #{@proj_name}")
+      output = @c.ceedling_appcmd_exec("upgrade #{@proj_name}")
       expect(@c.last_exit_status).to eq(0)
       expect(output).to match(/Upgraded/i)
       Dir.chdir @proj_name do
@@ -357,7 +419,7 @@ module CeedlingSystemTestCases
 
   def can_upgrade_projects_even_if_test_support_folder_does_not_exist
     @c.with_context do
-      output = @c.ceedling_manage("upgrade #{@proj_name}")
+      output = @c.ceedling_appcmd_exec("upgrade #{@proj_name}")
       FileUtils.rm_rf("#{@proj_name}/test/support")
 
       updated_prj_yml = []
@@ -378,7 +440,7 @@ module CeedlingSystemTestCases
 
   def cannot_upgrade_non_existing_project
     @c.with_context do
-      output = @c.ceedling_manage("upgrade #{@proj_name}")
+      output = @c.ceedling_appcmd_exec("upgrade #{@proj_name}")
       expect(@c.last_exit_status).to eq(1)
       expect(output).to match(/Could not find an existing project/i)
     end
@@ -424,7 +486,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("test:all")
+        output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -441,7 +503,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("test")
+        output = @c.ceedling_build_exec("test")
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -458,7 +520,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -475,7 +537,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("--verbosity=obnoxious")
+        output = @c.ceedling_build_exec("--verbosity=obnoxious")
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -494,7 +556,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("-v=4")
+        output = @c.ceedling_build_exec("-v=4")
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -515,7 +577,7 @@ module CeedlingSystemTestCases
         settings = { :unity => { :defines => [ "UNITY_INCLUDE_EXEC_TIME" ] } }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -536,7 +598,7 @@ module CeedlingSystemTestCases
                    }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -557,7 +619,7 @@ module CeedlingSystemTestCases
                    }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(0) # Since a test either passes or is ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -577,7 +639,7 @@ module CeedlingSystemTestCases
                    }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -597,7 +659,7 @@ module CeedlingSystemTestCases
                    }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -620,7 +682,7 @@ module CeedlingSystemTestCases
                    }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec("test:adc_hardwareA")
+        output = @c.ceedling_build_exec("test:adc_hardwareA")
         expect(@c.last_exit_status).to eq(1) # Intentional test failure in successful build
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+0/)
@@ -642,7 +704,7 @@ module CeedlingSystemTestCases
                    }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec("test:adc_hardwareA")
+        output = @c.ceedling_build_exec("test:adc_hardwareA")
         expect(@c.last_exit_status).to eq(0) # Successful build and tests
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+1/)
@@ -664,7 +726,7 @@ module CeedlingSystemTestCases
                    }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec("test:adc_hardwareB")
+        output = @c.ceedling_build_exec("test:adc_hardwareB")
         expect(@c.last_exit_status).to eq(0) # Successful build and tests
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+1/)
@@ -685,7 +747,7 @@ module CeedlingSystemTestCases
                    }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec("test:adc_hardwareB")
+        output = @c.ceedling_build_exec("test:adc_hardwareB")
         expect(@c.last_exit_status).to eq(1) # Failing build because of missing mock
         expect(output).to match(/(undeclared|undefined|implicit).+Adc_Reset/)
       end
@@ -705,7 +767,7 @@ module CeedlingSystemTestCases
                    }
         @c.merge_project_yml_for_test(settings)
 
-        output = @c.ceedling_exec("test:adc_hardwareC")
+        output = @c.ceedling_build_exec("test:adc_hardwareC")
         expect(@c.last_exit_status).to eq(0) # Successful build and tests
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+1/)
@@ -721,7 +783,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
 
-        output = @c.ceedling_exec("test:all")
+        output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Since a test fails, we return error here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -738,7 +800,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
 
-        output = @c.ceedling_exec("test")
+        output = @c.ceedling_build_exec("test")
         expect(@c.last_exit_status).to eq(1) # Since a test fails, we return error here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -755,7 +817,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(1) # Since a test fails, we return error here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -772,7 +834,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_boom.c"), 'test/'
 
-        output = @c.ceedling_exec("test:all")
+        output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Since a test explodes, we return error here
         expect(output).to match(/(?:ERROR: Ceedling Failed)|(?:Ceedling could not complete operations because of errors)/)
       end
@@ -788,7 +850,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file_call.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_with_mock.c"), 'test/'
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(0) # Since a test either passed or was ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -807,7 +869,7 @@ module CeedlingSystemTestCases
 
         @c.uncomment_project_yml_option_for_test('- report_tests_raw_output_log')
 
-        output = @c.ceedling_exec("test:all")
+        output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -822,7 +884,7 @@ module CeedlingSystemTestCases
   def can_fetch_non_project_help
     @c.with_context do
       # notice we don't change directory into the project
-      output = @c.ceedling_manage("help")
+      output = @c.ceedling_appcmd_exec("help")
       expect(@c.last_exit_status).to eq(0)
       expect(output).to match(/ceedling example/i)
       expect(output).to match(/ceedling new/i)
@@ -834,7 +896,7 @@ module CeedlingSystemTestCases
   def can_fetch_project_help
     @c.with_context do
       Dir.chdir @proj_name do
-        output = @c.ceedling_manage("help")
+        output = @c.ceedling_appcmd_exec("help")
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/ceedling clean/i)
         expect(output).to match(/ceedling clobber/i)
@@ -855,7 +917,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("test:test_example_file_success --test_case=test_add_numbers_adds_numbers")
+        output = @c.ceedling_build_exec("test:test_example_file_success --test_case=test_add_numbers_adds_numbers")
 
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+1/)
@@ -873,7 +935,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("test:test_example_file_success --test_case=_adds_numbers")
+        output = @c.ceedling_build_exec("test:test_example_file_success --test_case=_adds_numbers")
 
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+1/)
@@ -891,7 +953,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("test:test_example_file_success --test_case=zumzum")
+        output = @c.ceedling_build_exec("test:test_example_file_success --test_case=zumzum")
 
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/No tests executed./)
@@ -906,29 +968,10 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("test:test_example_file_success --test_case=_adds_numbers --exclude_test_case=_adds_numbers")
+        output = @c.ceedling_build_exec("test:test_example_file_success --test_case=_adds_numbers --exclude_test_case=_adds_numbers")
 
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/No tests executed./)
-      end
-    end
-  end
-
-  def confirm_if_notification_for_cmdline_args_not_enabled_is_disabled
-    @c.with_context do
-      Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("example_file.h"), 'src/'
-        FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
-
-        output = @c.ceedling_exec("test:test_example_file_success")
-
-        expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
-        expect(output).to match(/TESTED:\s+2/)
-        expect(output).to match(/PASSED:\s+1/)
-        expect(output).to match(/FAILED:\s+0/)
-        expect(output).to match(/IGNORED:\s+1/)
-        expect(output).not_to match(/:cmdline_args/)
       end
     end
   end
@@ -940,7 +983,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("test:all --exclude_test_case=test_add_numbers_adds_numbers")
+        output = @c.ceedling_build_exec("test:all --exclude_test_case=test_add_numbers_adds_numbers")
 
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+1/)
@@ -958,7 +1001,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
 
-        output = @c.ceedling_exec("test:test_example_file_success --test_case=_adds_numbers")
+        output = @c.ceedling_build_exec("test:test_example_file_success --test_case=_adds_numbers")
 
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+1/)
@@ -979,7 +1022,7 @@ module CeedlingSystemTestCases
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :none }})
 
-        output = @c.ceedling_exec("test:all")
+        output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures./)
@@ -997,7 +1040,7 @@ module CeedlingSystemTestCases
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :none }})
 
-        output = @c.ceedling_exec("test:all")
+        output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures./)
@@ -1017,7 +1060,7 @@ module CeedlingSystemTestCases
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
-        output = @c.ceedling_exec("test:all")
+        output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures./)
@@ -1041,7 +1084,7 @@ module CeedlingSystemTestCases
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
-        output = @c.ceedling_exec("test:all --test_case=test_add_numbers_will_fail")
+        output = @c.ceedling_build_exec("test:all --test_case=test_add_numbers_will_fail")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures./)
@@ -1065,7 +1108,7 @@ module CeedlingSystemTestCases
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
-        output = @c.ceedling_exec("test:all --exclude_test_case=add_numbers_adds_numbers")
+        output = @c.ceedling_build_exec("test:all --exclude_test_case=add_numbers_adds_numbers")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures./)
@@ -1086,7 +1129,7 @@ module CeedlingSystemTestCases
         FileUtils.cp test_asset_path("example_file_with_statics.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_source_include.c"), 'test/'
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)
@@ -1121,7 +1164,7 @@ module CeedlingSystemTestCases
 
         File.write(File.join('test','test_example_file_success.c'), updated_test_file.join("\n"), mode: 'w')
 
-        output = @c.ceedling_exec
+        output = @c.ceedling_build_exec
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
         expect(output).to match(/TESTED:\s+\d/)
         expect(output).to match(/PASSED:\s+\d/)

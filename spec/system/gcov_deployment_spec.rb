@@ -8,9 +8,9 @@
 require 'spec_system_helper'
 require 'gcov/gcov_test_cases_spec'
 
-describe "Ceedling" do
+ceedling_system_tests do
   describe "Gcov" do
-    include CeedlingTestCases
+    include CeedlingSystemTestCases
     include GcovTestCases
     before :all do
       determine_reports_to_test
@@ -25,7 +25,7 @@ describe "Ceedling" do
     before { @proj_name = "fake_project" }
     after { @c.with_context { FileUtils.rm_rf @proj_name } }
 
-    describe "basic operations" do
+    describe "Basic operations" do
       before do
         @c.with_context do
           `bundle exec ruby -S ceedling new --local #{@proj_name} 2>&1`
@@ -47,7 +47,7 @@ describe "Ceedling" do
     end
 
 
-    describe "command: `ceedling example temp_sensor`" do
+    describe "Command: `ceedling example temp_sensor`" do
       describe "temp_sensor" do
         before do
           @c.with_context do

@@ -7,7 +7,7 @@
 
 require 'spec_system_helper'
 
-describe "Ceedling" do
+ceedling_system_tests do
   include CeedlingSystemTestCases
 
   before :all do
@@ -22,26 +22,26 @@ describe "Ceedling" do
   before { @proj_name = "fake_project" }
   after { @c.with_context { FileUtils.rm_rf @proj_name } }
 
-  describe "Upgrade a Project's `vendor` Directory" do
+  describe "Upgrade a project's `vendor` directory" do
     before do
       @c.with_context do
-        @c.ceedling_manage("new --local #{@proj_name}")
+        @c.ceedling_appcmd_exec("new --local #{@proj_name}")
       end
     end
 
-    describe "Initial Project State" do
-      describe "Project Creation" do
+    describe "Initial project state" do
+      describe "Project creation" do
         test_case :can_create_projects
         test_case :contains_a_vendor_directory
         test_case :does_not_contain_documentation
       end
 
-      describe "Help System" do
+      describe "Help system" do
         test_case :can_fetch_non_project_help
         test_case :can_fetch_project_help
       end
 
-      describe "Basic Test Execution" do
+      describe "Basic test execution" do
         test_case :can_test_projects_with_success
         test_case :can_test_projects_with_success_test_alias
         test_case :can_test_projects_with_success_default
@@ -52,32 +52,32 @@ describe "Ceedling" do
         test_case :can_test_projects_with_test_file_directly_including_source_file
       end
 
-      describe "Unity Features" do
+      describe "Unity features" do
         test_case :can_test_projects_with_unity_exec_time
       end
 
-      describe "Defines and Configuration" do
+      describe "Defines and configuration" do
         test_case :can_test_projects_with_test_and_vendor_defines_with_success
       end
     end
 
-    describe "After Upgrade" do
-      describe "Upgrade Operations" do
+    describe "After upgrade" do
+      describe "Upgrade operations" do
         test_case :can_upgrade_projects
         test_case :can_upgrade_projects_even_if_test_support_folder_does_not_exist
       end
 
-      describe "Project Structure" do
+      describe "Project structure" do
         test_case :contains_a_vendor_directory
         test_case :does_not_contain_documentation
       end
 
-      describe "Help System" do
+      describe "Help system" do
         test_case :can_fetch_non_project_help
         test_case :can_fetch_project_help
       end
 
-      describe "Basic Test Execution" do
+      describe "Basic test execution" do
         test_case :can_test_projects_with_success
         test_case :can_test_projects_with_success_test_alias
         test_case :can_test_projects_with_success_default
@@ -88,17 +88,17 @@ describe "Ceedling" do
         test_case :can_test_projects_with_test_file_directly_including_source_file
       end
 
-      describe "Unity Features" do
+      describe "Unity features" do
         test_case :can_test_projects_with_unity_exec_time
       end
 
-      describe "Defines and Configuration" do
+      describe "Defines and configuration" do
         test_case :can_test_projects_with_test_and_vendor_defines_with_success
       end
     end
   end
 
-  describe "Upgrade Error Handling" do
+  describe "Upgrade error handling" do
     test_case :cannot_upgrade_non_existing_project
   end
 end
