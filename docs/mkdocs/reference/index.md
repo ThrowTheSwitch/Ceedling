@@ -17,13 +17,14 @@ configuration section into compact, scannable lists.
 
     ---
 
-    YAML configuration sections, loading, and mixins.
+    Project configuration sections, project loading, and modifying 
+    a project configuration with mixins.
 
 -   :material-pound: **[Test Build Directives][build-directives]**
 
     ---
 
-    `TEST_SOURCE_FILE()` and `TEST_INCLUDE_PATH()` macros.
+    Macros for affecting the build configuration for an individual test file.
 
 -   :material-variable: **[Environment Variables][environment-vars]**
 
@@ -35,13 +36,15 @@ configuration section into compact, scannable lists.
 
     ---
 
-    All `TEST_PARTIAL_*`, `MOCK_PARTIAL_*`, `*_CONFIG`, and `PARTIAL_LOCAL_VAR()` macros.
+    All function selection and static variable access macros used with 
+    [Partials](../testing-guide/partials/index.md)
 
 -   :material-chart-bar: **[Coverage Reporting][coverage-reporting]**
 
     ---
 
-    All `:gcov:`, `:gcovr:`, and `:report_generator:` YAML configuration options.
+    All [GCov plugin](../plugins/gcov/index.md) configuration options including 
+    those for advanced reports with GCovr and ReportGenerator.
 
 -   :material-database: **[Global Collections][global-collections]**
 
