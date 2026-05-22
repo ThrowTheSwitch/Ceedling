@@ -2,354 +2,354 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/help/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/environment-vars/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/global-collections/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/parallel-builds/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/project-file/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/which-ceedling/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/cexception/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/cmock/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/defines/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/environment/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/extension/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/files/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/flags/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/libraries/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/mixins/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/paths/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/plugins/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/project/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/release-build/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/test-build/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/test-runner/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/tools/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/unity/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/development/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/development/plugins/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/development/plugins/configuration/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/development/plugins/plugin-subclass/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/development/plugins/rake-tasks/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/getting-started/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/getting-started/command-line/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/getting-started/installation/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/getting-started/quick-start/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/overview/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/overview/build-system/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/overview/test-environments/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/overview/tools-and-frameworks/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/beep/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/command-hooks/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/compile-commands-json-db/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/dependencies/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/fff/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/module-generator/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/report-build-warnings-log/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/report-tests-gtestlike-stdout/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/report-tests-ide-stdout/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/report-tests-log-factory/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/report-tests-pretty-stdout/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/report-tests-raw-output-log/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/report-tests-teamcity-stdout/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/gcov/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/gcov/examples/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/gcov/gcovr/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/gcov/overview/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/gcov/reportgenerator/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/gcov/reporting/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/gcov/setup/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/gcov/tool-versions/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/gcov/troubleshooting/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/project/release-history/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/project/upgrade/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/reference/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/reference/build-directives/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/reference/command-line/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/reference/environment-vars/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/reference/gcov-plugin/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/reference/global-collections/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/reference/partials-macros/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/reference/project-configuration/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/build-directives/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/conventions/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/frameworks/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/test-cases/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/test-sample/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/test-suite-anatomy/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/partials/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/partials/configuration/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/partials/conventions/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/partials/directives/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/partials/example/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/partials/overview/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/testing-guide/partials/variables/</loc>
-         <lastmod>2026-05-19</lastmod>
+         <lastmod>2026-05-22</lastmod>
     </url>
 </urlset>
