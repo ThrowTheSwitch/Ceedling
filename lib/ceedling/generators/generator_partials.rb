@@ -101,7 +101,8 @@ class GeneratorPartials
         anything_emitted = true
       when CExtractorTypes::CVariableDeclaration
         next unless include_variables
-        io << "extern #{item.type} #{item.name};\n"
+        # If there is no array involved, array_suffix collapses to an empty string
+        io << "extern #{item.type} #{item.name}#{item.array_suffix};\n"
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CFunctionDefinition, CExtractorTypes::CFunctionDeclaration

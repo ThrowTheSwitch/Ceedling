@@ -302,18 +302,20 @@ class CExtractorDeclarations
   def parse_declaration(individual_text, original_text)
     decorators      = extract_decorators(individual_text)
     clean_text      = strip_decorators(individual_text, decorators)
-    # Strip compiler extensions for name/type extraction only;
+    # Strip compiler extensions for name/type/array_suffix extraction only;
     # clean_text (stored as .text) retains attributes for correct compilation.
     extraction_text = @code_text.strip_compiler_extensions(clean_text)
     name            = extract_name(extraction_text)
     type            = extract_type(extraction_text, name)
+    array_suffix    = extract_array_suffix(extraction_text)
 
     CVariableDeclaration.new(
-      original:    original_text,
-      name:        name,
-      type:        type,
-      decorators:  decorators,
-      text:        clean_text
+      original:     original_text,
+      name:         name,
+      type:         type,
+      array_suffix: array_suffix,
+      decorators:   decorators,
+      text:         clean_text
     )
   end
 
@@ -372,6 +374,14 @@ class CExtractorDeclarations
     text = text.gsub(/\[.*?\]/, '')
     # Strip trailing whitespace and return last word token
     text.strip =~ /(\w+)\s*$/ ? $1 : nil
+  end
+
+  # Extract array subscript suffix from a clean (decorator/extension-stripped) declaration.
+  # Returns the complete subscript string (e.g., "[8]", "[M][N]") or "" for scalars.
+  def extract_array_suffix(clean_text)
+    text = clean_text.sub(/\s*;\s*$/, '').sub(/\s*=.*/, '')
+    return '' if text =~ /\(\s*\*/                       # function pointer -- no array suffix
+    text =~ /\w+(\s*(?:\[[^\]]*\])+)\s*$/ ? $1.strip : ''
   end
 
   # Extract the type from a clean (decorator-stripped) declaration
