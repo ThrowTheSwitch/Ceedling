@@ -1,7 +1,7 @@
 # Ceedling Wondrous Forest Example
 
-Welcome to the **Wondrous Forest** example — a forest environmental monitoring
-station written in embedded C that showcases Ceedling's **Partials** feature.
+Welcome to the _**Wondrous Forest**_ example — a forest environmental monitoring
+station written in C that showcases Ceedling’s Partials feature.
 
 ## What This Example Demonstrates
 
