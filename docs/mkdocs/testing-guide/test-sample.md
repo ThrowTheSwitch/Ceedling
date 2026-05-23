@@ -11,7 +11,7 @@
 ## Core concepts in code
 
 After absorbing this sample code, you'll have context for much
-of the documentation that follows.
+of the rest of the documentation.
 
 The sample test file below demonstrates the following:
 
@@ -28,6 +28,12 @@ The sample test file below demonstrates the following:
 
 All other conventions and features are documented in the sections
 that follow.
+
+!!! tip
+   The `temp_sensor` example project is a real world project that expands 
+   on the style of test code below.
+   [See below](#ceedling-includes-example-projects) for instructions on 
+   how to access example projects.
 
 ```c
 // test_foo.c -----------------------------------------------
@@ -85,7 +91,7 @@ compiles all the code files, and links everything into the test executable.
 Ceedling will then run the test executable and collect test results from it 
 to be reported to the developer at the command line.
 
-## Incidentally, Ceedling comes with example projects
+## Ceedling includes example projects
 
 Ceedling comes with entire example projects you can extract.
 
