@@ -3999,75 +3999,82 @@ Execute <code>ceedling help &lt;command&gt;</code> for detailed help.</p>
 <p><em>NOTE:</em> Because the built-in command line help is thorough, we will only 
 briefly list and explain the available application commands.</p>
 <ul>
-<li><code>ceedling [no arguments]</code>:</li>
-</ul>
+<li>
+<p><code>ceedling [no arguments]</code>:</p>
 <p>Runs the default build tasks. Unless set in the project file, Ceedling 
-  uses a default task of <code>test:all</code>. To override this behavior, set your 
-  own default tasks in the project file (see later section). </p>
-<ul>
-<li><code>ceedling build &lt;tasks...&gt;</code> or <code>ceedling &lt;tasks...&gt;</code>:</li>
-</ul>
+uses a default task of <code>test:all</code>. To override this behavior, set your 
+own default tasks in the project file (see later section). </p>
+<hr />
+</li>
+<li>
+<p><code>ceedling build &lt;tasks...&gt;</code> or <code>ceedling &lt;tasks...&gt;</code>:</p>
 <p>Runs the named build tasks. <code>build</code> is optional (i.e. <code>ceedling test:all</code> 
-  is equivalent to <code>ceedling build test:all</code>). Various option flags
-  exist to control project configuration loading, verbosity levels, 
-  logging, test task filters, etc.</p>
+is equivalent to <code>ceedling build test:all</code>). Various option flags
+exist to control project configuration loading, verbosity levels, 
+logging, test task filters, etc.</p>
 <p>See next section to understand the build &amp; plugin tasks this application
-  command is able to execute. Run <code>ceedling help build</code> to understand all
-  the command line flags that work with build &amp; plugin tasks.</p>
-<ul>
-<li><code>ceedling dumpconfig</code>:</li>
-</ul>
+command is able to execute. Run <code>ceedling help build</code> to understand all
+the command line flags that work with build &amp; plugin tasks.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling dumpconfig</code>:</p>
 <p>Process project configuration and write final result to a YAML file. 
-  Various option flags exist to control project configuration loading,
-  configuration manipulation, and configuration sub-section extraction.</p>
-<ul>
-<li><code>ceedling environment</code>:</li>
-</ul>
+Various option flags exist to control project configuration loading,
+configuration manipulation, and configuration sub-section extraction.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling environment</code>:</p>
 <p>Lists project related environment variables:</p>
 <ul>
 <li>All environment variable names and string values added to your 
-    environment from within Ceedling and through the <code>:environment</code>
-    section of your configuration. This is especially helpful in 
-    verifying the evaluation of any string replacement expressions in
-    your <code>:environment</code> config entries.</li>
-<li>
-<p>All existing Ceedling-related environment variables set before you
-    ran Ceedling from the command line.</p>
+  environment from within Ceedling and through the <code>:environment</code>
+  section of your configuration. This is especially helpful in 
+  verifying the evaluation of any string replacement expressions in
+  your <code>:environment</code> config entries.</li>
+<li>All existing Ceedling-related environment variables set before you
+  ran Ceedling from the command line.</li>
+</ul>
+<hr />
 </li>
 <li>
 <p><code>ceedling example</code>:</p>
-</li>
-</ul>
 <p>Extracts an example project from within Ceedling to your local 
-  filesystem. The available examples are listed with 
-  <code>ceedling examples</code>. Various option flags control whether the example
-  contains vendored Ceedling and/or a documentation bundle.</p>
-<ul>
-<li><code>ceedling examples</code>:</li>
-</ul>
+filesystem. The available examples are listed with 
+<code>ceedling examples</code>. Various option flags control whether the example
+contains vendored Ceedling and/or a documentation bundle.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling examples</code>:</p>
 <p>Lists the available examples within Ceedling. To extract an example,
-  use <code>ceedling example</code>.</p>
-<ul>
-<li><code>ceedling help</code>:</li>
-</ul>
+use <code>ceedling example</code>.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling help</code>:</p>
 <p>Displays summary help for all application commands and detailed help 
-  for each command. <code>ceedling help</code> also loads your project 
-  configuration (if available) and lists all build tasks from it. 
-  Various option flags control what project configuration is loaded.</p>
-<ul>
-<li><code>ceedling new</code>:</li>
-</ul>
+for each command. <code>ceedling help</code> also loads your project 
+configuration (if available) and lists all build tasks from it. 
+Various option flags control what project configuration is loaded.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling new</code>:</p>
 <p>Creates a new project structure. Various option flags control whether 
-  the new project contains vendored Ceedling, a documentation bundle,
-  and/or a starter project configuration file.</p>
-<ul>
-<li><code>ceedling upgrade</code>:</li>
-</ul>
+the new project contains vendored Ceedling, a documentation bundle,
+and/or a starter project configuration file.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling upgrade</code>:</p>
 <p>Upgrade vendored installation of Ceedling for an existing project 
-  along with any locally installed documentation bundles.</p>
-<ul>
-<li><code>ceedling version</code>:</li>
-</ul>
+along with any locally installed documentation bundles.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling version</code>:</p>
 <p>Displays version information for Ceedling and its components. Version output for Ceedling includes the Git Commit short SHA in Ceedling's build identifier and Ceedling's path of origin.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>🌱 Welcome to Ceedling!
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
@@ -4077,11 +4084,13 @@ briefly list and explain the available application commands.</p>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  Build Frameworks
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  ----------------------
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>       CMock =&gt; #.#.#
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>       Unity =&gt; #.#.#
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>      CMock =&gt; #.#.#
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>      Unity =&gt; #.#.#
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  CException =&gt; #.#.#
 </code></pre></div>
 <p>If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling's automated build in CI.</p>
+</li>
+</ul>
 <h2 id="ceedling-build-plugin-tasks">Ceedling build &amp; plugin tasks</h2>
 <p>Build task are loaded from your project configuration. Unlike 
 application commands that are fixed, build tasks vary depending on your
@@ -4089,129 +4098,140 @@ project configuration and the files within your project structure.</p>
 <p>Ultimately, build &amp; plugin tasks are executed by the <code>build</code> application
 command (but the <code>build</code> keyword can be omitted — see above).</p>
 <ul>
-<li><code>ceedling paths:*</code>:</li>
-</ul>
+<li>
+<p><code>ceedling paths:*</code>:</p>
 <p>List all paths collected from <code>:paths</code> entries in your YAML config
-  file where <code>*</code> is the name of any section contained in <code>:paths</code>. This
-  task is helpful in verifying the expansion of path wildcards / globs
-  specified in the <code>:paths</code> section of your config file.</p>
-<ul>
-<li><code>ceedling files:assembly</code></li>
+file where <code>*</code> is the name of any section contained in <code>:paths</code>. This
+task is helpful in verifying the expansion of path wildcards / globs
+specified in the <code>:paths</code> section of your config file.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling files:assembly</code></p>
+</li>
 <li><code>ceedling files:header</code></li>
 <li><code>ceedling files:source</code></li>
 <li><code>ceedling files:support</code></li>
-<li><code>ceedling files:test</code></li>
-</ul>
+<li>
+<p><code>ceedling files:test</code></p>
 <p>List all files and file counts collected from the relevant search
-  paths specified by the <code>:paths</code> entries of your YAML config file. The
-  <code>files:assembly</code> task will only be available if assembly support is
-  enabled in the <code>:release_build</code> or <code>:test_build</code> sections of your 
-  configuration file.</p>
-<ul>
-<li><code>ceedling test:all</code>:</li>
-</ul>
+paths specified by the <code>:paths</code> entries of your YAML config file. The
+<code>files:assembly</code> task will only be available if assembly support is
+enabled in the <code>:release_build</code> or <code>:test_build</code> sections of your 
+configuration file.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling test:all</code>:</p>
 <p>Run all unit tests.</p>
-<ul>
-<li><code>ceedling test:*</code>:</li>
-</ul>
+<hr />
+</li>
+<li>
+<p><code>ceedling test:*</code>:</p>
 <p>Execute the named test file or the named source file that has an
-  accompanying test. No path. Examples: <code>ceedling test:foo</code>, <code>ceedling 
-  test:foo.c</code> or <code>ceedling test:test_foo.c</code></p>
-<ul>
-<li><code>ceedling test:* --test-case=&lt;test_case_name&gt;</code>
-  Execute individual test cases which match <code>test_case_name</code>.</li>
-</ul>
+accompanying test. No path. Examples: <code>ceedling test:foo</code>, <code>ceedling 
+test:foo.c</code> or <code>ceedling test:test_foo.c</code></p>
+<hr />
+</li>
+<li>
+<p><code>ceedling test:* --test-case=&lt;test_case_name&gt;</code>
+    Execute individual test cases which match <code>test_case_name</code>.</p>
 <p>For instance, if you have a test file <em>test_gpio.c</em> containing the following 
-  test cases (test cases are simply <code>void test_name(void)</code>:</p>
-<div class="highlight"><pre><span></span><code>- `test_gpio_start`
-- `test_gpio_configure_proper`
-- `test_gpio_configure_fail_pin_not_allowed`
-</code></pre></div>
+test cases (test cases are simply <code>void test_name(void)</code>:</p>
+<ul>
+<li><code>test_gpio_start</code></li>
+<li><code>test_gpio_configure_proper</code></li>
+<li><code>test_gpio_configure_fail_pin_not_allowed</code></li>
+</ul>
 <p>… and you want to run only <em>configure</em> tests, you can call:</p>
-<div class="highlight"><pre><span></span><code>`ceedling test:gpio --test-case=configure`
-</code></pre></div>
+<p><code>ceedling test:gpio --test-case=configure</code></p>
 <p><strong>Test case matching notes</strong></p>
 <ul>
-<li>
-<p>Test case matching is on sub-strings. <code>--test_case=configure</code> matches on
-    the test cases including the word <em>configure</em>, naturally. 
-    <code>--test-case=gpio</code> would match all three test cases.</p>
+<li>Test case matching is on sub-strings. <code>--test_case=configure</code> matches on
+  the test cases including the word <em>configure</em>, naturally. 
+  <code>--test-case=gpio</code> would match all three test cases.</li>
+</ul>
+<hr />
 </li>
 <li>
 <p><code>ceedling test:* --exclude_test_case=&lt;test_case_name&gt;</code>
-  Execute test cases which do not match <code>test_case_name</code>.</p>
-</li>
-</ul>
+    Execute test cases which do not match <code>test_case_name</code>.</p>
 <p>For instance, if you have file test_gpio.c with defined 3 tests:</p>
-<div class="highlight"><pre><span></span><code>- `test_gpio_start`
-- `test_gpio_configure_proper`
-- `test_gpio_configure_fail_pin_not_allowed`
-</code></pre></div>
+<ul>
+<li><code>test_gpio_start</code></li>
+<li><code>test_gpio_configure_proper</code></li>
+<li><code>test_gpio_configure_fail_pin_not_allowed</code></li>
+</ul>
 <p>… and you want to run only start tests, you can call:</p>
-<div class="highlight"><pre><span></span><code>`ceedling test:gpio --exclude_test_case=configure`
-</code></pre></div>
+<p><code>ceedling test:gpio --exclude_test_case=configure</code></p>
 <p><strong>Test case exclusion matching notes</strong></p>
 <ul>
-<li>
-<p>Exclude matching follows the same sub-string logic as discussed in the
-    preceding section.</p>
+<li>Exclude matching follows the same sub-string logic as discussed in the
+  preceding section.</li>
+</ul>
+<hr />
 </li>
 <li>
 <p><code>ceedling test:pattern[*]</code>:</p>
-</li>
-</ul>
 <p>Execute any tests whose name and/or path match the regular expression
-  pattern (case sensitive). Example: <code>ceedling "test:pattern[(I|i)nit]"</code> 
-  will execute all tests named for initialization testing.</p>
+pattern (case sensitive). Example: <code>ceedling "test:pattern[(I|i)nit]"</code> 
+will execute all tests named for initialization testing.</p>
 <p><em>NOTE:</em> Quotes are likely necessary around the regex characters or 
-  entire task to distinguish characters from shell command line operators.</p>
-<ul>
-<li><code>ceedling test:path[*]</code>:</li>
-</ul>
+entire task to distinguish characters from shell command line operators.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling test:path[*]</code>:</p>
 <p>Execute any tests whose path contains the given string (case
-  sensitive). Example: <code>ceedling test:path[foo/bar]</code> will execute all tests
-  whose path contains foo/bar. <em>Notes:</em></p>
+sensitive). Example: <code>ceedling test:path[foo/bar]</code> will execute all tests
+whose path contains foo/bar. <em>Notes:</em></p>
 <ol>
 <li>Both directory separator characters <code>/</code> and <code>\</code> are valid.</li>
-<li>
-<p>Quotes may be necessary around the task to distinguish the parameter's
-     characters from shell command line operators.</p>
+<li>Quotes may be necessary around the task to distinguish the parameter's
+  characters from shell command line operators.</li>
+</ol>
+<hr />
 </li>
 <li>
 <p><code>ceedling release</code>:</p>
-</li>
-</ol>
 <p>Build all source into a release artifact (if the release build option
-  is configured).</p>
-<ul>
-<li><code>ceedling release:compile:*</code>:</li>
-</ul>
+is configured).</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling release:compile:*</code>:</p>
 <p>Sometimes you just need to compile a single file dagnabit. Example:
-  <code>ceedling release:compile:foo.c</code></p>
-<ul>
-<li><code>ceedling release:assemble:*</code>:</li>
-</ul>
+<code>ceedling release:compile:foo.c</code></p>
+<hr />
+</li>
+<li>
+<p><code>ceedling release:assemble:*</code>:</p>
 <p>Sometimes you just need to assemble a single file doggonit. Example:
-  <code>ceedling release:assemble:foo.s</code></p>
-<ul>
-<li><code>ceedling summary</code>:</li>
-</ul>
+<code>ceedling release:assemble:foo.s</code></p>
+<hr />
+</li>
+<li>
+<p><code>ceedling summary</code>:</p>
 <p>If plugins are enabled, this task will execute the summary method of
-  any plugins supporting it. This task is intended to provide a quick
-  roundup of build artifact metrics without re-running any part of the
-  build.</p>
-<ul>
-<li><code>ceedling clean</code>:</li>
-</ul>
+any plugins supporting it. This task is intended to provide a quick
+roundup of build artifact metrics without re-running any part of the
+build.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling clean</code>:</p>
 <p>Deletes all toolchain binary artifacts (object files, executables),
-  test results, and any temporary files. Clean produces no output at the
-  command line unless verbosity has been set to an appreciable level.</p>
-<ul>
-<li><code>ceedling clobber</code>:</li>
-</ul>
+test results, and any temporary files. Clean produces no output at the
+command line unless verbosity has been set to an appreciable level.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling clobber</code>:</p>
 <p>Extends clean task's behavior to also remove generated files: test
-  runners, mocks, preprocessor output. Clobber produces no output at the
-  command line unless verbosity has been set to an appreciable level.</p>
+runners, mocks, preprocessor output. Clobber produces no output at the
+command line unless verbosity has been set to an appreciable level.</p>
+</li>
+</ul>
 <h2 id="command-line-tasks-extra-credit">Command Line Tasks, Extra Credit</h2>
 <h3 id="combining-tasks-at-the-command-line">Combining Tasks At the Command Line</h3>
 <p>Multiple build tasks can be executed at the command line.</p>
