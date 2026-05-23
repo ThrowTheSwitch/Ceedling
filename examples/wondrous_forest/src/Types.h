@@ -22,6 +22,9 @@ typedef int32_t  int32;
 #define NULL ((void*)0)
 #endif
 
+#define PRIVATE        static
+#define PRIVATE_INLINE static inline
+
 #define ADC_MAX_COUNTS        (4095u)
 #define ADC_VREF_MV           (3300u)
 

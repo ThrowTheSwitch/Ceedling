@@ -294,7 +294,7 @@ class Preprocessinator
     return preprocessed_filepath
   end
 
-  def preprocess_partial_header_file(
+  def preprocess_partial_header_file_preserve_macros(
       test:,
       filepath:,
       directives_only_filepath:,
@@ -346,7 +346,7 @@ class Preprocessinator
     return preprocessed_filepath, includes
   end
 
-  def preprocess_partial_source_file(
+  def preprocess_partial_source_file_preserve_macros(
       test:,
       filepath:,
       directives_only_filepath:,
@@ -463,8 +463,69 @@ class Preprocessinator
     return preprocessed_filepath
   end
 
+  def preprocess_partial_header_expand_macros(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+    _preprocess_partial_expand_macros(
+      filepath:      filepath,
+      test:          test,
+      flags:         flags,
+      include_paths: include_paths,
+      vendor_paths:  vendor_paths,
+      defines:       defines
+    )
+  end
+
+  def preprocess_partial_source_expand_macros(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+    _preprocess_partial_expand_macros(
+      filepath:      filepath,
+      test:          test,
+      flags:         flags,
+      include_paths: include_paths,
+      vendor_paths:  vendor_paths,
+      defines:       defines
+    )
+  end
+
   ### Private ###
   private
+
+  def _preprocess_partial_expand_macros(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
+    msg = @reportinator.generate_module_progress(
+      operation: 'Full-preprocessing for expanded Partial signature extraction',
+      module_name: test,
+      filename: File.basename( filepath )
+    )
+    @loginator.log( msg )
+
+    full_expansion_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
+
+    command = @tool_executor.build_command_line(
+      @configurator.tools_test_file_full_preprocessor,
+      flags,
+      filepath,
+      full_expansion_filepath,
+      defines,
+      (include_paths + vendor_paths)
+    )
+    result = @tool_executor.exec( command )
+
+    if result[:exit_code] != 0
+      msg = "Failed to generate full expansion for Partial signature extraction (directives-only signatures will be used) for #{filepath}"
+      @loginator.log( msg, Verbosity::COMPLAIN )
+      return nil
+    end
+
+    contents = @file_assembler.collect_file_contents_from_full_expansion( source_filepath: filepath, test: test )
+
+    @file_assembler.assemble_preprocessed_code_file(
+      filename:              File.basename( filepath ),
+      preprocessed_filepath: full_expansion_filepath,
+      contents:              contents,
+      extras:                [],
+      includes:              []
+    )
+
+    return full_expansion_filepath
+  end
 
   def preprocess_file_includes_common(
       test:,

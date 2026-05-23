@@ -13,12 +13,12 @@ static uint32 s_lux_value;
 static uint32 s_nighttime_threshold_lux;
 
 /* Full-scale 4095 counts = 100 000 lux. */
-static uint32 LightSensor__ConvertRawToLux(uint16 raw_counts)
+PRIVATE uint32 LightSensor__ConvertRawToLux(uint16 raw_counts)
 {
     return ((uint32)raw_counts * 100000ul) / (uint32)ADC_MAX_COUNTS;
 }
 
-static inline bool LightSensor__IsNighttime(uint32 lux)
+PRIVATE_INLINE bool LightSensor__IsNighttime(uint32 lux)
 {
     return lux < s_nighttime_threshold_lux;
 }

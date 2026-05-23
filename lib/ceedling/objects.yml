@@ -360,6 +360,7 @@ partializer_utils:
 partializer_helper:
   compose:
     - partializer_utils
+    - c_extractor
     - c_extractor_declarations
     - file_path_utils
     - loginator

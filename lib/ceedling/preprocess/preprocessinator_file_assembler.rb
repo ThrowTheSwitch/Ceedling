@@ -113,6 +113,19 @@ class PreprocessinatorFileAssembler
   end
 
 
+  def collect_file_contents_from_full_expansion(source_filepath:, test:)
+    contents = []
+
+    full_expansion_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
+
+    @file_wrapper.open( full_expansion_filepath, 'r' ) do |file|
+      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
+    end
+
+    return contents
+  end
+
+
   def assemble_preprocessed_header_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
     # Generate #include guard name for header files
     guardname = FileWrapper.generate_include_guard( filename )

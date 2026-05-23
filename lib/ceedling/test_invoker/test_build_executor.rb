@@ -71,7 +71,25 @@ class TestBuildExecutor
         defines:                  testable.preprocess_defines
       }
 
-      config.preprocessed_filepath, config.includes = @preprocessinator.preprocess_partial_header_file( **arg_hash )
+      config.directives_only_filepath, config.includes = @preprocessinator.preprocess_partial_header_file_preserve_macros( **arg_hash )
+    end
+
+    # Full-preprocess partial header files for expanded signature extraction.
+    @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
+      config   = details[:config]
+      testable = details[:testable]
+      name     = testable.name
+
+      arg_hash = {
+        filepath:      config.filepath,
+        test:          name,
+        flags:         testable.preprocess_flags,
+        include_paths: testable.search_paths,
+        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        defines:       testable.preprocess_defines
+      }
+
+      config.full_expansion_filepath = @preprocessinator.preprocess_partial_header_expand_macros( **arg_hash )
     end
   end
 
@@ -114,7 +132,25 @@ class TestBuildExecutor
         defines:                  testable.preprocess_defines
       }
 
-      config.preprocessed_filepath, config.includes = @preprocessinator.preprocess_partial_source_file( **arg_hash )
+      config.directives_only_filepath, config.includes = @preprocessinator.preprocess_partial_source_file_preserve_macros( **arg_hash )
+    end
+
+    # Full-preprocess partial source files for expanded signature extraction.
+    @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
+      config   = details[:config]
+      testable = details[:testable]
+      name     = testable.name
+
+      arg_hash = {
+        filepath:      config.filepath,
+        test:          name,
+        flags:         testable.preprocess_flags,
+        include_paths: testable.search_paths,
+        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        defines:       testable.preprocess_defines
+      }
+
+      config.full_expansion_filepath = @preprocessinator.preprocess_partial_source_expand_macros( **arg_hash )
     end
   end
 

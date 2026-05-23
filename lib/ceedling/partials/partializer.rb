@@ -204,12 +204,25 @@ class Partializer
 
     # Process the C module source and/or header associated with the Partial config
     [config.header, config.source].zip(['header', 'source']).each do |c_file, file_type|
-      # Do nothing if there's no preprocessed filepath (e.g. no source only header for a Partial mock)
-      next unless c_file.preprocessed_filepath
+      # Do nothing if there's no directives-only preprocessed filepath (e.g. no source only header for a Partial mock)
+      next unless c_file.directives_only_filepath
 
-      c_module = @c_extractor.from_file( c_file.preprocessed_filepath )
+      c_module = @c_extractor.from_file( c_file.directives_only_filepath )
 
       _log_module_contents(name, config.module, file_type, c_module)
+
+      # Update function signatures from fully preprocessed output when available.
+      # Replaces signature/decorators/signature_stripped (but NOT code_block) so that
+      # macros wrapping `static` and `inline` are resolved before visibility filtering.
+      if c_file.full_expansion_filepath
+        @helper.update_signatures_from_full_expansion(
+          funcs:                   c_module.function_definitions,
+          full_expansion_filepath: c_file.full_expansion_filepath,
+          name:                    name,
+          module_name:             config.module,
+          file_type:               file_type
+        )
+      end
 
       # Align extracted function definitions with line markers in preprocessor output.
       # This perfectly remaps functions found in expanded preprocessor output with 

@@ -19,8 +19,8 @@ module Partials
   MOCK_PRIVATE = :mock_private  unless const_defined?(:MOCK_PRIVATE)
 
   # Data class representing a source or header file to be partialized
-  ConfigFileInfo = Struct.new(:filepath, :preprocessed_filepath, :includes, keyword_init: true) do
-    def initialize(filepath: nil, preprocessed_filepath: nil, includes: [])
+  ConfigFileInfo = Struct.new(:filepath, :directives_only_filepath, :full_expansion_filepath, :includes, keyword_init: true) do
+    def initialize(filepath: nil, directives_only_filepath: nil, full_expansion_filepath: nil, includes: [])
       super
     end
   end

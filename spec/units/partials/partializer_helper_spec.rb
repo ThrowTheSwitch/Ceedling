@@ -18,6 +18,7 @@ require 'ostruct'
 describe PartializerHelper do
   before(:each) do
     @partializer_utils        = double("PartializerUtils")
+    @c_extractor              = double("CExtractor")
     @c_extractor_declarations = double("CExtractorDeclarations")
     @file_path_utils          = double("FilePathUtils")
     @loginator                = double("Loginator").as_null_object
@@ -25,6 +26,7 @@ describe PartializerHelper do
     @helper = described_class.new(
       {
         :partializer_utils        => @partializer_utils,
+        :c_extractor              => @c_extractor,
         :c_extractor_declarations => @c_extractor_declarations,
         :file_path_utils          => @file_path_utils,
         :loginator                => @loginator
@@ -538,6 +540,7 @@ describe PartializerHelper do
         PartializerHelper.new(
           {
             :partializer_utils        => real_utils,
+            :c_extractor              => double("CExtractor").as_null_object,
             :c_extractor_declarations => CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new() }).tap(&:setup),
             :file_path_utils          => double("FilePathUtils"),
             :loginator                => double("Loginator").as_null_object
@@ -851,6 +854,138 @@ describe PartializerHelper do
       expect(@partializer_utils).not_to receive(:matches_visibility?)
       expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }
         .not_to raise_error
+    end
+  end
+
+  ###
+  ### update_signatures_from_full_expansion()
+  ###
+
+  context "#update_signatures_from_full_expansion" do
+    require 'ceedling/c_extractor/c_extractor_types'
+
+    def make_expanded_func(name:, signature:, decorators:, signature_stripped:)
+      CExtractorTypes::CFunctionDefinition.new(
+        name:               name,
+        signature:          signature,
+        decorators:         decorators,
+        signature_stripped: signature_stripped
+      )
+    end
+
+    it "replaces signature fields from expanded function when name matches" do
+      func = double('func',
+        name:               'helper',
+        signature:          'MY_STATIC int helper(void)',
+        decorators:         [],
+        signature_stripped: 'int helper(void)'
+      )
+      allow(func).to receive(:signature=)
+      allow(func).to receive(:decorators=)
+      allow(func).to receive(:signature_stripped=)
+
+      expanded_func = make_expanded_func(
+        name:               'helper',
+        signature:          'static int helper(void)',
+        decorators:         ['static'],
+        signature_stripped: 'int helper(void)'
+      )
+      expanded_module = CExtractorTypes::CModule.new(function_definitions: [expanded_func])
+
+      allow(@c_extractor).to receive(:from_file)
+        .with('/build/full_expansion/mod.c')
+        .and_return(expanded_module)
+
+      expect(func).to receive(:signature=).with('static int helper(void)')
+      expect(func).to receive(:decorators=).with(['static'])
+      expect(func).to receive(:signature_stripped=).with('int helper(void)')
+
+      @helper.update_signatures_from_full_expansion(
+        funcs:                   [func],
+        full_expansion_filepath: '/build/full_expansion/mod.c',
+        name:                    'TestMod',
+        module_name:             'mod',
+        file_type:               'source'
+      )
+    end
+
+    it "leaves function unchanged when name is not found in expanded module" do
+      func = double('func',
+        name:               'missing',
+        signature:          'MACRO int missing(void)',
+        decorators:         [],
+        signature_stripped: 'int missing(void)'
+      )
+
+      expanded_module = CExtractorTypes::CModule.new(function_definitions: [])
+
+      allow(@c_extractor).to receive(:from_file).and_return(expanded_module)
+
+      expect(func).not_to receive(:signature=)
+      expect(func).not_to receive(:decorators=)
+      expect(func).not_to receive(:signature_stripped=)
+
+      @helper.update_signatures_from_full_expansion(
+        funcs:                   [func],
+        full_expansion_filepath: '/build/full_expansion/mod.c',
+        name:                    'TestMod',
+        module_name:             'mod',
+        file_type:               'source'
+      )
+    end
+
+    it "updates only matched functions and skips unmatched ones" do
+      func_match = double('matched',
+        name:               'private_func',
+        signature:          'MY_STATIC void private_func(void)',
+        decorators:         [],
+        signature_stripped: 'void private_func(void)'
+      )
+      allow(func_match).to receive(:signature=)
+      allow(func_match).to receive(:decorators=)
+      allow(func_match).to receive(:signature_stripped=)
+
+      func_no_match = double('unmatched', name: 'orphan')
+
+      expanded_func = make_expanded_func(
+        name:               'private_func',
+        signature:          'static void private_func(void)',
+        decorators:         ['static'],
+        signature_stripped: 'void private_func(void)'
+      )
+      expanded_module = CExtractorTypes::CModule.new(function_definitions: [expanded_func])
+
+      allow(@c_extractor).to receive(:from_file).and_return(expanded_module)
+
+      expect(func_match).to receive(:signature=).with('static void private_func(void)')
+      expect(func_match).to receive(:decorators=).with(['static'])
+      expect(func_match).to receive(:signature_stripped=).with('void private_func(void)')
+      expect(func_no_match).not_to receive(:signature=)
+      expect(func_no_match).not_to receive(:decorators=)
+      expect(func_no_match).not_to receive(:signature_stripped=)
+
+      @helper.update_signatures_from_full_expansion(
+        funcs:                   [func_match, func_no_match],
+        full_expansion_filepath: '/build/full_expansion/mod.c',
+        name:                    'TestMod',
+        module_name:             'mod',
+        file_type:               'source'
+      )
+    end
+
+    it "handles an empty funcs list without error" do
+      expanded_module = CExtractorTypes::CModule.new(function_definitions: [])
+      allow(@c_extractor).to receive(:from_file).and_return(expanded_module)
+
+      expect {
+        @helper.update_signatures_from_full_expansion(
+          funcs:                   [],
+          full_expansion_filepath: '/build/full_expansion/mod.c',
+          name:                    'TestMod',
+          module_name:             'mod',
+          file_type:               'source'
+        )
+      }.not_to raise_error
     end
   end
 

@@ -1043,11 +1043,11 @@ describe Partializer do
       allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
     end
 
-    it "returns empty CModule when both preprocessed_filepaths are nil" do
+    it "returns empty CModule when both directives_only_filepaths are nil" do
       config = Partials::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', preprocessed_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', preprocessed_filepath: nil)
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: nil)
       )
 
       expect(@c_extractor).not_to receive(:from_file)
@@ -1069,8 +1069,8 @@ describe Partializer do
 
       config = Partials::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', preprocessed_filepath: '/build/preproc/header.i'),
-        source: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil)
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
+        source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
       )
 
       expect(@c_extractor).to receive(:from_file).with('/build/preproc/header.i').and_return(header_contents)
@@ -1093,8 +1093,8 @@ describe Partializer do
 
       config = Partials::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', preprocessed_filepath: '/build/preproc/source.i')
+        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: '/build/preproc/source.i')
       )
 
       expect(@c_extractor).to receive(:from_file).with('/build/preproc/source.i').and_return(source_contents)
@@ -1122,8 +1122,8 @@ describe Partializer do
 
       config = Partials::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', preprocessed_filepath: '/build/preproc/header.i'),
-        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', preprocessed_filepath: '/build/preproc/source.i')
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
+        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: '/build/preproc/source.i')
       )
 
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/source.i').and_return(source_contents)
@@ -1147,8 +1147,8 @@ describe Partializer do
 
       config = Partials::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', preprocessed_filepath: '/build/preproc/module1.i')
+        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
       )
 
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
@@ -1167,8 +1167,8 @@ describe Partializer do
 
       config = Partials::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', preprocessed_filepath: '/build/preproc/module1.i')
+        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
       )
 
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
@@ -1185,8 +1185,8 @@ describe Partializer do
 
       config = Partials::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', preprocessed_filepath: '/build/preproc/header.i'),
-        source: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil)
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
+        source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
       )
 
       expect(@c_extractor).to receive(:from_file).and_return(empty_contents)
@@ -1208,8 +1208,8 @@ describe Partializer do
 
       config = Partials::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, preprocessed_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', preprocessed_filepath: '/build/preproc/module1.i')
+        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
       )
 
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
@@ -1220,6 +1220,84 @@ describe Partializer do
       expect(result.element_sequence).to eq([promoted_var1, promoted_var2])
       expect(result.element_sequence[0]).to equal(promoted_var1)
       expect(result.element_sequence[1]).to equal(promoted_var2)
+    end
+
+    it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on source" do
+      source_funcs    = [double('func1', name: 'func1')]
+      source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(
+          filepath:               '/src/module1.c',
+          directives_only_filepath: '/build/preproc/module1.i',
+          full_expansion_filepath:  '/build/preproc/full_expansion/module1.c'
+        )
+      )
+
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.i').and_return(source_contents)
+      allow(@partializer_helper).to receive(:associate_function_line_numbers)
+
+      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
+        funcs:                   source_funcs,
+        full_expansion_filepath: '/build/preproc/full_expansion/module1.c',
+        name:                    @name,
+        module_name:             'module1',
+        file_type:               'source'
+      )
+
+      @partializer.extract_module_contents(@name, config, false)
+    end
+
+    it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on header" do
+      header_funcs    = [double('func1', name: 'func1')]
+      header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [])
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(
+          filepath:               '/path/to/header.h',
+          directives_only_filepath: '/build/preproc/header.h',
+          full_expansion_filepath:  '/build/preproc/full_expansion/header.h'
+        ),
+        source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
+      )
+
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/header.h').and_return(header_contents)
+      allow(@partializer_helper).to receive(:associate_function_line_numbers)
+
+      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
+        funcs:                   header_funcs,
+        full_expansion_filepath: '/build/preproc/full_expansion/header.h',
+        name:                    @name,
+        module_name:             'module1',
+        file_type:               'header'
+      )
+
+      @partializer.extract_module_contents(@name, config, false)
+    end
+
+    it "does not call update_signatures_from_full_expansion when full_expansion_filepath is nil" do
+      source_funcs    = [double('func1', name: 'func1')]
+      source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
+
+      config = Partials::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(
+          filepath:               '/src/module1.c',
+          directives_only_filepath: '/build/preproc/module1.i',
+          full_expansion_filepath:  nil
+        )
+      )
+
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.i').and_return(source_contents)
+      allow(@partializer_helper).to receive(:associate_function_line_numbers)
+
+      expect(@partializer_helper).not_to receive(:update_signatures_from_full_expansion)
+
+      @partializer.extract_module_contents(@name, config, false)
     end
   end
 

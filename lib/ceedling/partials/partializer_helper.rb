@@ -19,6 +19,7 @@ class PartializerHelper
 
   constructor(
     :partializer_utils,
+    :c_extractor,
     :c_extractor_declarations,
     :file_path_utils,
     :loginator
@@ -237,6 +238,39 @@ class PartializerHelper
     end
 
     return decls
+  end
+
+  # For each function definition in funcs, find the matching function by name in the fully
+  # preprocessed expansion file and replace the three signature-related fields with their
+  # macro-expanded equivalents. All other fields — especially code_block — are preserved
+  # from the directives-only extraction so that line number mapping stays valid.
+  #
+  # @param funcs [Array<CFunctionDefinition>] Definitions to update in place.
+  # @param full_expansion_filepath [String] Path to the assembled full expansion file
+  #   produced by preprocess_partial_{header,source}_expand_macros().
+  # @param name [String] Test name, used in log messages.
+  # @param module_name [String] Partial module name, used in log messages.
+  # @param file_type [String] "source" or "header", used in log messages.
+  def update_signatures_from_full_expansion(funcs:, full_expansion_filepath:, name:, module_name:, file_type:)
+    expanded_module  = @c_extractor.from_file( full_expansion_filepath )
+    expanded_by_name = expanded_module.function_definitions.each_with_object({}) { |f, h| h[f.name] = f }
+
+    updated = []
+    funcs.each do |func|
+      expanded = expanded_by_name[func.name]
+      next unless expanded
+
+      func.signature          = expanded.signature
+      func.decorators         = expanded.decorators
+      func.signature_stripped = expanded.signature_stripped
+      updated << func.name
+    end
+
+    @loginator.log_list(
+      updated.map { |n| "`#{n}`" },
+      "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}",
+      Verbosity::DEBUG
+    ) unless updated.empty?
   end
 
   # Validate that every function name in additions and subtractions exists in c_module.
