@@ -273,6 +273,7 @@ DEFAULT_RELEASE_TARGET_NAME = 'project'
 DEFAULT_CEEDLING_PROJECT_CONFIG = {
   :project => {
     # :build_root must be set by user
+    :name => '',
     :use_mocks => true,
     :use_exceptions => false,
     :use_partials => false,

@@ -7,6 +7,7 @@
 
 ---
 :project:
+  :name: "Wondrous Forest"
   :which_ceedling: gem
   :ceedling_version: '?'
 

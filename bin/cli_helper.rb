@@ -21,6 +21,13 @@ class CliHelper
     @actions = @actions_wrapper
   end
 
+  def log_project_name(config)
+    name, _ = @config_walkinator.fetch_value( :project, :name, hash:config )
+
+    return if name.nil? || name.empty?
+
+    @loginator.console( "#{name.upcase}\n\n", LogLabels::TITLE )
+  end
 
   def manufacture_app_version(app_cfg)
     return Versionator.new(

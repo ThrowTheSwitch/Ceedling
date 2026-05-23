@@ -181,6 +181,8 @@ class CliHandler
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
+    @cli_helper.log_project_name( config )
+
     default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
     @helper.process_testcase_filters(
@@ -255,6 +257,8 @@ class CliHandler
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
+    @cli_helper.log_project_name( config )
+
     # Exception handling to ensure we dump the configuration regardless of config validation errors
     begin
       # If enabled, process the configuration through Ceedling automatic settings, defaults, plugins, etc.
@@ -291,6 +295,8 @@ class CliHandler
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
+    @cli_helper.log_project_name( config )
+
     default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
     # Save references; explicitly disable log file output
@@ -318,6 +324,8 @@ class CliHandler
     @path_validator.standardize_paths( options[:project], *options[:mixin] )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    @cli_helper.log_project_name( config )
 
     # Save references
     app_cfg.set_project_config( config )

@@ -7,6 +7,7 @@
 
 ---
 :project:
+  :name: "FFF Example Project"
   # how to use ceedling. If you're not sure, leave this as `gem` and `?`
   :which_ceedling: ../../../..
   :ceedling_version: '?'
