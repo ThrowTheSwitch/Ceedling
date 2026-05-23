@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/configurator'
+require 'ceedling/config/configurator'
 
 describe Configurator do
 	describe "#standardize_paths" do

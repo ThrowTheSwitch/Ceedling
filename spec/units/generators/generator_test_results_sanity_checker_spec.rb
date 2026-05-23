@@ -9,7 +9,7 @@ require 'spec_helper'
 require 'ceedling/generators/generator_test_results_sanity_checker'
 require 'ceedling/constants'
 require 'ceedling/loginator'
-require 'ceedling/configurator'
+require 'ceedling/config/configurator'
 
 describe GeneratorTestResultsSanityChecker do
   before(:each) do

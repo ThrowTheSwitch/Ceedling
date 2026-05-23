@@ -11,7 +11,7 @@ require 'ceedling/generators/generator_test_results'
 require 'ceedling/yaml_wrapper'
 require 'ceedling/constants'
 require 'ceedling/loginator'
-require 'ceedling/configurator'
+require 'ceedling/config/configurator'
 
 NORMAL_OUTPUT =
   "Verbose output one\n" +

@@ -59,8 +59,12 @@ begin
   #  4. Perform object construction + dependency injection from bin/objects.yml
   #  5. Remove all paths added to $LOAD_PATH
   #     (Main application will restore certain paths -- possibly updated by :which_ceedling)
-  $LOAD_PATH.unshift( 
+  $LOAD_PATH.unshift(
+    # lib/ceedling for base of any require statements
     CEEDLING_APPCFG[:ceedling_lib_path],
+    # Add lib/ceedling/config to load configuration handling utils
+    File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'config' ),
+    # DIY vendored path
     diy_vendor_path
   )
 

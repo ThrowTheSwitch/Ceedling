@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/config_walkinator'
+require 'ceedling/config/config_walkinator'
 
 describe ConfigWalkinator do
   before(:each) do
