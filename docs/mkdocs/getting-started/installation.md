@@ -29,8 +29,8 @@ images and go.
      charge.
    * Installing from the RubyGems repo will also install Ceedling's 
      dependencies.
-1. Execute Ceedling at command line to create example project
-   or an empty Ceedling project in your filesystem (executing
+1. Execute Ceedling at the command line to export an example project
+   or create an empty Ceedling project in your filesystem (executing
    `ceedling help` first is, well, helpful).
 
 [ruby-gem]: http://docs.rubygems.org/read/chapter/1
