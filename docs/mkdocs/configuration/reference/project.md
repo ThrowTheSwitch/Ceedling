@@ -9,12 +9,18 @@
 
 ```yaml
 :project:
+  :nane: "Acme Smartomatic"
   :build_root: project_awesome/build
   :use_exceptions: FALSE
   :use_test_preprocessor: :all
   :release_build: TRUE
   :compile_threads: :auto
 ```
+
+## `:name`
+
+Optional project name that, if present, adds a new first line to logging output
+with the project name.
 
 ## `:build_root`
 
