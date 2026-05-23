@@ -38,7 +38,7 @@ class ToolExecutor
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     # Log command as is
-    @loginator.lazy( Verbosity::DEBUG ) { "Command: #{command}" }
+    @loginator.lazy( Verbosity::DEBUG ) { "> Command: #{command}\n\n" }
 
     # Update executable after any expansion
     command[:executable] = executable
@@ -131,18 +131,26 @@ class ToolExecutor
   end
 
 
-  # handle simple text string argument & argument array string replacement operators
+  # Handle simple text string argument & argument array string replacement operators
   def expandify_element(tool_name, element, *args)
     match = //
     to_process = nil
     args_index = 0
 
-    # handle ${#} input replacement
+    # Handle ${#} input replacement
     if (element =~ PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
+      # Convert argument numbering from configuration 1-indexed to array 0-indexed
       args_index = ($2.to_i - 1)
 
-      if (args.nil? or args[args_index].nil?)
-        error = "Tool '#{tool_name}' expected valid argument data to accompany replacement operator #{$1}."
+      args_size = args.nil? ? 0 : args.size()
+
+      if (args_size == 0)
+        error = "Command building for tool '#{tool_name}' expects argument data but was provided none."
+        raise CeedlingException.new( error )
+      end
+
+      if (args_index >= args_size)
+        error = "Command building for tool '#{tool_name}' was provided only #{args_size} arguments but references a replacement operator #{$1}."
         raise CeedlingException.new( error )
       end
 
@@ -150,19 +158,19 @@ class ToolExecutor
       to_process = args[args_index]
     end
 
-    # simple string argument: replace escaped '\$' and strip
+    # Simple string argument: replace escaped '\$' and strip
     element.sub!(/\\\$/, '$')
     element.strip!
 
     build_string = ''
 
-    # handle array or anything else passed into method to be expanded in place of replacement operators
+    # Handle array or anything else passed into method to be expanded in place of replacement operators
     case (to_process)
       when Array then to_process.each {|value| build_string.concat( "#{element.sub(match, value.to_s)} " ) } if (to_process.size > 0)
       else build_string.concat( element.sub(match, to_process.to_s) )
     end
 
-    # handle inline ruby string substitution
+    # Handle inline ruby string substitution
     if (build_string =~ PATTERNS::RUBY_STRING_REPLACEMENT)
       build_string.replace(@system_wrapper.module_eval(build_string))
     end
