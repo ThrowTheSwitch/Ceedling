@@ -9,6 +9,24 @@ This changelog is complemented by two other documents:
 
 ---
 
+# [1.1.0] - Prerelease
+
+## 🌟 Added
+
+- Placeholder
+
+## 💪 Fixed
+
+- Placeholder
+
+## ⚠️ Changed
+
+- Placeholder
+
+## 👋 Removed
+
+- Placeholder
+
 # [1.0.1] - 2025-01-30
 
 ## 💪 Fixed
