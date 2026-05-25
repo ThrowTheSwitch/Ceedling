@@ -80,15 +80,7 @@ jobs:
       # version is computed here from the tag and is never manually set.
       - name: Stamp Gem Version from Git Tag
         shell: bash
-        run: |
-          # Strip leading 'v' from the Git tag (e.g. v1.1.0-pre.1 → 1.1.0-pre.1)
-          GEM_VERSION="${GITHUB_REF_NAME#v}"
-          # Replace the first hyphen with a dot (RubyGems pre-release notation)
-          # e.g. 1.1.0-pre.1 → 1.1.0.pre.1 ; 1.1.0 → 1.1.0 (no-op for release tags)
-          GEM_VERSION="${GEM_VERSION/-/.}"
-          # Stamp the computed version into lib/version.rb for this build only
-          sed -i "s/GEM = '.*'/GEM = '${GEM_VERSION}'/" lib/version.rb
-          echo "Building gem version: ${GEM_VERSION}"
+        run: .github/workflows/stamp_gem_version.sh "${GITHUB_REF_NAME}" lib/version.rb
 
       # Extract the changelog section matching this release version for use as the
       # release body. The script exits 0 (found) or 1 (not found / file missing).
@@ -135,6 +127,10 @@ jobs:
       # body and generate_release_notes within a single step via expressions.
 
       # Use the extracted changelog section as the release body when the section was found
+      - name: Log Release Notes Source (changelog body)
+        if: steps.changelog.outputs.found == 'true'
+        run: echo "Publishing release with Changelog.md section as release notes body."
+
       - name: Publish GitHub Release (changelog body)
         if: steps.changelog.outputs.found == 'true'
         uses: softprops/action-gh-release@v2
@@ -145,6 +141,10 @@ jobs:
 
       # Fall back to GitHub's auto-generated release notes (from last commit)
       # when no changelog section exists for this version
+      - name: Log Release Notes Source (auto-generated)
+        if: steps.changelog.outputs.found != 'true'
+        run: echo "No Changelog.md section found for this version; publishing release with GitHub auto-generated release notes."
+
       - name: Publish GitHub Release (auto-generated notes)
         if: steps.changelog.outputs.found != 'true'
         uses: softprops/action-gh-release@v2
