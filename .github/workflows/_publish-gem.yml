@@ -90,6 +90,24 @@ jobs:
           sed -i "s/GEM = '.*'/GEM = '${GEM_VERSION}'/" lib/version.rb
           echo "Building gem version: ${GEM_VERSION}"
 
+      # Extract the changelog section matching this release version for use as the
+      # release body. The script exits 0 (found) or 1 (not found / file missing).
+      # Shell vars don't persist across steps; version is re-derived from the tag.
+      - name: Extract Changelog Section for Release Notes
+        id: changelog
+        shell: bash
+        run: |
+          GEM_VERSION="${GITHUB_REF_NAME#v}"
+          GEM_VERSION="${GEM_VERSION/-/.}"
+          BODY_FILE="${RUNNER_TEMP}/release_body.md"  # $RUNNER_TEMP: Actions-provided temp dir
+
+          if .github/workflows/extract_changelog.sh "${GEM_VERSION}" "docs/Changelog.md" "${BODY_FILE}"; then
+            echo "found=true"             >> "$GITHUB_OUTPUT"
+            echo "body_path=${BODY_FILE}" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false"            >> "$GITHUB_OUTPUT"
+          fi
+
       # Download HTML docs bundle built by _generate-docs.yml
       # Artifacts are shared within the same workflow run by run_id
       - name: Download HTML Documentation Bundle
@@ -103,13 +121,28 @@ jobs:
           gem build ceedling.gemspec
 
       # softprops/action-gh-release@v2 replaces the archived actions/create-release@v1
-      # and actions/upload-release-asset@v1
-      - name: Publish GitHub Release
+      # and actions/upload-release-asset@v1.
+      # Two conditional steps are used because the action cannot switch between
+      # body_path and generate_release_notes within a single step via expressions.
+
+      # Use the extracted changelog section as the release body when the section was found
+      - name: Publish GitHub Release (changelog body)
+        if: steps.changelog.outputs.found == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          draft: true # Temporary for testing
           prerelease: ${{ inputs.prerelease }}
           files: ceedling-*.gem
+          body_path: ${{ steps.changelog.outputs.body_path }}
+
+      # Fall back to GitHub's auto-generated release notes (commit comparison since
+      # the previous tag) when no changelog section exists for this version
+      - name: Publish GitHub Release (auto-generated notes)
+        if: steps.changelog.outputs.found != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ inputs.prerelease }}
+          files: ceedling-*.gem
+          generate_release_notes: true
 
       # Uncomment and add RUBYGEMS_API_KEY secret to automate RubyGems.org publishing
       # - name: Push to RubyGems.org
