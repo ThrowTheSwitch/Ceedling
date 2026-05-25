@@ -9,7 +9,43 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.0.1] - 2025-01-30
+# [1.1.0] — Prerelease
+
+## 🌟 Added
+
+- **Partials.** [A Partial](https://throwtheswitch.github.io/Ceedling/dev/testing-guide/partials/) is a new feature that allows a test author to work with portions of the same C module under test differently from within the same test file. For example, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see #936).
+- CLI additions:
+   - `ceedling help` output provides links for further support and Github sponsorship.
+   - `ceedling check` validates your configuration and produces logs from processing it without executing a build.
+   - `ceedling docs` exports new HTML-based documentation site to your filesystem.
+- Preprocessing support for distinguishing and handling system includes (`#include <system.h>`) and user includes (`#include "user.h"`).
+
+## 💪 Fixed
+
+- #1011 Performance Improvements.
+- #1014 Line Continuations not working in test name.
+- #1015 directive-only issue.
+- #1024 Fixed bug in options-handling for warnings log report.
+- #358 Mocks with relative path in include .
+- `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
+- Now properly reports timing for single-batch builds (i.e. non-parallel builds).
+- Fixes to `#include`s handling and encoding.
+- PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
+- PR #1056 fix for extracting `#include` directive filenames that contain dashes.
+- Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
+
+## ⚠️ Changed
+
+- The monolothic _CeedlingPacket.md_ user manual has been replaced by a full web-based documentation site.
+   - A verion that is navigable from your filesystem is included within Ceedling and exportable through CLI functions.
+   - The online version is available at: https://throwtheswitch.github.io/Ceedling/
+- PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
+- Significant refactoring and improvements to logging and parallel processing.
+- Streamlined preprocessing, eliminating redundant steps and reducing memory usage.
+- Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
+- Fixes for typos and grammar in documentation and logging.
+
+# [1.0.1] — 2025-01-30
 
 ## 💪 Fixed
 
