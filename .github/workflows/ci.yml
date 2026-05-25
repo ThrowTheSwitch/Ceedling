@@ -109,8 +109,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install --assume-yes --quiet gdb
 
-      # --break-system-packages is required on Ubuntu 24.04+ (PEP 668 prevents pip from
-      # installing to the system Python environment without explicit opt-in)
+      # --break-system-packages is required on Ubuntu 24.04+
+      # (PEP 668 prevents pip from installing to the system Python environment without explicit opt-in)
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
         run: |
           pip install --break-system-packages gcovr
@@ -152,7 +152,7 @@ jobs:
       - name: "Run Tests on Ceedling Plugin: FFF"
         run: |
           cd plugins/fff
-          rake
+          rake --trace
           cd ../..
 
       # Run Module Generator Plugin Tests
