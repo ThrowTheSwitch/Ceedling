@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.1.0] - Prerelease
+# [1.1.0] — Prerelease
 
 ## 🌟 Added
 
@@ -27,7 +27,7 @@ This changelog is complemented by two other documents:
 
 - Placeholder
 
-# [1.0.1] - 2025-01-30
+# [1.0.1] — 2025-01-30
 
 ## 💪 Fixed
 
