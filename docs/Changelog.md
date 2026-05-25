@@ -13,12 +13,25 @@ This changelog is complemented by two other documents:
 
 ## 🌟 Added
 
-- **Partials.** [A Partial](https://throwtheswitch.github.io/Ceedling/dev/testing-guide/partials/) is a new feature that allows a test author to work with portions of the same C module under test differently from within the same test file. For example, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see #936).
-- CLI additions:
-   - `ceedling help` output provides links for further support and Github sponsorship.
-   - `ceedling check` validates your configuration and produces logs from processing it without executing a build.
-   - `ceedling docs` exports new HTML-based documentation site to your filesystem.
-- Preprocessing support for distinguishing and handling system includes (`#include <system.h>`) and user includes (`#include "user.h"`).
+### Partials
+
+[A Partial](https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/) is a new feature that allows a test author to work with portions of the same C module under test differently from within the same test file. For example, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see #936).
+
+### Documentation site
+
+Ceedling is now complemented by a full, searchable documentation site](https://throwtheswitch.github.io/Ceedling/).
+
+A local verion of this site that is navigable from your filesystem is included within Ceedling and exportable through CLI commands.
+
+### CLI additions
+
+- `ceedling help` output provides links for further support and Github sponsorship.
+- `ceedling check` validates your configuration and produces logs from processing it without executing a build.
+- `ceedling docs` exports new HTML-based documentation site to your filesystem.
+
+### System includes
+
+Preprocessing support now properly distinguishes and handles system includes (`#include <system.h>`) and user includes (`#include "user.h"`).
 
 ## 💪 Fixed
 
@@ -36,14 +49,16 @@ This changelog is complemented by two other documents:
 
 ## ⚠️ Changed
 
-- The monolothic _CeedlingPacket.md_ user manual has been replaced by a full web-based documentation site.
-   - A verion that is navigable from your filesystem is included within Ceedling and exportable through CLI functions.
-   - The online version is available at: https://throwtheswitch.github.io/Ceedling/
 - PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
 - Significant refactoring and improvements to logging and parallel processing.
 - Streamlined preprocessing, eliminating redundant steps and reducing memory usage.
 - Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
 - Fixes for typos and grammar in documentation and logging.
+
+## 👋 Removed
+
+- _CeedlingPacket.md_ user manual (superseded by new documentation site and local bundle).
+- _PluginDevelopmentGuide.md_ (superseded by new documentation site and local bundle).
 
 # [1.0.1] — 2025-01-30
 
