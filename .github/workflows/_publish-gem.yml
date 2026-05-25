@@ -97,13 +97,16 @@ jobs:
         id: changelog
         shell: bash
         run: |
-          GEM_VERSION="${GITHUB_REF_NAME#v}"
-          GEM_VERSION="${GEM_VERSION/-/.}"
+          # Strip the leading 'v' then take only the MAJOR.MINOR.PATCH core,
+          # discarding any pre-release suffix (e.g. v1.2.3-pre.1 → 1.2.3).
+          # Changelog entries are keyed on the semver core, not the full tag.
+          SEMVER="${GITHUB_REF_NAME#v}"
+          SEMVER="${SEMVER%%-*}"
           BODY_FILE="${RUNNER_TEMP}/release_body.md"  # $RUNNER_TEMP: Actions-provided temp dir
 
           echo "found=false" >> "$GITHUB_OUTPUT"
 
-          if .github/workflows/extract_changelog.sh "${GEM_VERSION}" "docs/Changelog.md" "${BODY_FILE}"; then
+          if .github/workflows/extract_changelog.sh "${SEMVER}" "docs/Changelog.md" "${BODY_FILE}"; then
             # Write the extracted markdown content as a multi-line step output.
             # A unique timestamp-based delimiter guards against any text in the changelog
             # accidentally matching the EOF marker and closing the heredoc early.
@@ -140,15 +143,14 @@ jobs:
           files: ceedling-*.gem
           body: ${{ steps.changelog.outputs.body }}
 
-      # Fall back to GitHub's auto-generated release notes (commit comparison since
-      # the previous tag) when no changelog section exists for this version
+      # Fall back to GitHub's auto-generated release notes (from last commit)
+      # when no changelog section exists for this version
       - name: Publish GitHub Release (auto-generated notes)
         if: steps.changelog.outputs.found != 'true'
         uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ inputs.prerelease }}
           files: ceedling-*.gem
-          generate_release_notes: true
 
       # Uncomment and add RUBYGEMS_API_KEY secret to automate RubyGems.org publishing
       # - name: Push to RubyGems.org
