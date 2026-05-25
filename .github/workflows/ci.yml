@@ -148,11 +148,18 @@ jobs:
           path: systest.*.fail.log
           if-no-files-found: ignore
 
+      # Build & Install Ceedling Gem
+      # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
+      - name: Build and Install Ceedling Gem
+        run: |
+          gem build ceedling.gemspec
+          gem install --local ceedling-*.gem
+
       # Run FFF Plugin Tests
       - name: "Run Tests on Ceedling Plugin: FFF"
         run: |
           cd plugins/fff
-          rake --trace
+          rake
           cd ../..
 
       # Run Module Generator Plugin Tests
@@ -240,6 +247,13 @@ jobs:
           name: systest-failure-logs-${{ runner.os }}-ruby-${{ matrix.ruby }}
           path: systest.*.fail.log
           if-no-files-found: ignore
+
+      # Build & Install Ceedling Gem
+      # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
+      - name: Build and Install Ceedling Gem
+        run: |
+          gem build ceedling.gemspec
+          gem install --local ceedling-*.gem
 
       # Run FFF Plugin Tests
       - name: "Run Tests on Ceedling Plugin: FFF"
