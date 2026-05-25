@@ -107,6 +107,7 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          draft: true # Temporary for testing
           prerelease: ${{ inputs.prerelease }}
           files: ceedling-*.gem
 

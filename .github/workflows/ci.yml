@@ -31,10 +31,13 @@
 ---
 name: CI
 
-# Triggers the workflow on push to any branch, pull requests targeting master,
-# or manual dispatch
+# Triggers the workflow on push to any branch (tag pushes excluded — handled by
+# prerelease.yml and release.yml), pull requests targeting master, or manual dispatch
 on:
-  push:                  # All branches — no branch filter; see Skip-CI above
+  push:
+    branches:
+      - '**'             # All branches; branches: ['**'] scopes push to refs/heads/ only,
+                         # excluding refs/tags/ pushes — see Skip-CI above
   pull_request:
     branches: [master]
   workflow_dispatch:

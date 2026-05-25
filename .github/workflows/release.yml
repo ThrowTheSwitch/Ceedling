@@ -41,12 +41,15 @@
 ---
 name: Release
 
-# Triggers on release tag pattern; see 'if' guard on publish job for the
-# second line of defense against pre-release tags matching this glob
+# Triggers on release tag pattern only.
+# Primary defense: the negative pattern '!v*.*.*-*' excludes any tag containing
+# a hyphen (e.g. v1.0.0-pre.1), which would otherwise match the v*.*.* glob.
+# Fallback defense: the 'if' guard on the publish job also rejects hyphenated tags.
 on:
   push:
     tags:
       - 'v*.*.*'
+      - '!v*.*.*-*'   # Exclude pre-release tags (e.g. v1.0.0-pre.1, v1.0.0-beta.1)
 
 
 # contents: write is required to create and upload GitHub releases
