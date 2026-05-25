@@ -10,7 +10,7 @@
 #
 # Usage: extract_changelog.sh <version> <changelog_path> <output_path>
 #
-#   <version>        Gem version string (e.g. 1.1.0 or 1.1.0.pre.1)
+#   <version>        Semver core string (e.g. 1.1.0 or 1.2.3)
 #   <changelog_path> Path to the Changelog.md file
 #   <output_path>    Path to write the extracted section into
 #
@@ -20,7 +20,8 @@
 # Version section headers are matched by the pattern "^# [VERSION]".
 # Any text following the closing "]" on the header line is ignored
 # (dates, labels, "Prerelease", em-dashes, hyphens, etc. are all fine).
-# The extracted section includes the version header line itself.
+# The extracted section does NOT include the version header line itself —
+# only the body content beneath it is written to <output_path>.
 #
 # Local testing examples:
 #   bash extract_changelog.sh 1.0.1 ../../docs/Changelog.md /tmp/out.md && cat /tmp/out.md
@@ -28,7 +29,7 @@
 
 set -euo pipefail
 
-GEM_VERSION="${1:?version argument required}"
+SEMVER="${1:?version argument required}"
 CHANGELOG="${2:?changelog path argument required}"
 OUTPUT_FILE="${3:?output file path argument required}"
 
@@ -41,9 +42,9 @@ fi
 #
 # Dots in the version string are escaped in the awk BEGIN block so that e.g.
 # 1.1.0 matches literally rather than treating "." as a regex wildcard.
-awk -v ver="${GEM_VERSION}" '
+awk -v ver="${SEMVER}" '
   BEGIN { gsub(/\./, "\\.", ver); pat = "^# \\[" ver "\\]" }
-  $0 ~ pat          { found=1; print; next }
+  $0 ~ pat          { found=1; next }
   found && /^# \[/  { exit }
   found             { print }
 ' "$CHANGELOG" > "$OUTPUT_FILE"
@@ -51,9 +52,9 @@ awk -v ver="${GEM_VERSION}" '
 # -s: file exists AND is non-empty
 # (handles the edge case where the version header is present but has no content beneath it)
 if [ -s "$OUTPUT_FILE" ]; then
-  echo "Changelog section found for version '${GEM_VERSION}'."
+  echo "Changelog section found for version '${SEMVER}'."
   exit 0
 else
-  echo "Changelog section not found for version '${GEM_VERSION}'; release notes will use GitHub default."
+  echo "Changelog section not found for version '${SEMVER}'."
   exit 1
 fi
