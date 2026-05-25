@@ -1,0 +1,68 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# -----------------------------------------------------------------------
+# Pre-Release Publishing Workflow
+#
+# Purpose:
+#   Build the Ceedling gem and publish it as a GitHub pre-release.
+#   The test suite is NOT re-run here — ci.yml must have passed on the
+#   commit being tagged before the tag is pushed.
+#
+# Trigger:
+#   Push of a tag matching one of these patterns:
+#     v*.*.*-pre.*    (e.g. v1.1.0-pre.1)
+#     v*.*.*-beta.*   (e.g. v1.1.0-beta.1)
+#     v*.*.*-alpha.*  (e.g. v1.1.0-alpha.1)
+#
+# Tag-to-gem-version convention:
+#   v1.1.0-pre.1  →  ceedling-1.1.0.pre.1.gem
+#   (hyphens become dots per RubyGems pre-release notation)
+#
+# Typical workflow:
+#   1. Push v1.0.3-pre.1 tag → CI builds ceedling-1.0.3.pre.1.gem, posts GitHub pre-release
+#   2. Iterate with v1.0.3-pre.2, etc. as needed
+#   3. Push v1.0.3 tag (release.yml) → CI builds ceedling-1.0.3.gem, posts GitHub release
+#   4. Bump lib/version.rb to 1.0.4.dev in a commit and continue
+#
+# Related workflows:
+#   ci.yml       — runs on every push to any branch; no publishing
+#   release.yml  — triggered by full release tags (v*.*.*, no suffix)
+# -----------------------------------------------------------------------
+
+---
+name: Pre-Release
+
+# Triggers on pre-release tag patterns only
+on:
+  push:
+    tags:
+      - 'v*.*.*-pre.*'
+      - 'v*.*.*-beta.*'
+      - 'v*.*.*-alpha.*'
+
+
+# contents: write is required to create and upload GitHub releases
+permissions:
+  contents: write
+
+
+jobs:
+  # Job: Build MkDocs HTML documentation bundle for gem inclusion
+  generate-docs:
+    name: "Generate Local Docs Bundle for Gem Inclusion"
+    uses: ./.github/workflows/_generate-docs.yml
+
+  # Job: Build gem and publish GitHub pre-release
+  publish:
+    name: "Build and Publish Pre-Release Gem"
+    needs: generate-docs
+    uses: ./.github/workflows/_publish-gem.yml
+    with:
+      prerelease: true
+    # Pass GITHUB_TOKEN and any other secrets through to the reusable workflow
+    secrets: inherit

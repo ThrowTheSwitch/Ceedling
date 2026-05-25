@@ -1,77 +1,61 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
----
+# -----------------------------------------------------------------------
 # Continuous Integration Workflow
+#
+# Purpose:
+#   Run the full test suite and verify a clean gem build on every push.
+#   No releases are created here — publishing is handled by prerelease.yml
+#   and release.yml, which trigger only on intentional Git tags.
+#
+# Triggers:
+#   - Push to any branch
+#   - Pull request targeting master
+#   - Manual dispatch (workflow_dispatch)
+#
+# Skip-CI:
+#   Add any of the following to your commit message to skip this workflow:
+#     [skip ci]  [ci skip]  [no ci]  [skip actions]  [actions skip]
+#   Note: skip keywords have no effect on workflow_dispatch runs.
+#
+# Branch exclusions:
+#   To permanently exclude a branch pattern from CI, add a branches-ignore
+#   list under the push: trigger below (e.g. docs/**, wip/**).
+# -----------------------------------------------------------------------
+
+---
 name: CI
 
-# Triggers the workflow on push or pull request events for master & test branches
+# Triggers the workflow on push to any branch, pull requests targeting master,
+# or manual dispatch
 on:
-  push:
-    branches:
-      - 'master'
-      - 'test/**'
+  push:                  # All branches — no branch filter; see Skip-CI above
   pull_request:
-    branches: [ master ]
+    branches: [master]
   workflow_dispatch:
 
 
-# Needed by softprops/action-gh-release
+# Cancel any in-progress run on the same ref when a new push arrives,
+# preventing stale run pile-up on active branches
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+
 permissions:
-  # Allow built gem file push to Github release
-  contents: write
+  contents: read
 
 
 jobs:
   # Job: Build MkDocs HTML documentation bundle for gem inclusion
   generate-docs:
     name: "Generate Local Docs Bundle for Gem Inclusion"
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ruby: [3.3]
-    steps:
-      # Use a cache for our tools to speed up testing
-      - uses: actions/cache@v4
-        with:
-          path: vendor/bundle
-          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
-
-      - name: Checkout Latest Repo
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Set Up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: ${{ matrix.ruby }}
-
-      # This is overkill, but it's the sanest way to ensure all Rakefile dependencies are available when we run docs:build:local task
-      - name: Install Gem Dependencies
-        run: |
-          bundle install
-
-      - name: Install MkDocs and mkdocs-material
-        run: |
-          pip install mkdocs mkdocs-material
-
-      - name: Build HTML Documentation Bundle
-        run: |
-          rake docs:build:local --trace
-
-      - name: Upload HTML Documentation Bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: gem-docs-site-local
-          path: site-local/
-          if-no-files-found: error
+    uses: ./.github/workflows/_generate-docs.yml
 
 
   # Job: Linux unit test suite
@@ -82,7 +66,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # TODO: Add 3.4 with resolution of bundler permission issue
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
       # Use a cache for our tools to speed up testing
@@ -100,13 +83,15 @@ jobs:
           submodules: recursive
 
       # Set up Ruby to run test & build steps on multiple ruby versions
-      # This action install Ruby and the Bundler gem using the version captured in Gemfile.lock
+      # This action installs Ruby and the Bundler gem using the version captured in Gemfile.lock
       - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
 
       # Workaround: Fix Ruby toolcache Gem directory permissions (Bundler exit 38)
+      # This is an environmental Ruby/toolcache issue, not a Bundler issue; the fix must
+      # run after setup-ruby (which populates the toolcache) but before bundle install.
       # Issue: https://github.com/rubygems/rubygems/issues/7983
       - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
         run: |
@@ -124,10 +109,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install --assume-yes --quiet gdb
 
-      # Install GCovr for Gcov plugin
+      # --break-system-packages is required on Ubuntu 24.04+ (PEP 668 prevents pip from
+      # installing to the system Python environment without explicit opt-in)
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
         run: |
-          sudo pip install gcovr
+          pip install --break-system-packages gcovr
 
       # Install ReportGenerator for Gcov plugin
       # Fix PATH before tool installation
@@ -162,19 +148,6 @@ jobs:
           path: systest.*.fail.log
           if-no-files-found: ignore
 
-      # Build & Install Ceedling Gem
-      - name: Build and Install Ceedling Gem
-        run: |
-          gem build ceedling.gemspec
-          gem install --local ceedling-*.gem
-
-      # Run temp_sensor
-      - name: Run Tests on temp_sensor Project
-        run: |
-          cd examples/temp_sensor
-          ceedling test:all
-          cd ../..
-
       # Run FFF Plugin Tests
       - name: "Run Tests on Ceedling Plugin: FFF"
         run: |
@@ -195,6 +168,7 @@ jobs:
           cd plugins/dependencies
           rake
           cd ../..
+
 
   # Job: Windows unit test suite
   tests-windows:
@@ -221,7 +195,7 @@ jobs:
           submodules: recursive
 
       # Set up Ruby to run test & build steps on multiple ruby versions
-      # This action install Ruby and the Bundler gem using the version captured in Gemfile.lock
+      # This action installs Ruby and the Bundler gem using the version captured in Gemfile.lock
       - name: Set Up Ruby with Version Matrix
         uses: ruby/setup-ruby@v1
         with:
@@ -267,19 +241,6 @@ jobs:
           path: systest.*.fail.log
           if-no-files-found: ignore
 
-      # Build & Install Gem
-      - name:  Build and Install Ceedling Gem
-        run: |
-          gem build ceedling.gemspec
-          gem install --local ceedling-*.gem
-
-      # Run temp_sensor example project
-      - name: Run Tests on temp_sensor Project
-        run: |
-          cd examples/temp_sensor
-          ceedling test:all
-          cd ../..
-
       # Run FFF Plugin Tests
       - name: "Run Tests on Ceedling Plugin: FFF"
         run: |
@@ -302,52 +263,39 @@ jobs:
           cd ../..
 
 
-  # Job: Automatic Minor Release
-  auto-release:
-    name: "Automatic Minor Release"
+  # Job: Build the Ceedling gem once all tests pass
+  # Verifies a clean gem build is possible; the built gem is uploaded as a
+  # downloadable workflow artifact. No release is created here.
+  build-gem:
+    name: "Build Ceedling Gem"
     needs:
-      - generate-docs
       - tests-linux
       - tests-windows
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ruby: [3.3]
 
     steps:
-      # Checks out repository under $GITHUB_WORKSPACE
+      # Use a cache for our tools to speed up builds
+      # No matrix here; Ruby version is hardcoded to match the cache key format used by test jobs
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-3.3-
+
       - name: Checkout Latest Repo
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # Set Up Ruby Tools
-      - name: Set Up Ruby Tools
+      - name: Set Up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ matrix.ruby }}
+          ruby-version: '3.3'
 
-      # Capture the SHA string
-      - name: Git commit short SHA as environment variable
-        shell: bash
+      - name: Install Gem Dependencies
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-      - name: Ceedling tag as environment variable
-        shell: bash
-        run: |
-          echo "ceedling_tag=$(ruby ./lib/version.rb)" >> $GITHUB_ENV
-
-      - name: Ceedling build string as environment variable
-        shell: bash
-        run: |
-          echo "ceedling_build=${{ env.ceedling_tag }}-${{ env.sha_short }}" >> $GITHUB_ENV
-
-      # Create Git Commit SHA file in root of checkout
-      - name: Git Commit SHA file
-        shell: bash
-        run: |
-          echo "${{ env.sha_short }}" > ${{ github.workspace }}/GIT_COMMIT_SHA
+          bundle install
 
       # Download HTML docs bundle built by generate-docs job
       - name: Download HTML Documentation Bundle
@@ -356,31 +304,14 @@ jobs:
           name: gem-docs-site-local
           path: site-local/
 
-      # Build Gem
-      - name:  Build Gem
+      - name: Build Ceedling Gem
         run: |
           gem build ceedling.gemspec
 
-      # Create Unofficial Release
-      - name: Create Pre-Release
-        uses: actions/create-release@v1
-        id: create_release
+      # Upload the built gem as a workflow artifact (downloadable from the Actions UI)
+      - name: Upload Built Gem Artifact
+        uses: actions/upload-artifact@v4
         with:
-          draft: false
-          prerelease: true
-          release_name: ${{ env.ceedling_build }}
-          tag_name: ${{ env.ceedling_build }}
-          body: "Automatic pre-release for ${{ env.ceedling_build }}"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      # Post Gem to Unofficial Release
-      - name: Upload Pre-Release Gem
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./ceedling-${{ env.ceedling_tag }}.gem
-          asset_name: ceedling-${{ env.ceedling_build }}.gem
-          asset_content_type: test/x-gemfile
+          name: ceedling-gem
+          path: ceedling-*.gem
+          if-no-files-found: error

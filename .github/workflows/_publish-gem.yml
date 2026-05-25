@@ -1,0 +1,117 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# -----------------------------------------------------------------------
+# Internal reusable workflow — not intended to be triggered directly.
+# Called by prerelease.yml (with prerelease: true) and release.yml
+# (with prerelease: false).
+#
+# Purpose:
+#   Stamp the gem version from the calling workflow's Git tag, build the
+#   Ceedling gem, and publish a GitHub release or pre-release using
+#   softprops/action-gh-release@v2.
+#
+# Version stamping:
+#   lib/version.rb carries a .dev suffix between releases (e.g. 1.1.1.dev).
+#   This job derives the actual release version from the Git tag and stamps
+#   it into lib/version.rb before building — the file is never manually
+#   edited to match a release tag.
+#
+#   Tag-to-gem-version conversion:
+#     v1.1.0-pre.1  →  1.1.0.pre.1  (hyphen becomes dot: RubyGems pre-release notation)
+#     v1.1.0        →  1.1.0         (no suffix; substitution is a no-op)
+#
+# RubyGems.org publishing:
+#   The "Push to RubyGems.org" step below is stubbed and commented out.
+#   To enable automated publishing: uncomment the step and add a
+#   RUBYGEMS_API_KEY secret to the repository settings.
+# -----------------------------------------------------------------------
+
+---
+name: "Build and Publish Gem"
+
+on:
+  workflow_call:
+    inputs:
+      prerelease:
+        type: boolean
+        required: true
+        description: 'true = GitHub pre-release, false = full release'
+
+# contents: write is required to create and upload GitHub releases
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    name: "Build and Publish Ceedling Gem"
+    runs-on: ubuntu-latest
+
+    steps:
+      # Use a cache for our tools to speed up builds
+      # No matrix here; Ruby version is hardcoded to match the cache key format used by test jobs
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-3.3-
+
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      # Derive the gem version from the Git tag and stamp it into lib/version.rb.
+      # The in-tree version.rb carries a .dev suffix between releases; the release
+      # version is computed here from the tag and is never manually set.
+      - name: Stamp Gem Version from Git Tag
+        shell: bash
+        run: |
+          # Strip leading 'v' from the Git tag (e.g. v1.1.0-pre.1 → 1.1.0-pre.1)
+          GEM_VERSION="${GITHUB_REF_NAME#v}"
+          # Replace the first hyphen with a dot (RubyGems pre-release notation)
+          # e.g. 1.1.0-pre.1 → 1.1.0.pre.1 ; 1.1.0 → 1.1.0 (no-op for release tags)
+          GEM_VERSION="${GEM_VERSION/-/.}"
+          # Stamp the computed version into lib/version.rb for this build only
+          sed -i "s/GEM = '.*'/GEM = '${GEM_VERSION}'/" lib/version.rb
+          echo "Building gem version: ${GEM_VERSION}"
+
+      # Download HTML docs bundle built by _generate-docs.yml
+      # Artifacts are shared within the same workflow run by run_id
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+
+      - name: Build Gem
+        run: |
+          gem build ceedling.gemspec
+
+      # softprops/action-gh-release@v2 replaces the archived actions/create-release@v1
+      # and actions/upload-release-asset@v1
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ inputs.prerelease }}
+          files: ceedling-*.gem
+
+      # Uncomment and add RUBYGEMS_API_KEY secret to automate RubyGems.org publishing
+      # - name: Push to RubyGems.org
+      #   run: gem push ceedling-*.gem
+      #   env:
+      #     GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
