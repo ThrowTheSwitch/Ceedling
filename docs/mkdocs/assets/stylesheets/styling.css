@@ -1,0 +1,92 @@
+/*-------------------------------------------------
+ * Header logo and style
+ *------------------------------------------------*/
+ .md-header {
+    background-color: #EEEEEE;
+}
+.md-header__title {
+  display: none;
+}
+.md-header__button.md-logo {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 4.0rem;
+}
+@media screen and (max-width: 76.1875em) {
+  .md-header__button.md-logo {
+    display: flex; /* force it to stay visible */
+  }
+}
+
+/*-------------------------------------------------
+ * Search bar
+ *------------------------------------------------*/
+ .md-search {
+    margin-left: auto;
+}
+.md-search__form {
+    background-color: #DDDDDD;
+    border-radius: 4px;
+}
+.md-search__input {
+    color: #3A0040; /* Replace with your desired color */
+}
+.md-search__input::placeholder {
+    color: #3A0040;
+}
+.md-search__icon {
+    color: #3A0040;
+}
+
+/*-------------------------------------------------
+ * Repository display
+ *------------------------------------------------*/
+.md-header__inner {
+    justify-content: space-between;
+}
+.md-header__source {
+    background-color: #3A0040;
+    border-radius: 4px;
+    padding: 0 0.5rem;
+}
+.md-source__repository {
+  color: #3fb04e;
+  font-weight: bold;
+}
+.md--source__facts {
+  color: #3fb04e;
+  font-size: 0.7rem;
+}
+
+/*-------------------------------------------------
+ * Navigation section separators
+ *------------------------------------------------*/
+
+ /* Separator around nested subsections only */
+.md-nav__item--section .md-nav__item--section {
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+}
+
+/* No bottom border on last subsection */
+.md-nav__item--section .md-nav__item--section:last-child {
+  border-bottom: none;
+}
+
+/* Bottom border only on subsections that aren't last */
+.md-nav__item--section .md-nav__item--section:not(:last-child) {
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+/* Add breathing room inside subsection before the bottom border */
+.md-nav__item--section .md-nav__item--section:not(:last-child) > .md-nav {
+  padding-bottom: 0.6rem;
+}

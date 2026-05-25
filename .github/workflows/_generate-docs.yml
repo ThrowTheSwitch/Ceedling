@@ -1,0 +1,75 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# -----------------------------------------------------------------------
+# Internal reusable workflow — not intended to be triggered directly.
+# Called by ci.yml, prerelease.yml, and release.yml.
+#
+# Purpose:
+#   Build the local HTML documentation bundle (MkDocs) for inclusion in
+#   the Ceedling gem and upload it as the artifact 'gem-docs-site-local'.
+#   Subsequent jobs in the calling workflow download this artifact to
+#   make the docs bundle available for testing and gem packaging.
+# -----------------------------------------------------------------------
+
+---
+name: "Generate Local Docs Bundle"
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-docs:
+    name: "Generate Local Docs Bundle for Gem Inclusion"
+    runs-on: ubuntu-latest
+
+    steps:
+      # Use a cache for our tools to speed up builds
+      # No matrix here; Ruby version is hardcoded to match the cache key format used by test jobs
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-3.3-
+
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      # This is overkill, but it's the sanest way to ensure all Rakefile dependencies are available when we run docs:build:local task
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      # --break-system-packages is required on Ubuntu 24.04+ (PEP 668 prevents pip from
+      # installing to the system Python environment without explicit opt-in)
+      - name: Install MkDocs and mkdocs-material
+        run: |
+          pip install --break-system-packages mkdocs mkdocs-material
+
+      # Builds local HTML bundle for gem inclusion; invokes MkDocs via the project's
+      # venv_sh wrapper in the Rakefile (skips venv activation when no .docsenv is present)
+      - name: Build HTML Documentation Bundle
+        run: |
+          rake docs:build:local --trace
+
+      - name: Upload HTML Documentation Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+          if-no-files-found: error
