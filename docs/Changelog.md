@@ -9,7 +9,7 @@ This changelog is complemented by two other documents:
 
 ---
 
-# [1.1.0] — Prerelease
+# [0.0.1] — Github Action testing
 
 ## 🌟 Added
 
