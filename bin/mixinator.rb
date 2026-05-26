@@ -123,6 +123,9 @@ class Mixinator
       # Sanitize the mixin config by removing any :mixins section (these should not end up in merges)
       _mixin.delete(:mixins)
 
+      # Prevent mixin files from injecting their own :history entries
+      _mixin.delete(:history)
+
       # Run special handling using knowledge of Ceedling configuration conventions
       notices = []
       if @standardinator.smart_standardize( config:config, mixin:_mixin, notices:notices )
@@ -134,6 +137,21 @@ class Mixinator
         msg = "Mixin values from #{filepath} will replace configuration values for incompatible merges..."
         @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
         warnings.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN ) }
+      end
+
+      # Record this mixin in the configuration history
+      label = case source
+              when 'command line'          then '--mixin'
+              when 'project configuration' then ':mixins'
+              else source # environment variable name (e.g. CEEDLING_MIXIN_1)
+              end
+
+      config[:history] ||= {}
+      config[:history][:config] ||= []
+      if @path_validator.filepath?( filepath )
+        config[:history][:config] << "#{filepath} (#{label})"
+      else
+        config[:history][:config] << "#{filepath} (built-in, #{label})"
       end
     end
 
