@@ -29,7 +29,7 @@ installation, troubleshooting, and worked examples.
 
 ## `gcov` Plugin Settings
 
-Options directly under `:gcov:`.
+Options avialable directly beneath `:gcov`.
 
 ### `:summaries`
 

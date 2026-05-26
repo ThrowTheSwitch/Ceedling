@@ -15,19 +15,25 @@ This changelog is complemented by two other documents:
 
 ### Partials
 
-[A Partial](https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/) is a new feature that allows a test author to work with portions of the same C module under test differently from within the same test file. For example, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see #936).
+[A Partial](https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/) is a new feature that allows a test author to work with portions of the same C module under test differently from within the same test file.
+
+With Partials, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see #936). Partials also allow testing of `static` and `inline` functions with no modification of your source code under test.
 
 ### Documentation site
 
-Ceedling is now complemented by a full, searchable documentation site](https://throwtheswitch.github.io/Ceedling/).
+Ceedling is now complemented by a full, searchable [documentation site](https://throwtheswitch.github.io/Ceedling/).
 
-A local verion of this site that is navigable from your filesystem is included within Ceedling and exportable through CLI commands.
+A local verion of this site that is navigable with your web browser from your filesystem is included within Ceedling and exportable through CLI commands.
 
 ### CLI additions
 
 - `ceedling help` output provides links for further support and Github sponsorship.
 - `ceedling check` validates your configuration and produces logs from processing it without executing a build.
 - `ceedling docs` exports new HTML-based documentation site to your filesystem.
+
+### GCov plugin support for Modified Condition / Decision Coverage
+
+Ceedling’s [GCov plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/) for coverage reporting now supports the [Modified Condition / Decision Coverage](https://ldra.com/capabilities/mc-dc/) abilities of GCC 14+ and optionally GCovr 8+.
 
 ### System includes
 
@@ -52,6 +58,7 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 - PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
 - Significant refactoring and improvements to logging and parallel processing.
 - Streamlined preprocessing, eliminating redundant steps and reducing memory usage.
+- The GCov plugin now compiles all files with coverage (and filters out unneeded framework results) in order to meet the stricter coverage handling that began with GCC 14. This change is backwards and forwards compatible with virtually all versions of GCC and the GCov plugin’s supporting utilities.
 - Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
 - Fixes for typos and grammar in documentation and logging.
 
