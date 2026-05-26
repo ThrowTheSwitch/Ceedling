@@ -1,11 +1,17 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-Welcome to **Ceedling 1.0.1** 
+Welcome to **Ceedling 1.1.0** 
 
 See the [Release Notes](docs/ReleaseNotes.md) for an overview of all that’s new 
-since the last generation of Ceedling, versions 0.3x.x, plus links to the 
-detailed Changelog and list of Breaking Changes.
+and changed, plus links to the detailed Changelog and list of Breaking Changes.
+
+Headliner improvements:
+* A [Partial][partials-docs] allows a test to mix mocked and real functions from the same source module in a single test file and enables testing of `static` and `inline` functions without modifying source code.
+* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
+
+[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
+[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -69,7 +75,7 @@ provides handy backtrace debugging options for finding the source of crashing
 code exercised by your unit tests.
 
 Ceedling is extensible with a simple plugin mechanism. It comes with a
-number of [built-in plugins][ceedling-plugins] for code coverage, test suite
+number of [built-in plugins][ceedling-docs-plugins] for code coverage, test suite
 report generation, Continuous Integration features, IDE integration, release
 library builds & dependency management, and more.
 
@@ -80,8 +86,7 @@ library builds & dependency management, and more.
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
-[FFF-plugin]: plugins/fff
-[ceedling-plugins]: docs/CeedlingPacket.md#ceedling-plugins
+[FFF-plugin]: https://throwtheswitch.github.io/Ceedling/latest/plugins/fff/
 
 <br/>
 
@@ -353,11 +358,13 @@ The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedl
 
 ## Ceedling docs
 
-* **_[Ceedling Packet][ceedling-packet]_** is Ceedling’s user manual. It also references and links to the documentation of the projects, _Unity_, _CMock_, and _CException_, that it weaves together into your test and release builds.
+* **_[Ceedling’s documentation site][ceedling-docs-site]_** contains everything you need to know to run Ceedling. It also references and links to the documentation of the projects, _Unity_, _CMock_, and _CException_, that Ceedling weaves together into your test and release builds.
 * **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a variety of guides and much more.
-* The **[Plugins section](https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#ceedling-plugins)** within _Ceedling Packet_ lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
+* The **[Plugins section][ceedling-docs-plugins]** of Ceedling’s documentation lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
 
 _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustrating project configuration option changes for new releases in the form of a Ceedling project YAML configuration file. This may be especially useful to those already familiar with the tool wanting to update to the latest and greatest as quickly as possible.
+
+[ceedling-docs-plugins]: https://throwtheswitch.github.io/Ceedling/latest/plugins/
 
 ## Library and courses
 
@@ -371,7 +378,6 @@ _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustr
 
 Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling to build a C project with test suite. As the tutorial is a number of years old, the content is a bit out of date. That said, it provides an excellent overview of a real project. Matt is the author of [FFF].
 
-[ceedling-packet]: docs/CeedlingPacket.md
 [release-notes]: docs/ReleaseNotes.md
 [breaking-changes]: docs/BreakingChanges.md
 [changelog]: docs/Changelog.md
@@ -385,7 +391,9 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 # 🚀 Getting Started
 
-👀 See the **_[Quick Start](docs/CeedlingPacket.md#quick-start)_** section in Ceedling’s user manual, _Ceedling Packet_.
+👀 See the **_[Quick Start][ceedling-docs-quick-start]_** section of Ceedling’s documentation site.
+
+[ceedling-docs-quick-start]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/quick-start/
 
 ## The basics
 
@@ -514,10 +522,10 @@ See this [commented project configuration file][example-config-file] for a much 
 
 Or, use Ceedling’s built-in `examples` & `example` commands to extract a sample project and reference its project file.
 
-See the [configuration section][ceedling-packet-config] in _Ceedling Packet_ for way more details on your project configuration options than we can provide here.
+See the [configuration section][ceedling-docs-config] of Ceedling’s documentation for way more details on your project configuration options than we can provide here.
 
 [example-config-file]: assets/project.yml
-[ceedling-packet-config]: docs/CeedlingPacket.md#the-almighty-ceedling-project-configuration-file-in-glorious-yaml
+[ceedling-docs-config]: https://throwtheswitch.github.io/Ceedling/latest/configuration/
 
 ## Using Ceedling’s command line (and related)
 
@@ -788,7 +796,6 @@ If you are only working in `lib/`, you can:
    you.
 1. Modify a project file by setting a path value for `:project` ↳ `:which_ceedling` 
    that points to the local copy of Ceedling you cloned from the Git repository.
-   See _CeedlingPacket_ for details.
 
 If you are working in `bin/`, running `ceedling` at the command line will not
 call your modified code. Instead, you must execute the path to the executable
