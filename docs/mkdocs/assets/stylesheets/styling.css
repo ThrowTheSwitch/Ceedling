@@ -8,14 +8,12 @@
   display: none;
 }
 .md-header__button.md-logo {
-  margin-top: 0;
-  margin-bottom: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  margin: 0;
+  padding: 0;
 }
 .md-header__button.md-logo img,
 .md-header__button.md-logo svg {
-  height: 4.0rem;
+  height: 2.0rem;
 }
 @media screen and (max-width: 76.1875em) {
   .md-header__button.md-logo {
@@ -24,10 +22,22 @@
 }
 
 /*-------------------------------------------------
+ * Header element ordering
+ * Reorder so hamburger + search appear before the logo
+ *------------------------------------------------*/
+.md-header__button[for="__drawer"] { order: 1; }
+.md-header__button[for="__search"] { order: 2; }
+.md-search                         { order: 3; }
+.md-header__title                  { order: 4; }
+.md-version                        { order: 5; }
+.md-header__source                 { order: 6; }
+.md-header__button.md-logo         { order: 7; margin-left: auto; }
+
+/*-------------------------------------------------
  * Search bar
  *------------------------------------------------*/
- .md-search {
-    margin-left: auto;
+.md-search {
+    flex: none;
 }
 .md-search__form {
     background-color: #DDDDDD;
@@ -47,12 +57,12 @@
  * Repository display
  *------------------------------------------------*/
 .md-header__inner {
-    justify-content: space-between;
+    padding-right: 0 !important;
 }
 .md-header__source {
     background-color: #3A0040;
     border-radius: 4px;
-    padding: 0 0.5rem;
+    padding: 0 ; /*0.5rem;*/
 }
 .md-source__repository {
   color: #3fb04e;
