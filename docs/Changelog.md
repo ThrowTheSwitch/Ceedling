@@ -29,7 +29,7 @@ A local verion of this site that is navigable with your web browser from your fi
 
 - `ceedling help` output provides links for further support and Github sponsorship.
 - `ceedling check` validates your configuration and produces logs from processing it without executing a build.
-- `ceedling docs` exports new HTML-based documentation site to your filesystem.
+- `ceedling docs` exports the new HTML-based documentation site to your local filesystem.
 
 ### GCov plugin support for Modified Condition / Decision Coverage
 

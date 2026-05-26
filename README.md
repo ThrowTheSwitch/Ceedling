@@ -1,12 +1,13 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-Welcome to **Ceedling 1.1.0** 
+**Ceedling 1.1.0** is nearing release.
 
-See the [Release Notes](docs/ReleaseNotes.md) for an overview of all that’s new 
-and changed, plus links to the detailed Changelog and list of Breaking Changes.
+[_Changelog_](docs/Changelog.md) is receiving updates and revisions and will 
+soon be complete. _Release Notes_, _Breaking Changes_, and _Known Issues_ documents 
+will be revised and updated soon.
 
-Headliner improvements:
+**Headliner improvements:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions from the same source module in a single test file and enables testing of `static` and `inline` functions without modifying source code.
 * Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
 
@@ -562,12 +563,18 @@ tooling setup.
 #### Installing local documentation
 
 Are you just getting started with Ceedling? Maybe you’d like your
-project to be installed with some of its handy [documentation](docs/)? 
+project to be installed with some of its handy documentation? 
 No problem! You can do this when you create a new project…
 
 ```shell
  > ceedling new --docs MyAwesomeProject
 ```
+
+The `--docs` flag exports a version of Ceedling’s HTML-based documentation site
+to your local filesystem that is navigable with your web browser.
+
+`ceedling docs` exports just the documentation bundle to a destination path
+of your choosing.
 
 #### Attaching a Ceedling version to your project
 
@@ -744,8 +751,9 @@ local Ceedling repo, list those task like this:
 ## Working with Documentation
 
 Ceedling's documentation is built with [MkDocs] + [Material theme] and versioned
-with [mike]. All Markdown source lives under `docs/`. The site configuration is
-in `mkdocs.yml`.
+with [mike]. All Markdown source lives under `docs/mkdocs/`. The public site 
+configuration is in `mkdocs.yml` while the local site bundle configuration is in
+`mkdocs.local.yml`.
 
 **First-time setup** (installs MkDocs, Material, and mike into the container):
 
@@ -758,7 +766,8 @@ in `mkdocs.yml`.
 | Task | Description |
 |---|---|
 | `rake docs:install` | Install Python documentation tooling |
-| `rake docs:build` | Build site in strict mode — fails on broken links or warnings |
+| `rake docs:build:local` | Build the site for local filesystem navigation in strict mode — fails on broken links or warnings |
+| `rake docs:build:web` | Build the site to be served in strict mode — fails on broken links or warnings |
 | `rake docs:serve` | Serve plain MkDocs site locally on port 8000 |
 | `rake docs:deploy` | Deploy `dev` version to local `gh-pages` branch (no remote push) |
 | `rake docs:preview` | Browse mike-versioned site locally on port 8000 |
@@ -768,10 +777,6 @@ port 8000, VS Code detects it and shows a notification. The **Ports** panel also
 provides an **Open in Browser** button.
 
 **Hosted site:** [https://throwtheswitch.github.io/Ceedling/](https://throwtheswitch.github.io/Ceedling/)
-
-Versions are deployed automatically via GitHub Actions: `dev` on every push to
-`main`, and a per-minor-version alias (e.g. `1.0`) plus `latest` on each
-published release.
 
 [MkDocs]: https://www.mkdocs.org
 [Material theme]: https://squidfunk.github.io/mkdocs-material/
