@@ -1,7 +1,7 @@
 /*-------------------------------------------------
  * Header logo and style
  *------------------------------------------------*/
- .md-header {
+/* .md-header {
     background-color: #EEEEEE;
 }
 .md-header__title {
@@ -17,26 +17,26 @@
 }
 @media screen and (max-width: 76.1875em) {
   .md-header__button.md-logo {
-    display: flex; /* force it to stay visible */
+    display: flex; // force it to stay visible
   }
-}
+} */
 
 /*-------------------------------------------------
  * Header element ordering
  * Reorder so hamburger + search appear before the logo
  *------------------------------------------------*/
-.md-header__button[for="__drawer"] { order: 1; }
+/* .md-header__button[for="__drawer"] { order: 1; }
 .md-header__button[for="__search"] { order: 2; }
 .md-search                         { order: 3; }
 .md-header__title                  { order: 4; }
 .md-version                        { order: 5; }
 .md-header__source                 { order: 6; }
-.md-header__button.md-logo         { order: 7; margin-left: auto; }
+.md-header__button.md-logo         { order: 7; margin-left: auto; } */
 
 /*-------------------------------------------------
  * Search bar
  *------------------------------------------------*/
-.md-search {
+/* .md-search {
     flex: none;
 }
 .md-search__form {
@@ -44,25 +44,25 @@
     border-radius: 4px;
 }
 .md-search__input {
-    color: #3A0040; /* Replace with your desired color */
+    color: #3A0040; // Replace with your desired color
 }
 .md-search__input::placeholder {
     color: #3A0040;
 }
 .md-search__icon {
     color: #3A0040;
-}
+} */
 
 /*-------------------------------------------------
  * Repository display
  *------------------------------------------------*/
-.md-header__inner {
+/* .md-header__inner {
     padding-right: 0 !important;
 }
 .md-header__source {
     background-color: #3A0040;
     border-radius: 4px;
-    padding: 0 ; /*0.5rem;*/
+    padding: 0 ; // 0.5rem;
 }
 .md-source__repository {
   color: #3fb04e;
@@ -71,7 +71,7 @@
 .md--source__facts {
   color: #3fb04e;
   font-size: 0.7rem;
-}
+} */
 
 /*-------------------------------------------------
  * Navigation section separators
