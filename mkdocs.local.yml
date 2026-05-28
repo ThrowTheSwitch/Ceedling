@@ -13,7 +13,6 @@ site_dir: site-local
 theme:
   name: material
   favicon: assets/images/favicon.png
-  logo: assets/images/ceedling.svg
   palette:
     - scheme: default
       primary: green
