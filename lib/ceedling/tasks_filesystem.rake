@@ -6,7 +6,7 @@
 # =========================================================================
 
 # rather than require 'rake/clean' & try to override, we replicate for finer control
-CLEAN   = Rake::FileList["**/*~", "**/*.bak"]
+CLEAN   = Rake::FileList.new
 CLOBBER = Rake::FileList.new
 
 CLEAN.clear_exclude.exclude { |fn| fn.pathmap("%f") == 'core' && File.directory?(fn) }
