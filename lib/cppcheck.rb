@@ -53,8 +53,9 @@ class Cppcheck < Plugin
     ]
     
     reports_to_do = if @reports.key?(:html)
-      then @reports.values_at(:xml, :html) + @reports.except(:xml, :html).values
-      else @reports.values
+        @reports.values_at(:xml, :html) + @reports.except(:xml, :html).values
+      else
+        @reports.values
       end
     reports_to_do.each {|report| report.generate(opts, *args)}
   end
@@ -105,7 +106,7 @@ class Cppcheck < Plugin
       if @file_wrapper.exist?(path) && !@file_wrapper.directory?(path)
         all_suppressions.include(path)
       else
-        all_suppressions.include(File.join(path, '*.xml') )
+        all_suppressions.include(File.join(path, '*.xml'))
         all_suppressions.include(File.join(
           path,
           "*#{in_hash[:extension_cppcheck]}")
@@ -114,7 +115,8 @@ class Cppcheck < Plugin
     end
     
     @file_path_collection_utils.revise_filelist(
-      all_suppressions,in_hash[:files_cppcheck]
+      all_suppressions,
+      in_hash[:files_cppcheck]
     )
     
     return {
@@ -197,14 +199,14 @@ class Cppcheck < Plugin
     end
     
     @config[:options]&.each do |option|
-      opts << "#{option}"
+      opts << option
     end
     
     return opts
   end
   
   def build_project_opts()
-    opts = build_common_opts();
+    opts = build_common_opts()
     
     opts << "--cppcheck-build-dir=#{CPPCHECK_BUILD_PATH}"
     opts << '--enable=all'
