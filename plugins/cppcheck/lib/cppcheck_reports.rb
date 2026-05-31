@@ -14,12 +14,10 @@ class CppcheckReport
     @tool_validator = @ceedling[:tool_validator]
     
     @config = config
-    
-    @artifact_format = report_type.to_s
   end
   
   def report_type
-    
+    raise NotImplementedError, "#{self.class} must implement report_type"
   end
   
   def generate(opts, *args)
@@ -66,6 +64,7 @@ class CppcheckHtmlReport < CppcheckReport
     )
     
     @artifact_filepath = CPPCHECK_ARTIFACTS_HTML_PATH
+    @artifact_format = report_type.to_s
     @xml_artifact_filepath = xml_artifact_filepath
   end
   
@@ -101,6 +100,7 @@ class CppcheckSarifReport < CppcheckReport
       @config[:sarif_artifact_filename] || CPPCHECK_ARTIFACTS_FILE_SARIF,
       '.sarif'
     )
+    @artifact_format = report_type.to_s
   end
   
   def report_type = :sarif
@@ -114,6 +114,7 @@ class CppcheckTextReport < CppcheckReport
       @config[:text_artifact_filename] || CPPCHECK_ARTIFACTS_FILE_TEXT,
       '.txt'
     )
+    @artifact_format = report_type.to_s
   end
   
   def report_type = :text
@@ -128,7 +129,7 @@ class CppcheckXmlReport < CppcheckReport
       '.xml'
     )
     
-    xml_report_version = @config[:xml_report_version] || CPPCHECK_ARTIFACTS_FILE_XML
+    xml_report_version = @config[:xml_report_version] || 3
     validate_version(xml_report_version)
     @artifact_format = "#{report_type}v#{xml_report_version}"
   end
