@@ -25,7 +25,7 @@ namespace :cppcheck do
   end
 end
 
-rule /^#{CPPCHECK_TASK_ROOT}\S+$/ => [
+rule (/^#{CPPCHECK_TASK_ROOT}\S+$/) => [
   proc do |task_name|
     name = task_name.sub(/^#{CPPCHECK_TASK_ROOT}/, '')
     ['cppcheck_deps', @ceedling[:file_finder].find_source_file(name)]
