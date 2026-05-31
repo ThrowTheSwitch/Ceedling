@@ -8,35 +8,38 @@ code with [Cppcheck](http://cppcheck.net/).
 
 <!-- TOC -->
 
-- [Installation](#installation)
-- [Enable the plugin](#enable-the-plugin)
-- [Configuration](#configuration)
-	- [Reports](#reports)
-		- [Text](#text)
-		- [XML](#xml)
-		- [HTML](#html)
-	- [Import project file](#import-project-file)
-	- [Preprocessor defines](#preprocessor-defines)
-		- [Define](#define)
-		- [Undefine](#undefine)
-	- [Includes](#includes)
-	- [Excludes](#excludes)
-	- [Platform](#platform)
-	- [Standard](#standard)
-	- [Check Level](#check-level)
-	- [Addons](#addons)
-		- [MISRA with rule texts file](#misra-with-rule-texts-file)
-	- [Checks](#checks)
-	- [Suppressions](#suppressions)
-		- [Inline](#inline)
-		- [List Files](#list-files)
-		- [Command Line](#command-line)
-	- [Library configuration](#library-configuration)
-	- [Rules](#rules)
-	- [Extra options](#extra-options)
-- [Usage](#usage)
-	- [Analyze whole project](#analyze-whole-project)
-	- [Analyze single file](#analyze-single-file)
+- [Cppcheck Ceedling Plugin](#cppcheck-ceedling-plugin)
+    - [Installation](#installation)
+    - [Enable the plugin](#enable-the-plugin)
+    - [Configuration](#configuration)
+        - [Reports](#reports)
+            - [HTML](#html)
+            - [Sarif](#sarif)
+            - [Text](#text)
+            - [XML](#xml)
+        - [Import project file](#import-project-file)
+        - [Preprocessor defines](#preprocessor-defines)
+            - [Define](#define)
+            - [Undefine](#undefine)
+        - [Includes](#includes)
+        - [Excludes](#excludes)
+        - [Platform](#platform)
+        - [Standard](#standard)
+        - [Check Level](#check-level)
+        - [Addons](#addons)
+            - [MISRA with rule texts file](#misra-with-rule-texts-file)
+                - [misra.json](#misrajson)
+        - [Checks](#checks)
+        - [Suppressions](#suppressions)
+            - [Inline](#inline)
+            - [List Files](#list-files)
+            - [Command Line](#command-line)
+        - [Library configuration](#library-configuration)
+        - [Rules](#rules)
+        - [Extra options](#extra-options)
+    - [Usage](#usage)
+        - [Analyze whole project](#analyze-whole-project)
+        - [Analyze single file](#analyze-single-file)
 
 <!-- /TOC -->
 
@@ -79,9 +82,10 @@ e.g:
 
 Three types of reports are available:
 
-- text
-- xml
 - html
+- sarif
+- text
+- xml (v2 and v3)
 
 They can be enabled by listing them on the `:reports` list:
 
@@ -90,6 +94,29 @@ They can be enabled by listing them on the `:reports` list:
   :reports:
     - text
     - html
+```
+
+#### HTML
+
+HTML title can be configured:
+
+```yaml
+:cppcheck:
+  :html_title: Awesome Project
+```
+
+*Notes:*
+
+- This report requires the `cppcheck-htmlreport` tool to be available.
+- This report implies the `xml` report.
+
+#### Sarif
+
+Artifact file can be configured:
+
+```yaml
+:cppcheck:
+  :sarif_artifact_filename: CppcheckResults.sarif
 ```
 
 #### Text
@@ -106,26 +133,13 @@ Artifact file and output format can be configured:
 
 #### XML
 
-Artifact file can be configured:
+Artifact file and XML version can be configured:
 
 ```yaml
 :cppcheck:
   :xml_artifact_filename: CppcheckResults.xml
+  :xml_report_version: 2
 ```
-
-#### HTML
-
-HTML title can be configured:
-
-```yaml
-:cppcheck:
-  :html_title: Awesome Project
-```
-
-*Notes:*
-
-- This report requires the `cppcheck-htmlreport` tool to be available.
-- This report implies the `xml` report.
 
 ### Import project file
 
