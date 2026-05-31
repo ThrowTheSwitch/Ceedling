@@ -1,8 +1,10 @@
 ---
 :cppcheck:
   :reports: []
+  :sarif_artifact_filename: null
   :text_artifact_filename: null
   :xml_artifact_filename: null
+  :xml_report_version: 3
   :template: null
   :html_title: null
   :platform: null
