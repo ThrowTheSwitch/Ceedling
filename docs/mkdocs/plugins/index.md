@@ -82,6 +82,21 @@ for how to enable built-in plugins and load custom plugins in your project.
 
 </div>
 
+### Static Analysis
+
+<div class="grid cards" markdown>
+
+-   :material-file-check: **[`cppcheck`](cppcheck.md)**
+
+    ---
+
+    Adds Ceedling tasks to execute static analysis with [Cppcheck]. It helps
+    finding bugs related to undefined behaviour, dangerous code patterns and
+    coding style. It is able to analyze C/C++ code with non-standard syntax, as
+    is usual in embedded projects.
+
+</div>
+
 ### Code Coverage
 
 <div class="grid cards" markdown>
@@ -177,6 +192,7 @@ for how to enable built-in plugins and load custom plugins in your project.
 
 [gtest-sample-output]: https://subscription.packtpub.com/book/programming/9781800208988/11/ch11lvl1sec31/controlling-output-with-google-test
 [TeamCity]: https://jetbrains.com/teamcity
+[Cppcheck]: https://cppcheck.sourceforge.io
 [gcov]: http://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 [GCovr]: https://www.gcovr.com/
 [ReportGenerator]: https://reportgenerator.io

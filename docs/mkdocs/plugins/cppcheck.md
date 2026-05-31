@@ -1,66 +1,42 @@
-# Cppcheck Ceedling Plugin
+# Cppcheck
 
-Add [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) task for analyzing
-code with [Cppcheck](http://cppcheck.net/).
+Adds Ceedling tasks to execute Cppcheck static analysis, helping detect
+undefined behavior, dangerous code patterns, and style issues across your
+project or individual files.
 
-<!-- TOC ignore:true -->
-## Contents
+## Plugin overview
 
-<!-- TOC -->
+The Cppcheck plugin integrates [Cppcheck](https://cppcheck.sourceforge.io)
+static analysis into Ceedling, facilitating automated code quality checks as
+part of your development workflow. It provides two analysis modes:
 
-- [Cppcheck Ceedling Plugin](#cppcheck-ceedling-plugin)
-    - [Installation](#installation)
-    - [Enable the plugin](#enable-the-plugin)
-    - [Configuration](#configuration)
-        - [Reports](#reports)
-            - [HTML](#html)
-            - [Sarif](#sarif)
-            - [Text](#text)
-            - [XML](#xml)
-        - [Import project file](#import-project-file)
-        - [Preprocessor defines](#preprocessor-defines)
-            - [Define](#define)
-            - [Undefine](#undefine)
-        - [Includes](#includes)
-        - [Excludes](#excludes)
-        - [Platform](#platform)
-        - [Standard](#standard)
-        - [Check Level](#check-level)
-        - [Addons](#addons)
-            - [MISRA with rule texts file](#misra-with-rule-texts-file)
-                - [misra.json](#misrajson)
-        - [Checks](#checks)
-        - [Suppressions](#suppressions)
-            - [Inline](#inline)
-            - [List Files](#list-files)
-            - [Command Line](#command-line)
-        - [Library configuration](#library-configuration)
-        - [Rules](#rules)
-        - [Extra options](#extra-options)
-    - [Usage](#usage)
-        - [Analyze whole project](#analyze-whole-project)
-        - [Analyze single file](#analyze-single-file)
+- **Whole project analysis**: By running `ceedling cppcheck:all`, all project
+source files will be analyzed with all checks enabled (`--enable=all`) and
+configurable reports can be generated in multiple formats.
+- **Single file analysis**: By running `ceedling cppcheck:<filename>`, an
+individual source file will be analyzed using the checks configured in the
+`:enable_checks` list (defaults to `style`).
 
-<!-- /TOC -->
+The plugin supports extensive Cppcheck configuration options such as platform,
+language standard, preprocessor defines, include/exclude paths, and suppression
+management. It also integrates with advanced features like MISRA addons, custom
+check levels, library configuration files, and regular expression rules. All of
+these can be configured in your `project.yml` file.
 
-## Installation
+The plugin can produce reports in HTML, SARIF, text, and XML (v2 and v3)
+formats, all stored under the build artifacts directory.
 
-Clone this into Ceedling's plugin folder of your current project.
+It also suppoprts using a project file (such as `compile_commands.json` or a
+Cppcheck GUI project), in which case, the plugin delegates source and include
+path discovery to Cppcheck rather than using Ceedling's own file collection.
 
-```shell
-$ cd <your-project>/vendor/ceedling/plugins
-$ git clone https://github.com/deltalejo/cppcheck-ceedling-plugin.git cppcheck
-```
+## Setup
 
-## Enable the plugin
-
-Add the plugins path to your `project.yml` if you have not done it yet.
-Then add `cppcheck` plugin to the enabled plugins list:
+Enable the plugin by adding `cppcheck` to the enabled plugins list in your
+`project.yml` file:
 
 ```yaml
 :plugins:
-  :load_paths:
-    - vendor/ceedling/plugins
   :enabled:
     - cppcheck
 ```
@@ -80,7 +56,7 @@ e.g:
 
 ### Reports
 
-Three types of reports are available:
+Four types of reports are available:
 
 - html
 - sarif
@@ -223,7 +199,7 @@ Specify C/C++ language standard.
   :standard: c99
 ```
 
-### Check Level
+### Check level
 
 Specify the check level to be used.
 
@@ -303,7 +279,7 @@ Inline suppressions are disabled by default, they can be enabled with:
   :inline_suppressions: true
 ```
 
-#### List Files
+#### List files
 
 Suppressions files can be used by giving the search paths and/or files in the
 `:paths` and `:files` sections of  your `project.yml` respectively.
@@ -335,7 +311,7 @@ The files that will ultimately be used can be verified with:
 $ ceedling files:cppcheck
 ```
 
-#### Command Line
+#### Command line
 
 Command line suppressions can also be added:
 
