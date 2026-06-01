@@ -177,8 +177,10 @@ class Mixinator
     end
 
     # Validate final configuration
+    # Exclude :history — it is internal bookkeeping added by this method and
+    # should not be counted as meaningful user configuration content.
     msg = "Final configuration is empty"
-    raise msg if config.empty?
+    raise msg if (config.keys - [:history]).empty?
   end
 
 end
