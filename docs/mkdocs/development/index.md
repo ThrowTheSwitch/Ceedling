@@ -24,12 +24,6 @@
 
 <div class="grid cards" markdown>
 
--   :fontawesome-solid-seedling: **Ceedling Development**
-
-    ---
-
-    ...
-
 -   :material-puzzle-edit: **[Plugin Development Guide][plugin-dev]**
 
     ---
