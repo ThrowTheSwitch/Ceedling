@@ -3,11 +3,11 @@
 **You have options, my friend**
 
 Ceedling needs a project configuration to accomplish anything for you.
-Ceedling's project configuration is a large in-memory data structure.
+Ceedling’s project configuration is a large in-memory data structure.
 That data structure is loaded from a human-readable file format called
 [YAML].
 
-The next section details Ceedling's project configuration options in 
+The next section details Ceedling’s project configuration options in 
 available through YAML. This section explains all your options for 
 loading and modifying the project configuration itself.
 
@@ -45,7 +45,7 @@ precedence. If an option higher in the list is present, it is used.
 
 ### `--project` command line flags
 
-Many of Ceedling's [application commands](../getting-started/command-line.md) include an 
+Many of Ceedling’s [application commands](../getting-started/command-line.md) include an 
 optional `--project` flag. When provided, Ceedling will load as its base 
 configuration the YAML filepath provided.
 
@@ -83,12 +83,12 @@ any number of reasons. Some example scenarios:
 
 * A single project actually contains mutiple build variations. You would
   like to maintain a common configuration that is shared among build
-  variations with each build variation's differences maintained separately.
+  variations with each build variation’s differences maintained separately.
 * Your repository contains the configuration needed by your Continuous
   Integration server setup, but this is not fun to run locally. You would
   like to modify the configuration locally with configuration details 
   maintained by you external to your locally cloned repository.
-* Ceedling's default `gcc` tools do not work for your project needs. You
+* Ceedling’s default `gcc` tools do not work for your project needs. You
   would like the complex tooling configurations you most often need to
   be maintained separately and shared among projects.
 
@@ -99,7 +99,7 @@ and merge in entire project configurations through mixins.
 
 ## Designing for Mixins merge rules
 
-Merging of any sort tends to be hard to do well. It's tricky at a 
+Merging of any sort tends to be hard to do well. It’s tricky at a 
 code-level, yes, but, just as importantly, merging can be hard to grasp in
 your head.
 
@@ -126,7 +126,7 @@ At a high level, additive merges can be constructed like this:
 1. Plan to add to lists with mixins. Path collections, plugins, and 
    tool flags & compilation symbols are all examples of lists that
    can be added to. Other lists exist in a project configuration too —
-   many within containing configuration entires. Add paths, plugins, and 
+   many within containing configuration entries. Add paths, plugins, and 
    flags & symbols to your base configuration that are in common to all 
    your buid variations and then customize the lists by adding to them 
    with mixins.
@@ -142,41 +142,70 @@ Mixins are merged in a specific order. See the documentation sections
 following the examples for details.
 
 Smooshing of mixin configurations into the base project configuration
-follows a few basic rules:
+follows a few basic rules.
 
-* If a configuration key/value pair does not already exist at the time
-  of merging, the mixin key/value pair is added to the configuration.
-* If a container — e.g. list or hash — already exists at the time of a
-  merge, the contents are _combined_.
-   * In the case of lists, merged list values are added to the end of 
-     the existing list.
-   * If the configuration contains a list but the mixin value is a 
-     different type, it is added to the list. The typical case is a 
-     list of strings growing with an additional single string. Note 
-     that the reverse case is not true. A configuration containing a
-     single value and a mixin containing a list, will trigger the
-     following rule.
-* If a simple value — e.g. boolean, string, numeric — already exists 
-  in the configuration at the time of merging, that value is replaced 
-  by the mixin value being merged. That merge is accompanied with a 
-  warning log entry to highlight what has happened.
+#### New key/value pair
 
-!!! warning "Mixin merge order affects path ordering"
-    That second bullet can have a significant impact on how your various
-    project configuration paths — including those used for header search
-    paths — are ordered. In brief, the contents of your `:paths` from your
-    base configuration will come first followed by any additions from your
-    mixins. See the section [Search Paths for Test Builds](../testing-guide/conventions.md#search-paths-for-test-builds)
+If a configuration key/value pair does not already exist at the time
+of merging, the mixin key/value pair is added to the configuration.
+
+#### Existing container (list or hash)
+
+If a container — e.g. list or hash — already exists at the time of a
+merge, the contents are _combined_.
+
+##### Hash merge
+
+A hash (key/value pairs) merge is straightforward. The key/value pairs
+are intermingled at the same level.
+
+##### List merge
+
+A list merge is a bit more complex:
+
+* When two lists are merged, the mixin’s entries are placed _before_ the
+  existing list entries. This means higher-priority mixin content appears
+  first in the combined list. For example, if a command line mixin and
+  the base project configuration both add header search paths, the
+  command line mixin paths come first in the resulting merged list. As
+  such, ultimately, the mixin’s paths are searched first.
+* If the existing configuration contains a list but the mixin value is a 
+  different type, the mixin is treated as a one-element list and placed 
+  before the existing list. The typical case is a list of strings growing 
+  with an additional single string.
+
+!!! note "An exception to the preceding — tool argument lists"
+    In the case of tool argument lists (`:tools` ↳ `<tool name>` ↳ `:arguments`),
+    mixin entries are placed _after_ the existing argument list entries 
+    rather than before. Command line tools tend to process arguments 
+    left-to-right such that a later occurrence of a flag takes precedence 
+    (e.g. `-O0` after `-O2` overrides `-02`). Appending ensures that a 
+    higher-priority mixin’s tool arguments override lower-priority 
+    arguments by conforming to the typical CLI convention.
+
+#### Existing simple value (boolean, string, numeric)
+
+If a simple value already exists in the configuration at the time of
+merging, that value is replaced by the mixin value being merged. Because
+higher-priority mixins are merged last, the last write wins.
+
+!!! info "Mixin merge order and list content order"
+    Because mixin entries are placed _before_ existing list entries,
+    higher-priority mixin content appears first in combined lists. For
+    example, include search paths added by a command line mixin will be
+    searched before those in an environment variable mixin, which will be
+    searched before those in the project configuration file. See the
+    section [Search Paths for Test Builds](../testing-guide/conventions.md#search-paths-for-test-builds)
     for more.
 
 ## Mixins Example
 ### Our Example Scenario
-Let's start with an example that helps explain how mixins are merged.
+Let’s start with an example that helps explain how mixins are merged.
 Then, the documentation sections that follow will discuss everything
 in detail.
 
 In this example, we will load a base project configuration and then
-apply three mixins using each of the available means — command line,
+apply three mixin files using each of the available means — command line,
 envionment variable, and `:mixins` section in the base project 
 configuration file.
 
@@ -186,29 +215,34 @@ configuration file.
 
 ### Example command line
 
+An environment variable as the preceding inserts a mixin outside of the 
+command line shown below. The _base.yml_ file (documented below) merges
+the mixin file _enabled.yml_ (documented below).
+
 `ceedling --project=base.yml --mixin=support/mixins/cmdline.yml <tasks>`
 
 !!! info "The `--mixin` flag supports more than filepaths"
     The [`--mixin` flag](#-mixin-command-line-flags) can be used multiple times 
     in the same command line to smoosh together multiple mixins. 
 
-The example command line above will produce the following logging output
-when verbosity is increased beyond the default.
+The example command line above with the precending environment variable 
+will produce the following logging output if verbosity is set above NORMAL:
 
 ```
 🚧 Loaded project configuration from command line argument using base.yml
- + Merging command line mixin using support/mixins/cmdline.yml
- + Merging CEEDLING_MIXIN_1 mixin using ./env.yml
  + Merging project configuration mixin using ./enabled.yml
+ + Merging CEEDLING_MIXIN_1 mixin using ./env.yml
+ + Merging command line mixin using support/mixins/cmdline.yml
 ```
 
 _Notes:_
 
 * The logging output above referencing _enabled.yml_ comes from the 
-  `:mixins` section within the base project configuration file provided below.
-* The resulting configuration in this example is missing settings required
-  by Ceedling. This will cause a validation build error that is not shown
-  here.
+  `:mixins` section within the base project configuration file (_base.yml_)
+  provided below.
+* The resulting configuration in this annotated example is missing settings 
+  required by Ceedling. If these examples were to be used in their stripped 
+  down form, they would cause a validation build error.
 
 ### Example Configuration files
 
@@ -284,26 +318,39 @@ Behold the project configuration following mixin merges:
 ```yaml
 :project:
   :build_root: build/           # From base.yml
-  :use_test_preprocessor: :all  # Value in support/mixins/cmdline.yml overwrote value from support/mixins/enabled.yml
+  :use_test_preprocessor: :all  # Value in support/mixins/cmdline.yml overwrote value from support/mixins/enabled.yml (cmdline merged last)
   :test_file_prefix: Test       # Added to :project from support/mixins/cmdline.yml
 
 :plugins:
-  :enabled:                       # :plugins ↳ :enabled from two mixins merged with oringal list in base.yml
+  :enabled:                       # :plugins ↳ :enabled from two mixins merged with original list in base.yml
+    - compile_commands_json_db    # From env.yml (prepended before base.yml entry — env.yml is higher priority)
+    - gcov                        # From support/mixins/enabled.yml (prepended before base.yml entry)
     - report_tests_pretty_stdout  # From base.yml
-    - compile_commands_json_db    # From env.yml
-    - gcov                        # From support/mixins/enabled.yml
 ```
 !!! note "Original `:mixins` section is removed from resulting config"
 
 ## Options for loading Mixins
 
-You have three options for telling Ceedling what mixins to load. These 
+You have three options for telling Ceedling what mixins to load. These
 options are ordered below according to their precedence. A Mixin higher
-in the list is merged earlier. In addition, options higher in the list
-force duplicate mixin filepaths to be ignored lower in the list.
+in the list is merged **later** and therefore its content takes priority 
+over lower-listed options in two ways:
 
-Unlike base project file loading that resolves to a single filepath, 
-multiple mixins can be specified using any or all of these options.
+- **Single values** (a path string, a number, true/false): The higher-priority
+  mixin’s value replaces any lower-priority mixin’s value for the same setting.
+- **Lists** (e.g. search paths, plugin names): The higher-priority mixin’s
+  entries appear **before** lower-priority entries in the combined list.
+  For example, if a command line mixin adds the search path `vendor/include`
+  and the project configuration mixin adds `src/include`, the merged include
+  path list will be `[vendor/include, src/include]` — the command line path
+  is searched first.
+
+In addition, options higher in the list force duplicate mixin filepaths in
+lower-listed options to be ignored (i.e. deduplicated).
+
+Unlike project file loading that resolves to a single filepath
+to load your base configuration, multiple mixins can be specified using 
+any or all of these options.
 
 1. Command line option flags
 1. Environment variables
@@ -311,7 +358,7 @@ multiple mixins can be specified using any or all of these options.
 
 ### `--mixin` command line flags
 
-As already discussed above, many of Ceedling's application commands 
+As already discussed above, many of Ceedling’s application commands 
 include an optional `--project` flag. Most of these same commands 
 also recognize optional `--mixin` flags. Note that `--mixin` can be 
 used multiple times in a single command line.
@@ -321,10 +368,11 @@ it with the base project configuration.
 
 A Mixin flag can contain one of two types of values:
 
-1. A filename or filepath to a mixin yaml file. A filename contains
-   a file extension. A filepath includes a leading directory path.
-1. A simple name (no file extension and no path). This name is used
-   as a lookup in Ceedling's mixin load paths.
+1. A filename or filepath to a mixin yaml file.
+    * A simple filename contains a file extension.
+    * A filepath includes a leading directory path before a filename.
+1. A simple name (no file extension and no path). This mixin name is 
+   used as a filename lookup among Ceedling’s mixin load paths.
 
 Example: `ceedling --project=build.yml --mixin=foo --mixin=bar/mixin.yaml test:all`
 
@@ -337,7 +385,7 @@ the [documentation for the `:mixins` section of your project
 configuration][mixins-config-section] for more details.
 
 Order of precedence is set by the command line mixin order 
-left-to-right.
+left-to-right. Rightmost is highest priority.
 
 Filepaths may be relative (in relation to the working directory) or
 absolute.
@@ -354,10 +402,12 @@ Mixins can also be loaded through environment variables. Ceedling
 recognizes environment variables with a naming scheme of 
 `CEEDLING_MIXIN_#`, where `#` is any number greater than 0.
 
-Precedence among the environment variables is a simple ascending
+Precedence among the environment variables follows a simple ascending
 sort of the trailing numeric value in the environment variable name.
-For example, `CEEDLING_MIXIN_5` will be merged before 
-`CEEDLING_MIXIN_99`.
+Lower-numbered variables are merged first (lower priority); higher-numbered
+variables are merged last (higher priority). For example,
+`CEEDLING_MIXIN_5` is merged before `CEEDLING_MIXIN_99`, so
+`CEEDLING_MIXIN_99` takes priority.
 
 Mixin environment variables only hold filepaths. Filepaths may be 
 relative (in relation to the working directory) or absolute.
@@ -367,10 +417,13 @@ Ceedling terminates with an error.
 
 ### Base configuration file `:mixins` entries
 
-Ceedling only recognizes a `:mixins` section in your base project
-configuration file. A `:mixins` section in a mixin is ignored. In addition,
-the `:mixins` section of a base project configuration file is filtered
-out of the resulting configuration.
+!!! note
+    Ceedling only recognizes a `:mixins` section in your base project
+    configuration file. A `:mixins` section nested in a mixin is ignored.
+
+The `:mixins` section of a base project configuration file is filtered
+out of the resulting merged configuration and will be absent in 
+`ceedling dumpconfig` output.
 
 The `:mixins` configuration section can contain up to two subsections.
 Each subsection is optional.
@@ -381,11 +434,11 @@ Each subsection is optional.
     (B) simple mixin names.
 
     1. A filename contains a file extension. A filepath includes a 
-      directory path. The file content is YAML.
+       directory path. The file content is YAML.
     1. A simple name (no file extension and no path) is used
-      as a file lookup among any configured load paths (see next
-      section) and as a lookup name among Ceedling's built-in mixins
-      (currently none).
+       as a file lookup among any configured load paths (see next
+       section) and as a lookup name among Ceedling’s built-in mixins
+       (currently none).
 
     Enabled entries support [inline Ruby string expansion][inline-ruby-string-expansion].
 
@@ -426,9 +479,10 @@ Relating the above example to command line `--mixin` flag handling:
   entry in the `:enabled` mixin configuration.
 * A command line flag of `--mixin=path/bar.yaml` is equivalent to the 
   `path/bar.yaml` entry in the `:enabled` mixin configuration.
-* Note that while command line `--mixin` flags work identically to 
-  entries in `:mixins` ↳ `:enabled`, they are merged first instead of 
-  last in the mixin precedence.
+* Note that while command line `--mixin` flags work identically to
+  entries in `:mixins` ↳ `:enabled`, they are merged **last** and therefore
+  have the highest priority. The `:enabled` list is merged **first** (because
+  it resides in the base configuration and has the lowest priority).
 
 [YAML]: http://en.wikipedia.org/wiki/Yaml
 [inline-ruby-string-expansion]: project-file.md#inline-ruby-string-expansion

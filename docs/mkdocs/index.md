@@ -10,6 +10,7 @@ Features handy for low-level development have made these tools popular with
 embedded systems developers.
 
 !!! tip "New to Ceedling?"
+    <img src="assets/images/ceedling.svg" width="130"><br/>
     Jump straight to the [Quick Start][quick-start] — installation,
     project set up, and your first build tasks all in one place.
 

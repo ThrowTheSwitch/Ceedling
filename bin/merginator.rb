@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'deep_merge'
+require_relative 'recursive_merger'
 
 class Merginator
 
@@ -20,14 +20,10 @@ class Merginator
     # Find any incompatible merge values in config and mixin
     validate = validate_merge( config:config, mixin:mixin, mismatches:warnings )
 
-    # Merge this bad boy
-    config.deep_merge!(
-      mixin,
-      # In cases of a primitive and a hash of primitives, add single item to array
-      # This handles merge cases where valid config entries can be a single string or array of strings
-      # Because of the nature of Ceedling configurations, this handling is primarily for the string case
-      :extend_existing_arrays => true
-    )
+    # Merge mixin into config using custom recursive logic that preserves
+    # priority order for both single values and lists. See RecursiveMerger
+    # for the full set of merge rules.
+    RecursiveMerger.merge!( config, mixin )
 
     return validate
   end
@@ -64,7 +60,8 @@ class Merginator
 
         valid = false unless sub_result
 
-      # Skip comparing anything where the config value is an array as it will be extended by the mixin value
+      # When the config value is already a list, merging any mixin value into it is allowed —
+      # RecursiveMerger handles all list combinations without type errors.
       elsif !config_value.is_a?(Array)
         # Compare types of non-hash values
         unless config_value.class == mixin_value.class

@@ -14,7 +14,8 @@ plugins/dependencies/example/boss/third_party/
 plugins/dependencies/example/supervisor/build/
 
 # Logs / test output
-out.fail
+*.pass
+*.fail
 *.fail.log
 
 # Generated documentation site builds

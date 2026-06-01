@@ -45,17 +45,22 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 - #1014 Line Continuations not working in test name.
 - #1015 directive-only issue.
 - #1024 Fixed bug in options-handling for warnings log report.
-- #358 Mocks with relative path in include .
+- #358 Mocks with relative path in `#include` directive.
+- #1128 Command line mixin precedence.
+- Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) correct merge order explanations and clarify Mixins generally.
 - `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
-- Fixes to `#include`s handling and encoding.
 - PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
 - PR #1056 fix for extracting `#include` directive filenames that contain dashes.
+- Multiple fixes to `#include`s handling and encoding.
 - Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
+- ##1120 An overly “helpful” holdover from Ceedling’s earliest days caused certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
 
 ## ⚠️ Changed
 
 - PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
+- Added warning logging if a Mixin contains mixins (nesting is not supported).
+- Mixins now merge list content according to mixin priority. In all cases but one, a higher priority mixin inserts its list content before the content of the existing list to which it is merging. In the case of `:tools` `:arguments` lists, insertion occurs at the end of the arguments list to enable the typical CLI convention of rightmost argument having the highest priority.
 - Significant refactoring and improvements to logging and parallel processing.
 - Streamlined preprocessing, eliminating redundant steps and reducing memory usage.
 - The GCov plugin now compiles all files with coverage (and filters out unneeded framework results) in order to meet the stricter coverage handling that began with GCC 14. This change is backwards and forwards compatible with virtually all versions of GCC and the GCov plugin’s supporting utilities.
@@ -64,8 +69,8 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 
 ## 👋 Removed
 
-- _CeedlingPacket.md_ user manual (superseded by new documentation site and local bundle).
-- _PluginDevelopmentGuide.md_ (superseded by new documentation site and local bundle).
+- _CeedlingPacket.md_ user manual (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
+- _PluginDevelopmentGuide.md_ (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
 
 # [1.0.1] — 2025-01-30
 
