@@ -179,4 +179,8 @@ namespace :docs do
   task :deploy do
     venv_sh "mike deploy --push dev"
   end
+
+  task :no_color do 
+    #doesn't do anything at the moment
+  end
 end
