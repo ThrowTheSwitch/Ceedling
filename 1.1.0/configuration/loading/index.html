@@ -4283,10 +4283,10 @@
 <h1 id="how-to-load-a-project-configuration">How to Load a Project Configuration</h1>
 <p><strong>You have options, my friend</strong></p>
 <p>Ceedling needs a project configuration to accomplish anything for you.
-Ceedling's project configuration is a large in-memory data structure.
+Ceedling’s project configuration is a large in-memory data structure.
 That data structure is loaded from a human-readable file format called
 <a href="http://en.wikipedia.org/wiki/Yaml">YAML</a>.</p>
-<p>The next section details Ceedling's project configuration options in 
+<p>The next section details Ceedling’s project configuration options in 
 available through YAML. This section explains all your options for 
 loading and modifying the project configuration itself.</p>
 <h2 id="loading-smooshing-overview">Loading &amp; Smooshing Overview</h2>
@@ -4318,7 +4318,7 @@ precedence. If an option higher in the list is present, it is used.</p>
 <li>Default file in working directory</li>
 </ol>
 <h3 id="-project-command-line-flags"><code>--project</code> command line flags</h3>
-<p>Many of Ceedling's <a href="../../getting-started/command-line/">application commands</a> include an 
+<p>Many of Ceedling’s <a href="../../getting-started/command-line/">application commands</a> include an 
 optional <code>--project</code> flag. When provided, Ceedling will load as its base 
 configuration the YAML filepath provided.</p>
 <p>Example: <code>ceedling --project=my/path/build.yml test:all</code></p>
@@ -4347,12 +4347,12 @@ any number of reasons. Some example scenarios:</p>
 <ul>
 <li>A single project actually contains mutiple build variations. You would
   like to maintain a common configuration that is shared among build
-  variations with each build variation's differences maintained separately.</li>
+  variations with each build variation’s differences maintained separately.</li>
 <li>Your repository contains the configuration needed by your Continuous
   Integration server setup, but this is not fun to run locally. You would
   like to modify the configuration locally with configuration details 
   maintained by you external to your locally cloned repository.</li>
-<li>Ceedling's default <code>gcc</code> tools do not work for your project needs. You
+<li>Ceedling’s default <code>gcc</code> tools do not work for your project needs. You
   would like the complex tooling configurations you most often need to
   be maintained separately and shared among projects.</li>
 </ul>
@@ -4361,7 +4361,7 @@ just after the base project file is loaded. The merge is so low-level
 and generic that you can, in fact, load an empty base configuration 
 and merge in entire project configurations through mixins.</p>
 <h2 id="designing-for-mixins-merge-rules">Designing for Mixins merge rules</h2>
-<p>Merging of any sort tends to be hard to do well. It's tricky at a 
+<p>Merging of any sort tends to be hard to do well. It’s tricky at a 
 code-level, yes, but, just as importantly, merging can be hard to grasp in
 your head.</p>
 <p>The brief sections that follow provide an overview of our recommended
@@ -4385,7 +4385,7 @@ probably easier to understand and create.</p>
 <li>Plan to add to lists with mixins. Path collections, plugins, and 
    tool flags &amp; compilation symbols are all examples of lists that
    can be added to. Other lists exist in a project configuration too —
-   many within containing configuration entires. Add paths, plugins, and 
+   many within containing configuration entries. Add paths, plugins, and 
    flags &amp; symbols to your base configuration that are in common to all 
    your buid variations and then customize the lists by adding to them 
    with mixins.</li>
@@ -4399,66 +4399,90 @@ probably easier to understand and create.</p>
 <p>Mixins are merged in a specific order. See the documentation sections 
 following the examples for details.</p>
 <p>Smooshing of mixin configurations into the base project configuration
-follows a few basic rules:</p>
+follows a few basic rules.</p>
+<h4 id="new-keyvalue-pair">New key/value pair</h4>
+<p>If a configuration key/value pair does not already exist at the time
+of merging, the mixin key/value pair is added to the configuration.</p>
+<h4 id="existing-container-list-or-hash">Existing container (list or hash)</h4>
+<p>If a container — e.g. list or hash — already exists at the time of a
+merge, the contents are <em>combined</em>.</p>
+<h5 id="hash-merge">Hash merge</h5>
+<p>A hash (key/value pairs) merge is straightforward. The key/value pairs
+are intermingled at the same level.</p>
+<h5 id="list-merge">List merge</h5>
+<p>A list merge is a bit more complex:</p>
 <ul>
-<li>If a configuration key/value pair does not already exist at the time
-  of merging, the mixin key/value pair is added to the configuration.</li>
-<li>If a container — e.g. list or hash — already exists at the time of a
-  merge, the contents are <em>combined</em>.</li>
-<li>In the case of lists, merged list values are added to the end of 
-     the existing list.</li>
-<li>If the configuration contains a list but the mixin value is a 
-     different type, it is added to the list. The typical case is a 
-     list of strings growing with an additional single string. Note 
-     that the reverse case is not true. A configuration containing a
-     single value and a mixin containing a list, will trigger the
-     following rule.</li>
-<li>If a simple value — e.g. boolean, string, numeric — already exists 
-  in the configuration at the time of merging, that value is replaced 
-  by the mixin value being merged. That merge is accompanied with a 
-  warning log entry to highlight what has happened.</li>
+<li>When two lists are merged, the mixin’s entries are placed <em>before</em> the
+  existing list entries. This means higher-priority mixin content appears
+  first in the combined list. For example, if a command line mixin and
+  the base project configuration both add header search paths, the
+  command line mixin paths come first in the resulting merged list. As
+  such, ultimately, the mixin’s paths are searched first.</li>
+<li>If the existing configuration contains a list but the mixin value is a 
+  different type, the mixin is treated as a one-element list and placed 
+  before the existing list. The typical case is a list of strings growing 
+  with an additional single string.</li>
 </ul>
-<div class="admonition warning">
-<p class="admonition-title">Mixin merge order affects path ordering</p>
-<p>That second bullet can have a significant impact on how your various
-project configuration paths — including those used for header search
-paths — are ordered. In brief, the contents of your <code>:paths</code> from your
-base configuration will come first followed by any additions from your
-mixins. See the section <a href="../../testing-guide/conventions/#search-paths-for-test-builds">Search Paths for Test Builds</a>
+<div class="admonition note">
+<p class="admonition-title">An exception to the preceding — tool argument lists</p>
+<p>In the case of tool argument lists (<code>:tools</code> ↳ <code>&lt;tool name&gt;</code> ↳ <code>:arguments</code>),
+mixin entries are placed <em>after</em> the existing argument list entries 
+rather than before. Command line tools tend to process arguments 
+left-to-right such that a later occurrence of a flag takes precedence 
+(e.g. <code>-O0</code> after <code>-O2</code> overrides <code>-02</code>). Appending ensures that a 
+higher-priority mixin’s tool arguments override lower-priority 
+arguments by conforming to the typical CLI convention.</p>
+</div>
+<h4 id="existing-simple-value-boolean-string-numeric">Existing simple value (boolean, string, numeric)</h4>
+<p>If a simple value already exists in the configuration at the time of
+merging, that value is replaced by the mixin value being merged. Because
+higher-priority mixins are merged last, the last write wins.</p>
+<div class="admonition info">
+<p class="admonition-title">Mixin merge order and list content order</p>
+<p>Because mixin entries are placed <em>before</em> existing list entries,
+higher-priority mixin content appears first in combined lists. For
+example, include search paths added by a command line mixin will be
+searched before those in an environment variable mixin, which will be
+searched before those in the project configuration file. See the
+section <a href="../../testing-guide/conventions/#search-paths-for-test-builds">Search Paths for Test Builds</a>
 for more.</p>
 </div>
 <h2 id="mixins-example">Mixins Example</h2>
 <h3 id="our-example-scenario">Our Example Scenario</h3>
-<p>Let's start with an example that helps explain how mixins are merged.
+<p>Let’s start with an example that helps explain how mixins are merged.
 Then, the documentation sections that follow will discuss everything
 in detail.</p>
 <p>In this example, we will load a base project configuration and then
-apply three mixins using each of the available means — command line,
+apply three mixin files using each of the available means — command line,
 envionment variable, and <code>:mixins</code> section in the base project 
 configuration file.</p>
 <h3 id="example-environment-variable">Example environment variable</h3>
 <p><code>CEEDLING_MIXIN_1</code> = <code>./env.yml</code></p>
 <h3 id="example-command-line">Example command line</h3>
+<p>An environment variable as the preceding inserts a mixin outside of the 
+command line shown below. The <em>base.yml</em> file (documented below) merges
+the mixin file <em>enabled.yml</em> (documented below).</p>
 <p><code>ceedling --project=base.yml --mixin=support/mixins/cmdline.yml &lt;tasks&gt;</code></p>
 <div class="admonition info">
 <p class="admonition-title">The <code>--mixin</code> flag supports more than filepaths</p>
 <p>The <a href="#-mixin-command-line-flags"><code>--mixin</code> flag</a> can be used multiple times 
 in the same command line to smoosh together multiple mixins. </p>
 </div>
-<p>The example command line above will produce the following logging output
-when verbosity is increased beyond the default.</p>
+<p>The example command line above with the precending environment variable 
+will produce the following logging output if verbosity is set above NORMAL:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>🚧 Loaded project configuration from command line argument using base.yml
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a> + Merging command line mixin using support/mixins/cmdline.yml
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a> + Merging project configuration mixin using ./enabled.yml
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a> + Merging CEEDLING_MIXIN_1 mixin using ./env.yml
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a> + Merging project configuration mixin using ./enabled.yml
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a> + Merging command line mixin using support/mixins/cmdline.yml
 </code></pre></div>
 <p><em>Notes:</em></p>
 <ul>
 <li>The logging output above referencing <em>enabled.yml</em> comes from the 
-  <code>:mixins</code> section within the base project configuration file provided below.</li>
-<li>The resulting configuration in this example is missing settings required
-  by Ceedling. This will cause a validation build error that is not shown
-  here.</li>
+  <code>:mixins</code> section within the base project configuration file (<em>base.yml</em>)
+  provided below.</li>
+<li>The resulting configuration in this annotated example is missing settings 
+  required by Ceedling. If these examples were to be used in their stripped 
+  down form, they would cause a validation build error.</li>
 </ul>
 <h3 id="example-configuration-files">Example Configuration files</h3>
 <h4 id="baseyml-our-base-project-configuration-file"><em>base.yml</em> — Our base project configuration file</h4>
@@ -4515,32 +4539,45 @@ rules (noted after the examples).</p>
 <p>Behold the project configuration following mixin merges:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">:project</span><span class="p">:</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">:build_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">build/</span><span class="w">           </span><span class="c1"># From base.yml</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">:use_test_preprocessor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:all</span><span class="w">  </span><span class="c1"># Value in support/mixins/cmdline.yml overwrote value from support/mixins/enabled.yml</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">:use_test_preprocessor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:all</span><span class="w">  </span><span class="c1"># Value in support/mixins/cmdline.yml overwrote value from support/mixins/enabled.yml (cmdline merged last)</span>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">:test_file_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Test</span><span class="w">       </span><span class="c1"># Added to :project from support/mixins/cmdline.yml</span>
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="nt">:plugins</span><span class="p">:</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span><span class="w">                       </span><span class="c1"># :plugins ↳ :enabled from two mixins merged with oringal list in base.yml</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_pretty_stdout</span><span class="w">  </span><span class="c1"># From base.yml</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compile_commands_json_db</span><span class="w">    </span><span class="c1"># From env.yml</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcov</span><span class="w">                        </span><span class="c1"># From support/mixins/enabled.yml</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span><span class="w">                       </span><span class="c1"># :plugins ↳ :enabled from two mixins merged with original list in base.yml</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compile_commands_json_db</span><span class="w">    </span><span class="c1"># From env.yml (prepended before base.yml entry — env.yml is higher priority)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcov</span><span class="w">                        </span><span class="c1"># From support/mixins/enabled.yml (prepended before base.yml entry)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_pretty_stdout</span><span class="w">  </span><span class="c1"># From base.yml</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Original <code>:mixins</code> section is removed from resulting config</p>
 </div>
 <h2 id="options-for-loading-mixins">Options for loading Mixins</h2>
-<p>You have three options for telling Ceedling what mixins to load. These 
+<p>You have three options for telling Ceedling what mixins to load. These
 options are ordered below according to their precedence. A Mixin higher
-in the list is merged earlier. In addition, options higher in the list
-force duplicate mixin filepaths to be ignored lower in the list.</p>
-<p>Unlike base project file loading that resolves to a single filepath, 
-multiple mixins can be specified using any or all of these options.</p>
+in the list is merged <strong>later</strong> and therefore its content takes priority 
+over lower-listed options in two ways:</p>
+<ul>
+<li><strong>Single values</strong> (a path string, a number, true/false): The higher-priority
+  mixin’s value replaces any lower-priority mixin’s value for the same setting.</li>
+<li><strong>Lists</strong> (e.g. search paths, plugin names): The higher-priority mixin’s
+  entries appear <strong>before</strong> lower-priority entries in the combined list.
+  For example, if a command line mixin adds the search path <code>vendor/include</code>
+  and the project configuration mixin adds <code>src/include</code>, the merged include
+  path list will be <code>[vendor/include, src/include]</code> — the command line path
+  is searched first.</li>
+</ul>
+<p>In addition, options higher in the list force duplicate mixin filepaths in
+lower-listed options to be ignored (i.e. deduplicated).</p>
+<p>Unlike project file loading that resolves to a single filepath
+to load your base configuration, multiple mixins can be specified using 
+any or all of these options.</p>
 <ol>
 <li>Command line option flags</li>
 <li>Environment variables</li>
 <li>Base project configuration file entries</li>
 </ol>
 <h3 id="-mixin-command-line-flags"><code>--mixin</code> command line flags</h3>
-<p>As already discussed above, many of Ceedling's application commands 
+<p>As already discussed above, many of Ceedling’s application commands 
 include an optional <code>--project</code> flag. Most of these same commands 
 also recognize optional <code>--mixin</code> flags. Note that <code>--mixin</code> can be 
 used multiple times in a single command line.</p>
@@ -4548,10 +4585,13 @@ used multiple times in a single command line.</p>
 it with the base project configuration.</p>
 <p>A Mixin flag can contain one of two types of values:</p>
 <ol>
-<li>A filename or filepath to a mixin yaml file. A filename contains
-   a file extension. A filepath includes a leading directory path.</li>
-<li>A simple name (no file extension and no path). This name is used
-   as a lookup in Ceedling's mixin load paths.</li>
+<li>A filename or filepath to a mixin yaml file.<ul>
+<li>A simple filename contains a file extension.</li>
+<li>A filepath includes a leading directory path before a filename.</li>
+</ul>
+</li>
+<li>A simple name (no file extension and no path). This mixin name is 
+   used as a filename lookup among Ceedling’s mixin load paths.</li>
 </ol>
 <p>Example: <code>ceedling --project=build.yml --mixin=foo --mixin=bar/mixin.yaml test:all</code></p>
 <p>Simple mixin names (#2 above) require mixin load paths to search.
@@ -4562,7 +4602,7 @@ the <code>:mixins</code> section of the base configuration project file. See
 the <a href="#base-configuration-file-mixins-entries">documentation for the <code>:mixins</code> section of your project 
 configuration</a> for more details.</p>
 <p>Order of precedence is set by the command line mixin order 
-left-to-right.</p>
+left-to-right. Rightmost is highest priority.</p>
 <p>Filepaths may be relative (in relation to the working directory) or
 absolute.</p>
 <p>If the <code>--mixin</code> filename or filepath does not exist, Ceedling 
@@ -4572,19 +4612,25 @@ any load paths, it terminates with an error.</p>
 <p>Mixins can also be loaded through environment variables. Ceedling
 recognizes environment variables with a naming scheme of 
 <code>CEEDLING_MIXIN_#</code>, where <code>#</code> is any number greater than 0.</p>
-<p>Precedence among the environment variables is a simple ascending
+<p>Precedence among the environment variables follows a simple ascending
 sort of the trailing numeric value in the environment variable name.
-For example, <code>CEEDLING_MIXIN_5</code> will be merged before 
-<code>CEEDLING_MIXIN_99</code>.</p>
+Lower-numbered variables are merged first (lower priority); higher-numbered
+variables are merged last (higher priority). For example,
+<code>CEEDLING_MIXIN_5</code> is merged before <code>CEEDLING_MIXIN_99</code>, so
+<code>CEEDLING_MIXIN_99</code> takes priority.</p>
 <p>Mixin environment variables only hold filepaths. Filepaths may be 
 relative (in relation to the working directory) or absolute.</p>
 <p>If the filepath specified by an environment variable does not exist,
 Ceedling terminates with an error.</p>
 <h3 id="base-configuration-file-mixins-entries">Base configuration file <code>:mixins</code> entries</h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
 <p>Ceedling only recognizes a <code>:mixins</code> section in your base project
-configuration file. A <code>:mixins</code> section in a mixin is ignored. In addition,
-the <code>:mixins</code> section of a base project configuration file is filtered
-out of the resulting configuration.</p>
+configuration file. A <code>:mixins</code> section nested in a mixin is ignored.</p>
+</div>
+<p>The <code>:mixins</code> section of a base project configuration file is filtered
+out of the resulting merged configuration and will be absent in 
+<code>ceedling dumpconfig</code> output.</p>
 <p>The <code>:mixins</code> configuration section can contain up to two subsections.
 Each subsection is optional.</p>
 <ul>
@@ -4594,11 +4640,11 @@ Each subsection is optional.</p>
 (B) simple mixin names.</p>
 <ol>
 <li>A filename contains a file extension. A filepath includes a 
-  directory path. The file content is YAML.</li>
+   directory path. The file content is YAML.</li>
 <li>A simple name (no file extension and no path) is used
-  as a file lookup among any configured load paths (see next
-  section) and as a lookup name among Ceedling's built-in mixins
-  (currently none).</li>
+   as a file lookup among any configured load paths (see next
+   section) and as a lookup name among Ceedling’s built-in mixins
+   (currently none).</li>
 </ol>
 <p>Enabled entries support <a href="../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>.</p>
 <p><strong>Default</strong>: <code>[]</code></p>
@@ -4632,9 +4678,10 @@ line via <code>--mixin</code> flag use this list of load paths for searches.</p>
   entry in the <code>:enabled</code> mixin configuration.</li>
 <li>A command line flag of <code>--mixin=path/bar.yaml</code> is equivalent to the 
   <code>path/bar.yaml</code> entry in the <code>:enabled</code> mixin configuration.</li>
-<li>Note that while command line <code>--mixin</code> flags work identically to 
-  entries in <code>:mixins</code> ↳ <code>:enabled</code>, they are merged first instead of 
-  last in the mixin precedence.</li>
+<li>Note that while command line <code>--mixin</code> flags work identically to
+  entries in <code>:mixins</code> ↳ <code>:enabled</code>, they are merged <strong>last</strong> and therefore
+  have the highest priority. The <code>:enabled</code> list is merged <strong>first</strong> (because
+  it resides in the base configuration and has the lowest priority).</li>
 </ul>
 <p><br/><br/></p>
 
