@@ -810,6 +810,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#handy-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handy Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-start-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -825,17 +836,6 @@
     <span class="md-ellipsis">
       
         Command Line &amp; Build Tasks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Start Documentation
       
     </span>
   </a>
@@ -3777,6 +3777,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#handy-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handy Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-start-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3792,17 +3803,6 @@
     <span class="md-ellipsis">
       
         Command Line &amp; Build Tasks
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Start Documentation
       
     </span>
   </a>
@@ -3878,6 +3878,16 @@
 
 
 <h1 id="quick-start">Quick Start</h1>
+<h2 id="handy-documentation">Handy Documentation</h2>
+<ul>
+<li><a href="../installation/">Installation</a></li>
+<li><a href="../../testing-guide/test-sample/">Sample test code file</a></li>
+<li><a href="../../testing-guide/test-sample/#ceedling-includes-example-projects">Example Ceedling projects</a></li>
+<li><a href="../../overview/build-system/#simple-sample-project-file">Simple Ceedling project file</a></li>
+<li><a href="../command-line/">Ceedling at the command line</a></li>
+<li><a href="../../configuration/">All your project configuration file options</a></li>
+</ul>
+<hr />
 <h2 id="quick-start-steps">Quick Start Steps</h2>
 <p>Below is a quick overview of how to get started from Ceedling installation 
 through running build tasks. Jump down just a teeny bit to see what the Ceedling 
@@ -3885,28 +3895,33 @@ command line looks like and navigate to all the documentation for the steps
 listed immediately below.</p>
 <ol>
 <li><a href="../installation/">Install Ceedling</a></li>
-<li>Create a project</li>
-<li>Use Ceedling to generate an example project, or</li>
+<li>Create a project<ul>
+<li>Use Ceedling to generate an example project (see next section), or</li>
 <li>Add a Ceedling project file to the root of an existing project, or</li>
 <li>Create a project from scratch:<ol>
-<li>Create a project directory</li>
-<li>Add source code and optionally test code however you'd like it organized</li>
-<li>Create a Ceedling project file in the root of your project directory</li>
+<li>Create a project directory.</li>
+<li>Add source code and optionally test code however you’d like it organized.</li>
+<li>Create a Ceedling project file in the root of your project directory.</li>
 </ol>
 </li>
-<li>Run Ceedling tasks from the working directory of your project</li>
+</ul>
+</li>
+<li>Run Ceedling tasks (see next section) from the working directory of your project.</li>
 </ol>
-<p>Ceedling requires a command line C toolchain be available in your path. It's 
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Ceedling requires a command line C toolchain be available in your path. It’s 
 flexible enough to work with most anything on any platform. By default, Ceedling 
 is ready to work with <a href="https://gcc.gnu.org">GCC</a> out of the box (we recommend the <a href="http://www.mingw.org/">MinGW</a> project 
 on Windows).</p>
+</div>
 <p>A common build strategy with tooling other than GCC is to use your target 
-toolchain for release builds (with or without Ceedling) but rely on Ceedling + 
+toolchain for release builds—with or without Ceedling—but rely on Ceedling + 
 GCC for test builds (more on all this <a href="../../overview/">here</a>).</p>
 <h2 id="command-line-build-tasks">Command Line &amp; Build Tasks</h2>
 <p>Once you have Ceedling installed, you always have access to <code>ceedling help</code>.</p>
-<p>And, once you have Ceedling installed, you have options for project creation
-using Ceedling's application commands:</p>
+<p>Once you have Ceedling installed, you have options for project creation
+using Ceedling’s application commands:</p>
 <ul>
 <li><code>ceedling new &lt;name&gt; &lt;destination&gt;</code></li>
 <li><code>ceedling examples</code> to list available example projects and 
@@ -3920,14 +3935,6 @@ code, Ceedling build tasks go like this:</p>
 <li><code>ceedling test:all</code>, or</li>
 <li><code>ceedling release</code>, or, if you fancy and have the GCov plugin enabled,</li>
 <li><code>ceedling clobber test:all gcov:all release --log --verbosity=obnoxious</code></li>
-</ul>
-<h2 id="quick-start-documentation">Quick Start Documentation</h2>
-<ul>
-<li><a href="../installation/">Installation</a></li>
-<li><a href="../../testing-guide/test-sample/">Sample test code file + Example Ceedling projects</a></li>
-<li><a href="../../overview/build-system/#simple-sample-project-file">Simple project file</a></li>
-<li><a href="../command-line/">Ceedling at the command line</a></li>
-<li><a href="../../configuration/">All your project configuration file options</a></li>
 </ul>
 <p><br/><br/></p>
 
