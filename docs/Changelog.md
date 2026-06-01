@@ -50,10 +50,11 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) correct merge order explanations and clarify Mixins generally.
 - `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
-- Fixes to `#include`s handling and encoding.
 - PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
 - PR #1056 fix for extracting `#include` directive filenames that contain dashes.
+- Multiple fixes to `#include`s handling and encoding.
 - Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
+- ##1120 An overly “helpful” holdover from Ceedling’s earliest days caused certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
 
 ## ⚠️ Changed
 
@@ -68,8 +69,8 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 
 ## 👋 Removed
 
-- _CeedlingPacket.md_ user manual (superseded by new documentation site and local bundle).
-- _PluginDevelopmentGuide.md_ (superseded by new documentation site and local bundle).
+- _CeedlingPacket.md_ user manual (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
+- _PluginDevelopmentGuide.md_ (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
 
 # [1.0.1] — 2025-01-30
 
