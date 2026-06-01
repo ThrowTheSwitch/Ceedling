@@ -253,6 +253,27 @@ describe Mixinator do
       )
     end
 
+    it 'logs a WARNING when a loaded mixin contains a :mixins section' do
+      mixin_filepath    = 'path/to/mixin_with_nested.yml'
+      mixin_with_nested = {
+        :defines => {:test => {:* => ['SYMBOL']}},
+        :mixins  => {:enabled => ['nested_mixin']}
+      }
+      allow(@yaml_wrapper).to receive(:load).with(mixin_filepath).and_return(mixin_with_nested)
+
+      expect(@loginator).to receive(:log).with(
+        /nested mixins are not supported/i,
+        anything,
+        LogLabels::WARNING
+      )
+
+      @mixinator.mixin(
+        builtins: builtins,
+        config:   base_config,
+        mixins:   [{'command line' => mixin_filepath}]
+      )
+    end
+
     it 'strips :mixins section from a loaded mixin before merging' do
       mixin_filepath    = 'path/to/mixin.yml'
       mixin_with_section = {

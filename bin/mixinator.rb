@@ -137,8 +137,12 @@ class Mixinator
       # Hnadle an empty mixin (it's unlikely but logically coherent and a good safety check)
       _mixin = {} if _mixin.nil?
 
-      # Sanitize the mixin config by removing any :mixins section (these should not end up in merges)
-      _mixin.delete(:mixins)
+      # Nested :mixins sections are not supported — warn and strip before merging
+      if _mixin.key?(:mixins)
+        msg = "Mixin from #{source} '#{filepath}' contains a `:mixins` section ➡️ Nested mixins are not supported and will be ignored."
+        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::WARNING )
+        _mixin.delete(:mixins)
+      end
 
       # Run special handling using knowledge of Ceedling configuration conventions
       notices = []
