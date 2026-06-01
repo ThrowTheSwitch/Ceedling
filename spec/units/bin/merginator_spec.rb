@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'merginator'
+require 'recursive_merger'
 require 'ceedling/reportinator'
 
 describe Merginator do
@@ -66,7 +67,7 @@ describe Merginator do
       }
 
       expected = {
-        :foo => ['bar', 'baz'],
+        :foo => ['baz', 'bar'],  # mixin list prepended before config list
         :bar => {
           :baz => 'baz',
           :foo => 'foo'
@@ -76,7 +77,6 @@ describe Merginator do
       # Successful merge
       expect( @merginator.merge( config:config, mixin:mixin, warnings:warnings ) ).to eq true
 
-      # Expected `deep_merge!()` result
       expect( config ).to eq expected
 
       # No warnings
@@ -85,7 +85,7 @@ describe Merginator do
   end
 
   context "#merge" do
-    it "should merge mixin value into config array because of :extend_existing_arrays" do
+    it "prepends mixin single value into config list" do
       warnings = []
 
       config = {
@@ -101,18 +101,47 @@ describe Merginator do
       }
 
       expected = {
-        :foo => ['bar', 'baz', 'bad'],
-        :empty => [:not],
-        :eclectic => ['a', :b, {:d => 'd'}]
+        :foo => ['bad', 'bar', 'baz'],        # mixin single value prepended before config list
+        :empty => [:not],                      # mixin single value into empty list
+        :eclectic => [{:d => 'd'}, 'a', :b]  # mixin hash-as-value prepended before config list
       }
 
       # Successful merge
       expect( @merginator.merge( config:config, mixin:mixin, warnings:warnings ) ).to eq true
 
-      # Expected `deep_merge!()` result
       expect( config ).to eq expected
 
-      # No warnings because merging a a Mixin entry value into a Config array is allowed
+      # No warnings because merging any mixin value into a config list is allowed
+      expect( warnings ).to eq []
+    end
+  end
+
+  context "#merge" do
+    it "prepends mixin list before config list for general list merges" do
+      warnings = []
+
+      config = {paths: {include: ['project/include']}}
+      mixin  = {paths: {include: ['mixin/include']}}
+
+      expect( @merginator.merge( config:config, mixin:mixin, warnings:warnings ) ).to eq true
+
+      # Mixin include path appears first — searched before project include path
+      expect( config[:paths][:include] ).to eq(['mixin/include', 'project/include'])
+      expect( warnings ).to eq []
+    end
+  end
+
+  context "#merge" do
+    it "appends mixin :tools arguments to preserve compiler flag override order" do
+      warnings = []
+
+      config = {tools: {test_compiler: {arguments: ['-O2']}}}
+      mixin  = {tools: {test_compiler: {arguments: ['-O0']}}}
+
+      expect( @merginator.merge( config:config, mixin:mixin, warnings:warnings ) ).to eq true
+
+      # -O0 must appear AFTER -O2 so the compiler honours the override
+      expect( config[:tools][:test_compiler][:arguments] ).to eq(['-O2', '-O0'])
       expect( warnings ).to eq []
     end
   end
@@ -144,7 +173,6 @@ describe Merginator do
         }
       }
 
-      # `deep_merge!()` replaces primitive with array
       expected = {
         :a => {
           :b => {
@@ -159,7 +187,6 @@ describe Merginator do
       # Merging happens but validating it for lack of conflicts fails
       expect( @merginator.merge( config:config, mixin:mixin, warnings:warnings ) ).to eq false
 
-      # Expected `deep_merge!()` result
       expect( config ).to eq expected
 
       # Warnings
@@ -223,18 +250,18 @@ describe Merginator do
         :defines => {
           :test => {
             :* => [
+              'PROJECT_FEATURE_X',  # mixin define prepended — appears first
               'SIMULATE',
-              'TEST',
-              'PROJECT_FEATURE_X'
+              'TEST'
             ]
           }
         },
         :plugins => {
           :enabled => [
+            'module_generator',    # mixin plugins prepended — appear first
+            'command_hooks',
             'report_tests_pretty_stdout',
-            'report_tests_log_factory',
-            'module_generator',
-            'command_hooks'
+            'report_tests_log_factory'
           ]
         }
       }
@@ -242,10 +269,9 @@ describe Merginator do
       # Successful merge
       expect( @merginator.merge( config:config, mixin:mixin, warnings:warnings ) ).to eq true
 
-      # Expected `deep_merge!()` result
       expect( config ).to eq expected
 
-      # No warnings because merging a a Mixin entry value into a Config array is allowed
+      # No warnings
       expect( warnings ).to eq []
     end
   end
