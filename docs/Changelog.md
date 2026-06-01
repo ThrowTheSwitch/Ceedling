@@ -45,7 +45,9 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 - #1014 Line Continuations not working in test name.
 - #1015 directive-only issue.
 - #1024 Fixed bug in options-handling for warnings log report.
-- #358 Mocks with relative path in include .
+- #358 Mocks with relative path in `#include` directive.
+- #1128 Command line mixin precedence.
+- Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) correct merge order explanations and clarify Mixins generally.
 - `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
 - Fixes to `#include`s handling and encoding.
@@ -56,6 +58,8 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 ## ⚠️ Changed
 
 - PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
+- Added warning logging if a Mixin contains mixins (nesting is not supported).
+- Mixins now merge list content according to mixin priority. In all cases but one, a higher priority mixin inserts its list content before the content of the existing list to which it is merging. In the case of `:tools` `:arguments` lists, insertion occurs at the end of the arguments list to enable the typical CLI convention of rightmost argument having the highest priority.
 - Significant refactoring and improvements to logging and parallel processing.
 - Streamlined preprocessing, eliminating redundant steps and reducing memory usage.
 - The GCov plugin now compiles all files with coverage (and filters out unneeded framework results) in order to meet the stricter coverage handling that began with GCC 14. This change is backwards and forwards compatible with virtually all versions of GCC and the GCov plugin’s supporting utilities.
