@@ -144,6 +144,9 @@ class Mixinator
         _mixin.delete(:mixins)
       end
 
+      # Prevent mixin files from injecting their own :history entries
+      _mixin.delete(:history)
+
       # Run special handling using knowledge of Ceedling configuration conventions
       notices = []
       if @standardinator.smart_standardize( config:config, mixin:_mixin, notices:notices )
@@ -156,11 +159,28 @@ class Mixinator
         @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
         warnings.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN ) }
       end
+
+      # Record this mixin in the configuration history
+      label = case source
+              when 'command line'          then '--mixin'
+              when 'project configuration' then ':mixins'
+              else source # environment variable name (e.g. CEEDLING_MIXIN_1)
+              end
+
+      config[:history] ||= {}
+      config[:history][:config] ||= []
+      if @path_validator.filepath?( filepath )
+        config[:history][:config] << "#{filepath} (#{label})"
+      else
+        config[:history][:config] << "#{filepath} (built-in, #{label})"
+      end
     end
 
     # Validate final configuration
+    # Exclude :history — it is internal bookkeeping added by this method and
+    # should not be counted as meaningful user configuration content.
     msg = "Final configuration is empty"
-    raise msg if config.empty?
+    raise msg if (config.keys - [:history]).empty?
   end
 
 end

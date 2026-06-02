@@ -89,6 +89,10 @@ end
 task :default => ['specs:all']
 task :ci      => ['specs:all']
 
+task :no_color do 
+  #doesn't do anything at the moment
+end
+
 ##
 ## Documentation tasks
 ##
