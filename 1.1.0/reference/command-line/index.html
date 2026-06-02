@@ -3168,10 +3168,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#ceedling-build-tasks-or-ceedling-tasks" class="md-nav__link">
+  <a href="#ceedling-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ceedling build &lt;tasks...&gt; or ceedling &lt;tasks...&gt;
+        ceedling &lt;tasks...&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling-build-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling build &lt;tasks...&gt;
       
     </span>
   </a>
@@ -4054,10 +4065,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#ceedling-build-tasks-or-ceedling-tasks" class="md-nav__link">
+  <a href="#ceedling-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ceedling build &lt;tasks...&gt; or ceedling &lt;tasks...&gt;
+        ceedling &lt;tasks...&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling-build-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling build &lt;tasks...&gt;
       
     </span>
   </a>
@@ -4413,14 +4435,17 @@ reference includes brief entries.</p>
 uses a default task of <code>test:all</code>. To override this behavior, set your 
 own default tasks in the project file (see later section). </p>
 <hr />
-<h3 id="ceedling-build-tasks-or-ceedling-tasks"><code>ceedling build &lt;tasks...&gt;</code> or <code>ceedling &lt;tasks...&gt;</code></h3>
-<p>Runs the named build tasks. <code>build</code> is optional (i.e. <code>ceedling test:all</code> 
-is equivalent to <code>ceedling build test:all</code>). Various option flags
+<h3 id="ceedling-tasks"><code>ceedling &lt;tasks...&gt;</code></h3>
+<p>Runs the named build tasks (i.e. <code>ceedling test:all</code>). Various option flags
 exist to control project configuration loading, verbosity levels, 
 logging, test task filters, etc.</p>
 <p>See <a href="#build-plugin-tasks">next section</a> to understand the build &amp; plugin 
 tasks this application command is able to execute. Run <code>ceedling help build</code> 
 to understand all the command line flags that work with build &amp; plugin tasks.</p>
+<hr />
+<h3 id="ceedling-build-tasks"><code>ceedling build &lt;tasks...&gt;</code></h3>
+<p><code>ceedling build</code> is a verbose alias for the preceding. <code>build</code> is optional 
+(i.e. <code>ceedling test:all</code> is equivalent to <code>ceedling build test:all</code>).</p>
 <hr />
 <h3 id="ceedling-check"><code>ceedling check</code></h3>
 <p>Process project configuration for validity and to check for any warnings
@@ -4494,7 +4519,7 @@ automated build in CI.</p>
 application commands that are fixed, build tasks vary depending on your
 project configuration and the files within your project structure.</p>
 <p>Ultimately, build &amp; plugin tasks are executed by the
-<a href="#ceedling-build-tasks-or-ceedling-tasks"><code>build</code> application command</a>
+<a href="#ceedling-build-tasks"><code>build</code> application command</a>
 (but the <code>build</code> keyword can be omitted — see above).</p>
 <div class="admonition warning">
 <p class="admonition-title">Quotes in shell command line parsing</p>

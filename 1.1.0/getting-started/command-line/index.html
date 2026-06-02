@@ -866,10 +866,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-command-line-example-to-get-you-started" class="md-nav__link">
+  <a href="#quick-command-line-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick command line example to get you started
+        Quick command line example
       
     </span>
   </a>
@@ -899,22 +899,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#command-line-tasks-extra-credit" class="md-nav__link">
+  <a href="#command-line-extra-credit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Command Line Tasks, Extra Credit
+        Command line extra credit
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Command Line Tasks, Extra Credit">
+    <nav class="md-nav" aria-label="Command line extra credit">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#combining-tasks-at-the-command-line" class="md-nav__link">
+  <a href="#combining-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Combining Tasks At the Command Line
+        Combining tasks
       
     </span>
   </a>
@@ -922,10 +922,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#build-directory-and-revision-control" class="md-nav__link">
+  <a href="#builds-revision-control" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Build Directory and Revision Control
+        Builds &amp; Revision Control
       
     </span>
   </a>
@@ -3816,10 +3816,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-command-line-example-to-get-you-started" class="md-nav__link">
+  <a href="#quick-command-line-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick command line example to get you started
+        Quick command line example
       
     </span>
   </a>
@@ -3849,22 +3849,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#command-line-tasks-extra-credit" class="md-nav__link">
+  <a href="#command-line-extra-credit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Command Line Tasks, Extra Credit
+        Command line extra credit
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Command Line Tasks, Extra Credit">
+    <nav class="md-nav" aria-label="Command line extra credit">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#combining-tasks-at-the-command-line" class="md-nav__link">
+  <a href="#combining-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Combining Tasks At the Command Line
+        Combining tasks
       
     </span>
   </a>
@@ -3872,10 +3872,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#build-directory-and-revision-control" class="md-nav__link">
+  <a href="#builds-revision-control" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Build Directory and Revision Control
+        Builds &amp; Revision Control
       
     </span>
   </a>
@@ -3960,7 +3960,7 @@
 <p>Every action in Ceedling is accomplished via the command line. We'll 
 cover project conventions and how to actually configure your project 
 in other sections.</p>
-<p>For now, let's talk about the command line.</p>
+<p>For now, let’s talk about the command line.</p>
 <p>To run tests, build your release artifact, etc., you will be using the
 trusty command line. Ceedling is transitioning away from being built
 around Rake. As such, right now, interacting with Ceedling at the 
@@ -3972,14 +3972,14 @@ command line involves two different conventions:</p>
    help and operate similarly to popular command line tools like <code>git</code>.</li>
 <li><strong>Build &amp; Plugin Tasks.</strong> Build tasks actually execute test suites, 
    run release builds, etc. These tasks are created from your project 
-   file. These are generated through Ceedling's Rake-based code and 
+   file. These are generated through Ceedling’s Rake-based code and 
    conform to its conventions — simplistic help, no option flags, but 
    bracketed arguments.</li>
 </ol>
 <p>In the case of running builds, both come into play at the command line.</p>
 <p>The two classes of command line arguments are clearly labelled in the
 summary of all commands provided by <code>ceedling help</code>.</p>
-<h2 id="quick-command-line-example-to-get-you-started">Quick command line example to get you started</h2>
+<h2 id="quick-command-line-example">Quick command line example</h2>
 <p>To exercise the Ceedling command line quickly, follow these steps after 
 <a href="../installation/">installing Ceedling</a>:</p>
 <ol>
@@ -4009,14 +4009,23 @@ own default tasks in the project file (see later section). </p>
 <hr />
 </li>
 <li>
-<p><code>ceedling build &lt;tasks...&gt;</code> or <code>ceedling &lt;tasks...&gt;</code>:</p>
-<p>Runs the named build tasks. <code>build</code> is optional (i.e. <code>ceedling test:all</code> 
-is equivalent to <code>ceedling build test:all</code>). Various option flags
-exist to control project configuration loading, verbosity levels, 
-logging, test task filters, etc.</p>
-<p>See next section to understand the build &amp; plugin tasks this application
-command is able to execute. Run <code>ceedling help build</code> to understand all
-the command line flags that work with build &amp; plugin tasks.</p>
+<p><code>ceedling &lt;tasks...&gt;</code>:</p>
+<p>Runs the named tasks (e.g. <code>ceedling test:all</code>). Various option flags exist 
+to control project configuration loading, verbosity levels, logging, test 
+task filters, etc.</p>
+<p>See <a href="#ceedling-build-plugin-tasks">next section</a> to understand the build &amp; 
+plugin tasks this application command is able to execute. Run 
+<code>ceedling help build</code> to understand all the command line flags that work 
+with build &amp; plugin tasks.</p>
+<hr />
+</li>
+<li>
+<p><code>ceedling build &lt;tasks...&gt;</code>:</p>
+<p><code>build</code> is an optional alias for the preceding (i.e. <code>ceedling test:all</code> 
+is equivalent to <code>ceedling build test:all</code>). The command actually executed
+is <code>ceedling build</code> under-the-hood. To maintain Ceedling’s historical
+command line convention, special rigging causes the <code>build</code> application
+command to be optional.</p>
 <hr />
 </li>
 <li>
@@ -4077,7 +4086,7 @@ along with any locally installed documentation bundles.</p>
 </li>
 <li>
 <p><code>ceedling version</code>:</p>
-<p>Displays version information for Ceedling and its components. Version output for Ceedling includes the Git Commit short SHA in Ceedling's build identifier and Ceedling's path of origin.</p>
+<p>Displays version information for Ceedling and its components. Version output for Ceedling includes the Git Commit short SHA in Ceedling’s build identifier and Ceedling’s path of origin.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>🌱 Welcome to Ceedling!
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  Ceedling =&gt; #.#.#-&lt;Short SHA&gt;
@@ -4090,7 +4099,7 @@ along with any locally installed documentation bundles.</p>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>      Unity =&gt; #.#.#
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  CException =&gt; #.#.#
 </code></pre></div>
-<p>If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling's automated build in CI.</p>
+<p>If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling’s automated build in CI.</p>
 </li>
 </ul>
 <h2 id="ceedling-build-plugin-tasks">Ceedling build &amp; plugin tasks</h2>
@@ -4189,7 +4198,7 @@ sensitive). Example: <code>ceedling test:path[foo/bar]</code> will execute all t
 whose path contains foo/bar. <em>Notes:</em></p>
 <ol>
 <li>Both directory separator characters <code>/</code> and <code>\</code> are valid.</li>
-<li>Quotes may be necessary around the task to distinguish the parameter's
+<li>Quotes may be necessary around the task to distinguish the parameter’s
   characters from shell command line operators.</li>
 </ol>
 <hr />
@@ -4229,27 +4238,25 @@ command line unless verbosity has been set to an appreciable level.</p>
 </li>
 <li>
 <p><code>ceedling clobber</code>:</p>
-<p>Extends clean task's behavior to also remove generated files: test
+<p>Extends clean task’s behavior to also remove generated files: test
 runners, mocks, preprocessor output. Clobber produces no output at the
 command line unless verbosity has been set to an appreciable level.</p>
 </li>
 </ul>
-<h2 id="command-line-tasks-extra-credit">Command Line Tasks, Extra Credit</h2>
-<h3 id="combining-tasks-at-the-command-line">Combining Tasks At the Command Line</h3>
+<h2 id="command-line-extra-credit">Command line extra credit</h2>
+<h3 id="combining-tasks">Combining tasks</h3>
 <p>Multiple build tasks can be executed at the command line.</p>
 <p>For example, <code>ceedling clobber test:all release</code> will remove all generated
 files; build and run all tests; and then build all source — in that order. If
 any task fails along the way, execution halts before the next task.</p>
 <p>Task order is executed as provided and can be important! Running <code>clobber</code> after
 a <code>test:</code> or <code>release:</code> task will not accomplish much.</p>
-<h3 id="build-directory-and-revision-control">Build Directory and Revision Control</h3>
-<p>The <code>clobber</code> task removes certain build directories in the
-course of deleting generated files. In general, it's best not
-to add to source control any Ceedling generated directories
-below the root of your top-level build directory. That is, leave
-anything Ceedling &amp; its accompanying tools generate out of source
-control (but go ahead and add the top-level build directory that
-holds all that stuff if you want).</p>
+<h3 id="builds-revision-control">Builds &amp; Revision Control</h3>
+<p>The <code>clobber</code> task removes certain build directories in the course of 
+deleting generated files.</p>
+<p>In general, it’s best not to add to source control any Ceedling generated 
+directories below the root of your top-level project build directory. That is, 
+leave anything Ceedling &amp; its accompanying tools generate out of source control.</p>
 <p><br/><br/></p>
 
 
