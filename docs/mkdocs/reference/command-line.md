@@ -31,16 +31,22 @@ own default tasks in the project file (see later section).
 
 ---
 
-### `ceedling build <tasks...>` or `ceedling <tasks...>`
+### `ceedling <tasks...>`
 
-Runs the named build tasks. `build` is optional (i.e. `ceedling test:all` 
-is equivalent to `ceedling build test:all`). Various option flags
+Runs the named build tasks (i.e. `ceedling test:all`). Various option flags
 exist to control project configuration loading, verbosity levels, 
 logging, test task filters, etc.
 
 See [next section](#build-plugin-tasks) to understand the build & plugin 
 tasks this application command is able to execute. Run `ceedling help build` 
 to understand all the command line flags that work with build & plugin tasks.
+
+---
+
+### `ceedling build <tasks...>`
+
+`ceedling build` is a verbose alias for the preceding. `build` is optional 
+(i.e. `ceedling test:all` is equivalent to `ceedling build test:all`).
 
 ---
 
@@ -146,7 +152,7 @@ application commands that are fixed, build tasks vary depending on your
 project configuration and the files within your project structure.
 
 Ultimately, build & plugin tasks are executed by the
-[`build` application command](#ceedling-build-tasks-or-ceedling-tasks)
+[`build` application command](#ceedling-build-tasks)
 (but the `build` keyword can be omitted — see above).
 
 !!! warning "Quotes in shell command line parsing"

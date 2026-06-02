@@ -6,7 +6,7 @@ Every action in Ceedling is accomplished via the command line. We'll
 cover project conventions and how to actually configure your project 
 in other sections.
 
-For now, let's talk about the command line.
+For now, let’s talk about the command line.
 
 To run tests, build your release artifact, etc., you will be using the
 trusty command line. Ceedling is transitioning away from being built
@@ -19,7 +19,7 @@ command line involves two different conventions:
    help and operate similarly to popular command line tools like `git`.
 1. **Build & Plugin Tasks.** Build tasks actually execute test suites, 
    run release builds, etc. These tasks are created from your project 
-   file. These are generated through Ceedling's Rake-based code and 
+   file. These are generated through Ceedling’s Rake-based code and 
    conform to its conventions — simplistic help, no option flags, but 
    bracketed arguments.
 
@@ -28,7 +28,7 @@ In the case of running builds, both come into play at the command line.
 The two classes of command line arguments are clearly labelled in the
 summary of all commands provided by `ceedling help`.
 
-## Quick command line example to get you started
+## Quick command line example
 
 To exercise the Ceedling command line quickly, follow these steps after 
 [installing Ceedling](installation.md):
@@ -61,16 +61,26 @@ briefly list and explain the available application commands.
 
     ---
 
-* `ceedling build <tasks...>` or `ceedling <tasks...>`:
+* `ceedling <tasks...>`:
 
-    Runs the named build tasks. `build` is optional (i.e. `ceedling test:all` 
-    is equivalent to `ceedling build test:all`). Various option flags
-    exist to control project configuration loading, verbosity levels, 
-    logging, test task filters, etc.
+    Runs the named tasks (e.g. `ceedling test:all`). Various option flags exist 
+    to control project configuration loading, verbosity levels, logging, test 
+    task filters, etc.
 
-    See next section to understand the build & plugin tasks this application
-    command is able to execute. Run `ceedling help build` to understand all
-    the command line flags that work with build & plugin tasks.
+    See [next section](#ceedling-build-plugin-tasks) to understand the build & 
+    plugin tasks this application command is able to execute. Run 
+    `ceedling help build` to understand all the command line flags that work 
+    with build & plugin tasks.
+
+    ---
+
+* `ceedling build <tasks...>`:
+
+    `build` is an optional alias for the preceding (i.e. `ceedling test:all` 
+    is equivalent to `ceedling build test:all`). The command actually executed
+    is `ceedling build` under-the-hood. To maintain Ceedling’s historical
+    command line convention, special rigging causes the `build` application
+    command to be optional.
 
     ---
 
@@ -138,7 +148,7 @@ briefly list and explain the available application commands.
 
 * `ceedling version`:
 
-    Displays version information for Ceedling and its components. Version output for Ceedling includes the Git Commit short SHA in Ceedling's build identifier and Ceedling's path of origin.
+    Displays version information for Ceedling and its components. Version output for Ceedling includes the Git Commit short SHA in Ceedling’s build identifier and Ceedling’s path of origin.
     
     ```
     🌱 Welcome to Ceedling!
@@ -154,7 +164,7 @@ briefly list and explain the available application commands.
       CException => #.#.#
     ```
     
-    If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling's automated build in CI.
+    If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling’s automated build in CI.
 
 ## Ceedling build & plugin tasks
 
@@ -262,7 +272,7 @@ command (but the `build` keyword can be omitted — see above).
     whose path contains foo/bar. _Notes:_
 
     1. Both directory separator characters `/` and `\` are valid.
-    1. Quotes may be necessary around the task to distinguish the parameter's
+    1. Quotes may be necessary around the task to distinguish the parameter’s
       characters from shell command line operators.
 
     ---
@@ -307,13 +317,13 @@ command (but the `build` keyword can be omitted — see above).
 
 * `ceedling clobber`:
 
-    Extends clean task's behavior to also remove generated files: test
+    Extends clean task’s behavior to also remove generated files: test
     runners, mocks, preprocessor output. Clobber produces no output at the
     command line unless verbosity has been set to an appreciable level.
 
-## Command Line Tasks, Extra Credit
+## Command line extra credit
 
-### Combining Tasks At the Command Line
+### Combining tasks
 
 Multiple build tasks can be executed at the command line.
 
@@ -324,14 +334,13 @@ any task fails along the way, execution halts before the next task.
 Task order is executed as provided and can be important! Running `clobber` after
 a `test:` or `release:` task will not accomplish much.
 
-### Build Directory and Revision Control
+### Builds & Revision Control
 
-The `clobber` task removes certain build directories in the
-course of deleting generated files. In general, it's best not
-to add to source control any Ceedling generated directories
-below the root of your top-level build directory. That is, leave
-anything Ceedling & its accompanying tools generate out of source
-control (but go ahead and add the top-level build directory that
-holds all that stuff if you want).
+The `clobber` task removes certain build directories in the course of 
+deleting generated files.
+
+In general, it’s best not to add to source control any Ceedling generated 
+directories below the root of your top-level project build directory. That is, 
+leave anything Ceedling & its accompanying tools generate out of source control.
 
 <br/><br/>
