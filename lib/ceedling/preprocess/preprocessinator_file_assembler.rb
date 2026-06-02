@@ -112,6 +112,12 @@ class PreprocessinatorFileAssembler
     return contents
   end
 
+  def collect_file_contents_fallback(source_filepath:)
+    @file_wrapper.open( source_filepath, 'r' ) do |file|
+      return file.readlines( chomp: true )
+    end
+  end
+
 
   def collect_file_contents_from_full_expansion(source_filepath:, test:)
     contents = []

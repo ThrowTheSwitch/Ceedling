@@ -324,13 +324,18 @@ class Preprocessinator
       defines:                   defines
     }
 
-    # Extract includes & log progress and details   
+    # Extract includes & log progress and details
     includes = preprocess_file_includes_common( **arg_hash )
 
     header = "Discovered #includes for Partial header from #{filepath}"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
-    
-    contents = @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
+
+    contents =
+      if fallback
+        @file_assembler.collect_file_contents_fallback( source_filepath: filepath )
+      else
+        @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
+      end
 
     arg_hash = {
       filename:              File.basename( filepath ),
@@ -382,7 +387,12 @@ class Preprocessinator
     header = "Discovered #includes for Partial source from #{filepath}"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
 
-    contents = @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
+    contents =
+      if fallback
+        @file_assembler.collect_file_contents_fallback( source_filepath: filepath )
+      else
+        @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
+      end
 
     arg_hash = {
       filename:              File.basename( filepath ),
