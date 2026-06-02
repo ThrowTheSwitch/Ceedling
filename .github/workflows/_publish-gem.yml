@@ -82,6 +82,16 @@ jobs:
         shell: bash
         run: .github/workflows/stamp_gem_version.sh "${GITHUB_REF_NAME}" lib/version.rb
 
+      # Capture the short SHA for the GIT_COMMIT_SHA file embedded in the gem
+      - name: Capture Git Commit Short SHA
+        shell: bash
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      # Create GIT_COMMIT_SHA file in the repo root — packaged into the gem for runtime version reporting
+      - name: Create GIT_COMMIT_SHA File
+        shell: bash
+        run: echo "${{ env.sha_short }}" > "$GITHUB_WORKSPACE/GIT_COMMIT_SHA"
+
       # Extract the changelog section matching this release version for use as the
       # release body. The script exits 0 (found) or 1 (not found / file missing).
       # Shell vars don't persist across steps; version is re-derived from the tag.
