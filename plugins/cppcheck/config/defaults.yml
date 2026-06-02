@@ -1,0 +1,37 @@
+---
+:cppcheck:
+  :reports: []
+  :sarif_artifact_filename: null
+  :text_artifact_filename: null
+  :xml_artifact_filename: null
+  :xml_report_version: 3
+  :template: null
+  :html_title: null
+  :platform: null
+  :standard: null
+  :check_level: null
+  :project: null
+  :inline_suppressions: false
+  :enable_checks:
+    - style
+  :disable_checks: []
+  :addons: []
+  :includes: []
+  :excludes: []
+  :libraries: []
+  :rules: []
+  :suppressions: []
+  :defines: []
+  :undefines:
+    - TEST
+  :options: []
+
+:extension:
+  :cppcheck: .txt
+
+:paths:
+  :cppcheck: []
+
+:files:
+  :cppcheck: []
+...
