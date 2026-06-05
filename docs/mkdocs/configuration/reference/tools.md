@@ -200,7 +200,9 @@ Linker for release source code
         ```yaml
         :tools:
           :test_compiler:
-            :executable: \"Code Cruncher\"
+            # YAML explicitly requires the outer quotation marks.
+            # The command line requires the inner escaped quotation marks.
+            :executable: "\"Code Cruncher\""
         ```
 
 1. `:arguments` - List (array of strings) of command line arguments and
