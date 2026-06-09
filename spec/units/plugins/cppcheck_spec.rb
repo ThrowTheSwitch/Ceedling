@@ -394,14 +394,14 @@ describe CppcheckXmlReport do
     stub_const('CPPCHECK_ARTIFACTS_FILE_XML', 'CppcheckReport.xml')
   end
 
-  it 'uses xmlv3 format by default' do
+  it 'uses --xml-version=3 by default' do
     report = described_class.new(system_objects, {})
-    expect(report.instance_variable_get(:@artifact_format)).to eq('xmlv3')
+    expect(report.send(:build_opts)).to include('--xml', '--xml-version=3')
   end
 
-  it 'uses xmlv2 format when version 2 is requested' do
+  it 'uses --xml-version=2 when version 2 is requested' do
     report = described_class.new(system_objects, { xml_report_version: 2 })
-    expect(report.instance_variable_get(:@artifact_format)).to eq('xmlv2')
+    expect(report.send(:build_opts)).to include('--xml', '--xml-version=2')
   end
 
   it 'raises CeedlingException for an unsupported version' do

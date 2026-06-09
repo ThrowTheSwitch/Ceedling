@@ -45,26 +45,20 @@ class CppcheckReport
   end
   
   def build_opts
-    opts = [
-      "--output-file=#{@artifact_filepath}",
-      "--output-format=#{@artifact_format}"
-    ]
-    
-    return opts
+    ["--output-file=#{@artifact_filepath}"]
   end
 end
 
 class CppcheckHtmlReport < CppcheckReport
   def initialize(system_objects, config, xml_artifact_filepath)
     super(system_objects, config)
-    
+
     @tool_validator.validate(
       tool: TOOLS_CPPCHECK_HTMLREPORT,
       boom: true
     )
-    
+
     @artifact_filepath = CPPCHECK_ARTIFACTS_HTML_PATH
-    @artifact_format = report_type.to_s
     @xml_artifact_filepath = xml_artifact_filepath
   end
   
@@ -95,49 +89,56 @@ end
 class CppcheckSarifReport < CppcheckReport
   def initialize(system_objects, config)
     super(system_objects, config)
-    
+
     @artifact_filepath = form_artifact_filepath(
       @config[:sarif_artifact_filename] || CPPCHECK_ARTIFACTS_FILE_SARIF,
       '.sarif'
     )
-    @artifact_format = report_type.to_s
   end
-  
+
   def report_type = :sarif
+
+  private
+
+  def build_opts
+    super + ["--output-format=sarif"]
+  end
 end
 
 class CppcheckTextReport < CppcheckReport
   def initialize(system_objects, config)
     super(system_objects, config)
-    
+
     @artifact_filepath = form_artifact_filepath(
       @config[:text_artifact_filename] || CPPCHECK_ARTIFACTS_FILE_TEXT,
       '.txt'
     )
-    @artifact_format = report_type.to_s
   end
-  
+
   def report_type = :text
 end
 
 class CppcheckXmlReport < CppcheckReport
   def initialize(system_objects, config)
     super(system_objects, config)
-    
+
     @artifact_filepath = form_artifact_filepath(
       @config[:xml_artifact_filename] || CPPCHECK_ARTIFACTS_FILE_XML,
       '.xml'
     )
-    
-    xml_report_version = @config[:xml_report_version] || 3
-    validate_version(xml_report_version)
-    @artifact_format = "#{report_type}v#{xml_report_version}"
+
+    @xml_version = @config[:xml_report_version] || 3
+    validate_version(@xml_version)
   end
-  
+
   def report_type = :xml
-  
+
   private
-  
+
+  def build_opts
+    super + ["--xml", "--xml-version=#{@xml_version}"]
+  end
+
   def validate_version(version)
     unless version == 2 or version == 3
       @loginator.log(

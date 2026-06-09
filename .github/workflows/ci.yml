@@ -112,10 +112,29 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install --assume-yes --quiet gdb
 
-      # Install cppcheck for cppcheck plugin test
-      - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
+      # Build cppcheck from source at a pinned version so all plugin options
+      # (including SARIF, which requires 2.16+) are available for testing.
+      # The installed binary is cached by version to avoid rebuilding on every run.
+      - name: Cache cppcheck binary
+        id: cache-cppcheck
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/cppcheck
+          key: cppcheck-${{ env.CPPCHECK_VERSION }}-linux
+        env:
+          CPPCHECK_VERSION: '2.16.0'
+
+      - name: "Build and Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
+        if: steps.cache-cppcheck.outputs.cache-hit != 'true'
+        env:
+          CPPCHECK_VERSION: '2.16.0'
         run: |
-          sudo apt-get install --assume-yes --quiet cppcheck
+          sudo apt-get install --assume-yes --quiet cmake
+          wget -q https://github.com/danmar/cppcheck/archive/refs/tags/${CPPCHECK_VERSION}.tar.gz -O cppcheck.tar.gz
+          tar xzf cppcheck.tar.gz
+          cmake -S cppcheck-${CPPCHECK_VERSION} -B cppcheck-build -DCMAKE_BUILD_TYPE=Release -DUSE_MATCHCOMPILER=ON
+          cmake --build cppcheck-build --parallel $(nproc)
+          sudo cmake --install cppcheck-build
 
       # --break-system-packages is required on Ubuntu 24.04+
       # (PEP 668 prevents pip from installing to the system Python environment without explicit opt-in)
@@ -232,12 +251,13 @@ jobs:
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
-      # Install/upgrade cppcheck for cppcheck plugin test
-      # windows-latest ships with an older pre-installed cppcheck; upgrade ensures
-      # we have a version that supports --output-format, --suppress-xml, and XML v3
+      # Install cppcheck via Chocolatey (installs the MSI to C:\Program Files\Cppcheck\).
+      # Add the real install directory to PATH ahead of the Chocolatey shim so that
+      # cppcheck can locate its cfg/ directory (needed for std.cfg library lookups).
       - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
         run: |
           choco upgrade cppcheck -y
+          echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
 
       # Download HTML docs bundle built by generate-docs job
       - name: Download HTML Documentation Bundle
