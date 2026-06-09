@@ -55,6 +55,7 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 - Multiple fixes to `#include`s handling and encoding.
 - Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
 - #1120 An overly “helpful” holdover from Ceedling’s earliest days caused certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
+- #1127 Fixes to path handling in `#include` directives
 
 ## ⚠️ Changed
 

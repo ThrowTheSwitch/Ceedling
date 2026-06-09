@@ -83,7 +83,9 @@ Automatic quoting has been removed. If you need a quoted executable, simply expl
 ```yaml
 :tools:
   :funky_compiler:
-    :executable: \"Code Cranker\"
+    # YAML explicitly requires the outer quotation marks.
+    # The command line requires the inner escaped quotation marks.
+    :executable: "\"Code Cranker\""
 ```
 
 ## Build output directory structure changes
