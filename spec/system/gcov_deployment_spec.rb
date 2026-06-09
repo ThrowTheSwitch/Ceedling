@@ -51,6 +51,16 @@ ceedling_system_tests do
       describe "temp_sensor" do
         before do
           @c.with_context do
+            # Remove any previous temp_sensor directory to prevent stale build
+            # artifacts (especially .gcda files) from polluting subsequent tests.
+            # `ceedling example` only restores src/test/mixin/project.yml and
+            # leaves build/ intact, so recompiling with different defines (e.g.
+            # UNITY_USE_COMMAND_LINE_ARGS added by --test-case) produces .gcno
+            # files whose checksums no longer match the stale .gcda files.
+            # On macOS/Clang the gcov runtime aborts on checksum mismatch rather
+            # than resetting, crashing the test executable before Unity can print
+            # its statistics line.
+            FileUtils.rm_rf('temp_sensor')
             output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
             expect(output).to match(/created/)
           end
