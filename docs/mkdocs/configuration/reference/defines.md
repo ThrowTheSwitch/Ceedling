@@ -29,7 +29,7 @@ arguments.
 
 Ceedling does no verification of your configured `:define` symbols.
 
-Unity, CMock, and CException conditional compilation statements, your
+Unity and CMock conditional compilation statements, your
 toolchain’s preprocessor, and/or your toolchain’s compiler will complain
 appropriately if your specified symbols are incorrect, incomplete, or
 incompatible.

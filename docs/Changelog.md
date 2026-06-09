@@ -31,6 +31,10 @@ A local verion of this site that is navigable with your web browser from your fi
 - `ceedling check` validates your configuration and produces logs from processing it without executing a build.
 - `ceedling docs` exports the new HTML-based documentation site to your local filesystem.
 
+### CppCheck plugin
+
+Alejandro Rosso's excellent Cppcheck plugin has been added to the default plugin collection (with Alejandro's permission). We're excited to make it easier for everyone to use this great addition!
+
 ### GCov plugin support for Modified Condition / Decision Coverage
 
 Ceedling’s [GCov plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/) for coverage reporting now supports the [Modified Condition / Decision Coverage](https://ldra.com/capabilities/mc-dc/) abilities of GCC 14+ and optionally GCovr 8+.

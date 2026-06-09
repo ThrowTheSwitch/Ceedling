@@ -14,7 +14,7 @@
 
     ---
 
-    Ruby, Rake, YAML, Unity, CMock, and CException explained — the pieces
+    Ruby, Rake, YAML, Unity, and CMock explained — the pieces
     that make Ceedling possible and how they fit together.
 
 -   :material-test-tube: **[Test Environments](test-environments.md)**

@@ -57,6 +57,7 @@
     #- beep                           # beeps when finished, so you don't waste time waiting for ceedling
     - module_generator                # handy for quickly creating source, header, and test templates
     #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
+    #- cppcheck                       # static analysis using cppcheck. Requires cppcheck to be installed
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
     #- compile_commands_json_db       # generate a compile_commands.json file
@@ -265,6 +266,16 @@
     :html_high_threshold: 90
     # :html_absolute_paths: TRUE
     # :html_encoding: UTF-8
+
+# :cppcheck:
+#   :reports:
+#     - text     # plain text report (default)
+#     # - xml    # XML report for tool integration
+#     # - sarif  # SARIF report for GitHub/VS Code integration
+#     # - html   # HTML report (requires cppcheck-htmlreport)
+#   :enable_checks: []
+#   :platform: ''
+#   :standard: ''
 
 # :module_generator:
 #   :naming: :snake #options: :bumpy, :camel, :caps, or :snake

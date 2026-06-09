@@ -1,7 +1,7 @@
 # Help
 
 !!! sponsorship "Please consider sponsoring this project"
-    Ceedling, Unity, CMock, and CException are free and open source, 
+    Ceedling, Unity, and CMock are free and open source, 
     maintained by volunteers. [GitHub Sponsors](https://github.com/sponsors/ThrowTheSwitch) 
     help fund ongoing maintenance, new features, and the infrastructure 
     to host and develop the Ceedling Suite of tools.

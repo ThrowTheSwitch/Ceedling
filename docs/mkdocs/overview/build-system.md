@@ -5,9 +5,9 @@ environment for a C project from a single, short YAML configuration
 file. It truly shines at supporting unit testing and managing test 
 builds.
 
-Ceedling and its bundled frameworks, Unity, CMock, and CException, don't 
-want to brag, but they're also quite adept at supporting the tiniest of 
-embedded processors, the beefiest 64-bit powerhouses available, and 
+Ceedling and its bundled frameworks, Unity and CMock, don't
+want to brag, but they're also quite adept at supporting the tiniest of
+embedded processors, the beefiest 64-bit powerhouses available, and
 everything in between.
 
 Assembling build environments for C projects — especially with

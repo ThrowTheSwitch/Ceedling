@@ -25,8 +25,7 @@ images and go.
 
 1. Use Ruby's command line gem package manager to install Ceedling from
    the [RubyGems repository][rubygems-repo]: `gem install ceedling`.
-   * Unity, CMock, and CException come along with Ceedling at no extra 
-     charge.
+   * Unity and CMock come along with Ceedling at no extra charge.
    * Installing from the RubyGems repo will also install Ceedling's 
      dependencies.
 1. Execute Ceedling at the command line to export an example project

@@ -32,7 +32,7 @@ If not set, defaults to Ceedling’s verbosity level
 Adds list of symbols used to configure CMock’s C code features in its source
 and header files at compile time.
 
-See [Using Unity, CMock & CException](../../testing-guide/frameworks.md) for
+See [Using Unity & CMock](../../testing-guide/frameworks.md) for
 much more on configuring and making use of these frameworks in your build.
 
 To manage overall command line length, these symbols are only added to

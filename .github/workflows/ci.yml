@@ -227,6 +227,14 @@ jobs:
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
+      # Install cppcheck via Chocolatey (installs the MSI to C:\Program Files\Cppcheck\).
+      # Add the real install directory to PATH ahead of the Chocolatey shim so that
+      # cppcheck can locate its cfg/ directory (needed for std.cfg library lookups).
+      - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
+        run: |
+          choco upgrade cppcheck -y
+          echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
+
       # Download HTML docs bundle built by generate-docs job
       - name: Download HTML Documentation Bundle
         uses: actions/download-artifact@v4
