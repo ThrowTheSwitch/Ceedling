@@ -49,7 +49,13 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+      begin
+        _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+      rescue => ex
+        msg = "Using fallback methods to extract #includes and other directives: #{ex.message}"
+        @loginator.log( msg, Verbosity::COMPLAIN )
+        next
+      end
       details[:directives_only_filepath] = _filepath
     end if @preprocessinator.directives_only_available?
 
@@ -110,7 +116,13 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+      begin
+        _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+      rescue => ex
+        msg = "Using fallback methods to extract #includes and other directives: #{ex.message}"
+        @loginator.log( msg, Verbosity::COMPLAIN )
+        next
+      end
       details[:directives_only_filepath] = _filepath
     end if @preprocessinator.directives_only_available?
 
@@ -267,7 +279,13 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+      begin
+        _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+      rescue => ex
+        msg = "Using fallback methods to extract #includes and other directives: #{ex.message}"
+        @loginator.log( msg, Verbosity::COMPLAIN )
+        next
+      end
 
       if _filepath.nil?
         msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"

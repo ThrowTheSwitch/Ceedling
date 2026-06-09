@@ -112,6 +112,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install --assume-yes --quiet gdb
 
+      # Install cppcheck for cppcheck plugin test
+      - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
+        run: |
+          sudo apt-get install --assume-yes --quiet cppcheck
+
       # --break-system-packages is required on Ubuntu 24.04+
       # (PEP 668 prevents pip from installing to the system Python environment without explicit opt-in)
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
@@ -226,6 +231,13 @@ jobs:
       - name: "Install ReportGenerator for Tests of Ceedling Plugin: Gcov"
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      # Install/upgrade cppcheck for cppcheck plugin test
+      # windows-latest ships with an older pre-installed cppcheck; upgrade ensures
+      # we have a version that supports --output-format, --suppress-xml, and XML v3
+      - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
+        run: |
+          choco upgrade cppcheck -y
 
       # Download HTML docs bundle built by generate-docs job
       - name: Download HTML Documentation Bundle
