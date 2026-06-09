@@ -112,6 +112,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install --assume-yes --quiet gdb
 
+      # Install valgrind for Valgrind plugin testing
+      - name: Install valgrind for Valgrind Feature Testing
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --assume-yes --quiet valgrind
+          
       # --break-system-packages is required on Ubuntu 24.04+
       # (PEP 668 prevents pip from installing to the system Python environment without explicit opt-in)
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
