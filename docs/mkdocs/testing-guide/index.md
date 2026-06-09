@@ -45,11 +45,11 @@
     and naming trigger sophisticated test build features. Also covers search paths, 
     file extensions, preprocessing, and more.
 
--   :material-link-variant: **[Using Unity, CMock & CException][frameworks]**
+-   :material-link-variant: **[Using Unity & CMock][frameworks]**
 
     ---
 
-    Ceedling connects the Unity, CMock, and CException frameworks — each of which 
+    Ceedling connects the Unity and CMock frameworks — each of which 
     can require configuration of its own. Ceedling facilitates this.
 
 -   :material-content-cut: **[Partials][partials]**

@@ -36,7 +36,7 @@ embedded systems developers.
 
     ---
 
-    Ruby, Rake, YAML, Unity, CMock, and CException explained — the pieces that make
+    Ruby, Rake, YAML, Unity, and CMock explained — the pieces that make
     Ceedling possible and how they fit together.
 
 -   :material-test-tube: **[Test Environments][test-environments]**
@@ -96,11 +96,11 @@ embedded systems developers.
 
     How a unit test grows up to become a test suite.
 
--   :material-link-variant: **[Using Unity, CMock & CException][frameworks]**
+-   :material-link-variant: **[Using Unity and CMock][frameworks]**
 
     ---
 
-    Ceedling links together Unity, CMock, and CException — each of which can
+    Ceedling links together Unity and CMock — each of which can
     require configuration of their own. Ceedling facilitates this.
 
 -   :material-book-open-page-variant: **[Important Conventions & Behaviors][conventions]**

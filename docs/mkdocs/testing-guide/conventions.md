@@ -64,8 +64,7 @@ it is assembled from a variety of sources. In order:
 1. `:paths` ↳ `:include` list from your project configuration
 1. `:paths` ↳ `:libraries` list from your project configuration
 1. Internal path for Unity's unit test framework C code
-1. Internal paths for CMock and CException's C code (if respective 
-   features enabled)
+1. Internal paths for CMock's C code (if respective feature enabled)
 1. `:paths` ↳ `:test_toolchain_include` list from your project 
    configuration
 

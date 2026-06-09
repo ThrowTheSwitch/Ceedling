@@ -52,15 +52,13 @@ is now available.
 
 ## Ceedling is a suite of tools
 
-Ceedling is also a suite of tools. It is the glue for bringing together three 
+Ceedling is also a suite of tools. It is the glue for bringing together two 
 other awesome open-source projects you can’t live without if you‘re creating 
 awesomeness in the C language.
 
 1. **[Unity]**, an [xUnit]-style test framework.
 1. **[CMock]**<sup>†</sup>, a code generating, 
    [function mocking & stubbing][test-doubles] kit for interaction-based testing.
-1. **[CException]**, a framework for adding simple exception handling to C projects
-   in the style of higher-order programming languages.
 
 <sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
 [fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
@@ -83,7 +81,6 @@ library builds & dependency management, and more.
 [Unity]: https://github.com/throwtheswitch/unity
 [xUnit]: https://en.wikipedia.org/wiki/XUnit
 [CMock]: https://github.com/throwtheswitch/cmock
-[CException]: https://github.com/throwtheswitch/cexception
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
@@ -359,7 +356,7 @@ The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedl
 
 ## Ceedling docs
 
-* **_[Ceedling’s documentation site][ceedling-docs-site]_** contains everything you need to know to run Ceedling. It also references and links to the documentation of the projects, _Unity_, _CMock_, and _CException_, that Ceedling weaves together into your test and release builds.
+* **_[Ceedling’s documentation site][ceedling-docs-site]_** contains everything you need to know to run Ceedling. It also references and links to the documentation of the projects, _Unity_ and _CMock_, that Ceedling weaves together into your test and release builds.
 * **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a variety of guides and much more.
 * The **[Plugins section][ceedling-docs-plugins]** of Ceedling’s documentation lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
 
@@ -592,7 +589,7 @@ your project:
  > ceedling new --local YourNewProjectName
 ```
 
-This will install all of Unity, CMock, CException, and Ceedling itself 
+This will install all of Unity, CMock, and Ceedling itself 
 into a new folder `vendor/` inside your project `YourNewProjectName/`.
 It will create the same simple empty directory structure for you with
 `src/` and `test/` folders as the standard `new` command.
@@ -617,7 +614,7 @@ Running Ceedling build tasks tends to look like this…
 ### Upgrading / updating Ceedling
 
 You can upgrade to the latest version of Ceedling at any time, automatically
-gaining access to any accompanying updates to Unity, CMock, and CException.
+gaining access to any accompanying updates to Unity and CMock.
 
 To update a locally installed gem…
 
